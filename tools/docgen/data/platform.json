@@ -1,0 +1,1001 @@
+[
+  {
+    "name": "ai",
+    "tier": "platform",
+    "group": "platform",
+    "schema": "ai",
+    "phase": 3,
+    "status": "PLANNED",
+    "owner": "@ai-team",
+    "hasJobs": true,
+    "purpose": "The single door through which every LLM call passes. Business code asks for an **AI task** by name; this module decides which provider and model serve it, renders the versioned prompt, enforces quota and budget, caches, retries, falls back, validates the structured output, and records cost and usage.",
+    "context": "No other module may import a provider SDK (rule: `AGENT.md` §10). That rule is what makes the model choice a configuration decision instead of a code change, and what makes cost, quality and safety controllable in one place.",
+    "businessPurpose": "AI grading is the product's differentiator and its largest variable cost. Both facts demand that model routing, spend, and output quality be governed centrally and measurably rather than scattered through feature code.",
+    "responsibilities": [
+      "Provider registry and adapters (anthropic, openai, gemini, openrouter, local, mock)",
+      "Task routing: task → model tier → concrete model, from configuration",
+      "Prompt registry: versioned templates with typed input and output schemas",
+      "Resilience: timeout, retry with backoff, circuit breaker, provider fallback chain",
+      "Caching: exact-hash and semantic (pgvector) with per-task policy",
+      "Quota (per user) and budget (global daily) enforcement",
+      "PII redaction before send and untrusted-content wrapping",
+      "Structured output validation, one repair attempt, and sanity bounds",
+      "Streaming (SSE) with partial persistence",
+      "Usage, cost, latency and quality metrics; the `ai_requests` / `ai_usage` audit trail",
+      "The evaluation harness that gates prompt changes"
+    ],
+    "notResponsibilities": [
+      "Deciding what a good essay score is — the rubric belongs to `writing`",
+      "Storing a graded submission — that is the calling module's data",
+      "Speech recognition or synthesis — that is `platform/media`",
+      "Choosing when to call an LLM — see `/AI_GUIDE.md` §B2 before you do"
+    ],
+    "tables": [
+      { "name": "ai_requests", "purpose": "One row per LLM call", "notes": "Partitioned monthly. `task`, `prompt_version`, `provider`, `model`, `status`, `attempt`, `fallback_from`, `cache_hit`, `latency_ms`, `trace_id`. Request/response bodies redacted and retained 30 days." },
+      { "name": "ai_usage", "purpose": "Cost attribution", "notes": "`user_id`, `task`, `tokens_in`, `tokens_out`, `cost_usd`, `occurred_on` — the source for per-user unit economics" },
+      { "name": "prompt_versions", "purpose": "Registry of deployed prompt versions", "notes": "`task`, `version`, `status` (draft/shadow/active/deprecated), `checksum`, `activated_at`" },
+      { "name": "ai_cache_entries", "purpose": "Response cache index", "notes": "`input_hash` UNIQUE, `task`, `prompt_version`, `embedding vector(1536)` for semantic lookup, `expires_at`" },
+      { "name": "ai_budgets", "purpose": "Daily spend accounting", "notes": "`scope` (global/user), `date`, `spent_usd`, `cap_usd`" }
+    ],
+    "endpoints": [
+      { "method": "GET", "path": "/api/v1/admin/ai/usage", "permission": "ai.read", "purpose": "Spend and volume by task, provider and day", "success": "200" },
+      { "method": "GET", "path": "/api/v1/admin/ai/requests/{id}", "permission": "ai.read", "purpose": "Inspect one call for debugging", "success": "200", "notes": "Bodies are redacted; full content requires `ai.read.sensitive` and is itself audited" },
+      { "method": "GET", "path": "/api/v1/admin/ai/prompts", "permission": "ai.read", "purpose": "Deployed prompt versions and their status", "success": "200" },
+      { "method": "POST", "path": "/api/v1/admin/ai/prompts/{task}/activate", "permission": "ai.manage", "purpose": "Promote a prompt version", "success": "200", "errors": ["EVAL_THRESHOLD_NOT_MET"] },
+      { "method": "GET", "path": "/api/v1/admin/ai/budget", "permission": "ai.read", "purpose": "Budget consumption today", "success": "200" }
+    ],
+    "contract": [
+      { "kind": "interface", "name": "ai.Client", "purpose": "`Run(ctx, TaskRequest) (TaskResult, error)` and `Stream(ctx, TaskRequest) (iter, error)` — the only surface business code touches" },
+      { "kind": "struct", "name": "ai.TaskRequest", "purpose": "`{Task, Input (typed), UserID, Locale, IdempotencyKey}` — never a model name, never a raw prompt" },
+      { "kind": "struct", "name": "ai.TaskResult", "purpose": "`{Output (validated JSON), Provider, Model, PromptVersion, Tokens, CostUSD, CacheHit}`" },
+      { "kind": "interface", "name": "ai.Provider", "purpose": "The Strategy interface each adapter implements — internal, not for business code" }
+    ],
+    "events": {
+      "publishes": [
+        { "name": "ai.budget_threshold_reached", "payload": "`{scope, percent, date}`" },
+        { "name": "ai.provider_degraded", "payload": "`{provider, reason}`" }
+      ],
+      "consumes": []
+    },
+    "dependsOn": ["cache", "telemetry", "job"],
+    "dependsWhy": {
+      "cache": "Response cache, quota counters, provider circuit state",
+      "telemetry": "Spans and metrics on every call",
+      "job": "Long-running calls execute inside jobs; evals run on a schedule"
+    },
+    "dependedOnBy": ["writing", "speaking", "grammar", "questionbank", "content", "reading", "media", "learning"],
+    "rules": [
+      "Business code names a **task**, never a model or a provider. A task not present in the routing config is a startup error, not a runtime surprise.",
+      "Prompts are loaded from `docs/prompts/runtime/<task>/v<N>.md`; a published version is immutable, and the active version is pinned by configuration.",
+      "Learner-supplied text is inserted only inside the untrusted-content wrapper; it is never concatenated into the instruction block.",
+      "Output must validate against the task's JSON schema. One repair attempt is allowed; a second failure fails the call with `AI_OUTPUT_INVALID`.",
+      "Numeric outputs are clamped to the rubric's range and cross-checked for internal consistency before being returned.",
+      "Every call checks the per-user quota and the global daily budget first; exceeding either fails fast without contacting a provider.",
+      "Retries apply only to 429, 5xx and timeouts. A refusal, a schema failure, or a content-policy rejection is not retried against the same provider.",
+      "When a provider's circuit is open, the next provider in the task's fallback chain is used and the substitution is recorded.",
+      "No call blocks an HTTP request for more than 2 seconds; anything longer runs in a job and streams or notifies.",
+      "Every call writes `ai_requests` and `ai_usage`, including cache hits and failures — otherwise cost attribution has holes.",
+      "In tests, the `mock` provider is used. Unit and integration tests never reach a network.",
+      "A prompt version cannot be activated unless its eval suite meets its thresholds and is no worse than the currently active version."
+    ],
+    "cache": [
+      { "key": "fluentra:{env}:ai:resp:{task}:{prompt_version}:{input_hash}:v1", "ttl": "per task (see /PROMPT_LIBRARY.md §2.5)", "invalidation": "Prompt version bump" },
+      { "key": "fluentra:{env}:ai:quota:{user_id}:{date}:v1", "ttl": "until midnight in the user's timezone", "invalidation": "Natural expiry" },
+      { "key": "fluentra:{env}:ai:budget:{date}:v1", "ttl": "48 h", "invalidation": "Natural expiry" },
+      { "key": "fluentra:{env}:ai:breaker:{provider}:v1", "ttl": "30 s", "invalidation": "Half-open probe" }
+    ],
+    "errors": [
+      { "code": "AI_QUOTA_EXCEEDED", "status": "429", "meaning": "Per-user daily limit reached" },
+      { "code": "AI_BUDGET_EXCEEDED", "status": "503", "meaning": "Global daily spend cap reached; non-critical tasks are shed first" },
+      { "code": "AI_UNAVAILABLE", "status": "503", "meaning": "Every provider in the chain failed" },
+      { "code": "AI_TIMEOUT", "status": "504", "meaning": "Provider exceeded the task timeout" },
+      { "code": "AI_OUTPUT_INVALID", "status": "500", "meaning": "Output failed schema validation after the repair attempt" },
+      { "code": "AI_CONTENT_FLAGGED", "status": "422", "meaning": "Moderation blocked the input" },
+      { "code": "AI_OPTED_OUT", "status": "403", "meaning": "The user disabled AI processing" },
+      { "code": "EVAL_THRESHOLD_NOT_MET", "status": "409", "meaning": "Prompt promotion blocked by its eval suite" }
+    ],
+    "security": [
+      "Provider API keys live in configuration only and never appear in a span, a log, or an error.",
+      "PII redaction runs before send; the redaction map is retained only long enough to restore names in the response.",
+      "Only providers contractually barred from training on API data receive learner content; `openrouter` is restricted to non-personal input.",
+      "The untrusted-content wrapper plus a hardened system preamble is the primary prompt-injection defence; the eval suite includes a red-team subset that must score 1.0.",
+      "Score sanity bounds are the second line of defence: an out-of-range or internally inconsistent score fails the job rather than reaching the learner."
+    ],
+    "flows": [
+      {
+        "title": "A task call, end to end",
+        "mermaid": "flowchart TD\n    A[\"ai.Client.Run(task, input)\"] --> B{Task in routing config?}\n    B -->|no| Z1[startup error — cannot happen at runtime]\n    B -->|yes| C{User opted out?}\n    C -->|yes| Z2[AI_OPTED_OUT]\n    C -->|no| D{Quota + budget OK?}\n    D -->|no| Z3[AI_QUOTA_EXCEEDED / AI_BUDGET_EXCEEDED]\n    D -->|yes| E[Redact PII]\n    E --> F[Wrap untrusted content]\n    F --> G[Render prompt vN]\n    G --> H{Cache hit?}\n    H -->|exact| I[Return cached + record usage]\n    H -->|semantic within threshold| I\n    H -->|miss| J[Provider 1 via breaker]\n    J -->|429/5xx/timeout| K{Retries left?}\n    K -->|yes| J\n    K -->|no| L{Next provider?}\n    L -->|yes| J\n    L -->|no| Z4[AI_UNAVAILABLE]\n    J -->|response| M[Validate against output schema]\n    M -->|invalid| N[One repair attempt]\n    N -->|still invalid| Z5[AI_OUTPUT_INVALID]\n    M -->|valid| O[Clamp + consistency check]\n    O -->|out of bounds| Z5\n    O --> P[Cache, record ai_requests + ai_usage, emit metrics]\n    P --> Q[Return TaskResult]"
+      },
+      {
+        "title": "Provider fallback",
+        "description": "Fallback is per task, not global — a cheap task may have no fallback at all, while grading has two.",
+        "mermaid": "sequenceDiagram\n    autonumber\n    participant C as Caller\n    participant R as Resilience chain\n    participant P1 as anthropic\n    participant P2 as openai\n    participant M as Metrics\n\n    C->>R: Run(writing.grade_essay)\n    R->>P1: request (timeout 30s)\n    P1-->>R: 503\n    R->>R: retry 1 after 1s ± jitter\n    R->>P1: request\n    P1-->>R: 503\n    R->>R: breaker opens for anthropic\n    R->>M: ai_provider_degraded, ai_fallback_total\n    R->>P2: request with the same rendered prompt\n    P2-->>R: 200\n    R->>M: record provider=openai, fallback_from=anthropic\n    R-->>C: TaskResult"
+      }
+    ],
+    "stateMachine": {
+      "description": "Prompt version lifecycle. A version never returns to an earlier state; rollback means activating the previous version, not editing this one.",
+      "mermaid": "stateDiagram-v2\n    [*] --> Draft: author vN+1\n    Draft --> Shadow: eval thresholds met + human approval\n    Shadow --> Draft: comparison worse\n    Shadow --> Rollout10: shadow results acceptable\n    Rollout10 --> Active: metrics stable\n    Rollout10 --> Draft: regression detected\n    Active --> Deprecated: superseded by vN+2\n    Deprecated --> [*]"
+    },
+    "failures": [
+      { "failure": "All providers down", "detection": "`ai_requests_total{result=\"unavailable\"}`", "behaviour": "Job retries with backoff; the learner sees \"still grading\", not an error; pages after 5 minutes" },
+      { "failure": "Provider silently changes a model behind an alias", "detection": "Nightly eval score shift", "behaviour": "Alert; models are pinned to exact IDs to make this rare" },
+      { "failure": "Schema violations spike after a prompt change", "detection": "`ai_schema_violation_total`", "behaviour": "Automatic rollback to the previous active version at > 5 % over 30 minutes" },
+      { "failure": "Cost spike", "detection": "`ai_cost_usd_total` rate", "behaviour": "80 % budget alert; at 100 % non-critical tasks are shed while grading continues" }
+    ],
+    "tasks": [
+      { "title": "Add a provider", "steps": [
+        "Create `provider/<name>/` implementing `ai.Provider`. The vendor SDK may be imported **only** inside this directory.",
+        "Map vendor errors onto the module's retryable/non-retryable classification.",
+        "Add config keys and register the provider in the registry.",
+        "Add `mock` fixtures so tests covering this provider stay offline.",
+        "Add it to the fallback chains that should use it, in config.",
+        "Run the eval suites against it and record the results in `docs/ai/provider-comparison.md`."
+      ]},
+      { "title": "Add an AI task", "steps": [
+        "Follow the checklist in `/AI_GUIDE.md` §B4 — it is the authoritative list.",
+        "Define the task in the routing config with tier, timeout, cache policy and budget.",
+        "Write `docs/prompts/runtime/<task>/v1.md` plus input and output schemas.",
+        "Build the golden set (≥ 30 examples) and `thresholds.yaml`, including red-team cases.",
+        "Add `mock` fixtures.",
+        "Call it from the owning module by task name only."
+      ]},
+      { "title": "Change the model for a task", "steps": [
+        "Edit the routing config — **do not touch Go code**.",
+        "Run the eval suite; compare cost and quality deltas.",
+        "Shadow, then 10 %, then 100 %.",
+        "Record the change and its measured effect in `docs/ai/cost-model.md`."
+      ]}
+    ],
+    "limitations": [
+      "Semantic caching depends on `pgvector` and an embedding call, which itself costs money — it is enabled only for tasks where the hit rate justifies it.",
+      "The repair attempt is a single retry with the validation error appended; there is no multi-turn negotiation.",
+      "Streaming partials are persisted per chunk, which is chatty for long outputs.",
+      "Cost figures are computed from a published price table in config and can drift from actual invoices; monthly reconciliation is manual."
+    ],
+    "conventions": [
+      "Vendor SDK types never leave `provider/<name>/`.",
+      "No prompt string literal anywhere in Go code.",
+      "Every provider adapter has a `mock` fixture set covering success, refusal, timeout, rate limit and malformed output."
+    ],
+    "testFocus": [
+      "Fallback chain: killing provider 1 must produce a correct result from provider 2 with the substitution recorded",
+      "Quota and budget enforcement, including the boundary at exactly the cap",
+      "Schema validation and the single repair attempt",
+      "Score clamping and consistency checks reject an out-of-range score",
+      "Prompt injection: red-team fixtures must not change the output score",
+      "Cache correctness: a different input must never return a cached response",
+      "Cost accounting matches the token counts reported by the provider",
+      "Streaming: a disconnect mid-stream does not lose already-generated content"
+    ],
+    "testEdges": [
+      "Two identical requests arriving concurrently — single-flight must produce one provider call",
+      "A provider returning valid JSON that violates the schema in a subtle way (extra field, wrong enum)",
+      "An empty submission, a 10,000-word submission, and one that is entirely emoji",
+      "Budget crossing the cap mid-request"
+    ],
+    "coverage": "85% service, 90% domain",
+    "decisions": [
+      { "question": "Task-based or model-based API?", "choice": "Task-based", "why": "Callers should not know or care which model runs; it makes model changes a config decision, keeps routing and cost policy in one place, and makes the eval story coherent" },
+      { "question": "Where do prompts live?", "choice": "Versioned Markdown in `docs/prompts/runtime/`", "why": "Reviewable by non-engineers, diffable, evaluable in CI, rollback-able by config — none of which is true of a Go string constant" },
+      { "question": "Fail open or closed on budget exhaustion?", "choice": "Shed non-critical tasks, keep grading", "why": "A learner who paid for grading should still get it; example-sentence generation can wait" },
+      { "question": "Semantic cache everywhere?", "choice": "Only where measured hit rate justifies the embedding cost", "why": "An embedding call to save a small-model call can be a net loss" }
+    ],
+    "adrs": [
+      { "id": "ADR-0011", "file": "ADR-0011-ai-provider-abstraction.md", "title": "Task-based AI provider abstraction" },
+      { "id": "ADR-0012", "file": "ADR-0012-prompt-versioning.md", "title": "Prompts as versioned, evaluated artefacts" }
+    ],
+    "openQuestions": [
+      "Do we self-host a small model for high-volume cheap tasks once volume justifies it?",
+      "Should the semantic cache be per-user or global for privacy-sensitive tasks?"
+    ],
+    "todo": [
+      { "title": "Phase 3 — foundation", "items": [
+        "Provider interface, registry and the `mock` provider",
+        "Anthropic and OpenAI adapters",
+        "Routing config with tiers, timeouts and budgets",
+        "Prompt registry loading versioned templates with schemas",
+        "Resilience chain: timeout, retry, breaker, fallback",
+        "Quota and budget enforcement",
+        "`ai_requests` / `ai_usage` recording and the cost dashboard",
+        "Output schema validation, repair, clamping",
+        "Untrusted-content wrapper and PII redaction",
+        "Eval harness and the CI gate"
+      ]},
+      { "title": "Phase 3 — extensions", "items": ["Gemini and OpenRouter adapters", "Exact-hash response cache", "SSE streaming with partial persistence", "Semantic cache with pgvector"] }
+    ],
+    "future": ["Automatic model selection from measured quality-per-dollar", "Per-learner model preference for feedback style", "Batch API usage for non-urgent tasks", "Self-hosted small model for high-volume tasks"],
+    "doNot": [
+      "Do not import a provider SDK outside `provider/<name>/`.",
+      "Do not name a model in business code — name a task.",
+      "Do not inline a prompt string.",
+      "Do not call an LLM synchronously in an HTTP handler for anything expected to take more than 2 seconds.",
+      "Do not trust model output — validate the schema, clamp the numbers, check the consistency.",
+      "Do not concatenate learner text into the instruction block.",
+      "Do not skip the eval suite because \"it's a small prompt change\". That is exactly when regressions slip through.",
+      "Do not use an LLM where an algorithm exists — read `/AI_GUIDE.md` §B2 first."
+    ],
+    "runtimePrompts": [
+      { "task": "writing.grade_essay", "purpose": "CEFR/IELTS rubric grading with actionable feedback" },
+      { "task": "writing.quick_hint", "purpose": "Cheap in-editor hint while drafting" },
+      { "task": "speaking.feedback", "purpose": "Turn ASR output and pronunciation scores into coaching" },
+      { "task": "grammar.explain", "purpose": "Explain an error, citing a rule from our own taxonomy" },
+      { "task": "vocabulary.example_sentence", "purpose": "Level-appropriate example sentences" },
+      { "task": "questionbank.generate_items", "purpose": "Draft items for admin review" },
+      { "task": "content.level_estimate", "purpose": "Estimate the CEFR level of a passage" }
+    ],
+    "devPrompts": [
+      { "task": "Add a provider adapter", "file": "ai/generate-ai-provider.md" },
+      { "task": "Write a runtime prompt", "file": "ai/generate-prompt-template.md" },
+      { "task": "Build an eval suite", "file": "ai/generate-eval-suite.md" }
+    ]
+  },
+
+  {
+    "name": "media",
+    "tier": "platform",
+    "group": "platform",
+    "schema": "content",
+    "phase": 3,
+    "status": "PLANNED",
+    "owner": "@platform-team",
+    "hasJobs": true,
+    "purpose": "Everything that happens to audio and images: transcoding, waveform generation, speech recognition, pronunciation assessment, text-to-speech, and thumbnailing. It is the CPU-heavy part of the system and the first candidate for extraction to a separate service.",
+    "businessPurpose": "Listening and speaking are half the product. Neither works without a reliable pipeline that turns a learner's browser recording into something a scoring engine can read, and turns published text into natural audio.",
+    "responsibilities": [
+      "Audio transcoding (ffmpeg) to canonical formats: 16 kHz mono for ASR, Opus for playback",
+      "Waveform peak extraction for the player UI",
+      "ASR adapter: transcript plus word-level timings",
+      "Pronunciation assessment adapter: phoneme-level accuracy, fluency, completeness",
+      "Text-to-speech adapter with voice selection and caching",
+      "Image processing: resize, EXIF strip, re-encode, thumbnail",
+      "Duration, format and loudness validation",
+      "Orphaned-derivative garbage collection"
+    ],
+    "notResponsibilities": [
+      "Storing the files — that is `platform/storage`",
+      "Deciding what a pronunciation score means for a learner — that is `speaking`",
+      "Text generation — that is `platform/ai`"
+    ],
+    "tables": [
+      { "name": "media_derivatives", "purpose": "Derived artefacts from a source asset", "notes": "`source_asset_id`, `kind` (opus/wav16k/waveform/thumb), `object_key`, `status`, `duration_ms`" },
+      { "name": "transcripts", "purpose": "ASR output", "notes": "`asset_id`, `text`, `words` jsonb (with timings), `confidence`, `provider`, `language`" },
+      { "name": "tts_cache", "purpose": "Synthesised audio keyed by text and voice", "notes": "`text_hash` + `voice` UNIQUE, `object_key`, `hits`" }
+    ],
+    "endpoints": [
+      { "method": "GET", "path": "/api/v1/admin/media/{asset_id}/derivatives", "permission": "content.read", "purpose": "Inspect the pipeline output for one asset", "success": "200" },
+      { "method": "POST", "path": "/api/v1/admin/media/{asset_id}/reprocess", "permission": "content.manage", "purpose": "Re-run the pipeline", "success": "202" }
+    ],
+    "contract": [
+      { "kind": "interface", "name": "media.Processor", "purpose": "`Transcode`, `Waveform`, `Thumbnail` — enqueue-and-return, never synchronous" },
+      { "kind": "interface", "name": "media.Recognizer", "purpose": "`Transcribe(ctx, assetID, lang)` → transcript with word timings" },
+      { "kind": "interface", "name": "media.Assessor", "purpose": "`AssessPronunciation(ctx, assetID, referenceText)` → phoneme-level scores" },
+      { "kind": "interface", "name": "media.Synthesizer", "purpose": "`Speak(ctx, text, voice)` → an asset ID, cached by text and voice" }
+    ],
+    "events": {
+      "publishes": [
+        { "name": "media.processed", "payload": "`{asset_id, derivatives, duration_ms}`" },
+        { "name": "media.transcribed", "payload": "`{asset_id, transcript_id, confidence}`" },
+        { "name": "media.processing_failed", "payload": "`{asset_id, stage, reason}`" }
+      ],
+      "consumes": [{ "name": "content.published", "reason": "Pre-generate TTS for newly published text" }]
+    },
+    "dependsOn": ["storage", "job", "ai", "telemetry"],
+    "dependsWhy": {
+      "storage": "Read sources, write derivatives",
+      "job": "Every stage runs as a job — none is fast enough for a request",
+      "ai": "Post-processing of transcripts into feedback is an AI task, invoked by the calling module",
+      "telemetry": "Per-stage latency and failure metrics"
+    },
+    "dependedOnBy": ["speaking", "listening", "content", "vocabulary", "user"],
+    "rules": [
+      "No media processing happens in the API process. Every stage is a job on the `media` queue.",
+      "Source files are never mutated; every output is a new derivative with its own object key.",
+      "ASR receives 16 kHz mono PCM — always transcode first, never send the browser's original.",
+      "Uploads are validated for real content type by magic bytes, not by extension or the declared MIME type.",
+      "Maximum recording length is 180 seconds; maximum upload 25 MB. Both are configuration, enforced server-side after upload as well as in the presigned URL.",
+      "TTS output is cached by (text hash, voice, model); the same sentence is never synthesised twice.",
+      "A failed stage retries up to 3 times, then records `media.processing_failed` with a user-safe reason.",
+      "Raw user uploads are deleted once derivatives exist and are verified; only the normalised versions are retained.",
+      "Every derivative records the exact tool version used, so a pipeline change can be correlated with a quality change."
+    ],
+    "errors": [
+      { "code": "UNSUPPORTED_AUDIO_FORMAT", "status": "415", "meaning": "Magic bytes do not match a supported container" },
+      { "code": "AUDIO_TOO_LONG", "status": "422", "meaning": "Exceeds the configured maximum duration" },
+      { "code": "MEDIA_PROCESSING_FAILED", "status": "500", "meaning": "A pipeline stage failed after retries" },
+      { "code": "TRANSCRIPTION_LOW_CONFIDENCE", "status": "422", "meaning": "Audio too noisy or too quiet to score fairly" }
+    ],
+    "security": [
+      "Uploads land in a private quarantine bucket and are never publicly readable, even transiently.",
+      "Content type is verified by sniffing before ffmpeg is invoked.",
+      "ffmpeg runs with a wall-clock limit and a memory cap; a malformed file must not be able to exhaust the worker.",
+      "Voice recordings are personal data: 90-day retention, deletable by the learner, and never sent to a provider without no-training terms."
+    ],
+    "flows": [
+      {
+        "title": "Speaking attempt pipeline",
+        "mermaid": "sequenceDiagram\n    autonumber\n    participant J as job queue\n    participant W as worker (media)\n    participant S as storage\n    participant F as ffmpeg\n    participant A as ASR provider\n    participant P as pronunciation provider\n\n    J->>W: speaking.transcribe_and_score { asset_id }\n    W->>S: GET raw upload\n    W->>W: sniff magic bytes, probe duration\n    alt invalid or too long\n        W->>W: fail with a user-safe reason\n    else valid\n        W->>F: transcode → 16 kHz mono WAV\n        W->>F: transcode → 64 kbps Opus (playback)\n        W->>F: extract waveform peaks\n        W->>S: PUT derivatives\n        W->>A: transcribe (16 kHz WAV)\n        A-->>W: transcript + word timings + confidence\n        alt confidence below threshold\n            W->>W: TRANSCRIPTION_LOW_CONFIDENCE — ask the learner to re-record\n        else\n            W->>P: assess against the reference text\n            P-->>W: phoneme accuracy, fluency, completeness\n            W->>W: persist transcript + scores; publish media.transcribed\n            W->>S: DELETE raw upload\n        end\n    end"
+      }
+    ],
+    "tasks": [
+      { "title": "Add a media stage", "steps": [
+        "Add the job kind and register the worker in `job/`.",
+        "Make it idempotent — a re-run must produce the same derivative key.",
+        "Add per-stage duration and failure metrics.",
+        "Add resource limits (time, memory) to the external tool invocation.",
+        "Cover it with an integration test using a small real audio fixture, not a synthetic buffer."
+      ]},
+      { "title": "Swap the ASR provider", "steps": [
+        "Implement `media.Recognizer` in a new adapter directory.",
+        "Run the benchmark suite in `test/fixtures/corpus/speech/` and compare word error rate and cost.",
+        "Record the comparison in `docs/knowledge/pronunciation-scoring.md`.",
+        "Switch by configuration; keep the previous adapter for one release."
+      ]}
+    ],
+    "limitations": [
+      "ffmpeg runs in-process in the worker container; a single very large file can occupy a worker slot for minutes.",
+      "Pronunciation assessment quality varies by accent and is weakest for non-native reference speakers — documented for the product team.",
+      "There is no forced-alignment fallback if the ASR provider does not return word timings.",
+      "TTS voice selection is per-locale, not per-learner."
+    ],
+    "testFocus": [
+      "Magic-byte sniffing rejects a renamed file",
+      "Duration and size limits enforced after upload, not only in the presigned URL",
+      "Idempotent reprocessing produces identical derivative keys",
+      "Low-confidence transcripts are surfaced rather than scored",
+      "Raw uploads are deleted only after derivatives are verified present",
+      "TTS cache prevents duplicate synthesis"
+    ],
+    "coverage": "80% service; integration tests carry the pipeline",
+    "decisions": [
+      { "question": "ffmpeg in the worker or a separate service?", "choice": "In the worker for now", "why": "One fewer moving part; the boundary is already an interface, so extraction is a transport change when CPU contention justifies it — see ARCHITECTURE §20.2 where media is the first extraction candidate" },
+      { "question": "Which pronunciation scoring approach?", "choice": "Provider API first, GOP self-hosted as a fallback option", "why": "Building phoneme-level scoring in-house is a research project; buying it lets us ship and measure. Open question Q2 in the plan review" },
+      { "question": "Keep raw uploads?", "choice": "Delete after derivatives are verified", "why": "Storage cost and privacy; the normalised copy is what any re-scoring would use anyway" }
+    ],
+    "todo": [
+      { "title": "Phase 3", "items": [
+        "ffmpeg transcode stages with resource limits",
+        "Waveform extraction",
+        "ASR adapter with word timings",
+        "Pronunciation assessment adapter",
+        "TTS adapter with content-hash caching",
+        "Image processing for avatars and content images",
+        "Orphan GC job",
+        "Speech benchmark corpus and a provider comparison document"
+      ]}
+    ],
+    "future": ["Self-hosted Whisper for cost control at volume", "Forced alignment fallback", "Per-learner voice preference", "Noise suppression before ASR"],
+    "doNot": [
+      "Do not process media inside an HTTP handler.",
+      "Do not trust the declared MIME type.",
+      "Do not send the browser's original audio to an ASR provider — transcode first.",
+      "Do not retain raw uploads once derivatives exist.",
+      "Do not interpret scores here — return the numbers and let `speaking` decide what they mean."
+    ],
+    "runtimePrompts": []
+  },
+
+  {
+    "name": "job",
+    "tier": "platform",
+    "group": "platform",
+    "schema": "ops",
+    "phase": 1,
+    "status": "PLANNED",
+    "owner": "@platform-team",
+    "hasJobs": true,
+    "purpose": "Background execution: the River queue wiring, the cron scheduler, job middleware (tracing, logging, panic recovery, timeouts), the dead-letter path, and the operational surface for inspecting and retrying work.",
+    "context": "Jobs are enqueued **inside the business transaction**, so a job can never exist for a row that was rolled back, and a row can never exist without its follow-up work. That single property is why River was chosen over a Redis queue (ADR-0010).",
+    "responsibilities": [
+      "River client and worker wiring, queue registry, concurrency configuration",
+      "Cron scheduling with distributed locking",
+      "Job middleware: span, structured log, panic recovery, timeout, metrics",
+      "Retry policy and dead-letter handling",
+      "The outbox publisher loop",
+      "Queue depth and age metrics",
+      "Admin operations: inspect, retry, cancel"
+    ],
+    "notResponsibilities": [
+      "The business logic inside a job — that lives in the owning module's `job/` package",
+      "Deciding retry semantics for a business failure — the module classifies its own errors"
+    ],
+    "tables": [
+      { "name": "river_job", "purpose": "River's queue table", "notes": "Managed by River's own migrations; do not hand-edit" },
+      { "name": "outbox_events", "purpose": "Transactional event outbox", "notes": "`aggregate`, `event`, `payload`, `published_at`, `attempts`. Polled with `FOR UPDATE SKIP LOCKED`" },
+      { "name": "job_failures", "purpose": "Dead-letter record", "notes": "`kind`, `args`, `last_error`, `failed_at` — retained 30 days for triage" }
+    ],
+    "endpoints": [
+      { "method": "GET", "path": "/api/v1/admin/jobs", "permission": "system.jobs", "purpose": "List jobs by queue and state", "success": "200" },
+      { "method": "POST", "path": "/api/v1/admin/jobs/{id}/retry", "permission": "system.jobs", "purpose": "Retry a failed job", "success": "202" },
+      { "method": "POST", "path": "/api/v1/admin/jobs/{id}/cancel", "permission": "system.jobs", "purpose": "Cancel a pending job", "success": "204" },
+      { "method": "GET", "path": "/api/v1/admin/queues", "permission": "system.jobs", "purpose": "Depth, oldest pending age, throughput per queue", "success": "200" }
+    ],
+    "contract": [
+      { "kind": "interface", "name": "job.Enqueuer", "purpose": "`Enqueue(ctx, tx, args)` — takes the transaction, which is the whole point" },
+      { "kind": "interface", "name": "job.Scheduler", "purpose": "`Register(spec, kind)` for cron entries" },
+      { "kind": "struct", "name": "job.Meta", "purpose": "`{TraceID, RequestID, UserID}` carried in every job payload for correlation" }
+    ],
+    "events": { "publishes": [{ "name": "job.failed_permanently", "payload": "`{kind, job_id, reason}`" }], "consumes": [] },
+    "dependsOn": ["telemetry"],
+    "dependsWhy": { "telemetry": "Every job is a span; every queue is metered" },
+    "dependedOnBy": ["auth", "user", "audit", "notification", "mailer", "content", "writing", "speaking", "media", "ai", "srs", "analytics", "exam", "payment"],
+    "rules": [
+      "Enqueue inside the transaction that creates the data the job will read. Never after commit.",
+      "Every job handler is idempotent — delivery is at-least-once and a retry must be safe.",
+      "Job arguments carry IDs, never payloads. The handler re-reads current state; stale embedded data causes subtle bugs.",
+      "Every job declares a timeout and a maximum attempt count.",
+      "A business rejection is not retried; only transient failures are.",
+      "Every job carries `trace_id` and `request_id` so its logs join the originating request's trace.",
+      "Cron handlers must tolerate double execution — distributed locking reduces the chance but does not eliminate it.",
+      "A permanently failed job writes to `job_failures` and emits an event; it never disappears silently.",
+      "Queues are isolated by workload: `ai`, `media`, `notify`, `batch`, `default`. A slow media job must not starve notifications."
+    ],
+    "errors": [{ "code": "JOB_NOT_RETRYABLE", "status": "409", "meaning": "Admin attempted to retry a job that failed for a business reason" }],
+    "flows": [
+      {
+        "title": "Transactional enqueue and the outbox",
+        "mermaid": "sequenceDiagram\n    autonumber\n    participant S as Service\n    participant DB as PostgreSQL\n    participant OB as Outbox publisher\n    participant W as Worker\n\n    S->>DB: BEGIN\n    S->>DB: INSERT business row\n    S->>DB: INSERT river_job (same tx)\n    S->>DB: INSERT outbox_events (same tx)\n    S->>DB: COMMIT\n    Note over S,DB: all three commit atomically — no orphans, no lost work\n    W->>DB: dequeue job (FOR UPDATE SKIP LOCKED)\n    W->>W: run handler inside span + timeout\n    alt transient failure\n        W->>DB: reschedule with exponential backoff\n    else business failure\n        W->>DB: INSERT job_failures; publish job.failed_permanently\n    else success\n        W->>DB: mark completed\n    end\n    OB->>DB: poll unpublished outbox rows\n    OB->>OB: dispatch to in-process subscribers\n    OB->>DB: mark published"
+      }
+    ],
+    "tasks": [
+      { "title": "Add a job kind", "steps": [
+        "Define the args struct in the owning module's `job/` package; include only IDs plus `job.Meta`.",
+        "Implement the worker; make it idempotent and re-read state.",
+        "Register it in `cmd/worker`.",
+        "Choose a queue, timeout and attempt count deliberately.",
+        "Enqueue it inside the business transaction.",
+        "Add a test that runs the handler twice and asserts the same end state."
+      ]},
+      { "title": "Add a scheduled task", "steps": [
+        "Register the cron spec in `cmd/worker`.",
+        "Make the handler idempotent and safe if it runs twice or is skipped once.",
+        "Use an advisory lock if it must not run concurrently across replicas.",
+        "Add a metric for its last successful run, and an alert if it goes stale."
+      ]}
+    ],
+    "limitations": [
+      "Throughput is bounded by Postgres — comfortable to a few thousand jobs per second, far above our projection, but not a stream processor.",
+      "Jobs add write load to the primary database.",
+      "There is no priority within a queue beyond scheduled time; priority is expressed by using a different queue."
+    ],
+    "testFocus": [
+      "Rollback of the business transaction leaves no job",
+      "Handler idempotency: running twice yields one effect",
+      "Retry backoff and the maximum-attempt boundary",
+      "Timeout cancels the handler's context",
+      "Panic in a handler is recovered and recorded, not fatal to the worker",
+      "Outbox publishes exactly once per event to each subscriber"
+    ],
+    "decisions": [
+      { "question": "River, Asynq, or a broker?", "choice": "River", "why": "Transactional enqueue is worth more to us than raw throughput; see the comparison in ARCHITECTURE §11.1 and ADR-0010" },
+      { "question": "Job args: IDs or full payloads?", "choice": "IDs", "why": "A payload captured at enqueue time is stale by the time the job runs; re-reading is correct and keeps the queue table small" },
+      { "question": "One queue or several?", "choice": "Five, by workload shape", "why": "A three-minute transcode must not delay a notification; separate queues give independent concurrency and independent alerting" }
+    ],
+    "adrs": [{ "id": "ADR-0010", "file": "ADR-0010-job-queue-river.md", "title": "River (Postgres) for background jobs" }],
+    "todo": [
+      { "title": "Phase 1", "items": [
+        "River client and worker wiring with the five queues",
+        "Job middleware: span, log, recover, timeout, metrics",
+        "Outbox table and publisher loop with `SKIP LOCKED`",
+        "Cron scheduler with advisory locking",
+        "Dead-letter recording and the `job.failed_permanently` event",
+        "Admin inspect/retry/cancel endpoints",
+        "Queue depth and oldest-pending-age metrics with alerts"
+      ]}
+    ],
+    "future": ["Per-queue autoscaling hints", "Job dependency graphs for multi-stage pipelines", "Broker-backed queue after a module is extracted"],
+    "doNot": [
+      "Do not enqueue after commit.",
+      "Do not put payloads or personal data in job arguments.",
+      "Do not write a job handler that is not safe to run twice.",
+      "Do not use `go func()` in a handler instead of a job.",
+      "Do not run a long job on the `default` queue and starve everything else."
+    ],
+    "runtimePrompts": []
+  },
+
+  {
+    "name": "cache",
+    "tier": "platform",
+    "group": "platform",
+    "schema": null,
+    "phase": 1,
+    "status": "PLANNED",
+    "owner": "@platform-team",
+    "purpose": "A typed facade over Redis: key building, serialisation, TTL policy, single-flight, distributed locks, and rate limiting. Modules never touch the Redis client directly, so key conventions and degradation behaviour are enforced in one place.",
+    "responsibilities": [
+      "Typed get/set/delete with a generic `Cache[T]`",
+      "Key construction following the repository convention, including schema versioning",
+      "Cache-aside and write-through helpers",
+      "Single-flight to prevent stampedes",
+      "Jittered TTLs",
+      "Distributed locks (`SET NX PX`) with safe release",
+      "Rate limiting (GCRA via `redis_rate`)",
+      "Graceful degradation when Redis is unavailable",
+      "Hit-ratio and latency metrics per module"
+    ],
+    "notResponsibilities": [
+      "Deciding what to cache — each module owns that decision",
+      "Being a source of truth for anything except rate-limit counters and token denylists"
+    ],
+    "endpoints": [
+      { "method": "DELETE", "path": "/api/v1/admin/cache/{pattern}", "permission": "system.cache", "purpose": "Operational invalidation by key prefix", "success": "204", "notes": "Prefix-scoped and audited; never a bare `KEYS *`" }
+    ],
+    "contract": [
+      { "kind": "interface", "name": "cache.Cache[T]", "purpose": "`Get`, `Set`, `Delete`, `GetOrLoad` — typed, so a cached value cannot be deserialised into the wrong shape" },
+      { "kind": "interface", "name": "cache.Locker", "purpose": "`Acquire(ctx, key, ttl)` returning a release function" },
+      { "kind": "interface", "name": "cache.Limiter", "purpose": "`Allow(ctx, key, limit)` returning remaining and reset" },
+      { "kind": "func", "name": "cache.Key", "purpose": "Builds `fluentra:{env}:{module}:{entity}:{id}:v{n}` — the only sanctioned way to make a key" }
+    ],
+    "events": { "publishes": [], "consumes": [] },
+    "dependsOn": ["telemetry"],
+    "dependedOnBy": ["auth", "rbac", "user", "content", "lesson", "learning", "srs", "gamification", "ai", "notification", "admin", "search"],
+    "rules": [
+      "Every read path must work with Redis down: fall back to the source, log at `warn`, increment `cache_unavailable_total`. A cache outage degrades latency, never correctness.",
+      "Keys are built only via `cache.Key`. A hand-built key string fails review.",
+      "Every cached class carries a schema version; bumping it invalidates the whole class without scanning.",
+      "TTLs carry ±10 % jitter to avoid synchronised expiry.",
+      "`GetOrLoad` uses single-flight so a cold key produces one loader call, not a thundering herd.",
+      "Authorization decisions are never cached across users.",
+      "Personal data in the cache carries the same retention expectations as the database — deletion must bust the key.",
+      "Locks always have a TTL and are released with a token check, so a slow holder cannot release someone else's lock."
+    ],
+    "errors": [{ "code": "RATE_LIMITED", "status": "429", "meaning": "Rate limiter rejected the request" }],
+    "flows": [
+      {
+        "title": "Cache-aside with single-flight and degradation",
+        "mermaid": "flowchart TD\n    A[\"GetOrLoad(key, loader)\"] --> B{Redis reachable?}\n    B -->|no| L[call loader directly<br/>warn + cache_unavailable_total]\n    B -->|yes| C[GET key]\n    C -->|hit| D[deserialise → return<br/>cache_requests_total result=hit]\n    C -->|miss| E[single-flight per key]\n    E --> F[loader]\n    F -->|error| G[return error, cache nothing]\n    F -->|value| H[SET with jittered TTL]\n    H --> I[return value<br/>result=miss]"
+      }
+    ],
+    "tasks": [
+      { "title": "Cache a read path", "steps": [
+        "Confirm it is worth it: measure the underlying query first. Caching a 3 ms query buys nothing and adds an invalidation bug.",
+        "Choose the key shape and register it in your module's AGENT.md §Cache strategy.",
+        "Decide the invalidation trigger before writing the read — an uninvalidated cache is a correctness bug waiting.",
+        "Use `GetOrLoad`, not manual get/set.",
+        "Add a test proving the fallback path works with Redis unavailable."
+      ]}
+    ],
+    "limitations": [
+      "Single Redis instance — no cluster in v1. A failure degrades every module simultaneously, which is why degradation is mandatory rather than optional.",
+      "No cache warming; cold starts hit the database.",
+      "Prefix invalidation uses `SCAN`, which is fine at our key counts but is not free."
+    ],
+    "testFocus": [
+      "Every consumer's fallback path with Redis stopped",
+      "Single-flight collapses concurrent loads into one",
+      "TTL jitter is applied",
+      "Lock release is token-checked",
+      "Rate limiter boundaries: exactly at the limit, and just over",
+      "Version bump invalidates a whole class"
+    ],
+    "decisions": [
+      { "question": "go-redis or rueidis?", "choice": "go-redis v9", "why": "Maturity and instrumentation; rueidis is faster and supports client-side caching — revisit if Redis latency becomes a measured problem" },
+      { "question": "Typed facade or raw client?", "choice": "Typed facade", "why": "It is the only way to enforce key conventions, degradation and metrics consistently; a raw client in 20 modules produces 20 conventions" }
+    ],
+    "todo": [
+      { "title": "Phase 1", "items": [
+        "Typed `Cache[T]` with JSON and msgpack codecs",
+        "`cache.Key` builder with environment and version segments",
+        "`GetOrLoad` with single-flight and jittered TTL",
+        "Degradation path plus `cache_unavailable_total`",
+        "Distributed locks with token-checked release",
+        "Rate limiter wrapping `redis_rate`",
+        "Per-module hit-ratio metrics"
+      ]}
+    ],
+    "future": ["Two-tier cache with an in-process L1", "Redis Cluster or Valkey if licensing or scale demands", "Cache warming for the daily review queue"],
+    "doNot": [
+      "Do not build a key by string concatenation.",
+      "Do not treat the cache as a source of truth (except rate limits and denylists).",
+      "Do not cache without deciding how it is invalidated.",
+      "Do not cache a permission decision across users.",
+      "Do not use `KEYS` — ever."
+    ],
+    "runtimePrompts": []
+  },
+
+  {
+    "name": "storage",
+    "tier": "platform",
+    "group": "platform",
+    "schema": null,
+    "phase": 1,
+    "status": "PLANNED",
+    "owner": "@platform-team",
+    "hasJobs": true,
+    "purpose": "A facade over MinIO (S3 API): bucket policy, presigned upload and download URLs, object verification, lifecycle rules, and orphan collection. Binary data never flows through the Go API — this module is how that rule is kept.",
+    "responsibilities": [
+      "Bucket definitions, policies and lifecycle rules",
+      "Presigned PUT (upload) and GET (download) with pinned content type, size and expiry",
+      "Post-upload verification: existence, size, content type",
+      "Object key conventions",
+      "Copy, move and delete operations",
+      "Orphan garbage collection",
+      "Storage metrics per bucket"
+    ],
+    "notResponsibilities": [
+      "Processing file contents — that is `platform/media`",
+      "Deciding who may access an object — the calling module authorises before requesting a URL"
+    ],
+    "endpoints": [
+      { "method": "GET", "path": "/api/v1/admin/storage/stats", "permission": "system.storage", "purpose": "Object counts and sizes per bucket", "success": "200" }
+    ],
+    "contract": [
+      { "kind": "interface", "name": "storage.Store", "purpose": "`PresignPut`, `PresignGet`, `Stat`, `Copy`, `Delete`" },
+      { "kind": "struct", "name": "storage.UploadIntent", "purpose": "`{URL, ObjectKey, ExpiresAt, MaxBytes, ContentType}`" }
+    ],
+    "events": { "publishes": [{ "name": "storage.object_uploaded", "payload": "`{bucket, key, size, content_type}`" }], "consumes": [{ "name": "user.deleted", "reason": "Delete the user's objects" }] },
+    "dependsOn": ["telemetry", "job"],
+    "dependedOnBy": ["user", "content", "media", "speaking", "writing", "analytics", "audit"],
+    "rules": [
+      "Binary data never passes through the API process. Uploads and downloads use presigned URLs.",
+      "A presigned PUT pins content type and maximum size and expires in 5 minutes.",
+      "A presigned GET for private content expires in 15 minutes and is generated per request, never cached in a response the browser stores.",
+      "After an upload the server verifies existence, size and sniffed content type before accepting the reference.",
+      "Object keys are deterministic: `{bucket}/{owner_type}/{owner_id}/{yyyy}/{mm}/{asset_id}.{ext}` — so an orphan is identifiable and a re-run is idempotent.",
+      "Public buckets contain only published content; user uploads are always private.",
+      "Lifecycle rules enforce the retention table in ARCHITECTURE §8.5; retention is configuration, not a cron script.",
+      "An object without a database reference for more than 24 hours is collected by the GC job."
+    ],
+    "errors": [
+      { "code": "UPLOAD_VERIFICATION_FAILED", "status": "422", "meaning": "The uploaded object does not match the intent" },
+      { "code": "STORAGE_UNAVAILABLE", "status": "503", "meaning": "Object store unreachable" }
+    ],
+    "security": [
+      "Buckets are private by default; making one public requires an explicit policy and a review.",
+      "Presigned URLs are the only access path; the application never proxies object bytes.",
+      "Access and secret keys are configuration only, scoped to the minimum bucket set.",
+      "Export and report artefacts are single-use in practice: short expiry plus an unguessable key."
+    ],
+    "flows": [
+      {
+        "title": "Presigned upload with verification",
+        "mermaid": "sequenceDiagram\n    autonumber\n    actor B as Browser\n    participant A as API (calling module)\n    participant ST as storage\n    participant M as MinIO\n\n    B->>A: POST …/upload-intent { content_type, size }\n    A->>A: authorise + quota check\n    A->>ST: PresignPut(bucket, key, 5m, max_bytes, content_type)\n    ST->>M: sign\n    ST-->>A: UploadIntent\n    A-->>B: { upload_url, asset_id }\n    B->>M: PUT bytes directly\n    B->>A: POST …/confirm { asset_id }\n    A->>ST: Stat(key)\n    alt missing, wrong size, or wrong type\n        A-->>B: 422 UPLOAD_VERIFICATION_FAILED\n    else ok\n        A->>A: mark asset uploaded; enqueue processing\n        A-->>B: 202\n    end"
+      }
+    ],
+    "tasks": [
+      { "title": "Add a bucket", "steps": [
+        "Define it in `deploy/minio/` with its policy and lifecycle rule.",
+        "Add the config key and the key-prefix convention.",
+        "Decide retention and add it to the retention table in ARCHITECTURE §8.5.",
+        "Include it in the GC job and in the storage metrics.",
+        "Document who may read it and how access is granted."
+      ]}
+    ],
+    "limitations": [
+      "Single MinIO node in v1 — no erasure coding, so the offsite mirror is the durability story.",
+      "There is no virus scanning in Phase 1; a ClamAV sidecar is planned if user uploads ever become publicly visible.",
+      "Presigned URL expiry is sensitive to clock skew between the API host and MinIO."
+    ],
+    "testFocus": [
+      "Presigned PUT rejects an oversized or wrong-type upload",
+      "Verification catches a missing or mismatched object",
+      "Key generation is deterministic and idempotent",
+      "GC deletes orphans and never deletes a referenced object",
+      "Behaviour when MinIO is unavailable"
+    ],
+    "decisions": [
+      { "question": "Proxy uploads through the API or presign?", "choice": "Presign", "why": "Proxying makes API memory and bandwidth scale with file size, which would cap horizontal scaling on the exact operation that grows fastest" },
+      { "question": "MinIO or S3?", "choice": "MinIO, S3-compatible", "why": "Self-hosted in v1 with no code change required to move to S3 later — the SDK and the semantics are the same" }
+    ],
+    "adrs": [{ "id": "ADR-0018", "file": "ADR-0018-media-presigned-upload.md", "title": "Presigned direct-to-storage uploads" }],
+    "todo": [
+      { "title": "Phase 1", "items": [
+        "Bucket definitions, policies and lifecycle rules",
+        "Presign PUT/GET with pinned constraints",
+        "Post-upload verification helper",
+        "Deterministic key builder",
+        "Orphan GC job",
+        "Per-bucket metrics and a disk alert",
+        "Purge handler for `user.deleted`"
+      ]}
+    ],
+    "future": ["CDN in front of public buckets", "Multi-node MinIO with erasure coding", "Virus scanning for publicly visible uploads"],
+    "doNot": [
+      "Do not stream file bytes through a Go handler.",
+      "Do not make a bucket public without a review.",
+      "Do not generate a long-lived presigned URL.",
+      "Do not store a file reference before verifying the object exists.",
+      "Do not put personal data in an object key."
+    ],
+    "runtimePrompts": []
+  },
+
+  {
+    "name": "telemetry",
+    "tier": "platform",
+    "group": "platform",
+    "schema": null,
+    "phase": 1,
+    "status": "PLANNED",
+    "owner": "@platform-team",
+    "purpose": "OpenTelemetry setup and the middleware that makes every request, query, job and external call observable: tracer, meter and logger providers, resource attributes, propagation, correlation IDs, and the standard metric instruments.",
+    "context": "This module ships in Phase 0 and is a prerequisite for everything else. Retrofitting observability costs several times what building it in does, and the first production incident is not the moment to discover you cannot see anything.",
+    "responsibilities": [
+      "Tracer, meter and logger provider construction and shutdown",
+      "OTLP exporter configuration and resource attributes",
+      "HTTP middleware: trace context extraction, request ID, span naming, panic recovery",
+      "slog handler with the OTLP bridge and the PII redaction allowlist",
+      "Standard instruments (HTTP, DB, cache, storage, jobs) so modules do not each invent their own",
+      "Sampling configuration",
+      "Health and readiness endpoints"
+    ],
+    "notResponsibilities": [
+      "Running Prometheus, Loki, Tempo or Grafana — those are `deploy/`",
+      "Deciding what a module should measure — it provides the instruments, the module chooses"
+    ],
+    "endpoints": [
+      { "method": "GET", "path": "/health", "permission": "public", "purpose": "Liveness — the process is running", "success": "200" },
+      { "method": "GET", "path": "/ready", "permission": "public", "purpose": "Readiness — dependencies reachable and migrations current", "success": "200", "errors": ["DEPENDENCY_UNAVAILABLE"] },
+      { "method": "GET", "path": "/version", "permission": "public", "purpose": "Build version and commit", "success": "200" }
+    ],
+    "contract": [
+      { "kind": "func", "name": "telemetry.Tracer", "purpose": "Named tracer per module" },
+      { "kind": "func", "name": "telemetry.Meter", "purpose": "Named meter per module" },
+      { "kind": "func", "name": "telemetry.Middleware", "purpose": "The standard HTTP middleware chain" },
+      { "kind": "struct", "name": "telemetry.Instruments", "purpose": "Pre-built histograms and counters shared by all modules" }
+    ],
+    "events": { "publishes": [], "consumes": [] },
+    "dependsOn": [],
+    "dependedOnBy": ["ai", "cache", "storage", "job", "media", "search", "mailer"],
+    "rules": [
+      "The application exports only OTLP. Changing a backend is a Collector configuration change, never a code change.",
+      "Span names are low-cardinality — route patterns, never concrete IDs.",
+      "Metric labels are bounded: no user IDs, no free text, no unbounded identifiers. The budget is 10,000 series per metric.",
+      "Every log record is emitted through the redaction handler, which allowlists loggable attribute keys — a new key is redacted until explicitly permitted.",
+      "`trace_id`, `span_id` and `request_id` are attached by the middleware and the slog bridge, never by hand.",
+      "Sampling is decided in the Collector (tail-based) so a decision can see the whole trace.",
+      "`/ready` fails when a hard dependency is unreachable or the schema version is behind; `/health` reports only that the process is alive.",
+      "Shutdown flushes exporters before the process exits — a lost trace at shutdown is a lost incident clue."
+    ],
+    "flows": [
+      {
+        "title": "Correlation across a request and its background work",
+        "mermaid": "flowchart LR\n    A[Browser click<br/>OTel Web SDK] -->|traceparent + X-Request-Id| B[API middleware]\n    B --> C[root span]\n    C --> D[slog records carry trace_id]\n    C --> E[service span]\n    E --> F[pgx span]\n    E --> G[job enqueued with job.Meta<br/>trace_id + request_id]\n    G --> H[worker span links to the same trace]\n    H --> I[ai span<br/>provider, model, cost]\n    D & F & I --> J[Grafana: log → trace → span → exemplar]"
+      }
+    ],
+    "tasks": [
+      { "title": "Instrument a new operation", "steps": [
+        "Start a span named `<module>.<Operation>` with `module` and `operation` attributes.",
+        "Record errors on the span with the `apperr` code, not the raw message.",
+        "Use an existing instrument if one fits; add a new one only if it does not.",
+        "Check label cardinality before adding a label.",
+        "Add a dashboard panel if this is a new user-facing capability, and an alert plus runbook if it can fail visibly."
+      ]}
+    ],
+    "limitations": [
+      "Metric cardinality is enforced by review and a lint rule, not by the runtime — a careless label can still be shipped.",
+      "The browser SDK adds bundle weight and is loaded lazily after first paint.",
+      "There is no exemplar support from every instrument yet."
+    ],
+    "testFocus": [
+      "Trace context propagates from HTTP through service, repository, job and AI call",
+      "The redaction handler blocks a non-allowlisted attribute",
+      "`/ready` fails correctly when Postgres or Redis is down",
+      "Shutdown flushes pending spans",
+      "Span names contain no IDs"
+    ],
+    "decisions": [
+      { "question": "Direct exporters or a Collector?", "choice": "Collector", "why": "One ingest point; backend changes, sampling and redaction become operational configuration instead of a deploy" },
+      { "question": "Jaeger or Tempo?", "choice": "Tempo in production, Jaeger only in the dev profile", "why": "Tempo shares MinIO for storage and integrates natively with Grafana; running both in production would double the operational surface for no benefit — see the plan review §6" },
+      { "question": "zap/zerolog or slog?", "choice": "slog", "why": "Standard library, structured, and the performance difference is immaterial at our request volume" }
+    ],
+    "adrs": [{ "id": "ADR-0013", "file": "ADR-0013-observability-otel.md", "title": "OTel SDK + Collector; Tempo over Jaeger" }],
+    "todo": [
+      { "title": "Phase 0", "items": [
+        "Provider construction and graceful shutdown",
+        "OTLP exporters with resource attributes including version and commit",
+        "HTTP middleware: trace, request ID, recovery, structured access log",
+        "slog handler with the OTLP bridge and redaction allowlist",
+        "Standard instruments for HTTP, DB, cache, storage and jobs",
+        "`/health`, `/ready`, `/version`",
+        "Collector pipeline configuration including tail sampling",
+        "The first Grafana dashboard, proving log→trace correlation works"
+      ]}
+    ],
+    "future": ["Continuous profiling with Pyroscope", "RUM metrics from the browser SDK", "Exemplars on all latency histograms"],
+    "doNot": [
+      "Do not put an ID in a span name or a metric label.",
+      "Do not add `trace_id` to a log record by hand.",
+      "Do not export directly to Prometheus or Tempo from application code.",
+      "Do not log a value whose key is not on the allowlist.",
+      "Do not skip instrumenting a new external call — it will be the one that fails."
+    ],
+    "runtimePrompts": []
+  },
+
+  {
+    "name": "mailer",
+    "tier": "platform",
+    "group": "platform",
+    "schema": "comm",
+    "phase": 1,
+    "status": "PLANNED",
+    "owner": "@platform-team",
+    "hasJobs": true,
+    "purpose": "Email transport: template rendering, localisation, sending through SMTP or a provider API, bounce and complaint handling, suppression lists, and a delivery log.",
+    "responsibilities": [
+      "MJML/HTML template rendering with a plain-text alternative",
+      "Localisation of subject and body",
+      "Sending via SMTP or a provider API, behind one interface",
+      "Retry with backoff on transient failures",
+      "Bounce and complaint handling; suppression list",
+      "Delivery log for support and debugging",
+      "A development mailbox (Mailpit) so no real email leaves a developer machine"
+    ],
+    "notResponsibilities": [
+      "Deciding whether to send — that is `notification`",
+      "Marketing campaigns or list management"
+    ],
+    "tables": [
+      { "name": "email_log", "purpose": "Delivery record", "notes": "`to_hash`, `template`, `locale`, `status`, `provider_message_id`, `error`. Partitioned monthly." },
+      { "name": "email_suppressions", "purpose": "Addresses we must not email", "notes": "`email_hash` UNIQUE, `reason` (hard_bounce/complaint/unsubscribe)" }
+    ],
+    "endpoints": [
+      { "method": "GET", "path": "/api/v1/admin/emails", "permission": "system.email", "purpose": "Delivery log search", "success": "200" },
+      { "method": "POST", "path": "/api/v1/admin/emails/{id}/resend", "permission": "system.email", "purpose": "Resend a failed message", "success": "202" },
+      { "method": "POST", "path": "/api/v1/webhooks/email", "permission": "public", "purpose": "Provider bounce and complaint webhook", "success": "200", "notes": "Signature-verified on the raw body" }
+    ],
+    "contract": [
+      { "kind": "interface", "name": "mailer.Sender", "purpose": "`Send(ctx, Message)` — always enqueues, never blocks the caller" },
+      { "kind": "struct", "name": "mailer.Message", "purpose": "`{To, Template, Locale, Data, Category}`" }
+    ],
+    "events": { "publishes": [{ "name": "email.bounced", "payload": "`{email_hash, reason}`" }], "consumes": [{ "name": "user.deleted", "reason": "Purge the delivery log entries for that address" }] },
+    "dependsOn": ["job", "telemetry", "storage"],
+    "dependsWhy": { "job": "All sending is asynchronous", "telemetry": "Delivery metrics", "storage": "Attachments such as data exports" },
+    "dependedOnBy": ["auth", "user", "notification", "subscription", "analytics"],
+    "rules": [
+      "Sending is always asynchronous — a mail provider outage must never fail a user request.",
+      "An address on the suppression list is never emailed, except for account-security messages, which bypass suppression only when the address is not a hard bounce.",
+      "Every template has a plain-text alternative and exists in every supported locale before it can be used.",
+      "Templates are rendered with escaping; user-supplied values are never interpolated as HTML.",
+      "Email addresses are logged as hashes; the delivery log stores `to_hash`, not the address.",
+      "Every non-security email includes a working unsubscribe link.",
+      "A hard bounce suppresses the address immediately; a soft bounce retries up to three times.",
+      "In development and CI, all mail is captured by Mailpit; a real send from a non-production environment is a configuration bug."
+    ],
+    "errors": [
+      { "code": "EMAIL_SUPPRESSED", "status": "409", "meaning": "Address is on the suppression list" },
+      { "code": "TEMPLATE_NOT_FOUND", "status": "500", "meaning": "Template missing for the requested locale" }
+    ],
+    "flows": [
+      {
+        "title": "Send with retry and suppression",
+        "mermaid": "flowchart TD\n    A[\"Sender.Send(msg)\"] --> B[enqueue email.send job]\n    B --> C{suppressed?}\n    C -->|yes, non-security| D[skip, log reason]\n    C -->|no| E[render template + locale]\n    E -->|template missing| F[fail loudly — this is a bug, not a runtime condition]\n    E --> G[provider send]\n    G -->|transient| H{attempts left?}\n    H -->|yes| G\n    H -->|no| I[log failed; alert if the category is critical]\n    G -->|hard bounce| J[suppress address; publish email.bounced]\n    G -->|accepted| K[log sent with provider message id]"
+      }
+    ],
+    "tasks": [
+      { "title": "Add an email template", "steps": [
+        "Create the MJML source and the plain-text alternative.",
+        "Add every supported locale — a missing locale is a startup validation failure, not a runtime fallback.",
+        "Add a preview fixture so the template renders in the dev mailbox with realistic data.",
+        "Test rendering with hostile input (HTML in a display name) to confirm escaping.",
+        "Add it to the notification category mapping if it is user-triggered."
+      ]}
+    ],
+    "limitations": [
+      "No A/B testing or send-time optimisation for email; that logic, if it ever exists, belongs in `notification`.",
+      "Attachment size is capped at 10 MB; larger artefacts are delivered by presigned link instead.",
+      "Deliverability monitoring (SPF/DKIM/DMARC reporting) is manual."
+    ],
+    "testFocus": [
+      "Suppression honoured for non-security categories and bypassed correctly for security ones",
+      "Retry classification: transient retries, hard bounce suppresses",
+      "Template rendering escapes hostile input",
+      "Every template exists in every locale (a startup validation test)",
+      "Webhook signature verification rejects a forged payload"
+    ],
+    "decisions": [
+      { "question": "SMTP or provider API?", "choice": "One interface, both implementations", "why": "SMTP works everywhere including local development; a provider API gives better deliverability signals in production. The choice becomes configuration" },
+      { "question": "Template format?", "choice": "MJML compiled at build time", "why": "Email HTML is a compatibility minefield; MJML solves it and the compile step keeps runtime rendering cheap" }
+    ],
+    "todo": [
+      { "title": "Phase 1", "items": [
+        "Sender interface with SMTP implementation and Mailpit in dev",
+        "MJML build step and the first templates: verification, reset, new device",
+        "English and Vietnamese locales",
+        "Delivery log and suppression list",
+        "Bounce webhook with signature verification",
+        "Async sending with retry classification"
+      ]}
+    ],
+    "future": ["Provider API implementation", "Deliverability dashboard", "Per-template engagement metrics"],
+    "doNot": [
+      "Do not send synchronously from a request handler.",
+      "Do not log a raw email address.",
+      "Do not add a template without every locale and a plain-text alternative.",
+      "Do not interpolate user input into HTML without escaping.",
+      "Do not send real email from development or CI."
+    ],
+    "runtimePrompts": []
+  },
+
+  {
+    "name": "search",
+    "tier": "platform",
+    "group": "platform",
+    "schema": null,
+    "phase": 4,
+    "status": "PLANNED",
+    "owner": "@platform-team",
+    "hasJobs": true,
+    "purpose": "A thin abstraction over full-text search. Backed by PostgreSQL `tsvector` in v1, with an interface shaped so a dedicated engine can replace it without touching callers.",
+    "context": "Deliberately minimal. Introducing Elasticsearch for a corpus of tens of thousands of items would add an operational dependency and a synchronisation problem to solve a query that Postgres answers in single-digit milliseconds.",
+    "responsibilities": [
+      "Index definition and maintenance per searchable entity",
+      "Query building: tokenisation, prefix matching, ranking, highlighting",
+      "Reindex jobs, full and incremental",
+      "Language configuration for English content",
+      "Search latency and result-quality metrics"
+    ],
+    "notResponsibilities": [
+      "Owning the searchable data — each module owns its own rows and its own index",
+      "Semantic or vector search — that is `platform/ai` with pgvector"
+    ],
+    "contract": [
+      { "kind": "interface", "name": "search.Indexer", "purpose": "`Index(ctx, doc)`, `Remove(ctx, id)` — called by the owning module on write" },
+      { "kind": "interface", "name": "search.Searcher", "purpose": "`Search(ctx, Query) (Results, error)` with filters, ranking and highlighting" }
+    ],
+    "events": { "publishes": [], "consumes": [{ "name": "content.published", "reason": "Index the published version" }, { "name": "content.archived", "reason": "Remove from the index" }] },
+    "dependsOn": ["cache", "job"],
+    "dependedOnBy": ["content", "vocabulary", "questionbank", "lesson", "admin"],
+    "rules": [
+      "The search index is derived data. It can always be rebuilt from the owning tables, and a rebuild must be routine, not an emergency.",
+      "Indexing happens in the same transaction as the write when it is a generated column, and via an event when it is a separate table.",
+      "Only published content is searchable by learners; admins may search drafts.",
+      "Every query is bounded by a `LIMIT` and returns a cursor.",
+      "Search must degrade to a simple `ILIKE` prefix match if the index is unavailable — a degraded search beats an error page.",
+      "Query latency above 300 ms p95 is the trigger to reconsider the backend, and is monitored for exactly that reason."
+    ],
+    "flows": [
+      {
+        "title": "Index maintenance",
+        "mermaid": "flowchart LR\n    A[content.published] --> B[search job]\n    B --> C[build tsvector from title, body, tags]\n    C --> D[UPSERT into the module's search table]\n    D --> E[GIN index]\n    F[Learner query] --> G[normalise + tokenise]\n    G --> H[\"websearch_to_tsquery + ts_rank\"]\n    H --> I[filter by level, skill, status]\n    I --> J[highlight + paginate]"
+      }
+    ],
+    "tasks": [
+      { "title": "Make an entity searchable", "steps": [
+        "Add a `search_vector tsvector` generated column, or a dedicated search table if the document spans rows.",
+        "Add a GIN index.",
+        "Populate on write and on the relevant domain event.",
+        "Add a reindex job for backfill.",
+        "Add the entity to the search endpoint's type filter.",
+        "Measure p95 latency on realistic data volumes before shipping."
+      ]}
+    ],
+    "limitations": [
+      "Postgres FTS has no built-in fuzzy matching beyond trigram similarity, no synonym management, and limited relevance tuning.",
+      "No cross-entity ranking — searching lessons and words together requires a union with hand-tuned weights.",
+      "Stemming is English-only; Vietnamese UI text is not full-text searchable."
+    ],
+    "testFocus": [
+      "Ranking puts exact title matches first",
+      "Draft content is invisible to learners and visible to admins",
+      "Reindex produces the same results as incremental indexing",
+      "Degraded path when the index is missing",
+      "Query latency on a realistically sized dataset"
+    ],
+    "decisions": [
+      { "question": "Postgres FTS or a search engine?", "choice": "Postgres FTS", "why": "Our corpus is small, our relevance needs are simple, and avoiding a second datastore avoids a synchronisation problem. The interface keeps the door open — and the p95 metric is the objective trigger to walk through it" },
+      { "question": "Who owns the index?", "choice": "The module that owns the data", "why": "A central index would need to know every module's schema — precisely the coupling the architecture forbids" }
+    ],
+    "todo": [
+      { "title": "Phase 4", "items": [
+        "Indexer and Searcher interfaces",
+        "tsvector generated columns and GIN indexes for content, vocabulary and question bank",
+        "Query builder with ranking, highlighting and filters",
+        "Reindex jobs",
+        "Degraded fallback path",
+        "Latency metrics with the 300 ms p95 trigger alert"
+      ]}
+    ],
+    "future": ["Trigram fuzzy matching for misspelled words", "Synonym dictionary for vocabulary search", "Semantic search over lessons via pgvector", "A dedicated engine if the latency trigger fires"],
+    "doNot": [
+      "Do not add Elasticsearch without the latency trigger firing and an ADR.",
+      "Do not make the index a source of truth.",
+      "Do not run an unbounded search query.",
+      "Do not expose draft content to learners through search."
+    ],
+    "runtimePrompts": []
+  }
+]

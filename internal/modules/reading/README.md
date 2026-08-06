@@ -1,0 +1,66 @@
+---
+module: reading
+tier: learning
+group: modules
+status: PLANNED
+phase: 3
+owner: "@learning-team"
+schema: skill
+tables: [passages, passage_questions, reading_attempts]
+depends_on: [content, questionbank, vocabulary, learning]
+depended_on_by: [learning, exam, analytics]
+spec_version: 1.0.0
+last_verified: 2026-08-06
+---
+
+# reading
+
+Reading passages and comprehension: passage rendering, question sets, span-based answers, reading speed measurement, inline glossing, and difficulty estimation.
+
+> **AI assistants: read [`AGENT.md`](AGENT.md) instead — it has everything this file has, structured for you.**
+
+## Business purpose
+
+<!-- BEGIN GENERATED: purpose -->
+Reading passages and comprehension: passage rendering, question sets, span-based answers, reading speed measurement, inline glossing, and difficulty estimation.
+<!-- END GENERATED: purpose -->
+
+## Responsibilities
+
+<!-- BEGIN GENERATED: readme-resp -->
+- Passages with paragraph structure, word count and estimated difficulty
+- Comprehension question sets bound to a passage
+- Span answers (locate the evidence in the text)
+- Reading speed (words per minute) measurement
+- Inline vocabulary glossing via `vocabulary`
+- Reading graders: multiple choice, true/false/not-given, matching, gap-fill, span
+<!-- END GENERATED: readme-resp -->
+
+## Where things are
+
+<!-- BEGIN GENERATED: readme-folders -->
+| Path | Contains |
+|---|---|
+| `contract/` | Interfaces, DTOs and event types other modules may import — the only public package |
+| `domain/` | Entities, value objects, invariants, domain errors. Pure Go, no I/O |
+| `service/` | Use cases, orchestration, transactions, event publishing |
+| `repository/` | sqlc-generated queries and row↔domain mappers |
+| `transport/http/` | Handlers, request/response DTOs, route registration |
+| `module.go` | `New(deps)` — wiring; the only symbol `cmd/` imports |
+<!-- END GENERATED: readme-folders -->
+
+## Documentation set
+
+| File | Contents |
+|---|---|
+| [AGENT.md](AGENT.md) | Complete AI-agent context (start here) |
+| [API.md](API.md) | Endpoint reference |
+| [FLOW.md](FLOW.md) | Sequence and state diagrams |
+| [TESTING.md](TESTING.md) | Test plan |
+| [DECISIONS.md](DECISIONS.md) | Module-local decisions |
+| [PROMPTS.md](PROMPTS.md) | Prompts for and from this module |
+| [TODO.md](TODO.md) | Backlog |
+
+## Status
+
+**PLANNED** — planned for delivery phase 3. See [/ROADMAP.md](../../../ROADMAP.md).

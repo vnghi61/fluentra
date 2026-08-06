@@ -1,0 +1,77 @@
+# Fluentra module manifest — the human-readable register.
+#
+# The generator's source of truth is tools/docgen/data/*.json (same content, machine-shaped).
+# This file is what a person reads to understand the module landscape in one screen.
+# `make docs` regenerates the nine documentation files for each module listed here.
+#
+# Adding a module means: an entry here, an entry in tools/docgen/data/, an entry in
+# MODULE_INDEX.md §3, and an entry in .go-arch-lint.yml. All four, in one commit.
+
+version: 1
+project: fluentra
+last_verified: 2026-08-06
+
+conventions:
+  doc_files: [AGENT.md, README.md, API.md, FLOW.md, TESTING.md, DECISIONS.md, PROMPTS.md, TODO.md, README_AI.md]
+  agent_md_sections: 14          # fixed order — see AI_CONTEXT.md §4
+  staleness_days: 90             # last_verified older than this is flagged by CI
+
+tiers:
+  platform: "Technical capability. No business rules. Lives in internal/platform/."
+  core:     "Foundational business modules every other module depends on."
+  learning: "The learning domain — the product's core value."
+  commerce: "Monetisation and insight. Phase 4."
+
+modules:
+
+  # ------------------------------------------------------------- platform
+  - { name: telemetry,    tier: platform, phase: 1, schema: ~,          owner: "@platform-team", depends_on: [] }
+  - { name: cache,        tier: platform, phase: 1, schema: ~,          owner: "@platform-team", depends_on: [telemetry] }
+  - { name: storage,      tier: platform, phase: 1, schema: ~,          owner: "@platform-team", depends_on: [telemetry, job] }
+  - { name: job,          tier: platform, phase: 1, schema: ops,        owner: "@platform-team", depends_on: [telemetry] }
+  - { name: mailer,       tier: platform, phase: 1, schema: comm,       owner: "@platform-team", depends_on: [job, telemetry, storage] }
+  - { name: ai,           tier: platform, phase: 3, schema: ai,         owner: "@ai-team",       depends_on: [cache, telemetry, job] }
+  - { name: media,        tier: platform, phase: 3, schema: content,    owner: "@platform-team", depends_on: [storage, job, ai, telemetry] }
+  - { name: search,       tier: platform, phase: 4, schema: ~,          owner: "@platform-team", depends_on: [cache, job] }
+
+  # ----------------------------------------------------------------- core
+  - { name: auth,         tier: core,     phase: 1, schema: core,       owner: "@backend-team",  depends_on: [user, rbac, audit, mailer, cache] }
+  - { name: user,         tier: core,     phase: 1, schema: core,       owner: "@backend-team",  depends_on: [storage, mailer, audit] }
+  - { name: rbac,         tier: core,     phase: 1, schema: core,       owner: "@backend-team",  depends_on: [cache, audit] }
+  - { name: audit,        tier: core,     phase: 1, schema: audit,      owner: "@backend-team",  depends_on: [job] }
+  - { name: admin,        tier: core,     phase: 2, schema: core,       owner: "@backend-team",  depends_on: [user, rbac, audit, auth, content, cache] }
+  - { name: notification, tier: core,     phase: 2, schema: comm,       owner: "@backend-team",  depends_on: [mailer, job, cache, user] }
+
+  # ------------------------------------------------------------- learning
+  - { name: content,      tier: learning, phase: 2, schema: content,    owner: "@learning-team", depends_on: [storage, search, audit, ai, media] }
+  - { name: lesson,       tier: learning, phase: 2, schema: learn,      owner: "@learning-team", depends_on: [content, cache] }
+  - { name: learning,     tier: learning, phase: 2, schema: learn,      owner: "@learning-team", depends_on: [lesson, content, srs, cache, job] }
+  - { name: srs,          tier: learning, phase: 2, schema: learn,      owner: "@learning-team", depends_on: [cache, job, content] }
+  - { name: vocabulary,   tier: learning, phase: 2, schema: skill,      owner: "@learning-team", depends_on: [content, srs, media, ai, search] }
+  - { name: grammar,      tier: learning, phase: 3, schema: skill,      owner: "@learning-team", depends_on: [content, srs, ai, learning] }
+  - { name: reading,      tier: learning, phase: 3, schema: skill,      owner: "@learning-team", depends_on: [content, questionbank, vocabulary, learning] }
+  - { name: listening,    tier: learning, phase: 3, schema: skill,      owner: "@learning-team", depends_on: [content, media, questionbank, learning] }
+  - { name: speaking,     tier: learning, phase: 3, schema: skill,      owner: "@learning-team", depends_on: [media, ai, storage, job, content, learning] }
+  - { name: writing,      tier: learning, phase: 3, schema: skill,      owner: "@learning-team", depends_on: [ai, job, content, learning, notification] }
+  - { name: questionbank, tier: learning, phase: 4, schema: assess,     owner: "@learning-team", depends_on: [content, ai, audit, search] }
+  - { name: exam,         tier: learning, phase: 4, schema: assess,     owner: "@learning-team", depends_on: [questionbank, job, ai, writing, speaking, learning] }
+  - { name: gamification, tier: learning, phase: 3, schema: learn,      owner: "@learning-team", depends_on: [learning, srs, cache, job, notification] }
+
+  # ------------------------------------------------------------- commerce
+  - { name: analytics,    tier: commerce, phase: 4, schema: analytics,  owner: "@data-team",     depends_on: [job, cache] }
+  - { name: subscription, tier: commerce, phase: 4, schema: billing,    owner: "@backend-team",  depends_on: [payment, user, notification, cache, job, audit] }
+  - { name: payment,      tier: commerce, phase: 4, schema: billing,    owner: "@backend-team",  depends_on: [subscription, audit, job, mailer, storage] }
+
+# Schema ownership — see ARCHITECTURE.md §8.2
+schemas:
+  core:      [user, auth, rbac, admin]
+  audit:     [audit]
+  content:   [content, media]
+  learn:     [lesson, learning, srs, gamification]
+  skill:     [vocabulary, grammar, reading, listening, speaking, writing]
+  assess:    [questionbank, exam]
+  comm:      [notification, mailer]
+  billing:   [subscription, payment]
+  ai:        [ai]
+  ops:       [job]
+  analytics: [analytics]

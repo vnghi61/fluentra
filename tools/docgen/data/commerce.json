@@ -1,0 +1,432 @@
+[
+  {
+    "name": "analytics",
+    "tier": "commerce",
+    "group": "modules",
+    "schema": "analytics",
+    "phase": 4,
+    "status": "PLANNED",
+    "owner": "@data-team",
+    "hasJobs": true,
+    "purpose": "Turns the event stream into answers: event ingestion, daily rollups, funnels, cohorts, retention curves and the admin KPI dashboards. It reads events; it never writes to another module's data.",
+    "businessPurpose": "Product decisions in a learning platform are only as good as the retention and outcome data behind them. This module exists so that \"does this feature help people learn?\" is answerable with numbers rather than opinion.",
+    "responsibilities": [
+      "Event ingestion from the outbox into an analytics store",
+      "Daily and weekly rollups by learner, cohort, skill and level",
+      "Funnels: signup → placement → first lesson → day-7 return → subscription",
+      "Retention curves and cohort analysis",
+      "Learning outcome metrics: level progression, review accuracy, band improvement",
+      "AI cost per active learner",
+      "Admin KPI dashboards and scheduled reports",
+      "The weekly learner progress email payload"
+    ],
+    "notResponsibilities": [
+      "Operational metrics — that is Prometheus and `platform/telemetry`",
+      "Owning the source data — it derives, never mutates",
+      "Personal profiling for advertising"
+    ],
+    "tables": [
+      { "name": "analytics_events", "purpose": "Flattened event stream", "notes": "Partitioned monthly. `event`, `user_id`, `properties` jsonb, `occurred_at`. Append-only." },
+      { "name": "daily_rollups", "purpose": "Pre-aggregated daily facts", "notes": "`date`, `dimension`, `dimension_value`, `metric`, `value`. The read path for every dashboard." },
+      { "name": "cohorts", "purpose": "Cohort definitions and membership", "notes": "`cohort_key` (e.g. signup week), `user_id`" },
+      { "name": "funnel_steps", "purpose": "Per-user funnel progression", "notes": "`user_id`, `funnel`, `step`, `reached_at`" },
+      { "name": "learner_outcomes", "purpose": "Longitudinal outcome facts", "notes": "`user_id`, `period`, `level_estimate`, `reviews`, `accuracy`, `bands` jsonb" }
+    ],
+    "endpoints": [
+      { "method": "GET", "path": "/api/v1/admin/analytics/kpis", "permission": "analytics.read", "purpose": "Headline KPIs with period comparison", "success": "200" },
+      { "method": "GET", "path": "/api/v1/admin/analytics/funnel", "permission": "analytics.read", "purpose": "Funnel conversion by cohort", "success": "200" },
+      { "method": "GET", "path": "/api/v1/admin/analytics/retention", "permission": "analytics.read", "purpose": "Retention curve by cohort", "success": "200" },
+      { "method": "GET", "path": "/api/v1/admin/analytics/outcomes", "permission": "analytics.read", "purpose": "Learning outcome metrics", "success": "200" },
+      { "method": "POST", "path": "/api/v1/admin/analytics/export", "permission": "analytics.export", "purpose": "Async CSV export", "success": "202" },
+      { "method": "GET", "path": "/api/v1/me/insights", "permission": "self", "purpose": "The learner's own progress insights", "success": "200" }
+    ],
+    "contract": [
+      { "kind": "interface", "name": "analytics.Reporter", "purpose": "`KPIs`, `Funnel`, `Retention` — used by `admin`" },
+      { "kind": "interface", "name": "analytics.InsightReader", "purpose": "`InsightsFor(ctx, userID)` — the learner-facing view" }
+    ],
+    "events": {
+      "publishes": [{ "name": "analytics.weekly_report_ready", "payload": "`{user_id, period}` — triggers the email" }],
+      "consumes": [{ "name": "*", "reason": "Every domain event is ingested; this module is the one legitimate universal subscriber" }]
+    },
+    "dependsOn": ["job", "cache"],
+    "dependsWhy": { "job": "Ingestion, rollups and reports are scheduled work", "cache": "Dashboard reads" },
+    "dependedOnBy": ["admin", "notification"],
+    "rules": [
+      "Analytics derives; it never writes to another module's tables. If it needs a fact, the fact must arrive as an event.",
+      "Ingestion is idempotent on `event_id` — at-least-once delivery must not inflate counts.",
+      "Dashboards read rollups, never raw events. A dashboard query that scans `analytics_events` is a bug.",
+      "Rollups are recomputable: a late or replayed event triggers a recompute of the affected day rather than an in-place adjustment.",
+      "Personal data in analytics is minimised — user IDs, never names or emails; free-text content is never ingested.",
+      "A deleted user's events are anonymised to a synthetic ID so aggregate history stays truthful while the person disappears.",
+      "Learner-facing insights are computed from the same rollups the admin dashboards use, so the two can never disagree.",
+      "Every metric has a written definition in `docs/product/metrics.md`; an undefined metric on a dashboard is not allowed, because two people will interpret it differently.",
+      "Cohort membership is immutable once assigned — a learner's signup week does not change."
+    ],
+    "cache": [
+      { "key": "fluentra:{env}:analytics:kpi:{period}:v1", "ttl": "15 min", "invalidation": "Rollup job completion" },
+      { "key": "fluentra:{env}:analytics:insights:{user_id}:v1", "ttl": "1 h", "invalidation": "Nightly rollup" }
+    ],
+    "errors": [
+      { "code": "PERIOD_TOO_LARGE", "status": "422", "meaning": "Requested range exceeds the query limit" },
+      { "code": "ROLLUP_NOT_READY", "status": "409", "meaning": "The requested day has not been rolled up yet" }
+    ],
+    "security": [
+      "Analytics access requires a specific permission and is audited.",
+      "Exports are delivered by short-lived signed URL and are logged.",
+      "No free-text learner content is ever ingested — not essay bodies, not transcripts."
+    ],
+    "flows": [
+      {
+        "title": "Ingestion to dashboard",
+        "mermaid": "flowchart LR\n    A[Domain events via outbox] --> B[ingest job<br/>idempotent on event_id]\n    B --> C[(analytics_events<br/>partitioned, append-only)]\n    C --> D[nightly rollup job]\n    D --> E[(daily_rollups)]\n    E --> F[KPI / funnel / retention queries]\n    F --> G[cache 15 min]\n    G --> H[admin dashboard]\n    E --> I[learner insights]\n    E --> J[weekly progress email]\n    K[late or replayed event] --> L[mark the day dirty] --> D"
+      }
+    ],
+    "tasks": [
+      { "title": "Add a metric", "steps": [
+        "Write its definition in `docs/product/metrics.md` first — including what it excludes.",
+        "Confirm the source event carries the properties needed; if not, extend the event (a versioned change).",
+        "Add the rollup computation and backfill historical days with a job.",
+        "Add the dashboard panel.",
+        "Add a test with a known dataset and a hand-computed expected value."
+      ]}
+    ],
+    "limitations": [
+      "Rollups are nightly, so dashboards are up to a day stale for anything not also computed live.",
+      "There is no real-time analytics path; Prometheus covers operational immediacy.",
+      "Everything lives in the same PostgreSQL instance — at high volume this becomes the first candidate for a separate analytical store.",
+      "No cross-device identity resolution."
+    ],
+    "testFocus": [
+      "Ingestion idempotency under duplicate delivery",
+      "Rollup recomputation on a late event",
+      "Cohort immutability",
+      "Anonymisation on user deletion preserves aggregate totals",
+      "Dashboard queries hit rollups, asserted by a query-plan test",
+      "Metric values match hand-computed expectations on a fixture dataset"
+    ],
+    "decisions": [
+      { "question": "Same database or a separate analytical store?", "choice": "Same, partitioned, for now", "why": "A second datastore adds a synchronisation problem and operational burden that our volume does not justify; the rollup design means moving later is a change of destination, not of pipeline" },
+      { "question": "Ingest content?", "choice": "Never", "why": "Essay and transcript text would turn an analytics store into a second copy of the most sensitive data we hold, for no analytical benefit that aggregate metrics do not already provide" }
+    ],
+    "todo": [
+      { "title": "Phase 4", "items": [
+        "Event ingestion with idempotency and partitioning",
+        "Nightly rollup job with dirty-day recomputation",
+        "Funnel and retention computation",
+        "Learning outcome metrics",
+        "AI cost per active learner",
+        "Admin KPI dashboards",
+        "Learner insights endpoint",
+        "Weekly progress email payload",
+        "Metric definitions document"
+      ]}
+    ],
+    "future": ["Real-time streaming metrics", "A dedicated analytical store", "Experiment framework with proper statistics", "Predictive churn scoring"],
+    "doNot": [
+      "Do not query another module's tables — consume events.",
+      "Do not run a dashboard query against raw events.",
+      "Do not ingest learner free text.",
+      "Do not add a metric without a written definition.",
+      "Do not mutate a rollup in place — recompute the day."
+    ],
+    "runtimePrompts": []
+  },
+
+  {
+    "name": "subscription",
+    "tier": "commerce",
+    "group": "modules",
+    "schema": "billing",
+    "phase": 4,
+    "status": "PLANNED",
+    "owner": "@backend-team",
+    "hasJobs": true,
+    "purpose": "Plans, entitlements and the subscription lifecycle: trials, upgrades, downgrades, renewals, grace periods and cancellation. It decides what a learner is allowed to do; `payment` decides whether money moved.",
+    "context": "Entitlements are read on nearly every AI-consuming request, so they are cached aggressively and invalidated eagerly. The separation from `payment` matters: a gateway outage must not change what an existing subscriber can do.",
+    "responsibilities": [
+      "Plan catalogue with prices and entitlements",
+      "Entitlement resolution: what this learner may do right now",
+      "Subscription lifecycle and state transitions",
+      "Trials, upgrades, downgrades and proration rules",
+      "Renewal scheduling and grace periods on failed payment",
+      "Cancellation and reactivation",
+      "Feature gating helpers used by other modules"
+    ],
+    "notResponsibilities": ["Taking money — that is `payment`", "Enforcing a quota in the moment — the consuming module does that using the entitlement"],
+    "tables": [
+      { "name": "plans", "purpose": "Purchasable tier", "notes": "`code` UNIQUE, `name`, `price` numeric + `currency`, `interval`, `status`" },
+      { "name": "entitlements", "purpose": "What a plan grants", "notes": "`plan_id`, `key` (e.g. `ai.writing.daily`), `value`. A missing key means not entitled" },
+      { "name": "subscriptions", "purpose": "A learner's subscription", "notes": "`user_id`, `plan_id`, `status`, `current_period_start/end`, `cancel_at_period_end`, `trial_ends_at`, `grace_until`" },
+      { "name": "subscription_events", "purpose": "Lifecycle audit", "notes": "`subscription_id`, `kind`, `from_status`, `to_status`, `reason`, `actor`" }
+    ],
+    "endpoints": [
+      { "method": "GET", "path": "/api/v1/billing/plans", "permission": "public", "purpose": "Plan catalogue with prices", "success": "200" },
+      { "method": "GET", "path": "/api/v1/me/subscription", "permission": "self", "purpose": "Current subscription and entitlements", "success": "200" },
+      { "method": "POST", "path": "/api/v1/me/subscription", "permission": "self", "purpose": "Start a subscription or trial (delegates checkout to `payment`)", "success": "202", "errors": ["SUBSCRIPTION_ALREADY_ACTIVE", "PLAN_NOT_AVAILABLE"] },
+      { "method": "POST", "path": "/api/v1/me/subscription/change", "permission": "self", "purpose": "Upgrade or downgrade", "success": "200", "errors": ["INVALID_STATE_TRANSITION"] },
+      { "method": "POST", "path": "/api/v1/me/subscription/cancel", "permission": "self", "purpose": "Cancel at period end", "success": "200" },
+      { "method": "POST", "path": "/api/v1/me/subscription/reactivate", "permission": "self", "purpose": "Undo a pending cancellation", "success": "200" },
+      { "method": "GET", "path": "/api/v1/admin/subscriptions", "permission": "billing.read", "purpose": "Search subscriptions", "success": "200" },
+      { "method": "POST", "path": "/api/v1/admin/subscriptions/{id}/grant", "permission": "billing.manage", "purpose": "Grant a complimentary period", "success": "200", "notes": "Audited with a required reason" }
+    ],
+    "contract": [
+      { "kind": "interface", "name": "subscription.EntitlementReader", "purpose": "`Entitlement(ctx, userID, key) (value, bool)` — the single question every gated feature asks" },
+      { "kind": "interface", "name": "subscription.Lifecycle", "purpose": "`Activate`, `Expire`, `EnterGrace` — called by `payment` on webhook events" }
+    ],
+    "events": {
+      "publishes": [
+        { "name": "subscription.activated", "payload": "`{user_id, plan_code, period_end}`" },
+        { "name": "subscription.changed", "payload": "`{user_id, from_plan, to_plan}`" },
+        { "name": "subscription.expiring", "payload": "`{user_id, days_remaining}`" },
+        { "name": "subscription.expired", "payload": "`{user_id, previous_plan}`" }
+      ],
+      "consumes": [
+        { "name": "payment.succeeded", "reason": "Activate or renew" },
+        { "name": "payment.failed", "reason": "Enter the grace period" },
+        { "name": "payment.refunded", "reason": "Revoke or adjust" },
+        { "name": "user.deleted", "reason": "Cancel and anonymise" }
+      ]
+    },
+    "dependsOn": ["payment", "user", "notification", "cache", "job", "audit"],
+    "dependedOnBy": ["writing", "speaking", "vocabulary", "exam", "ai", "admin", "learning"],
+    "rules": [
+      "Entitlements are resolved from the **subscription state**, never from payment status directly — a gateway outage must not de-entitle a paying learner.",
+      "A missing entitlement key means not entitled. Defaults are explicit in the free plan, never implicit in code.",
+      "Entitlement changes take effect within 60 seconds; the cache TTL and eager invalidation together guarantee it.",
+      "One active subscription per learner.",
+      "An upgrade is immediate with proration; a downgrade takes effect at the period end, so a learner never loses paid-for capability early.",
+      "A failed renewal enters a grace period (default 7 days) with full access, then downgrades to free — access is not cut off the moment a card fails.",
+      "Cancellation is always at period end; a mid-period refund is a `payment` decision, handled separately.",
+      "A trial requires no payment method and converts only with explicit consent — no silent charge at trial end.",
+      "Complimentary grants require a reason and are audited.",
+      "Downgrading never deletes learner data; it only restricts what can be created going forward."
+    ],
+    "cache": [
+      { "key": "fluentra:{env}:subscription:entitlements:{user_id}:v1", "ttl": "60 s", "invalidation": "Any subscription event" }
+    ],
+    "errors": [
+      { "code": "SUBSCRIPTION_ALREADY_ACTIVE", "status": "409", "meaning": "Duplicate subscribe" },
+      { "code": "PLAN_NOT_AVAILABLE", "status": "409", "meaning": "Plan withdrawn or region-restricted" },
+      { "code": "TRIAL_ALREADY_USED", "status": "409", "meaning": "One trial per learner" },
+      { "code": "ENTITLEMENT_REQUIRED", "status": "403", "meaning": "The feature requires a higher plan" },
+      { "code": "INVALID_STATE_TRANSITION", "status": "409", "meaning": "e.g. reactivating an expired subscription" }
+    ],
+    "stateMachine": {
+      "description": "Grace exists so that a card expiring does not immediately take away a paying learner's access. Every transition writes a `subscription_events` row.",
+      "mermaid": "stateDiagram-v2\n    [*] --> Free\n    Free --> Trialing: start a trial\n    Trialing --> Active: converts with consent\n    Trialing --> Free: trial ends without conversion\n    Free --> Active: subscribe\n    Active --> Active: renewal succeeds\n    Active --> Grace: renewal payment fails\n    Grace --> Active: payment recovered\n    Grace --> Free: grace expires\n    Active --> PendingCancel: cancel at period end\n    PendingCancel --> Active: reactivate\n    PendingCancel --> Free: period ends\n    Active --> Free: refunded in full"
+    },
+    "flows": [
+      {
+        "title": "Entitlement check on an AI feature",
+        "mermaid": "sequenceDiagram\n    autonumber\n    actor U as Learner\n    participant W as writing\n    participant S as subscription\n    participant C as Redis\n    participant AI as platform/ai\n\n    U->>W: POST /writing/submissions\n    W->>S: Entitlement(user, \"ai.writing.daily\")\n    S->>C: cached entitlements?\n    alt miss\n        S->>S: resolve from subscription + plan\n        S->>C: cache 60s\n    end\n    S-->>W: { value: 8 }\n    W->>AI: check today's usage against 8\n    alt over the limit\n        W-->>U: 429 AI_QUOTA_EXCEEDED with an upgrade prompt\n    else within\n        W->>W: proceed with submission\n    end"
+      }
+    ],
+    "tasks": [
+      { "title": "Add an entitlement", "steps": [
+        "Choose a key following `<domain>.<feature>.<unit>` and document it in `docs/product/entitlements.md`.",
+        "Add values for every plan, including free — an absent key means not entitled, so being explicit avoids accidental gating.",
+        "Read it through `EntitlementReader` in the consuming module; never hard-code a plan name.",
+        "Add the upgrade prompt copy for the denied case.",
+        "Test the free, trial, paid and grace states."
+      ]}
+    ],
+    "limitations": [
+      "One subscription per learner; there are no add-ons or metered top-ups in Phase 4.",
+      "Proration follows a simple day-count model rather than the gateway's own proration engine.",
+      "Currency is single per plan; multi-currency pricing is not modelled.",
+      "No family or group plans — that would edge towards the multi-tenancy the product deliberately avoids."
+    ],
+    "testFocus": [
+      "Entitlement resolution across free, trial, active, grace and pending-cancel",
+      "Cache invalidation within the 60-second promise",
+      "Grace period entry and recovery",
+      "Upgrade immediate, downgrade deferred",
+      "Trial cannot be reused",
+      "Downgrade restricts creation but destroys nothing",
+      "Complimentary grants are audited with a reason"
+    ],
+    "decisions": [
+      { "question": "Entitlements from subscription state or from payment?", "choice": "Subscription state", "why": "It decouples access from the gateway's availability and makes complimentary grants, trials and grace periods expressible without faking a payment" },
+      { "question": "Cut off access immediately on a failed payment?", "choice": "No — a 7-day grace period", "why": "Most renewal failures are expired cards, not intent to churn; cutting access instantly converts a fixable billing problem into a lost learner" },
+      { "question": "Downgrade immediately or at period end?", "choice": "At period end", "why": "The learner paid for the period; taking capability away early is both unfair and a support burden" }
+    ],
+    "todo": [
+      { "title": "Phase 4", "items": [
+        "Plans and entitlements with a seeded free tier",
+        "Subscription lifecycle with the full state machine",
+        "Entitlement resolution with caching and eager invalidation",
+        "Trials with explicit conversion consent",
+        "Upgrade with proration, downgrade at period end",
+        "Grace period handling on payment failure",
+        "Cancellation and reactivation",
+        "Admin search and complimentary grants",
+        "Upgrade prompts wherever a feature is gated"
+      ]}
+    ],
+    "future": ["Metered top-ups for AI grading", "Annual plans with a discount", "Regional pricing", "Referral credits"],
+    "doNot": [
+      "Do not read payment status to decide access.",
+      "Do not hard-code a plan name in a feature check — read an entitlement key.",
+      "Do not delete learner data on downgrade.",
+      "Do not convert a trial without explicit consent.",
+      "Do not grant a complimentary period without a recorded reason."
+    ],
+    "runtimePrompts": []
+  },
+
+  {
+    "name": "payment",
+    "tier": "commerce",
+    "group": "modules",
+    "schema": "billing",
+    "phase": 4,
+    "status": "PLANNED",
+    "owner": "@backend-team",
+    "hasJobs": true,
+    "purpose": "Money: gateway adapters, hosted checkout sessions, webhook processing, invoices, refunds and reconciliation. Card data never touches our systems — the gateway's hosted fields do, which keeps PCI scope minimal.",
+    "context": "The provider is not yet chosen (plan review Q1: VNPay/MoMo for Vietnam, Stripe for international). Everything here is written against an adapter interface so that decision is a configuration change plus one adapter file.",
+    "responsibilities": [
+      "Gateway adapters behind one interface",
+      "Checkout session creation and redirect handling",
+      "Webhook receipt, signature verification, idempotent processing and replay",
+      "Payment and invoice records",
+      "Refunds, partial and full",
+      "Reconciliation between our records and the gateway's",
+      "Dunning: retry schedule and communications on failed renewals"
+    ],
+    "notResponsibilities": ["Deciding what access a payment buys — that is `subscription`", "Holding card data — the gateway does, and we never proxy it", "Tax calculation in v1"],
+    "tables": [
+      { "name": "payments", "purpose": "One gateway transaction", "notes": "`user_id`, `provider`, `provider_payment_id` UNIQUE, `amount` numeric + `currency`, `status`, `failure_code`" },
+      { "name": "invoices", "purpose": "Billing document", "notes": "`user_id`, `number` UNIQUE, `period`, `lines` jsonb, `total`, `status`, `pdf_object_key`" },
+      { "name": "payment_webhooks", "purpose": "Raw webhook log", "notes": "`provider`, `provider_event_id` UNIQUE, `payload` jsonb, `signature_valid`, `processed_at`. Enables replay." },
+      { "name": "refunds", "purpose": "Refund records", "notes": "`payment_id`, `amount`, `reason`, `actor_id`, `provider_refund_id`" },
+      { "name": "checkout_sessions", "purpose": "In-flight checkouts", "notes": "`user_id`, `plan_id`, `provider_session_id`, `status`, `expires_at`" }
+    ],
+    "endpoints": [
+      { "method": "POST", "path": "/api/v1/billing/checkout", "permission": "self", "purpose": "Create a hosted checkout session and return its redirect URL", "success": "200", "errors": ["PLAN_NOT_AVAILABLE", "SUBSCRIPTION_ALREADY_ACTIVE"], "notes": "Requires an `Idempotency-Key`" },
+      { "method": "GET", "path": "/api/v1/billing/checkout/{id}", "permission": "self", "purpose": "Poll a checkout session's status after redirect", "success": "200" },
+      { "method": "POST", "path": "/api/v1/webhooks/payment/{provider}", "permission": "public", "purpose": "Gateway webhook", "success": "200", "notes": "Signature verified on the raw body before parsing; always acknowledged quickly, processed in a job" },
+      { "method": "GET", "path": "/api/v1/me/invoices", "permission": "self", "purpose": "Invoice history", "success": "200" },
+      { "method": "GET", "path": "/api/v1/me/invoices/{id}/pdf", "permission": "self", "purpose": "Signed link to the invoice PDF", "success": "200" },
+      { "method": "POST", "path": "/api/v1/admin/payments/{id}/refund", "permission": "billing.refund", "purpose": "Issue a refund", "success": "202", "errors": ["REFUND_WINDOW_CLOSED", "ALREADY_REFUNDED"] },
+      { "method": "POST", "path": "/api/v1/admin/webhooks/{id}/replay", "permission": "billing.manage", "purpose": "Replay a stored webhook", "success": "202" },
+      { "method": "GET", "path": "/api/v1/admin/reconciliation", "permission": "billing.read", "purpose": "Discrepancies between our records and the gateway", "success": "200" }
+    ],
+    "contract": [
+      { "kind": "interface", "name": "payment.Checkout", "purpose": "`CreateSession(ctx, userID, planID)` — used by `subscription`" },
+      { "kind": "interface", "name": "payment.Gateway", "purpose": "The adapter Strategy interface; internal to this module" },
+      { "kind": "interface", "name": "payment.Refunder", "purpose": "`Refund(ctx, paymentID, amount, reason)` — admin only" }
+    ],
+    "events": {
+      "publishes": [
+        { "name": "payment.succeeded", "payload": "`{user_id, payment_id, plan_code, amount}`" },
+        { "name": "payment.failed", "payload": "`{user_id, payment_id, failure_code}`" },
+        { "name": "payment.refunded", "payload": "`{user_id, payment_id, amount}`" }
+      ],
+      "consumes": [{ "name": "subscription.expiring", "reason": "Schedule the renewal charge" }]
+    },
+    "dependsOn": ["subscription", "audit", "job", "mailer", "storage"],
+    "dependsWhy": {
+      "subscription": "Knows what is being purchased and what a successful payment should activate",
+      "audit": "Every money movement is audited",
+      "job": "Webhook processing, dunning and reconciliation run asynchronously",
+      "mailer": "Receipts and dunning emails",
+      "storage": "Invoice PDFs"
+    },
+    "dependedOnBy": ["subscription", "admin"],
+    "rules": [
+      "Card data never reaches our servers. Checkout is hosted by the gateway; we hold only tokens and identifiers.",
+      "Webhook signatures are verified against the **raw** body before any parsing. An unverified webhook is logged and rejected.",
+      "Webhook processing is idempotent on `provider_event_id`; a duplicate is acknowledged without reprocessing.",
+      "Webhooks are acknowledged within 2 seconds and processed in a job — a slow handler causes the gateway to retry and duplicate.",
+      "Every webhook is stored raw, so it can be replayed after a bug fix without asking the gateway to resend.",
+      "Checkout creation requires an `Idempotency-Key`; a network retry must not create a second session or a second charge.",
+      "The gateway is the source of truth for whether money moved; our records are reconciled against it daily, and a discrepancy raises an alert rather than being auto-corrected.",
+      "Refunds require a reason and a permission, and are always audited.",
+      "Dunning follows a fixed schedule (day 1, 3, 5) with clear communications, and stops immediately on success.",
+      "Amounts are `numeric` with an explicit currency; floating point is never used for money anywhere in this module.",
+      "A payment failure never revokes access directly — it emits an event and `subscription` decides."
+    ],
+    "errors": [
+      { "code": "PAYMENT_FAILED", "status": "402", "meaning": "Gateway declined" },
+      { "code": "CHECKOUT_EXPIRED", "status": "409", "meaning": "Session expired before completion" },
+      { "code": "ALREADY_REFUNDED", "status": "409", "meaning": "Payment already fully refunded" },
+      { "code": "REFUND_WINDOW_CLOSED", "status": "409", "meaning": "Outside the refund policy period" },
+      { "code": "WEBHOOK_SIGNATURE_INVALID", "status": "400", "meaning": "Signature verification failed" },
+      { "code": "RECONCILIATION_MISMATCH", "status": "409", "meaning": "Our record disagrees with the gateway" }
+    ],
+    "security": [
+      "PCI scope is limited to the gateway's hosted fields; we never see, transmit, or store a card number.",
+      "Webhook endpoints are public by necessity and are therefore rate-limited, signature-verified and logged in full.",
+      "Refund and grant permissions are separate from general billing read access.",
+      "Every state change in this module is audited with the actor, and admin actions require a stated reason.",
+      "Two reviewers are required for any change to this module (rule S11)."
+    ],
+    "flows": [
+      {
+        "title": "Checkout and activation",
+        "mermaid": "sequenceDiagram\n    autonumber\n    actor U as Learner\n    participant P as payment\n    participant G as Gateway\n    participant S as subscription\n    participant M as mailer\n\n    U->>P: POST /billing/checkout { plan } (Idempotency-Key)\n    P->>S: validate the plan is purchasable for this learner\n    P->>G: create hosted session\n    G-->>P: session id + redirect URL\n    P->>P: INSERT checkout_sessions\n    P-->>U: { redirect_url }\n    U->>G: completes payment on the gateway's page\n    G->>P: webhook payment.succeeded\n    P->>P: verify signature on the raw body\n    P->>P: store raw webhook; ack 200 immediately\n    P->>P: enqueue processing job\n    Note over P: processing is idempotent on provider_event_id\n    P->>P: INSERT payments, invoices; generate the PDF\n    P->>S: publish payment.succeeded\n    S->>S: activate the subscription; invalidate entitlements\n    P->>M: receipt email\n    U->>P: GET /billing/checkout/{id} → completed"
+      },
+      {
+        "title": "Failed renewal and dunning",
+        "mermaid": "flowchart TD\n    A[Renewal charge fails] --> B[publish payment.failed]\n    B --> C[subscription enters Grace, access continues]\n    C --> D[dunning day 1: email]\n    D --> E{recovered?}\n    E -->|yes| F[payment.succeeded → Active]\n    E -->|no| G[dunning day 3: email + in-app]\n    G --> H{recovered?}\n    H -->|yes| F\n    H -->|no| I[dunning day 5: final notice]\n    I --> J{recovered?}\n    J -->|yes| F\n    J -->|no| K[grace expires → Free<br/>no data deleted]"
+      }
+    ],
+    "tasks": [
+      { "title": "Add a payment provider", "steps": [
+        "Implement `payment.Gateway` in `gateway/<provider>/`; the SDK may be imported only there.",
+        "Implement signature verification against the raw body, and test it with a forged payload.",
+        "Map the provider's event names onto our internal event set.",
+        "Add sandbox credentials for CI and a fixture set covering success, decline, timeout and duplicate webhook.",
+        "Run the reconciliation job against the sandbox.",
+        "Get a second reviewer — this module requires two (rule S11)."
+      ]}
+    ],
+    "limitations": [
+      "No tax or VAT calculation in v1; prices are tax-inclusive and this is stated at checkout.",
+      "No dunning personalisation beyond the fixed schedule.",
+      "Invoice PDFs are generated from a simple template with no localisation beyond currency formatting.",
+      "Reconciliation is daily, so a discrepancy can persist for up to a day before it is visible."
+    ],
+    "testFocus": [
+      "Webhook signature verification rejects a forged or replayed-with-changes payload",
+      "Duplicate webhook produces exactly one payment record",
+      "Idempotent checkout creation under a network retry",
+      "Refund partial and full, with window enforcement",
+      "Reconciliation detects a seeded discrepancy",
+      "Money arithmetic never uses floating point (asserted by a lint rule and a test)",
+      "A payment failure does not itself revoke access"
+    ],
+    "coverage": "90% service (money-handling code carries the highest correctness bar in the repository)",
+    "decisions": [
+      { "question": "Hosted checkout or our own card form?", "choice": "Hosted", "why": "It keeps PCI scope to SAQ-A, removes an entire class of liability, and the conversion difference does not justify the risk" },
+      { "question": "Trust webhooks or poll?", "choice": "Webhooks, reconciled daily", "why": "Webhooks are timely but can be missed or duplicated; daily reconciliation against the gateway catches both without polling constantly" },
+      { "question": "Store raw webhooks?", "choice": "Yes", "why": "Replay after a bug fix is the difference between a five-minute recovery and asking a payment provider to resend a week of events" },
+      { "question": "Who decides access after a payment?", "choice": "`subscription`, via an event", "why": "Keeping the money boundary separate from the access boundary means a gateway problem cannot silently change what learners can do" }
+    ],
+    "openQuestions": ["Which gateway — VNPay/MoMo for Vietnam, Stripe for international, or both behind the adapter? (plan review Q1)"],
+    "todo": [
+      { "title": "Phase 4", "items": [
+        "Gateway interface and the first adapter",
+        "Hosted checkout session creation with idempotency",
+        "Webhook endpoint with raw-body signature verification and fast acknowledgement",
+        "Idempotent webhook processing job",
+        "Payments, invoices and PDF generation",
+        "Refunds with window and permission enforcement",
+        "Daily reconciliation job with discrepancy alerts",
+        "Dunning schedule and communications",
+        "Admin replay and reconciliation screens"
+      ]}
+    ],
+    "future": ["Second gateway for redundancy", "Tax calculation", "Metered billing for AI top-ups", "Localised invoices"],
+    "doNot": [
+      "Do not accept or store card data.",
+      "Do not parse a webhook before verifying its signature on the raw body.",
+      "Do not process a webhook synchronously in the request.",
+      "Do not use floating point for money.",
+      "Do not revoke access from this module — publish an event.",
+      "Do not auto-correct a reconciliation discrepancy; raise it."
+    ],
+    "runtimePrompts": []
+  }
+]

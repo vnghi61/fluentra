@@ -1,0 +1,66 @@
+---
+module: rbac
+tier: core
+group: modules
+status: PLANNED
+phase: 1
+owner: "@backend-team"
+schema: core
+tables: [roles, permissions, role_permissions, user_roles]
+depends_on: [cache, audit]
+depended_on_by: [auth, admin, content, questionbank, exam, user]
+spec_version: 1.0.0
+last_verified: 2026-08-06
+---
+
+# rbac
+
+Answers "may this actor do this?". Holds roles, named permissions, and the mapping between them, and provides the guard used by every service method. There are exactly two roles — `admin` and `user` — but permissions are named so that adding a role later is a data change, not a code change.
+
+> **AI assistants: read [`AGENT.md`](AGENT.md) instead — it has everything this file has, structured for you.**
+
+## Business purpose
+
+<!-- BEGIN GENERATED: purpose -->
+Administrators can see and change everything; learners can see and change only their own work. Making that boundary explicit and testable is what prevents the single most common and most damaging class of web vulnerability.
+<!-- END GENERATED: purpose -->
+
+## Responsibilities
+
+<!-- BEGIN GENERATED: readme-resp -->
+- Role definitions and role assignment to users
+- The permission catalogue (named capabilities)
+- Role→permission mapping
+- The `Require(ctx, permission)` guard used by service methods
+- The route-group middleware for `/admin/*`
+- Cached permission resolution
+<!-- END GENERATED: readme-resp -->
+
+## Where things are
+
+<!-- BEGIN GENERATED: readme-folders -->
+| Path | Contains |
+|---|---|
+| `contract/` | Interfaces, DTOs and event types other modules may import — the only public package |
+| `domain/` | Entities, value objects, invariants, domain errors. Pure Go, no I/O |
+| `service/` | Use cases, orchestration, transactions, event publishing |
+| `repository/` | sqlc-generated queries and row↔domain mappers |
+| `transport/http/` | Handlers, request/response DTOs, route registration |
+| `module.go` | `New(deps)` — wiring; the only symbol `cmd/` imports |
+<!-- END GENERATED: readme-folders -->
+
+## Documentation set
+
+| File | Contents |
+|---|---|
+| [AGENT.md](AGENT.md) | Complete AI-agent context (start here) |
+| [API.md](API.md) | Endpoint reference |
+| [FLOW.md](FLOW.md) | Sequence and state diagrams |
+| [TESTING.md](TESTING.md) | Test plan |
+| [DECISIONS.md](DECISIONS.md) | Module-local decisions |
+| [PROMPTS.md](PROMPTS.md) | Prompts for and from this module |
+| [TODO.md](TODO.md) | Backlog |
+
+## Status
+
+**PLANNED** — planned for delivery phase 1. See [/ROADMAP.md](../../../ROADMAP.md).

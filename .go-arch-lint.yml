@@ -1,0 +1,127 @@
+# Module boundary enforcement — this file is what makes rules L1 and L2 real.
+#
+# Rule L1: a module may import only another module's `contract` package.
+# Rule L2: a module may not touch another module's tables (enforced in review + SQL lint).
+#
+# This file and MODULE_INDEX.md §3 must agree. The `dep-drift` CI job checks that they do.
+version: 3
+workdir: internal
+
+allow:
+  depOnAnyVendor: false
+
+exclude:
+  - mocks
+  - testdata
+
+excludeFiles:
+  - "^.*_test\\.go$"
+
+# ---------------------------------------------------------------- components
+
+components:
+  shared:        { in: shared/** }
+
+  # platform capabilities
+  p_telemetry:   { in: platform/telemetry/** }
+  p_cache:       { in: platform/cache/** }
+  p_storage:     { in: platform/storage/** }
+  p_job:         { in: platform/job/** }
+  p_mailer:      { in: platform/mailer/** }
+  p_ai:          { in: platform/ai/** }
+  p_media:       { in: platform/media/** }
+  p_search:      { in: platform/search/** }
+
+  # contract packages — these are the only importable surfaces of a module
+  c_auth:          { in: modules/auth/contract }
+  c_user:          { in: modules/user/contract }
+  c_rbac:          { in: modules/rbac/contract }
+  c_audit:         { in: modules/audit/contract }
+  c_admin:         { in: modules/admin/contract }
+  c_notification:  { in: modules/notification/contract }
+  c_content:       { in: modules/content/contract }
+  c_lesson:        { in: modules/lesson/contract }
+  c_learning:      { in: modules/learning/contract }
+  c_srs:           { in: modules/srs/contract }
+  c_vocabulary:    { in: modules/vocabulary/contract }
+  c_grammar:       { in: modules/grammar/contract }
+  c_reading:       { in: modules/reading/contract }
+  c_listening:     { in: modules/listening/contract }
+  c_speaking:      { in: modules/speaking/contract }
+  c_writing:       { in: modules/writing/contract }
+  c_questionbank:  { in: modules/questionbank/contract }
+  c_exam:          { in: modules/exam/contract }
+  c_gamification:  { in: modules/gamification/contract }
+  c_analytics:     { in: modules/analytics/contract }
+  c_subscription:  { in: modules/subscription/contract }
+  c_payment:       { in: modules/payment/contract }
+
+  # module internals — never importable from outside the module itself
+  m_auth:          { in: modules/auth/** }
+  m_user:          { in: modules/user/** }
+  m_rbac:          { in: modules/rbac/** }
+  m_audit:         { in: modules/audit/** }
+  m_admin:         { in: modules/admin/** }
+  m_notification:  { in: modules/notification/** }
+  m_content:       { in: modules/content/** }
+  m_lesson:        { in: modules/lesson/** }
+  m_learning:      { in: modules/learning/** }
+  m_srs:           { in: modules/srs/** }
+  m_vocabulary:    { in: modules/vocabulary/** }
+  m_grammar:       { in: modules/grammar/** }
+  m_reading:       { in: modules/reading/** }
+  m_listening:     { in: modules/listening/** }
+  m_speaking:      { in: modules/speaking/** }
+  m_writing:       { in: modules/writing/** }
+  m_questionbank:  { in: modules/questionbank/** }
+  m_exam:          { in: modules/exam/** }
+  m_gamification:  { in: modules/gamification/** }
+  m_analytics:     { in: modules/analytics/** }
+  m_subscription:  { in: modules/subscription/** }
+  m_payment:       { in: modules/payment/** }
+
+# ------------------------------------------------------------------- rules
+# `mayDependOn` lists are deliberately minimal. Adding an entry here is a
+# boundary change: update MODULE_INDEX.md §3 in the same commit, and consider
+# whether it needs an ADR.
+
+deps:
+  shared:
+    mayDependOn: []
+
+  p_telemetry: { mayDependOn: [shared] }
+  p_cache:     { mayDependOn: [shared, p_telemetry] }
+  p_storage:   { mayDependOn: [shared, p_telemetry, p_job] }
+  p_job:       { mayDependOn: [shared, p_telemetry] }
+  p_mailer:    { mayDependOn: [shared, p_telemetry, p_job, p_storage] }
+  p_ai:        { mayDependOn: [shared, p_telemetry, p_cache, p_job] }
+  p_media:     { mayDependOn: [shared, p_telemetry, p_storage, p_job, p_ai] }
+  p_search:    { mayDependOn: [shared, p_telemetry, p_cache, p_job] }
+
+  # core
+  m_auth:         { mayDependOn: [shared, p_cache, p_telemetry, p_mailer, c_user, c_rbac, c_audit] }
+  m_user:         { mayDependOn: [shared, p_storage, p_telemetry, p_mailer, p_job, c_audit] }
+  m_rbac:         { mayDependOn: [shared, p_cache, p_telemetry, c_audit] }
+  m_audit:        { mayDependOn: [shared, p_job, p_telemetry] }
+  m_admin:        { mayDependOn: [shared, p_cache, p_telemetry, c_user, c_rbac, c_audit, c_auth, c_content, c_analytics, c_subscription] }
+  m_notification: { mayDependOn: [shared, p_mailer, p_job, p_cache, p_telemetry, c_user] }
+
+  # learning
+  m_content:      { mayDependOn: [shared, p_storage, p_search, p_ai, p_media, p_cache, p_telemetry, c_audit] }
+  m_lesson:       { mayDependOn: [shared, p_cache, p_telemetry, c_content] }
+  m_learning:     { mayDependOn: [shared, p_cache, p_job, p_telemetry, c_lesson, c_content, c_srs] }
+  m_srs:          { mayDependOn: [shared, p_cache, p_job, p_telemetry, c_content] }
+  m_vocabulary:   { mayDependOn: [shared, p_cache, p_media, p_ai, p_search, p_telemetry, c_content, c_srs, c_learning] }
+  m_grammar:      { mayDependOn: [shared, p_cache, p_ai, p_telemetry, c_content, c_srs, c_learning] }
+  m_reading:      { mayDependOn: [shared, p_cache, p_telemetry, c_content, c_questionbank, c_vocabulary, c_learning] }
+  m_listening:    { mayDependOn: [shared, p_cache, p_media, p_storage, p_telemetry, c_content, c_questionbank, c_learning] }
+  m_speaking:     { mayDependOn: [shared, p_media, p_ai, p_storage, p_job, p_telemetry, c_content, c_learning] }
+  m_writing:      { mayDependOn: [shared, p_ai, p_job, p_telemetry, c_content, c_learning, c_notification] }
+  m_questionbank: { mayDependOn: [shared, p_ai, p_search, p_telemetry, c_content, c_audit] }
+  m_exam:         { mayDependOn: [shared, p_job, p_ai, p_telemetry, c_questionbank, c_writing, c_speaking, c_learning] }
+  m_gamification: { mayDependOn: [shared, p_cache, p_job, p_telemetry, c_learning, c_srs, c_notification] }
+
+  # commerce
+  m_analytics:    { mayDependOn: [shared, p_job, p_cache, p_telemetry] }
+  m_subscription: { mayDependOn: [shared, p_cache, p_job, p_telemetry, c_payment, c_user, c_notification, c_audit] }
+  m_payment:      { mayDependOn: [shared, p_job, p_mailer, p_storage, p_telemetry, c_subscription, c_audit] }

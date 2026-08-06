@@ -1,0 +1,953 @@
+[
+  {
+    "name": "auth",
+    "tier": "core",
+    "group": "modules",
+    "schema": "core",
+    "phase": 1,
+    "status": "PLANNED",
+    "owner": "@backend-team",
+    "hasJobs": true,
+    "purpose": "Owns everything about proving who a caller is: registration, email verification, login, multi-factor authentication, token issuance and rotation, session lifecycle, password reset, and OAuth sign-in. It answers \"who is this?\" and nothing else.",
+    "context": "Authentication is deliberately separated from `user` (profile data) and `rbac` (what the caller may do). Keeping the three apart means a change to profile fields cannot break login, and a change to permissions cannot break token issuance.",
+    "businessPurpose": "Learners must be able to create an account and return to it safely from any device. Administrators must be held to a higher standard (mandatory MFA) because they can see and change everyone's data. Every authentication event must be reconstructable after the fact.",
+    "responsibilities": [
+      "Registration and email verification",
+      "Password hashing (Argon2id), verification, and policy enforcement including breached-password checks",
+      "Access token (JWT, 15 min) issuance and validation",
+      "Refresh token issuance, rotation, reuse detection and family revocation",
+      "Session records: creation, listing, revocation (by the user and by an admin)",
+      "TOTP multi-factor enrolment, verification and recovery codes",
+      "Password reset and change flows",
+      "OAuth sign-in (Google, Apple) and account linking by verified email",
+      "Brute-force protection: per-IP and per-account lockout",
+      "Emitting security events for the audit trail"
+    ],
+    "notResponsibilities": [
+      "Profile data, preferences, avatars — that is `user`",
+      "What a caller is allowed to do — that is `rbac`",
+      "Storing the audit log — it emits events, `audit` persists them",
+      "Sending the emails — it asks `platform/mailer` to",
+      "Rate limiting infrastructure — it uses `platform/cache`"
+    ],
+    "tables": [
+      { "name": "credentials", "purpose": "Password hash per user", "notes": "`user_id` UNIQUE, `password_hash`, `algo_params`, `updated_at`. Never selected in a list query." },
+      { "name": "sessions", "purpose": "One row per active sign-in", "notes": "`user_id`, `device_label`, `ip_hash`, `user_agent_hash`, `last_seen_at`, `revoked_at`" },
+      { "name": "refresh_tokens", "purpose": "Rotating refresh tokens", "notes": "`token_hash` (SHA-256) UNIQUE, `family_id`, `session_id`, `used_at`, `expires_at`. Reuse of a used row revokes the whole family." },
+      { "name": "mfa_secrets", "purpose": "TOTP seeds and recovery codes", "notes": "Seed encrypted with a KEK; recovery codes stored hashed and single-use" },
+      { "name": "verification_tokens", "purpose": "Email verification and password reset", "notes": "`token_hash`, `purpose`, `expires_at`, `used_at`. 30-minute TTL, single use." },
+      { "name": "login_attempts", "purpose": "Brute-force accounting and forensics", "notes": "Partitioned monthly; `email_hash`, `ip_hash`, `result`, `created_at`" },
+      { "name": "oauth_identities", "purpose": "Linked external identities", "notes": "`provider`, `subject`, UNIQUE(provider, subject)" }
+    ],
+    "indexes": [
+      "`uq_refresh_tokens_hash` — unique on `token_hash`, the lookup path on every refresh",
+      "`idx_refresh_tokens_family` — used to revoke a whole family in one statement",
+      "`idx_sessions_user_active` — partial index `WHERE revoked_at IS NULL`",
+      "`idx_login_attempts_email_time` — the lockout query"
+    ],
+    "endpoints": [
+      { "method": "POST", "path": "/api/v1/auth/register", "permission": "public", "purpose": "Create an account and send a verification email", "success": "201", "errors": ["EMAIL_ALREADY_REGISTERED", "PASSWORD_TOO_WEAK", "VALIDATION_FAILED", "RATE_LIMITED"] },
+      { "method": "POST", "path": "/api/v1/auth/verify-email", "permission": "public", "purpose": "Consume a verification token", "success": "200", "errors": ["TOKEN_INVALID", "TOKEN_EXPIRED"] },
+      { "method": "POST", "path": "/api/v1/auth/login", "permission": "public", "purpose": "Exchange credentials for an access token plus a refresh cookie", "success": "200", "errors": ["INVALID_CREDENTIALS", "ACCOUNT_LOCKED", "MFA_REQUIRED", "EMAIL_NOT_VERIFIED"], "notes": "Response timing is equalised between 'unknown email' and 'wrong password'" },
+      { "method": "POST", "path": "/api/v1/auth/mfa/verify", "permission": "public", "purpose": "Complete a login that required a second factor", "success": "200", "errors": ["MFA_INVALID", "TOKEN_EXPIRED"] },
+      { "method": "POST", "path": "/api/v1/auth/refresh", "permission": "public", "purpose": "Rotate the refresh token and issue a new access token", "success": "200", "errors": ["TOKEN_INVALID", "SESSION_REVOKED"], "notes": "Reuse of an already-used token revokes the entire family and raises a security event" },
+      { "method": "POST", "path": "/api/v1/auth/logout", "permission": "self", "purpose": "Revoke the current session and refresh family", "success": "204", "errors": [] },
+      { "method": "POST", "path": "/api/v1/auth/forgot-password", "permission": "public", "purpose": "Send a reset link", "success": "202", "errors": ["RATE_LIMITED"], "notes": "Always returns 202 regardless of whether the email exists" },
+      { "method": "POST", "path": "/api/v1/auth/reset-password", "permission": "public", "purpose": "Consume a reset token and set a new password", "success": "200", "errors": ["TOKEN_INVALID", "TOKEN_EXPIRED", "PASSWORD_TOO_WEAK"], "notes": "Revokes all sessions on success" },
+      { "method": "POST", "path": "/api/v1/auth/change-password", "permission": "self", "purpose": "Change the password while signed in", "success": "200", "errors": ["INVALID_CREDENTIALS", "PASSWORD_TOO_WEAK"] },
+      { "method": "GET", "path": "/api/v1/auth/sessions", "permission": "self", "purpose": "List the caller's active sessions", "success": "200", "errors": [] },
+      { "method": "DELETE", "path": "/api/v1/auth/sessions/{id}", "permission": "self", "purpose": "Revoke one session", "success": "204", "errors": ["RESOURCE_NOT_FOUND"] },
+      { "method": "POST", "path": "/api/v1/auth/mfa/enroll", "permission": "self", "purpose": "Begin TOTP enrolment; returns a provisioning URI and recovery codes", "success": "200", "errors": [] },
+      { "method": "POST", "path": "/api/v1/auth/oauth/{provider}/callback", "permission": "public", "purpose": "Complete an OAuth sign-in", "success": "200", "errors": ["TOKEN_INVALID"] },
+      { "method": "POST", "path": "/api/v1/admin/users/{id}/sessions/revoke", "permission": "user.session.revoke", "purpose": "Admin revokes all sessions for a user", "success": "204", "errors": ["PERMISSION_DENIED", "RESOURCE_NOT_FOUND"] }
+    ],
+    "contract": [
+      { "kind": "interface", "name": "auth.TokenVerifier", "purpose": "Validate an access token and return the actor — used by the HTTP middleware" },
+      { "kind": "interface", "name": "auth.SessionRevoker", "purpose": "Revoke sessions for a user — used by `admin` and by `user` on account deletion" },
+      { "kind": "struct", "name": "auth.Actor", "purpose": "`{UserID, SessionID, Role, TokenID}` — placed in the request context" },
+      { "kind": "event", "name": "auth.UserRegistered", "purpose": "Published after a successful registration" }
+    ],
+    "events": {
+      "publishes": [
+        { "name": "user.registered", "payload": "`{user_id, email_hash, locale, source, occurred_at}`" },
+        { "name": "auth.login_succeeded", "payload": "`{user_id, session_id, ip_country}`" },
+        { "name": "auth.security_event", "payload": "`{user_id, kind, severity, detail}` — consumed by `audit`" },
+        { "name": "auth.password_changed", "payload": "`{user_id}` — triggers a notification" }
+      ],
+      "consumes": [
+        { "name": "user.deletion_requested", "reason": "Revoke all sessions and credentials immediately" }
+      ]
+    },
+    "dependsOn": ["user", "rbac", "audit", "mailer", "cache"],
+    "dependsWhy": {
+      "user": "Create the user record on registration; read status (active/suspended) on login",
+      "rbac": "Attach the caller's role to the issued token",
+      "audit": "Record authentication and security events",
+      "mailer": "Send verification, reset and new-device emails",
+      "cache": "Lockout counters, rate limits, token denylist"
+    },
+    "dependedOnBy": ["admin"],
+    "usedByWhy": { "admin": "Revoke sessions, force password reset, inspect login history" },
+    "rules": [
+      "A password must be at least 12 characters and must not appear in the breached-password corpus.",
+      "Login responses for an unknown email and a wrong password are indistinguishable in content and comparable in timing.",
+      "An access token is valid for 15 minutes and carries no personal data beyond the user ID.",
+      "A refresh token is single-use. Presenting a used token revokes every token in its family and raises a `refresh_reuse` security event.",
+      "Changing or resetting a password revokes all sessions except, optionally, the current one.",
+      "Email verification is required before any AI-consuming feature may be used.",
+      "MFA is mandatory for accounts holding the `admin` role; a promotion to admin forces enrolment on next login.",
+      "Five failed attempts within 15 minutes lock the account for an exponentially increasing period, tracked per account and per IP independently.",
+      "A suspended user's tokens stop working within one access-token lifetime (15 min); their sessions are revoked immediately on suspension.",
+      "OAuth accounts are linked only when the provider asserts a verified email that matches an existing verified account.",
+      "Verification and reset tokens are single-use, expire in 30 minutes, and are stored only as hashes.",
+      "The system never reveals whether an email address is registered — `forgot-password` always returns 202."
+    ],
+    "validation": [
+      { "field": "email", "rule": "RFC 5322, normalised to lowercase, max 254 chars, MX-checkable domain", "code": "VALIDATION_FAILED" },
+      { "field": "password", "rule": "≥ 12 chars, not in the breach corpus, not equal to the email local part", "code": "PASSWORD_TOO_WEAK" },
+      { "field": "totp_code", "rule": "6 digits, ±1 time step tolerance, each code usable once", "code": "MFA_INVALID" },
+      { "field": "token", "rule": "Opaque, exists, unused, unexpired", "code": "TOKEN_INVALID" }
+    ],
+    "cache": [
+      { "key": "fluentra:{env}:auth:lockout:{email_hash}:v1", "ttl": "15 min sliding", "invalidation": "Successful login" },
+      { "key": "fluentra:{env}:auth:lockout:ip:{ip_hash}:v1", "ttl": "15 min sliding", "invalidation": "Natural expiry" },
+      { "key": "fluentra:{env}:auth:denylist:{jti}:v1", "ttl": "remaining token TTL", "invalidation": "Natural expiry" },
+      { "key": "fluentra:{env}:auth:session:{session_id}:v1", "ttl": "5 min", "invalidation": "Session revoked" }
+    ],
+    "errors": [
+      { "code": "INVALID_CREDENTIALS", "status": "401", "meaning": "Wrong email or password — never says which" },
+      { "code": "ACCOUNT_LOCKED", "status": "429", "meaning": "Too many failed attempts" },
+      { "code": "EMAIL_NOT_VERIFIED", "status": "403", "meaning": "Verification required for this action" },
+      { "code": "TOKEN_EXPIRED", "status": "401", "meaning": "Access token expired; refresh" },
+      { "code": "TOKEN_INVALID", "status": "401", "meaning": "Malformed, unknown, or bad signature" },
+      { "code": "SESSION_REVOKED", "status": "401", "meaning": "Session revoked, including refresh-reuse detection" },
+      { "code": "MFA_REQUIRED", "status": "401", "meaning": "Second factor needed to complete login" },
+      { "code": "MFA_INVALID", "status": "401", "meaning": "Wrong or reused TOTP code" },
+      { "code": "EMAIL_ALREADY_REGISTERED", "status": "409", "meaning": "Registration conflict" },
+      { "code": "PASSWORD_TOO_WEAK", "status": "422", "meaning": "Fails policy or found in a breach corpus" }
+    ],
+    "security": [
+      "Access tokens live in browser memory only — never `localStorage`, never a non-HttpOnly cookie.",
+      "Refresh tokens are `HttpOnly; Secure; SameSite=Lax; Path=/api/v1/auth`.",
+      "Password comparison is constant-time; Argon2id parameters are stored in the hash so they can be raised without a migration.",
+      "Every authentication failure is logged with `email_hash`, never the address.",
+      "Admin session revocation is audited with the acting admin's ID.",
+      "The JWT signing key supports two active keys so rotation does not sign everyone out."
+    ],
+    "rateLimits": [
+      "`/auth/login`, `/auth/register`, `/auth/forgot-password`: 5/min per IP **and** per account, with exponential lockout",
+      "`/auth/refresh`: 30/min per session",
+      "`/auth/mfa/verify`: 5 attempts per login challenge"
+    ],
+    "flows": [
+      {
+        "title": "Registration and verification",
+        "description": "The user record is created in `user` and the credential in `auth` inside one transaction; the verification email is dispatched through the outbox so it cannot be sent for a rolled-back registration.",
+        "mermaid": "sequenceDiagram\n    autonumber\n    actor U as User\n    participant A as auth\n    participant US as user (contract)\n    participant D as PostgreSQL\n    participant M as mailer\n\n    U->>A: POST /auth/register\n    A->>A: validate email + password policy\n    A->>A: check breached-password corpus\n    A->>D: BEGIN\n    A->>US: CreateUser(email, locale)\n    US->>D: INSERT core.users (status=pending_verification)\n    A->>D: INSERT core.credentials (argon2id hash)\n    A->>D: INSERT core.verification_tokens (hash, purpose=verify_email)\n    A->>D: INSERT outbox(user.registered)\n    A->>D: COMMIT\n    A-->>U: 201 { user_id }\n    Note over D,M: outbox publisher → mailer job\n    M->>U: verification email (30 min TTL)\n    U->>A: POST /auth/verify-email { token }\n    A->>D: mark token used; users.status = active\n    A-->>U: 200"
+      },
+      {
+        "title": "Refresh rotation with reuse detection",
+        "description": "The single most security-critical flow in the system. A stolen refresh token is detectable because the legitimate client will eventually present the same token the attacker already used.",
+        "mermaid": "sequenceDiagram\n    autonumber\n    participant C as Client\n    participant A as auth\n    participant D as PostgreSQL\n    participant AU as audit\n\n    C->>A: POST /auth/refresh (cookie)\n    A->>D: SELECT refresh_tokens WHERE token_hash = $1\n    alt not found\n        A-->>C: 401 TOKEN_INVALID\n    else used_at IS NOT NULL\n        A->>D: UPDATE refresh_tokens SET revoked_at = now() WHERE family_id = $f\n        A->>D: UPDATE sessions SET revoked_at = now() WHERE id = $s\n        A->>AU: security_event(refresh_reuse, severity=high)\n        A-->>C: 401 SESSION_REVOKED\n    else valid\n        A->>D: BEGIN\n        A->>D: UPDATE refresh_tokens SET used_at = now() WHERE id = $1\n        A->>D: INSERT refresh_tokens (new hash, same family_id)\n        A->>D: UPDATE sessions SET last_seen_at = now()\n        A->>D: COMMIT\n        A-->>C: 200 { access_token } + Set-Cookie\n    end"
+      }
+    ],
+    "stateMachine": {
+      "description": "Account lifecycle. Note that `suspended` is reversible and `deleted` is not — deletion runs through a 30-day grace period owned by `user`.",
+      "mermaid": "stateDiagram-v2\n    [*] --> PendingVerification: register\n    PendingVerification --> Active: verify email\n    PendingVerification --> [*]: expire after 7 days\n    Active --> Locked: too many failed attempts\n    Locked --> Active: lockout expires or admin unlocks\n    Active --> Suspended: admin suspends\n    Suspended --> Active: admin reinstates\n    Active --> PendingDeletion: user requests deletion\n    Suspended --> PendingDeletion: user requests deletion\n    PendingDeletion --> Active: user cancels within 30 days\n    PendingDeletion --> [*]: anonymised after 30 days"
+    },
+    "failures": [
+      { "failure": "Mailer unavailable at registration", "detection": "Outbox job retries", "behaviour": "Account is created; the email is retried with backoff; the user can request a resend" },
+      { "failure": "Redis unavailable", "detection": "`cache_unavailable_total`", "behaviour": "Lockout counters fall back to a database query; login still works, with a warn log" },
+      { "failure": "Breached-password service unreachable", "detection": "Timeout after 800 ms", "behaviour": "Fail open with a warn log — a weak password is worse than a blocked registration, but an outage must not block signups" },
+      { "failure": "Clock skew between replicas", "detection": "Token validation failures spike", "behaviour": "60-second leeway on `exp`/`nbf`; NTP is a host requirement" }
+    ],
+    "tasks": [
+      {
+        "title": "Add a new OAuth provider",
+        "steps": [
+          "Add the provider config keys to `shared/config` and `.env.example`.",
+          "Implement the provider adapter in `service/oauth/<provider>.go` behind the existing `oauthProvider` interface.",
+          "Register it in `module.go`'s provider map.",
+          "Add the callback path to `api/openapi/openapi.yaml` (it is parameterised, so usually no change).",
+          "Add a fixture-backed unit test and an integration test with a stubbed token endpoint.",
+          "Update §4 and §9 of this AGENT.md and `docs/security/authentication.md`."
+        ]
+      },
+      {
+        "title": "Change token lifetimes",
+        "steps": [
+          "Change `ACCESS_TTL` / `REFRESH_TTL` in config — never hard-code a duration.",
+          "Check the frontend's silent-refresh margin still fits (it refreshes at 80 % of the access TTL).",
+          "Update the denylist TTL, which must be ≥ the access TTL.",
+          "Update `docs/deployment/configuration.md` and this file §9."
+        ]
+      },
+      {
+        "title": "Add a new security event kind",
+        "steps": [
+          "Add the kind to `contract/events.go` with a severity.",
+          "Publish it from the relevant service method through the outbox.",
+          "Confirm `audit` persists it (it consumes the generic event, so usually no change there).",
+          "Add an alert rule if the event should page someone, plus a runbook."
+        ]
+      }
+    ],
+    "limitations": [
+      "MFA is TOTP only. WebAuthn/passkeys are the obvious next step but are not in Phase 1.",
+      "Device fingerprinting is a coarse hash of user agent and IP — it detects an obviously new device, nothing more.",
+      "The breached-password check requires an outbound call; the offline Bloom-filter fallback is not yet built.",
+      "OAuth account linking requires a verified email match; providers that do not assert verification are not supported.",
+      "Session geolocation is IP-country only, from a local database — it is indicative, not evidence."
+    ],
+    "conventions": [
+      "Never log an email address. Log `user_id`, or `email_hash` when there is no user yet.",
+      "Every timing-sensitive comparison uses `crypto/subtle` or the argon2id verifier.",
+      "Token strings never appear in a struct that has a `String()` or is ever logged — wrap them in `shared/secret.Redacted[string]`.",
+      "All token TTLs come from config; a literal duration in this module is a review failure."
+    ],
+    "testFocus": [
+      "Refresh reuse detection: reusing a rotated token must revoke the whole family",
+      "Login timing: unknown email and wrong password must not be distinguishable",
+      "Lockout: counters per account and per IP behave independently and expire correctly",
+      "Password change and reset revoke sessions",
+      "MFA: replayed code rejected; recovery code single-use; clock-skew tolerance",
+      "Suspended user cannot refresh, and existing access tokens stop working within one TTL",
+      "Verification token single-use and expiry",
+      "OAuth: mismatched or unverified email must not link accounts"
+    ],
+    "testEdges": [
+      "Two concurrent refreshes with the same valid token — exactly one must succeed",
+      "Registration with an email that differs only in case or by a Unicode homoglyph",
+      "A refresh presented one millisecond after expiry",
+      "Password reset requested twice — the first token must be invalidated",
+      "Login during an in-progress password change"
+    ],
+    "coverage": "90% domain, 85% service (elevated: this is security-critical)",
+    "decisions": [
+      { "question": "JWT or opaque access tokens?", "choice": "JWT (HS256 now, EdDSA when services split)", "why": "Stateless validation keeps the middleware free of a database round trip on every request; the 15-minute lifetime bounds the revocation window, and the denylist covers explicit logout" },
+      { "question": "Where does the refresh token live?", "choice": "HttpOnly cookie scoped to `/api/v1/auth`", "why": "Not reachable by JavaScript, so an XSS cannot steal it; the narrow path limits CSRF surface to one endpoint, which also carries a double-submit token" },
+      { "question": "Argon2id or bcrypt?", "choice": "Argon2id", "why": "OWASP's first recommendation; memory-hardness resists GPU cracking; parameters embedded in the hash allow raising cost without a migration" },
+      { "question": "Store sessions in Redis or Postgres?", "choice": "Postgres, cached in Redis", "why": "Sessions are durable state a user can audit and an admin can revoke; Redis is a 5-minute read cache, not the source of truth" }
+    ],
+    "adrs": [{ "id": "ADR-0007", "file": "ADR-0007-auth-jwt-refresh-rotation.md", "title": "JWT access + rotating refresh tokens" }],
+    "openQuestions": [
+      "Do we support passkeys in Phase 2, and if so do they replace or supplement TOTP?",
+      "Should admin MFA also require a hardware key, or is TOTP sufficient for our threat model?"
+    ],
+    "todo": [
+      { "title": "Phase 1 — core", "items": [
+        "Registration + email verification, with the outbox path proven end-to-end",
+        "Argon2id credential storage with parameter upgrade on login",
+        "Login with equalised timing and per-account/per-IP lockout",
+        "Access token issuance and validating middleware, with `Actor` in the request context",
+        "Refresh rotation with family revocation on reuse, covered by an integration test",
+        "Session list and revoke, for the user and for an admin",
+        "Password reset and change, revoking sessions",
+        "Security event emission wired to `audit`"
+      ]},
+      { "title": "Phase 2", "items": [
+        "TOTP enrolment, verification, recovery codes; mandatory for admins",
+        "Google and Apple OAuth with verified-email linking",
+        "New-device notification email",
+        "Offline breached-password Bloom filter as a fallback"
+      ]}
+    ],
+    "deferred": [
+      "WebAuthn / passkeys — Phase 3 at the earliest",
+      "SSO / SAML — only if the product ever serves institutions, which would also mean multi-tenancy",
+      "Magic-link login — adds an email-delivery dependency to the critical path"
+    ],
+    "future": [
+      "Risk-based authentication: step up to MFA on an unusual country or device",
+      "Session anomaly detection feeding the security dashboard",
+      "Per-device token binding once passkeys land"
+    ],
+    "doNot": [
+      "Do not put the access token in `localStorage` or a readable cookie.",
+      "Do not add profile fields here — they belong to `user`.",
+      "Do not check permissions here — that is `rbac`. This module only proves identity.",
+      "Do not return different messages or noticeably different timings for unknown-email and wrong-password.",
+      "Do not extend the access-token lifetime to avoid refresh complexity.",
+      "Do not log tokens, password hashes, email addresses, or TOTP seeds.",
+      "Do not add a 'remember me forever' option — rotate refresh tokens instead."
+    ],
+    "runtimePrompts": [],
+    "devPrompts": [
+      { "task": "Add an endpoint", "file": "backend/generate-crud.md" },
+      { "task": "Add a security integration test", "file": "testing/generate-integration-test.md" }
+    ]
+  },
+
+  {
+    "name": "user",
+    "tier": "core",
+    "group": "modules",
+    "schema": "core",
+    "phase": 1,
+    "status": "PLANNED",
+    "owner": "@backend-team",
+    "hasJobs": true,
+    "purpose": "Owns the user record and everything descriptive about a person: profile, preferences, locale, timezone, avatar, learning goals, and the account lifecycle including export and deletion. It is the canonical source of `core.users`, which every other module references by ID.",
+    "businessPurpose": "A learner's experience is personalised by locale, level and goals. A user must be able to see, correct, export and delete everything we hold about them — both because it is right and because privacy regulation requires it.",
+    "responsibilities": [
+      "The `core.users` record: identity, status, timestamps",
+      "Profile: display name, avatar, country, timezone, locale, date of birth (for the age gate)",
+      "Preferences: notification settings, daily goal, UI theme, AI processing opt-out",
+      "Learning profile: self-declared level, goals, target exam, study reminders",
+      "Account status transitions: active, suspended, pending deletion",
+      "Data export (async) and erasure (30-day grace, then anonymisation)",
+      "Avatar upload coordination through `platform/storage`"
+    ],
+    "notResponsibilities": [
+      "Passwords, sessions, tokens — that is `auth`",
+      "Roles and permissions — that is `rbac`",
+      "Learning progress and statistics — that is `learning`",
+      "Subscription state — that is `subscription`"
+    ],
+    "tables": [
+      { "name": "users", "purpose": "Canonical user identity", "notes": "`email` (citext, UNIQUE), `status`, `email_verified_at`, `created_at`. **The one table other schemas may FK to** (ADR-0004)" },
+      { "name": "profiles", "purpose": "Descriptive profile data", "notes": "1:1 with users; display name, avatar asset ID, country, timezone" },
+      { "name": "user_preferences", "purpose": "Settings", "notes": "Locale, theme, daily goal, notification channels, quiet hours, `ai_processing_opt_out`" },
+      { "name": "learning_profiles", "purpose": "Self-declared learning context", "notes": "Declared level, target level, target exam, weekly minutes goal, motivations" },
+      { "name": "user_deletion_requests", "purpose": "Erasure workflow", "notes": "`requested_at`, `execute_after`, `cancelled_at`, `completed_at`" },
+      { "name": "user_exports", "purpose": "Data export jobs and artefacts", "notes": "`status`, `object_key`, `expires_at`" }
+    ],
+    "endpoints": [
+      { "method": "GET", "path": "/api/v1/me", "permission": "self", "purpose": "Full profile of the caller", "success": "200" },
+      { "method": "PATCH", "path": "/api/v1/me", "permission": "self", "purpose": "Update profile fields", "success": "200", "errors": ["VALIDATION_FAILED"] },
+      { "method": "GET", "path": "/api/v1/me/preferences", "permission": "self", "purpose": "Read preferences", "success": "200" },
+      { "method": "PUT", "path": "/api/v1/me/preferences", "permission": "self", "purpose": "Replace preferences", "success": "200" },
+      { "method": "POST", "path": "/api/v1/me/avatar/upload-intent", "permission": "self", "purpose": "Get a presigned URL for an avatar upload", "success": "200", "errors": ["UNSUPPORTED_MEDIA_TYPE", "TOO_LARGE"] },
+      { "method": "PUT", "path": "/api/v1/me/avatar", "permission": "self", "purpose": "Confirm the uploaded avatar", "success": "200" },
+      { "method": "POST", "path": "/api/v1/me/export", "permission": "self", "purpose": "Request a data export", "success": "202" },
+      { "method": "DELETE", "path": "/api/v1/me", "permission": "self", "purpose": "Request account deletion (30-day grace)", "success": "202" },
+      { "method": "POST", "path": "/api/v1/me/deletion/cancel", "permission": "self", "purpose": "Cancel a pending deletion", "success": "200", "errors": ["INVALID_STATE_TRANSITION"] },
+      { "method": "GET", "path": "/api/v1/admin/users", "permission": "user.list", "purpose": "Search and list users", "success": "200" },
+      { "method": "GET", "path": "/api/v1/admin/users/{id}", "permission": "user.read", "purpose": "Read one user", "success": "200" },
+      { "method": "POST", "path": "/api/v1/admin/users/{id}/suspend", "permission": "user.suspend", "purpose": "Suspend an account", "success": "200", "errors": ["INVALID_STATE_TRANSITION"] },
+      { "method": "POST", "path": "/api/v1/admin/users/{id}/reinstate", "permission": "user.suspend", "purpose": "Reinstate a suspended account", "success": "200" }
+    ],
+    "contract": [
+      { "kind": "interface", "name": "user.Reader", "purpose": "`GetByID`, `GetManyByIDs`, `Exists` — batched to avoid N+1 across modules" },
+      { "kind": "interface", "name": "user.Creator", "purpose": "`CreateUser` — used only by `auth` during registration" },
+      { "kind": "struct", "name": "user.Summary", "purpose": "`{ID, DisplayName, AvatarURL, Locale, Timezone, Status}` — the shape other modules render" },
+      { "kind": "event", "name": "user.DeletionRequested", "purpose": "Every module holding personal data reacts to this" }
+    ],
+    "events": {
+      "publishes": [
+        { "name": "user.profile_updated", "payload": "`{user_id, changed_fields}`" },
+        { "name": "user.deletion_requested", "payload": "`{user_id, execute_after}`" },
+        { "name": "user.deleted", "payload": "`{user_id}` — modules must purge or anonymise their data" },
+        { "name": "user.suspended", "payload": "`{user_id, reason, actor_id}`" }
+      ],
+      "consumes": [
+        { "name": "subscription.activated", "reason": "Cache the entitlement tier on the profile for fast reads" }
+      ]
+    },
+    "dependsOn": ["storage", "mailer", "audit"],
+    "dependsWhy": {
+      "storage": "Avatar upload and export artefacts",
+      "mailer": "Deletion confirmation, export-ready notice",
+      "audit": "Record profile and status changes"
+    },
+    "dependedOnBy": ["auth", "admin", "learning", "notification", "subscription", "gamification"],
+    "rules": [
+      "`core.users.email` is unique, case-insensitive (citext), and immutable after verification — changing it is a separate verified flow, not a profile edit.",
+      "A display name is 1–50 characters, must not impersonate staff (a reserved-word list), and is moderated on report.",
+      "Timezone must be a valid IANA name; all stored timestamps remain UTC.",
+      "Date of birth is used only for the age gate; users under 16 require a guardian email and receive no marketing.",
+      "Deletion is a 30-day grace period: the account is unusable immediately, cancellable by the user, and irreversible afterwards.",
+      "On execution, PII is hard-deleted and learning statistics are anonymised to a synthetic ID so aggregate analytics remain valid.",
+      "An export is produced asynchronously and delivered as a signed link valid for 24 hours; the artefact is deleted after 7 days.",
+      "Suspending a user revokes their sessions immediately via `auth`'s contract.",
+      "Setting `ai_processing_opt_out` disables AI grading only; deterministic exercises continue to work."
+    ],
+    "cache": [
+      { "key": "fluentra:{env}:user:summary:{user_id}:v1", "ttl": "10 min", "invalidation": "`user.profile_updated`" },
+      { "key": "fluentra:{env}:user:prefs:{user_id}:v1", "ttl": "10 min", "invalidation": "Preference write" }
+    ],
+    "errors": [
+      { "code": "DISPLAY_NAME_NOT_ALLOWED", "status": "422", "meaning": "Reserved or moderated name" },
+      { "code": "INVALID_STATE_TRANSITION", "status": "409", "meaning": "e.g. cancelling a deletion that already executed" },
+      { "code": "EXPORT_ALREADY_PENDING", "status": "409", "meaning": "One export at a time" },
+      { "code": "AGE_RESTRICTED", "status": "403", "meaning": "Under-16 account without guardian consent" }
+    ],
+    "security": [
+      "Only the account owner and an admin with `user.read` may read a profile; every query filters by actor.",
+      "Admin reads of personal data are audited with the acting admin's ID.",
+      "Export artefacts live in a private bucket and are reachable only through a short-lived presigned URL.",
+      "Avatars are size- and type-limited, stripped of EXIF, and re-encoded before being made public."
+    ],
+    "flows": [
+      {
+        "title": "Account deletion",
+        "description": "Deletion fans out to every module holding personal data. Each module is responsible for its own erasure, driven by an event rather than a central script — that is what keeps the boundary intact.",
+        "mermaid": "sequenceDiagram\n    autonumber\n    actor U as User\n    participant US as user\n    participant A as auth\n    participant J as job\n    participant M as all modules\n\n    U->>US: DELETE /me\n    US->>US: INSERT deletion_request (execute_after = now + 30d)\n    US->>US: users.status = pending_deletion\n    US->>A: RevokeAllSessions(user_id)\n    US->>US: publish user.deletion_requested\n    US-->>U: 202 { execute_after }\n\n    alt user cancels within 30 days\n        U->>US: POST /me/deletion/cancel\n        US->>US: status = active; cancel request\n    else grace elapses\n        J->>US: scheduled job picks up due requests\n        US->>US: anonymise profile, hard-delete PII\n        US->>M: publish user.deleted\n        M->>M: each module purges or anonymises its own data\n        US->>US: mark completed\n    end"
+      }
+    ],
+    "stateMachine": {
+      "description": "Account status. `auth` reads this on every login; a non-active status blocks authentication.",
+      "mermaid": "stateDiagram-v2\n    [*] --> PendingVerification\n    PendingVerification --> Active: email verified\n    Active --> Suspended: admin action\n    Suspended --> Active: admin reinstates\n    Active --> PendingDeletion: user request\n    Suspended --> PendingDeletion: user request\n    PendingDeletion --> Active: cancelled within 30 days\n    PendingDeletion --> Anonymised: grace elapsed\n    Anonymised --> [*]"
+    },
+    "failures": [
+      { "failure": "A module fails to purge on `user.deleted`", "detection": "Erasure completeness job compares expected vs actual", "behaviour": "Retries, then raises an alert — an incomplete erasure is a compliance incident" },
+      { "failure": "Export job exceeds its timeout on a very large account", "detection": "Job timeout metric", "behaviour": "Chunked export with resumable state; user notified when ready" }
+    ],
+    "tasks": [
+      { "title": "Add a profile field", "steps": [
+        "Decide which table it belongs to: identity (`users`), descriptive (`profiles`), settings (`user_preferences`), or learning context (`learning_profiles`). Do **not** add it to `users`.",
+        "Write the migration in `db/migrations/user/`.",
+        "Add it to the sqlc query and the domain struct.",
+        "Add it to `contract/dto.go` only if another module needs it.",
+        "Update `openapi.yaml` and the frontend types via `make gen`.",
+        "Add validation, and a test for the boundary values.",
+        "Update this AGENT.md §5 and the front-matter `tables:` list."
+      ]},
+      { "title": "Add a module that stores personal data", "steps": [
+        "Subscribe to `user.deletion_requested` and `user.deleted` in that module.",
+        "Implement idempotent purge or anonymisation.",
+        "Add the module to the erasure completeness check.",
+        "Document what it holds in `docs/security/data-inventory.md`."
+      ]}
+    ],
+    "limitations": [
+      "Email change is not implemented in Phase 1 — it requires a re-verification flow.",
+      "Avatar moderation is manual and report-driven; there is no automated image classification.",
+      "The export format is a ZIP of JSON and media; there is no interoperable standard we target."
+    ],
+    "testFocus": [
+      "Deletion grace period: cancellable before, irreversible after",
+      "Anonymisation preserves aggregate statistics while removing PII",
+      "Every other module's purge handler is idempotent",
+      "Timezone and locale validation, including odd IANA names",
+      "Age gate boundaries around the 16th birthday",
+      "Admin cannot read a profile without `user.read`, and the read is audited"
+    ],
+    "coverage": "85% service, 90% domain",
+    "decisions": [
+      { "question": "One `users` table or split identity and profile?", "choice": "Split", "why": "`users` is referenced by every schema; keeping it narrow and stable means profile churn never touches a table with a dozen inbound foreign keys" },
+      { "question": "Hard delete or anonymise?", "choice": "Hard-delete PII, anonymise statistics", "why": "Satisfies erasure while keeping historical aggregates truthful — deleting the rows outright would silently rewrite past reports" },
+      { "question": "Who owns cross-module erasure?", "choice": "Each module, driven by an event", "why": "A central deletion script would need to know every module's schema, which is exactly the coupling the architecture exists to prevent" }
+    ],
+    "openQuestions": ["Do we need a verified email-change flow in Phase 2, or is support-assisted change acceptable?"],
+    "todo": [
+      { "title": "Phase 1", "items": [
+        "`users`, `profiles`, `user_preferences` tables and CRUD",
+        "`GET/PATCH /me` and preferences endpoints",
+        "Avatar upload via presigned URL, with EXIF stripping",
+        "Admin user list, search, suspend, reinstate — all audited",
+        "Deletion request with 30-day grace and cancellation",
+        "Export job producing a signed link",
+        "`user.deleted` fan-out with an erasure completeness check"
+      ]}
+    ],
+    "future": ["Verified email change", "Profile completeness prompts driving onboarding", "Per-user data-retention preferences"],
+    "doNot": [
+      "Do not add columns to `core.users` — use `profiles`, `user_preferences`, or your own module's table.",
+      "Do not read another module's tables to build a profile response; call their contract.",
+      "Do not expose `email` in any response other than the owner's own `/me`.",
+      "Do not implement deletion as a cascade of `DELETE` statements from this module — publish the event."
+    ],
+    "runtimePrompts": []
+  },
+
+  {
+    "name": "rbac",
+    "tier": "core",
+    "group": "modules",
+    "schema": "core",
+    "phase": 1,
+    "status": "PLANNED",
+    "owner": "@backend-team",
+    "purpose": "Answers \"may this actor do this?\". Holds roles, named permissions, and the mapping between them, and provides the guard used by every service method. There are exactly two roles — `admin` and `user` — but permissions are named so that adding a role later is a data change, not a code change.",
+    "businessPurpose": "Administrators can see and change everything; learners can see and change only their own work. Making that boundary explicit and testable is what prevents the single most common and most damaging class of web vulnerability.",
+    "responsibilities": [
+      "Role definitions and role assignment to users",
+      "The permission catalogue (named capabilities)",
+      "Role→permission mapping",
+      "The `Require(ctx, permission)` guard used by service methods",
+      "The route-group middleware for `/admin/*`",
+      "Cached permission resolution"
+    ],
+    "notResponsibilities": [
+      "Proving identity — that is `auth`",
+      "Ownership checks (`WHERE user_id = actor`) — those live in each module's queries, because only that module knows what ownership means for its data",
+      "Audit logging of denied attempts — it emits, `audit` persists"
+    ],
+    "tables": [
+      { "name": "roles", "purpose": "Role catalogue", "notes": "Seeded with exactly `admin` and `user`; adding one is a migration plus a decision" },
+      { "name": "permissions", "purpose": "Named capabilities", "notes": "`name` UNIQUE, e.g. `content.publish`; `description` is shown in the admin UI" },
+      { "name": "role_permissions", "purpose": "Mapping", "notes": "Composite PK (role_id, permission_id)" },
+      { "name": "user_roles", "purpose": "Assignment", "notes": "Composite PK (user_id, role_id); `granted_by`, `granted_at`" }
+    ],
+    "endpoints": [
+      { "method": "GET", "path": "/api/v1/me/permissions", "permission": "self", "purpose": "The caller's effective permissions — the frontend uses this to hide unavailable actions", "success": "200", "notes": "Hiding a control is UX, not security; the server still enforces every call" },
+      { "method": "GET", "path": "/api/v1/admin/roles", "permission": "rbac.read", "purpose": "List roles and their permissions", "success": "200" },
+      { "method": "POST", "path": "/api/v1/admin/users/{id}/roles", "permission": "rbac.assign", "purpose": "Grant a role", "success": "200", "errors": ["PERMISSION_DENIED", "SELF_ELEVATION_FORBIDDEN"] },
+      { "method": "DELETE", "path": "/api/v1/admin/users/{id}/roles/{role}", "permission": "rbac.assign", "purpose": "Revoke a role", "success": "204", "errors": ["LAST_ADMIN_PROTECTED"] }
+    ],
+    "contract": [
+      { "kind": "interface", "name": "rbac.Authorizer", "purpose": "`Require(ctx, permission) error` and `Can(ctx, permission) bool` — the guard every service uses" },
+      { "kind": "interface", "name": "rbac.RoleReader", "purpose": "`RolesOf(ctx, userID)` — used by `auth` when minting a token" },
+      { "kind": "const", "name": "rbac.Perm*", "purpose": "Typed permission constants; a permission is never a bare string at a call site" }
+    ],
+    "events": {
+      "publishes": [{ "name": "rbac.role_assigned", "payload": "`{user_id, role, actor_id}`" }],
+      "consumes": [{ "name": "user.deleted", "reason": "Remove role assignments" }]
+    },
+    "dependsOn": ["cache", "audit"],
+    "dependsWhy": { "cache": "Permission sets are read on nearly every request", "audit": "Role changes and denials are security-relevant" },
+    "dependedOnBy": ["auth", "admin", "content", "questionbank", "exam", "user"],
+    "rules": [
+      "Deny by default: an operation with no declared permission is refused, not allowed.",
+      "Exactly two roles exist. Introducing a third requires an ADR — it changes the product's shape, not just its data.",
+      "Permissions are named `<resource>.<action>[.<qualifier>]` and are additive; there are no negative permissions.",
+      "A user cannot grant themselves a role they do not already have, and cannot remove their own admin role.",
+      "The last remaining admin cannot be demoted or suspended — the system must never become unadministrable.",
+      "Granting `admin` forces MFA enrolment on that account's next login.",
+      "A permission check failure is logged at `warn` with the permission name and raises an audit event.",
+      "Frontend permission data is advisory only; every server call re-checks."
+    ],
+    "cache": [
+      { "key": "fluentra:{env}:rbac:perms:{user_id}:v1", "ttl": "5 min", "invalidation": "`rbac.role_assigned`, role-permission change, `user.deleted`" },
+      { "key": "fluentra:{env}:rbac:role_perms:{role}:v1", "ttl": "30 min", "invalidation": "Migration or admin edit" }
+    ],
+    "errors": [
+      { "code": "PERMISSION_DENIED", "status": "403", "meaning": "Authenticated but lacking the required permission" },
+      { "code": "SELF_ELEVATION_FORBIDDEN", "status": "403", "meaning": "An actor tried to grant themselves a role" },
+      { "code": "LAST_ADMIN_PROTECTED", "status": "409", "meaning": "Would leave the system with no administrator" }
+    ],
+    "security": [
+      "The guard is called in the **service** layer, not only in middleware — middleware protects a route, the guard protects an operation.",
+      "Ownership filtering is separate and mandatory; a `user` with `self.*` permissions must still only see their own rows.",
+      "Cached permissions have a short TTL so a revocation takes effect within 5 minutes; an immediate revocation also busts the key."
+    ],
+    "flows": [
+      {
+        "title": "Three-layer authorization",
+        "description": "Each layer catches a different mistake. Middleware catches a route wired to the wrong group; the guard catches a service method called from an unexpected path; the ownership filter catches the IDOR that the other two cannot see.",
+        "mermaid": "flowchart TD\n    A[Request] --> B[auth middleware<br/>validates token → Actor in ctx]\n    B --> C{Route group}\n    C -->|/admin/*| D[require role=admin]\n    C -->|/api/v1/*| E[authenticated]\n    D --> F[Handler]\n    E --> F\n    F --> G[Service method]\n    G --> H[\"rbac.Require(ctx, 'content.publish')\"]\n    H -->|denied| X[403 PERMISSION_DENIED<br/>+ audit event]\n    H -->|allowed| I[Repository query]\n    I --> J[\"WHERE user_id = actor.UserID<br/>(ownership — the real IDOR defence)\"]\n    J --> K[Result]"
+      }
+    ],
+    "tasks": [
+      { "title": "Add a permission", "steps": [
+        "Add the constant to `contract/permissions.go`.",
+        "Add the row in a migration and map it to the roles that should hold it.",
+        "Call `rbac.Require` in the service method that needs it.",
+        "Add `x-permission` to the operation in `openapi.yaml`.",
+        "Add a test asserting that a user without it receives 403 and that the denial is audited.",
+        "Update §5 of this file."
+      ]}
+    ],
+    "limitations": [
+      "No resource-scoped permissions (\"can edit *these* lessons\"). If content ownership becomes a requirement, that is a new design, not a new row.",
+      "No time-bounded grants.",
+      "Permission changes take up to 5 minutes to propagate through the cache unless explicitly busted."
+    ],
+    "conventions": ["Never write a permission as a string literal at a call site — use the typed constant."],
+    "testFocus": [
+      "Deny by default: an unguarded operation must fail a lint/test, not silently allow",
+      "A `user` calling any `/admin/*` route receives 403",
+      "Self-elevation and last-admin protection",
+      "Cache invalidation on role change takes effect",
+      "Every user-owned resource returns 404 (not 403) for another user's row"
+    ],
+    "decisions": [
+      { "question": "Casbin, OPA, or a table?", "choice": "A table plus a guard function", "why": "Two roles and ~40 permissions do not justify a policy engine, a policy language, and its evaluation semantics. Casbin becomes worth it at resource-scoped or hierarchical policies — recorded in ADR-0008 so the option is not forgotten" },
+      { "question": "Roles in the JWT or looked up per request?", "choice": "Role in the token, permissions resolved from cache", "why": "The role is stable and small; permissions can change without reissuing tokens, and a 5-minute cache bounds staleness" }
+    ],
+    "adrs": [{ "id": "ADR-0008", "file": "ADR-0008-rbac-simple-policy.md", "title": "Table-driven permissions, no Casbin/OPA" }],
+    "todo": [
+      { "title": "Phase 1", "items": [
+        "Roles, permissions, mappings seeded via migration",
+        "`Require`/`Can` guard with cached resolution",
+        "`/admin/*` route-group middleware",
+        "`GET /me/permissions`",
+        "Self-elevation and last-admin protections",
+        "A CI check that every non-public OpenAPI operation declares `x-permission`"
+      ]}
+    ],
+    "future": ["Resource-scoped permissions if content ownership becomes a requirement", "Temporary elevated access with automatic expiry"],
+    "doNot": [
+      "Do not add a third role without an ADR.",
+      "Do not rely on middleware alone — call the guard in the service.",
+      "Do not use the frontend's permission list as an authorization decision.",
+      "Do not implement ownership checks here; they belong in the owning module's query."
+    ],
+    "runtimePrompts": []
+  },
+
+  {
+    "name": "audit",
+    "tier": "core",
+    "group": "modules",
+    "schema": "audit",
+    "phase": 1,
+    "status": "PLANNED",
+    "owner": "@backend-team",
+    "hasJobs": true,
+    "purpose": "Records what happened, who did it, and what changed — immutably. Two streams: an administrative audit trail (every state change made by an admin, and every significant change made by a user to their own data) and a security event stream (authentication anomalies, permission denials, suspicious patterns).",
+    "businessPurpose": "When a learner says \"my essay disappeared\" or a regulator asks \"who accessed this account\", the answer must exist and must be trustworthy. Audit is also the raw material for the security dashboard.",
+    "responsibilities": [
+      "Persisting audit entries with actor, action, target, before/after diff, IP, user agent, trace ID",
+      "Persisting security events with a severity",
+      "Enforcing append-only semantics",
+      "Retention and partition management",
+      "Query API for the admin UI, with filters and export"
+    ],
+    "notResponsibilities": [
+      "Deciding what is auditable — each module decides and emits",
+      "Application logs — those go to Loki; audit is durable business record, not telemetry",
+      "Alerting — Prometheus and Alertmanager do that"
+    ],
+    "tables": [
+      { "name": "audit_logs", "purpose": "Administrative and user action trail", "notes": "Partitioned monthly. `actor_id`, `actor_role`, `action`, `target_type`, `target_id`, `before`/`after` jsonb, `ip_hash`, `trace_id`. No UPDATE or DELETE grant on this table." },
+      { "name": "security_events", "purpose": "Security-relevant occurrences", "notes": "`kind`, `severity`, `user_id`, `detail` jsonb, `resolved_at`. Feeds the security dashboard." }
+    ],
+    "indexes": [
+      "`idx_audit_logs_target` — the \"who touched this record\" query",
+      "`idx_audit_logs_actor_time` — the \"what did this admin do\" query",
+      "`idx_security_events_kind_time` — dashboard aggregation"
+    ],
+    "endpoints": [
+      { "method": "GET", "path": "/api/v1/admin/audit-logs", "permission": "audit.read", "purpose": "Search the audit trail", "success": "200" },
+      { "method": "GET", "path": "/api/v1/admin/audit-logs/export", "permission": "audit.export", "purpose": "Async CSV export", "success": "202" },
+      { "method": "GET", "path": "/api/v1/admin/security-events", "permission": "audit.read", "purpose": "Security event feed", "success": "200" },
+      { "method": "POST", "path": "/api/v1/admin/security-events/{id}/resolve", "permission": "audit.manage", "purpose": "Mark an event triaged", "success": "200" }
+    ],
+    "contract": [
+      { "kind": "interface", "name": "audit.Recorder", "purpose": "`Record(ctx, Entry)` — fire-and-forget from any module; never fails the caller" },
+      { "kind": "struct", "name": "audit.Entry", "purpose": "`{Action, TargetType, TargetID, Before, After, Meta}` — actor and trace context come from `ctx`" }
+    ],
+    "events": {
+      "publishes": [],
+      "consumes": [
+        { "name": "auth.security_event", "reason": "Persist to `security_events`" },
+        { "name": "*.published / *.suspended / *.deleted", "reason": "Persist significant state changes" }
+      ]
+    },
+    "dependsOn": ["job"],
+    "dependsWhy": { "job": "Retention, partition rotation, and export run as scheduled jobs" },
+    "dependedOnBy": ["auth", "user", "rbac", "admin", "content", "questionbank", "exam", "payment"],
+    "rules": [
+      "Audit entries are append-only. The application role holds no UPDATE or DELETE grant on `audit_logs`.",
+      "Recording an audit entry must never fail the business operation: it is written through the outbox in the same transaction where correctness matters, and best-effort otherwise.",
+      "Every admin action on another user's data is audited, including reads of personal data.",
+      "The `before`/`after` diff stores changed fields only, and redacts anything on the PII deny-list.",
+      "Retention is 2 years; partitions older than that are archived to object storage and detached.",
+      "Audit data survives account deletion in anonymised form — the record of an action must outlive the actor's profile.",
+      "Every entry carries the `trace_id`, so an audit row links directly to the full distributed trace."
+    ],
+    "security": [
+      "Reading the audit trail is itself audited.",
+      "Exports are generated asynchronously and delivered by short-lived signed URL.",
+      "IP addresses are stored hashed with a rotating salt; the raw value is never persisted."
+    ],
+    "flows": [
+      {
+        "title": "Recording an admin action",
+        "mermaid": "sequenceDiagram\n    autonumber\n    participant AD as admin handler\n    participant SV as content.Service\n    participant DB as PostgreSQL\n    participant OB as outbox publisher\n    participant AU as audit\n\n    AD->>SV: PublishContent(ctx, id)\n    SV->>DB: BEGIN\n    SV->>DB: UPDATE content_versions SET status='published'\n    SV->>DB: INSERT outbox(content.published, before, after)\n    SV->>DB: COMMIT\n    OB->>AU: deliver event\n    AU->>DB: INSERT audit.audit_logs (actor, action, diff, trace_id)\n    Note over AU,DB: at-least-once; the handler dedupes on event_id"
+      }
+    ],
+    "tasks": [
+      { "title": "Make a new action auditable", "steps": [
+        "Decide whether it must be transactional (money, permissions, publishing) or best-effort (a read).",
+        "Transactional: write an outbox event in the same transaction. Best-effort: call `audit.Recorder` directly.",
+        "Name the action `<module>.<verb>_<object>` and add it to the action catalogue in this file.",
+        "Ensure the diff excludes PII-deny-listed fields.",
+        "Add a test asserting the entry exists with the right actor and target."
+      ]}
+    ],
+    "limitations": [
+      "There is no cryptographic chaining of entries; tamper-evidence relies on database grants and backups. Hash chaining is a candidate if a compliance requirement appears.",
+      "Diffs are field-level, not semantic — a reordered array shows as a full change."
+    ],
+    "testFocus": [
+      "The application role genuinely cannot UPDATE or DELETE audit rows",
+      "Audit failure does not roll back the business operation",
+      "Duplicate event delivery produces exactly one row",
+      "PII redaction in diffs",
+      "Partition rotation and retention job correctness"
+    ],
+    "decisions": [
+      { "question": "Postgres or a log stream for audit?", "choice": "Postgres", "why": "Audit is queryable business record with retention and access-control requirements; Loki is optimised for cheap, short-lived telemetry and is not a system of record" },
+      { "question": "Synchronous or asynchronous recording?", "choice": "Both, by criticality", "why": "Permission and money changes go through the outbox so they cannot be lost; reads are best-effort so an audit outage cannot break browsing" }
+    ],
+    "todo": [
+      { "title": "Phase 1", "items": [
+        "`audit_logs` and `security_events` with monthly partitions",
+        "`audit.Recorder` contract and outbox consumer",
+        "Append-only enforcement via database grants, proven by a test",
+        "Admin search UI endpoints with filters",
+        "Retention and partition-rotation jobs",
+        "PII redaction in diffs"
+      ]}
+    ],
+    "future": ["Hash-chained entries for tamper evidence", "Anomaly detection over the security event stream", "Per-record access history shown to the user"],
+    "doNot": [
+      "Do not use audit as application logging — that is Loki.",
+      "Do not let an audit failure abort a business operation.",
+      "Do not store raw IP addresses or full user agents.",
+      "Do not grant UPDATE or DELETE on `audit_logs` to the application role, for any reason."
+    ],
+    "runtimePrompts": []
+  },
+
+  {
+    "name": "admin",
+    "tier": "core",
+    "group": "modules",
+    "schema": "core",
+    "phase": 2,
+    "status": "PLANNED",
+    "owner": "@backend-team",
+    "purpose": "The back-office surface. It owns almost no data of its own; it composes other modules' contracts into the screens an administrator needs: dashboards, user management, content moderation, feature flags, and operational tooling.",
+    "businessPurpose": "Running the platform must not require database access. Every routine operational action — suspend a user, republish a lesson, re-run a failed grading job, flip a feature flag — has a screen, and every one of them is audited.",
+    "responsibilities": [
+      "Admin dashboard aggregation across modules",
+      "User management screens (list, search, inspect, suspend, reinstate, impersonate)",
+      "Moderation queues (flagged content, reported names, flagged submissions)",
+      "Feature flag management",
+      "Operational actions: retry a job, replay a webhook, invalidate a cache key",
+      "System health summary for non-engineers"
+    ],
+    "notResponsibilities": [
+      "Any business rule — those live in the owning module; admin only calls contracts",
+      "Content authoring logic — that is `content`",
+      "Its own copies of other modules' data"
+    ],
+    "tables": [
+      { "name": "feature_flags", "purpose": "Runtime feature toggles", "notes": "`key`, `enabled`, `rollout_percent`, `owner`, `expires_on`. Cached 30 s in-process." },
+      { "name": "admin_notes", "purpose": "Free-text notes attached to a user or content item", "notes": "Visible to admins only; audited on create" },
+      { "name": "moderation_items", "purpose": "The moderation queue", "notes": "`kind`, `target_type`, `target_id`, `reason`, `status`, `assignee_id`" }
+    ],
+    "endpoints": [
+      { "method": "GET", "path": "/api/v1/admin/dashboard", "permission": "admin.dashboard", "purpose": "Composed KPI summary", "success": "200" },
+      { "method": "GET", "path": "/api/v1/admin/moderation", "permission": "moderation.read", "purpose": "Moderation queue", "success": "200" },
+      { "method": "POST", "path": "/api/v1/admin/moderation/{id}/resolve", "permission": "moderation.act", "purpose": "Resolve a queue item", "success": "200" },
+      { "method": "GET", "path": "/api/v1/admin/feature-flags", "permission": "system.flags", "purpose": "List flags", "success": "200" },
+      { "method": "PUT", "path": "/api/v1/admin/feature-flags/{key}", "permission": "system.flags", "purpose": "Update a flag", "success": "200" },
+      { "method": "POST", "path": "/api/v1/admin/jobs/{id}/retry", "permission": "system.jobs", "purpose": "Retry a failed job", "success": "202" },
+      { "method": "POST", "path": "/api/v1/admin/impersonate/{user_id}", "permission": "user.impersonate", "purpose": "Start a time-boxed impersonation session", "success": "200", "notes": "Audited; blocked for payment actions; a banner is shown throughout" }
+    ],
+    "contract": [{ "kind": "interface", "name": "admin.FlagReader", "purpose": "`IsEnabled(ctx, key, userID) bool` — used by every module that gates a feature" }],
+    "events": { "publishes": [{ "name": "admin.impersonation_started", "payload": "`{admin_id, user_id, expires_at}`" }], "consumes": [] },
+    "dependsOn": ["user", "rbac", "audit", "auth", "content", "cache"],
+    "dependsWhy": {
+      "user": "User management screens",
+      "rbac": "Role assignment",
+      "audit": "Every admin action is recorded",
+      "auth": "Session revocation and impersonation token issuance",
+      "content": "Moderation and publishing actions",
+      "cache": "Flag caching and operational cache invalidation"
+    },
+    "dependedOnBy": [],
+    "rules": [
+      "Admin composes, it does not compute. Any rule an admin screen needs belongs in the owning module's service.",
+      "Every admin write action is audited with the acting admin's ID and, where the UI requires it, a stated reason.",
+      "Impersonation is time-boxed to 30 minutes, produces a visually distinct session, is fully audited, and is blocked for payment and deletion actions.",
+      "A feature flag defaults to disabled and carries an owner and an expiry date; expired flags are reported weekly.",
+      "Operational actions are idempotent — retrying a retry must not double-execute.",
+      "An admin cannot act on their own account through admin screens (suspension, role change) — that path goes through another admin."
+    ],
+    "errors": [
+      { "code": "IMPERSONATION_FORBIDDEN_ACTION", "status": "403", "meaning": "The attempted action is not permitted while impersonating" },
+      { "code": "SELF_ADMIN_ACTION_FORBIDDEN", "status": "403", "meaning": "An admin may not administer their own account" }
+    ],
+    "security": [
+      "All `/admin/*` routes require the `admin` role at the route group and a specific permission at the service.",
+      "Admin accounts require MFA.",
+      "Reads of personal data are audited, not just writes.",
+      "Impersonation tokens carry an `act` claim so downstream audit entries record both identities."
+    ],
+    "flows": [
+      {
+        "title": "Impersonation",
+        "mermaid": "sequenceDiagram\n    autonumber\n    actor AD as Admin\n    participant A as admin\n    participant AU as auth\n    participant AD2 as audit\n\n    AD->>A: POST /admin/impersonate/{user_id} { reason }\n    A->>A: require permission user.impersonate\n    A->>A: reject if target is an admin\n    A->>AU: IssueImpersonationToken(admin_id, user_id, 30m)\n    AU-->>A: token with act claim\n    A->>AD2: audit(impersonation_started, reason)\n    A-->>AD: token + banner flag\n    Note over AD: every subsequent request records both identities\n    Note over AD: payment, deletion and role changes are refused"
+      }
+    ],
+    "tasks": [
+      { "title": "Add an admin screen", "steps": [
+        "Identify which module owns the data and which contract methods you need. If a method does not exist, add it to that module's contract — do not query its tables.",
+        "Add the endpoint under `/api/v1/admin/` in `openapi.yaml` with an `x-permission`.",
+        "Implement a thin handler that composes contract calls.",
+        "Add the permission to `rbac` and map it to the admin role.",
+        "Audit any write.",
+        "Add the React page under `web/src/features/admin/`."
+      ]}
+    ],
+    "limitations": [
+      "The dashboard aggregates synchronously across several modules; above a few thousand rows it will need a materialised read model.",
+      "Moderation is manual — there is no automated classification in Phase 2.",
+      "Feature flags are boolean plus a percentage; there is no targeting by attribute."
+    ],
+    "testFocus": [
+      "A non-admin receives 403 on every `/admin/*` route",
+      "Impersonation cannot perform forbidden actions and expires on time",
+      "Self-administration is refused",
+      "Every write produces an audit entry with the correct actor",
+      "Flag changes propagate within the cache TTL"
+    ],
+    "decisions": [
+      { "question": "Separate admin service or the same binary?", "choice": "Same binary, separate route group", "why": "A separate service would duplicate every contract call over the network for a handful of screens; the route group plus per-operation permissions gives the isolation that matters" },
+      { "question": "Does admin own data?", "choice": "Only flags, notes and the moderation queue", "why": "Anything else would duplicate another module's state and drift from it" }
+    ],
+    "todo": [
+      { "title": "Phase 2", "items": [
+        "Dashboard composing user, learning and AI-cost summaries",
+        "User management screens with audit on every action",
+        "Feature flag CRUD with in-process caching",
+        "Moderation queue with assignment and resolution",
+        "Job retry and webhook replay tooling",
+        "Impersonation with all its guards"
+      ]}
+    ],
+    "future": ["Materialised dashboard read model", "Bulk content operations", "Saved admin searches", "Automated moderation triage"],
+    "doNot": [
+      "Do not query another module's tables from admin — call its contract.",
+      "Do not implement business rules here.",
+      "Do not add an admin action without a permission and an audit entry.",
+      "Do not allow impersonation of another admin."
+    ],
+    "runtimePrompts": []
+  },
+
+  {
+    "name": "notification",
+    "tier": "core",
+    "group": "modules",
+    "schema": "comm",
+    "phase": 2,
+    "status": "PLANNED",
+    "owner": "@backend-team",
+    "hasJobs": true,
+    "purpose": "Turns domain events into messages a learner actually sees: in-app notifications, push notifications and emails. Owns delivery preferences, quiet hours, digesting, and deduplication.",
+    "businessPurpose": "Retention in a learning product depends on timely, welcome nudges — a due-review reminder, a graded essay, a streak about to break. The same mechanism becomes an annoyance if it is noisy, badly timed, or ignores preferences, so restraint is a first-class requirement.",
+    "responsibilities": [
+      "Notification templates and rendering per channel and locale",
+      "Delivery preferences per category and channel",
+      "Quiet hours in the learner's own timezone",
+      "Digesting: collapsing many events into one message",
+      "Deduplication and rate limiting per user",
+      "In-app inbox: list, mark read, unread count",
+      "Push device registration and token lifecycle"
+    ],
+    "notResponsibilities": [
+      "Sending the email — `platform/mailer` does the transport",
+      "Deciding that something happened — modules publish events",
+      "Marketing campaigns"
+    ],
+    "tables": [
+      { "name": "notifications", "purpose": "In-app inbox", "notes": "`user_id`, `category`, `payload` jsonb, `read_at`, `created_at`. Partitioned monthly." },
+      { "name": "notification_preferences", "purpose": "Per-category channel settings", "notes": "`category`, `in_app`, `push`, `email`, plus quiet-hours window" },
+      { "name": "devices", "purpose": "Push endpoints", "notes": "`token`, `platform`, `last_seen_at`; stale tokens pruned" },
+      { "name": "notification_dedupe", "purpose": "Suppression keys", "notes": "`dedupe_key` UNIQUE, `expires_at`" }
+    ],
+    "endpoints": [
+      { "method": "GET", "path": "/api/v1/notifications", "permission": "self", "purpose": "Inbox, newest first", "success": "200" },
+      { "method": "GET", "path": "/api/v1/notifications/unread-count", "permission": "self", "purpose": "Badge count (cached)", "success": "200" },
+      { "method": "POST", "path": "/api/v1/notifications/{id}/read", "permission": "self", "purpose": "Mark one read", "success": "204" },
+      { "method": "POST", "path": "/api/v1/notifications/read-all", "permission": "self", "purpose": "Mark all read", "success": "204" },
+      { "method": "GET", "path": "/api/v1/me/notification-preferences", "permission": "self", "purpose": "Read preferences", "success": "200" },
+      { "method": "PUT", "path": "/api/v1/me/notification-preferences", "permission": "self", "purpose": "Update preferences", "success": "200" },
+      { "method": "POST", "path": "/api/v1/me/devices", "permission": "self", "purpose": "Register a push device", "success": "201" },
+      { "method": "DELETE", "path": "/api/v1/me/devices/{id}", "permission": "self", "purpose": "Unregister", "success": "204" }
+    ],
+    "contract": [
+      { "kind": "interface", "name": "notification.Notifier", "purpose": "`Notify(ctx, userID, category, payload)` — modules may call it directly for immediate, non-event-driven notices" }
+    ],
+    "events": {
+      "publishes": [{ "name": "notification.sent", "payload": "`{user_id, category, channel}` — feeds engagement analytics" }],
+      "consumes": [
+        { "name": "writing.graded", "reason": "Tell the learner their feedback is ready" },
+        { "name": "speaking.scored", "reason": "Same, for speaking" },
+        { "name": "review.due_soon", "reason": "Daily review reminder" },
+        { "name": "gamification.streak_at_risk", "reason": "Streak reminder, timed to the learner's habit" },
+        { "name": "exam.attempt_finished", "reason": "Score report ready" },
+        { "name": "subscription.expiring", "reason": "Renewal notice" },
+        { "name": "auth.password_changed", "reason": "Security notice" },
+        { "name": "user.deleted", "reason": "Purge inbox and devices" }
+      ]
+    },
+    "dependsOn": ["mailer", "job", "cache", "user"],
+    "dependsWhy": {
+      "mailer": "Email transport and template rendering",
+      "job": "Asynchronous dispatch and digest scheduling",
+      "cache": "Unread counts, dedupe keys, per-user rate limits",
+      "user": "Locale, timezone and preferences"
+    },
+    "dependedOnBy": ["auth", "writing", "speaking", "exam", "gamification", "subscription", "admin"],
+    "rules": [
+      "A notification is never sent for a category the user has disabled, on a channel they have disabled.",
+      "Quiet hours are evaluated in the learner's own timezone; a message that would land inside them is deferred to the next allowed slot, not dropped — unless it is a security notice, which always sends.",
+      "Security notices (password changed, new device, session revoked) ignore preferences and quiet hours.",
+      "Deduplication: the same `dedupe_key` within its window produces exactly one message.",
+      "No more than one push and three emails per user per day, excluding security notices.",
+      "Related events within a digest window collapse into one message (\"3 essays graded\") rather than three.",
+      "Delivery is at-least-once from the outbox; the dispatcher is idempotent on `event_id`.",
+      "A push token that fails twice with a permanent error is deleted.",
+      "Every message includes a working unsubscribe or preferences link, except security notices."
+    ],
+    "cache": [
+      { "key": "fluentra:{env}:notification:unread:{user_id}:v1", "ttl": "5 min", "invalidation": "New notification, mark-read" },
+      { "key": "fluentra:{env}:notification:dedupe:{key}:v1", "ttl": "per category", "invalidation": "Natural expiry" },
+      { "key": "fluentra:{env}:notification:ratelimit:{user_id}:{channel}:v1", "ttl": "24 h", "invalidation": "Natural expiry" }
+    ],
+    "errors": [
+      { "code": "DEVICE_LIMIT_REACHED", "status": "409", "meaning": "Too many registered push devices" },
+      { "code": "INVALID_QUIET_HOURS", "status": "422", "meaning": "Window is malformed or spans more than 12 hours" }
+    ],
+    "flows": [
+      {
+        "title": "Event to delivered notification",
+        "mermaid": "sequenceDiagram\n    autonumber\n    participant W as writing\n    participant OB as outbox\n    participant N as notification\n    participant C as Redis\n    participant J as job\n    participant M as mailer\n    actor U as User\n\n    W->>OB: writing.graded (in the grading transaction)\n    OB->>N: deliver event\n    N->>N: load preferences + timezone\n    alt category disabled on every channel\n        N->>N: drop, record reason\n    else\n        N->>C: check dedupe key\n        alt duplicate\n            N->>N: suppress\n        else\n            N->>N: INSERT notifications (in-app is always written)\n            N->>C: bust unread count\n            alt inside quiet hours\n                N->>J: schedule for the next allowed slot\n            else\n                N->>J: enqueue push + email now\n                J->>M: render + send\n                M-->>U: email\n            end\n        end\n    end"
+      }
+    ],
+    "tasks": [
+      { "title": "Add a notification category", "steps": [
+        "Add the category constant and its default channel settings.",
+        "Write templates for every channel and every supported locale.",
+        "Subscribe to the triggering event, or call `Notify` directly for a non-event trigger.",
+        "Choose a dedupe key and window, and decide whether it participates in a digest.",
+        "Add it to the preferences UI.",
+        "Test: disabled preference suppresses it; quiet hours defer it; duplicates collapse."
+      ]}
+    ],
+    "limitations": [
+      "Web push only — no native mobile push until there is a mobile app.",
+      "Digest windows are fixed per category rather than learned from behaviour.",
+      "Send-time optimisation is a fixed heuristic (the learner's usual study hour), not a model."
+    ],
+    "testFocus": [
+      "Preference matrix: every category × channel combination behaves",
+      "Quiet hours across timezone boundaries and DST transitions",
+      "Deduplication under concurrent event delivery",
+      "Digest collapsing",
+      "Security notices bypass preferences and quiet hours",
+      "Idempotency on redelivered events"
+    ],
+    "decisions": [
+      { "question": "One notification module or per-channel modules?", "choice": "One", "why": "Preferences, quiet hours, dedupe and digesting are channel-independent policy; splitting by channel would triplicate the policy and let the three copies diverge" },
+      { "question": "Write in-app notifications even when other channels are disabled?", "choice": "Yes", "why": "The inbox is the durable record; suppressing it would lose information the learner may want later" }
+    ],
+    "todo": [
+      { "title": "Phase 2", "items": [
+        "Inbox tables, endpoints and unread-count caching",
+        "Preferences with per-category channel settings and quiet hours",
+        "Event subscriptions for grading, reviews, streaks, security",
+        "Deduplication and per-user rate limits",
+        "Email templates in English and Vietnamese",
+        "Web push registration and delivery with token pruning"
+      ]},
+      { "title": "Phase 3", "items": ["Digest scheduling", "Send-time heuristic", "Weekly progress email"] }
+    ],
+    "future": ["Learned send-time optimisation", "In-app notification centre with filters", "Native push when a mobile app exists"],
+    "doNot": [
+      "Do not send a notification synchronously inside a request — enqueue it.",
+      "Do not bypass preference checks for anything except a genuine security notice.",
+      "Do not put personal content (essay text, scores) in a push payload — link to the app.",
+      "Do not add a category without templates for every supported locale."
+    ],
+    "runtimePrompts": []
+  }
+]

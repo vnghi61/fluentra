@@ -1,0 +1,1698 @@
+[
+  {
+    "name": "content",
+    "tier": "learning",
+    "group": "modules",
+    "schema": "content",
+    "phase": 2,
+    "status": "PLANNED",
+    "owner": "@learning-team",
+    "hasJobs": true,
+    "purpose": "The canonical model for every piece of learning material, whatever skill it belongs to: content items, immutable versions, media links, taxonomy, CEFR levelling, and the authoring workflow that takes a draft to publication.",
+    "context": "This module exists so that vocabulary, grammar, reading, listening, speaking and writing do **not** each reinvent items, versions, media and tagging. Getting it right in Phase 2 makes Phase 3 six thin modules; getting it wrong makes Phase 3 six copies of Phase 2 (ADR-0015).",
+    "businessPurpose": "Content is the product. Producing it is the real bottleneck, not writing code — so the authoring workflow, review gate and publishing pipeline are first-class features, not admin afterthoughts.",
+    "responsibilities": [
+      "`content_items` — the identity of a piece of material, independent of its revisions",
+      "`content_versions` — immutable snapshots; a published lesson references a version, never a mutable item",
+      "The authoring state machine: draft → in_review → approved → published → archived",
+      "Taxonomy: topic, skill, CEFR level, exam relevance, tags",
+      "Media asset references and TTS pre-generation on publish",
+      "Content-level cache invalidation and search reindexing on publish",
+      "Level estimation assistance (AI-suggested, human-approved)"
+    ],
+    "notResponsibilities": [
+      "Skill-specific item shape and grading — that belongs to each skill module",
+      "Sequencing content into a course — that is `lesson`",
+      "Storing files — that is `platform/storage`",
+      "Deciding what a learner sees next — that is `learning`"
+    ],
+    "tables": [
+      { "name": "content_items", "purpose": "Stable identity for a piece of material", "notes": "`kind`, `slug` UNIQUE, `current_version_id`, `status`, `owner_id`" },
+      { "name": "content_versions", "purpose": "Immutable revision", "notes": "`item_id`, `version`, `body` jsonb (skill-specific payload), `cefr_level`, `status`, `published_at`. Never updated after publication." },
+      { "name": "media_assets", "purpose": "Reference to an object in storage", "notes": "`object_key`, `kind`, `duration_ms`, `checksum`, `status`" },
+      { "name": "taxonomies", "purpose": "Controlled vocabularies", "notes": "`namespace` (topic/skill/exam), `code`, `label`, `parent_id`" },
+      { "name": "content_tags", "purpose": "Item ↔ taxonomy mapping", "notes": "Composite PK; indexed for filtered browsing" },
+      { "name": "content_reviews", "purpose": "Review workflow record", "notes": "`version_id`, `reviewer_id`, `decision`, `comments`" }
+    ],
+    "indexes": [
+      "`idx_content_versions_item_version` — unique on (item_id, version)",
+      "`idx_content_items_status_kind` — partial `WHERE status = 'published'`, the learner-facing browse path",
+      "`idx_content_tags_taxonomy` — filtered browsing by level and topic"
+    ],
+    "endpoints": [
+      { "method": "GET", "path": "/api/v1/content/{slug}", "permission": "content.read.published", "purpose": "Fetch a published content version", "success": "200", "errors": ["CONTENT_NOT_PUBLISHED"] },
+      { "method": "GET", "path": "/api/v1/content", "permission": "content.read.published", "purpose": "Browse published content with taxonomy filters", "success": "200" },
+      { "method": "POST", "path": "/api/v1/admin/content", "permission": "content.create", "purpose": "Create a draft item", "success": "201" },
+      { "method": "PUT", "path": "/api/v1/admin/content/{id}/draft", "permission": "content.edit", "purpose": "Update the working draft", "success": "200", "errors": ["INVALID_STATE_TRANSITION"] },
+      { "method": "POST", "path": "/api/v1/admin/content/{id}/submit", "permission": "content.edit", "purpose": "Submit for review", "success": "200" },
+      { "method": "POST", "path": "/api/v1/admin/content/{id}/review", "permission": "content.review", "purpose": "Approve or request changes", "success": "200", "errors": ["SELF_APPROVAL_FORBIDDEN"] },
+      { "method": "POST", "path": "/api/v1/admin/content/{id}/publish", "permission": "content.publish", "purpose": "Publish the approved version", "success": "200" },
+      { "method": "POST", "path": "/api/v1/admin/content/{id}/archive", "permission": "content.publish", "purpose": "Archive", "success": "200", "errors": ["CONTENT_IN_USE"] },
+      { "method": "POST", "path": "/api/v1/admin/content/{id}/estimate-level", "permission": "content.edit", "purpose": "AI-suggested CEFR level for the author to confirm", "success": "200" }
+    ],
+    "contract": [
+      { "kind": "interface", "name": "content.Reader", "purpose": "`GetVersion`, `GetManyVersions`, `Browse` — batched to avoid N+1 from lesson rendering" },
+      { "kind": "struct", "name": "content.Version", "purpose": "`{ItemID, Version, Kind, Body, CEFRLevel, MediaRefs, Tags}`" },
+      { "kind": "event", "name": "content.Published", "purpose": "Triggers TTS generation, cache invalidation and reindexing" }
+    ],
+    "events": {
+      "publishes": [
+        { "name": "content.published", "payload": "`{item_id, version_id, kind, cefr_level}`" },
+        { "name": "content.archived", "payload": "`{item_id, version_id}`" }
+      ],
+      "consumes": [{ "name": "media.processed", "reason": "Mark an asset ready; block publishing until its media is processed" }]
+    },
+    "dependsOn": ["storage", "search", "audit", "ai", "media"],
+    "dependsWhy": {
+      "storage": "Media asset objects",
+      "search": "Reindex on publish",
+      "audit": "Authoring actions are audited",
+      "ai": "Level estimation and authoring assistance",
+      "media": "TTS pre-generation, asset readiness"
+    },
+    "dependedOnBy": ["lesson", "learning", "vocabulary", "grammar", "reading", "listening", "speaking", "writing", "questionbank"],
+    "rules": [
+      "A published version is immutable. Editing published material creates a new version; the old one stays live until the new one is published.",
+      "A learner never sees a draft. Every learner-facing query filters `status = 'published'`.",
+      "An author cannot approve their own version — review requires a different admin.",
+      "Publishing is blocked until every referenced media asset is processed and verified.",
+      "Archiving is blocked while a published lesson still references the version (`CONTENT_IN_USE`).",
+      "CEFR level is required before review; an AI suggestion is a starting point, never the final value.",
+      "`body` is validated against a JSON schema chosen by `kind`, so a skill module's payload cannot be malformed.",
+      "Publishing invalidates the content cache, enqueues TTS generation, and triggers reindexing — all through the outbox so a failure in one does not roll back the publish.",
+      "Slugs are immutable after first publication; a changed slug would break external links and bookmarks."
+    ],
+    "cache": [
+      { "key": "fluentra:{env}:content:version:{version_id}:v1", "ttl": "24 h", "invalidation": "`content.published` / `content.archived`" },
+      { "key": "fluentra:{env}:content:browse:{filter_hash}:v1", "ttl": "10 min", "invalidation": "Any publish" }
+    ],
+    "errors": [
+      { "code": "CONTENT_NOT_PUBLISHED", "status": "404", "meaning": "Draft or archived content requested by a learner" },
+      { "code": "INVALID_STATE_TRANSITION", "status": "409", "meaning": "e.g. publishing something not approved" },
+      { "code": "SELF_APPROVAL_FORBIDDEN", "status": "403", "meaning": "The author tried to review their own version" },
+      { "code": "CONTENT_IN_USE", "status": "409", "meaning": "Referenced by published material" },
+      { "code": "MEDIA_NOT_READY", "status": "409", "meaning": "Referenced assets are still processing" }
+    ],
+    "stateMachine": {
+      "description": "The authoring workflow. The transition that matters most is `Published → Draft`: creating a new version does **not** take the live version down.",
+      "mermaid": "stateDiagram-v2\n    [*] --> Draft: create\n    Draft --> InReview: submit\n    InReview --> Draft: changes requested\n    InReview --> Approved: approved by a different admin\n    Approved --> Draft: withdrawn\n    Approved --> Published: publish\n    Published --> Draft: new version started (live version stays up)\n    Published --> Archived: archive (blocked if in use)\n    Archived --> Draft: clone into a new version\n\n    note right of Published\n        On publish, via the outbox:\n        · invalidate content cache\n        · enqueue TTS generation\n        · reindex for search\n        · emit content.published\n    end note"
+    },
+    "flows": [
+      {
+        "title": "Publish",
+        "mermaid": "sequenceDiagram\n    autonumber\n    actor AD as Admin\n    participant C as content\n    participant DB as PostgreSQL\n    participant OB as outbox\n    participant ME as media\n    participant SE as search\n    participant CA as cache\n\n    AD->>C: POST /admin/content/{id}/publish\n    C->>C: require content.publish; state must be Approved\n    C->>ME: are all referenced assets processed?\n    alt not ready\n        C-->>AD: 409 MEDIA_NOT_READY\n    else ready\n        C->>DB: BEGIN\n        C->>DB: version.status = published; item.current_version_id = version\n        C->>DB: INSERT outbox(content.published)\n        C->>DB: COMMIT\n        C-->>AD: 200\n        OB->>CA: invalidate content keys\n        OB->>ME: enqueue TTS for new text\n        OB->>SE: reindex\n    end"
+      }
+    ],
+    "tasks": [
+      { "title": "Add a content kind", "steps": [
+        "Define the JSON schema for its `body` in `api/events/../content-kinds/`.",
+        "Register the kind and its schema in the validator.",
+        "Decide whether it needs media, and whether TTS applies on publish.",
+        "Add the authoring UI in `web/src/features/admin/content/`.",
+        "Add the skill module that consumes it, and its grader.",
+        "Add a fixture and a round-trip test through the whole workflow."
+      ]}
+    ],
+    "limitations": [
+      "No collaborative editing — one draft per item, last write wins with an ETag check.",
+      "No scheduled publishing in Phase 2.",
+      "Localisation of content itself (as opposed to UI) is not modelled; English-only material in v1.",
+      "Version history has no diff view for `body` beyond raw JSON."
+    ],
+    "testFocus": [
+      "Published versions are genuinely immutable",
+      "Self-approval is refused",
+      "Archiving is blocked while referenced",
+      "Body schema validation rejects a malformed payload per kind",
+      "Publishing with unprocessed media is refused",
+      "Cache invalidation and reindexing happen after commit, not inside the transaction"
+    ],
+    "decisions": [
+      { "question": "Shared content model or per-skill models?", "choice": "Shared", "why": "Six near-identical models would diverge within a year and make mixed-skill lessons impossible. The genuinely different part — the grader — stays in the skill module (ADR-0015)" },
+      { "question": "Mutable content or versions?", "choice": "Immutable versions", "why": "A learner's attempt must be interpretable against the material they actually saw; editing published material in place would silently rewrite history" },
+      { "question": "Who assigns the CEFR level?", "choice": "A human, with AI assistance", "why": "Levelling is a pedagogical judgement with real consequences for learner experience; the model proposes, the author disposes" }
+    ],
+    "adrs": [{ "id": "ADR-0015", "file": "ADR-0015-content-exercise-core.md", "title": "Shared content + exercise engine" }],
+    "todo": [
+      { "title": "Phase 2", "items": [
+        "Items, versions, taxonomy, tags and media references",
+        "Authoring state machine with a review gate",
+        "Body schema validation per kind",
+        "Publish pipeline: cache invalidation, TTS, reindex via outbox",
+        "Admin authoring UI",
+        "AI level estimation as a suggestion",
+        "Seed content: one course, eight lessons, two hundred words"
+      ]}
+    ],
+    "future": ["Scheduled publishing", "Content localisation", "Structural diff view between versions", "Reusable content blocks across items"],
+    "doNot": [
+      "Do not mutate a published version.",
+      "Do not add skill-specific columns here — put them in `body`, validated by the kind's schema, or in the skill module.",
+      "Do not let a learner-facing query omit the published filter.",
+      "Do not publish inside a transaction that also does cache and search work — use the outbox."
+    ],
+    "runtimePrompts": [
+      { "task": "content.level_estimate", "purpose": "Suggest a CEFR level for a passage" },
+      { "task": "content.translate", "purpose": "Translate UI-facing content strings" }
+    ]
+  },
+
+  {
+    "name": "lesson",
+    "tier": "learning",
+    "group": "modules",
+    "schema": "learn",
+    "phase": 2,
+    "status": "PLANNED",
+    "owner": "@learning-team",
+    "purpose": "Structure: courses contain units, units contain lessons, lessons contain activities, and activities point at content versions. Owns prerequisites, ordering and unlocking rules.",
+    "businessPurpose": "A learner needs a path, not a pile of exercises. This module is what turns a content library into a curriculum with a beginning, an order, and a sense of progress.",
+    "responsibilities": [
+      "Course, unit, lesson and activity structure and ordering",
+      "Activity → content version binding",
+      "Prerequisites and unlocking rules",
+      "Estimated duration and skill/level metadata",
+      "Course catalogue and lesson detail queries",
+      "Draft/published state for structure, mirroring content"
+    ],
+    "notResponsibilities": [
+      "Learner progress through the structure — that is `learning`",
+      "The material itself — that is `content`",
+      "Grading — that is the exercise engine plus the skill graders"
+    ],
+    "tables": [
+      { "name": "courses", "purpose": "Top-level container", "notes": "`slug` UNIQUE, `cefr_from`, `cefr_to`, `status`, `estimated_hours`" },
+      { "name": "course_units", "purpose": "Group of lessons", "notes": "`course_id`, `position`, `title`" },
+      { "name": "lessons", "purpose": "Schedulable learning unit", "notes": "`unit_id`, `position`, `skill_focus`, `estimated_minutes`, `status`" },
+      { "name": "activities", "purpose": "One thing the learner does", "notes": "`lesson_id`, `position`, `kind`, `content_version_id`, `config` jsonb, `weight`" },
+      { "name": "lesson_prerequisites", "purpose": "Unlocking graph", "notes": "`lesson_id`, `requires_lesson_id`, `min_score`" }
+    ],
+    "endpoints": [
+      { "method": "GET", "path": "/api/v1/courses", "permission": "content.read.published", "purpose": "Catalogue with level filters", "success": "200" },
+      { "method": "GET", "path": "/api/v1/courses/{slug}", "permission": "content.read.published", "purpose": "Course with units and lesson summaries", "success": "200" },
+      { "method": "GET", "path": "/api/v1/lessons/{id}", "permission": "content.read.published", "purpose": "Lesson with its activities and resolved content", "success": "200", "errors": ["LESSON_LOCKED"] },
+      { "method": "POST", "path": "/api/v1/admin/courses", "permission": "content.create", "purpose": "Create a course", "success": "201" },
+      { "method": "PUT", "path": "/api/v1/admin/lessons/{id}/activities", "permission": "content.edit", "purpose": "Reorder or replace the activity list", "success": "200" }
+    ],
+    "contract": [
+      { "kind": "interface", "name": "lesson.Reader", "purpose": "`GetLesson`, `ListLessons`, `NextLesson` — used heavily by `learning`" },
+      { "kind": "struct", "name": "lesson.Activity", "purpose": "`{ID, Kind, ContentVersionID, Config, Weight}`" }
+    ],
+    "events": {
+      "publishes": [{ "name": "lesson.published", "payload": "`{lesson_id, course_id, skill_focus}`" }],
+      "consumes": [{ "name": "content.archived", "reason": "Flag lessons whose content was archived" }]
+    },
+    "dependsOn": ["content", "cache"],
+    "dependedOnBy": ["learning", "admin", "search"],
+    "rules": [
+      "An activity binds to a **content version**, not a content item — republishing content does not silently change a lesson a learner is halfway through.",
+      "A lesson cannot be published while any activity points at unpublished content.",
+      "Prerequisites form a directed acyclic graph; a cycle is rejected at write time.",
+      "Reordering activities does not affect in-flight attempts; those reference the activity ID.",
+      "A published lesson's activity list is versioned — changing it creates a new lesson version rather than mutating the live one.",
+      "Estimated duration is the sum of activity estimates and is recalculated on change, because it drives the learner's daily plan.",
+      "Unlocking is evaluated by `learning`, using rules this module defines — the rule lives here, the learner state lives there."
+    ],
+    "cache": [
+      { "key": "fluentra:{env}:lesson:detail:{lesson_id}:v1", "ttl": "1 h", "invalidation": "`lesson.published`, structure edit" },
+      { "key": "fluentra:{env}:lesson:catalogue:{filter_hash}:v1", "ttl": "15 min", "invalidation": "Any publish" }
+    ],
+    "errors": [
+      { "code": "LESSON_LOCKED", "status": "403", "meaning": "Prerequisites not met" },
+      { "code": "PREREQUISITE_CYCLE", "status": "422", "meaning": "The proposed graph contains a cycle" },
+      { "code": "ACTIVITY_CONTENT_UNPUBLISHED", "status": "409", "meaning": "Cannot publish a lesson pointing at draft content" }
+    ],
+    "flows": [
+      {
+        "title": "Rendering a lesson",
+        "mermaid": "sequenceDiagram\n    autonumber\n    actor U as Learner\n    participant L as lesson\n    participant LR as learning\n    participant C as content\n    participant CA as cache\n\n    U->>L: GET /lessons/{id}\n    L->>LR: IsUnlocked(user, lesson)\n    alt locked\n        L-->>U: 403 LESSON_LOCKED + which prerequisite\n    else unlocked\n        L->>CA: lesson detail cached?\n        alt miss\n            L->>L: load lesson + activities\n            L->>C: GetManyVersions(activity content ids)  // batched, never N+1\n            L->>CA: store\n        end\n        L->>LR: progress for this lesson\n        L-->>U: lesson + activities + resume point\n    end"
+      }
+    ],
+    "tasks": [
+      { "title": "Add an activity kind", "steps": [
+        "Register the kind and its `config` schema.",
+        "Ensure the corresponding content kind exists in `content`.",
+        "Implement the grader in the owning skill module (it implements `learning.ExerciseGrader`).",
+        "Add the React renderer in `web/src/features/lesson/activities/`.",
+        "Add a fixture lesson containing the new activity and an E2E path through it."
+      ]}
+    ],
+    "limitations": [
+      "Structure is linear with prerequisites; there is no branching or conditional path in v1.",
+      "No per-learner lesson variants.",
+      "Duration estimates are static rather than learned from real completion times."
+    ],
+    "testFocus": [
+      "Prerequisite cycle detection",
+      "Lesson publish blocked on draft content",
+      "Activity content resolution is batched (assert the query count)",
+      "Reordering does not disturb in-flight attempts",
+      "Locked lesson returns 403 naming the missing prerequisite"
+    ],
+    "decisions": [
+      { "question": "Bind activities to items or versions?", "choice": "Versions", "why": "A learner's attempt must be interpretable against exactly what they saw; item binding would let a republish change the meaning of past results" },
+      { "question": "Where do unlocking rules live?", "choice": "Defined here, evaluated by `learning`", "why": "The rule is structural (a property of the curriculum); the state is personal (a property of the learner). Splitting them keeps both modules honest" }
+    ],
+    "todo": [
+      { "title": "Phase 2", "items": [
+        "Course/unit/lesson/activity model and admin CRUD",
+        "Prerequisite graph with cycle detection",
+        "Batched content resolution",
+        "Catalogue and lesson detail endpoints with caching",
+        "Publish validation against content state",
+        "Lesson player shell in the web app"
+      ]}
+    ],
+    "future": ["Branching paths by performance", "Learned duration estimates", "Per-learner lesson variants", "Course cloning for A/B curriculum tests"],
+    "doNot": [
+      "Do not bind an activity to a content item.",
+      "Do not resolve content one activity at a time.",
+      "Do not store learner progress here.",
+      "Do not publish a lesson whose content is not published."
+    ],
+    "runtimePrompts": []
+  },
+
+  {
+    "name": "learning",
+    "tier": "learning",
+    "group": "modules",
+    "schema": "learn",
+    "phase": 2,
+    "status": "PLANNED",
+    "owner": "@learning-team",
+    "hasJobs": true,
+    "purpose": "The learner's journey and the **exercise engine**. Owns enrolment, progress, attempts, session tracking, placement and the adaptive path — and defines the `ExerciseGrader` interface that every skill module implements.",
+    "context": "The exercise engine is the shared machinery: start an attempt, collect a response, dispatch to the right grader, record a score, update progress, emit events. Skill modules supply only the grader. This is the second half of ADR-0015 and the reason the six skill modules stay small.",
+    "businessPurpose": "Learning is a sequence of small, measurable interactions. Recording them uniformly is what makes progress visible, spaced repetition possible, and analytics meaningful.",
+    "responsibilities": [
+      "Enrolment in courses",
+      "Progress: per activity, lesson, unit, course and skill",
+      "The exercise engine: attempt lifecycle, response collection, grader dispatch, scoring",
+      "Learning sessions: start, resume, complete, time tracking",
+      "Placement test orchestration and level assignment",
+      "The adaptive daily plan: what to study next and how much",
+      "Unlocking evaluation against the rules `lesson` defines",
+      "Skill radar and mastery estimation"
+    ],
+    "notResponsibilities": [
+      "How a specific skill is graded — each skill module implements `ExerciseGrader`",
+      "Review scheduling — that is `srs`",
+      "XP, streaks and badges — that is `gamification`",
+      "Curriculum structure — that is `lesson`"
+    ],
+    "tables": [
+      { "name": "enrollments", "purpose": "Learner ↔ course", "notes": "`user_id`, `course_id`, `status`, `started_at`, `completed_at`" },
+      { "name": "progress", "purpose": "Rolled-up state", "notes": "`user_id`, `scope` (activity/lesson/unit/course), `scope_id`, `status`, `score`, `completed_at`. Unique on (user, scope, scope_id)" },
+      { "name": "attempts", "purpose": "One try at an activity", "notes": "Partitioned monthly. `user_id`, `activity_id`, `response` jsonb, `score`, `max_score`, `grader`, `duration_ms`, `status`" },
+      { "name": "learning_sessions", "purpose": "A study session", "notes": "`user_id`, `started_at`, `ended_at`, `activities_completed`, `minutes`" },
+      { "name": "placement_results", "purpose": "Placement outcome", "notes": "`user_id`, `estimated_level`, `per_skill` jsonb, `taken_at`" },
+      { "name": "skill_mastery", "purpose": "Per-skill mastery estimate", "notes": "`user_id`, `skill`, `level`, `confidence`, `updated_at`" }
+    ],
+    "indexes": [
+      "`uq_progress_user_scope` — the read path for every dashboard",
+      "`idx_attempts_user_activity_time` — attempt history",
+      "`idx_attempts_activity_time` — item statistics for `questionbank`"
+    ],
+    "endpoints": [
+      { "method": "POST", "path": "/api/v1/courses/{id}/enroll", "permission": "self", "purpose": "Enrol", "success": "201", "errors": ["ALREADY_ENROLLED"] },
+      { "method": "GET", "path": "/api/v1/me/dashboard", "permission": "self", "purpose": "Today's plan, streak, due reviews, continue-where-you-left-off", "success": "200" },
+      { "method": "GET", "path": "/api/v1/me/progress", "permission": "self", "purpose": "Progress across courses and skills", "success": "200" },
+      { "method": "POST", "path": "/api/v1/activities/{id}/attempts", "permission": "self", "purpose": "Start an attempt", "success": "201", "errors": ["LESSON_LOCKED", "ACTIVITY_ALREADY_COMPLETED"] },
+      { "method": "POST", "path": "/api/v1/attempts/{id}/submit", "permission": "self", "purpose": "Submit a response for grading", "success": "200", "errors": ["ATTEMPT_EXPIRED", "VALIDATION_FAILED"], "notes": "Requires an `Idempotency-Key`. Returns 202 when the grader is asynchronous." },
+      { "method": "GET", "path": "/api/v1/attempts/{id}", "permission": "self", "purpose": "Attempt state and result", "success": "200" },
+      { "method": "POST", "path": "/api/v1/me/sessions", "permission": "self", "purpose": "Start a study session", "success": "201" },
+      { "method": "POST", "path": "/api/v1/me/sessions/{id}/complete", "permission": "self", "purpose": "End a session", "success": "200" },
+      { "method": "POST", "path": "/api/v1/me/placement", "permission": "self", "purpose": "Start the placement test", "success": "201" }
+    ],
+    "contract": [
+      { "kind": "interface", "name": "learning.ExerciseGrader", "purpose": "`Grade(ctx, GradeRequest) (GradeResult, error)` — **implemented by every skill module**, registered by activity kind" },
+      { "kind": "struct", "name": "learning.GradeResult", "purpose": "`{Score, MaxScore, Correct, Feedback, Async, ReviewItems}` — `ReviewItems` is what feeds `srs`" },
+      { "kind": "interface", "name": "learning.ProgressReader", "purpose": "`ProgressOf(ctx, userID, scope)` — used by `gamification`, `admin`, `analytics`" },
+      { "kind": "interface", "name": "learning.UnlockChecker", "purpose": "`IsUnlocked(ctx, userID, lessonID)` — used by `lesson`" }
+    ],
+    "events": {
+      "publishes": [
+        { "name": "activity.completed", "payload": "`{user_id, activity_id, score, skill, duration_ms}`" },
+        { "name": "lesson.completed", "payload": "`{user_id, lesson_id, score, skill_focus}`" },
+        { "name": "course.completed", "payload": "`{user_id, course_id}`" },
+        { "name": "placement.completed", "payload": "`{user_id, level, per_skill}`" },
+        { "name": "learning.session_completed", "payload": "`{user_id, minutes, activities}`" }
+      ],
+      "consumes": [
+        { "name": "writing.graded", "reason": "Complete the asynchronous attempt and roll up progress" },
+        { "name": "speaking.scored", "reason": "Same, for speaking" },
+        { "name": "user.deleted", "reason": "Anonymise progress and attempts" }
+      ]
+    },
+    "dependsOn": ["lesson", "content", "srs", "cache", "job"],
+    "dependsWhy": {
+      "lesson": "Structure, activities, unlocking rules",
+      "content": "Rendering activity content",
+      "srs": "Push review items produced by a graded attempt",
+      "cache": "Dashboard and progress reads",
+      "job": "Asynchronous grading completion and rollups"
+    },
+    "dependedOnBy": ["gamification", "analytics", "admin", "exam", "vocabulary", "grammar", "reading", "listening", "speaking", "writing"],
+    "rules": [
+      "Scoring happens on the server. The client never sends a score, only a response.",
+      "An attempt is immutable once graded. A retake creates a new attempt; the history is kept.",
+      "A grader is selected by activity kind from a registry populated at startup; an unknown kind is a startup error.",
+      "Asynchronous graders (writing, speaking) return `Async: true`; the attempt stays `grading` until the completing event arrives.",
+      "Submitting requires an `Idempotency-Key`; a replay returns the original result rather than creating a second attempt.",
+      "Progress rolls up on completion: activity → lesson → unit → course, in one transaction.",
+      "A lesson is complete when every required activity is complete; optional activities do not block it.",
+      "Attempts older than the activity's time limit are expired by a job and cannot be submitted.",
+      "Skill mastery is an exponentially weighted estimate over recent attempts, not a raw average — recent performance must dominate.",
+      "The placement test adapts: item difficulty follows the running estimate, and it stops when the confidence interval is narrow enough or the item budget is exhausted."
+    ],
+    "cache": [
+      { "key": "fluentra:{env}:learning:dashboard:{user_id}:v1", "ttl": "2 min", "invalidation": "Any completion event" },
+      { "key": "fluentra:{env}:learning:progress:{user_id}:{course_id}:v1", "ttl": "5 min", "invalidation": "`activity.completed`" },
+      { "key": "fluentra:{env}:learning:unlock:{user_id}:{lesson_id}:v1", "ttl": "10 min", "invalidation": "`lesson.completed`" }
+    ],
+    "errors": [
+      { "code": "ALREADY_ENROLLED", "status": "409", "meaning": "Duplicate enrolment" },
+      { "code": "LESSON_LOCKED", "status": "403", "meaning": "Prerequisites not met" },
+      { "code": "ACTIVITY_ALREADY_COMPLETED", "status": "409", "meaning": "Re-submission not allowed for this activity kind" },
+      { "code": "ATTEMPT_EXPIRED", "status": "409", "meaning": "Time limit exceeded" },
+      { "code": "GRADER_NOT_REGISTERED", "status": "500", "meaning": "Activity kind has no grader — a configuration bug" }
+    ],
+    "flows": [
+      {
+        "title": "Attempt lifecycle with grader dispatch",
+        "mermaid": "sequenceDiagram\n    autonumber\n    actor U as Learner\n    participant LE as learning (engine)\n    participant G as skill grader\n    participant SR as srs\n    participant DB as PostgreSQL\n\n    U->>LE: POST /activities/{id}/attempts\n    LE->>LE: check unlock + not already completed\n    LE->>DB: INSERT attempts (status=in_progress)\n    LE-->>U: 201 { attempt_id, expires_at }\n\n    U->>LE: POST /attempts/{id}/submit (Idempotency-Key)\n    LE->>LE: validate response shape for the activity kind\n    LE->>G: Grade(request)\n    alt synchronous grader\n        G-->>LE: { score, feedback, review_items }\n        LE->>DB: BEGIN\n        LE->>DB: UPDATE attempt (graded, score)\n        LE->>DB: roll up progress\n        LE->>SR: upsert review cards from review_items\n        LE->>DB: INSERT outbox(activity.completed [, lesson.completed])\n        LE->>DB: COMMIT\n        LE-->>U: 200 { score, feedback }\n    else asynchronous grader\n        G-->>LE: { async: true }\n        LE->>DB: attempt status = grading; enqueue the skill's job\n        LE-->>U: 202 { attempt_id, stream_url }\n        Note over LE: the skill module's completion event finishes the attempt\n    end"
+      },
+      {
+        "title": "Daily plan composition",
+        "description": "The dashboard is the most-requested endpoint in the product; it composes from four modules and is therefore cached aggressively and invalidated by events.",
+        "mermaid": "flowchart TD\n    A[\"GET /me/dashboard\"] --> B{cached?}\n    B -->|hit| Z[return]\n    B -->|miss| C[\"srs: due review count\"]\n    C --> D[\"lesson: next unlocked lesson\"]\n    D --> E[\"progress: resume point\"]\n    E --> F[\"gamification: streak + XP today\"]\n    F --> G[compose plan against the daily goal]\n    G --> H[cache 2 min]\n    H --> Z"
+      }
+    ],
+    "stateMachine": {
+      "description": "Attempt states. `grading` exists only for asynchronous graders and is the state a learner sees while an AI job runs.",
+      "mermaid": "stateDiagram-v2\n    [*] --> InProgress: start\n    InProgress --> Grading: submit (async grader)\n    InProgress --> Graded: submit (sync grader)\n    InProgress --> Expired: time limit\n    InProgress --> Abandoned: session ended without submit\n    Grading --> Graded: grading event received\n    Grading --> Failed: grading failed permanently\n    Failed --> Grading: admin retry\n    Graded --> [*]\n    Expired --> [*]"
+    },
+    "failures": [
+      { "failure": "Async grading never completes", "detection": "Attempts stuck in `grading` beyond an SLO", "behaviour": "Job retry; after final failure the attempt is `failed`, the learner is told, and the attempt does not count against them" },
+      { "failure": "Grader registry missing a kind", "detection": "Startup validation", "behaviour": "The process refuses to start — better than failing on a learner's submission" }
+    ],
+    "tasks": [
+      { "title": "Add a skill grader", "steps": [
+        "Implement `learning.ExerciseGrader` in the skill module.",
+        "Register it by activity kind in `cmd/api` and `cmd/worker`.",
+        "Decide synchronous or asynchronous — anything over ~2 seconds is asynchronous.",
+        "Return `ReviewItems` if the material should enter spaced repetition.",
+        "Add golden-file tests for the scoring, and a test that the registry contains the kind."
+      ]},
+      { "title": "Add a progress dimension", "steps": [
+        "Extend the `scope` enum and the rollup function.",
+        "Backfill with a job, not a migration, if the table is large.",
+        "Add it to the dashboard composition and invalidate the cache key on the relevant event.",
+        "Verify the dashboard query count has not grown."
+      ]}
+    ],
+    "limitations": [
+      "Mastery estimation is exponentially weighted, not item-response-theory based; it is good enough to drive a plan, not to certify a level.",
+      "The adaptive path is rule-based rather than learned.",
+      "Progress rollups are synchronous within the submit transaction; at high volume this becomes a candidate for asynchronous rollup.",
+      "There is no offline attempt sync."
+    ],
+    "testFocus": [
+      "Idempotent submission: a replayed key returns the original result",
+      "Grader dispatch selects the right grader and fails loudly for an unknown kind",
+      "Async attempt completes only on the corresponding event, and is idempotent on redelivery",
+      "Progress rollup correctness including optional activities",
+      "Unlock evaluation matches the prerequisite graph",
+      "Expiry job does not expire an attempt that was submitted a moment earlier",
+      "Placement adaptation terminates and produces a defensible level"
+    ],
+    "coverage": "85% service, 90% domain (the engine is the most reused code in the product)",
+    "decisions": [
+      { "question": "One engine or per-skill flows?", "choice": "One engine, pluggable graders", "why": "Attempt lifecycle, idempotency, progress rollup and event emission are identical across skills; only scoring differs. Six copies would drift and each would need its own idempotency bug fixed separately" },
+      { "question": "Where do review items come from?", "choice": "The grader returns them", "why": "Only the grader knows what was actually tested; `srs` should not have to reverse-engineer that from a score" },
+      { "question": "Server-side scoring only?", "choice": "Yes, without exception", "why": "Client-side scoring is trivially manipulable, and progress data that cannot be trusted is worthless for both the learner and analytics" }
+    ],
+    "adrs": [{ "id": "ADR-0015", "file": "ADR-0015-content-exercise-core.md", "title": "Shared content + exercise engine" }],
+    "openQuestions": ["Do we move to item response theory for mastery in Phase 5, and what would it require from `questionbank`?"],
+    "todo": [
+      { "title": "Phase 2", "items": [
+        "Enrolment, progress and attempt tables with partitioning",
+        "Exercise engine with grader registry and idempotent submission",
+        "Synchronous grading path end to end with the vocabulary grader",
+        "Progress rollup activity → lesson → unit → course",
+        "Dashboard endpoint with caching and a query-count assertion",
+        "Session tracking",
+        "Unlock evaluation"
+      ]},
+      { "title": "Phase 3", "items": ["Asynchronous grading path for writing and speaking", "Skill mastery estimation and the skill radar", "Adaptive daily plan"] },
+      { "title": "Phase 4", "items": ["Adaptive placement test", "Personalised path generation from placement plus mastery"] }
+    ],
+    "future": ["Item response theory for mastery", "Learned rather than rule-based adaptation", "Offline attempt sync", "Asynchronous progress rollup"],
+    "doNot": [
+      "Do not accept a score from the client.",
+      "Do not implement skill-specific grading here — write a grader in the skill module.",
+      "Do not mutate a graded attempt.",
+      "Do not let the dashboard grow into an N+1 across five modules — it is cached and its query count is asserted in a test.",
+      "Do not couple to a skill module's internals; graders are registered through the interface."
+    ],
+    "runtimePrompts": [{ "task": "learning.study_plan_suggest", "purpose": "Suggest a weekly plan from progress and goals" }]
+  },
+
+  {
+    "name": "srs",
+    "tier": "learning",
+    "group": "modules",
+    "schema": "learn",
+    "phase": 2,
+    "status": "PLANNED",
+    "owner": "@learning-team",
+    "hasJobs": true,
+    "purpose": "Spaced repetition. Owns review cards, the FSRS scheduler, review logs, due queues and retention forecasting. Any material worth remembering long-term enters this module and comes back at the right time.",
+    "context": "FSRS (Free Spaced Repetition Scheduler) replaces SM-2: it models memory stability and difficulty explicitly and typically reaches the same retention with 20–30 % fewer reviews (ADR-0016). The algorithm is documented in `docs/knowledge/fsrs.md` — read it before touching the scheduler.",
+    "businessPurpose": "Vocabulary and grammar are retention problems, not exposure problems. A learner who reviews at the right moment remembers; one who reviews at the wrong moment wastes their time. This module is the single largest lever on learning outcomes in the product.",
+    "responsibilities": [
+      "Review cards: one per (learner, learnable item)",
+      "FSRS scheduling: stability, difficulty, retrievability, next due date",
+      "Review logs: every grade, for scheduler improvement and analytics",
+      "Due queue construction with daily limits and interleaving",
+      "Suspend, bury and reset operations",
+      "Retention forecasting and workload projection",
+      "Per-learner parameter optimisation (later phase)"
+    ],
+    "notResponsibilities": [
+      "Deciding what is worth remembering — graders return `ReviewItems`",
+      "Rendering a review — the skill module supplies the renderer",
+      "XP and streaks — that is `gamification`"
+    ],
+    "tables": [
+      { "name": "review_cards", "purpose": "Scheduling state per learner per item", "notes": "`user_id`, `content_version_id`, `skill`, `stability`, `difficulty`, `due_at`, `reps`, `lapses`, `state`, `suspended_at`. Unique on (user_id, content_version_id)" },
+      { "name": "review_logs", "purpose": "Every review answered", "notes": "Partitioned monthly. `card_id`, `grade`, `elapsed_ms`, `stability_before/after`, `scheduled_days`, `reviewed_at`" },
+      { "name": "srs_params", "purpose": "FSRS weights", "notes": "Global defaults; per-user overrides once enough review history exists" },
+      { "name": "review_daily_stats", "purpose": "Per-day counters", "notes": "Drives limits, forecasting and the heat map" }
+    ],
+    "indexes": [
+      "`idx_review_cards_user_due` — partial `WHERE suspended_at IS NULL`; **the hottest query in the product**",
+      "`idx_review_logs_card_time` — history and scheduler analysis"
+    ],
+    "endpoints": [
+      { "method": "GET", "path": "/api/v1/reviews/session", "permission": "self", "purpose": "Build a review session from due cards", "success": "200" },
+      { "method": "GET", "path": "/api/v1/reviews/due-count", "permission": "self", "purpose": "Badge count", "success": "200" },
+      { "method": "POST", "path": "/api/v1/reviews/{card_id}/answer", "permission": "self", "purpose": "Record a grade and reschedule", "success": "200", "errors": ["REVIEW_CARD_SUSPENDED", "REVIEW_NOT_DUE"] },
+      { "method": "POST", "path": "/api/v1/reviews/session/complete", "permission": "self", "purpose": "Close the session", "success": "200" },
+      { "method": "POST", "path": "/api/v1/reviews/{card_id}/suspend", "permission": "self", "purpose": "Stop scheduling this card", "success": "200" },
+      { "method": "POST", "path": "/api/v1/reviews/{card_id}/reset", "permission": "self", "purpose": "Treat as new again", "success": "200" },
+      { "method": "GET", "path": "/api/v1/reviews/forecast", "permission": "self", "purpose": "Projected workload for the next 30 days", "success": "200" }
+    ],
+    "contract": [
+      { "kind": "interface", "name": "srs.CardWriter", "purpose": "`UpsertCards(ctx, userID, items)` — called by the exercise engine after grading" },
+      { "kind": "interface", "name": "srs.QueueReader", "purpose": "`DueCount`, `DueCards` — used by the dashboard and by `gamification`" },
+      { "kind": "struct", "name": "srs.ReviewItem", "purpose": "`{ContentVersionID, Skill, InitialGrade}`" }
+    ],
+    "events": {
+      "publishes": [
+        { "name": "review.card_answered", "payload": "`{user_id, card_id, grade, interval_days}`" },
+        { "name": "review.session_completed", "payload": "`{user_id, reviewed, correct, minutes}`" },
+        { "name": "review.due_soon", "payload": "`{user_id, due_count}` — emitted by a scheduled job for reminders" }
+      ],
+      "consumes": [{ "name": "content.archived", "reason": "Suspend cards whose content is gone" }, { "name": "user.deleted", "reason": "Delete cards and logs" }]
+    },
+    "dependsOn": ["cache", "job", "content"],
+    "dependedOnBy": ["learning", "vocabulary", "grammar", "gamification", "notification", "analytics"],
+    "rules": [
+      "Scheduling is FSRS, implemented in `domain/` as pure functions with no I/O — it must be testable and provable without a database.",
+      "Grades are exactly four: `again`, `hard`, `good`, `easy`. Do not add a fifth without reading the algorithm's assumptions.",
+      "A card's next due date depends only on its state, the grade, the elapsed time and the parameters — never on the time of day or the session.",
+      "Reviews answered before they are due update stability but do not shorten the schedule punitively; early review is allowed and modelled.",
+      "Daily new-card and review limits are per learner and enforced when building the session, not by refusing an answer mid-session.",
+      "A session interleaves skills and avoids presenting two cards from the same word family consecutively.",
+      "A lapse (grading `again` on a mature card) reduces stability according to the algorithm — it does not reset to zero.",
+      "Suspended cards never appear in a queue and are excluded from forecasts.",
+      "Every answer writes a review log; the log is the raw material for future parameter optimisation and must never be pruned before the retention window.",
+      "The scheduler is versioned: a parameter change records the version on each log so past scheduling remains explainable."
+    ],
+    "cache": [
+      { "key": "fluentra:{env}:srs:due_count:{user_id}:v1", "ttl": "60 s", "invalidation": "Any answer" },
+      { "key": "fluentra:{env}:srs:forecast:{user_id}:v1", "ttl": "1 h", "invalidation": "Nightly rebuild job" }
+    ],
+    "errors": [
+      { "code": "REVIEW_CARD_SUSPENDED", "status": "409", "meaning": "Card is suspended" },
+      { "code": "REVIEW_NOT_DUE", "status": "409", "meaning": "Answered a card outside the session, before it was due" },
+      { "code": "DAILY_LIMIT_REACHED", "status": "409", "meaning": "New-card limit reached for today" }
+    ],
+    "flows": [
+      {
+        "title": "Review session",
+        "mermaid": "sequenceDiagram\n    autonumber\n    actor U as Learner\n    participant S as srs\n    participant C as Redis\n    participant DB as PostgreSQL\n    participant CO as content\n\n    U->>S: GET /reviews/session?limit=20\n    S->>DB: SELECT due cards ORDER BY due_at, id LIMIT 20\n    S->>S: apply daily limits, interleave skills, avoid family clustering\n    S->>CO: GetManyVersions (batched)\n    S-->>U: cards with content and prefetch hints\n\n    loop each card\n        U->>S: POST /reviews/{card}/answer { grade, elapsed_ms }\n        S->>S: FSRS: update stability, difficulty, next due\n        S->>DB: BEGIN; UPDATE review_cards; INSERT review_logs\n        S->>DB: INSERT outbox(review.card_answered); COMMIT\n        S->>C: DEL due_count\n        S-->>U: { next_due_at, interval_days }\n    end\n\n    U->>S: POST /reviews/session/complete\n    S->>DB: INSERT outbox(review.session_completed)\n    Note over DB: gamification awards XP and updates the streak\n    S-->>U: { reviewed, accuracy, next_session_at }"
+      }
+    ],
+    "stateMachine": {
+      "description": "FSRS card states. `Relearning` is the path back after a lapse — it is not the same as `Learning`, because prior stability is partially retained.",
+      "mermaid": "stateDiagram-v2\n    [*] --> New: card created by a grader\n    New --> Learning: first answer\n    Learning --> Review: graduates\n    Learning --> Learning: again/hard within the learning steps\n    Review --> Review: good/easy → longer interval\n    Review --> Relearning: again (lapse)\n    Relearning --> Review: graduates again\n    Review --> Suspended: learner suspends\n    Relearning --> Suspended: learner suspends\n    Suspended --> Review: unsuspend\n    Review --> New: reset"
+    },
+    "tasks": [
+      { "title": "Tune scheduler parameters", "steps": [
+        "Read `docs/knowledge/fsrs.md` first — the parameters are not independent knobs.",
+        "Change the values in `srs_params`, never in code.",
+        "Bump the scheduler version so past logs remain interpretable.",
+        "Simulate against historical review logs before shipping; the simulation harness lives in `test/fixtures/srs/`.",
+        "Roll out behind a feature flag and compare retention over at least four weeks — SRS effects are slow and noisy."
+      ]},
+      { "title": "Make new material reviewable", "steps": [
+        "Have the skill's grader return `ReviewItems` from `Grade`.",
+        "Confirm the content version is stable and published — cards reference versions.",
+        "Add the renderer for that card type in the review player.",
+        "Test the full path: attempt → card created → due tomorrow → answered → rescheduled."
+      ]}
+    ],
+    "limitations": [
+      "Parameters are global in Phase 2; per-learner optimisation needs several hundred reviews per learner and arrives later.",
+      "There is no cross-device offline review queue.",
+      "Interleaving is heuristic rather than optimised.",
+      "The forecast assumes the learner reviews everything on time, which is optimistic."
+    ],
+    "conventions": [
+      "All scheduling logic lives in `domain/fsrs.go` as pure functions. If a scheduling decision needs a database read, the design is wrong.",
+      "Property-based tests (`rapid`) assert the algorithm's invariants: intervals are monotonic in grade, stability never goes negative, a lapse never increases the interval."
+    ],
+    "testFocus": [
+      "FSRS invariants under property-based testing",
+      "Interval monotonicity across grades",
+      "Lapse reduces but does not zero stability",
+      "Early review does not punish the learner",
+      "Daily limits applied at session build time",
+      "Due-count cache invalidation on every answer",
+      "Timezone correctness for 'today' across DST",
+      "Concurrent answers to the same card produce one log"
+    ],
+    "coverage": "95% domain (the scheduler is pure and must be provably correct), 85% service",
+    "decisions": [
+      { "question": "FSRS or SM-2?", "choice": "FSRS", "why": "Explicit stability and difficulty modelling, published parameters, and materially fewer reviews for the same retention. SM-2 is simpler but leaves measurable learning value on the table (ADR-0016)" },
+      { "question": "Four grades or six?", "choice": "Four", "why": "The algorithm is defined for four; more options increase learner hesitation without improving scheduling accuracy" },
+      { "question": "Cards reference versions or items?", "choice": "Versions", "why": "A card must test what the learner actually learned; if the content is revised, a new card is correct" }
+    ],
+    "adrs": [{ "id": "ADR-0016", "file": "ADR-0016-srs-fsrs.md", "title": "FSRS instead of SM-2" }],
+    "todo": [
+      { "title": "Phase 2", "items": [
+        "FSRS implementation in `domain/` with property-based tests",
+        "Cards, logs and daily stats tables with partitioning",
+        "Session building with limits and interleaving",
+        "Answer endpoint with rescheduling and event emission",
+        "Due-count caching with correct invalidation",
+        "Suspend, bury and reset",
+        "Review player in the web app"
+      ]},
+      { "title": "Phase 3", "items": ["Forecast and workload projection", "Heat map", "`review.due_soon` reminder job"] },
+      { "title": "Phase 5", "items": ["Per-learner parameter optimisation from review logs"] }
+    ],
+    "future": ["Per-learner FSRS optimisation", "Load balancing to smooth daily workload", "Cross-skill interference modelling", "Offline review queue"],
+    "doNot": [
+      "Do not put I/O in the scheduling functions.",
+      "Do not add a fifth grade.",
+      "Do not reset stability to zero on a lapse.",
+      "Do not change parameters without simulating against historical logs.",
+      "Do not let cards reference mutable content items.",
+      "Do not prune review logs before the retention window — they are the training data for future tuning."
+    ],
+    "runtimePrompts": []
+  },
+
+  {
+    "name": "vocabulary",
+    "tier": "learning",
+    "group": "modules",
+    "schema": "skill",
+    "phase": 2,
+    "status": "PLANNED",
+    "owner": "@learning-team",
+    "purpose": "Words and how learners acquire them: senses, pronunciations, collocations, word families, learner decks, and the vocabulary graders. The first skill module built, and the reference implementation the other five follow.",
+    "responsibilities": [
+      "Word entries: lemma, part of speech, senses, CEFR level, frequency rank",
+      "Pronunciation (IPA plus TTS audio) and example sentences",
+      "Collocations and word families",
+      "Learner decks and per-learner word state",
+      "Vocabulary exercise graders: recognition, recall, spelling, cloze, matching",
+      "Word lookup and dictionary search"
+    ],
+    "notResponsibilities": ["Review scheduling — that is `srs`", "Content versioning — that is `content`", "Generating example sentences — it asks `platform/ai`"],
+    "tables": [
+      { "name": "words", "purpose": "Lemma-level entry", "notes": "`lemma` + `pos` UNIQUE, `cefr_level`, `frequency_rank`, `ipa`" },
+      { "name": "word_senses", "purpose": "One meaning of a word", "notes": "`word_id`, `definition`, `register`, `domain`, `examples` jsonb" },
+      { "name": "word_relations", "purpose": "Families, synonyms, collocations", "notes": "`from_word_id`, `to_word_id`, `relation`" },
+      { "name": "decks", "purpose": "Learner or curated collection", "notes": "`owner_id` (null = curated), `slug`, `name`, `is_public`" },
+      { "name": "deck_items", "purpose": "Word in a deck", "notes": "Unique on (deck_id, word_sense_id)" },
+      { "name": "user_word_state", "purpose": "Per-learner status", "notes": "`user_id`, `word_sense_id`, `status` (new/learning/known/ignored), `first_seen_at`" }
+    ],
+    "endpoints": [
+      { "method": "GET", "path": "/api/v1/vocabulary/words/{lemma}", "permission": "content.read.published", "purpose": "Dictionary lookup with senses, IPA, audio, examples", "success": "200" },
+      { "method": "GET", "path": "/api/v1/vocabulary/search", "permission": "content.read.published", "purpose": "Search the dictionary", "success": "200" },
+      { "method": "GET", "path": "/api/v1/vocabulary/decks", "permission": "self", "purpose": "The learner's decks plus curated ones", "success": "200" },
+      { "method": "POST", "path": "/api/v1/vocabulary/decks", "permission": "self", "purpose": "Create a deck", "success": "201", "errors": ["DECK_LIMIT_REACHED"] },
+      { "method": "POST", "path": "/api/v1/vocabulary/decks/{id}/words", "permission": "self", "purpose": "Add a word sense to a deck", "success": "201", "errors": ["WORD_ALREADY_IN_DECK"] },
+      { "method": "DELETE", "path": "/api/v1/vocabulary/decks/{id}/words/{sense_id}", "permission": "self", "purpose": "Remove", "success": "204" },
+      { "method": "POST", "path": "/api/v1/vocabulary/words/{sense_id}/state", "permission": "self", "purpose": "Mark known or ignored", "success": "200" },
+      { "method": "POST", "path": "/api/v1/admin/vocabulary/words", "permission": "content.create", "purpose": "Create a word entry", "success": "201" }
+    ],
+    "contract": [
+      { "kind": "interface", "name": "vocabulary.Grader", "purpose": "Implements `learning.ExerciseGrader` for vocabulary activity kinds" },
+      { "kind": "interface", "name": "vocabulary.Reader", "purpose": "`LookupWord`, `GetSenses` — used by `reading` and `writing` for inline glossing" }
+    ],
+    "events": {
+      "publishes": [{ "name": "vocabulary.word_learned", "payload": "`{user_id, word_sense_id, cefr_level}`" }],
+      "consumes": [{ "name": "review.card_answered", "reason": "Update per-learner word state as cards mature" }]
+    },
+    "dependsOn": ["content", "srs", "media", "ai", "search"],
+    "dependsWhy": { "content": "Word entries are content versions", "srs": "Words enter spaced repetition", "media": "TTS pronunciation audio", "ai": "Example sentence generation", "search": "Dictionary search" },
+    "dependedOnBy": ["learning", "reading", "writing", "grammar"],
+    "rules": [
+      "A learner learns a **sense**, not a lemma. \"Bank\" as a financial institution and as a riverbank are different cards.",
+      "A word cannot appear twice in the same deck (unique on deck and sense).",
+      "Deck count and size limits come from the learner's entitlement; the free tier is limited.",
+      "Grading recall accepts minor spelling variation via edit distance, configured per activity; grading spelling does not.",
+      "British and American spellings are both accepted unless the activity explicitly tests one variant.",
+      "Example sentences are AI-generated but reviewed before publication — a wrong example teaches a wrong usage.",
+      "Pronunciation audio is pre-generated at publish time and cached; it is never synthesised during a request.",
+      "A word marked `ignored` never appears in a session again unless the learner reverses it."
+    ],
+    "cache": [
+      { "key": "fluentra:{env}:vocabulary:word:{lemma}:v1", "ttl": "30 d", "invalidation": "Version bump on republish" },
+      { "key": "fluentra:{env}:vocabulary:deck:{deck_id}:v1", "ttl": "10 min", "invalidation": "Deck write" }
+    ],
+    "errors": [
+      { "code": "DECK_LIMIT_REACHED", "status": "409", "meaning": "Plan limit on deck count" },
+      { "code": "DECK_SIZE_LIMIT_REACHED", "status": "409", "meaning": "Plan limit on words per deck" },
+      { "code": "WORD_ALREADY_IN_DECK", "status": "409", "meaning": "Duplicate sense in the deck" },
+      { "code": "WORD_NOT_FOUND", "status": "404", "meaning": "No entry for that lemma" }
+    ],
+    "flows": [
+      {
+        "title": "Learning a word end to end",
+        "mermaid": "flowchart LR\n    A[Learner meets a word<br/>in a reading passage] --> B[taps for a gloss]\n    B --> C[\"vocabulary.LookupWord\"]\n    C --> D[add to deck]\n    D --> E[user_word_state = learning]\n    E --> F[appears in the next lesson's<br/>vocabulary activity]\n    F --> G[graded by vocabulary.Grader]\n    G --> H[\"GradeResult.ReviewItems → srs\"]\n    H --> I[review card created]\n    I --> J[due tomorrow, then in 3 days, then 8…]\n    J --> K[status becomes known<br/>once stability passes the threshold]"
+      }
+    ],
+    "tasks": [
+      { "title": "Add a vocabulary exercise type", "steps": [
+        "Define the activity kind and its `config` schema in `lesson`.",
+        "Define the content `body` schema in `content` if the item shape is new.",
+        "Implement the grading branch in `service/grader.go`.",
+        "Decide whether it produces review items, and with what initial grade.",
+        "Add the React renderer.",
+        "Add golden-file tests covering correct, near-miss and wrong answers."
+      ]}
+    ],
+    "limitations": [
+      "Sense disambiguation in reading glossing is heuristic (frequency plus context window), not a model.",
+      "Collocation data is manually curated; there is no corpus-derived pipeline.",
+      "No morphological analyser — inflected forms are mapped by a lookup table."
+    ],
+    "testFocus": [
+      "Sense-level uniqueness in decks",
+      "Edit-distance tolerance boundaries per activity kind",
+      "British/American spelling acceptance",
+      "Deck and size limits by entitlement",
+      "Review items produced with the correct initial grade",
+      "Lookup performance on the dictionary index"
+    ],
+    "decisions": [
+      { "question": "Lemma-level or sense-level learning?", "choice": "Sense-level", "why": "Conflating senses teaches the wrong thing and makes scheduling meaningless for polysemous words, which are precisely the difficult ones" },
+      { "question": "Generate example sentences at request time?", "choice": "No — generate at authoring time and review them", "why": "Latency, cost, and above all correctness: an unreviewed example can teach a wrong collocation to thousands of learners" }
+    ],
+    "todo": [
+      { "title": "Phase 2", "items": [
+        "Words, senses, relations, decks and learner state",
+        "Dictionary lookup and search",
+        "Deck CRUD with entitlement limits",
+        "Recognition, recall, spelling and cloze graders",
+        "Review item production feeding `srs`",
+        "TTS pronunciation pre-generation",
+        "Seed dictionary of 2,000 A1–B1 senses"
+      ]}
+    ],
+    "future": ["Corpus-derived collocations", "Personalised word recommendation from reading history", "Morphological analyser", "Image mnemonics"],
+    "doNot": [
+      "Do not schedule reviews here — return review items and let `srs` schedule.",
+      "Do not treat a lemma as the learnable unit.",
+      "Do not synthesise audio during a request.",
+      "Do not publish an AI-generated example without review."
+    ],
+    "runtimePrompts": [
+      { "task": "vocabulary.example_sentence", "purpose": "Level-appropriate example sentences for a sense" },
+      { "task": "vocabulary.definition_simplify", "purpose": "Rewrite a definition at the learner's level" }
+    ]
+  },
+
+  {
+    "name": "writing",
+    "tier": "learning",
+    "group": "modules",
+    "schema": "skill",
+    "phase": 3,
+    "status": "PLANNED",
+    "owner": "@learning-team",
+    "hasJobs": true,
+    "purpose": "Writing tasks, drafts, submissions and AI rubric grading. The most expensive feature in the product per use, and the one learners value most.",
+    "context": "Grading is asynchronous by necessity: a frontier model takes 10–30 seconds on a 250-word essay. The learner experience is therefore submit → 202 → streamed feedback, never a spinning request.",
+    "responsibilities": [
+      "Writing tasks: prompt, type (IELTS Task 1/2, email, essay, free), word bounds, time limit, rubric",
+      "Drafts with autosave and revision history",
+      "Submission lifecycle and idempotency",
+      "AI rubric grading orchestration and streamed feedback",
+      "Sub-scores per rubric criterion plus overall band",
+      "Inline annotations mapped to text ranges",
+      "Similarity checking against the learner's own history and a reference corpus"
+    ],
+    "notResponsibilities": ["Calling a model directly — it asks `platform/ai` by task name", "The rubric's pedagogy — that lives in `docs/knowledge/cefr.md` and the prompt", "Awarding XP — that is `gamification`"],
+    "tables": [
+      { "name": "writing_tasks", "purpose": "Prompt definitions", "notes": "Content-versioned. `type`, `prompt`, `min_words`, `max_words`, `time_limit_s`, `rubric_id`" },
+      { "name": "writing_drafts", "purpose": "Autosaved work in progress", "notes": "`user_id`, `task_id`, `body`, `word_count`, `updated_at`; one active draft per task" },
+      { "name": "writing_submissions", "purpose": "Submitted work", "notes": "`user_id`, `task_id`, `body`, `word_count`, `status`, `overall_band`, `submitted_at`. Immutable body." },
+      { "name": "writing_feedback", "purpose": "Grading output", "notes": "`submission_id`, `criterion`, `score`, `comment`, `annotations` jsonb, `prompt_version`, `provider`" },
+      { "name": "writing_revisions", "purpose": "Draft history", "notes": "Snapshot every N minutes or M characters; retained 90 days" }
+    ],
+    "endpoints": [
+      { "method": "GET", "path": "/api/v1/writing/tasks", "permission": "content.read.published", "purpose": "Available tasks by level and type", "success": "200" },
+      { "method": "PUT", "path": "/api/v1/writing/tasks/{id}/draft", "permission": "self", "purpose": "Autosave a draft", "success": "200" },
+      { "method": "POST", "path": "/api/v1/writing/submissions", "permission": "self", "purpose": "Submit for grading", "success": "202", "errors": ["SUBMISSION_TOO_SHORT", "SUBMISSION_TOO_LONG", "AI_QUOTA_EXCEEDED", "AI_OPTED_OUT"], "notes": "Requires an `Idempotency-Key`; returns a stream URL" },
+      { "method": "GET", "path": "/api/v1/writing/submissions/{id}", "permission": "self", "purpose": "Submission with feedback when ready", "success": "200" },
+      { "method": "GET", "path": "/api/v1/writing/submissions/{id}/stream", "permission": "self", "purpose": "SSE stream of grading progress and partial feedback", "success": "200" },
+      { "method": "GET", "path": "/api/v1/writing/submissions", "permission": "self", "purpose": "History with band progression", "success": "200" },
+      { "method": "POST", "path": "/api/v1/writing/submissions/{id}/dispute", "permission": "self", "purpose": "Flag a grade for human review", "success": "202" }
+    ],
+    "contract": [
+      { "kind": "interface", "name": "writing.Grader", "purpose": "Implements `learning.ExerciseGrader`; always returns `Async: true`" },
+      { "kind": "interface", "name": "writing.Reader", "purpose": "`SubmissionHistory` — used by `analytics` and `admin`" }
+    ],
+    "events": {
+      "publishes": [
+        { "name": "writing.submission_created", "payload": "`{user_id, submission_id, task_id, word_count}`" },
+        { "name": "writing.graded", "payload": "`{user_id, submission_id, overall_band, criteria}`" },
+        { "name": "writing.grading_failed", "payload": "`{submission_id, reason}`" }
+      ],
+      "consumes": []
+    },
+    "dependsOn": ["ai", "job", "content", "learning", "notification"],
+    "dependsWhy": { "ai": "Rubric grading and quick hints", "job": "Grading runs as a job", "content": "Task definitions are content", "learning": "Attempt lifecycle and progress", "notification": "Tell the learner feedback is ready" },
+    "dependedOnBy": ["learning", "analytics", "gamification"],
+    "rules": [
+      "Grading is always asynchronous. The HTTP request returns 202 with a stream URL and never waits.",
+      "Word count bounds are enforced server-side before any model call — rejecting a 12-word essay costs nothing and should not cost a grading credit.",
+      "A submission body is immutable. A revision is a new submission, so band progression over time is real.",
+      "Quota and budget are checked before the job is enqueued, so a learner is told immediately rather than after a wait.",
+      "Sub-scores are validated against the rubric's range and checked for consistency with the overall band; an inconsistent result fails the job rather than reaching the learner.",
+      "Annotations reference character ranges in the immutable submitted body, so highlighting cannot drift.",
+      "Learner text is passed to the model only inside the untrusted-content wrapper.",
+      "If the learner has opted out of AI processing, submission is refused with a clear explanation rather than silently degraded.",
+      "A disputed grade is queued for admin review; the original feedback is retained alongside any correction.",
+      "Grading failure never counts against the learner's quota — the quota is decremented on success."
+    ],
+    "cache": [{ "key": "fluentra:{env}:writing:task:{task_id}:v1", "ttl": "24 h", "invalidation": "Task republished" }],
+    "errors": [
+      { "code": "SUBMISSION_TOO_SHORT", "status": "422", "meaning": "Below the task's minimum word count" },
+      { "code": "SUBMISSION_TOO_LONG", "status": "422", "meaning": "Above the maximum" },
+      { "code": "SUBMISSION_ALREADY_GRADED", "status": "409", "meaning": "Immutable once graded" },
+      { "code": "GRADING_FAILED", "status": "500", "meaning": "All grading attempts failed" },
+      { "code": "DISPUTE_ALREADY_OPEN", "status": "409", "meaning": "One open dispute per submission" }
+    ],
+    "security": [
+      "Essays are sensitive personal content: only the author and an admin with an audited reason may read one.",
+      "The prompt-injection defence is layered — wrapper, hardened preamble, schema validation, band clamping, and a red-team eval suite that must score 1.0.",
+      "Similarity checking never exposes another learner's text; it reports a score, not a source."
+    ],
+    "flows": [
+      {
+        "title": "Submit and stream feedback",
+        "mermaid": "sequenceDiagram\n    autonumber\n    actor U as Learner\n    participant W as writing\n    participant DB as PostgreSQL\n    participant K as worker\n    participant AI as platform/ai\n\n    U->>W: POST /writing/submissions (Idempotency-Key)\n    W->>W: word bounds, task validity, quota, opt-out\n    W->>DB: BEGIN; INSERT submission(status=queued)\n    W->>DB: INSERT river_job(writing.grade); INSERT outbox(submission_created); COMMIT\n    W-->>U: 202 { submission_id, stream_url }\n    U->>W: GET /writing/submissions/{id}/stream (SSE)\n\n    K->>AI: Run(writing.grade_essay, { essay, rubric, level, locale })\n    AI-->>K: streamed chunks\n    K->>DB: append partial feedback\n    K-->>W: chunk (pg NOTIFY)\n    W-->>U: SSE chunk\n    AI-->>K: final structured result\n    K->>K: validate schema, clamp bands, consistency check\n    alt invalid\n        K->>DB: status=failed; do not consume quota\n        W-->>U: SSE error with a safe message\n    else valid\n        K->>DB: BEGIN; UPDATE submission(graded, bands); INSERT feedback\n        K->>DB: consume quota; INSERT outbox(writing.graded); COMMIT\n        W-->>U: SSE done\n    end"
+      }
+    ],
+    "stateMachine": {
+      "mermaid": "stateDiagram-v2\n    [*] --> Draft: autosave\n    Draft --> Queued: submit\n    Queued --> Grading: worker picks it up\n    Grading --> Graded: valid result\n    Grading --> Failed: all attempts exhausted or invalid output\n    Failed --> Queued: admin retry (no quota charge)\n    Graded --> Disputed: learner disputes\n    Disputed --> Graded: admin resolves (original retained)\n    Graded --> [*]"
+    },
+    "failures": [
+      { "failure": "All AI providers down", "detection": "`AI_UNAVAILABLE` from the chain", "behaviour": "Job retries with backoff for up to an hour; the learner sees \"still grading\"; no quota charged" },
+      { "failure": "Output fails schema after repair", "detection": "`ai_schema_violation_total`", "behaviour": "Job fails; alert if the rate exceeds 5 %; the prompt version is a suspect" },
+      { "failure": "Learner disconnects mid-stream", "detection": "SSE connection closed", "behaviour": "Grading continues; partials are persisted; the result is waiting when they return" }
+    ],
+    "tasks": [
+      { "title": "Add a writing task type", "steps": [
+        "Add the type and its rubric to `docs/knowledge/cefr.md` and the rubric registry.",
+        "Create the task content kind and its schema.",
+        "Extend the runtime prompt input schema if the rubric shape differs — this means a new prompt version.",
+        "Add golden examples across CEFR levels to the eval suite and re-run it.",
+        "Add the editor variant in the web app.",
+        "Verify the band-consistency check still holds for the new rubric."
+      ]}
+    ],
+    "limitations": [
+      "Grading is single-pass; there is no second-opinion pass or model ensemble in Phase 3.",
+      "Similarity checking covers the learner's own history and a small reference corpus only — it is not plagiarism detection against the web.",
+      "Handwriting or image submission is not supported.",
+      "Annotation ranges assume plain text; rich formatting is stripped before grading."
+    ],
+    "testFocus": [
+      "Word bounds rejected before any model call",
+      "Idempotent submission",
+      "Async attempt completes only on `writing.graded`, idempotently",
+      "Band clamping and cross-criterion consistency",
+      "Prompt-injection fixtures do not move the band",
+      "Failure does not consume quota",
+      "SSE reconnection resumes from `Last-Event-ID`",
+      "Disputes preserve the original feedback"
+    ],
+    "decisions": [
+      { "question": "Synchronous or asynchronous grading?", "choice": "Asynchronous with streaming", "why": "10–30 seconds is far outside an acceptable request budget, and a provider outage must not surface as a failed submission" },
+      { "question": "Charge quota on submit or on success?", "choice": "On success", "why": "A learner should never lose a credit to our infrastructure failure" },
+      { "question": "Allow editing a submission?", "choice": "No — resubmit instead", "why": "Band progression only means something if each submission is a fixed artefact" }
+    ],
+    "todo": [
+      { "title": "Phase 3", "items": [
+        "Tasks, drafts with autosave, revision snapshots",
+        "Submission with idempotency and server-side bounds",
+        "Async grading job calling `writing.grade_essay`",
+        "SSE streaming with partial persistence and reconnection",
+        "Band and criterion validation with clamping",
+        "Feedback rendering with inline annotations",
+        "History view with band progression",
+        "Dispute flow and admin review queue",
+        "Red-team eval suite for injection"
+      ]}
+    ],
+    "future": ["Second-opinion grading for borderline bands", "Model ensemble for high-stakes submissions", "Guided revision with tracked improvement", "Peer review"],
+    "doNot": [
+      "Do not grade synchronously.",
+      "Do not call a provider SDK — use `platform/ai` by task name.",
+      "Do not trust the model's band without clamping and a consistency check.",
+      "Do not charge quota for a failed grading.",
+      "Do not mutate a submitted body.",
+      "Do not put learner text into the instruction block of a prompt."
+    ],
+    "runtimePrompts": [
+      { "task": "writing.grade_essay", "purpose": "Rubric grading with per-criterion scores and annotations" },
+      { "task": "writing.quick_hint", "purpose": "Cheap in-editor hint while drafting" }
+    ]
+  },
+
+  {
+    "name": "speaking",
+    "tier": "learning",
+    "group": "modules",
+    "schema": "skill",
+    "phase": 3,
+    "status": "PLANNED",
+    "owner": "@learning-team",
+    "hasJobs": true,
+    "purpose": "Spoken practice: prompts, browser recording, automatic speech recognition, phoneme-level pronunciation assessment, fluency measurement, and AI coaching built on top of those numbers.",
+    "responsibilities": [
+      "Speaking tasks: read-aloud, describe-an-image, opinion, role-play",
+      "Recording upload coordination and attempt lifecycle",
+      "Orchestrating the media pipeline for transcription and pronunciation assessment",
+      "Fluency metrics: speech rate, pauses, filler words",
+      "AI coaching feedback derived from transcript plus scores",
+      "Phoneme-level feedback rendering data (the heat map)"
+    ],
+    "notResponsibilities": ["Transcoding or ASR — that is `platform/media`", "Storing audio — that is `platform/storage`", "Generating text feedback directly — it asks `platform/ai`"],
+    "tables": [
+      { "name": "speaking_tasks", "purpose": "Prompt definitions", "notes": "Content-versioned. `type`, `prompt`, `reference_text` (read-aloud only), `prep_seconds`, `max_seconds`" },
+      { "name": "speaking_attempts", "purpose": "One recording", "notes": "`user_id`, `task_id`, `asset_id`, `status`, `transcript_id`, `overall_score`, `duration_ms`" },
+      { "name": "pronunciation_scores", "purpose": "Per-attempt assessment", "notes": "`attempt_id`, `accuracy`, `fluency`, `completeness`, `prosody`, `words` jsonb (per-word and per-phoneme)" },
+      { "name": "speaking_feedback", "purpose": "AI coaching", "notes": "`attempt_id`, `summary`, `strengths`, `improvements`, `prompt_version`" }
+    ],
+    "endpoints": [
+      { "method": "GET", "path": "/api/v1/speaking/tasks", "permission": "content.read.published", "purpose": "Available tasks", "success": "200" },
+      { "method": "POST", "path": "/api/v1/speaking/upload-intent", "permission": "self", "purpose": "Presigned URL for the recording", "success": "200", "errors": ["UNSUPPORTED_AUDIO_FORMAT", "AUDIO_TOO_LONG"] },
+      { "method": "POST", "path": "/api/v1/speaking/attempts", "permission": "self", "purpose": "Create the attempt after upload", "success": "202", "errors": ["UPLOAD_VERIFICATION_FAILED", "AI_QUOTA_EXCEEDED"] },
+      { "method": "GET", "path": "/api/v1/speaking/attempts/{id}", "permission": "self", "purpose": "Attempt with scores and feedback when ready", "success": "200" },
+      { "method": "GET", "path": "/api/v1/speaking/attempts", "permission": "self", "purpose": "History with score progression", "success": "200" },
+      { "method": "DELETE", "path": "/api/v1/speaking/attempts/{id}/recording", "permission": "self", "purpose": "Delete the audio while keeping the scores", "success": "204" }
+    ],
+    "contract": [{ "kind": "interface", "name": "speaking.Grader", "purpose": "Implements `learning.ExerciseGrader`; always asynchronous" }],
+    "events": {
+      "publishes": [
+        { "name": "speaking.attempt_recorded", "payload": "`{user_id, attempt_id, asset_id}`" },
+        { "name": "speaking.scored", "payload": "`{user_id, attempt_id, accuracy, fluency}`" }
+      ],
+      "consumes": [{ "name": "media.transcribed", "reason": "Continue the pipeline once ASR is done" }]
+    },
+    "dependsOn": ["media", "ai", "storage", "job", "content", "learning"],
+    "dependedOnBy": ["learning", "analytics", "gamification"],
+    "rules": [
+      "Audio never passes through the API — presigned upload only.",
+      "Maximum recording length is enforced in the presigned URL **and** verified after upload; a client can lie about both.",
+      "Explicit consent is required before the first recording, and is recorded with a timestamp.",
+      "Recordings are retained 90 days unless the learner pins the attempt; scores and transcripts outlive the audio.",
+      "A learner may delete a recording at any time; the derived scores remain, clearly marked as having no audio.",
+      "If ASR confidence is below the threshold, the attempt is not scored — the learner is asked to re-record rather than being penalised for a bad microphone.",
+      "Read-aloud tasks score completeness against the reference text; open tasks do not.",
+      "AI coaching receives the transcript and the numeric scores, never the raw audio.",
+      "Scores are clamped to their defined ranges and cross-checked before display."
+    ],
+    "errors": [
+      { "code": "RECORDING_CONSENT_REQUIRED", "status": "403", "meaning": "Voice consent not yet given" },
+      { "code": "AUDIO_TOO_LONG", "status": "422", "meaning": "Exceeds the task maximum" },
+      { "code": "AUDIO_TOO_QUIET", "status": "422", "meaning": "Signal level too low to assess" },
+      { "code": "TRANSCRIPTION_LOW_CONFIDENCE", "status": "422", "meaning": "Ask the learner to re-record" },
+      { "code": "SCORING_FAILED", "status": "500", "meaning": "Assessment pipeline failed after retries" }
+    ],
+    "security": [
+      "Voice is biometric-adjacent personal data: private bucket, presigned access only, explicit consent, short retention, learner-controlled deletion.",
+      "Only speech providers with no-training-on-customer-data terms are used.",
+      "Admin access to a recording requires a stated reason and is audited."
+    ],
+    "flows": [
+      {
+        "title": "Record to score",
+        "mermaid": "sequenceDiagram\n    autonumber\n    actor U as Learner\n    participant S as speaking\n    participant ST as storage\n    participant M as media\n    participant AI as platform/ai\n\n    U->>S: POST /speaking/upload-intent\n    S->>S: consent check, quota check\n    S->>ST: PresignPut (5 min, type + size pinned)\n    S-->>U: { upload_url, asset_id }\n    U->>ST: PUT audio directly\n    U->>S: POST /speaking/attempts { asset_id, task_id }\n    S->>ST: Stat — verify size and type\n    S->>S: BEGIN; INSERT attempt(status=processing); enqueue job; COMMIT\n    S-->>U: 202 { attempt_id }\n\n    M->>M: transcode → 16 kHz mono\n    M->>M: ASR → transcript + word timings\n    alt low confidence\n        M->>S: fail with TRANSCRIPTION_LOW_CONFIDENCE\n        S-->>U: ask to re-record; no quota charged\n    else\n        M->>M: pronunciation assessment\n        M->>S: media.transcribed + scores\n        S->>AI: Run(speaking.feedback, { transcript, scores, task, level })\n        AI-->>S: structured coaching\n        S->>S: clamp + persist; publish speaking.scored\n        S-->>U: attempt ready (poll or SSE)\n    end"
+      }
+    ],
+    "tasks": [
+      { "title": "Add a speaking task type", "steps": [
+        "Decide whether it has a reference text — that determines whether completeness is scored.",
+        "Add the content kind and its schema.",
+        "Extend the feedback prompt's input schema if the coaching shape differs (new prompt version).",
+        "Add the recorder UI variant with the right preparation and recording timers.",
+        "Add fixture audio to `test/fixtures/corpus/speech/` covering a strong and a weak speaker."
+      ]}
+    ],
+    "limitations": [
+      "Pronunciation assessment quality varies by accent; this is a known and documented limitation of every current provider, and the UI wording avoids implying an authoritative judgement.",
+      "No real-time feedback while speaking.",
+      "Background noise degrades scores; there is no noise suppression stage in Phase 3.",
+      "Prosody scoring depends on provider support and may be absent."
+    ],
+    "testFocus": [
+      "Consent gate before the first recording",
+      "Duration and format enforced both in the presign and after upload",
+      "Low-confidence transcripts are not scored and do not consume quota",
+      "Recording deletion preserves scores",
+      "Retention job deletes audio at 90 days and keeps pinned attempts",
+      "Score clamping",
+      "Completeness scored only for read-aloud tasks"
+    ],
+    "decisions": [
+      { "question": "Buy or build pronunciation assessment?", "choice": "Buy, behind an interface", "why": "Phoneme-level scoring is a research problem; buying lets us ship and measure, and the interface keeps a self-hosted GOP option open (plan review Q2)" },
+      { "question": "Keep recordings indefinitely?", "choice": "90 days, learner-deletable, pinnable", "why": "Storage cost and privacy exposure both grow with retention, and the scores — which are what progress is built on — do not need the audio" },
+      { "question": "Send audio to the LLM?", "choice": "No — transcript and scores only", "why": "Cheaper, faster, and it keeps voice data out of a second vendor's hands" }
+    ],
+    "todo": [
+      { "title": "Phase 3", "items": [
+        "Tasks, attempts and scores model",
+        "Consent flow and recording UI with timers",
+        "Presigned upload plus post-upload verification",
+        "Media pipeline orchestration",
+        "Pronunciation heat map rendering data",
+        "AI coaching via `speaking.feedback`",
+        "Retention job and recording deletion",
+        "Score progression history"
+      ]}
+    ],
+    "future": ["Real-time streaming feedback", "Noise suppression before ASR", "Accent-aware scoring calibration", "Conversation practice with a model"],
+    "doNot": [
+      "Do not stream audio through the API.",
+      "Do not score an attempt whose transcription confidence is low.",
+      "Do not send raw audio to an LLM.",
+      "Do not record without explicit consent.",
+      "Do not retain audio beyond the retention window."
+    ],
+    "runtimePrompts": [{ "task": "speaking.feedback", "purpose": "Turn transcript and numeric scores into actionable coaching" }]
+  },
+
+  {
+    "name": "reading",
+    "tier": "learning",
+    "group": "modules",
+    "schema": "skill",
+    "phase": 3,
+    "status": "PLANNED",
+    "owner": "@learning-team",
+    "purpose": "Reading passages and comprehension: passage rendering, question sets, span-based answers, reading speed measurement, inline glossing, and difficulty estimation.",
+    "responsibilities": [
+      "Passages with paragraph structure, word count and estimated difficulty",
+      "Comprehension question sets bound to a passage",
+      "Span answers (locate the evidence in the text)",
+      "Reading speed (words per minute) measurement",
+      "Inline vocabulary glossing via `vocabulary`",
+      "Reading graders: multiple choice, true/false/not-given, matching, gap-fill, span"
+    ],
+    "notResponsibilities": ["Question authoring — that is `questionbank`", "Word definitions — that is `vocabulary`", "Passage sourcing and licensing — an editorial concern"],
+    "tables": [
+      { "name": "passages", "purpose": "Reading text", "notes": "Content-versioned. `body`, `word_count`, `cefr_level`, `flesch_kincaid`, `topic`, `source_attribution`" },
+      { "name": "passage_questions", "purpose": "Questions bound to a passage", "notes": "`passage_id`, `question_id` (from `questionbank`), `position`, `evidence_span`" },
+      { "name": "reading_attempts", "purpose": "One pass through a passage", "notes": "`user_id`, `passage_id`, `wpm`, `comprehension_score`, `time_ms`" }
+    ],
+    "endpoints": [
+      { "method": "GET", "path": "/api/v1/reading/passages/{id}", "permission": "content.read.published", "purpose": "Passage with glossing hints", "success": "200" },
+      { "method": "POST", "path": "/api/v1/reading/attempts", "permission": "self", "purpose": "Start a timed reading attempt", "success": "201" },
+      { "method": "POST", "path": "/api/v1/reading/attempts/{id}/submit", "permission": "self", "purpose": "Submit answers", "success": "200", "errors": ["ATTEMPT_EXPIRED"] }
+    ],
+    "contract": [{ "kind": "interface", "name": "reading.Grader", "purpose": "Implements `learning.ExerciseGrader` for reading activity kinds" }],
+    "events": { "publishes": [{ "name": "reading.attempt_completed", "payload": "`{user_id, passage_id, wpm, score}`" }], "consumes": [] },
+    "dependsOn": ["content", "questionbank", "vocabulary", "learning"],
+    "dependedOnBy": ["learning", "exam", "analytics"],
+    "rules": [
+      "Reading speed is measured from the first render to the moment the learner requests the questions, not to submission — thinking time is not reading time.",
+      "Questions are hidden until the learner finishes reading, for question types that require it.",
+      "True/false/not-given grading treats \"not given\" as a distinct third answer, never as a wrong \"false\".",
+      "Span answers accept any span that fully contains the expected evidence, within a configured tolerance.",
+      "Glossing is on demand and is recorded — a looked-up word is a signal that it belongs in the learner's vocabulary.",
+      "Difficulty combines Flesch-Kincaid, CEFR word coverage and an AI estimate; the author confirms the final value.",
+      "Passage attribution and licence are mandatory metadata; unattributed third-party text cannot be published."
+    ],
+    "errors": [
+      { "code": "PASSAGE_NOT_FOUND", "status": "404", "meaning": "Unknown or unpublished passage" },
+      { "code": "QUESTIONS_LOCKED", "status": "403", "meaning": "Questions requested before reading was marked complete" }
+    ],
+    "flows": [
+      {
+        "title": "Timed reading attempt",
+        "mermaid": "flowchart LR\n    A[Start attempt] --> B[render passage, start timer]\n    B --> C{learner taps a word}\n    C -->|yes| D[gloss via vocabulary<br/>record the lookup]\n    D --> B\n    C -->|no| E[learner marks reading complete]\n    E --> F[stop timer → wpm]\n    F --> G[reveal questions]\n    G --> H[submit answers]\n    H --> I[grade per question type]\n    I --> J[comprehension score + wpm → progress]\n    J --> K[looked-up words suggested for the deck]"
+      }
+    ],
+    "tasks": [
+      { "title": "Add a reading question type", "steps": [
+        "Add the type to `questionbank` with its answer schema.",
+        "Implement the grading branch here.",
+        "Add the renderer and answer control in the web app.",
+        "Add golden tests including the ambiguous cases — reading questions are where grading disputes come from."
+      ]}
+    ],
+    "limitations": [
+      "Reading speed is self-reported in the sense that the learner marks completion; there is no eye tracking.",
+      "Span tolerance is a character-offset heuristic.",
+      "No adaptive passage selection within a session."
+    ],
+    "testFocus": [
+      "WPM calculation across pauses and re-reads",
+      "Not-given is graded as its own answer",
+      "Span tolerance boundaries",
+      "Questions locked until reading completion",
+      "Glossing lookups recorded and surfaced as suggestions"
+    ],
+    "decisions": [
+      { "question": "Where do reading questions live?", "choice": "In `questionbank`, referenced here", "why": "The same item is reusable in an exam; duplicating it would let the two copies diverge and break item statistics" },
+      { "question": "Measure reading speed how?", "choice": "First render to reading-complete", "why": "Including question time would conflate reading with reasoning and make the metric useless for progress" }
+    ],
+    "todo": [
+      { "title": "Phase 3", "items": [
+        "Passages with difficulty metadata and attribution",
+        "Question set binding to `questionbank`",
+        "Timed attempt with WPM measurement",
+        "Graders for MCQ, T/F/NG, matching, gap-fill and span",
+        "Inline glossing with lookup recording",
+        "Reading player in the web app"
+      ]}
+    ],
+    "future": ["Adaptive passage selection", "Extensive-reading mode with a library", "Automatic question generation reviewed by an admin"],
+    "doNot": [
+      "Do not duplicate question storage — reference `questionbank`.",
+      "Do not treat not-given as false.",
+      "Do not include question-answering time in reading speed.",
+      "Do not publish a passage without attribution."
+    ],
+    "runtimePrompts": [{ "task": "reading.question_generate", "purpose": "Draft comprehension questions for admin review" }]
+  },
+
+  {
+    "name": "listening",
+    "tier": "learning",
+    "group": "modules",
+    "schema": "skill",
+    "phase": 3,
+    "status": "PLANNED",
+    "owner": "@learning-team",
+    "purpose": "Audio comprehension: audio items, transcripts, play-limit policy, dictation, note-taking, and listening graders.",
+    "responsibilities": [
+      "Audio items with speaker metadata, accent, speed and transcript",
+      "Play-limit policy enforcement (exam-realistic constraints)",
+      "Transcript reveal policy",
+      "Dictation grading with tolerance",
+      "Segment-level replay for study mode",
+      "Listening graders: MCQ, gap-fill, dictation, ordering"
+    ],
+    "notResponsibilities": ["Audio processing — that is `platform/media`", "Question authoring — that is `questionbank`"],
+    "tables": [
+      { "name": "audio_items", "purpose": "A listening resource", "notes": "Content-versioned. `asset_id`, `duration_ms`, `accent`, `speech_rate`, `cefr_level`" },
+      { "name": "transcripts", "purpose": "Aligned transcript", "notes": "`audio_item_id`, `segments` jsonb with timings and speaker labels" },
+      { "name": "listening_attempts", "purpose": "One attempt", "notes": "`user_id`, `audio_item_id`, `plays_used`, `score`, `answers` jsonb" }
+    ],
+    "endpoints": [
+      { "method": "GET", "path": "/api/v1/listening/items/{id}", "permission": "content.read.published", "purpose": "Item with a presigned audio URL and the play policy", "success": "200" },
+      { "method": "POST", "path": "/api/v1/listening/attempts", "permission": "self", "purpose": "Start an attempt", "success": "201" },
+      { "method": "POST", "path": "/api/v1/listening/attempts/{id}/play", "permission": "self", "purpose": "Record a play (server-side counter)", "success": "200", "errors": ["PLAY_LIMIT_REACHED"] },
+      { "method": "POST", "path": "/api/v1/listening/attempts/{id}/submit", "permission": "self", "purpose": "Submit answers", "success": "200" },
+      { "method": "GET", "path": "/api/v1/listening/attempts/{id}/transcript", "permission": "self", "purpose": "Transcript after submission", "success": "200", "errors": ["TRANSCRIPT_LOCKED"] }
+    ],
+    "contract": [{ "kind": "interface", "name": "listening.Grader", "purpose": "Implements `learning.ExerciseGrader` for listening activity kinds" }],
+    "events": { "publishes": [{ "name": "listening.attempt_completed", "payload": "`{user_id, item_id, score, plays_used}`" }], "consumes": [{ "name": "media.processed", "reason": "Mark an audio item ready for publication" }] },
+    "dependsOn": ["content", "media", "questionbank", "learning"],
+    "dependedOnBy": ["learning", "exam", "analytics"],
+    "rules": [
+      "The play counter is authoritative on the server. A client that hides the play button is a convenience; a client that lies must still be limited.",
+      "Play limits are per activity configuration: exam mode typically allows one, study mode unlimited.",
+      "The transcript is locked until the attempt is submitted, unless the activity explicitly permits it.",
+      "Dictation grading normalises punctuation and case by default and accepts configured spelling variants; the tolerance is per activity.",
+      "An audio item cannot be published until its media derivatives exist and its transcript is present.",
+      "Presigned audio URLs are per attempt and short-lived, so a link cannot be shared to bypass limits.",
+      "Segment replay is available only in study mode."
+    ],
+    "errors": [
+      { "code": "PLAY_LIMIT_REACHED", "status": "403", "meaning": "No plays remaining for this attempt" },
+      { "code": "TRANSCRIPT_LOCKED", "status": "403", "meaning": "Transcript not yet available" },
+      { "code": "AUDIO_NOT_READY", "status": "409", "meaning": "Media still processing" }
+    ],
+    "flows": [
+      {
+        "title": "Exam-mode listening",
+        "mermaid": "sequenceDiagram\n    autonumber\n    actor U as Learner\n    participant L as listening\n    participant ST as storage\n\n    U->>L: POST /listening/attempts { item_id }\n    L->>L: INSERT attempt (plays_used = 0)\n    L->>ST: PresignGet (attempt-scoped, 15 min)\n    L-->>U: { attempt_id, audio_url, plays_allowed: 1 }\n    U->>L: POST /attempts/{id}/play\n    L->>L: plays_used = 1\n    L-->>U: { plays_remaining: 0 }\n    U->>L: POST /attempts/{id}/play\n    L-->>U: 403 PLAY_LIMIT_REACHED\n    U->>L: POST /attempts/{id}/submit\n    L->>L: grade; unlock the transcript\n    L-->>U: score + transcript"
+      }
+    ],
+    "tasks": [
+      { "title": "Add a listening exercise type", "steps": [
+        "Add the activity kind and its play policy configuration.",
+        "Implement the grading branch, including the normalisation rules for dictation.",
+        "Add the player variant with the right controls for the mode.",
+        "Test that the server enforces the play limit independently of the UI."
+      ]}
+    ],
+    "limitations": [
+      "Play counting is per attempt, not per second — a learner who replays within a single play is not detected.",
+      "Accent coverage depends on the source material and the TTS voices available.",
+      "No speed control in exam mode, by design."
+    ],
+    "testFocus": [
+      "Server-side play limit cannot be bypassed by calling the endpoint directly",
+      "Transcript lock and unlock timing",
+      "Dictation normalisation and tolerance boundaries",
+      "Presigned URL scoping and expiry",
+      "Publication blocked without derivatives or transcript"
+    ],
+    "decisions": [
+      { "question": "Count plays on the client or the server?", "choice": "Server", "why": "Anything the client enforces alone is not enforced; exam realism depends on the limit being real" },
+      { "question": "Reveal the transcript when?", "choice": "After submission by default, configurable per activity", "why": "Seeing the transcript first turns a listening exercise into a reading exercise" }
+    ],
+    "todo": [
+      { "title": "Phase 3", "items": [
+        "Audio items with transcripts and metadata",
+        "Attempt with server-side play counting",
+        "Graders for MCQ, gap-fill, dictation and ordering",
+        "Transcript reveal policy",
+        "Study-mode segment replay",
+        "Player UI for both modes"
+      ]}
+    ],
+    "future": ["Adaptive speed for study mode", "Accent-targeted practice", "Shadowing exercises combining listening and speaking"],
+    "doNot": [
+      "Do not enforce the play limit only in the UI.",
+      "Do not reveal the transcript before submission unless the activity allows it.",
+      "Do not issue a long-lived audio URL.",
+      "Do not publish an item without a transcript."
+    ],
+    "runtimePrompts": [{ "task": "listening.transcript_clean", "purpose": "Normalise a raw ASR transcript into a teaching transcript" }]
+  },
+
+  {
+    "name": "grammar",
+    "tier": "learning",
+    "group": "modules",
+    "schema": "skill",
+    "phase": 3,
+    "status": "PLANNED",
+    "owner": "@learning-team",
+    "purpose": "Grammar as a structured, teachable system: a rule taxonomy, error tagging, targeted drills, and AI explanations that always cite a rule from our own taxonomy rather than improvising.",
+    "context": "The taxonomy is what keeps AI explanations honest. A model asked to \"explain the error\" will confabulate a plausible rule; a model asked to \"identify which of these rules was violated and explain it\" cannot.",
+    "responsibilities": [
+      "Grammar point taxonomy with CEFR levels and prerequisites",
+      "Rule definitions with canonical examples and common errors",
+      "Error tagging of learner output, reusable across writing and speaking",
+      "Drill types: gap-fill, transformation, error correction, sentence ordering",
+      "AI explanation grounded in a cited rule",
+      "Per-learner grammar weakness profile"
+    ],
+    "notResponsibilities": ["Grading essays holistically — that is `writing`", "Review scheduling — that is `srs`"],
+    "tables": [
+      { "name": "grammar_points", "purpose": "Taxonomy node", "notes": "`code` UNIQUE (e.g. `PRESENT_PERFECT_VS_PAST_SIMPLE`), `cefr_level`, `parent_id`" },
+      { "name": "grammar_rules", "purpose": "Rule statement plus examples", "notes": "`point_id`, `statement`, `examples` jsonb, `common_errors` jsonb" },
+      { "name": "grammar_exercises", "purpose": "Drill items", "notes": "Content-versioned. `point_id`, `kind`, `body` jsonb" },
+      { "name": "error_tags", "purpose": "Tagged errors in learner output", "notes": "`user_id`, `source` (writing/speaking), `source_id`, `point_id`, `span`, `detected_by`" },
+      { "name": "user_grammar_state", "purpose": "Weakness profile", "notes": "`user_id`, `point_id`, `error_rate`, `last_error_at`, `mastery`" }
+    ],
+    "endpoints": [
+      { "method": "GET", "path": "/api/v1/grammar/points", "permission": "content.read.published", "purpose": "Browse the taxonomy by level", "success": "200" },
+      { "method": "GET", "path": "/api/v1/grammar/points/{code}", "permission": "content.read.published", "purpose": "Rule with examples and common errors", "success": "200" },
+      { "method": "GET", "path": "/api/v1/me/grammar/weaknesses", "permission": "self", "purpose": "Ranked weak points with drill suggestions", "success": "200" },
+      { "method": "POST", "path": "/api/v1/grammar/explain", "permission": "self", "purpose": "Explain a tagged error, citing a rule", "success": "200", "errors": ["AI_QUOTA_EXCEEDED"] }
+    ],
+    "contract": [
+      { "kind": "interface", "name": "grammar.Grader", "purpose": "Implements `learning.ExerciseGrader` for grammar drills" },
+      { "kind": "interface", "name": "grammar.Tagger", "purpose": "`TagErrors(ctx, text)` — used by `writing` and `speaking` to attribute errors to taxonomy points" }
+    ],
+    "events": {
+      "publishes": [{ "name": "grammar.error_tagged", "payload": "`{user_id, point_id, source}`" }],
+      "consumes": [{ "name": "writing.graded", "reason": "Tag errors from the feedback annotations" }, { "name": "speaking.scored", "reason": "Tag errors from the transcript" }]
+    },
+    "dependsOn": ["content", "srs", "ai", "learning"],
+    "dependedOnBy": ["writing", "speaking", "learning", "exam"],
+    "rules": [
+      "Every explanation cites a `grammar_points.code`. An explanation the model cannot ground in a taxonomy point is discarded, not shown.",
+      "Error tags are attributed to the smallest applicable point, so the weakness profile is actionable rather than vague.",
+      "The weakness profile is an error rate over recent output, decayed over time — an error from six months ago should not dominate.",
+      "Drills are recommended from the weakness profile, respecting prerequisites: do not drill the present perfect at someone who has not mastered the past simple.",
+      "Grammar points enter spaced repetition once explicitly taught, not on first error.",
+      "Error correction drills accept multiple valid corrections where the language genuinely allows more than one.",
+      "The taxonomy is versioned; retagging historical errors after a taxonomy change is a job, not a migration."
+    ],
+    "errors": [
+      { "code": "GRAMMAR_POINT_NOT_FOUND", "status": "404", "meaning": "Unknown taxonomy code" },
+      { "code": "EXPLANATION_UNGROUNDED", "status": "500", "meaning": "The model could not cite a valid rule" }
+    ],
+    "flows": [
+      {
+        "title": "From an essay error to a targeted drill",
+        "mermaid": "flowchart LR\n    A[writing.graded<br/>with annotations] --> B[\"grammar.TagErrors\"]\n    B --> C[map each annotation to a taxonomy point]\n    C --> D[INSERT error_tags]\n    D --> E[update user_grammar_state error rate]\n    E --> F[weakness profile reranked]\n    F --> G[drills recommended, respecting prerequisites]\n    G --> H[learner completes a drill]\n    H --> I[grammar point enters srs]\n    I --> J[error rate falls → point drops down the ranking]"
+      }
+    ],
+    "tasks": [
+      { "title": "Add a grammar point", "steps": [
+        "Add the point with its code, CEFR level and parent, following `docs/knowledge/grammar-taxonomy.md`.",
+        "Write the rule statement, canonical examples and the common errors learners actually make.",
+        "Add at least one drill of each supported kind.",
+        "Add tagger patterns or examples so errors can be attributed to it.",
+        "Add eval examples so `grammar.explain` can cite it correctly."
+      ]}
+    ],
+    "limitations": [
+      "Error tagging depends on the quality of the writing feedback annotations; it inherits their misses.",
+      "The taxonomy is English-specific and hand-built; it is not exhaustive.",
+      "There is no rule-based parser; tagging is model-assisted with taxonomy grounding."
+    ],
+    "testFocus": [
+      "Explanations without a valid citation are rejected",
+      "Error rate decay behaves over time",
+      "Prerequisite ordering in drill recommendation",
+      "Multiple valid corrections accepted",
+      "Retagging after a taxonomy change is idempotent"
+    ],
+    "decisions": [
+      { "question": "Free-form AI explanation or grounded citation?", "choice": "Grounded", "why": "An ungrounded model will invent a confident, plausible, wrong rule — and a learner cannot tell the difference. Citation makes the explanation checkable and the failure mode visible" },
+      { "question": "Tag errors on first occurrence or after teaching?", "choice": "Tag always, schedule only after teaching", "why": "The weakness profile needs all the data; spaced repetition of something never taught is just confusing" }
+    ],
+    "todo": [
+      { "title": "Phase 3", "items": [
+        "Taxonomy with CEFR levels and prerequisites",
+        "Rules with examples and common errors",
+        "Error tagging consuming writing and speaking events",
+        "Weakness profile with decay",
+        "Drill types and graders",
+        "Grounded `grammar.explain` with a citation check",
+        "Seed taxonomy covering A1–B2"
+      ]}
+    ],
+    "future": ["Corpus-derived common error lists", "Contrastive explanations for Vietnamese speakers specifically", "Automatic drill generation from a learner's own errors"],
+    "doNot": [
+      "Do not show an explanation that cites no rule.",
+      "Do not tag an error to a broad point when a specific one applies.",
+      "Do not drill a point whose prerequisites are unmastered.",
+      "Do not let the taxonomy be edited without a retag plan."
+    ],
+    "runtimePrompts": [{ "task": "grammar.explain", "purpose": "Explain an error by citing a taxonomy rule" }]
+  },
+
+  {
+    "name": "questionbank",
+    "tier": "learning",
+    "group": "modules",
+    "schema": "assess",
+    "phase": 4,
+    "status": "PLANNED",
+    "owner": "@learning-team",
+    "purpose": "The reusable item bank: authoring, typing, tagging, difficulty statistics, review workflow, and AI-assisted generation. One item, many uses — in a lesson, in a drill, in an exam.",
+    "responsibilities": [
+      "Question items across all supported types",
+      "Options, correct answers and per-option feedback",
+      "Question sets: reusable ordered groups",
+      "Tagging by skill, level, topic and exam relevance",
+      "Difficulty and discrimination statistics from real attempts",
+      "Authoring and review workflow",
+      "AI-assisted item generation for admin review",
+      "Item exposure control so the same items are not overused"
+    ],
+    "notResponsibilities": ["Delivering an exam — that is `exam`", "Grading a learner's whole attempt — that is the exercise engine"],
+    "tables": [
+      { "name": "questions", "purpose": "One item", "notes": "Content-versioned. `type`, `stem`, `explanation`, `cefr_level`, `skill`, `status`" },
+      { "name": "question_options", "purpose": "Choices and answers", "notes": "`question_id`, `position`, `text`, `is_correct`, `feedback`" },
+      { "name": "question_sets", "purpose": "Reusable group", "notes": "`name`, `purpose`, `shuffle_policy`" },
+      { "name": "question_set_items", "purpose": "Membership", "notes": "`set_id`, `question_id`, `position`" },
+      { "name": "question_stats", "purpose": "Empirical difficulty", "notes": "`question_id`, `attempts`, `p_value`, `discrimination`, `avg_time_ms`, `last_computed_at`" }
+    ],
+    "endpoints": [
+      { "method": "GET", "path": "/api/v1/admin/questions", "permission": "questionbank.read", "purpose": "Search and filter items", "success": "200" },
+      { "method": "POST", "path": "/api/v1/admin/questions", "permission": "questionbank.create", "purpose": "Create an item", "success": "201" },
+      { "method": "POST", "path": "/api/v1/admin/questions/{id}/review", "permission": "questionbank.review", "purpose": "Approve or reject", "success": "200", "errors": ["SELF_APPROVAL_FORBIDDEN"] },
+      { "method": "POST", "path": "/api/v1/admin/questions/generate", "permission": "questionbank.create", "purpose": "AI-generate draft items for review", "success": "202" },
+      { "method": "GET", "path": "/api/v1/admin/questions/{id}/stats", "permission": "questionbank.read", "purpose": "Empirical difficulty and discrimination", "success": "200" }
+    ],
+    "contract": [
+      { "kind": "interface", "name": "questionbank.Reader", "purpose": "`GetSet`, `SampleItems(criteria)` — used by `exam` and by skill modules" },
+      { "kind": "struct", "name": "questionbank.Item", "purpose": "`{ID, Type, Stem, Options, CorrectAnswer, Explanation}` — correct answers stripped for learner-facing calls" }
+    ],
+    "events": {
+      "publishes": [{ "name": "questionbank.item_published", "payload": "`{question_id, skill, level}`" }],
+      "consumes": [{ "name": "activity.completed", "reason": "Accumulate attempt statistics for difficulty estimation" }]
+    },
+    "dependsOn": ["content", "ai", "audit", "search"],
+    "dependedOnBy": ["exam", "reading", "listening", "grammar", "learning"],
+    "rules": [
+      "The correct answer is **never** included in a learner-facing payload. The DTO used by learner endpoints does not contain the field at all — it cannot be leaked by an oversight.",
+      "AI-generated items always enter as drafts. They are never published without human review.",
+      "An author cannot approve their own item.",
+      "Difficulty is empirical (p-value from real attempts), with the authored estimate used only until enough attempts exist.",
+      "An item with fewer than 30 attempts has provisional statistics, clearly marked.",
+      "An item with discrimination below a threshold is flagged for review — it is not distinguishing strong from weak learners.",
+      "Exposure control caps how often an item can appear for the same learner within a window.",
+      "Editing a published item creates a new version; statistics do not carry over, because it is effectively a different item.",
+      "Every item states which skill and CEFR level it targets — an untagged item cannot be sampled."
+    ],
+    "errors": [
+      { "code": "SELF_APPROVAL_FORBIDDEN", "status": "403", "meaning": "Author reviewing their own item" },
+      { "code": "INSUFFICIENT_ITEMS", "status": "409", "meaning": "Not enough approved items matching the sampling criteria" },
+      { "code": "ITEM_IN_USE", "status": "409", "meaning": "Cannot archive an item used by a published exam" }
+    ],
+    "security": ["Correct answers are excluded at the DTO level, not filtered at the handler — a leak must be structurally impossible, not merely unlikely."],
+    "flows": [
+      {
+        "title": "AI-assisted authoring",
+        "mermaid": "sequenceDiagram\n    autonumber\n    actor AD as Admin\n    participant Q as questionbank\n    participant AI as platform/ai\n    participant R as Reviewer\n\n    AD->>Q: POST /admin/questions/generate { topic, level, type, count }\n    Q->>Q: check quota + budget\n    Q->>AI: Run(questionbank.generate_items)\n    AI-->>Q: structured draft items\n    Q->>Q: validate schema; reject malformed; dedupe against existing stems\n    Q->>Q: INSERT as drafts, marked ai_generated\n    Q-->>AD: 202 → drafts appear in the review queue\n    R->>Q: review, edit, approve or reject\n    Note over R,Q: nothing AI-generated reaches a learner unreviewed\n    Q->>Q: publish approved items; statistics begin accumulating"
+      }
+    ],
+    "tasks": [
+      { "title": "Add a question type", "steps": [
+        "Define the type, its option schema and its answer schema.",
+        "Implement grading in the consuming skill module, not here.",
+        "Add the authoring UI and the learner-facing renderer.",
+        "Confirm the learner DTO for the new type excludes the answer.",
+        "Add generation support to the prompt if AI authoring should cover it."
+      ]}
+    ],
+    "limitations": [
+      "Difficulty is classical test theory (p-value, discrimination), not item response theory — adequate for sampling, not for adaptive certification.",
+      "AI generation quality varies by type; it is strongest for vocabulary and reading MCQs and weakest for nuanced grammar items.",
+      "There is no automatic detection of near-duplicate items beyond stem similarity."
+    ],
+    "testFocus": [
+      "Learner DTO cannot contain a correct answer, asserted structurally",
+      "Self-approval refused",
+      "Statistics computed correctly and marked provisional below the attempt threshold",
+      "Sampling respects level, skill, exposure and approval status",
+      "Generated items land as drafts and are deduped"
+    ],
+    "decisions": [
+      { "question": "Classical statistics or IRT?", "choice": "Classical for now", "why": "IRT needs far more data per item and a calibration process we cannot staff yet; the interface leaves room to upgrade" },
+      { "question": "Allow AI-generated items to auto-publish?", "choice": "Never", "why": "A wrong item teaches a wrong answer to every learner who sees it, and the failure is silent — review is cheap by comparison" }
+    ],
+    "todo": [
+      { "title": "Phase 4", "items": [
+        "Items, options, sets and tagging",
+        "Authoring and review workflow with self-approval blocking",
+        "Learner DTO without answers, structurally enforced",
+        "Statistics job computing p-value and discrimination",
+        "Sampling with exposure control",
+        "AI generation into the review queue",
+        "Admin authoring UI with bulk import"
+      ]}
+    ],
+    "future": ["Item response theory calibration", "Automatic distractor quality analysis", "Near-duplicate detection by embedding", "Item retirement policy from statistics"],
+    "doNot": [
+      "Do not include the correct answer in a learner-facing response.",
+      "Do not publish an AI-generated item without review.",
+      "Do not carry statistics across a content edit.",
+      "Do not sample from unapproved items."
+    ],
+    "runtimePrompts": [{ "task": "questionbank.generate_items", "purpose": "Draft items from a topic, level and type, for admin review" }]
+  },
+
+  {
+    "name": "exam",
+    "tier": "learning",
+    "group": "modules",
+    "schema": "assess",
+    "phase": 4,
+    "status": "PLANNED",
+    "owner": "@learning-team",
+    "hasJobs": true,
+    "purpose": "Timed mock exams in real formats (IELTS, TOEIC): sections, strict timing, auto-submit, integrity signals, scoring and score reports.",
+    "context": "An exam is not a lesson with a timer. It has section-level time limits, no going back, one listening play, no dictionary, and a hard stop. Learners take mock exams to rehearse those constraints, so simulating them faithfully is the feature.",
+    "responsibilities": [
+      "Exam definitions: sections, item sources, timing, scoring model",
+      "Attempt orchestration with server-authoritative timing",
+      "Auto-submit on expiry, including when the client disappears",
+      "Section navigation rules",
+      "Scoring and band conversion per exam format",
+      "Score reports with per-section breakdown and comparison",
+      "Integrity signals: tab changes, paste events, timing anomalies"
+    ],
+    "notResponsibilities": ["Authoring items — that is `questionbank`", "Grading writing and speaking sections — those delegate to their skill modules"],
+    "tables": [
+      { "name": "exams", "purpose": "Exam definition", "notes": "Content-versioned. `format`, `total_minutes`, `scoring_model`" },
+      { "name": "exam_sections", "purpose": "Timed part", "notes": "`exam_id`, `position`, `skill`, `minutes`, `question_set_id`, `navigation` (linear/free)" },
+      { "name": "exam_attempts", "purpose": "One sitting", "notes": "`user_id`, `exam_id`, `status`, `started_at`, `expires_at`, `submitted_at`, `raw_score`, `band`" },
+      { "name": "attempt_answers", "purpose": "Per-question responses", "notes": "Partitioned monthly. `attempt_id`, `question_id`, `answer` jsonb, `answered_at`, `time_ms`" },
+      { "name": "score_reports", "purpose": "Learner-facing result", "notes": "`attempt_id`, `overall_band`, `per_section` jsonb, `feedback`, `percentile`" },
+      { "name": "integrity_events", "purpose": "Signals during an attempt", "notes": "`attempt_id`, `kind`, `occurred_at` — informational, never punitive automatically" }
+    ],
+    "endpoints": [
+      { "method": "GET", "path": "/api/v1/exams", "permission": "content.read.published", "purpose": "Available mock exams", "success": "200" },
+      { "method": "POST", "path": "/api/v1/exams/{id}/attempts", "permission": "self", "purpose": "Start a sitting", "success": "201", "errors": ["EXAM_WINDOW_CLOSED", "ATTEMPT_IN_PROGRESS", "INSUFFICIENT_ITEMS"] },
+      { "method": "GET", "path": "/api/v1/exam-attempts/{id}", "permission": "self", "purpose": "Current state with server time remaining", "success": "200" },
+      { "method": "PUT", "path": "/api/v1/exam-attempts/{id}/answers", "permission": "self", "purpose": "Save answers (autosave)", "success": "200", "errors": ["ATTEMPT_EXPIRED"] },
+      { "method": "POST", "path": "/api/v1/exam-attempts/{id}/sections/{n}/complete", "permission": "self", "purpose": "Finish a section", "success": "200" },
+      { "method": "POST", "path": "/api/v1/exam-attempts/{id}/submit", "permission": "self", "purpose": "Submit the whole exam", "success": "202", "notes": "202 because writing and speaking sections grade asynchronously" },
+      { "method": "GET", "path": "/api/v1/exam-attempts/{id}/report", "permission": "self", "purpose": "Score report when ready", "success": "200" }
+    ],
+    "contract": [{ "kind": "interface", "name": "exam.Reader", "purpose": "`AttemptHistory`, `LatestBand` — used by `learning` and `analytics`" }],
+    "events": {
+      "publishes": [
+        { "name": "exam.attempt_started", "payload": "`{user_id, exam_id, attempt_id}`" },
+        { "name": "exam.attempt_finished", "payload": "`{user_id, attempt_id, band, per_section}`" }
+      ],
+      "consumes": [{ "name": "writing.graded", "reason": "Complete the writing section score" }, { "name": "speaking.scored", "reason": "Complete the speaking section score" }]
+    },
+    "dependsOn": ["questionbank", "job", "ai", "writing", "speaking", "learning"],
+    "dependedOnBy": ["learning", "analytics", "admin"],
+    "rules": [
+      "Time is server-authoritative. The client displays a countdown; the server decides when it is over.",
+      "An expired attempt is auto-submitted by a job — a learner who closes the tab still gets their answers scored.",
+      "Section navigation follows the exam format: linear sections cannot be revisited, free sections can.",
+      "One attempt in progress per learner per exam.",
+      "Answers autosave continuously; a lost connection must not lose work.",
+      "Sections graded by AI (writing, speaking) mark the report incomplete until their events arrive.",
+      "Band conversion uses the published table for the format, versioned so historical reports remain reproducible.",
+      "Integrity signals are recorded and shown to the learner as self-awareness information; they never automatically invalidate an attempt.",
+      "Items are sampled with exposure control so a learner does not see the same items in consecutive attempts.",
+      "The score report is generated once and stored — it must not change if the scoring table is later revised."
+    ],
+    "errors": [
+      { "code": "ATTEMPT_IN_PROGRESS", "status": "409", "meaning": "Finish or abandon the existing attempt first" },
+      { "code": "EXAM_ALREADY_SUBMITTED", "status": "409", "meaning": "Terminal state" },
+      { "code": "EXAM_WINDOW_CLOSED", "status": "403", "meaning": "Outside the availability window" },
+      { "code": "SECTION_TIME_EXPIRED", "status": "409", "meaning": "Section time is over" },
+      { "code": "INSUFFICIENT_ITEMS", "status": "409", "meaning": "Not enough approved items to build the exam" }
+    ],
+    "flows": [
+      {
+        "title": "Exam sitting with auto-submit",
+        "mermaid": "sequenceDiagram\n    autonumber\n    actor U as Learner\n    participant E as exam\n    participant Q as questionbank\n    participant J as job\n    participant W as writing/speaking\n\n    U->>E: POST /exams/{id}/attempts\n    E->>Q: SampleItems per section with exposure control\n    alt not enough items\n        E-->>U: 409 INSUFFICIENT_ITEMS\n    else\n        E->>E: INSERT attempt (expires_at = now + total)\n        E->>J: schedule auto-submit at expires_at\n        E-->>U: 201 { attempt, section 1, server_time }\n    end\n\n    loop while time remains\n        U->>E: PUT /answers (autosave)\n        E->>E: reject if section time has expired\n    end\n\n    alt learner submits\n        U->>E: POST /submit\n    else time expires\n        J->>E: auto-submit\n    end\n\n    E->>E: score objective sections immediately\n    E->>W: dispatch writing and speaking for async grading\n    E-->>U: 202 { report pending }\n    W-->>E: graded events\n    E->>E: complete the report; publish exam.attempt_finished\n"
+      }
+    ],
+    "stateMachine": {
+      "mermaid": "stateDiagram-v2\n    [*] --> InProgress: start\n    InProgress --> SectionComplete: finish a section\n    SectionComplete --> InProgress: next section\n    InProgress --> Submitted: learner submits\n    InProgress --> AutoSubmitted: time expires\n    SectionComplete --> Submitted: last section\n    Submitted --> Scoring: objective scored, AI sections pending\n    AutoSubmitted --> Scoring\n    Scoring --> Reported: all sections complete\n    Scoring --> PartiallyReported: an AI section failed\n    PartiallyReported --> Reported: admin retry succeeds\n    Reported --> [*]"
+    },
+    "failures": [
+      { "failure": "Learner loses connection mid-exam", "detection": "No autosave for N seconds", "behaviour": "Answers to that point are saved; the timer keeps running (as in a real exam); the learner can rejoin" },
+      { "failure": "AI section grading fails", "detection": "`writing.grading_failed`", "behaviour": "Report is partial and clearly marked; admin can retry; the learner is not charged an attempt" }
+    ],
+    "tasks": [
+      { "title": "Add an exam format", "steps": [
+        "Define sections, timings and navigation rules.",
+        "Add the band conversion table, versioned.",
+        "Ensure `questionbank` has enough approved items per section, or the exam cannot be built.",
+        "Add the score report template.",
+        "Test the full sitting including auto-submit and a failed AI section."
+      ]}
+    ],
+    "limitations": [
+      "No proctoring; integrity signals are advisory.",
+      "Speaking sections require the learner to have granted microphone access before starting.",
+      "Percentile comparison needs a population; it is suppressed until enough attempts exist.",
+      "No offline exam mode."
+    ],
+    "testFocus": [
+      "Server-authoritative timing cannot be extended by the client",
+      "Auto-submit fires for an abandoned attempt",
+      "Section navigation rules enforced",
+      "Autosave preserves answers across a disconnect",
+      "Band conversion reproducible from the versioned table",
+      "Partial report when an AI section fails",
+      "Exposure control across consecutive attempts"
+    ],
+    "decisions": [
+      { "question": "Client or server timing?", "choice": "Server, always", "why": "Client timing is trivially manipulable, and an exam whose timing can be manipulated has no value as practice" },
+      { "question": "Auto-invalidate on integrity signals?", "choice": "No — record and show", "why": "False positives (a notification, a second monitor) would penalise honest learners; the signal is more useful as self-awareness feedback than as enforcement" },
+      { "question": "Store or recompute score reports?", "choice": "Store", "why": "A learner's past band must not change because we revised a conversion table" }
+    ],
+    "todo": [
+      { "title": "Phase 4", "items": [
+        "Exam and section definitions with navigation rules",
+        "Attempt with server-authoritative timing and autosave",
+        "Auto-submit job",
+        "Objective scoring and band conversion",
+        "Async dispatch to writing and speaking",
+        "Score report generation and storage",
+        "Integrity signal collection",
+        "Exam player UI with a faithful timer"
+      ]}
+    ],
+    "future": ["Adaptive placement variant", "Percentile comparison once the population is large enough", "Proctoring integration", "Section-only practice mode"],
+    "doNot": [
+      "Do not trust client-reported time.",
+      "Do not let an abandoned attempt sit unsubmitted.",
+      "Do not recompute a stored score report.",
+      "Do not invalidate an attempt automatically from integrity signals.",
+      "Do not duplicate question storage — sample from `questionbank`."
+    ],
+    "runtimePrompts": []
+  },
+
+  {
+    "name": "gamification",
+    "tier": "learning",
+    "group": "modules",
+    "schema": "learn",
+    "phase": 3,
+    "status": "PLANNED",
+    "owner": "@learning-team",
+    "hasJobs": true,
+    "purpose": "Motivation mechanics: XP, levels, streaks, badges, quests and leaderboards. It reacts to learning events and never drives them.",
+    "context": "Gamification is downstream by design. It subscribes to events from `learning`, `srs`, `writing` and `speaking`, and owns no learning logic — so a change to how motivation works can never break how learning works.",
+    "businessPurpose": "Retention in consumer learning products is decided in the first two weeks, and streaks plus visible progress are the strongest levers available. Used carelessly they produce anxiety and churn instead, so the rules below lean towards forgiveness.",
+    "responsibilities": [
+      "XP awards per learning action, with anti-farming rules",
+      "Levels derived from cumulative XP",
+      "Streaks with freezes and timezone-correct day boundaries",
+      "Badges and their unlock conditions",
+      "Quests: time-boxed multi-step goals",
+      "Leaderboards (opt-in, league-based)",
+      "Daily goal tracking"
+    ],
+    "notResponsibilities": ["Deciding what counts as learning — the source modules do", "Sending reminders — that is `notification`"],
+    "tables": [
+      { "name": "xp_events", "purpose": "Every XP award", "notes": "Partitioned monthly. `user_id`, `source`, `source_id`, `amount`, `multiplier`, `awarded_at`. Unique on (user_id, source, source_id) for idempotency" },
+      { "name": "streaks", "purpose": "Streak state", "notes": "`user_id`, `current`, `longest`, `last_active_on`, `freezes_available`, `freeze_used_on`" },
+      { "name": "badges", "purpose": "Badge catalogue", "notes": "`code`, `name`, `criteria` jsonb, `tier`" },
+      { "name": "badges_earned", "purpose": "Awards", "notes": "Unique on (user_id, badge_id)" },
+      { "name": "quests", "purpose": "Time-boxed goals", "notes": "`code`, `steps` jsonb, `window`, `reward`" },
+      { "name": "user_quests", "purpose": "Quest progress", "notes": "`user_id`, `quest_id`, `progress` jsonb, `completed_at`" },
+      { "name": "leaderboard_snapshots", "purpose": "Weekly league standings", "notes": "Materialised weekly; opt-in only" }
+    ],
+    "endpoints": [
+      { "method": "GET", "path": "/api/v1/me/gamification", "permission": "self", "purpose": "XP, level, streak, badges, active quests", "success": "200" },
+      { "method": "GET", "path": "/api/v1/me/streak", "permission": "self", "purpose": "Streak with the freeze state and the day boundary", "success": "200" },
+      { "method": "POST", "path": "/api/v1/me/streak/freeze", "permission": "self", "purpose": "Use a freeze", "success": "200", "errors": ["NO_FREEZES_AVAILABLE"] },
+      { "method": "GET", "path": "/api/v1/leaderboard", "permission": "self", "purpose": "Current league standings", "success": "200", "errors": ["LEADERBOARD_NOT_OPTED_IN"] },
+      { "method": "PUT", "path": "/api/v1/me/daily-goal", "permission": "self", "purpose": "Set the daily XP goal", "success": "200" }
+    ],
+    "contract": [{ "kind": "interface", "name": "gamification.Reader", "purpose": "`SummaryOf(ctx, userID)` — used by the dashboard and `notification`" }],
+    "events": {
+      "publishes": [
+        { "name": "gamification.xp_awarded", "payload": "`{user_id, amount, source}`" },
+        { "name": "gamification.level_up", "payload": "`{user_id, level}`" },
+        { "name": "gamification.badge_earned", "payload": "`{user_id, badge_code}`" },
+        { "name": "gamification.streak_at_risk", "payload": "`{user_id, hours_remaining}` — drives the reminder" },
+        { "name": "gamification.streak_broken", "payload": "`{user_id, previous_length}`" }
+      ],
+      "consumes": [
+        { "name": "activity.completed", "reason": "Award XP" },
+        { "name": "lesson.completed", "reason": "Award XP and progress quests" },
+        { "name": "review.session_completed", "reason": "Award XP and extend the streak" },
+        { "name": "writing.graded", "reason": "Award XP" },
+        { "name": "speaking.scored", "reason": "Award XP" },
+        { "name": "exam.attempt_finished", "reason": "Award XP and badges" }
+      ]
+    },
+    "dependsOn": ["learning", "srs", "cache", "job", "notification"],
+    "dependedOnBy": ["notification", "analytics", "admin"],
+    "rules": [
+      "XP is awarded from events only, and is idempotent on (user, source, source_id) — a redelivered event must not double-award.",
+      "The streak day boundary is in the learner's own timezone, and a timezone change never retroactively breaks a streak.",
+      "A streak extends when the daily goal is met, not merely when the app is opened.",
+      "Freezes are limited and replenish slowly; a freeze is consumed automatically at the day boundary if the goal was missed and one is available.",
+      "Anti-farming: XP per source type is capped daily, and repeating the same activity yields diminishing returns.",
+      "Badges are idempotent — earning conditions are re-evaluated safely and a badge is awarded once.",
+      "Leaderboards are opt-in, display names only, and are league-based so a learner competes with peers rather than with the whole platform.",
+      "Gamification never blocks learning: running out of XP, freezes or league position must not prevent any learning action.",
+      "Streak reminders respect quiet hours and are sent by `notification`, not from here."
+    ],
+    "cache": [
+      { "key": "fluentra:{env}:gamification:summary:{user_id}:v1", "ttl": "2 min", "invalidation": "Any XP award" },
+      { "key": "fluentra:{env}:gamification:leaderboard:{league}:{week}:v1", "ttl": "1 min", "invalidation": "Periodic rebuild" }
+    ],
+    "errors": [
+      { "code": "NO_FREEZES_AVAILABLE", "status": "409", "meaning": "No streak freeze remaining" },
+      { "code": "LEADERBOARD_NOT_OPTED_IN", "status": "403", "meaning": "Learner has not opted in" },
+      { "code": "DAILY_XP_CAP_REACHED", "status": "200", "meaning": "Not an error — the award is capped and reported as such" }
+    ],
+    "flows": [
+      {
+        "title": "Streak evaluation at the day boundary",
+        "mermaid": "flowchart TD\n    A[Nightly job, per timezone bucket] --> B{daily goal met yesterday?}\n    B -->|yes| C[current += 1; longest = max]\n    B -->|no| D{freeze available?}\n    D -->|yes| E[consume a freeze; streak preserved<br/>notify gently]\n    D -->|no| F[streak broken → 0<br/>publish streak_broken]\n    C --> G[check badge conditions]\n    E --> G\n    F --> G\n    G --> H[award any newly earned badges, idempotently]\n    H --> I[bust the summary cache]"
+      }
+    ],
+    "tasks": [
+      { "title": "Add a badge", "steps": [
+        "Add the badge with its criteria expression to the catalogue.",
+        "Implement the evaluator, which must be idempotent and cheap — it runs on many events.",
+        "Backfill for existing learners with a job if the badge is retroactive.",
+        "Add the artwork and the description copy.",
+        "Test that re-running the evaluator awards it exactly once."
+      ]}
+    ],
+    "limitations": [
+      "Leaderboard leagues are static rather than skill-matched.",
+      "Quests are hand-authored; there is no generation from a learner's profile.",
+      "Anti-farming is rule-based and will not catch a determined script.",
+      "Streak evaluation runs per timezone bucket, so a learner who changes timezone mid-day sees an approximation."
+    ],
+    "testFocus": [
+      "XP idempotency under redelivered events",
+      "Streak day boundaries across timezones and DST",
+      "Timezone change does not retroactively break a streak",
+      "Freeze consumption at the boundary",
+      "Daily caps and diminishing returns",
+      "Badge awarded exactly once under concurrent evaluation",
+      "Leaderboard excludes learners who have not opted in"
+    ],
+    "decisions": [
+      { "question": "Event-driven or called directly?", "choice": "Event-driven", "why": "It keeps motivation mechanics strictly downstream — a bug here can never break a learning flow, and learning modules need no knowledge of XP at all" },
+      { "question": "Streak freezes?", "choice": "Yes, limited and automatic", "why": "An all-or-nothing streak punishes the illness or travel that real learners have, and losing a long streak is a strong churn trigger. Forgiveness retains better than strictness" },
+      { "question": "Global leaderboard?", "choice": "No — opt-in leagues", "why": "A global board demotivates everyone outside the top few and creates a privacy exposure nobody asked for" }
+    ],
+    "todo": [
+      { "title": "Phase 3", "items": [
+        "XP events with idempotency and daily caps",
+        "Levels from cumulative XP",
+        "Streaks with timezone-correct boundaries and freezes",
+        "Badge catalogue and idempotent evaluators",
+        "Daily goal tracking",
+        "`streak_at_risk` event for reminders",
+        "Gamification widgets in the web app"
+      ]},
+      { "title": "Phase 4", "items": ["Quests", "Opt-in weekly leagues", "Leaderboard materialisation job"] }
+    ],
+    "future": ["Skill-matched leagues", "Personalised quests", "Team or friend challenges", "Seasonal events"],
+    "doNot": [
+      "Do not call gamification synchronously from a learning flow.",
+      "Do not let a gamification failure block a learning action.",
+      "Do not award XP without an idempotency key.",
+      "Do not break a streak because a learner travelled.",
+      "Do not put a learner on a leaderboard without opt-in."
+    ],
+    "runtimePrompts": []
+  }
+]
