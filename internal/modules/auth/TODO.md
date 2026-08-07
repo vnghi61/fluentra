@@ -21,19 +21,23 @@ agent knows what is already handled and what is deliberately deferred.
 <!-- BEGIN GENERATED: todo -->
 ## Phase 1 — core
 
-- [ ] Registration + email verification, with the outbox path proven end-to-end
 - [ ] Argon2id credential storage with parameter upgrade on login
+- [ ] Challenge subsystem: issue, resend, verify, burn — generic over `purpose`
+- [ ] Registration + OTP email verification, with the outbox path proven end-to-end
 - [ ] Login with equalised timing and per-account/per-IP lockout
 - [ ] Access token issuance and validating middleware, with `Actor` in the request context
 - [ ] Refresh rotation with family revocation on reuse, covered by an integration test
+- [ ] Sliding idle window, absolute cap, trusted devices, device list and revoke
+- [ ] Google OAuth: PKCE, state, nonce, JWKS verification, linking policy
 - [ ] Session list and revoke, for the user and for an admin
-- [ ] Password reset and change, revoking sessions
+- [ ] Password reset and change, revoking sessions and trusted devices
 - [ ] Security event emission wired to `audit`
 
 ## Phase 2
 
 - [ ] TOTP enrolment, verification, recovery codes; mandatory for admins
-- [ ] Google and Apple OAuth with verified-email linking
+- [ ] OTP as a step-up factor on an untrusted device (reuses the `login_otp` purpose — already built)
+- [ ] Apple sign-in (required if an iOS app ships)
 - [ ] New-device notification email
 - [ ] Offline breached-password Bloom filter as a fallback
 <!-- END GENERATED: todo -->

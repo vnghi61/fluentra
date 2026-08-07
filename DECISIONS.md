@@ -39,6 +39,10 @@ process.
 | [0018](docs/adr/ADR-0018-media-presigned-upload.md) | Presigned direct-to-storage uploads | Accepted | 2026-08-06 | — |
 | [0019](docs/adr/ADR-0019-testing-strategy.md) | Testcontainers over mocked infrastructure | Accepted | 2026-08-06 | — |
 | [0020](docs/adr/ADR-0020-agent-md-convention.md) | `AGENT.md` per module as the AI context unit | Accepted | 2026-08-06 | — |
+| [0021](docs/adr/ADR-0021-email-otp-challenges.md) | Email OTP challenges instead of verification links | Accepted | 2026-08-07 | — |
+| [0022](docs/adr/ADR-0022-persistent-sessions.md) | Persistent sign-in: sliding window with an absolute cap | Accepted | 2026-08-07 | — |
+| [0023](docs/adr/ADR-0023-google-oauth-linking.md) | Google OAuth and the account-linking policy | Accepted | 2026-08-07 | — |
+| [0024](docs/adr/ADR-0024-mobile-first-responsive.md) | Mobile-first responsive UI as a baseline requirement | Accepted | 2026-08-07 | — |
 
 ## 2. Decisions deliberately deferred
 

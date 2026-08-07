@@ -35,8 +35,18 @@ Global policy: [`/TESTING_GUIDELINE.md`](../../../TESTING_GUIDELINE.md).
 - Password change and reset revoke sessions
 - MFA: replayed code rejected; recovery code single-use; clock-skew tolerance
 - Suspended user cannot refresh, and existing access tokens stop working within one TTL
-- Verification token single-use and expiry
-- OAuth: mismatched or unverified email must not link accounts
+- OTP: single-use, 10-minute expiry, exactly 5 attempts then burned, constant-time comparison
+- OTP: the code is never in the API response, never in a log, never in a span attribute
+- OTP: resend cooldown and hourly cap; resend replaces the code but does not extend the absolute expiry
+- OTP: a code from challenge A does not verify challenge B
+- OAuth: forged, reused and expired `state` all rejected; each raises a security event
+- OAuth: an ID token failing signature, `iss`, `aud`, `exp` or `nonce` creates no account and no partial state
+- OAuth: unverified Google email refused; match against an unverified local account refused
+- OAuth: unlinking the only sign-in method refused
+- Sliding refresh: rotation moves the idle window forward but never past the absolute expiry
+- Absolute expiry forces re-authentication even for a continuously active session
+- Admin accounts do not receive the extended idle window
+- Password change, reset and suspension all revoke every trusted device
 <!-- END GENERATED: test-focus -->
 
 ## Edge cases that have bitten similar modules

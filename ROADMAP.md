@@ -7,6 +7,10 @@ horizon: 12 months
 
 # ROADMAP.md
 
+> **Executing now:** the task-by-task breakdown for Phase 0 + Phase 1 is
+> [docs/development/phase-1-plan.md](docs/development/phase-1-plan.md) — 43 tasks with
+> dependencies, acceptance criteria and per-task agent prompts.
+
 Assumed team: **2–4 engineers + 1 content designer**, heavily AI-assisted.
 Durations are calendar weeks with that team. Every phase ends with something **deployable and
 demonstrable** — no phase exists only to build plumbing.

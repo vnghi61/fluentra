@@ -483,7 +483,8 @@ web/src/
 
 | Concern | Approach |
 |---|---|
-| Auth | Access token in memory; refresh token in `HttpOnly; Secure; SameSite=Lax` cookie; silent refresh on 401 with single-flight |
+| Auth | Access token in memory; refresh token in `HttpOnly; Secure; SameSite=Lax` cookie; **silent refresh at boot before first render** so a returning learner never sees a login screen (ADR-0022); single-flight refresh on 401 |
+| Responsive | Mobile-first (ADR-0024): 44 px touch targets, 16 px input font, safe-area insets, `visualViewport`-aware layout, bottom nav below `md`. Playwright runs the E2E matrix on four device profiles |
 | Errors | Route-level error boundary + global toast for `apperr` codes; problem-details `type` maps to a user message catalogue |
 | Loading | Suspense + skeletons; never a bare spinner on a full page |
 | Offline drafts | Writing/speaking drafts persisted to IndexedDB, synced on reconnect |
@@ -942,11 +943,13 @@ memory-flat and horizontally scalable.
 | Password hash | Argon2id (m=64 MB, t=3, p=2), rehash on login when params change |
 | Password policy | ≥ 12 chars, checked against a breached-password list (k-anonymity API or local bloom filter) |
 | Access token | JWT, 15 min, `HS256` in v1 (single issuer) → `EdDSA` + JWKS when services split |
-| Refresh token | Opaque, 30 days, stored hashed, **rotating**; reuse ⇒ revoke entire family + security event |
+| Refresh token | Opaque, stored hashed, **rotating and sliding**; reuse ⇒ revoke entire family + security event |
+| Session bounds | **Idle** 30 d (90 d on a trusted device, 12 h for `admin`) · **absolute** 180 d (7 d for `admin`), not extended by activity (ADR-0022) |
 | Refresh transport | `HttpOnly; Secure; SameSite=Lax; Path=/api/v1/auth` cookie |
+| Email verification | 6-digit OTP challenge, 10 min TTL, 5 attempts, HMAC-stored, single use (ADR-0021). Required before AI features |
+| Challenge subsystem | One `auth_challenges` table with a `purpose` enum serving verification, password reset and future step-up |
 | MFA | TOTP (RFC 6238) with recovery codes — mandatory for `admin`, optional for `user` (Phase 2) |
-| OAuth | Google + Apple sign-in (Phase 2), account linking by verified email only |
-| Email verification | Required before AI features (abuse control) |
+| OAuth | Google sign-in in Phase 1: authorization code + PKCE + server-side single-use `state` + `nonce`, ID token verified against cached JWKS. Linking only to a **verified** local account (ADR-0023). Apple deferred to an iOS app |
 | Session management | User can list and revoke sessions; admin can revoke any |
 | Brute force | Per-IP and per-account exponential lockout in Redis; CAPTCHA after N failures |
 
@@ -1508,3 +1511,7 @@ Detail and per-module extraction notes: [docs/architecture/microservice-migratio
 | [0018](docs/adr/ADR-0018-media-presigned-upload.md) | Presigned direct-to-MinIO uploads | Accepted |
 | [0019](docs/adr/ADR-0019-testing-strategy.md) | Testcontainers over mocked infrastructure | Accepted |
 | [0020](docs/adr/ADR-0020-agent-md-convention.md) | `AGENT.md` per module as the AI context unit | Accepted |
+| [0021](docs/adr/ADR-0021-email-otp-challenges.md) | Email OTP challenges instead of verification links | Accepted |
+| [0022](docs/adr/ADR-0022-persistent-sessions.md) | Persistent sign-in: sliding window with an absolute cap | Accepted |
+| [0023](docs/adr/ADR-0023-google-oauth-linking.md) | Google OAuth and the account-linking policy | Accepted |
+| [0024](docs/adr/ADR-0024-mobile-first-responsive.md) | Mobile-first responsive UI as a baseline requirement | Accepted |

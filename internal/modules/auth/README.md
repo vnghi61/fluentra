@@ -28,15 +28,17 @@ Learners must be able to create an account and return to it safely from any devi
 ## Responsibilities
 
 <!-- BEGIN GENERATED: readme-resp -->
-- Registration and email verification
+- Registration and email verification by one-time code (OTP)
+- The generic challenge subsystem: issue, resend, verify and burn short-lived codes for any purpose
 - Password hashing (Argon2id), verification, and policy enforcement including breached-password checks
 - Access token (JWT, 15 min) issuance and validation
-- Refresh token issuance, rotation, reuse detection and family revocation
+- Refresh token issuance, **sliding** rotation, reuse detection and family revocation
+- Persistent sign-in: trusted devices, sliding idle window, absolute re-authentication cap
 - Session records: creation, listing, revocation (by the user and by an admin)
 - TOTP multi-factor enrolment, verification and recovery codes
 - Password reset and change flows
-- OAuth sign-in (Google, Apple) and account linking by verified email
-- Brute-force protection: per-IP and per-account lockout
+- Google OAuth sign-in (authorization code + PKCE) and account linking by verified email only
+- Brute-force protection: per-IP, per-account and per-challenge lockout
 - Emitting security events for the audit trail
 <!-- END GENERATED: readme-resp -->
 

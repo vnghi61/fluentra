@@ -113,6 +113,29 @@ breaking change.
 | `MFA_INVALID` | 401 | Wrong TOTP code |
 | `EMAIL_ALREADY_REGISTERED` | 409 | Registration conflict |
 | `PASSWORD_TOO_WEAK` | 422 | Fails policy or appears in a breach list |
+| `SESSION_ABSOLUTE_EXPIRED` | 401 | Absolute session lifetime reached; full re-authentication required |
+| `DEVICE_LIMIT_REACHED` | 409 | Too many trusted devices |
+
+### auth — one-time codes (ADR-0021)
+
+| Code | Kind | Meaning |
+|---|---|---|
+| `OTP_INVALID` | 401 | Wrong code; response carries `attempts_remaining` |
+| `OTP_EXPIRED` | 401 | Code older than its 10-minute TTL |
+| `OTP_ATTEMPTS_EXCEEDED` | 429 | Challenge burned after 5 attempts; a new one must be requested |
+| `OTP_RESEND_TOO_SOON` | 429 | Within the 60-second cooldown; `Retry-After` set |
+| `CHALLENGE_NOT_FOUND` | 404 | Unknown, consumed or expired challenge |
+
+### auth — OAuth (ADR-0023)
+
+| Code | Kind | Meaning |
+|---|---|---|
+| `OAUTH_STATE_INVALID` | 400 | Missing, reused or expired state — possible CSRF; raises a security event |
+| `OAUTH_EMAIL_UNVERIFIED` | 403 | The provider did not assert a verified email |
+| `OAUTH_ACCOUNT_CONFLICT` | 409 | The address belongs to an unverified local account; verify by OTP first |
+| `OAUTH_EMAIL_MISMATCH` | 409 | Linking attempted with an address other than the account's |
+| `OAUTH_ALREADY_LINKED` | 409 | That provider identity is linked to another account |
+| `LAST_SIGN_IN_METHOD` | 409 | Unlinking would leave the account with no way to sign in |
 
 ### learning / skills
 

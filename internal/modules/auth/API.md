@@ -27,9 +27,11 @@ Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR
 <!-- BEGIN GENERATED: api-summary -->
 | Method | Path | Permission | Purpose |
 |---|---|---|---|
-| `POST` | `/api/v1/auth/register` | `public` | Create an account and send a verification email |
-| `POST` | `/api/v1/auth/verify-email` | `public` | Consume a verification token |
+| `POST` | `/api/v1/auth/register` | `public` | Create an account and issue a `verify_email` OTP challenge |
+| `POST` | `/api/v1/auth/challenges/{id}/verify` | `public` | Submit the OTP code for a challenge |
+| `POST` | `/api/v1/auth/challenges/{id}/resend` | `public` | Resend the code for a challenge |
 | `POST` | `/api/v1/auth/login` | `public` | Exchange credentials for an access token plus a refresh cookie |
+| `GET` | `/api/v1/auth/oauth/google/start` | `public` | Begin Google sign-in; returns the authorization URL |
 | `POST` | `/api/v1/auth/mfa/verify` | `public` | Complete a login that required a second factor |
 | `POST` | `/api/v1/auth/refresh` | `public` | Rotate the refresh token and issue a new access token |
 | `POST` | `/api/v1/auth/logout` | `self` | Revoke the current session and refresh family |
@@ -39,7 +41,11 @@ Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR
 | `GET` | `/api/v1/auth/sessions` | `self` | List the caller's active sessions |
 | `DELETE` | `/api/v1/auth/sessions/{id}` | `self` | Revoke one session |
 | `POST` | `/api/v1/auth/mfa/enroll` | `self` | Begin TOTP enrolment; returns a provisioning URI and recovery codes |
-| `POST` | `/api/v1/auth/oauth/{provider}/callback` | `public` | Complete an OAuth sign-in |
+| `POST` | `/api/v1/auth/oauth/google/callback` | `public` | Complete Google sign-in: verify state, exchange the code, validate the ID token, link or create the account |
+| `POST` | `/api/v1/auth/oauth/google/link` | `self` | Link a Google identity to the signed-in account |
+| `DELETE` | `/api/v1/auth/oauth/google` | `self` | Unlink Google |
+| `GET` | `/api/v1/auth/devices` | `self` | List trusted devices with their idle and absolute expiry |
+| `DELETE` | `/api/v1/auth/devices/{id}` | `self` | Untrust a device, revoking its refresh family |
 | `POST` | `/api/v1/admin/users/{id}/sessions/revoke` | `user.session.revoke` | Admin revokes all sessions for a user |
 <!-- END GENERATED: api-summary -->
 
@@ -48,25 +54,36 @@ Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR
 <!-- BEGIN GENERATED: api-detail -->
 ### `POST /api/v1/auth/register`
 
-Create an account and send a verification email
+Create an account and issue a `verify_email` OTP challenge
 
 | | |
 |---|---|
 | Permission | `public` |
 | Success | 201 |
 | Errors | `EMAIL_ALREADY_REGISTERED`, `PASSWORD_TOO_WEAK`, `VALIDATION_FAILED`, `RATE_LIMITED` |
+| Notes | Returns a `challenge_id`; the 6-digit code goes to the email. The account cannot sign in until verified. |
 
+### `POST /api/v1/auth/challenges/{id}/verify`
 
-### `POST /api/v1/auth/verify-email`
-
-Consume a verification token
+Submit the OTP code for a challenge
 
 | | |
 |---|---|
 | Permission | `public` |
 | Success | 200 |
-| Errors | `TOKEN_INVALID`, `TOKEN_EXPIRED` |
+| Errors | `OTP_INVALID`, `OTP_EXPIRED`, `OTP_ATTEMPTS_EXCEEDED`, `CHALLENGE_NOT_FOUND` |
+| Notes | Generic across every purpose. Consumes the challenge on success; burns it after `max_attempts`. |
 
+### `POST /api/v1/auth/challenges/{id}/resend`
+
+Resend the code for a challenge
+
+| | |
+|---|---|
+| Permission | `public` |
+| Success | 202 |
+| Errors | `OTP_RESEND_TOO_SOON`, `RATE_LIMITED`, `CHALLENGE_NOT_FOUND` |
+| Notes | 60-second cooldown, 3 issuances per subject per hour. Issues a new code and resets attempts; the challenge id is unchanged. |
 
 ### `POST /api/v1/auth/login`
 
@@ -77,7 +94,18 @@ Exchange credentials for an access token plus a refresh cookie
 | Permission | `public` |
 | Success | 200 |
 | Errors | `INVALID_CREDENTIALS`, `ACCOUNT_LOCKED`, `MFA_REQUIRED`, `EMAIL_NOT_VERIFIED` |
-| Notes | Response timing is equalised between 'unknown email' and 'wrong password' |
+| Notes | Accepts `remember_device` and an optional client `device_id`. Response timing is equalised between 'unknown email' and 'wrong password'. |
+
+### `GET /api/v1/auth/oauth/google/start`
+
+Begin Google sign-in; returns the authorization URL
+
+| | |
+|---|---|
+| Permission | `public` |
+| Success | 200 |
+| Errors | standard set |
+| Notes | Generates `state`, `nonce` and a PKCE challenge, stored server-side with a 10-minute TTL |
 
 ### `POST /api/v1/auth/mfa/verify`
 
@@ -178,15 +206,59 @@ Begin TOTP enrolment; returns a provisioning URI and recovery codes
 | Errors | standard set |
 
 
-### `POST /api/v1/auth/oauth/{provider}/callback`
+### `POST /api/v1/auth/oauth/google/callback`
 
-Complete an OAuth sign-in
+Complete Google sign-in: verify state, exchange the code, validate the ID token, link or create the account
 
 | | |
 |---|---|
 | Permission | `public` |
 | Success | 200 |
-| Errors | `TOKEN_INVALID` |
+| Errors | `OAUTH_STATE_INVALID`, `OAUTH_EMAIL_UNVERIFIED`, `OAUTH_ACCOUNT_CONFLICT`, `TOKEN_INVALID` |
+
+
+### `POST /api/v1/auth/oauth/google/link`
+
+Link a Google identity to the signed-in account
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | `OAUTH_ALREADY_LINKED`, `OAUTH_EMAIL_MISMATCH` |
+
+
+### `DELETE /api/v1/auth/oauth/google`
+
+Unlink Google
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 204 |
+| Errors | `LAST_SIGN_IN_METHOD` |
+| Notes | Refused if it would leave the account with no way to sign in |
+
+### `GET /api/v1/auth/devices`
+
+List trusted devices with their idle and absolute expiry
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+
+### `DELETE /api/v1/auth/devices/{id}`
+
+Untrust a device, revoking its refresh family
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 204 |
+| Errors | standard set |
 
 
 ### `POST /api/v1/admin/users/{id}/sessions/revoke`
@@ -217,6 +289,19 @@ Admin revokes all sessions for a user
 | `MFA_INVALID` | 401 | Wrong or reused TOTP code |
 | `EMAIL_ALREADY_REGISTERED` | 409 | Registration conflict |
 | `PASSWORD_TOO_WEAK` | 422 | Fails policy or found in a breach corpus |
+| `OTP_INVALID` | 401 | Wrong code; the response includes `attempts_remaining` |
+| `OTP_EXPIRED` | 401 | Code older than 10 minutes |
+| `OTP_ATTEMPTS_EXCEEDED` | 429 | Challenge burned; request a new one |
+| `OTP_RESEND_TOO_SOON` | 429 | Within the 60-second cooldown; `Retry-After` set |
+| `CHALLENGE_NOT_FOUND` | 404 | Unknown, consumed or expired challenge |
+| `OAUTH_STATE_INVALID` | 400 | Missing, reused or expired state — a possible CSRF attempt |
+| `OAUTH_EMAIL_UNVERIFIED` | 403 | The provider did not assert a verified email |
+| `OAUTH_ACCOUNT_CONFLICT` | 409 | The email belongs to an unverified local account; verify it first |
+| `OAUTH_EMAIL_MISMATCH` | 409 | Linking attempted with an address other than the account's |
+| `OAUTH_ALREADY_LINKED` | 409 | That Google identity is already linked to another account |
+| `LAST_SIGN_IN_METHOD` | 409 | Unlinking would leave no way to sign in |
+| `SESSION_ABSOLUTE_EXPIRED` | 401 | Absolute session lifetime reached; full re-authentication required |
+| `DEVICE_LIMIT_REACHED` | 409 | Too many trusted devices; untrust one first |
 <!-- END GENERATED: api-errors -->
 
 ## Rate limits

@@ -179,6 +179,7 @@ Dependency direction is always **inward**: transport → service → repository 
 
 | Task | Playbook |
 |---|---|
+| **Implement the current phase** | **`docs/development/phase-1-plan.md` — find your task ID, then follow its card** |
 | Add a new business module | `docs/guides/add-a-module.md` |
 | Add an API endpoint | `docs/guides/add-an-endpoint.md` |
 | Add a database table | `docs/guides/add-a-table.md` |

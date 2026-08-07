@@ -12,15 +12,17 @@
     "context": "Authentication is deliberately separated from `user` (profile data) and `rbac` (what the caller may do). Keeping the three apart means a change to profile fields cannot break login, and a change to permissions cannot break token issuance.",
     "businessPurpose": "Learners must be able to create an account and return to it safely from any device. Administrators must be held to a higher standard (mandatory MFA) because they can see and change everyone's data. Every authentication event must be reconstructable after the fact.",
     "responsibilities": [
-      "Registration and email verification",
+      "Registration and email verification by one-time code (OTP)",
+      "The generic challenge subsystem: issue, resend, verify and burn short-lived codes for any purpose",
       "Password hashing (Argon2id), verification, and policy enforcement including breached-password checks",
       "Access token (JWT, 15 min) issuance and validation",
-      "Refresh token issuance, rotation, reuse detection and family revocation",
+      "Refresh token issuance, **sliding** rotation, reuse detection and family revocation",
+      "Persistent sign-in: trusted devices, sliding idle window, absolute re-authentication cap",
       "Session records: creation, listing, revocation (by the user and by an admin)",
       "TOTP multi-factor enrolment, verification and recovery codes",
       "Password reset and change flows",
-      "OAuth sign-in (Google, Apple) and account linking by verified email",
-      "Brute-force protection: per-IP and per-account lockout",
+      "Google OAuth sign-in (authorization code + PKCE) and account linking by verified email only",
+      "Brute-force protection: per-IP, per-account and per-challenge lockout",
       "Emitting security events for the audit trail"
     ],
     "notResponsibilities": [
@@ -35,9 +37,11 @@
       { "name": "sessions", "purpose": "One row per active sign-in", "notes": "`user_id`, `device_label`, `ip_hash`, `user_agent_hash`, `last_seen_at`, `revoked_at`" },
       { "name": "refresh_tokens", "purpose": "Rotating refresh tokens", "notes": "`token_hash` (SHA-256) UNIQUE, `family_id`, `session_id`, `used_at`, `expires_at`. Reuse of a used row revokes the whole family." },
       { "name": "mfa_secrets", "purpose": "TOTP seeds and recovery codes", "notes": "Seed encrypted with a KEK; recovery codes stored hashed and single-use" },
-      { "name": "verification_tokens", "purpose": "Email verification and password reset", "notes": "`token_hash`, `purpose`, `expires_at`, `used_at`. 30-minute TTL, single use." },
+      { "name": "auth_challenges", "purpose": "Short-lived one-time codes for every purpose", "notes": "`id` (the challenge handle returned to the client), `purpose` enum (`verify_email`, `login_otp`, `password_reset`, `link_oauth`), `subject_hash`, `code_hash` (HMAC-SHA256 with a server key), `attempts`, `max_attempts`, `expires_at`, `consumed_at`. 10-minute TTL, single use." },
+      { "name": "trusted_devices", "purpose": "Devices the learner chose to stay signed in on", "notes": "`user_id`, `device_id` (client-generated, stored hashed), `label`, `idle_window`, `absolute_expires_at`, `last_seen_at`, `revoked_at`" },
       { "name": "login_attempts", "purpose": "Brute-force accounting and forensics", "notes": "Partitioned monthly; `email_hash`, `ip_hash`, `result`, `created_at`" },
-      { "name": "oauth_identities", "purpose": "Linked external identities", "notes": "`provider`, `subject`, UNIQUE(provider, subject)" }
+      { "name": "oauth_identities", "purpose": "Linked external identities", "notes": "`provider`, `subject`, `email_hash`, `linked_at`, UNIQUE(provider, subject)" },
+      { "name": "oauth_states", "purpose": "In-flight OAuth authorization requests", "notes": "`state` UNIQUE, `nonce`, `pkce_verifier_hash`, `redirect_to`, `expires_at`. 10-minute TTL, single use — this is the CSRF defence for the OAuth flow." }
     ],
     "indexes": [
       "`uq_refresh_tokens_hash` — unique on `token_hash`, the lookup path on every refresh",
@@ -46,9 +50,11 @@
       "`idx_login_attempts_email_time` — the lockout query"
     ],
     "endpoints": [
-      { "method": "POST", "path": "/api/v1/auth/register", "permission": "public", "purpose": "Create an account and send a verification email", "success": "201", "errors": ["EMAIL_ALREADY_REGISTERED", "PASSWORD_TOO_WEAK", "VALIDATION_FAILED", "RATE_LIMITED"] },
-      { "method": "POST", "path": "/api/v1/auth/verify-email", "permission": "public", "purpose": "Consume a verification token", "success": "200", "errors": ["TOKEN_INVALID", "TOKEN_EXPIRED"] },
-      { "method": "POST", "path": "/api/v1/auth/login", "permission": "public", "purpose": "Exchange credentials for an access token plus a refresh cookie", "success": "200", "errors": ["INVALID_CREDENTIALS", "ACCOUNT_LOCKED", "MFA_REQUIRED", "EMAIL_NOT_VERIFIED"], "notes": "Response timing is equalised between 'unknown email' and 'wrong password'" },
+      { "method": "POST", "path": "/api/v1/auth/register", "permission": "public", "purpose": "Create an account and issue a `verify_email` OTP challenge", "success": "201", "errors": ["EMAIL_ALREADY_REGISTERED", "PASSWORD_TOO_WEAK", "VALIDATION_FAILED", "RATE_LIMITED"], "notes": "Returns a `challenge_id`; the 6-digit code goes to the email. The account cannot sign in until verified." },
+      { "method": "POST", "path": "/api/v1/auth/challenges/{id}/verify", "permission": "public", "purpose": "Submit the OTP code for a challenge", "success": "200", "errors": ["OTP_INVALID", "OTP_EXPIRED", "OTP_ATTEMPTS_EXCEEDED", "CHALLENGE_NOT_FOUND"], "notes": "Generic across every purpose. Consumes the challenge on success; burns it after `max_attempts`." },
+      { "method": "POST", "path": "/api/v1/auth/challenges/{id}/resend", "permission": "public", "purpose": "Resend the code for a challenge", "success": "202", "errors": ["OTP_RESEND_TOO_SOON", "RATE_LIMITED", "CHALLENGE_NOT_FOUND"], "notes": "60-second cooldown, 3 issuances per subject per hour. Issues a new code and resets attempts; the challenge id is unchanged." },
+      { "method": "POST", "path": "/api/v1/auth/login", "permission": "public", "purpose": "Exchange credentials for an access token plus a refresh cookie", "success": "200", "errors": ["INVALID_CREDENTIALS", "ACCOUNT_LOCKED", "MFA_REQUIRED", "EMAIL_NOT_VERIFIED"], "notes": "Accepts `remember_device` and an optional client `device_id`. Response timing is equalised between 'unknown email' and 'wrong password'." },
+      { "method": "GET", "path": "/api/v1/auth/oauth/google/start", "permission": "public", "purpose": "Begin Google sign-in; returns the authorization URL", "success": "200", "notes": "Generates `state`, `nonce` and a PKCE challenge, stored server-side with a 10-minute TTL" },
       { "method": "POST", "path": "/api/v1/auth/mfa/verify", "permission": "public", "purpose": "Complete a login that required a second factor", "success": "200", "errors": ["MFA_INVALID", "TOKEN_EXPIRED"] },
       { "method": "POST", "path": "/api/v1/auth/refresh", "permission": "public", "purpose": "Rotate the refresh token and issue a new access token", "success": "200", "errors": ["TOKEN_INVALID", "SESSION_REVOKED"], "notes": "Reuse of an already-used token revokes the entire family and raises a security event" },
       { "method": "POST", "path": "/api/v1/auth/logout", "permission": "self", "purpose": "Revoke the current session and refresh family", "success": "204", "errors": [] },
@@ -58,7 +64,11 @@
       { "method": "GET", "path": "/api/v1/auth/sessions", "permission": "self", "purpose": "List the caller's active sessions", "success": "200", "errors": [] },
       { "method": "DELETE", "path": "/api/v1/auth/sessions/{id}", "permission": "self", "purpose": "Revoke one session", "success": "204", "errors": ["RESOURCE_NOT_FOUND"] },
       { "method": "POST", "path": "/api/v1/auth/mfa/enroll", "permission": "self", "purpose": "Begin TOTP enrolment; returns a provisioning URI and recovery codes", "success": "200", "errors": [] },
-      { "method": "POST", "path": "/api/v1/auth/oauth/{provider}/callback", "permission": "public", "purpose": "Complete an OAuth sign-in", "success": "200", "errors": ["TOKEN_INVALID"] },
+      { "method": "POST", "path": "/api/v1/auth/oauth/google/callback", "permission": "public", "purpose": "Complete Google sign-in: verify state, exchange the code, validate the ID token, link or create the account", "success": "200", "errors": ["OAUTH_STATE_INVALID", "OAUTH_EMAIL_UNVERIFIED", "OAUTH_ACCOUNT_CONFLICT", "TOKEN_INVALID"] },
+      { "method": "POST", "path": "/api/v1/auth/oauth/google/link", "permission": "self", "purpose": "Link a Google identity to the signed-in account", "success": "200", "errors": ["OAUTH_ALREADY_LINKED", "OAUTH_EMAIL_MISMATCH"] },
+      { "method": "DELETE", "path": "/api/v1/auth/oauth/google", "permission": "self", "purpose": "Unlink Google", "success": "204", "errors": ["LAST_SIGN_IN_METHOD"], "notes": "Refused if it would leave the account with no way to sign in" },
+      { "method": "GET", "path": "/api/v1/auth/devices", "permission": "self", "purpose": "List trusted devices with their idle and absolute expiry", "success": "200" },
+      { "method": "DELETE", "path": "/api/v1/auth/devices/{id}", "permission": "self", "purpose": "Untrust a device, revoking its refresh family", "success": "204" },
       { "method": "POST", "path": "/api/v1/admin/users/{id}/sessions/revoke", "permission": "user.session.revoke", "purpose": "Admin revokes all sessions for a user", "success": "204", "errors": ["PERMISSION_DENIED", "RESOURCE_NOT_FOUND"] }
     ],
     "contract": [
@@ -98,8 +108,22 @@
       "MFA is mandatory for accounts holding the `admin` role; a promotion to admin forces enrolment on next login.",
       "Five failed attempts within 15 minutes lock the account for an exponentially increasing period, tracked per account and per IP independently.",
       "A suspended user's tokens stop working within one access-token lifetime (15 min); their sessions are revoked immediately on suspension.",
-      "OAuth accounts are linked only when the provider asserts a verified email that matches an existing verified account.",
-      "Verification and reset tokens are single-use, expire in 30 minutes, and are stored only as hashes.",
+      "Every one-time code is 6 digits, single-use, expires in 10 minutes, allows at most 5 verification attempts, and is stored only as an HMAC — never in plaintext, never in a log.",
+      "A code is worthless without its `challenge_id`. The client receives the id; the code goes to the email. Guessing a code alone gets an attacker nothing.",
+      "Exceeding `max_attempts` burns the challenge permanently. A new one must be requested — the code is not simply retried.",
+      "Resend has a 60-second cooldown and a cap of 3 issuances per subject per hour. Resending replaces the code and resets attempts; it does not extend the absolute expiry.",
+      "Challenge issuance never reveals whether an account exists. `POST /auth/register` on an existing verified email returns the same shape as a fresh registration and sends a 'someone tried to register with your address' email instead.",
+      "Google sign-in links to an existing account **only** when Google asserts `email_verified: true` and the email matches a verified local account. An unverified Google email is refused outright.",
+      "If a Google email matches an existing account that is **not** yet verified, no automatic link occurs — the learner must complete an OTP challenge on that address first. Otherwise anyone who can register an unverified address could hijack it via a Google account.",
+      "The OAuth `state` is server-side, single-use and 10-minute-lived, and PKCE is mandatory even though we hold a client secret.",
+      "Google's ID token is verified against Google's JWKS: signature, `iss`, `aud`, `exp`, and the `nonce` we issued. A token that fails any check is rejected without a partial account being created.",
+      "An account signed in via Google skips email verification — Google has already performed it.",
+      "Unlinking the last sign-in method is refused; the account must always retain at least one way in.",
+      "Refresh tokens are **sliding**: each rotation issues a new token with a fresh idle window, so an active learner never signs in again.",
+      "Every session carries an **absolute** expiry independent of activity. When it passes, full re-authentication is required regardless of how recently the learner was active.",
+      "Idle windows: 30 days by default, 90 days on a device the learner explicitly chose to trust. Absolute cap: 180 days. Admin accounts get neither extension — 12-hour idle, 7-day absolute.",
+      "Trusting a device is an explicit opt-in, is listed in the account's device list, and can be revoked from any other device.",
+      "A password change, a password reset, or an admin suspension revokes every trusted device and every refresh family.",
       "The system never reveals whether an email address is registered — `forgot-password` always returns 202."
     ],
     "validation": [
@@ -112,7 +136,11 @@
       { "key": "fluentra:{env}:auth:lockout:{email_hash}:v1", "ttl": "15 min sliding", "invalidation": "Successful login" },
       { "key": "fluentra:{env}:auth:lockout:ip:{ip_hash}:v1", "ttl": "15 min sliding", "invalidation": "Natural expiry" },
       { "key": "fluentra:{env}:auth:denylist:{jti}:v1", "ttl": "remaining token TTL", "invalidation": "Natural expiry" },
-      { "key": "fluentra:{env}:auth:session:{session_id}:v1", "ttl": "5 min", "invalidation": "Session revoked" }
+      { "key": "fluentra:{env}:auth:session:{session_id}:v1", "ttl": "5 min", "invalidation": "Session revoked" },
+      { "key": "fluentra:{env}:auth:otp_issue:{subject_hash}:v1", "ttl": "1 h", "invalidation": "Natural expiry — caps issuance at 3/hour" },
+      { "key": "fluentra:{env}:auth:otp_cooldown:{challenge_id}:v1", "ttl": "60 s", "invalidation": "Natural expiry — the resend cooldown" },
+      { "key": "fluentra:{env}:auth:otp_global:{ip_hash}:v1", "ttl": "1 h", "invalidation": "Natural expiry — catches distributed guessing across challenges" },
+      { "key": "fluentra:{env}:auth:jwks:google:v1", "ttl": "6 h", "invalidation": "Respect Google's Cache-Control; never fetch per request" }
     ],
     "errors": [
       { "code": "INVALID_CREDENTIALS", "status": "401", "meaning": "Wrong email or password — never says which" },
@@ -124,7 +152,20 @@
       { "code": "MFA_REQUIRED", "status": "401", "meaning": "Second factor needed to complete login" },
       { "code": "MFA_INVALID", "status": "401", "meaning": "Wrong or reused TOTP code" },
       { "code": "EMAIL_ALREADY_REGISTERED", "status": "409", "meaning": "Registration conflict" },
-      { "code": "PASSWORD_TOO_WEAK", "status": "422", "meaning": "Fails policy or found in a breach corpus" }
+      { "code": "PASSWORD_TOO_WEAK", "status": "422", "meaning": "Fails policy or found in a breach corpus" },
+      { "code": "OTP_INVALID", "status": "401", "meaning": "Wrong code; the response includes `attempts_remaining`" },
+      { "code": "OTP_EXPIRED", "status": "401", "meaning": "Code older than 10 minutes" },
+      { "code": "OTP_ATTEMPTS_EXCEEDED", "status": "429", "meaning": "Challenge burned; request a new one" },
+      { "code": "OTP_RESEND_TOO_SOON", "status": "429", "meaning": "Within the 60-second cooldown; `Retry-After` set" },
+      { "code": "CHALLENGE_NOT_FOUND", "status": "404", "meaning": "Unknown, consumed or expired challenge" },
+      { "code": "OAUTH_STATE_INVALID", "status": "400", "meaning": "Missing, reused or expired state — a possible CSRF attempt" },
+      { "code": "OAUTH_EMAIL_UNVERIFIED", "status": "403", "meaning": "The provider did not assert a verified email" },
+      { "code": "OAUTH_ACCOUNT_CONFLICT", "status": "409", "meaning": "The email belongs to an unverified local account; verify it first" },
+      { "code": "OAUTH_EMAIL_MISMATCH", "status": "409", "meaning": "Linking attempted with an address other than the account's" },
+      { "code": "OAUTH_ALREADY_LINKED", "status": "409", "meaning": "That Google identity is already linked to another account" },
+      { "code": "LAST_SIGN_IN_METHOD", "status": "409", "meaning": "Unlinking would leave no way to sign in" },
+      { "code": "SESSION_ABSOLUTE_EXPIRED", "status": "401", "meaning": "Absolute session lifetime reached; full re-authentication required" },
+      { "code": "DEVICE_LIMIT_REACHED", "status": "409", "meaning": "Too many trusted devices; untrust one first" }
     ],
     "security": [
       "Access tokens live in browser memory only — never `localStorage`, never a non-HttpOnly cookie.",
@@ -132,7 +173,12 @@
       "Password comparison is constant-time; Argon2id parameters are stored in the hash so they can be raised without a migration.",
       "Every authentication failure is logged with `email_hash`, never the address.",
       "Admin session revocation is audited with the acting admin's ID.",
-      "The JWT signing key supports two active keys so rotation does not sign everyone out."
+      "The JWT signing key supports two active keys so rotation does not sign everyone out.",
+      "OTP codes are stored as `HMAC-SHA256(code, server_key)`, compared in constant time, and never appear in a response, a log, a span attribute or a fixture.",
+      "The OAuth `state` and PKCE verifier live server-side and are single-use; the client never holds anything that alone completes a sign-in.",
+      "Google's JWKS is cached with its own `Cache-Control` and refreshed on an unknown `kid` — never fetched per request, and never skipped.",
+      "A longer idle window is a larger stolen-cookie window. It is bounded by the absolute expiry, revocable per device, and refused entirely for admin accounts.",
+      "Every OAuth failure branch (bad state, unverified email, account conflict) raises a security event — these are the signals an account-takeover attempt produces."
     ],
     "rateLimits": [
       "`/auth/login`, `/auth/register`, `/auth/forgot-password`: 5/min per IP **and** per account, with exponential lockout",
@@ -141,9 +187,19 @@
     ],
     "flows": [
       {
-        "title": "Registration and verification",
-        "description": "The user record is created in `user` and the credential in `auth` inside one transaction; the verification email is dispatched through the outbox so it cannot be sent for a rolled-back registration.",
-        "mermaid": "sequenceDiagram\n    autonumber\n    actor U as User\n    participant A as auth\n    participant US as user (contract)\n    participant D as PostgreSQL\n    participant M as mailer\n\n    U->>A: POST /auth/register\n    A->>A: validate email + password policy\n    A->>A: check breached-password corpus\n    A->>D: BEGIN\n    A->>US: CreateUser(email, locale)\n    US->>D: INSERT core.users (status=pending_verification)\n    A->>D: INSERT core.credentials (argon2id hash)\n    A->>D: INSERT core.verification_tokens (hash, purpose=verify_email)\n    A->>D: INSERT outbox(user.registered)\n    A->>D: COMMIT\n    A-->>U: 201 { user_id }\n    Note over D,M: outbox publisher → mailer job\n    M->>U: verification email (30 min TTL)\n    U->>A: POST /auth/verify-email { token }\n    A->>D: mark token used; users.status = active\n    A-->>U: 200"
+        "title": "Registration with OTP verification",
+        "description": "The account, the credential and the challenge are created in one transaction; the email is dispatched through the outbox so a code can never be sent for a rolled-back registration. The learner stays on the same screen and types the code — no context switch to a second browser.",
+        "mermaid": "sequenceDiagram\n    autonumber\n    actor U as User\n    participant A as auth\n    participant US as user (contract)\n    participant D as PostgreSQL\n    participant M as mailer\n\n    U->>A: POST /auth/register { email, password }\n    A->>A: validate email + password policy + breach corpus\n    A->>D: BEGIN\n    A->>US: CreateUser(email, locale)\n    US->>D: INSERT core.users (status=pending_verification)\n    A->>D: INSERT core.credentials (argon2id)\n    A->>D: INSERT auth_challenges (purpose=verify_email, code_hash=HMAC(code), attempts=0, ttl=10m)\n    A->>D: INSERT outbox(send verify_email code)\n    A->>D: COMMIT\n    A-->>U: 201 { challenge_id, expires_at, resend_after }\n    Note over D,M: outbox → mailer job — never a direct call\n    M->>U: email containing the 6-digit code\n\n    loop up to 5 attempts\n        U->>A: POST /auth/challenges/{id}/verify { code }\n        A->>D: load challenge; check expiry and attempts\n        A->>A: constant-time compare against code_hash\n        alt wrong\n            A->>D: attempts += 1\n            A-->>U: 401 OTP_INVALID { attempts_remaining }\n        else attempts exhausted\n            A->>D: burn challenge\n            A-->>U: 429 OTP_ATTEMPTS_EXCEEDED\n        else correct\n            A->>D: BEGIN; consume challenge; users.status = active\n            A->>D: INSERT outbox(user.registered); COMMIT\n            A-->>U: 200 { access_token } + refresh cookie\n        end\n    end"
+      },
+      {
+        "title": "Google sign-in with account linking",
+        "description": "The dangerous branch is the one in the middle: a Google email that matches an **unverified** local account. Auto-linking there is the classic account-takeover path, so it is refused.",
+        "mermaid": "sequenceDiagram\n    autonumber\n    actor U as User\n    participant W as SPA\n    participant A as auth\n    participant G as Google\n    participant D as PostgreSQL\n\n    U->>W: tap 'Continue with Google'\n    W->>A: GET /auth/oauth/google/start\n    A->>D: INSERT oauth_states (state, nonce, pkce_verifier_hash, ttl=10m)\n    A-->>W: { authorization_url }\n    W->>G: redirect\n    U->>G: consent\n    G->>W: redirect back with code + state\n    W->>A: POST /auth/oauth/google/callback { code, state }\n    A->>D: load + consume state (single use)\n    alt missing, reused or expired\n        A-->>W: 400 OAUTH_STATE_INVALID + security event\n    end\n    A->>G: exchange code (with PKCE verifier)\n    G-->>A: id_token + access_token\n    A->>G: fetch JWKS; verify signature, iss, aud, exp, nonce\n    alt email_verified is false\n        A-->>W: 403 OAUTH_EMAIL_UNVERIFIED\n    end\n    A->>D: look up oauth_identities by (google, sub)\n    alt identity known\n        A->>A: sign in\n    else email matches a VERIFIED local account\n        A->>D: INSERT oauth_identities (link)\n        A->>A: sign in\n    else email matches an UNVERIFIED local account\n        A-->>W: 409 OAUTH_ACCOUNT_CONFLICT — verify by OTP first\n    else no local account\n        A->>D: create user (status=active, email already verified by Google)\n        A->>A: sign in\n    end\n    A-->>W: 200 { access_token } + refresh cookie"
+      },
+      {
+        "title": "Staying signed in — sliding window with an absolute cap",
+        "description": "This is what 'log in once' actually means in a design that can still revoke a stolen credential. The idle window moves forward on every use; the absolute expiry does not.",
+        "mermaid": "flowchart TD\n    A[Login with remember_device = true] --> B[create session:<br/>idle_window = 90d<br/>absolute_expires_at = now + 180d]\n    B --> C[refresh token issued, expires = now + idle_window]\n    C --> D{App opened}\n    D --> E{now > absolute_expires_at?}\n    E -->|yes| F[401 SESSION_ABSOLUTE_EXPIRED<br/>full re-authentication]\n    E -->|no| G{refresh token expired?}\n    G -->|yes| H[401 — idle too long, sign in again]\n    G -->|no| I[rotate: new token, expires = now + idle_window]\n    I --> J[access token issued<br/>learner never saw a login screen]\n    J --> D\n\n    K[Password change / reset /<br/>admin suspend / device untrusted] --> L[revoke every family<br/>+ every trusted device]\n    L --> F"
       },
       {
         "title": "Refresh rotation with reuse detection",
@@ -194,7 +250,10 @@
     ],
     "limitations": [
       "MFA is TOTP only. WebAuthn/passkeys are the obvious next step but are not in Phase 1.",
-      "Device fingerprinting is a coarse hash of user agent and IP — it detects an obviously new device, nothing more.",
+      "A 6-digit OTP is 10^6 of entropy. Five attempts per challenge plus per-subject and per-IP issuance limits keep the per-challenge guess probability at 5 in a million, but a distributed guessing campaign across many challenges still needs the global rate limiter to catch it — that limiter is load-bearing, not decorative.",
+      "OTP delivery depends on email latency. A learner on a slow provider may wait; the resend cooldown is deliberately short (60 s) to compensate.",
+      "Google is the only social provider. Apple is deferred until an iOS app exists, where the App Store requires it.",
+      "Device identity is a client-generated `device_id` in local storage plus a coarse fingerprint. Clearing browser storage looks like a new device, which is the correct failure direction but does mean a re-login.",
       "The breached-password check requires an outbound call; the offline Bloom-filter fallback is not yet built.",
       "OAuth account linking requires a verified email match; providers that do not assert verification are not supported.",
       "Session geolocation is IP-country only, from a local database — it is indicative, not evidence."
@@ -212,8 +271,18 @@
       "Password change and reset revoke sessions",
       "MFA: replayed code rejected; recovery code single-use; clock-skew tolerance",
       "Suspended user cannot refresh, and existing access tokens stop working within one TTL",
-      "Verification token single-use and expiry",
-      "OAuth: mismatched or unverified email must not link accounts"
+      "OTP: single-use, 10-minute expiry, exactly 5 attempts then burned, constant-time comparison",
+      "OTP: the code is never in the API response, never in a log, never in a span attribute",
+      "OTP: resend cooldown and hourly cap; resend replaces the code but does not extend the absolute expiry",
+      "OTP: a code from challenge A does not verify challenge B",
+      "OAuth: forged, reused and expired `state` all rejected; each raises a security event",
+      "OAuth: an ID token failing signature, `iss`, `aud`, `exp` or `nonce` creates no account and no partial state",
+      "OAuth: unverified Google email refused; match against an unverified local account refused",
+      "OAuth: unlinking the only sign-in method refused",
+      "Sliding refresh: rotation moves the idle window forward but never past the absolute expiry",
+      "Absolute expiry forces re-authentication even for a continuously active session",
+      "Admin accounts do not receive the extended idle window",
+      "Password change, reset and suspension all revoke every trusted device"
     ],
     "testEdges": [
       "Two concurrent refreshes with the same valid token — exactly one must succeed",
@@ -227,27 +296,41 @@
       { "question": "JWT or opaque access tokens?", "choice": "JWT (HS256 now, EdDSA when services split)", "why": "Stateless validation keeps the middleware free of a database round trip on every request; the 15-minute lifetime bounds the revocation window, and the denylist covers explicit logout" },
       { "question": "Where does the refresh token live?", "choice": "HttpOnly cookie scoped to `/api/v1/auth`", "why": "Not reachable by JavaScript, so an XSS cannot steal it; the narrow path limits CSRF surface to one endpoint, which also carries a double-submit token" },
       { "question": "Argon2id or bcrypt?", "choice": "Argon2id", "why": "OWASP's first recommendation; memory-hardness resists GPU cracking; parameters embedded in the hash allow raising cost without a migration" },
-      { "question": "Store sessions in Redis or Postgres?", "choice": "Postgres, cached in Redis", "why": "Sessions are durable state a user can audit and an admin can revoke; Redis is a 5-minute read cache, not the source of truth" }
+      { "question": "Store sessions in Redis or Postgres?", "choice": "Postgres, cached in Redis", "why": "Sessions are durable state a user can audit and an admin can revoke; Redis is a 5-minute read cache, not the source of truth" },
+      { "question": "Verification by emailed link or by OTP code?", "choice": "OTP code", "why": "A majority of learners open email on a phone. A link launches a second browser context with no session, which breaks the flow and loses the registration. A 6-digit code is typed into the tab already open. See ADR-0021" },
+      { "question": "One challenge table or a table per purpose?", "choice": "One, with a `purpose` enum", "why": "Rate limiting, attempt capping, hashing, expiry and burning are identical across purposes. Three copies would mean three places to get constant-time comparison wrong" },
+      { "question": "How is 'stay signed in' implemented?", "choice": "Sliding idle window + absolute cap, not a long-lived token", "why": "An active learner is never signed out, which is the actual requirement, while every credential still has a bounded lifetime and a revocation path. See ADR-0022" },
+      { "question": "Which social providers in Phase 1?", "choice": "Google only", "why": "It covers the overwhelming majority of the target market. Apple can wait until there is an iOS app, where it becomes a store requirement" },
+      { "question": "What happens when a Google email matches an unverified local account?", "choice": "Refuse and require OTP verification of that address first", "why": "Auto-linking would let anyone who registers an address they do not own capture it later via Google. This is the subtle account-takeover path in every social login integration" }
     ],
-    "adrs": [{ "id": "ADR-0007", "file": "ADR-0007-auth-jwt-refresh-rotation.md", "title": "JWT access + rotating refresh tokens" }],
+    "adrs": [
+      { "id": "ADR-0007", "file": "ADR-0007-auth-jwt-refresh-rotation.md", "title": "JWT access + rotating refresh tokens" },
+      { "id": "ADR-0021", "file": "ADR-0021-email-otp-challenges.md", "title": "Email OTP challenges instead of verification links" },
+      { "id": "ADR-0022", "file": "ADR-0022-persistent-sessions.md", "title": "Persistent sign-in: sliding window with an absolute cap" },
+      { "id": "ADR-0023", "file": "ADR-0023-google-oauth-linking.md", "title": "Google OAuth and the account-linking policy" }
+    ],
     "openQuestions": [
       "Do we support passkeys in Phase 2, and if so do they replace or supplement TOTP?",
       "Should admin MFA also require a hardware key, or is TOTP sufficient for our threat model?"
     ],
     "todo": [
       { "title": "Phase 1 — core", "items": [
-        "Registration + email verification, with the outbox path proven end-to-end",
         "Argon2id credential storage with parameter upgrade on login",
+        "Challenge subsystem: issue, resend, verify, burn — generic over `purpose`",
+        "Registration + OTP email verification, with the outbox path proven end-to-end",
         "Login with equalised timing and per-account/per-IP lockout",
         "Access token issuance and validating middleware, with `Actor` in the request context",
         "Refresh rotation with family revocation on reuse, covered by an integration test",
+        "Sliding idle window, absolute cap, trusted devices, device list and revoke",
+        "Google OAuth: PKCE, state, nonce, JWKS verification, linking policy",
         "Session list and revoke, for the user and for an admin",
-        "Password reset and change, revoking sessions",
+        "Password reset and change, revoking sessions and trusted devices",
         "Security event emission wired to `audit`"
       ]},
       { "title": "Phase 2", "items": [
         "TOTP enrolment, verification, recovery codes; mandatory for admins",
-        "Google and Apple OAuth with verified-email linking",
+        "OTP as a step-up factor on an untrusted device (reuses the `login_otp` purpose — already built)",
+        "Apple sign-in (required if an iOS app ships)",
         "New-device notification email",
         "Offline breached-password Bloom filter as a fallback"
       ]}
@@ -268,8 +351,14 @@
       "Do not check permissions here — that is `rbac`. This module only proves identity.",
       "Do not return different messages or noticeably different timings for unknown-email and wrong-password.",
       "Do not extend the access-token lifetime to avoid refresh complexity.",
-      "Do not log tokens, password hashes, email addresses, or TOTP seeds.",
-      "Do not add a 'remember me forever' option — rotate refresh tokens instead."
+      "Do not log tokens, password hashes, email addresses, TOTP seeds, or OTP codes — not even at debug level, not even in a test fixture.",
+      "Do not implement 'stay signed in' as a token with no expiry. Use the sliding idle window plus the absolute cap; an immortal credential cannot be reasoned about or revoked reliably.",
+      "Do not put the OTP code in the API response, in a URL, or in a push notification. It goes to the email channel and nowhere else — otherwise it verifies nothing.",
+      "Do not compare an OTP with `==`. Use a constant-time comparison against the stored HMAC.",
+      "Do not auto-link a Google identity to an unverified local account.",
+      "Do not trust anything in Google's ID token before verifying its signature against the JWKS, plus `iss`, `aud`, `exp` and the `nonce` we issued.",
+      "Do not reuse an OAuth `state` value, and do not accept one that did not come from our own store.",
+      "Do not skip PKCE because we are a confidential client — it costs nothing and blocks code interception on mobile browsers."
     ],
     "runtimePrompts": [],
     "devPrompts": [
