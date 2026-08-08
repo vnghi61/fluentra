@@ -7,7 +7,11 @@ import (
 	"time"
 
 	"github.com/fluentra/fluentra/internal/shared/config"
+	"github.com/riverqueue/river"
 )
+
+// envQueues is the variable that decides queue concurrency at run time.
+const envQueues = "WORKER_QUEUES"
 
 func envExample(t *testing.T) map[string]string {
 	t.Helper()
@@ -68,7 +72,56 @@ func TestLoadConfig_ResolvesEveryKeyFromEnvExample(t *testing.T) {
 	if cfg.Worker.Queues == "" {
 		t.Error("Worker.Queues not decoded from WORKER_QUEUES")
 	}
+	if cfg.Job.Timeout != 5*time.Minute {
+		t.Errorf("Job.Timeout = %s, want 5m", cfg.Job.Timeout)
+	}
+	// The parsed map is what the worker actually runs on. Decoding the string
+	// but never parsing it is how the five queues stayed decorative.
+	if len(cfg.Queues) != 5 || cfg.Queues["default"] != 10 || cfg.Queues["ai"] != 4 {
+		t.Errorf("parsed queues = %v, want the five queues from .env.example", cfg.Queues)
+	}
 	if cfg.Telemetry.Endpoint != "localhost:4317" {
 		t.Errorf("Telemetry.Endpoint = %q, want the scheme stripped for gRPC", cfg.Telemetry.Endpoint)
+	}
+}
+
+// TestLoadConfig_RejectsUnusableJobSettings keeps a malformed value from booting
+// a worker that silently runs on defaults nobody chose.
+func TestLoadConfig_RejectsUnusableJobSettings(t *testing.T) {
+	for name, override := range map[string]struct{ key, value string }{
+		"malformed queue spec": {envQueues, "default"},
+		"zero concurrency":     {envQueues, "default:0"},
+		"empty queue spec":     {envQueues, " "},
+		"non-positive timeout": {"JOB_TIMEOUT", "0s"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			for variable, value := range envExample(t) {
+				t.Setenv(variable, value)
+			}
+			t.Setenv(override.key, override.value)
+
+			if _, err := loadConfig(context.Background()); err == nil {
+				t.Errorf("%s=%q was accepted", override.key, override.value)
+			}
+		})
+	}
+}
+
+// TestRegisterJobKinds_IsTheSinglePlaceP1Adds documents why the worker does not
+// start River today, so the next agent does not read the warning as a bug.
+func TestRegisterJobKinds_IsTheSinglePlaceP1Adds(t *testing.T) {
+	if got := registerJobKinds(river.NewWorkers()); got != 0 {
+		t.Errorf("registered kinds = %d; update this test when P1 adds the first one", got)
+	}
+}
+
+func TestQueueNames_AreSortedForStableLogging(t *testing.T) {
+	t.Parallel()
+	got := queueNames(map[string]int{"notify": 1, "ai": 2, "batch": 3})
+	want := []string{"ai", "batch", "notify"}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("queueNames = %v, want %v", got, want)
+		}
 	}
 }

@@ -10,7 +10,7 @@ tables: [river_job, outbox_events, job_failures]
 depends_on: [telemetry]
 depended_on_by: [auth, user, audit, notification, mailer, content, writing, speaking, media, ai, srs, analytics, exam, payment]
 spec_version: 1.0.0
-last_verified: 2026-08-06
+last_verified: 2026-08-08
 ---
 
 # job — AGENT.md
@@ -68,6 +68,15 @@ Background execution: the River queue wiring, the cron scheduler, job middleware
 | `db/migrations/job/` | You need the real schema |
 <!-- END GENERATED: entrypoints -->
 
+**What actually exists today** (the generated table above describes the target layout):
+
+| File | Read it when |
+|---|---|
+| `client.go` | You are enqueueing — `Enqueuer`, `EnqueueTx`, the five queue names |
+| `worker.go` | You are changing how jobs are consumed — `ParseQueues`, `NewWorker`, the dead-letter handler, `MigrateUp`, the queue-age query |
+| `middleware.go` | You are changing what wraps every handler — span, log, panic recovery, timeout, metrics |
+| `cron.go` | You are adding a scheduled task |
+
 ## 4. Public API (contract)
 
 Other modules may import **only** `internal/platform/job/contract`.
@@ -94,7 +103,7 @@ Migrations: `db/migrations/job/` · Queries: `db/queries/job/`
 
 | Table | Purpose | Key columns / notes |
 |---|---|---|
-| `ops.river_job` | River's queue table | Managed by River's own migrations; do not hand-edit |
+| `ops.river_job` | River's queue table | Managed by River's own migrations; do not hand-edit. Applied by `job.MigrateUp` at worker start-up, **not** by goose — River versions this schema itself, so it is deliberately absent from `db/migrations/job/` |
 | `ops.outbox_events` | Transactional event outbox | `aggregate`, `event`, `payload`, `published_at`, `attempts`. Polled with `FOR UPDATE SKIP LOCKED` |
 | `ops.job_failures` | Dead-letter record | `kind`, `args`, `last_error`, `failed_at` — retained 30 days for triage |
 
@@ -189,6 +198,26 @@ and fails `go-arch-lint` in CI.
 3. Use an advisory lock if it must not run concurrently across replicas.
 4. Add a metric for its last successful run, and an alert if it goes stale.
 <!-- END GENERATED: tasks -->
+
+### Queue concurrency
+
+Concurrency per queue is read from `WORKER_QUEUES` (`name:concurrency,…`) and parsed by
+`job.ParseQueues`. A malformed value fails the worker's boot rather than falling back to a
+default — a silent fallback to hardcoded numbers is indistinguishable from the config working.
+`DefaultQueues()` is the documented shape, not the runtime source.
+
+### Metrics
+
+| Metric | State |
+|---|---|
+| `job_duration_seconds` | Recorded by the middleware, labelled `queue`/`kind`/`result` |
+| `job_attempts_total` | Recorded by the middleware, same labels |
+| `job_oldest_pending_seconds` | Observable gauge; callback registered by `Worker.Start` |
+| `job_queue_depth` | **Declared but never written** — see `TODO.md` |
+
+`result` is a closed set: `success`, `error`, `panic`, `timeout`, `cancelled`. Panic and timeout are
+separated from a plain error because they call for different responses — one means the handler is
+broken, the other that it is too slow.
 
 ## 11. Known limitations
 

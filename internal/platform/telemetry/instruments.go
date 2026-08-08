@@ -2,6 +2,7 @@ package telemetry
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"go.opentelemetry.io/otel/attribute"
@@ -10,6 +11,11 @@ import (
 
 // Instruments contains the bounded-label metrics shared by platform modules.
 type Instruments struct {
+	// meter is retained so observable instruments can have their callbacks
+	// registered after construction. An observable gauge with no callback never
+	// reports anything, which is how job_oldest_pending_seconds stayed silent.
+	meter metric.Meter
+
 	HTTPDuration             metric.Float64Histogram
 	HTTPActive               metric.Int64UpDownCounter
 	DBQueryDuration          metric.Float64Histogram
@@ -75,6 +81,7 @@ func NewInstruments(meter metric.Meter) (Instruments, error) {
 		return Instruments{}, fmt.Errorf("create job attempts counter: %w", err)
 	}
 	return Instruments{
+		meter:                    meter,
 		HTTPDuration:             httpDuration,
 		HTTPActive:               httpActive,
 		DBQueryDuration:          dbQueryDuration,
@@ -94,4 +101,34 @@ func NewInstruments(meter metric.Meter) (Instruments, error) {
 func (i Instruments) RecordCacheRequest(ctx context.Context, module, result string) {
 	i.CacheRequests.Add(ctx, 1, metric.WithAttributes(
 		attribute.String("module", module), attribute.String("result", result)))
+}
+
+// ObserveJobOldestPending attaches a callback to the job_oldest_pending_seconds
+// gauge. Until something registers one, the gauge is declared but never emits a
+// value — the metric exists in code and is missing from every dashboard.
+//
+// observe returns the age in seconds of the oldest job still waiting to run.
+// The returned Registration must be unregistered when the observer's data
+// source goes away, or the callback will run against a closed pool.
+func (i Instruments) ObserveJobOldestPending(
+	observe func(context.Context) (int64, error),
+) (metric.Registration, error) {
+	if i.meter == nil {
+		return nil, errors.New("telemetry: instruments were not built from a meter")
+	}
+	registration, err := i.meter.RegisterCallback(
+		func(ctx context.Context, observer metric.Observer) error {
+			seconds, err := observe(ctx)
+			if err != nil {
+				return err
+			}
+			observer.ObserveInt64(i.JobOldestPending, seconds)
+			return nil
+		},
+		i.JobOldestPending,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("register oldest pending job callback: %w", err)
+	}
+	return registration, nil
 }

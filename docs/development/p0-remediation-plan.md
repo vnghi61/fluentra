@@ -307,7 +307,7 @@ graph TD
 | P0.R3 | Telemetry propagator + redaction | S | R1 | ✅ |
 | P0.R4 | Outbox contract + retry + metric | L | R1 | ✅ |
 | P0.R5 | Wire outbox → eventbus | M | R4 | ✅ |
-| P0.R6 | River worker + job middleware | L | R5 | ☐ |
+| P0.R6 | River worker + job middleware | L | R5 | ✅ |
 | P0.R7 | Cache limiter degradation | S | R1 | ✅ |
 | P0.R8 | Storage presign policy + sniff | M | R1 | ✅ |
 | P0.R9 | Mailer i18n + embed + suppression | M | R4 | ✅ |
@@ -345,6 +345,15 @@ sở hữu bảng. Sửa: cấp `CONNECT, CREATE` cho migrator, chuyển quyền
 migrator (và trả lại trong Down), và `up` áp dụng từng migration một, gọi lại `SET ROLE` giữa mỗi
 lần. **Verified:** `up` → `down` ×4 → `status` → `up` trên Postgres 17 sạch.
 
+**P0.R21 — worker không báo được lý do chết** `S` ✅ *(phát sinh trong R6)*
+
+Phát hiện khi chạy binary `cmd/worker` thật: process exit 1, **stdout và stderr đều rỗng**.
+Nguyên nhân: `telemetry.NewProvider` gọi `slog.SetDefault` sang handler OTLP, nên `slog.Error` ở
+nhánh fatal của `main` gửi tới collector — mà một process chết lúc khởi động thường chưa/không kết
+nối được collector. Kết quả: vận hành chỉ thấy exit code trần, không có lý do ở đâu cả. Sửa: nhánh
+fatal ghi thẳng `os.Stderr` bằng `fmt.Fprintf`, không qua slog. Chính bản sửa này mới lộ ra lỗi
+thật của R6 bên dưới.
+
 **P0.R20 — đưa `golangci-lint` về 0 issue** `M` ✅
 
 88 issue trên cây sạch, nên `make lint` và `make check` chưa từng xanh. Ba nhóm thực chất đã sửa:
@@ -370,9 +379,32 @@ self-dependency mà linter từ chối; hai `doc.go` không thuộc component n�
 một component mỗi package (khai báo `commonComponents`), cấp `anyVendorDeps` cho platform, loại trừ
 hai `doc.go`. **Verified:** `OK - No warnings found`.
 
-### Trạng thái bàn giao (2026-08-08, cập nhật sau P0.R20)
+### Ghi chú thực hiện P0.R6
 
-**Xong 14/20 card.** Mỗi card đều verify bằng hạ tầng thật, không chỉ bằng đọc code.
+**River từ chối start khi chưa có job kind nào đăng ký** (`at least one Worker must be added to the
+Workers bundle`), mà hiện **chưa module nào có** — mọi module nghiệp vụ vẫn là stub. Lựa chọn: để
+worker fail boot (làm hỏng `make dev` cho tất cả mọi người tới khi P1.1 xong) hay bỏ qua consumer
+và **báo warn to**. Chọn cái sau. `cmd/worker.registerJobKinds` là chỗ duy nhất P1 thêm
+`river.AddWorker`; nó trả về số kind đã đăng ký, và ngay khi khác 0 thì worker tự bắt đầu consume,
+không cần sửa gì thêm. Có test khoá hành vi này để agent sau không đọc warning thành bug.
+
+Vì vậy **acceptance của R6 được chứng minh bằng integration test** (đăng ký job kind thật, chạy
+River thật trên Postgres thật), không phải bằng binary — binary hôm nay đúng là không có gì để
+consume.
+
+**`ops.river_job` không đi qua goose.** River tự version schema của nó; `job.MigrateUp` chạy
+`rivermigrate` vào schema `ops` lúc worker khởi động. Đây là lý do `db/migrations/job/` không có
+file nào cho bảng này — đã ghi vào `job/AGENT.md` §5.
+
+**Bug tìm được khi viết test gauge:** query `job_oldest_pending_seconds` ban đầu lọc
+`state IN ('available','retryable')`. River park job ở state `scheduled` cho tới khi scheduler đẩy
+lên, nên một backlog **đã tới hạn** nằm ở `scheduled` và gauge báo 0. Sửa: thêm `scheduled` vào
+danh sách, giữ nguyên `scheduled_at <= now()` để việc hẹn tương lai không bị tính là backlog. Có
+test cho cả hai chiều.
+
+### Trạng thái bàn giao (2026-08-08, cập nhật sau P0.R6)
+
+**Xong 16/21 card.** Mỗi card đều verify bằng hạ tầng thật, không chỉ bằng đọc code.
 
 | Kiểm tra | Kết quả |
 |---|---|
@@ -392,10 +424,12 @@ hai `doc.go`. **Verified:** `OK - No warnings found`.
 
 **Việc còn lại, theo thứ tự khuyến nghị:**
 
-1. **P0.R6** — River worker + job middleware. Card nặng nhất còn lại, verify được bằng Docker.
-2. **P0.R11 / R12** — CI gates.
-3. **P0.R13** — web shell. `pnpm` đã sẵn sàng.
-4. **P0.R15** — WP0 trace gate. Cần full stack `make dev` (Tempo/Loki/Grafana).
+1. **P0.R11 / R12** — CI gates. Ngoài phạm vi gốc, R11 cần thêm ba thứ tìm được ở R20/R6:
+   set `TEST_DATABASE_URL` + `TEST_S3_*` và assert số test chạy khác 0; thêm
+   `--build-tags=integration` vào bước lint và dọn 13 issue nó lộ ra; và một smoke test khởi động
+   `cmd/worker` để bắt loại lỗi chỉ xuất hiện khi chạy binary thật.
+2. **P0.R13** — web shell. `pnpm` đã sẵn sàng.
+3. **P0.R15** — WP0 trace gate. Cần full stack `make dev` (Tempo/Loki/Grafana).
 
 **Môi trường đã dựng xong, không cần làm lại:** Go 1.26.5 amd64; gcc 64-bit (`CC` trỏ tới
 `C:\msys64\mingw64\bin\gcc.exe`, và bản 32-bit đã bị gỡ khỏi Machine PATH); golangci-lint 2.12.2

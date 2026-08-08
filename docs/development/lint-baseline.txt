@@ -14,6 +14,18 @@ Toolchain the baseline was taken with:
 The baseline is zero, so this file is no longer a list of accepted issues.
 Any issue golangci-lint reports is a regression: fix it, do not append it here.
 
+BLIND SPOT: `golangci-lint run ./...` does not analyse files behind a build tag,
+and every container-backed test is behind `//go:build integration`. Those files
+have therefore never been linted. As of 2026-08-08:
+
+    $ golangci-lint run --build-tags=integration ./...
+    13 issues   (lll 9, goconst 4)
+
+all of them in integration tests written before P0.R6 — cmd/worker, mailer,
+storage, outbox. They are cosmetic, and left alone rather than folded into an
+unrelated card. P0.R11 should add `--build-tags=integration` to the CI lint step
+and clear them in the same change.
+
 Enabled linters live in /.golangci.yml. The two settings that produce most of
 the churn are gocyclo min-complexity 15 and lll line-length 120.
 
