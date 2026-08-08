@@ -1,0 +1,7 @@
+{
+  "app": { "name": "Fluentra", "tagline": "Learn English that stays learned" },
+  "nav": { "home": "Home", "practice": "Practice" },
+  "status": { "checking": "Checking the API…", "ok": "API reachable", "failed": "API unreachable" },
+  "action": { "ping": "Ping the API", "retry": "Try again", "toggleTheme": "Toggle theme" },
+  "error": { "title": "Something broke", "body": "This screen failed to render. The error has been reported.", "reload": "Reload" }
+}

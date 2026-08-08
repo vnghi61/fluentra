@@ -1,0 +1,7 @@
+{
+  "app": { "name": "Fluentra", "tagline": "Học tiếng Anh để nhớ lâu" },
+  "nav": { "home": "Trang chủ", "practice": "Luyện tập" },
+  "status": { "checking": "Đang kiểm tra API…", "ok": "API phản hồi", "failed": "Không gọi được API" },
+  "action": { "ping": "Gọi thử API", "retry": "Thử lại", "toggleTheme": "Đổi giao diện" },
+  "error": { "title": "Đã xảy ra lỗi", "body": "Màn hình này không dựng được. Lỗi đã được ghi nhận.", "reload": "Tải lại" }
+}

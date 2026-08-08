@@ -1,0 +1,40 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "types": ["vite/client"],
+
+    "composite": true,
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+    "noEmit": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "verbatimModuleSyntax": true,
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": false,
+
+    // Strictness is the point of the card. `noUncheckedIndexedAccess` and
+    // `exactOptionalPropertyTypes` are the two that catch real bugs and that
+    // most projects skip: the first stops `array[i]` being silently trusted, the
+    // second stops `{ x: undefined }` passing where `x?: string` is declared.
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "useUnknownInCatchVariables": true,
+
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src"]
+}

@@ -1,0 +1,8 @@
+# pnpm does not run dependency lifecycle scripts by default, which is the right
+# default. These two genuinely need theirs: esbuild places its platform binary,
+# msw writes the service worker used by the browser mocks. Everything else stays
+# barred.
+allowBuilds:
+  esbuild: true
+  msw: true
+  unrs-resolver: set this to true or false
