@@ -62,6 +62,11 @@ components:
   s_secret:        { in: shared/secret }
   s_validation:    { in: shared/validation }
 
+  # sqlc output. It is a component rather than an `exclude` entry so that the
+  # edges *into* it stay visible: a module reaching for another schema's
+  # generated queries is exactly the L2 violation this file exists to catch.
+  generated:     { in: generated/** }
+
   # platform capabilities
   p_telemetry:   { in: platform/telemetry/** }
   p_cache:       { in: platform/cache/** }
@@ -142,6 +147,10 @@ deps:
   s_pagination:    { anyVendorDeps: true }
   s_secret:        { anyVendorDeps: true }
   s_validation:    { anyVendorDeps: true }
+
+  # sqlc emits pgx types, so it needs the vendor allowance. It depends on nothing
+  # of ours, which is what makes it safe for any owner to import.
+  generated:   { anyVendorDeps: true }
 
   # A platform capability exists to wrap a vendor SDK, so each may import one.
   # Business modules deliberately may not: they reach external systems through

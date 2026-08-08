@@ -190,7 +190,8 @@ func TestPublisher_DeadLettersAfterMaxAttempts(t *testing.T) {
 			t.Fatalf("batch %d: %v", attempt, err)
 		}
 		// Undo the backoff so the next pass is due.
-		if _, err := pool.Exec(ctx, `UPDATE ops.outbox_events SET next_attempt_at = now() WHERE dead_lettered_at IS NULL`); err != nil {
+		const dueNow = `UPDATE ops.outbox_events SET next_attempt_at = now() WHERE dead_lettered_at IS NULL`
+		if _, err := pool.Exec(ctx, dueNow); err != nil {
 			t.Fatalf("advance backoff: %v", err)
 		}
 	}
@@ -198,7 +199,8 @@ func TestPublisher_DeadLettersAfterMaxAttempts(t *testing.T) {
 	if got := countRows(t, pool, "SELECT count(*) FROM ops.outbox_events WHERE dead_lettered_at IS NOT NULL"); got != 1 {
 		t.Fatalf("dead-lettered rows = %d, want 1", got)
 	}
-	if got := countRows(t, pool, "SELECT count(*) FROM ops.job_failures WHERE kind = $1", "outbox.user.user.created"); got != 1 {
+	const failuresForKind = "SELECT count(*) FROM ops.job_failures WHERE kind = $1"
+	if got := countRows(t, pool, failuresForKind, "outbox.user.user.created"); got != 1 {
 		t.Fatalf("job_failures rows = %d, want 1", got)
 	}
 
@@ -221,8 +223,9 @@ func TestPublisher_EventIDIsUnique(t *testing.T) {
 	if err := pool.QueryRow(ctx, `SELECT event_id FROM ops.outbox_events`).Scan(&eventID); err != nil {
 		t.Fatalf("read id: %v", err)
 	}
-	_, err := pool.Exec(ctx,
-		`INSERT INTO ops.outbox_events (event_id, aggregate, event, payload) VALUES ($1, 'user', 'user.created', '{}')`, eventID)
+	const duplicate = `INSERT INTO ops.outbox_events (event_id, aggregate, event, payload)
+		VALUES ($1, 'user', 'user.created', '{}')`
+	_, err := pool.Exec(ctx, duplicate, eventID)
 	if err == nil {
 		t.Fatal("expected the unique index on event_id to reject a duplicate")
 	}

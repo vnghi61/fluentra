@@ -1,9 +1,30 @@
 name: build
 
+# What this workflow can honestly do today is compile the binaries.
+#
+# It used to build a container image from ./deploy/compose/Dockerfile. That file
+# does not exist, and neither does any other Dockerfile in the repository —
+# deploy/compose/ declares infrastructure only, with no api or worker service, so
+# nothing has ever been containerised. The step therefore failed on every push to
+# main, which is indistinguishable from having no build gate at all.
+#
+# Writing a production image (base image choice, non-root user, static linking,
+# SBOM) is deployment work with its own security review, not a CI-gate change, so
+# it is deliberately not being invented here. When the Dockerfile lands, add the
+# push job back: the pinned docker/* action SHAs it needs are in this file's
+# history.
+
 on:
   push:
     branches: [main]
     tags: ['v*']
+  pull_request:
+    branches: [main]
+    paths:
+      - '**.go'
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/build.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -11,46 +32,56 @@ concurrency:
 
 permissions:
   contents: read
-  packages: write
 
 jobs:
-  build-and-push:
-    name: Build & Push Container Image
+  binaries:
+    name: Build release binaries
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GHCR
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          go-version-file: 'go.mod'
+          cache: true
 
-      - name: Extract metadata (tags, labels)
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository }}/api
-          tags: |
-            type=sha,format=long
-            type=semver,pattern={{version}}
-            type=ref,event=branch
+      # CGO_ENABLED=0 so the artefacts do not depend on the runner's libc, and
+      # the version/commit are stamped in — a binary that cannot say what it is
+      # cannot be correlated with a trace or a bug report.
+      - name: Build binaries
+        env:
+          CGO_ENABLED: '0'
+          GOOS: linux
+          GOARCH: amd64
+        run: |
+          version="${GITHUB_REF_NAME}"
+          mkdir -p dist
+          for cmd in api worker migrate; do
+            go build -trimpath \
+              -ldflags "-s -w -X main.version=${version} -X main.commitSHA=${GITHUB_SHA}" \
+              -o "dist/${cmd}" "./cmd/${cmd}"
+          done
+          ls -l dist
 
-      - name: Build Docker image
-        uses: docker/build-push-action@v5
+      - name: Verify the binaries report their build metadata
+        run: |
+          set -e
+          # `migrate` with no argument prints usage and exits non-zero; that it
+          # runs at all proves the artefact is executable on a clean machine.
+          if ./dist/migrate 2>&1 | grep -q 'usage: migrate'; then
+            echo "migrate binary is executable"
+          else
+            echo "::error::migrate binary did not produce its usage message"
+            exit 1
+          fi
+
+      - name: Upload binaries
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          context: .
-          file: ./deploy/compose/Dockerfile
-          push: false
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          name: fluentra-binaries-${{ github.sha }}
+          path: dist/
+          retention-days: 14

@@ -111,7 +111,7 @@ func TestPostgresRecorder_StoresOnlyHashedRecipients(t *testing.T) {
 	recorder := mailer.NewPostgresRecorder(pool)
 	if err := recorder.Record(ctx, mailer.LogEntry{
 		ToHash:   mailer.HashEmail("learner@example.com"),
-		Template: "verify_email",
+		Template: templateVerifyEmail,
 		Locale:   "vi",
 		Status:   "sent",
 	}); err != nil {
@@ -127,12 +127,13 @@ func TestPostgresRecorder_StoresOnlyHashedRecipients(t *testing.T) {
 	if toHash != mailer.HashEmail("learner@example.com") {
 		t.Errorf("to_hash = %q", toHash)
 	}
-	if template != "verify_email" || locale != "vi" || status != "sent" {
+	if template != templateVerifyEmail || locale != "vi" || status != "sent" {
 		t.Errorf("row = %q/%q/%q", template, locale, status)
 	}
 
 	var plaintextRows int
-	if err := pool.QueryRow(ctx, `SELECT count(*) FROM comm.email_log WHERE to_hash LIKE '%@%'`).Scan(&plaintextRows); err != nil {
+	const plaintextProbe = `SELECT count(*) FROM comm.email_log WHERE to_hash LIKE '%@%'`
+	if err := pool.QueryRow(ctx, plaintextProbe).Scan(&plaintextRows); err != nil {
 		t.Fatalf("scan: %v", err)
 	}
 	if plaintextRows != 0 {

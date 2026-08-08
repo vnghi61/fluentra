@@ -18,6 +18,10 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
+// contentTypePNG is the type these uploads claim; the point of the suite is
+// that claiming it is not the same as being it.
+const contentTypePNG = "image/png"
+
 const testBucket = "fluentra-test-uploads"
 
 // pngBytes is a one-pixel PNG: a real magic-byte header for sniffing.
@@ -148,11 +152,11 @@ func TestPresignPut_AcceptsAConformingUpload(t *testing.T) {
 		t.Fatalf("a conforming upload was rejected: status %d", status)
 	}
 
-	stat, err := store.VerifyUpload(ctx, testBucket, key, "image/png", 1<<20)
+	stat, err := store.VerifyUpload(ctx, testBucket, key, contentTypePNG, 1<<20)
 	if err != nil {
 		t.Fatalf("verify: %v", err)
 	}
-	if stat.SniffedContentType != "image/png" {
+	if stat.SniffedContentType != contentTypePNG {
 		t.Errorf("sniffed = %q, want image/png", stat.SniffedContentType)
 	}
 	t.Cleanup(func() { _ = store.Delete(context.Background(), testBucket, key) })
@@ -167,14 +171,16 @@ func TestVerifyUpload_CatchesARenamedExecutable(t *testing.T) {
 
 	// Upload out of band with a lying Content-Type header, exactly as a client
 	// that had a valid policy for image/png could do with its file bytes.
-	_, err := client.PutObject(ctx, testBucket, key, bytes.NewReader(windowsExecutable), int64(len(windowsExecutable)),
-		minio.PutObjectOptions{ContentType: "image/png"})
+	_, err := client.PutObject(ctx, testBucket, key,
+		bytes.NewReader(windowsExecutable), int64(len(windowsExecutable)),
+		minio.PutObjectOptions{ContentType: contentTypePNG})
 	if err != nil {
 		t.Fatalf("put object: %v", err)
 	}
 	t.Cleanup(func() { _ = store.Delete(context.Background(), testBucket, key) })
 
-	if _, err := store.VerifyUpload(ctx, testBucket, key, "image/png", 1<<20); !errors.Is(err, storage.ErrContentTypeMismatch) {
+	_, err = store.VerifyUpload(ctx, testBucket, key, contentTypePNG, 1<<20)
+	if !errors.Is(err, storage.ErrContentTypeMismatch) {
 		t.Fatalf("VerifyUpload error = %v, want ErrContentTypeMismatch", err)
 	}
 }
@@ -183,19 +189,21 @@ func TestVerifyUpload_CatchesMissingObjectAndOversize(t *testing.T) {
 	store, client := newTestStore(t)
 	ctx := context.Background()
 
-	if _, err := store.VerifyUpload(ctx, testBucket, "probe/does-not-exist.png", "image/png", 1<<20); !errors.Is(err, storage.ErrObjectNotFound) {
+	_, err := store.VerifyUpload(ctx, testBucket, "probe/does-not-exist.png", contentTypePNG, 1<<20)
+	if !errors.Is(err, storage.ErrObjectNotFound) {
 		t.Errorf("missing object error = %v, want ErrObjectNotFound", err)
 	}
 
 	key := "probe/too-big.png"
-	_, err := client.PutObject(ctx, testBucket, key, bytes.NewReader(pngBytes), int64(len(pngBytes)),
-		minio.PutObjectOptions{ContentType: "image/png"})
+	_, err = client.PutObject(ctx, testBucket, key, bytes.NewReader(pngBytes), int64(len(pngBytes)),
+		minio.PutObjectOptions{ContentType: contentTypePNG})
 	if err != nil {
 		t.Fatalf("put object: %v", err)
 	}
 	t.Cleanup(func() { _ = store.Delete(context.Background(), testBucket, key) })
 
-	if _, err := store.VerifyUpload(ctx, testBucket, key, "image/png", 8); !errors.Is(err, storage.ErrSizeMismatch) {
+	_, err = store.VerifyUpload(ctx, testBucket, key, contentTypePNG, 8)
+	if !errors.Is(err, storage.ErrSizeMismatch) {
 		t.Errorf("oversize error = %v, want ErrSizeMismatch", err)
 	}
 }

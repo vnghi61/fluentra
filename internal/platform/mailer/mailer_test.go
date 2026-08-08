@@ -8,6 +8,10 @@ import (
 	"github.com/fluentra/fluentra/internal/platform/mailer"
 )
 
+// templateVerifyEmail is the one template these tests render. It lives here
+// rather than in integration_test.go so it is visible without the build tag.
+const templateVerifyEmail = "verify_email"
+
 // The template variables the verify_email body substitutes.
 const (
 	fieldCode        = "Code"
@@ -58,11 +62,13 @@ func TestRender_SubjectIsLocalised(t *testing.T) {
 	t.Parallel()
 	renderer := newRenderer(t)
 
-	english, err := renderer.Render("verify_email", "en", map[string]any{fieldCode: "123456", fieldDisplayName: "Mai"})
+	english, err := renderer.Render(templateVerifyEmail, "en",
+		map[string]any{fieldCode: "123456", fieldDisplayName: "Mai"})
 	if err != nil {
 		t.Fatalf("render en: %v", err)
 	}
-	vietnamese, err := renderer.Render("verify_email", "vi", map[string]any{fieldCode: "123456", fieldDisplayName: "Mai"})
+	vietnamese, err := renderer.Render(templateVerifyEmail, "vi",
+		map[string]any{fieldCode: "123456", fieldDisplayName: "Mai"})
 	if err != nil {
 		t.Fatalf("render vi: %v", err)
 	}
@@ -70,7 +76,7 @@ func TestRender_SubjectIsLocalised(t *testing.T) {
 	if english.Subject == vietnamese.Subject {
 		t.Fatalf("subject is not localised: both are %q", english.Subject)
 	}
-	if strings.Contains(english.Subject, "verify_email") {
+	if strings.Contains(english.Subject, templateVerifyEmail) {
 		t.Errorf("subject leaks the template name: %q", english.Subject)
 	}
 }
@@ -79,7 +85,7 @@ func TestRender_SubjectIsLocalised(t *testing.T) {
 // markup in the message body.
 func TestRender_EscapesHTMLInUserSuppliedData(t *testing.T) {
 	t.Parallel()
-	rendered, err := newRenderer(t).Render("verify_email", "en", map[string]any{
+	rendered, err := newRenderer(t).Render(templateVerifyEmail, "en", map[string]any{
 		fieldDisplayName: "<script>alert(1)</script>",
 		fieldCode:        "123456",
 	})
@@ -93,7 +99,8 @@ func TestRender_EscapesHTMLInUserSuppliedData(t *testing.T) {
 
 func TestRender_FallsBackToDefaultLocale(t *testing.T) {
 	t.Parallel()
-	rendered, err := newRenderer(t).Render("verify_email", "de", map[string]any{fieldCode: "1", fieldDisplayName: "x"})
+	rendered, err := newRenderer(t).Render(templateVerifyEmail, "de",
+		map[string]any{fieldCode: "1", fieldDisplayName: "x"})
 	if err != nil {
 		t.Fatalf("render: %v", err)
 	}
@@ -111,7 +118,7 @@ func TestSend_RejectsHeaderInjectionInRecipient(t *testing.T) {
 
 	err := sender.Send(context.Background(), mailer.Message{
 		To:       "learner@example.com\r\nBcc: attacker@evil.example",
-		Template: "verify_email",
+		Template: templateVerifyEmail,
 		Locale:   "en",
 		Data:     map[string]any{fieldCode: "1", fieldDisplayName: "x"},
 	})
@@ -130,7 +137,7 @@ func TestSend_SuppressedAddressIsNotDelivered(t *testing.T) {
 		mailer.SMTPConfig{Host: "localhost", Port: 1025, DevMode: true}, newRenderer(t), suppressions, nil)
 
 	err := sender.Send(context.Background(), mailer.Message{
-		To: "bounced@example.com", Template: "verify_email", Locale: "en",
+		To: "bounced@example.com", Template: templateVerifyEmail, Locale: "en",
 		Data: map[string]any{fieldCode: "1", fieldDisplayName: "x"},
 	})
 	if err == nil || !strings.Contains(err.Error(), "suppressed") {

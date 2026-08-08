@@ -19,6 +19,9 @@ import (
 	"github.com/pressly/goose/v3"
 )
 
+// testUserID is the aggregate id these tests round-trip through the outbox.
+const testUserID = "u-1"
+
 func newTestPool(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 	dsn := os.Getenv("TEST_DATABASE_URL")
@@ -78,7 +81,7 @@ func TestOutboxReachesEventBus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("begin: %v", err)
 	}
-	eventID, err := outbox.NewWriter().Write(ctx, tx, "user", "user.created", map[string]string{"id": "u-1"})
+	eventID, err := outbox.NewWriter().Write(ctx, tx, "user", "user.created", map[string]string{"id": testUserID})
 	if err != nil {
 		t.Fatalf("write: %v", err)
 	}
@@ -102,12 +105,13 @@ func TestOutboxReachesEventBus(t *testing.T) {
 	if err := json.Unmarshal(received.Payload, &payload); err != nil {
 		t.Fatalf("payload is not JSON: %s", received.Payload)
 	}
-	if payload["id"] != "u-1" {
+	if payload["id"] != testUserID {
 		t.Errorf("payload = %s", received.Payload)
 	}
 
 	var published *time.Time
-	if err := pool.QueryRow(ctx, `SELECT published_at FROM ops.outbox_events WHERE event_id = $1`, eventID).Scan(&published); err != nil {
+	const readPublished = `SELECT published_at FROM ops.outbox_events WHERE event_id = $1`
+	if err := pool.QueryRow(ctx, readPublished, eventID).Scan(&published); err != nil {
 		t.Fatalf("read row: %v", err)
 	}
 	if published == nil {
@@ -130,7 +134,8 @@ func TestFailingHandlerKeepsEventPending(t *testing.T) {
 	if err != nil {
 		t.Fatalf("begin: %v", err)
 	}
-	if _, err := outbox.NewWriter().Write(ctx, tx, "user", "user.created", map[string]string{"id": "u-1"}); err != nil {
+	if _, err := outbox.NewWriter().Write(
+		ctx, tx, "user", "user.created", map[string]string{"id": testUserID}); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -144,10 +149,12 @@ func TestFailingHandlerKeepsEventPending(t *testing.T) {
 
 	var attempts int
 	var published *time.Time
-	if err := pool.QueryRow(ctx, `SELECT attempts, published_at FROM ops.outbox_events`).Scan(&attempts, &published); err != nil {
+	const readAttempts = `SELECT attempts, published_at FROM ops.outbox_events`
+	if err := pool.QueryRow(ctx, readAttempts).Scan(&attempts, &published); err != nil {
 		t.Fatalf("read row: %v", err)
 	}
 	if attempts != 1 || published != nil {
-		t.Fatalf("attempts = %d, published_at = %v; want the event still pending after one failed attempt", attempts, published)
+		t.Fatalf("attempts = %d, published_at = %v; want the event still pending after one failure",
+			attempts, published)
 	}
 }

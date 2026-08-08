@@ -1,8 +1,21 @@
 extends:
   - spectral:oas
+
+# The fluentra-* rules are contract invariants, not style preferences, so they
+# are errors. Spectral defaults a rule with no severity to `warning`, and CI
+# fails on errors — a rule left at the default would have been advisory only,
+# which would have made the `x-permission` gate decorative.
 rules:
+  # `components/` is a deliberate library: the shared Problem shapes, pagination
+  # headers and standard error responses are defined once here and referenced by
+  # each module as it lands. Spectral cannot tell "not referenced yet" from
+  # "dead", and on a repository with one endpoint that is every component. The
+  # drift check in the docs workflow is what catches genuinely dead components.
+  oas3-unused-component: off
+
   fluentra-operation-id:
     description: Every operation has a unique lower-camel-case operationId.
+    severity: error
     given: $.paths[*][get,put,post,delete,options,head,patch,trace]
     then:
       field: operationId
@@ -11,12 +24,14 @@ rules:
         match: '^[a-z][A-Za-z0-9]*$'
   fluentra-operation-description:
     description: Every operation documents its behaviour.
+    severity: error
     given: $.paths[*][get,put,post,delete,options,head,patch,trace]
     then:
       field: description
       function: truthy
   fluentra-operation-permission:
     description: Non-public operations must declare the permission enforced by their handler.
+    severity: error
     given: $.paths[*][get,put,post,delete,options,head,patch,trace]
     then:
       function: schema
@@ -33,6 +48,7 @@ rules:
             required: [x-permission]
   fluentra-response-example:
     description: Every concrete response media type supplies an example for clients and mocks.
+    severity: error
     given: $.paths[*][get,put,post,delete,options,head,patch,trace].responses.*.content.*
     then:
       field: example
