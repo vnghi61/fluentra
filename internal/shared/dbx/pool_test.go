@@ -36,7 +36,8 @@ func TestInTx_RetriesSerializationAndRollsBackCallbackError(t *testing.T) {
 		t.Fatalf("calls=%d commits=%d", pool.calls, second.commits)
 	}
 	failed := &fakeTx{}
-	err := InTx(context.Background(), &fakePool{transactions: []pgx.Tx{failed}}, func(context.Context, pgx.Tx) error { return errors.New("callback failed") })
+	err := InTx(context.Background(), &fakePool{transactions: []pgx.Tx{failed}},
+		func(context.Context, pgx.Tx) error { return errors.New("callback failed") })
 	if err == nil || failed.rollbacks != 1 {
 		t.Fatalf("err=%v rollbacks=%d", err, failed.rollbacks)
 	}
@@ -44,11 +45,18 @@ func TestInTx_RetriesSerializationAndRollsBackCallbackError(t *testing.T) {
 
 func TestInTx_BeginAndFinalErrors(t *testing.T) {
 	t.Parallel()
-	if err := InTx(context.Background(), &fakePool{beginErr: errors.New("unavailable")}, func(context.Context, pgx.Tx) error { return nil }); err == nil {
+	beginFailed := &fakePool{beginErr: errors.New("unavailable")}
+	if err := InTx(context.Background(), beginFailed,
+		func(context.Context, pgx.Tx) error { return nil }); err == nil {
 		t.Fatal("expected begin error")
 	}
-	pool := &fakePool{transactions: []pgx.Tx{&fakeTx{commitErr: &pgconn.PgError{Code: "40001"}}, &fakeTx{commitErr: &pgconn.PgError{Code: "40001"}}, &fakeTx{commitErr: &pgconn.PgError{Code: "40001"}}}}
-	if err := InTx(context.Background(), pool, func(context.Context, pgx.Tx) error { return nil }); err == nil || pool.calls != 3 {
+	// Serialization failure on every attempt: InTx must retry and then give up.
+	serializationFailure := func() pgx.Tx { return &fakeTx{commitErr: &pgconn.PgError{Code: "40001"}} }
+	pool := &fakePool{transactions: []pgx.Tx{
+		serializationFailure(), serializationFailure(), serializationFailure(),
+	}}
+	err := InTx(context.Background(), pool, func(context.Context, pgx.Tx) error { return nil })
+	if err == nil || pool.calls != 3 {
 		t.Fatalf("err=%v calls=%d", err, pool.calls)
 	}
 }

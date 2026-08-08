@@ -10,6 +10,8 @@ import (
 	"github.com/riverqueue/river/rivertype"
 )
 
+// The five River queues. Work is separated by latency profile so a slow bulk job
+// can never starve an interactive one; DefaultQueues gives each its concurrency.
 const (
 	QueueDefault = "default"
 	QueueAI      = "ai"
@@ -31,7 +33,9 @@ func DefaultQueues() map[string]int {
 
 // Enqueuer requires taking the database transaction as a mandatory parameter (BR-JOB-01).
 type Enqueuer interface {
-	EnqueueTx(ctx context.Context, tx pgx.Tx, args river.JobArgs, opts *river.InsertOpts) (*rivertype.JobInsertResult, error)
+	EnqueueTx(
+		ctx context.Context, tx pgx.Tx, args river.JobArgs, opts *river.InsertOpts,
+	) (*rivertype.JobInsertResult, error)
 }
 
 // Client wraps River queue enqueueing operations.
@@ -45,7 +49,9 @@ func NewClient(riverClient *river.Client[pgx.Tx]) *Client {
 }
 
 // EnqueueTx enqueues a job inside the caller's transaction.
-func (c *Client) EnqueueTx(ctx context.Context, tx pgx.Tx, args river.JobArgs, opts *river.InsertOpts) (*rivertype.JobInsertResult, error) {
+func (c *Client) EnqueueTx(
+	ctx context.Context, tx pgx.Tx, args river.JobArgs, opts *river.InsertOpts,
+) (*rivertype.JobInsertResult, error) {
 	if tx == nil {
 		return nil, errors.New("job enqueueing requires an active transaction")
 	}

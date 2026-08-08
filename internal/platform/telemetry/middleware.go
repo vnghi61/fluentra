@@ -16,6 +16,15 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 )
 
+// Propagator is the one context propagator this service uses. Middleware reads
+// it directly rather than through the OTel global, so extraction works even
+// when the middleware runs before — or without — NewProvider. NewProvider
+// installs this same value globally, so both paths agree.
+var Propagator propagation.TextMapPropagator = propagation.NewCompositeTextMapPropagator(
+	propagation.TraceContext{},
+	propagation.Baggage{},
+)
+
 // Middleware creates a route-safe HTTP span, metrics, access log, and correlates each response with a request ID.
 func Middleware(routeName func(*http.Request) string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
@@ -39,7 +48,7 @@ func Middleware(routeName func(*http.Request) string, next http.Handler) http.Ha
 		if route == "" {
 			route = "unknown"
 		}
-		ctx := otel.GetTextMapPropagator().Extract(request.Context(), propagation.HeaderCarrier(request.Header))
+		ctx := Propagator.Extract(request.Context(), propagation.HeaderCarrier(request.Header))
 		ctx = httpx.WithRequestID(ctx, requestID)
 		ctx, span := otel.Tracer("fluentra.http").Start(ctx, request.Method+" "+route)
 		started := time.Now()
@@ -66,11 +75,19 @@ func Middleware(routeName func(*http.Request) string, next http.Handler) http.Ha
 				span.SetStatus(codes.Error, http.StatusText(response.status))
 			}
 			if metricsEnabled {
-				statusAttributes := metric.WithAttributes(attribute.String("route", route), attribute.String("method", request.Method), attribute.String("status_class", statusClass(response.status)))
+				statusAttributes := metric.WithAttributes(
+					attribute.String("route", route),
+					attribute.String("method", request.Method),
+					attribute.String("status_class", statusClass(response.status)),
+				)
 				instruments.HTTPActive.Add(ctx, -1, attributes)
 				instruments.HTTPDuration.Record(ctx, duration.Seconds(), statusAttributes)
 			}
-			slog.InfoContext(ctx, "request completed", "method", request.Method, "route", route, "status", response.status, "duration_ms", duration.Milliseconds())
+			slog.InfoContext(ctx, "request completed",
+				"method", request.Method,
+				"route", route,
+				"status", response.status,
+				"duration_ms", duration.Milliseconds())
 			span.End()
 		}()
 		next.ServeHTTP(response, request.WithContext(httpx.WithRequestID(ctx, requestID)))
@@ -138,7 +155,7 @@ func looksLikeIdentifier(value string) bool {
 	}
 	if len(value) == 26 {
 		for _, character := range value {
-			if !(character >= '0' && character <= '9') && !(character >= 'A' && character <= 'Z') {
+			if (character < '0' || character > '9') && (character < 'A' || character > 'Z') {
 				return false
 			}
 		}
@@ -158,7 +175,10 @@ func allDigits(value string) bool {
 
 func allHex(value string) bool {
 	for _, character := range value {
-		if !(character >= '0' && character <= '9') && !(character >= 'a' && character <= 'f') && !(character >= 'A' && character <= 'F') {
+		isDigit := character >= '0' && character <= '9'
+		isLower := character >= 'a' && character <= 'f'
+		isUpper := character >= 'A' && character <= 'F'
+		if !isDigit && !isLower && !isUpper {
 			return false
 		}
 	}

@@ -1,0 +1,24 @@
+golangci-lint baseline
+======================
+
+Status: CLEAN as of 2026-08-08 (P0.R20).
+
+    $ golangci-lint run ./...
+    0 issues.
+
+Toolchain the baseline was taken with:
+    go 1.26.5 windows/amd64
+    golangci-lint 2.12.2 (amd64 — the 386 build reports "0 issues" falsely
+                          because typecheck breaks silently)
+
+The baseline is zero, so this file is no longer a list of accepted issues.
+Any issue golangci-lint reports is a regression: fix it, do not append it here.
+
+Enabled linters live in /.golangci.yml. The two settings that produce most of
+the churn are gocyclo min-complexity 15 and lll line-length 120.
+
+History
+-------
+Before P0.R20 this file held 88 accepted issues (lll 43, goconst 21, revive 21,
+plus one each of contextcheck, gocyclo and gosec). See the P0.R20 entry in
+p0-remediation-plan.md for what the three substantive ones actually were.

@@ -1,0 +1,5 @@
+Hello {{.DisplayName}},
+
+Your password reset code is: {{.Code}}
+
+This code will expire in 15 minutes.

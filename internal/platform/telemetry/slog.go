@@ -9,5 +9,6 @@ import (
 // Logger creates an OTLP-backed, fail-closed structured logger. The OTel bridge
 // adds trace_id and span_id from the active span; RedactingHandler adds request_id.
 func (p *Provider) Logger(name string) *slog.Logger {
-	return slog.New(NewRedactingHandler(otelslog.NewHandler(name, otelslog.WithLoggerProvider(p.loggerProvider)), DefaultAllowedLogKeys))
+	bridge := otelslog.NewHandler(name, otelslog.WithLoggerProvider(p.loggerProvider))
+	return slog.New(NewRedactingHandler(bridge, DefaultAllowedLogKeys))
 }

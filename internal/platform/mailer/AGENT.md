@@ -2,7 +2,7 @@
 module: mailer
 tier: platform
 group: platform
-status: PLANNED
+status: READY
 phase: 1
 owner: "@platform-team"
 schema: comm
@@ -10,7 +10,7 @@ tables: [email_log, email_suppressions]
 depends_on: [job, telemetry, storage]
 depended_on_by: [auth, user, notification, subscription, analytics]
 spec_version: 1.0.0
-last_verified: 2026-08-06
+last_verified: 2026-08-07
 ---
 
 # mailer — AGENT.md

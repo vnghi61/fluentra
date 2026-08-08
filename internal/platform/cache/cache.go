@@ -64,7 +64,7 @@ func (c *RedisCache[T]) Get(ctx context.Context, key string) (T, error) {
 		if errors.Is(err, redis.Nil) {
 			return zero, redis.Nil
 		}
-		c.recordUnavailable(ctx, "Get", key, err)
+		c.recordUnavailable(ctx, "get", err)
 		return zero, err
 	}
 
@@ -90,7 +90,7 @@ func (c *RedisCache[T]) Set(ctx context.Context, key string, value T, ttl time.D
 
 	jitteredTTL := addJitter(ttl, 0.10)
 	if err := c.client.Set(ctx, key, bytes, jitteredTTL).Err(); err != nil {
-		c.recordUnavailable(ctx, "Set", key, err)
+		c.recordUnavailable(ctx, "set", err)
 		return err
 	}
 	return nil
@@ -105,14 +105,16 @@ func (c *RedisCache[T]) Delete(ctx context.Context, keys ...string) error {
 	defer span.End()
 
 	if err := c.client.Del(ctx, keys...).Err(); err != nil {
-		c.recordUnavailable(ctx, "Delete", keys[0], err)
+		c.recordUnavailable(ctx, "delete", err)
 		return err
 	}
 	return nil
 }
 
 // GetOrLoad attempts to read key from cache. On miss or Redis error, uses singleflight to call loader once.
-func (c *RedisCache[T]) GetOrLoad(ctx context.Context, key string, ttl time.Duration, loader func(ctx context.Context) (T, error)) (T, error) {
+func (c *RedisCache[T]) GetOrLoad(
+	ctx context.Context, key string, ttl time.Duration, loader func(ctx context.Context) (T, error),
+) (T, error) {
 	var zero T
 
 	// 1. Try cache hit
@@ -134,8 +136,9 @@ func (c *RedisCache[T]) GetOrLoad(ctx context.Context, key string, ttl time.Dura
 		}
 
 		// Asynchronously save to cache; ignore errors so loader result is still returned
+		storeCtx := context.WithoutCancel(ctx)
 		go func() {
-			setCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			setCtx, cancel := context.WithTimeout(storeCtx, 5*time.Second)
 			defer cancel()
 			_ = c.Set(setCtx, key, loadedVal, ttl)
 		}()
@@ -154,10 +157,13 @@ func (c *RedisCache[T]) GetOrLoad(ctx context.Context, key string, ttl time.Dura
 	return typedVal, nil
 }
 
-func (c *RedisCache[T]) recordUnavailable(ctx context.Context, op, key string, err error) {
+// recordUnavailable reports the degradation without the cache key: a key
+// embeds the entity id it caches, and LOGGING_GUIDELINE.md §4 asks for
+// `module` and `op` here, not the identifier.
+func (c *RedisCache[T]) recordUnavailable(ctx context.Context, op string, err error) {
 	slog.WarnContext(ctx, "redis unavailable, degrading operation",
-		"operation", op,
-		"key", key,
+		"module", "cache",
+		"op", op,
 		"error", err,
 	)
 	if cacheUnavailableCounter != nil {
@@ -171,6 +177,8 @@ func addJitter(d time.Duration, pct float64) time.Duration {
 		return d
 	}
 	delta := float64(d) * pct
-	jitter := (rand.Float64()*2 - 1) * delta // [-delta, +delta]
+	// TTL jitter spreads expiries; it is not a security decision, so the
+	// cheap PRNG is the right choice here.
+	jitter := (rand.Float64()*2 - 1) * delta //nolint:gosec // [-delta, +delta]
 	return time.Duration(float64(d) + jitter)
 }

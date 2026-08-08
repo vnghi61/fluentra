@@ -40,7 +40,7 @@ func (m *mockRedisClient) Get(ctx context.Context, key string) *redis.StringCmd 
 	return cmd
 }
 
-func (m *mockRedisClient) Set(ctx context.Context, key string, value any, expiration time.Duration) *redis.StatusCmd {
+func (m *mockRedisClient) Set(ctx context.Context, key string, value any, _ time.Duration) *redis.StatusCmd {
 	cmd := redis.NewStatusCmd(ctx, "set", key, value)
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -91,7 +91,7 @@ func TestCache_GetOrLoad_Singleflight(t *testing.T) {
 	ctx := context.Background()
 
 	var loaderCalls int32
-	loader := func(ctx context.Context) (string, error) {
+	loader := func(context.Context) (string, error) {
 		atomic.AddInt32(&loaderCalls, 1)
 		time.Sleep(50 * time.Millisecond)
 		return "loaded_value", nil
@@ -133,7 +133,7 @@ func TestCache_RedisDown_Degradation(t *testing.T) {
 	ctx := context.Background()
 
 	loaderCalled := false
-	loader := func(ctx context.Context) (string, error) {
+	loader := func(context.Context) (string, error) {
 		loaderCalled = true
 		return "fallback_value", nil
 	}
@@ -149,5 +149,46 @@ func TestCache_RedisDown_Degradation(t *testing.T) {
 
 	if val != "fallback_value" {
 		t.Errorf("got %q, want %q", val, "fallback_value")
+	}
+}
+
+// TestLimiter_AllowsWhenRedisIsUnreachable is the P2.8 requirement: a Redis
+// outage must degrade to allow-with-warn, not deny-all. A limiter that denies
+// when its store is down converts a cache outage into a full outage.
+func TestLimiter_AllowsWhenRedisIsUnreachable(t *testing.T) {
+	t.Parallel()
+	// Port 1 is reserved and never listening, so every command fails fast.
+	client := redis.NewClient(&redis.Options{Addr: "127.0.0.1:1", DialTimeout: 50 * time.Millisecond})
+	t.Cleanup(func() { _ = client.Close() })
+
+	result, err := cache.NewRedisLimiter(client).Allow(context.Background(), "auth:ip:203.0.113.1", 5, time.Minute)
+	if err != nil {
+		t.Fatalf("a Redis outage must not surface as an error: %v", err)
+	}
+	if !result.Allowed {
+		t.Fatal("limiter denied the request while Redis was unreachable")
+	}
+	if !result.Degraded {
+		t.Error("result should be marked degraded so callers omit RateLimit-* headers")
+	}
+}
+
+func TestLimiter_AllowsWhenClientIsNotConfigured(t *testing.T) {
+	t.Parallel()
+	result, err := cache.NewRedisLimiter(nil).Allow(context.Background(), "k", 10, time.Minute)
+	if err != nil || !result.Allowed || !result.Degraded {
+		t.Fatalf("result = %#v, err = %v", result, err)
+	}
+}
+
+// TestLocker_DoesNotFailOpen guards the asymmetry: a lock that is handed out
+// when Redis is down is not a lock.
+func TestLocker_DoesNotFailOpen(t *testing.T) {
+	t.Parallel()
+	client := redis.NewClient(&redis.Options{Addr: "127.0.0.1:1", DialTimeout: 50 * time.Millisecond})
+	t.Cleanup(func() { _ = client.Close() })
+
+	if _, err := cache.NewRedisLocker(client).Acquire(context.Background(), "lock:k", time.Minute); err == nil {
+		t.Fatal("Acquire returned a lock while Redis was unreachable")
 	}
 }

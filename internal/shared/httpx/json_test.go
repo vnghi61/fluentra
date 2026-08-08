@@ -52,7 +52,9 @@ func TestWriteJSON(t *testing.T) {
 	request = request.WithContext(WithRequestID(request.Context(), "request-1"))
 	response := httptest.NewRecorder()
 	WriteJSON(response, request, 201, map[string]string{"status": "created"})
-	if response.Code != 201 || response.Header().Get("X-Request-Id") != "request-1" || !strings.Contains(response.Body.String(), "created") {
+	if response.Code != 201 ||
+		response.Header().Get("X-Request-Id") != "request-1" ||
+		!strings.Contains(response.Body.String(), "created") {
 		t.Fatalf("unexpected response: %#v, %s", response.Result(), response.Body.String())
 	}
 }

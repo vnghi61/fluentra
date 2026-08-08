@@ -9,10 +9,6 @@ import (
 	"io/fs"
 	"log"
 	"os"
-	"path"
-	"sort"
-	"strings"
-	"testing/fstest"
 
 	"github.com/fluentra/fluentra/db/migrations"
 	"github.com/fluentra/fluentra/internal/shared/config"
@@ -38,10 +34,11 @@ func main() {
 
 func run(ctx context.Context, args []string, out io.Writer) error {
 	if len(args) != 1 {
-		return fmt.Errorf("usage: migrate <up|down|status>")
+		return errors.New("usage: migrate <up|down|status>")
 	}
-	if args[0] != "up" && args[0] != "down" && args[0] != "status" {
-		return fmt.Errorf("unknown migration command %q; expected up, down, or status", args[0])
+	command := args[0]
+	if command != "up" && command != "down" && command != "status" {
+		return fmt.Errorf("unknown migration command %q; expected up, down, or status", command)
 	}
 
 	var cfg databaseConfig
@@ -56,7 +53,7 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	if err := db.PingContext(ctx); err != nil {
 		return fmt.Errorf("ping database: %w", err)
 	}
@@ -67,37 +64,76 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return err
 	}
 
-	provider, err := goose.NewProvider(goose.DialectPostgres, db, migrationFS())
+	sources, err := migrationFS()
+	if err != nil {
+		return err
+	}
+	provider, err := goose.NewProvider(goose.DialectPostgres, db, sources)
 	if err != nil {
 		return fmt.Errorf("create migration provider: %w", err)
 	}
-	defer provider.Close()
+	defer func() { _ = provider.Close() }()
 
-	switch args[0] {
+	switch command {
 	case "up":
-		results, err := provider.Up(ctx)
+		return runUp(ctx, provider, db, out)
+	case "down":
+		return runDown(ctx, provider, out)
+	default:
+		return runStatus(ctx, provider, out)
+	}
+}
+
+// runUp applies pending migrations one at a time, re-assuming the migration role
+// between each. The bootstrap migration is what creates fluentra_migrator, so on
+// a fresh database the role cannot be assumed until after it has run. Applying
+// the whole set in one call would leave the bootstrap's tables owned by the
+// migrator and everything after it owned by the connecting user — and
+// `migrate down` would then fail on tables it does not own.
+func runUp(ctx context.Context, provider *goose.Provider, db *sql.DB, out io.Writer) error {
+	applied := 0
+	for {
+		if err := setMigrationRole(ctx, db); err != nil {
+			return err
+		}
+		result, err := provider.UpByOne(ctx)
+		if errors.Is(err, goose.ErrNoNextVersion) {
+			break
+		}
 		if err != nil {
 			return fmt.Errorf("apply migrations: %w", err)
 		}
-		fmt.Fprintf(out, "applied %d migration(s)\n", len(results))
-	case "down":
-		result, err := provider.Down(ctx)
-		if err != nil {
-			return fmt.Errorf("roll back migration: %w", err)
-		}
 		if result == nil {
-			fmt.Fprintln(out, "no migration to roll back")
-		} else {
-			fmt.Fprintf(out, "rolled back migration %d\n", result.Source.Version)
+			break
 		}
-	case "status":
-		statuses, err := provider.Status(ctx)
-		if err != nil {
-			return fmt.Errorf("get migration status: %w", err)
-		}
-		for _, status := range statuses {
-			fmt.Fprintf(out, "%s %d %s\n", status.State, status.Source.Version, status.Source.Path)
-		}
+		applied++
+	}
+	_, _ = fmt.Fprintf(out, "applied %d migration(s)\n", applied)
+	return nil
+}
+
+// runDown rolls back the most recently applied migration.
+func runDown(ctx context.Context, provider *goose.Provider, out io.Writer) error {
+	result, err := provider.Down(ctx)
+	if err != nil {
+		return fmt.Errorf("roll back migration: %w", err)
+	}
+	if result == nil {
+		_, _ = fmt.Fprintln(out, "no migration to roll back")
+		return nil
+	}
+	_, _ = fmt.Fprintf(out, "rolled back migration %d\n", result.Source.Version)
+	return nil
+}
+
+// runStatus reports the applied/pending state of every known migration.
+func runStatus(ctx context.Context, provider *goose.Provider, out io.Writer) error {
+	statuses, err := provider.Status(ctx)
+	if err != nil {
+		return fmt.Errorf("get migration status: %w", err)
+	}
+	for _, status := range statuses {
+		_, _ = fmt.Fprintf(out, "%s %d %s\n", status.State, status.Source.Version, status.Source.Path)
 	}
 	return nil
 }
@@ -113,42 +149,7 @@ func setMigrationRole(ctx context.Context, db *sql.DB) error {
 	return nil
 }
 
-// migrationFS flattens per-module directories into one virtual directory.
-// Goose then orders the globally unique Unix timestamp prefixes across modules.
-func migrationFS() fs.FS {
-	files := make(fstest.MapFS)
-	if err := fs.WalkDir(migrations.Files, ".", func(name string, entry fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if entry.IsDir() || path.Ext(name) != ".sql" {
-			return nil
-		}
-		content, err := migrations.Files.ReadFile(name)
-		if err != nil {
-			return err
-		}
-		base := path.Base(name)
-		key := strings.TrimSuffix(base, path.Ext(base)) + "_" + strings.ReplaceAll(path.Dir(name), "/", "_") + path.Ext(base)
-		if _, exists := files[key]; exists {
-			return fmt.Errorf("duplicate migration filename %q", key)
-		}
-		files[key] = &fstest.MapFile{Data: content, Mode: 0o444}
-		return nil
-	}); err != nil {
-		panic(fmt.Sprintf("load embedded migrations: %v", err))
-	}
-	return sortedMapFS{MapFS: files}
-}
-
-// sortedMapFS makes ordering deterministic even for callers that inspect it directly.
-type sortedMapFS struct{ fstest.MapFS }
-
-func (s sortedMapFS) ReadDir(name string) ([]fs.DirEntry, error) {
-	entries, err := s.MapFS.ReadDir(name)
-	if err != nil {
-		return nil, err
-	}
-	sort.Slice(entries, func(i, j int) bool { return entries[i].Name() < entries[j].Name() })
-	return entries, nil
-}
+// migrationFS flattens the embedded per-module directories into one virtual
+// directory. Goose then orders the globally unique Unix timestamp prefixes
+// across modules.
+func migrationFS() (fs.FS, error) { return migrations.Flattened() }

@@ -11,6 +11,9 @@ import (
 )
 
 var (
+	// ErrLockNotAcquired reports that another holder owns the lock. Unlike a cache
+	// read, this is never degraded to success: fail-open here would hand the same
+	// lock to two callers and destroy the mutual exclusion the lock exists for.
 	ErrLockNotAcquired = errors.New("lock: failed to acquire lock")
 
 	releaseScript = redis.NewScript(`

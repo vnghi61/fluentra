@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
+	"time"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -13,13 +14,16 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/log/global"
-	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/log"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.39.0"
 )
+
+// providerShutdownGrace bounds the best-effort exporter teardown that runs when
+// NewProvider fails after the exporters are already connected.
+const providerShutdownGrace = 5 * time.Second
 
 // Config identifies this process in every exported telemetry signal.
 type Config struct {
@@ -59,7 +63,8 @@ func NewProvider(ctx context.Context, config Config) (*Provider, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create OTLP trace exporter: %w", err)
 	}
-	metricExporter, err := otlpmetricgrpc.New(ctx, otlpmetricgrpc.WithEndpoint(config.Endpoint), otlpmetricgrpc.WithInsecure())
+	metricExporter, err := otlpmetricgrpc.New(
+		ctx, otlpmetricgrpc.WithEndpoint(config.Endpoint), otlpmetricgrpc.WithInsecure())
 	if err != nil {
 		return nil, fmt.Errorf("create OTLP metric exporter: %w", err)
 	}
@@ -69,13 +74,23 @@ func NewProvider(ctx context.Context, config Config) (*Provider, error) {
 	}
 
 	tracerProvider := trace.NewTracerProvider(trace.WithBatcher(traceExporter), trace.WithResource(resources))
-	meterProvider := metric.NewMeterProvider(metric.WithReader(metric.NewPeriodicReader(metricExporter)), metric.WithResource(resources))
-	loggerProvider := log.NewLoggerProvider(log.WithProcessor(log.NewBatchProcessor(logExporter)), log.WithResource(resources))
+	meterProvider := metric.NewMeterProvider(
+		metric.WithReader(metric.NewPeriodicReader(metricExporter)), metric.WithResource(resources))
+	loggerProvider := log.NewLoggerProvider(
+		log.WithProcessor(log.NewBatchProcessor(logExporter)), log.WithResource(resources))
 	instruments, err := NewInstruments(meterProvider.Meter("fluentra"))
 	if err != nil {
-		shutdownCtx, cancel := context.WithCancel(context.Background())
-		cancel()
-		return nil, errors.Join(fmt.Errorf("create telemetry instruments: %w", err), tracerProvider.Shutdown(shutdownCtx), meterProvider.Shutdown(shutdownCtx), loggerProvider.Shutdown(shutdownCtx))
+		// Nothing has been recorded yet, so this only needs to close the freshly
+		// opened gRPC connections. Bound it so a hung collector cannot stall
+		// startup failure, but inherit ctx so caller cancellation still applies.
+		shutdownCtx, cancel := context.WithTimeout(ctx, providerShutdownGrace)
+		defer cancel()
+		return nil, errors.Join(
+			fmt.Errorf("create telemetry instruments: %w", err),
+			tracerProvider.Shutdown(shutdownCtx),
+			meterProvider.Shutdown(shutdownCtx),
+			loggerProvider.Shutdown(shutdownCtx),
+		)
 	}
 
 	provider := &Provider{
@@ -87,7 +102,7 @@ func NewProvider(ctx context.Context, config Config) (*Provider, error) {
 	otel.SetTracerProvider(tracerProvider)
 	otel.SetMeterProvider(meterProvider)
 	global.SetLoggerProvider(loggerProvider)
-	otel.SetTextMapPropagator(propagation.TraceContext{})
+	otel.SetTextMapPropagator(Propagator)
 	setDefaultInstruments(instruments)
 	slog.SetDefault(provider.Logger("fluentra"))
 	return provider, nil

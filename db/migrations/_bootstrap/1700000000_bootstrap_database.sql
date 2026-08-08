@@ -15,6 +15,21 @@ BEGIN
     END IF;
     EXECUTE format('GRANT fluentra_migrator TO %I', session_user);
     EXECUTE format('GRANT CONNECT ON DATABASE %I TO fluentra_app', current_database());
+    -- The statements below run as fluentra_migrator, and creating a schema
+    -- requires CREATE on the database. Without this grant the very first
+    -- migration fails on a fresh database.
+    EXECUTE format('GRANT CONNECT, CREATE ON DATABASE %I TO fluentra_migrator', current_database());
+
+    -- Every later migration runs as fluentra_migrator (cmd/migrate does SET
+    -- ROLE), and goose records each applied version in the same transaction.
+    -- The bookkeeping table was created by the bootstrapping superuser, so
+    -- hand it over now or every command after the first `up` is denied.
+    IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'goose_db_version' AND relkind = 'r') THEN
+        EXECUTE 'ALTER TABLE goose_db_version OWNER TO fluentra_migrator';
+        IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'goose_db_version_id_seq' AND relkind = 'S') THEN
+            EXECUTE 'ALTER SEQUENCE goose_db_version_id_seq OWNER TO fluentra_migrator';
+        END IF;
+    END IF;
 END $$;
 
 SET LOCAL ROLE fluentra_migrator;
@@ -54,6 +69,11 @@ ALTER DEFAULT PRIVILEGES FOR ROLE fluentra_migrator IN SCHEMA billing GRANT USAG
 ALTER DEFAULT PRIVILEGES FOR ROLE fluentra_migrator IN SCHEMA ai GRANT USAGE, SELECT ON SEQUENCES TO fluentra_app;
 ALTER DEFAULT PRIVILEGES FOR ROLE fluentra_migrator IN SCHEMA ops GRANT USAGE, SELECT ON SEQUENCES TO fluentra_app;
 ALTER DEFAULT PRIVILEGES FOR ROLE fluentra_migrator IN SCHEMA analytics GRANT USAGE, SELECT ON SEQUENCES TO fluentra_app;
+
+-- SET LOCAL ROLE lasts until this transaction commits, and goose records the
+-- applied version inside that same transaction. Without resetting, that write
+-- happens as fluentra_migrator, which does not own goose_db_version.
+RESET ROLE;
 -- +goose StatementEnd
 
 -- +goose Down
@@ -73,6 +93,14 @@ DROP SCHEMA IF EXISTS core CASCADE;
 RESET ROLE;
 DO $$
 BEGIN
+    -- Hand the bookkeeping table back before dropping the role, or DROP OWNED
+    -- takes goose's own version table with it.
+    IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'goose_db_version' AND relkind = 'r') THEN
+        EXECUTE format('ALTER TABLE goose_db_version OWNER TO %I', session_user);
+        IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'goose_db_version_id_seq' AND relkind = 'S') THEN
+            EXECUTE format('ALTER SEQUENCE goose_db_version_id_seq OWNER TO %I', session_user);
+        END IF;
+    END IF;
     EXECUTE format('REVOKE fluentra_migrator FROM %I', session_user);
 END $$;
 DROP OWNED BY fluentra_app;

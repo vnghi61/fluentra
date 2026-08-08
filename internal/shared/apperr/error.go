@@ -10,6 +10,8 @@ import (
 // Kind classifies an application error into an HTTP status category.
 type Kind string
 
+// The complete set of error kinds. Each maps to exactly one HTTP status in
+// StatusOf, so a handler never picks a status itself — it picks a kind.
 const (
 	Validation         Kind = "validation"
 	BadRequest         Kind = "bad_request"
@@ -85,32 +87,64 @@ func (e *Error) Cause() error { return e.cause }
 // InternalDetail returns developer-only context for boundary logging.
 func (e *Error) InternalDetail() string { return e.internal }
 
-// WithCause attaches an underlying error.
-func (e *Error) WithCause(cause error) *Error { e.cause = cause; return e }
-
-// WithInternal attaches developer-only context.
-func (e *Error) WithInternal(detail string) *Error { e.internal = detail; return e }
-
-// WithMeta adds safe structured metadata.
-func (e *Error) WithMeta(key string, value any) *Error {
-	if e.Meta == nil {
-		e.Meta = make(map[string]any)
+// clone copies the error so a With* call never mutates a value someone else
+// holds. Package-level sentinels are the reason: `Wrap` returns the sentinel
+// itself when it matches, and one request decorating it in place would be
+// visible to every other request.
+func (e *Error) clone() *Error {
+	if e == nil {
+		return nil
 	}
-	e.Meta[key] = value
-	return e
+	copied := *e
+	if e.Fields != nil {
+		copied.Fields = append([]FieldViolation(nil), e.Fields...)
+	}
+	if e.Meta != nil {
+		copied.Meta = make(map[string]any, len(e.Meta))
+		for key, value := range e.Meta {
+			copied.Meta[key] = value
+		}
+	}
+	return &copied
 }
 
-// WithFields adds validation failures.
+// WithCause returns a copy with an underlying error attached.
+func (e *Error) WithCause(cause error) *Error {
+	copied := e.clone()
+	copied.cause = cause
+	return copied
+}
+
+// WithInternal returns a copy with developer-only context attached.
+func (e *Error) WithInternal(detail string) *Error {
+	copied := e.clone()
+	copied.internal = detail
+	return copied
+}
+
+// WithMeta returns a copy with safe structured metadata added.
+func (e *Error) WithMeta(key string, value any) *Error {
+	copied := e.clone()
+	if copied.Meta == nil {
+		copied.Meta = make(map[string]any, 1)
+	}
+	copied.Meta[key] = value
+	return copied
+}
+
+// WithFields returns a copy with validation failures added.
 func (e *Error) WithFields(fields ...FieldViolation) *Error {
-	e.Fields = append(e.Fields, fields...)
-	return e
+	copied := e.clone()
+	copied.Fields = append(copied.Fields, fields...)
+	return copied
 }
 
-// WithRetryAfter marks an error retryable and sets a response hint in seconds.
+// WithRetryAfter returns a retryable copy carrying a response hint in seconds.
 func (e *Error) WithRetryAfter(seconds int) *Error {
-	e.Retryable = true
-	e.RetryAfter = seconds
-	return e
+	copied := e.clone()
+	copied.Retryable = true
+	copied.RetryAfter = seconds
+	return copied
 }
 
 // Status returns the HTTP status associated with the error kind.

@@ -147,6 +147,7 @@ Two-layer approach: struct tags validate *shape* at the transport edge; the doma
 | Library | Verdict | Notes |
 |---|---|---|
 | **`oapi-codegen` v2** ✅ | **Chosen** | Spec-first: generates chi server interfaces, typed clients, request validation middleware |
+| **`getkin/kin-openapi`** ✅ | **Chosen** | OpenAPI 3.0/3.1 model and validator in Go, dependency of oapi-codegen generated server |
 | `danielgtaylor/huma` v2 | Strong alternative | Code-first, generates the spec — rejected because we want the spec reviewable *before* implementation, and shared with the frontend team |
 | `ogen` | Considered | Very fast generated code, stricter spec support; smaller community |
 | `swaggo/swag` | Rejected | Comment-driven, OpenAPI 2/3.0 only, drifts easily |

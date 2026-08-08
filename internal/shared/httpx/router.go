@@ -34,6 +34,9 @@ type RouterDependencies struct {
 	Ready          http.HandlerFunc
 	Version        http.HandlerFunc
 	RequestTimeout time.Duration
+	// ClientIP resolves the address used for per-IP lockout and rate limiting.
+	// Leaving it nil trusts no forwarding header, which is the safe default.
+	ClientIP *ClientIPResolver
 }
 
 // NewRouter builds the API router and applies the standard HTTP middleware chain.
@@ -43,8 +46,15 @@ func NewRouter(deps RouterDependencies) http.Handler {
 		requestTimeout = defaultRequestTimeout
 	}
 
+	resolver := deps.ClientIP
+	if resolver == nil {
+		// No trusted proxies: the socket address is the client, and forwarding
+		// headers are ignored.
+		resolver, _ = NewClientIPResolver(nil)
+	}
+
 	router := chi.NewRouter()
-	router.Use(middleware.RealIP)
+	router.Use(resolver.Middleware)
 	router.Use(middleware.Timeout(requestTimeout))
 	if deps.Middleware != nil {
 		router.Use(deps.Middleware)

@@ -1,0 +1,5 @@
+Xin chào {{.DisplayName}},
+
+Mã đặt lại mật khẩu của bạn là: {{.Code}}
+
+Mã này sẽ hết hạn trong 15 phút.

@@ -4,13 +4,16 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+	"sync"
 	"testing"
 )
 
 func TestError_ToProblem_DoesNotExposeCauseOrInternal(t *testing.T) {
 	t.Parallel()
 	sentinel := errors.New("pq: secret query detail")
-	err := New(Conflict, "DECK_LIMIT_REACHED", "Deck limit reached.").WithCause(sentinel).WithInternal("private diagnostic")
+	err := New(Conflict, "DECK_LIMIT_REACHED", "Deck limit reached.").
+		WithCause(sentinel).
+		WithInternal("private diagnostic")
 	body, marshalErr := json.Marshal(err.ToProblem("/decks", "request-1"))
 	if marshalErr != nil {
 		t.Fatalf("marshal problem: %v", marshalErr)
@@ -28,7 +31,11 @@ func TestError_Status_AllKinds(t *testing.T) {
 	tests := []struct {
 		kind Kind
 		want int
-	}{{Validation, 422}, {BadRequest, 400}, {Unauthenticated, 401}, {Forbidden, 403}, {NotFound, 404}, {Conflict, 409}, {PreconditionFailed, 412}, {TooLarge, 413}, {RateLimited, 429}, {Unavailable, 503}, {Timeout, 504}, {Internal, 500}}
+	}{
+		{Validation, 422}, {BadRequest, 400}, {Unauthenticated, 401}, {Forbidden, 403},
+		{NotFound, 404}, {Conflict, 409}, {PreconditionFailed, 412}, {TooLarge, 413},
+		{RateLimited, 429}, {Unavailable, 503}, {Timeout, 504}, {Internal, 500},
+	}
 	for _, test := range tests {
 		test := test
 		t.Run(string(test.kind), func(t *testing.T) {
@@ -98,5 +105,60 @@ func TestError_NilProblemAndUnknownKind(t *testing.T) {
 	}
 	if err.Unwrap() != nil {
 		t.Fatal("unwrap without cause must return nil")
+	}
+}
+
+// TestWith_DoesNotMutateSharedError is the regression test for package-level
+// sentinels: decorating one must not be visible to the next caller.
+func TestWith_DoesNotMutateSharedError(t *testing.T) {
+	t.Parallel()
+	sentinel := New(NotFound, "USER_NOT_FOUND", "No such user.")
+
+	decorated := sentinel.WithMeta("user_id", "u-1").WithFields(FieldViolation{Field: "id"}).WithRetryAfter(3)
+
+	if len(sentinel.Meta) != 0 || len(sentinel.Fields) != 0 || sentinel.Retryable {
+		t.Fatalf("sentinel was mutated: %#v", sentinel)
+	}
+	if decorated.Meta["user_id"] != "u-1" || len(decorated.Fields) != 1 || decorated.RetryAfter != 3 {
+		t.Fatalf("copy did not carry the decoration: %#v", decorated)
+	}
+	if decorated == sentinel {
+		t.Fatal("With* returned the same pointer")
+	}
+}
+
+// TestWith_CopiesNestedContainers proves the copy does not share the sentinel's
+// map or slice backing arrays.
+func TestWith_CopiesNestedContainers(t *testing.T) {
+	t.Parallel()
+	base := New(Validation, "INVALID", "Invalid.").WithMeta("a", 1).WithFields(FieldViolation{Field: "x"})
+
+	first := base.WithMeta("b", 2).WithFields(FieldViolation{Field: "y"})
+	second := base.WithMeta("c", 3).WithFields(FieldViolation{Field: "z"})
+
+	if len(base.Meta) != 1 || len(base.Fields) != 1 {
+		t.Fatalf("base mutated: %#v", base)
+	}
+	if _, leaked := first.Meta["c"]; leaked {
+		t.Fatalf("copies share a map: %#v", first.Meta)
+	}
+	if first.Fields[1].Field != "y" || second.Fields[1].Field != "z" {
+		t.Fatalf("copies share a slice: %#v / %#v", first.Fields, second.Fields)
+	}
+}
+
+func TestWith_ConcurrentDecorationIsRaceFree(t *testing.T) {
+	sentinel := New(Conflict, "CONFLICT", "Conflict.")
+	var wait sync.WaitGroup
+	for index := range 50 {
+		wait.Add(1)
+		go func(n int) {
+			defer wait.Done()
+			_ = Wrap(sentinel, Internal, "X", "x").WithMeta("n", n).WithRetryAfter(n)
+		}(index)
+	}
+	wait.Wait()
+	if len(sentinel.Meta) != 0 || sentinel.Retryable {
+		t.Fatalf("sentinel mutated under concurrency: %#v", sentinel)
 	}
 }

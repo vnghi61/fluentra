@@ -1,0 +1,5 @@
+Hello {{.DisplayName}},
+
+A new sign-in was detected on device: {{.DeviceName}}
+
+If this was not you, please reset your password immediately.

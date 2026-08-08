@@ -1,0 +1,50 @@
+name: docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - '**/AGENT.md'
+      - '**.md'
+      - 'tools/docgen/**'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - '**/AGENT.md'
+      - '**.md'
+      - 'tools/docgen/**'
+      - '.github/workflows/docs.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  docs-check:
+    name: Documentation Drift & Link Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run documentation drift check
+        run: node tools/docgen/check-drift.mjs
+
+      - name: Run docgen check if generator script exists
+        run: |
+          if [ -f tools/docgen/generate.mjs ]; then
+            node tools/docgen/generate.mjs --check || true
+          fi

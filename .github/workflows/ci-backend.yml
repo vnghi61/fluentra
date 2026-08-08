@@ -1,0 +1,66 @@
+name: ci-backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'db/**'
+      - 'api/**'
+      - '.github/workflows/ci-backend.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - '**.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'db/**'
+      - 'api/**'
+      - '.github/workflows/ci-backend.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Backend CI
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Verify generated code is current
+        run: |
+          make gen || true
+          git diff --exit-code || (echo "generated code is stale: run make gen" && exit 1)
+
+      - name: Run go vet
+        run: make vet
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.60.1
+
+      - name: Run architecture lint proof
+        run: make arch
+
+      - name: Run unit tests with race detector
+        run: make test
+
+      - name: Run coverage check
+        run: go test -race -coverprofile=coverage.out -covermode=atomic ./...

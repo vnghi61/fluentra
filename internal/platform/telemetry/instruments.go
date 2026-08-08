@@ -75,14 +75,23 @@ func NewInstruments(meter metric.Meter) (Instruments, error) {
 		return Instruments{}, fmt.Errorf("create job attempts counter: %w", err)
 	}
 	return Instruments{
-		HTTPDuration: httpDuration, HTTPActive: httpActive, DBQueryDuration: dbQueryDuration, DBPoolConnections: dbPoolConnections,
-		CacheOperationDuration: cacheOperationDuration, CacheRequests: cacheRequests, StorageOperationDuration: storageOperationDuration,
-		StorageBytes: storageBytes, JobDuration: jobDuration, JobQueueDepth: jobQueueDepth, JobOldestPending: jobOldestPending,
-		JobAttempts: jobAttempts,
+		HTTPDuration:             httpDuration,
+		HTTPActive:               httpActive,
+		DBQueryDuration:          dbQueryDuration,
+		DBPoolConnections:        dbPoolConnections,
+		CacheOperationDuration:   cacheOperationDuration,
+		CacheRequests:            cacheRequests,
+		StorageOperationDuration: storageOperationDuration,
+		StorageBytes:             storageBytes,
+		JobDuration:              jobDuration,
+		JobQueueDepth:            jobQueueDepth,
+		JobOldestPending:         jobOldestPending,
+		JobAttempts:              jobAttempts,
 	}, nil
 }
 
 // RecordCacheRequest emits an outcome with bounded module and result labels.
 func (i Instruments) RecordCacheRequest(ctx context.Context, module, result string) {
-	i.CacheRequests.Add(ctx, 1, metric.WithAttributes(attribute.String("module", module), attribute.String("result", result)))
+	i.CacheRequests.Add(ctx, 1, metric.WithAttributes(
+		attribute.String("module", module), attribute.String("result", result)))
 }

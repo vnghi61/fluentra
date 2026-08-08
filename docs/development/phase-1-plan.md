@@ -797,12 +797,12 @@ WP1 tasks P1.2, P1.3, P1.4 are independent of each other once P1.1 lands.
 | P0.8 | platform/cache | 0 | M | P0.5 | 1 | ☐ |
 | P0.9 | platform/storage | 0 | M | P0.5 | 1 | ☐ |
 | P0.10 | platform/job + outbox | 0 | L | P0.5 | 1 | ☐ |
-| P0.11 | platform/mailer | 0 | M | P0.10 | 1 | ☐ |
-| P0.12 | shared/eventbus | 0 | S | P0.5 | 1 | ☐ |
-| P0.13 | Boundary enforcement proof | 0 | S | P0.5 | 1 | ☐ |
-| P0.14 | CI workflows | 0 | M | P0.13 | 1 | ☐ |
-| P0.15 | Web application shell | 0 | L | P0.7 | 1 | ☐ |
-| P0.16 | Documentation CI | 0 | S | P0.14 | 1 | ☐ |
+| P0.11 | platform/mailer | 0 | M | P0.10 | 1 | ☑ |
+| P0.12 | shared/eventbus | 0 | S | P0.5 | 1 | ☑ |
+| P0.13 | Boundary enforcement proof | 0 | S | P0.5 | 1 | ☑ |
+| P0.14 | CI workflows | 0 | M | P0.13 | 1 | ☑ |
+| P0.15 | Web application shell | 0 | L | P0.7 | 1 | ☑ |
+| P0.16 | Documentation CI | 0 | S | P0.14 | 1 | ☑ |
 | P1.1 | core schema | 1 | M | P0.6 | 1 | ☐ |
 | P1.2 | user module | 1 | L | P1.1 | 1 | ☐ |
 | P1.3 | rbac module | 1 | M | P1.1 | **2** | ☐ |

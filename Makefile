@@ -19,7 +19,7 @@ setup: ## Install tool binaries, git hooks and frontend dependencies
 	go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
 	go install github.com/matryer/moq@latest
 	go install github.com/incu6us/goimports-reviser/v3@latest
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
 	go install github.com/fe3dback/go-arch-lint@latest
 	go install golang.org/x/vuln/cmd/govulncheck@latest
 	go install github.com/air-verse/air@latest
@@ -103,7 +103,7 @@ lint: ## golangci-lint + eslint + spectral
 	npx @stoplight/spectral-cli lint api/openapi/openapi.yaml
 
 arch: ## Enforce module boundaries (rules L1/L2)
-	go-arch-lint check
+	sh scripts/verify-arch-lint.sh
 
 ## ----------------------------------------------------------------- tests
 
