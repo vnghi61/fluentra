@@ -1,0 +1,36 @@
+Ping:
+  type: object
+  description: Successful API dependency connectivity result.
+  required: [status]
+  properties:
+    status:
+      type: string
+      enum: [ok]
+      description: Confirms that PostgreSQL and Redis responded.
+Health:
+  type: object
+  description: Successful process liveness result.
+  required: [status]
+  properties:
+    status:
+      type: string
+      enum: [ok]
+      description: Confirms that the process is serving requests.
+Ready:
+  type: object
+  description: Successful hard dependency readiness result.
+  required: [status]
+  properties:
+    status:
+      type: string
+      enum: [ready]
+      description: Confirms that every hard dependency is usable.
+Version:
+  type: object
+  description: Deployed API build version.
+  required: [version]
+  properties:
+    version:
+      type: string
+      description: Version associated with the running API build.
+      example: 0.1.0

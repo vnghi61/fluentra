@@ -18,6 +18,7 @@ setup: ## Install tool binaries, git hooks and frontend dependencies
 	go install github.com/pressly/goose/v3/cmd/goose@latest
 	go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
 	go install github.com/matryer/moq@latest
+	go install github.com/incu6us/goimports-reviser/v3@latest
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 	go install github.com/fe3dback/go-arch-lint@latest
 	go install golang.org/x/vuln/cmd/govulncheck@latest
@@ -48,9 +49,12 @@ gen: gen-sql gen-api gen-mocks gen-web ## Regenerate everything
 gen-sql: ## sqlc: SQL -> typed Go
 	sqlc generate
 
-gen-api: ## oapi-codegen: OpenAPI -> server interfaces + client
-	oapi-codegen -config api/openapi/codegen-server.yaml api/openapi/openapi.yaml
-	oapi-codegen -config api/openapi/codegen-client.yaml api/openapi/openapi.yaml
+gen-api: bundle-api ## oapi-codegen: OpenAPI -> server interfaces + client
+	oapi-codegen -config api/openapi/codegen-server.yaml api/openapi/openapi.bundle.yaml
+	oapi-codegen -config api/openapi/codegen-client.yaml api/openapi/openapi.bundle.yaml
+
+bundle-api: ## Bundle split OpenAPI components for code generators
+	npx @redocly/cli bundle api/openapi/openapi.yaml -o api/openapi/openapi.bundle.yaml
 
 gen-mocks: ## moq: interfaces -> mocks
 	go generate ./...
@@ -70,6 +74,8 @@ migrate-status: ## Show migration status
 	go run ./cmd/migrate status
 
 migrate-new: ## Create a migration: make migrate-new MODULE=auth NAME=add_mfa
+	@test -n "$(MODULE)" && test -n "$(NAME)" || (echo "MODULE and NAME are required" && exit 1)
+	@mkdir -p db/migrations/$(MODULE)
 	goose -dir db/migrations/$(MODULE) create $(NAME) sql
 
 seed: ## Load the development dataset

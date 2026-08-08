@@ -68,6 +68,9 @@ func TestLoad_MissingAndInvalidFiles(t *testing.T) {
 	if err := Load(context.Background(), Options{File: t.TempDir()}, &target); err == nil {
 		t.Fatal("expected directory read error")
 	}
+	if err := Load(context.Background(), Options{File: "\x00"}, &target); err == nil {
+		t.Fatal("expected file stat error")
+	}
 	if err := Load(context.Background(), Options{Defaults: map[string]any{"http.port": 8080}}, nil); err == nil {
 		t.Fatal("expected unmarshal error")
 	}

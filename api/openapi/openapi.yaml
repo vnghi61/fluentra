@@ -1,0 +1,159 @@
+openapi: 3.1.0
+info:
+  title: Fluentra API
+  version: 0.1.0
+  description: >-
+    The versioned HTTP contract for Fluentra. Public operations explicitly set
+    `security: []`; every other operation must declare its required permission.
+servers:
+  - url: /api/v1
+    description: Version 1 API
+tags:
+  - name: system
+    description: Platform health and diagnostics.
+security:
+  - BearerAuth: []
+paths:
+  /ping:
+    get:
+      tags: [system]
+      operationId: systemPing
+      summary: Check API dependency connectivity.
+      description: Performs lightweight PostgreSQL and Redis checks for the trace proof.
+      security: []
+      responses:
+        '200':
+          description: The API and its immediate dependencies responded.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ping'
+              example:
+                status: ok
+  /health:
+    get:
+      tags: [system]
+      operationId: systemHealth
+      summary: Check process liveness.
+      description: Returns success when the API process is able to serve requests.
+      security: []
+      responses:
+        '200':
+          description: The API process is live.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+              example:
+                status: ok
+  /ready:
+    get:
+      tags: [system]
+      operationId: systemReady
+      summary: Check dependency readiness.
+      description: Returns success only when every hard dependency is usable.
+      security: []
+      responses:
+        '200':
+          description: All hard dependencies are ready.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ready'
+              example:
+                status: ready
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /version:
+    get:
+      tags: [system]
+      operationId: systemVersion
+      summary: Read the deployed API version.
+      description: Returns the version associated with the running API build.
+      security: []
+      responses:
+        '200':
+          description: The deployed API version.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Version'
+              example:
+                version: 0.1.0
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: A short-lived Fluentra access token.
+    RefreshCookie:
+      type: apiKey
+      in: cookie
+      name: refresh_token
+      description: A rotating refresh token supplied only to the refresh operation.
+  schemas:
+    Problem:
+      $ref: ./components/errors.yaml#/Problem
+    ValidationProblem:
+      $ref: ./components/errors.yaml#/ValidationProblem
+    ValidationError:
+      $ref: ./components/errors.yaml#/ValidationError
+    Page:
+      $ref: ./components/pagination.yaml#/Page
+    Cursor:
+      $ref: ./components/pagination.yaml#/Cursor
+    Ping:
+      $ref: ./components/system.yaml#/Ping
+    Health:
+      $ref: ./components/system.yaml#/Health
+    Ready:
+      $ref: ./components/system.yaml#/Ready
+    Version:
+      $ref: ./components/system.yaml#/Version
+  headers:
+    X-Request-Id:
+      $ref: ./components/headers.yaml#/X-Request-Id
+    ETag:
+      $ref: ./components/headers.yaml#/ETag
+    Cache-Control:
+      $ref: ./components/headers.yaml#/Cache-Control
+    RateLimit-Limit:
+      $ref: ./components/headers.yaml#/RateLimit-Limit
+    RateLimit-Remaining:
+      $ref: ./components/headers.yaml#/RateLimit-Remaining
+    RateLimit-Reset:
+      $ref: ./components/headers.yaml#/RateLimit-Reset
+    Retry-After:
+      $ref: ./components/headers.yaml#/Retry-After
+  responses:
+    BadRequest:
+      $ref: ./components/responses.yaml#/BadRequest
+    Unauthorized:
+      $ref: ./components/responses.yaml#/Unauthorized
+    Forbidden:
+      $ref: ./components/responses.yaml#/Forbidden
+    NotFound:
+      $ref: ./components/responses.yaml#/NotFound
+    Conflict:
+      $ref: ./components/responses.yaml#/Conflict
+    ValidationFailed:
+      $ref: ./components/responses.yaml#/ValidationFailed
+    TooManyRequests:
+      $ref: ./components/responses.yaml#/TooManyRequests
+    InternalServerError:
+      $ref: ./components/responses.yaml#/InternalServerError
+    ServiceUnavailable:
+      $ref: ./components/responses.yaml#/ServiceUnavailable

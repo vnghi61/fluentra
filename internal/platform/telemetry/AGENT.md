@@ -2,7 +2,7 @@
 module: telemetry
 tier: platform
 group: platform
-status: PLANNED
+status: IN_PROGRESS
 phase: 1
 owner: "@platform-team"
 schema: none
@@ -10,7 +10,7 @@ tables: []
 depends_on: []
 depended_on_by: [ai, cache, storage, job, media, search, mailer]
 spec_version: 1.0.0
-last_verified: 2026-08-06
+last_verified: 2026-08-07
 ---
 
 # telemetry — AGENT.md

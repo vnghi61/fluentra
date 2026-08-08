@@ -1,0 +1,49 @@
+services:
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    command: [--config=/etc/otel/config.yaml]
+    volumes: [../otel/config.yaml:/etc/otel/config.yaml:ro]
+    networks: [backend]
+    healthcheck:
+      test: [CMD, /otelcol-contrib, --version]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+  prometheus:
+    image: prom/prometheus:latest
+    command: [--config.file=/etc/prometheus/prometheus.yml]
+    volumes: [../prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro]
+    networks: [backend]
+    healthcheck:
+      test: [CMD, wget, -qO-, http://localhost:9090/-/ready]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+  loki:
+    image: grafana/loki:latest
+    command: [-config.file=/etc/loki/config.yml]
+    volumes: [../loki/config.yml:/etc/loki/config.yml:ro]
+    networks: [backend]
+    healthcheck:
+      test: [CMD-SHELL, wget -qO- http://localhost:3100/ready]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+  tempo:
+    image: grafana/tempo:latest
+    command: [-config.file=/etc/tempo/config.yml]
+    volumes: [../tempo/config.yml:/etc/tempo/config.yml:ro]
+    networks: [backend]
+    healthcheck:
+      test: [CMD-SHELL, wget -qO- http://localhost:3200/ready]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+  grafana:
+    image: grafana/grafana:latest
+    networks: [backend]
+    healthcheck:
+      test: [CMD, wget, -qO-, http://localhost:3000/api/health]
+      interval: 10s
+      timeout: 3s
+      retries: 10

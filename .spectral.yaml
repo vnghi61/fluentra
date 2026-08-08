@@ -1,0 +1,39 @@
+extends:
+  - spectral:oas
+rules:
+  fluentra-operation-id:
+    description: Every operation has a unique lower-camel-case operationId.
+    given: $.paths[*][get,put,post,delete,options,head,patch,trace]
+    then:
+      field: operationId
+      function: pattern
+      functionOptions:
+        match: '^[a-z][A-Za-z0-9]*$'
+  fluentra-operation-description:
+    description: Every operation documents its behaviour.
+    given: $.paths[*][get,put,post,delete,options,head,patch,trace]
+    then:
+      field: description
+      function: truthy
+  fluentra-operation-permission:
+    description: Non-public operations must declare the permission enforced by their handler.
+    given: $.paths[*][get,put,post,delete,options,head,patch,trace]
+    then:
+      function: schema
+      functionOptions:
+        schema:
+          if:
+            properties:
+              security:
+                type: array
+                maxItems: 0
+            required: [security]
+          then: {}
+          else:
+            required: [x-permission]
+  fluentra-response-example:
+    description: Every concrete response media type supplies an example for clients and mocks.
+    given: $.paths[*][get,put,post,delete,options,head,patch,trace].responses.*.content.*
+    then:
+      field: example
+      function: defined

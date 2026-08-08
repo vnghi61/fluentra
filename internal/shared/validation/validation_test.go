@@ -49,3 +49,14 @@ func TestValidator_CheckVietnameseEmailAndMin(t *testing.T) {
 		t.Fatalf("errors = %#v", errors)
 	}
 }
+
+func TestValidator_CheckUnknownTagUsesFallbackMessage(t *testing.T) {
+	t.Parallel()
+	input := struct {
+		Name string `validate:"max=3"`
+	}{Name: "Fluentra"}
+	errors := New().Check(input, "en")
+	if len(errors) != 1 || errors[0].Code != "max" || errors[0].Message != "name is invalid." {
+		t.Fatalf("errors = %#v", errors)
+	}
+}

@@ -1,2 +1,25 @@
 version: "2"
-sql: []
+
+# Each module adds an entry here when it adds its first db/queries/<module>/*.sql
+# file. The bootstrap `ops` query keeps `sqlc generate` executable before a
+# business module owns tables.
+sql:
+  - engine: postgresql
+    queries: db/queries/ops
+    schema:
+      - db/migrations/_bootstrap
+    gen:
+      go:
+        package: sqlc
+        out: internal/generated/ops/sqlc
+        sql_package: pgx/v5
+        emit_pointers_for_null_types: true
+        overrides:
+          - db_type: pg_catalog.uuid
+            go_type:
+              import: github.com/google/uuid
+              type: UUID
+          - db_type: pg_catalog.timestamptz
+            go_type:
+              import: time
+              type: Time

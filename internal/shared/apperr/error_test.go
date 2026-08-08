@@ -79,6 +79,9 @@ func TestError_Wrap(t *testing.T) {
 func TestError_NilProblemAndUnknownKind(t *testing.T) {
 	t.Parallel()
 	var nilError *Error
+	if got := nilError.Error(); got != "" {
+		t.Fatalf("nil error string = %q", got)
+	}
 	if got := nilError.Status(); got != 500 {
 		t.Fatalf("nil status = %d", got)
 	}
@@ -92,5 +95,8 @@ func TestError_NilProblemAndUnknownKind(t *testing.T) {
 	err := New(Internal, "INTERNAL_ERROR", "message").WithInternal("diagnostic")
 	if err.InternalDetail() != "diagnostic" || err.Cause() != nil {
 		t.Fatalf("unexpected details: %#v", err)
+	}
+	if err.Unwrap() != nil {
+		t.Fatal("unwrap without cause must return nil")
 	}
 }

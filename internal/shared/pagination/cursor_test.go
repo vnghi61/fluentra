@@ -35,6 +35,12 @@ func TestCursor_InvalidTypedValues(t *testing.T) {
 	if _, err := Decode[string](encode(`{"t":"other","s":"x","i":"id"}`)); err == nil {
 		t.Fatal("expected string type error")
 	}
+	if _, err := Decode[int](encode(`{"t":"string","s":"42","i":"id"}`)); err == nil {
+		t.Fatal("expected integer type error")
+	}
+	if _, err := Decode[int64](encode(`{"t":"string","s":"42","i":"id"}`)); err == nil {
+		t.Fatal("expected int64 type error")
+	}
 }
 
 func TestCursor_RoundTripProperty(t *testing.T) {

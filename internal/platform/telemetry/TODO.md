@@ -21,14 +21,14 @@ agent knows what is already handled and what is deliberately deferred.
 <!-- BEGIN GENERATED: todo -->
 ## Phase 0
 
-- [ ] Provider construction and graceful shutdown
-- [ ] OTLP exporters with resource attributes including version and commit
-- [ ] HTTP middleware: trace, request ID, recovery, structured access log
-- [ ] slog handler with the OTLP bridge and redaction allowlist
-- [ ] Standard instruments for HTTP, DB, cache, storage and jobs
-- [ ] `/health`, `/ready`, `/version`
-- [ ] Collector pipeline configuration including tail sampling
-- [ ] The first Grafana dashboard, proving log→trace correlation works
+- [x] Provider construction and graceful shutdown
+- [x] OTLP exporters with resource attributes including version and commit
+- [x] HTTP middleware: trace, request ID, recovery, structured access log
+- [x] slog handler with the OTLP bridge and redaction allowlist
+- [x] Standard instruments for HTTP, DB, cache, storage and jobs
+- [x] `/health`, `/ready`, `/version`
+- [ ] Collector pipeline configuration including tail sampling (P0.4 verification)
+- [ ] The first Grafana dashboard, proving log→trace correlation works (P0.5 trace proof)
 <!-- END GENERATED: todo -->
 
 ## Deferred (deliberately not doing yet)

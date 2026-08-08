@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 )
 
@@ -72,15 +73,21 @@ func decodeValue[T SortValue](encoded encodedCursor) (T, error) {
 		return any(encoded.SortValue).(T), nil
 	}
 	if _, ok := any(zero).(int); ok {
-		var value int
-		if _, err := fmt.Sscanf(encoded.SortValue, "%d", &value); err != nil {
+		if encoded.Type != "int" {
+			return zero, fmt.Errorf("cursor type %q is not int", encoded.Type)
+		}
+		value, err := strconv.Atoi(encoded.SortValue)
+		if err != nil {
 			return zero, fmt.Errorf("parse cursor int: %w", err)
 		}
 		return any(value).(T), nil
 	}
 	if _, ok := any(zero).(int64); ok {
-		var value int64
-		if _, err := fmt.Sscanf(encoded.SortValue, "%d", &value); err != nil {
+		if encoded.Type != "int64" {
+			return zero, fmt.Errorf("cursor type %q is not int64", encoded.Type)
+		}
+		value, err := strconv.ParseInt(encoded.SortValue, 10, 64)
+		if err != nil {
 			return zero, fmt.Errorf("parse cursor int64: %w", err)
 		}
 		return any(value).(T), nil

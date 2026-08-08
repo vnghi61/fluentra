@@ -1,0 +1,20 @@
+services:
+  postgres:
+    ports: ["127.0.0.1:5432:5432"]
+  redis:
+    ports: ["127.0.0.1:6379:6379"]
+  minio:
+    ports: ["127.0.0.1:9000:9000", "127.0.0.1:9001:9001"]
+  mailpit:
+    image: axllent/mailpit:latest
+    ports: ["127.0.0.1:8025:8025"]
+    networks: [backend]
+    healthcheck:
+      test: [CMD, wget, -qO-, http://localhost:8025/livez]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  otel-collector:
+    ports: ["127.0.0.1:4317:4317"]
+  grafana:
+    ports: ["127.0.0.1:3000:3000"]

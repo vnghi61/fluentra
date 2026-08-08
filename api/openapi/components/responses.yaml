@@ -1,0 +1,127 @@
+BadRequest:
+  description: The request is malformed or has an invalid cursor.
+  content:
+    application/problem+json:
+      schema:
+        $ref: ./errors.yaml#/Problem
+      example:
+        type: https://fluentra.dev/errors/bad-request
+        title: Bad request
+        status: 400
+        detail: The request body could not be decoded.
+        code: BAD_REQUEST
+        request_id: 01J8XQ7Z9K3M4N5P6Q7R8S9T0V
+Unauthorized:
+  description: Authentication credentials are missing, invalid, or expired.
+  content:
+    application/problem+json:
+      schema:
+        $ref: ./errors.yaml#/Problem
+      example:
+        type: https://fluentra.dev/errors/unauthenticated
+        title: Authentication required
+        status: 401
+        detail: Provide a valid access token.
+        code: UNAUTHENTICATED
+        request_id: 01J8XQ7Z9K3M4N5P6Q7R8S9T0V
+Forbidden:
+  description: The authenticated actor lacks permission for this operation.
+  content:
+    application/problem+json:
+      schema:
+        $ref: ./errors.yaml#/Problem
+      example:
+        type: https://fluentra.dev/errors/permission-denied
+        title: Permission denied
+        status: 403
+        detail: You do not have permission to perform this action.
+        code: PERMISSION_DENIED
+        request_id: 01J8XQ7Z9K3M4N5P6Q7R8S9T0V
+NotFound:
+  description: The resource does not exist or is not visible to this actor.
+  content:
+    application/problem+json:
+      schema:
+        $ref: ./errors.yaml#/Problem
+      example:
+        type: https://fluentra.dev/errors/not-found
+        title: Not found
+        status: 404
+        detail: The requested resource was not found.
+        code: NOT_FOUND
+        request_id: 01J8XQ7Z9K3M4N5P6Q7R8S9T0V
+Conflict:
+  description: The requested operation conflicts with the current resource state.
+  content:
+    application/problem+json:
+      schema:
+        $ref: ./errors.yaml#/Problem
+      example:
+        type: https://fluentra.dev/errors/conflict
+        title: Conflict
+        status: 409
+        detail: The operation conflicts with the current resource state.
+        code: CONFLICT
+        request_id: 01J8XQ7Z9K3M4N5P6Q7R8S9T0V
+ValidationFailed:
+  description: One or more request fields failed validation.
+  content:
+    application/problem+json:
+      schema:
+        $ref: ./errors.yaml#/ValidationProblem
+      example:
+        type: https://fluentra.dev/errors/validation-failed
+        title: Validation failed
+        status: 422
+        detail: One or more request fields are invalid.
+        code: VALIDATION_FAILED
+        request_id: 01J8XQ7Z9K3M4N5P6Q7R8S9T0V
+        errors:
+          - field: email
+            code: EMAIL
+            message: Enter a valid email address.
+TooManyRequests:
+  description: The applicable rate limit has been exceeded.
+  headers:
+    Retry-After:
+      $ref: ./headers.yaml#/Retry-After
+  content:
+    application/problem+json:
+      schema:
+        $ref: ./errors.yaml#/Problem
+      example:
+        type: https://fluentra.dev/errors/rate-limited
+        title: Too many requests
+        status: 429
+        detail: Retry after the indicated interval.
+        code: RATE_LIMITED
+        request_id: 01J8XQ7Z9K3M4N5P6Q7R8S9T0V
+InternalServerError:
+  description: An unexpected server error occurred without exposing internals.
+  content:
+    application/problem+json:
+      schema:
+        $ref: ./errors.yaml#/Problem
+      example:
+        type: https://fluentra.dev/errors/internal
+        title: Internal server error
+        status: 500
+        detail: An unexpected error occurred.
+        code: INTERNAL
+        request_id: 01J8XQ7Z9K3M4N5P6Q7R8S9T0V
+ServiceUnavailable:
+  description: A hard dependency is not available.
+  headers:
+    Retry-After:
+      $ref: ./headers.yaml#/Retry-After
+  content:
+    application/problem+json:
+      schema:
+        $ref: ./errors.yaml#/Problem
+      example:
+        type: https://fluentra.dev/errors/dependency-unavailable
+        title: Service unavailable
+        status: 503
+        detail: A required service is temporarily unavailable.
+        code: DEPENDENCY_UNAVAILABLE
+        request_id: 01J8XQ7Z9K3M4N5P6Q7R8S9T0V
