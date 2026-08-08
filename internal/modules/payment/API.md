@@ -61,7 +61,6 @@ Poll a checkout session's status after redirect
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `POST /api/v1/webhooks/payment/{provider}`
 
 Gateway webhook
@@ -83,7 +82,6 @@ Invoice history
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `GET /api/v1/me/invoices/{id}/pdf`
 
 Signed link to the invoice PDF
@@ -93,7 +91,6 @@ Signed link to the invoice PDF
 | Permission | `self` |
 | Success | 200 |
 | Errors | standard set |
-
 
 ### `POST /api/v1/admin/payments/{id}/refund`
 
@@ -105,7 +102,6 @@ Issue a refund
 | Success | 202 |
 | Errors | `REFUND_WINDOW_CLOSED`, `ALREADY_REFUNDED` |
 
-
 ### `POST /api/v1/admin/webhooks/{id}/replay`
 
 Replay a stored webhook
@@ -116,7 +112,6 @@ Replay a stored webhook
 | Success | 202 |
 | Errors | standard set |
 
-
 ### `GET /api/v1/admin/reconciliation`
 
 Discrepancies between our records and the gateway
@@ -126,7 +121,6 @@ Discrepancies between our records and the gateway
 | Permission | `billing.read` |
 | Success | 200 |
 | Errors | standard set |
-
 
 <!-- END GENERATED: api-detail -->
 

@@ -81,11 +81,21 @@ function merge(existingPath, rendered) {
   return touched ? out : rendered;
 }
 
+/**
+ * Templates that interpolate optional blocks leave runs of blank lines behind.
+ * Markdown renders those identically, but markdownlint reports every one, and a
+ * generator whose output fails the repository's own lint means `make docs` and
+ * `make docs-check` cannot both pass. Normalising here keeps the two honest.
+ */
+function tidy(markdown) {
+  return markdown.replace(/\n{3,}/g, "\n\n").replace(/\s+$/, "\n");
+}
+
 let changed = 0;
 function emit(relPath, content) {
   const abs = join(ROOT, relPath);
   mkdirSync(dirname(abs), { recursive: true });
-  const final = merge(abs, content);
+  const final = tidy(merge(abs, content));
   const prev = existsSync(abs) ? readFileSync(abs, "utf8") : null;
   if (prev === final) return;
   changed++;

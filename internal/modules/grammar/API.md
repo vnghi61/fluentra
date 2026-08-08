@@ -46,7 +46,6 @@ Browse the taxonomy by level
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `GET /api/v1/grammar/points/{code}`
 
 Rule with examples and common errors
@@ -56,7 +55,6 @@ Rule with examples and common errors
 | Permission | `content.read.published` |
 | Success | 200 |
 | Errors | standard set |
-
 
 ### `GET /api/v1/me/grammar/weaknesses`
 
@@ -68,7 +66,6 @@ Ranked weak points with drill suggestions
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `POST /api/v1/grammar/explain`
 
 Explain a tagged error, citing a rule
@@ -78,7 +75,6 @@ Explain a tagged error, citing a rule
 | Permission | `self` |
 | Success | 200 |
 | Errors | `AI_QUOTA_EXCEEDED` |
-
 
 <!-- END GENERATED: api-detail -->
 

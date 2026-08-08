@@ -45,7 +45,6 @@ Passage with glossing hints
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `POST /api/v1/reading/attempts`
 
 Start a timed reading attempt
@@ -56,7 +55,6 @@ Start a timed reading attempt
 | Success | 201 |
 | Errors | standard set |
 
-
 ### `POST /api/v1/reading/attempts/{id}/submit`
 
 Submit answers
@@ -66,7 +64,6 @@ Submit answers
 | Permission | `self` |
 | Success | 200 |
 | Errors | `ATTEMPT_EXPIRED` |
-
 
 <!-- END GENERATED: api-detail -->
 

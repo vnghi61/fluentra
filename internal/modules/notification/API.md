@@ -50,7 +50,6 @@ Inbox, newest first
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `GET /api/v1/notifications/unread-count`
 
 Badge count (cached)
@@ -60,7 +59,6 @@ Badge count (cached)
 | Permission | `self` |
 | Success | 200 |
 | Errors | standard set |
-
 
 ### `POST /api/v1/notifications/{id}/read`
 
@@ -72,7 +70,6 @@ Mark one read
 | Success | 204 |
 | Errors | standard set |
 
-
 ### `POST /api/v1/notifications/read-all`
 
 Mark all read
@@ -82,7 +79,6 @@ Mark all read
 | Permission | `self` |
 | Success | 204 |
 | Errors | standard set |
-
 
 ### `GET /api/v1/me/notification-preferences`
 
@@ -94,7 +90,6 @@ Read preferences
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `PUT /api/v1/me/notification-preferences`
 
 Update preferences
@@ -104,7 +99,6 @@ Update preferences
 | Permission | `self` |
 | Success | 200 |
 | Errors | standard set |
-
 
 ### `POST /api/v1/me/devices`
 
@@ -116,7 +110,6 @@ Register a push device
 | Success | 201 |
 | Errors | standard set |
 
-
 ### `DELETE /api/v1/me/devices/{id}`
 
 Unregister
@@ -126,7 +119,6 @@ Unregister
 | Permission | `self` |
 | Success | 204 |
 | Errors | standard set |
-
 
 <!-- END GENERATED: api-detail -->
 

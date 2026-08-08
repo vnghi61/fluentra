@@ -132,7 +132,7 @@ Mỗi skill module chỉ implement interface `ExerciseGrader` + `ItemRenderer`.
 | Stale badge | `last_verified` > 90 ngày → CI cảnh báo | CI job `docs-lint` |
 | Single source of truth | API spec = OpenAPI YAML (không phải Markdown). Markdown chỉ *link* tới nó. | Convention |
 
-→ Chi tiết: [docs/development/docs-as-code.md](../development/docs-as-code.md)
+→ Chi tiết: `docs/development/docs-as-code.md` — **chưa được viết**.
 
 **Bỏ file trùng:** plan gốc yêu cầu cả `AGENT.md` **và** `README_AI.md` trong mỗi module.
 Hai file này trùng mục đích 100% và chắc chắn sẽ lệch nhau. Giải pháp: giữ `README_AI.md`
@@ -209,7 +209,7 @@ message bus, gRPC internal, DTO 3 lớp → phức tạp gấp 3, tách vẫn kh
 Khi cần tách 1 module thành service: đổi implementation của `contract` interface từ in-process
 call sang HTTP/gRPC client. **Business code không đổi một dòng.**
 
-→ Chi tiết: [docs/architecture/microservice-migration.md](microservice-migration.md)
+→ Chi tiết: `docs/architecture/microservice-migration.md` — **chưa được viết**.
 
 ---
 

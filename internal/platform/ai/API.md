@@ -47,7 +47,6 @@ Spend and volume by task, provider and day
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `GET /api/v1/admin/ai/requests/{id}`
 
 Inspect one call for debugging
@@ -69,7 +68,6 @@ Deployed prompt versions and their status
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `POST /api/v1/admin/ai/prompts/{task}/activate`
 
 Promote a prompt version
@@ -80,7 +78,6 @@ Promote a prompt version
 | Success | 200 |
 | Errors | `EVAL_THRESHOLD_NOT_MET` |
 
-
 ### `GET /api/v1/admin/ai/budget`
 
 Budget consumption today
@@ -90,7 +87,6 @@ Budget consumption today
 | Permission | `ai.read` |
 | Success | 200 |
 | Errors | standard set |
-
 
 <!-- END GENERATED: api-detail -->
 

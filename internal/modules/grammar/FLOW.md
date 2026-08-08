@@ -20,8 +20,6 @@ Sequence diagrams, state machines and business processes owned by this module.
 <!-- BEGIN GENERATED: flows -->
 ## From an essay error to a targeted drill
 
-
-
 ```mermaid
 flowchart LR
     A[writing.graded<br/>with annotations] --> B["grammar.TagErrors"]

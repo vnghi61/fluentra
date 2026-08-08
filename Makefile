@@ -190,9 +190,13 @@ docs: ## Regenerate module documentation from the manifest
 	node tools/docgen/generate.mjs
 
 docs-check: ## Fail if documentation is stale or has drifted
+	node tools/docgen/check-drift.mjs
 	node tools/docgen/generate.mjs --check
-	npx markdownlint-cli2 "**/*.md" "#node_modules" "#web/node_modules"
-	npx lychee --no-progress --offline .
+	npx --yes markdownlint-cli2@0.20.0
+# Link checking is not run here: lychee is a Rust binary, not an npm package, so
+# `npx lychee` never worked. CI uses lycheeverse/lychee-action. To check links
+# locally, install it (`cargo install lychee`) and run:
+#   lychee --offline --no-progress '**/*.md'
 
 ## ----------------------------------------------------------------- ci
 

@@ -21,13 +21,13 @@ agent knows what is already handled and what is deliberately deferred.
 <!-- BEGIN GENERATED: todo -->
 ## Phase 1
 
-- [x] River client and worker wiring with the five queues
-- [x] Job middleware: span, log, recover, timeout, metrics
-- [x] Outbox table and publisher loop with `SKIP LOCKED`
-- [x] Cron scheduler with advisory locking
-- [~] Dead-letter recording and the `job.failed_permanently` event
+- [ ] River client and worker wiring with the five queues
+- [ ] Job middleware: span, log, recover, timeout, metrics
+- [ ] Outbox table and publisher loop with `SKIP LOCKED`
+- [ ] Cron scheduler with advisory locking
+- [ ] Dead-letter recording and the `job.failed_permanently` event
 - [ ] Admin inspect/retry/cancel endpoints
-- [~] Queue depth and oldest-pending-age metrics with alerts
+- [ ] Queue depth and oldest-pending-age metrics with alerts
 <!-- END GENERATED: todo -->
 
 ## Deferred (deliberately not doing yet)
@@ -39,7 +39,7 @@ _Nothing deferred._
 ### Carried over from P0.R6 — the two `[~]` items above are half done
 
 - **`job.failed_permanently` event.** `ops.job_failures` is written on the attempt that exhausts
-  the budget (BR-JOB-08), verified by integration test. The *event* half is not published: doing it
+  the budget (BR-JOB-08), verified by integration test. The _event_ half is not published: doing it
   from River's `ErrorHandler` would need an outbox write outside the job's transaction, which is the
   one place the outbox contract does not fit. Decide the shape when the first consumer exists.
 - **`job_queue_depth`.** `job_oldest_pending_seconds` now has a callback and reports real values.

@@ -399,7 +399,7 @@
       "Deciding retry semantics for a business failure — the module classifies its own errors"
     ],
     "tables": [
-      { "name": "river_job", "purpose": "River's queue table", "notes": "Managed by River's own migrations; do not hand-edit" },
+      { "name": "river_job", "purpose": "River's queue table", "notes": "Managed by River's own migrations; do not hand-edit. Applied by `job.MigrateUp` at worker start-up, **not** by goose — River versions this schema itself, so it is deliberately absent from `db/migrations/job/`" },
       { "name": "outbox_events", "purpose": "Transactional event outbox", "notes": "`aggregate`, `event`, `payload`, `published_at`, `attempts`. Polled with `FOR UPDATE SKIP LOCKED`" },
       { "name": "job_failures", "purpose": "Dead-letter record", "notes": "`kind`, `args`, `last_error`, `failed_at` — retained 30 days for triage" }
     ],

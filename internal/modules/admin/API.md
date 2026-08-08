@@ -49,7 +49,6 @@ Composed KPI summary
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `GET /api/v1/admin/moderation`
 
 Moderation queue
@@ -59,7 +58,6 @@ Moderation queue
 | Permission | `moderation.read` |
 | Success | 200 |
 | Errors | standard set |
-
 
 ### `POST /api/v1/admin/moderation/{id}/resolve`
 
@@ -71,7 +69,6 @@ Resolve a queue item
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `GET /api/v1/admin/feature-flags`
 
 List flags
@@ -81,7 +78,6 @@ List flags
 | Permission | `system.flags` |
 | Success | 200 |
 | Errors | standard set |
-
 
 ### `PUT /api/v1/admin/feature-flags/{key}`
 
@@ -93,7 +89,6 @@ Update a flag
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `POST /api/v1/admin/jobs/{id}/retry`
 
 Retry a failed job
@@ -103,7 +98,6 @@ Retry a failed job
 | Permission | `system.jobs` |
 | Success | 202 |
 | Errors | standard set |
-
 
 ### `POST /api/v1/admin/impersonate/{user_id}`
 

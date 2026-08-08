@@ -47,7 +47,6 @@ XP, level, streak, badges, active quests
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `GET /api/v1/me/streak`
 
 Streak with the freeze state and the day boundary
@@ -57,7 +56,6 @@ Streak with the freeze state and the day boundary
 | Permission | `self` |
 | Success | 200 |
 | Errors | standard set |
-
 
 ### `POST /api/v1/me/streak/freeze`
 
@@ -69,7 +67,6 @@ Use a freeze
 | Success | 200 |
 | Errors | `NO_FREEZES_AVAILABLE` |
 
-
 ### `GET /api/v1/leaderboard`
 
 Current league standings
@@ -80,7 +77,6 @@ Current league standings
 | Success | 200 |
 | Errors | `LEADERBOARD_NOT_OPTED_IN` |
 
-
 ### `PUT /api/v1/me/daily-goal`
 
 Set the daily XP goal
@@ -90,7 +86,6 @@ Set the daily XP goal
 | Permission | `self` |
 | Success | 200 |
 | Errors | standard set |
-
 
 <!-- END GENERATED: api-detail -->
 

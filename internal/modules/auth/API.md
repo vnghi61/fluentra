@@ -117,7 +117,6 @@ Complete a login that required a second factor
 | Success | 200 |
 | Errors | `MFA_INVALID`, `TOKEN_EXPIRED` |
 
-
 ### `POST /api/v1/auth/refresh`
 
 Rotate the refresh token and issue a new access token
@@ -138,7 +137,6 @@ Revoke the current session and refresh family
 | Permission | `self` |
 | Success | 204 |
 | Errors | standard set |
-
 
 ### `POST /api/v1/auth/forgot-password`
 
@@ -172,7 +170,6 @@ Change the password while signed in
 | Success | 200 |
 | Errors | `INVALID_CREDENTIALS`, `PASSWORD_TOO_WEAK` |
 
-
 ### `GET /api/v1/auth/sessions`
 
 List the caller's active sessions
@@ -182,7 +179,6 @@ List the caller's active sessions
 | Permission | `self` |
 | Success | 200 |
 | Errors | standard set |
-
 
 ### `DELETE /api/v1/auth/sessions/{id}`
 
@@ -194,7 +190,6 @@ Revoke one session
 | Success | 204 |
 | Errors | `RESOURCE_NOT_FOUND` |
 
-
 ### `POST /api/v1/auth/mfa/enroll`
 
 Begin TOTP enrolment; returns a provisioning URI and recovery codes
@@ -204,7 +199,6 @@ Begin TOTP enrolment; returns a provisioning URI and recovery codes
 | Permission | `self` |
 | Success | 200 |
 | Errors | standard set |
-
 
 ### `POST /api/v1/auth/oauth/google/callback`
 
@@ -216,7 +210,6 @@ Complete Google sign-in: verify state, exchange the code, validate the ID token,
 | Success | 200 |
 | Errors | `OAUTH_STATE_INVALID`, `OAUTH_EMAIL_UNVERIFIED`, `OAUTH_ACCOUNT_CONFLICT`, `TOKEN_INVALID` |
 
-
 ### `POST /api/v1/auth/oauth/google/link`
 
 Link a Google identity to the signed-in account
@@ -226,7 +219,6 @@ Link a Google identity to the signed-in account
 | Permission | `self` |
 | Success | 200 |
 | Errors | `OAUTH_ALREADY_LINKED`, `OAUTH_EMAIL_MISMATCH` |
-
 
 ### `DELETE /api/v1/auth/oauth/google`
 
@@ -249,7 +241,6 @@ List trusted devices with their idle and absolute expiry
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `DELETE /api/v1/auth/devices/{id}`
 
 Untrust a device, revoking its refresh family
@@ -260,7 +251,6 @@ Untrust a device, revoking its refresh family
 | Success | 204 |
 | Errors | standard set |
 
-
 ### `POST /api/v1/admin/users/{id}/sessions/revoke`
 
 Admin revokes all sessions for a user
@@ -270,7 +260,6 @@ Admin revokes all sessions for a user
 | Permission | `user.session.revoke` |
 | Success | 204 |
 | Errors | `PERMISSION_DENIED`, `RESOURCE_NOT_FOUND` |
-
 
 <!-- END GENERATED: api-detail -->
 

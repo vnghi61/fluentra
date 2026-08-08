@@ -20,8 +20,6 @@ Sequence diagrams, state machines and business processes owned by this module.
 <!-- BEGIN GENERATED: flows -->
 ## Ingestion to dashboard
 
-
-
 ```mermaid
 flowchart LR
     A[Domain events via outbox] --> B[ingest job<br/>idempotent on event_id]

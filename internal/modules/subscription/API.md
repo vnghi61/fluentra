@@ -50,7 +50,6 @@ Plan catalogue with prices
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `GET /api/v1/me/subscription`
 
 Current subscription and entitlements
@@ -60,7 +59,6 @@ Current subscription and entitlements
 | Permission | `self` |
 | Success | 200 |
 | Errors | standard set |
-
 
 ### `POST /api/v1/me/subscription`
 
@@ -72,7 +70,6 @@ Start a subscription or trial (delegates checkout to `payment`)
 | Success | 202 |
 | Errors | `SUBSCRIPTION_ALREADY_ACTIVE`, `PLAN_NOT_AVAILABLE` |
 
-
 ### `POST /api/v1/me/subscription/change`
 
 Upgrade or downgrade
@@ -82,7 +79,6 @@ Upgrade or downgrade
 | Permission | `self` |
 | Success | 200 |
 | Errors | `INVALID_STATE_TRANSITION` |
-
 
 ### `POST /api/v1/me/subscription/cancel`
 
@@ -94,7 +90,6 @@ Cancel at period end
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `POST /api/v1/me/subscription/reactivate`
 
 Undo a pending cancellation
@@ -105,7 +100,6 @@ Undo a pending cancellation
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `GET /api/v1/admin/subscriptions`
 
 Search subscriptions
@@ -115,7 +109,6 @@ Search subscriptions
 | Permission | `billing.read` |
 | Success | 200 |
 | Errors | standard set |
-
 
 ### `POST /api/v1/admin/subscriptions/{id}/grant`
 

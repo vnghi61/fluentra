@@ -108,7 +108,6 @@ Migrations: `db/migrations/ai/` · Queries: `db/queries/ai/`
 | `ai.ai_cache_entries` | Response cache index | `input_hash` UNIQUE, `task`, `prompt_version`, `embedding vector(1536)` for semantic lookup, `expires_at` |
 | `ai.ai_budgets` | Daily spend accounting | `scope` (global/user), `date`, `spent_usd`, `cap_usd` |
 
-
 <!-- END GENERATED: schema -->
 
 ## 6. HTTP endpoints
@@ -178,7 +177,6 @@ and fails `go-arch-lint` in CI.
 11. **BR-AI-11** — In tests, the `mock` provider is used. Unit and integration tests never reach a network.
 12. **BR-AI-12** — A prompt version cannot be activated unless its eval suite meets its thresholds and is no worse than the currently active version.
 <!-- END GENERATED: rules -->
-
 
 ## 10. Common tasks
 

@@ -46,7 +46,6 @@ Search the audit trail
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `GET /api/v1/admin/audit-logs/export`
 
 Async CSV export
@@ -56,7 +55,6 @@ Async CSV export
 | Permission | `audit.export` |
 | Success | 202 |
 | Errors | standard set |
-
 
 ### `GET /api/v1/admin/security-events`
 
@@ -68,7 +66,6 @@ Security event feed
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `POST /api/v1/admin/security-events/{id}/resolve`
 
 Mark an event triaged
@@ -78,7 +75,6 @@ Mark an event triaged
 | Permission | `audit.manage` |
 | Success | 200 |
 | Errors | standard set |
-
 
 <!-- END GENERATED: api-detail -->
 

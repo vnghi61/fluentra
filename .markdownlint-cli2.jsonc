@@ -1,0 +1,50 @@
+{
+  // A linter that reports ten thousand findings is a linter everyone turns off.
+  // The rules kept here are the ones that catch a *defect* — a link that goes
+  // nowhere, a code fence that will not highlight, two <h1>s in one page. The
+  // ones switched off are house-style disagreements, and this repository's house
+  // style is already consistent.
+  "config": {
+    "default": true,
+
+    // The repository writes prose at 100-120 columns, matching the Go line
+    // limit in .golangci.yml. Enforcing markdownlint's 80 would mean rewrapping
+    // every document to a width nothing else here uses.
+    "MD013": false,
+
+    // Table pipe spacing. Purely cosmetic, and the generated tables in the
+    // AGENT.md files are emitted by tools/docgen, so this rule would demand
+    // changes that the next `make docs` undoes.
+    "MD060": false,
+
+    // Emphasis used as a heading. The module docs use bold lead-ins ("**Why
+    // River:**") as deliberate inline labels, not as section headings.
+    "MD036": false,
+
+    // Inline HTML: the generated-block markers (<!-- BEGIN GENERATED -->) and a
+    // handful of <br/> in tables are load-bearing.
+    "MD033": false,
+
+    // Duplicate headings are expected across a repository of per-module
+    // documents that all follow the same template.
+    "MD024": false,
+
+    // Not a disable: markdownlint treats a front-matter `title:` as the
+    // document's h1, so every ADR — front-matter title plus a visible
+    // "# ADR-NNNN" heading — looked like it had two. Clearing the pattern makes
+    // the rule count only real headings, which is what it is meant to catch.
+    "MD025": { "front_matter_title": "" },
+
+    // Fenced blocks without a language. Most of the untagged fences here hold
+    // directory trees, terminal output and mermaid-free ASCII diagrams, where a
+    // language tag adds nothing and `text` would be noise on 63 sites. Worth
+    // revisiting once the prose stabilises.
+    "MD040": false
+  },
+  "globs": ["**/*.md"],
+  "ignores": [
+    "node_modules",
+    "web/node_modules",
+    "CHANGELOG.md"
+  ]
+}

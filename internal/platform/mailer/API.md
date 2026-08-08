@@ -45,7 +45,6 @@ Delivery log search
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `POST /api/v1/admin/emails/{id}/resend`
 
 Resend a failed message
@@ -55,7 +54,6 @@ Resend a failed message
 | Permission | `system.email` |
 | Success | 202 |
 | Errors | standard set |
-
 
 ### `POST /api/v1/webhooks/email`
 

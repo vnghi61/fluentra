@@ -51,7 +51,6 @@ Enrol
 | Success | 201 |
 | Errors | `ALREADY_ENROLLED` |
 
-
 ### `GET /api/v1/me/dashboard`
 
 Today's plan, streak, due reviews, continue-where-you-left-off
@@ -61,7 +60,6 @@ Today's plan, streak, due reviews, continue-where-you-left-off
 | Permission | `self` |
 | Success | 200 |
 | Errors | standard set |
-
 
 ### `GET /api/v1/me/progress`
 
@@ -73,7 +71,6 @@ Progress across courses and skills
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `POST /api/v1/activities/{id}/attempts`
 
 Start an attempt
@@ -83,7 +80,6 @@ Start an attempt
 | Permission | `self` |
 | Success | 201 |
 | Errors | `LESSON_LOCKED`, `ACTIVITY_ALREADY_COMPLETED` |
-
 
 ### `POST /api/v1/attempts/{id}/submit`
 
@@ -106,7 +102,6 @@ Attempt state and result
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `POST /api/v1/me/sessions`
 
 Start a study session
@@ -116,7 +111,6 @@ Start a study session
 | Permission | `self` |
 | Success | 201 |
 | Errors | standard set |
-
 
 ### `POST /api/v1/me/sessions/{id}/complete`
 
@@ -128,7 +122,6 @@ End a session
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `POST /api/v1/me/placement`
 
 Start the placement test
@@ -138,7 +131,6 @@ Start the placement test
 | Permission | `self` |
 | Success | 201 |
 | Errors | standard set |
-
 
 <!-- END GENERATED: api-detail -->
 

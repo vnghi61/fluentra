@@ -54,15 +54,15 @@ make dev
 
 | Service | URL | Notes |
 |---|---|---|
-| Web app | http://localhost:5173 | Vite dev server with HMR |
-| API | http://localhost:8080 | `air` hot reload |
-| API docs | http://localhost:8080/docs | Rendered from the OpenAPI spec |
-| Grafana | http://localhost:3000 | `admin` / `admin` |
-| Mailpit | http://localhost:8025 | Catches all outbound email |
-| MinIO console | http://localhost:9001 | `minioadmin` / `minioadmin` |
-| Jaeger (dev only) | http://localhost:16686 | Convenience UI; production uses Tempo |
-| River UI | http://localhost:8081 | Job queue inspection |
-| Adminer | http://localhost:8082 | Database browsing |
+| Web app | <http://localhost:5173> | Vite dev server with HMR |
+| API | <http://localhost:8080> | `air` hot reload |
+| API docs | <http://localhost:8080/docs> | Rendered from the OpenAPI spec |
+| Grafana | <http://localhost:3000> | `admin` / `admin` |
+| Mailpit | <http://localhost:8025> | Catches all outbound email |
+| MinIO console | <http://localhost:9001> | `minioadmin` / `minioadmin` |
+| Jaeger (dev only) | <http://localhost:16686> | Convenience UI; production uses Tempo |
+| River UI | <http://localhost:8081> | Job queue inspection |
+| Adminer | <http://localhost:8082> | Database browsing |
 
 First start takes a few minutes while images build. Subsequent starts are seconds.
 
@@ -78,7 +78,7 @@ These exist only in the development seed; there is no default password anywhere 
 
 ## 5. The 15-minute exercise — follow one request
 
-1. Sign in as the learner at http://localhost:5173.
+1. Sign in as the learner at <http://localhost:5173>.
 2. Open the dashboard. Note the `X-Request-Id` response header in the browser devtools
    network panel.
 3. **Trace:** open Grafana → Explore → Tempo, search by that trace ID. You should see the root
@@ -139,7 +139,7 @@ template. Expect the review to be about boundaries and tests, not style — styl
 | Port already in use | Another project's stack is running; `docker ps` |
 | Slow Docker on macOS/Windows | Enable VirtioFS / WSL2 backend |
 
-More: [`troubleshooting.md`](troubleshooting.md).
+More: `docs/development/troubleshooting.md` — **not written yet**.
 
 ## Do not
 

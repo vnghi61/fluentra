@@ -21,12 +21,12 @@ agent knows what is already handled and what is deliberately deferred.
 <!-- BEGIN GENERATED: todo -->
 ## Phase 1
 
-- [x] Sender interface with SMTP implementation and Mailpit in dev
-- [x] MJML build step and the first templates: verification, reset, new device
-- [x] English and Vietnamese locales
-- [x] Delivery log and suppression list
-- [x] Bounce webhook with signature verification
-- [x] Async sending with retry classification
+- [ ] Sender interface with SMTP implementation and Mailpit in dev
+- [ ] MJML build step and the first templates: verification, reset, new device
+- [ ] English and Vietnamese locales
+- [ ] Delivery log and suppression list
+- [ ] Bounce webhook with signature verification
+- [ ] Async sending with retry classification
 <!-- END GENERATED: todo -->
 
 ## Deferred (deliberately not doing yet)

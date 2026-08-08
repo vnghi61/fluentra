@@ -176,7 +176,6 @@ and fails `go-arch-lint` in CI.
 10. **BR-SRS-10** — The scheduler is versioned: a parameter change records the version on each log so past scheduling remains explainable.
 <!-- END GENERATED: rules -->
 
-
 ## 10. Common tasks
 
 <!-- BEGIN GENERATED: tasks -->
@@ -229,7 +228,6 @@ for this module:
 | `REVIEW_CARD_SUSPENDED` | 409 | Card is suspended |
 | `REVIEW_NOT_DUE` | 409 | Answered a card outside the session, before it was due |
 | `DAILY_LIMIT_REACHED` | 409 | New-card limit reached for today |
-
 
 ## 13. Testing
 

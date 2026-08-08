@@ -140,16 +140,30 @@ graph BT
     commerce --> platform
     AUTH --> USR & RBAC & AUD
     ADM --> core
+    ADM --> CNT & ANA & SUB
+    USR & RBAC & CNT & QB & SUB & PAY --> AUD
+    NOT --> USR
     CNT --> STO & SCH
     LSN --> CNT
+    LRN --> CNT
     LRN --> LSN & SRS
+    SRS --> CNT
     VOC & GRM --> SRS
     VOC & GRM & RDG & LIS & SPK & WRT --> CNT
+    VOC & GRM & RDG & LIS & SPK & WRT & EXM --> LRN
+    RDG & LIS --> QB
+    RDG --> VOC
     SPK & LIS --> MED
     SPK & WRT & GRM & QB --> AI
+    QB --> CNT
+    WRT & GAM & SUB --> NOT
     EXM --> QB
+    EXM --> WRT & SPK
     GAM --> LRN
+    GAM --> SRS
     SUB --> PAY
+    SUB --> USR
+    PAY --> SUB
 ```
 
 **Read the arrows as "may import the target's `contract` package".** Any arrow not drawn here
@@ -174,7 +188,7 @@ Every module directory contains exactly these files:
 | `TODO.md` | Both | Ordered backlog with acceptance criteria |
 | `README_AI.md` | AI agents | Pointer to `AGENT.md` (kept for tool compatibility; never duplicate content here) |
 
-Templates: [docs/templates/module/](docs/templates/module/).
+Templates: `docs/templates/module/` — **not written yet**; copy an existing module's document set instead.
 Generator: `make docs` (source of truth: [docs/modules/manifest.yaml](docs/modules/manifest.yaml)).
 
 ---

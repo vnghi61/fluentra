@@ -36,7 +36,6 @@ last_verified: 2026-08-06
 Answers "may this actor do this?". Holds roles, named permissions, and the mapping between them, and provides the guard used by every service method. There are exactly two roles — `admin` and `user` — but permissions are named so that adding a role later is a data change, not a code change.
 <!-- END GENERATED: overview -->
 
-
 ## 2. Responsibilities
 
 <!-- BEGIN GENERATED: responsibilities -->
@@ -99,7 +98,6 @@ Migrations: `db/migrations/rbac/` · Queries: `db/queries/rbac/`
 | `core.role_permissions` | Mapping | Composite PK (role_id, permission_id) |
 | `core.user_roles` | Assignment | Composite PK (user_id, role_id); `granted_by`, `granted_at` |
 
-
 <!-- END GENERATED: schema -->
 
 ## 6. HTTP endpoints
@@ -160,7 +158,6 @@ and fails `go-arch-lint` in CI.
 7. **BR-RBAC-07** — A permission check failure is logged at `warn` with the permission name and raises an audit event.
 8. **BR-RBAC-08** — Frontend permission data is advisory only; every server call re-checks.
 <!-- END GENERATED: rules -->
-
 
 ## 10. Common tasks
 

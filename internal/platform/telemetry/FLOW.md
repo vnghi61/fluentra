@@ -20,8 +20,6 @@ Sequence diagrams, state machines and business processes owned by this module.
 <!-- BEGIN GENERATED: flows -->
 ## Correlation across a request and its background work
 
-
-
 ```mermaid
 flowchart LR
     A[Browser click<br/>OTel Web SDK] -->|traceparent + X-Request-Id| B[API middleware]

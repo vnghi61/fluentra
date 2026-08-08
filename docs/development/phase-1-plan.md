@@ -16,6 +16,8 @@ last_verified: 2026-08-06
 >
 > No learning features yet. That is Phase 2.
 
+---
+
 > **Revision 2 (2026-08-07)** — three additions to authentication and one to the frontend:
 > email **OTP** verification instead of links (ADR-0021), **persistent sign-in** (ADR-0022),
 > **Google OAuth** moved forward from Phase 2 (ADR-0023), and a **mobile-first responsive**

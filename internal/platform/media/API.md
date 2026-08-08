@@ -44,7 +44,6 @@ Inspect the pipeline output for one asset
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `POST /api/v1/admin/media/{asset_id}/reprocess`
 
 Re-run the pipeline
@@ -54,7 +53,6 @@ Re-run the pipeline
 | Permission | `content.manage` |
 | Success | 202 |
 | Errors | standard set |
-
 
 <!-- END GENERATED: api-detail -->
 

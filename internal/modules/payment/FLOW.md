@@ -20,8 +20,6 @@ Sequence diagrams, state machines and business processes owned by this module.
 <!-- BEGIN GENERATED: flows -->
 ## Checkout and activation
 
-
-
 ```mermaid
 sequenceDiagram
     autonumber
@@ -51,8 +49,6 @@ sequenceDiagram
 ```
 
 ## Failed renewal and dunning
-
-
 
 ```mermaid
 flowchart TD

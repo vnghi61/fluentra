@@ -120,6 +120,7 @@ tables: [words, word_senses, decks, deck_items, user_word_state]
 ```
 
 Machine-readable so that:
+
 - CI can check `depends_on` against `.go-arch-lint.yml` (they must agree)
 - CI can check `tables` against actual migrations (drift detection)
 - CI can flag `last_verified` older than 90 days
