@@ -1,12 +1,21 @@
+# Tempo defaults its OTLP receiver to 127.0.0.1, which is the container's own
+# loopback: the collector two containers away gets "connection refused" and
+# every span is dropped silently on the exporter side. The explicit 0.0.0.0 is
+# what makes the receiver reachable at all.
 server:
   http_listen_port: 3200
+
 distributor:
   receivers:
     otlp:
       protocols:
-        grpc: {}
+        grpc:
+          endpoint: 0.0.0.0:4317
+
 storage:
   trace:
     backend: local
     local:
-      path: /tmp/tempo
+      path: /var/tempo/traces
+    wal:
+      path: /var/tempo/wal

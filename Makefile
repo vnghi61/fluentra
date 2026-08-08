@@ -2,7 +2,14 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
 COMPOSE_BASE := deploy/compose/compose.yaml
-COMPOSE_DEV  := -f $(COMPOSE_BASE) -f deploy/compose/compose.dev.yaml -f deploy/compose/compose.observability.yaml
+# compose.dev.yaml publishes the data-service ports and stays valid on its own.
+# The observability port overrides live in their own file because a service that
+# exists only as a `ports:` entry is what makes compose reject the whole project
+# with "has neither an image nor a build context specified".
+COMPOSE_DEV  := -f $(COMPOSE_BASE) \
+                -f deploy/compose/compose.dev.yaml \
+                -f deploy/compose/compose.observability.yaml \
+                -f deploy/compose/compose.observability.dev.yaml
 COMPOSE_PROD := -f $(COMPOSE_BASE) -f deploy/compose/compose.prod.yaml -f deploy/compose/compose.observability.yaml
 
 ## ----------------------------------------------------------------- help

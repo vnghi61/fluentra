@@ -29,3 +29,5 @@ test-results/
 # Local service data
 deploy/volumes/
 tmp/
+
+.tmpbin/

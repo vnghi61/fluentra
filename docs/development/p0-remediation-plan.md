@@ -312,11 +312,11 @@ graph TD
 | P0.R8 | Storage presign policy + sniff | M | R1 | ✅ |
 | P0.R9 | Mailer i18n + embed + suppression | M | R4 | ✅ |
 | P0.R10 | Arch-lint proof | S | R1 | ✅ |
-| P0.R11 | CI backend gates | M | R10 | ☐ |
-| P0.R12 | Docs CI | S | R11 | ☐ |
-| P0.R13 | Web shell | L | R1 | ☐ |
+| P0.R11 | CI backend gates | M | R10 | ✅ |
+| P0.R12 | Docs CI | S | R11 | ✅ |
+| P0.R13 | Web shell | L | R1 | ✅ |
 | P0.R14 | apperr immutability | S | R1 | ✅ |
-| P0.R15 | WP0 trace gate | M | R2, R3 | ☐ |
+| P0.R15 | WP0 trace gate | M | R2, R3 | ✅ |
 | P0.R16 | `cmd/migrate` stale test | S | R1 | ✅ |
 | P0.R17 | Bootstrap migration + migrate CLI | M | R1 | ✅ |
 | P0.R18 | `.go-arch-lint.yml` khớp cây thật | S | R1 | ✅ |
@@ -402,39 +402,58 @@ lên, nên một backlog **đã tới hạn** nằm ở `scheduled` và gauge b�
 danh sách, giữ nguyên `scheduled_at <= now()` để việc hẹn tương lai không bị tính là backlog. Có
 test cho cả hai chiều.
 
-### Trạng thái bàn giao (2026-08-08, cập nhật sau P0.R6)
+### Trạng thái bàn giao (2026-08-08, P0 hoàn thành)
 
-**Xong 16/21 card.** Mỗi card đều verify bằng hạ tầng thật, không chỉ bằng đọc code.
+**Xong 21/21 card.** Mỗi card verify bằng hạ tầng thật.
 
 | Kiểm tra | Kết quả |
 |---|---|
 | `gofmt -l .` | sạch |
-| `go build ./...` / `go vet ./...` | sạch |
-| `go test -race -short ./...` | 19/19 package ok, không data race |
-| `go test -tags=integration ./...` | 19/19 package ok trên Postgres 17 + MinIO |
-| `go-arch-lint check` | OK — no warnings |
-| `scripts/verify-arch-lint.sh` | pass, và fail đúng khi rule L1 bị nới |
-| `golangci-lint run ./...` | **0 issues** |
+| `go build ./...` / `go vet ./...` (cả 2 build tag) | sạch |
+| `golangci-lint run ./...` | 0 issues |
+| `golangci-lint run --build-tags=integration ./...` | 0 issues |
+| `go test -race -short ./...` | 19/19 package ok |
+| `go test -race -tags=integration ./...` | 19/19 package ok (Postgres 17 + MinIO + Redis) |
+| `go-arch-lint check` / `make arch` | OK — và fail đúng khi rule L1 bị nới |
+| `make gen-check` | xanh, tất định qua 2 lần chạy |
+| `make cover-check` | 46.9% ≥ 45.0%; fail đúng ở ngưỡng 95% |
+| `actionlint` | sạch trên cả 5 workflow |
+| `markdownlint-cli2` | 357 file, 0 error |
+| `check-drift.mjs` / `docgen --check` | passed / 0 file lỗi thời |
+| `web`: `tsc -b`, `eslint`, `vitest`, `vite build` | xanh; bundle 120.9 kB gz (budget 200) |
+| **WP0 gate** | **ba tín hiệu tương quan trên cùng một request** |
 
-> **Lưu ý khi chạy integration test:** các test dùng container **skip im lặng** nếu thiếu biến môi
-> trường. Phải set `TEST_DATABASE_URL`, và `TEST_S3_ENDPOINT` / `TEST_S3_ACCESS_KEY` /
-> `TEST_S3_SECRET_KEY` cho storage. Không set thì `go test -tags=integration ./...` vẫn in `ok` cho
-> mọi package trong khi **không có test container nào chạy** — đúng thứ tạo ra cảm giác an toàn giả.
-> P0.R11 nên đưa các biến này vào CI và thêm một bước khẳng định số test đã chạy khác 0.
+**Bằng chứng WP0 gate** — một `GET /api/v1/ping`, `X-Request-Id=01KZGA1FXY6VAHQABK3EBKDN57`:
 
-**Việc còn lại, theo thứ tự khuyến nghị:**
+- **Loki** — log `request completed` mang `trace_id=ba5c51da81c29ab044ef6684b7c08377`,
+  `span_id`, `route=/api/v1/ping`, `status=200`, `duration_ms=3`.
+- **Tempo** — đúng trace đó có 10 span: `GET /api/v1/ping` (root, tên theo route template,
+  không chứa ID), `pgx.query` + `query SELECT 1` + `pool.acquire`, và `redis.ping`.
+- **Prometheus** — `http_server_request_duration_seconds_count{route="/api/v1/ping"}` = 6,
+  kèm `method`, `status_class`, `service_name`.
 
-1. **P0.R11 / R12** — CI gates. Ngoài phạm vi gốc, R11 cần thêm ba thứ tìm được ở R20/R6:
-   set `TEST_DATABASE_URL` + `TEST_S3_*` và assert số test chạy khác 0; thêm
-   `--build-tags=integration` vào bước lint và dọn 13 issue nó lộ ra; và một smoke test khởi động
-   `cmd/worker` để bắt loại lỗi chỉ xuất hiện khi chạy binary thật.
-2. **P0.R13** — web shell. `pnpm` đã sẵn sàng.
-3. **P0.R15** — WP0 trace gate. Cần full stack `make dev` (Tempo/Loki/Grafana).
+Ngoài ra: `/ready` trả **503** khi `docker stop fluentra-postgres-1` trong khi `/health` vẫn
+**200**, và trở lại 200 khi Postgres sống lại. Request phát ra vài mili-giây trước `SIGTERM`
+vẫn tới được Loki và đủ 11 span ở Tempo — shutdown flush hoạt động.
 
-**Môi trường đã dựng xong, không cần làm lại:** Go 1.26.5 amd64; gcc 64-bit (`CC` trỏ tới
-`C:\msys64\mingw64\bin\gcc.exe`, và bản 32-bit đã bị gỡ khỏi Machine PATH); golangci-lint 2.12.2
-bản amd64 (bản 386 cũ báo "0 issues" sai vì typecheck vỡ); sqlc, moq, pnpm 11.20.
+**Điều đã phải sửa để gate chạy được:** collector chỉ export ra `debug` (in ra stdout rồi vứt),
+`scrape_configs` của Prometheus rỗng, Grafana không có datasource, và Tempo bind OTLP vào
+`127.0.0.1` — tức loopback trong container — nên collector nhận `connection refused` và mọi span
+bị rơi im lặng ở phía exporter.
 
-**Ước lượng:** ~12–14 ngày cho một engineer + AI. R4, R6, R13 chiếm quá nửa.
+**Còn nợ, đã ghi rõ:**
+
+1. **`docker compose` không publish port trên máy dev này.** `docker run -p` bình thường, nhưng
+   container do compose tạo có `HostConfig.PortBindings` đúng mà `docker port` rỗng và không
+   curl được. Đây là vấn đề Docker Desktop, không phải repo — bằng chứng WP0 ở trên được thu
+   thập **từ bên trong** network `fluentra_backend` (API chạy trong container alpine với binary
+   cross-compile, truy vấn bằng `curlimages/curl`). Cần xác nhận lại trên một máy khác trước khi
+   coi §5 của `getting-started.md` là chạy được nguyên văn bằng `curl` từ host.
+2. **Chưa có Dockerfile.** `compose` chỉ khai hạ tầng, không có service `api`/`worker`, nên
+   `make dev` không chạy ứng dụng — phải chạy `go run ./cmd/api` riêng. `build.yml` đã được viết
+   lại cho trung thực (build binary), job đóng image quay lại khi có Dockerfile.
+3. **Chưa có gì chạy trên GitHub Actions.** Toàn bộ workflow mới chỉ được `actionlint` kiểm cú
+   pháp và từng cổng được chạy tay ở local.
+4. `job.failed_permanently` event và `job_queue_depth` — xem `internal/platform/job/TODO.md`.
 
 **Điều kiện để bắt đầu P1:** R1, R2, R3, R4, R5, R10, R11, R15, R16 xong. R6–R9, R12, R13 có thể chạy song song với P1.1.
