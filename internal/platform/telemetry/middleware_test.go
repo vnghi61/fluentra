@@ -60,3 +60,17 @@ func TestStatusClass(t *testing.T) {
 		}
 	}
 }
+
+func TestNormalizeRouteRemovesConcreteIdentifiers(t *testing.T) {
+	t.Parallel()
+	for route, want := range map[string]string{
+		"/api/v1/users/123": "/api/v1/users/{id}",
+		"/api/v1/users/0193a7c1-1111-7abc-8000-000000000000": "/api/v1/users/{id}",
+		"/api/v1/users/01J8XQ7Z0ABCDE123456789012":           "/api/v1/users/{id}",
+		"/api/v1/ping": "/api/v1/ping",
+	} {
+		if got := normalizeRoute(route); got != want {
+			t.Errorf("normalizeRoute(%q)=%q, want %q", route, got, want)
+		}
+	}
+}

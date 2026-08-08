@@ -62,7 +62,7 @@ func (h *RedactingHandler) redact(attr slog.Attr) slog.Attr {
 		for _, child := range attrs {
 			redacted = append(redacted, h.redact(child))
 		}
-		return slog.Group(attr.Key, redacted...)
+		return slog.Attr{Key: attr.Key, Value: slog.GroupValue(redacted...)}
 	}
 	if _, ok := h.allowed[attr.Key]; ok {
 		return attr

@@ -37,11 +37,19 @@ type applicationConfig struct {
 		Version     string `koanf:"version"`
 	} `koanf:"app"`
 	HTTP struct {
-		Port           string `koanf:"port"`
-		ReadTimeout    string `koanf:"read_timeout"`
-		WriteTimeout   string `koanf:"write_timeout"`
-		IdleTimeout    string `koanf:"idle_timeout"`
-		RequestTimeout string `koanf:"request_timeout"`
+		Port string `koanf:"port"`
+		Read struct {
+			Timeout string `koanf:"timeout"`
+		} `koanf:"read"`
+		Write struct {
+			Timeout string `koanf:"timeout"`
+		} `koanf:"write"`
+		Idle struct {
+			Timeout string `koanf:"timeout"`
+		} `koanf:"idle"`
+		Request struct {
+			Timeout string `koanf:"timeout"`
+		} `koanf:"request"`
 	} `koanf:"http"`
 	Database struct {
 		DSN string `koanf:"dsn"`
@@ -50,14 +58,26 @@ type applicationConfig struct {
 		URL string `koanf:"url"`
 	} `koanf:"redis"`
 	Storage struct {
-		Endpoint  string `koanf:"endpoint"`
-		AccessKey string `koanf:"access_key"`
-		SecretKey string `koanf:"secret_key"`
-		UseSSL    bool   `koanf:"use_ssl"`
+		Endpoint string `koanf:"endpoint"`
+		Access   struct {
+			Key string `koanf:"key"`
+		} `koanf:"access"`
+		Secret struct {
+			Key string `koanf:"key"`
+		} `koanf:"secret"`
+		Use struct {
+			SSL bool `koanf:"ssl"`
+		} `koanf:"use"`
 	} `koanf:"s3"`
 	Telemetry struct {
-		Endpoint    string `koanf:"exporter_otlp_endpoint"`
-		ServiceName string `koanf:"service_name"`
+		Exporter struct {
+			OTLP struct {
+				Endpoint string `koanf:"endpoint"`
+			} `koanf:"otlp"`
+		} `koanf:"exporter"`
+		Service struct {
+			Name string `koanf:"name"`
+		} `koanf:"service"`
 	} `koanf:"otel"`
 }
 
@@ -77,7 +97,7 @@ func run(ctx context.Context) error {
 		return err
 	}
 
-	provider, err := telemetry.NewProvider(ctx, telemetry.Config{ServiceName: cfg.Telemetry.ServiceName, Version: cfg.App.Version, Environment: cfg.App.Environment, CommitSHA: commitSHA, Endpoint: cfg.Telemetry.Endpoint})
+	provider, err := telemetry.NewProvider(ctx, telemetry.Config{ServiceName: cfg.Telemetry.Service.Name, Version: cfg.App.Version, Environment: cfg.App.Environment, CommitSHA: commitSHA, Endpoint: cfg.Telemetry.Exporter.OTLP.Endpoint})
 	if err != nil {
 		return err
 	}
@@ -103,13 +123,13 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("instrument Redis tracing: %w", err)
 	}
 
-	if _, err := minio.New(cfg.Storage.Endpoint, &minio.Options{Creds: credentials.NewStaticV4(cfg.Storage.AccessKey, cfg.Storage.SecretKey, ""), Secure: cfg.Storage.UseSSL}); err != nil {
+	if _, err := minio.New(cfg.Storage.Endpoint, &minio.Options{Creds: credentials.NewStaticV4(cfg.Storage.Access.Key, cfg.Storage.Secret.Key, ""), Secure: cfg.Storage.Use.SSL}); err != nil {
 		_ = redisClient.Close()
 		pool.Close()
 		return fmt.Errorf("create storage client: %w", err)
 	}
 
-	requestTimeout, err := time.ParseDuration(cfg.HTTP.RequestTimeout)
+	requestTimeout, err := time.ParseDuration(cfg.HTTP.Request.Timeout)
 	if err != nil {
 		_ = redisClient.Close()
 		pool.Close()
@@ -129,9 +149,9 @@ func run(ctx context.Context) error {
 				return telemetry.Middleware(routePattern, next)
 			},
 		}),
-		ReadTimeout:  mustDuration(cfg.HTTP.ReadTimeout),
-		WriteTimeout: mustDuration(cfg.HTTP.WriteTimeout),
-		IdleTimeout:  mustDuration(cfg.HTTP.IdleTimeout),
+		ReadTimeout:  mustDuration(cfg.HTTP.Read.Timeout),
+		WriteTimeout: mustDuration(cfg.HTTP.Write.Timeout),
+		IdleTimeout:  mustDuration(cfg.HTTP.Idle.Timeout),
 	}
 
 	serverErrors := make(chan error, 1)
@@ -164,12 +184,12 @@ func loadConfig(ctx context.Context) (applicationConfig, error) {
 			"app.name":                    "fluentra",
 			"app.version":                 version,
 			"http.port":                   "8080",
-			"http.read_timeout":           "15s",
-			"http.write_timeout":          "30s",
-			"http.idle_timeout":           "120s",
-			"http.request_timeout":        "30s",
-			"otel.exporter_otlp_endpoint": "localhost:4317",
-			"otel.service_name":           "fluentra-api",
+			"http.read.timeout":           "15s",
+			"http.write.timeout":          "30s",
+			"http.idle.timeout":           "120s",
+			"http.request.timeout":        "30s",
+			"otel.exporter.otlp.endpoint": "localhost:4317",
+			"otel.service.name":           "fluentra-api",
 		},
 		Required: []config.RequiredKey{
 			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},

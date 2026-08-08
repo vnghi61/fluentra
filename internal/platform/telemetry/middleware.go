@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/fluentra/fluentra/internal/shared/httpx"
@@ -30,7 +31,11 @@ func Middleware(routeName func(*http.Request) string, next http.Handler) http.Ha
 		}
 		writer.Header().Set("X-Request-Id", requestID)
 
-		route := routeName(request)
+		route := ""
+		if routeName != nil {
+			route = routeName(request)
+		}
+		route = normalizeRoute(route)
 		if route == "" {
 			route = "unknown"
 		}
@@ -107,4 +112,55 @@ func statusClass(status int) string {
 	default:
 		return "1xx"
 	}
+}
+
+// normalizeRoute is a defensive backstop for a router that has not exposed its
+// pattern yet. It keeps identifiers out of telemetry even in that situation.
+func normalizeRoute(route string) string {
+	segments := strings.Split(route, "/")
+	for index, segment := range segments {
+		if looksLikeIdentifier(segment) {
+			segments[index] = "{id}"
+		}
+	}
+	return strings.Join(segments, "/")
+}
+
+func looksLikeIdentifier(value string) bool {
+	if value == "" {
+		return false
+	}
+	if allDigits(value) {
+		return true
+	}
+	if len(value) == 36 && value[8] == '-' && value[13] == '-' && value[18] == '-' && value[23] == '-' {
+		return allHex(strings.ReplaceAll(value, "-", ""))
+	}
+	if len(value) == 26 {
+		for _, character := range value {
+			if !(character >= '0' && character <= '9') && !(character >= 'A' && character <= 'Z') {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
+func allDigits(value string) bool {
+	for _, character := range value {
+		if character < '0' || character > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+func allHex(value string) bool {
+	for _, character := range value {
+		if !(character >= '0' && character <= '9') && !(character >= 'a' && character <= 'f') && !(character >= 'A' && character <= 'F') {
+			return false
+		}
+	}
+	return true
 }

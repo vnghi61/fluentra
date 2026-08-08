@@ -20,7 +20,7 @@ type Instruments struct {
 	StorageBytes             metric.Int64Counter
 	JobDuration              metric.Float64Histogram
 	JobQueueDepth            metric.Int64UpDownCounter
-	JobOldestPending         metric.Float64ObservableGauge
+	JobOldestPending         metric.Int64ObservableGauge
 	JobAttempts              metric.Int64Counter
 }
 
