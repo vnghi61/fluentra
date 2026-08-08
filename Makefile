@@ -132,7 +132,11 @@ lint-go: ## Just the Go linters, no Node required
 	golangci-lint run --build-tags=integration ./...
 
 arch: ## Enforce module boundaries (rules L1/L2)
-	sh scripts/verify-arch-lint.sh
+	# bash, not sh. The script declares `#!/usr/bin/env bash` and uses
+	# `set -o pipefail`, but invoking it through `sh` overrides the shebang —
+	# and `sh` is dash on Ubuntu, which has no pipefail. It worked locally only
+	# because Git for Windows ships bash as sh.
+	bash scripts/verify-arch-lint.sh
 
 ## ----------------------------------------------------------------- tests
 
@@ -166,8 +170,15 @@ cover: ## Coverage report
 # does. Raise it when coverage rises; never lower it to make a build pass.
 COVERAGE_MIN ?= 45.0
 
-cover-check: ## Fail if total coverage drops below COVERAGE_MIN
+cover-check: ## Run the integration suite for coverage, then gate on it
 	go test -tags=integration -coverprofile=coverage.out -covermode=atomic ./... > /dev/null
+	$(MAKE) cover-gate
+
+# cover-gate evaluates an existing coverage.out without re-running anything, so
+# CI can produce the profile once during its integration step instead of paying
+# for a third full pass through the suite.
+cover-gate: ## Fail if coverage.out is below COVERAGE_MIN
+	@test -f coverage.out || (echo "no coverage.out; run make cover-check" && exit 1)
 	@total=$$(go tool cover -func=coverage.out | awk '/^total:/ {print $$3}' | tr -d '%'); \
 	 echo "total coverage: $$total% (minimum $(COVERAGE_MIN)%)"; \
 	 awk -v t="$$total" -v m="$(COVERAGE_MIN)" 'BEGIN { exit !(t+0 >= m+0) }' \

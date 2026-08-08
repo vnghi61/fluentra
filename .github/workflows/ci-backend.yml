@@ -188,19 +188,22 @@ jobs:
       # The integration tests skip themselves when TEST_* is unset, and a skipped
       # test still prints `ok`. Without this check a misconfigured runner reports
       # a fully green suite while running no container at all.
+      # One pass, producing the coverage profile as it goes. Running the suite
+      # again for coverage would be a third full pass and put this job over its
+      # timeout. Coverage is measured here rather than on the unit run because
+      # this is the run that exercises the repository and storage layers.
       - name: Run integration tests
         run: |
           set -o pipefail
-          go test -race -tags=integration ./... -timeout 10m 2>&1 | tee integration.log
+          go test -race -tags=integration -coverprofile=coverage.out -covermode=atomic \
+            ./... -timeout 12m 2>&1 | tee integration.log
           if grep -qE 'TEST_(DATABASE_URL|S3_ENDPOINT) is not set' integration.log; then
             echo "::error::integration tests skipped themselves - the service containers are not reachable"
             exit 1
           fi
 
-      # Coverage is measured over the integration run, because that is the run
-      # that exercises the repository and storage layers.
       - name: Check coverage gate
-        run: make cover-check COVERAGE_MIN=${{ env.COVERAGE_MIN }}
+        run: make cover-gate COVERAGE_MIN=${{ env.COVERAGE_MIN }}
 
       - name: Upload coverage profile
         if: always()

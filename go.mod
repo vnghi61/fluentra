@@ -2,6 +2,12 @@ module github.com/fluentra/fluentra
 
 go 1.25.0
 
+// The toolchain CI builds with. `go 1.25.0` above is the language minimum;
+// without this line actions/setup-go installs exactly 1.25.0, whose standard
+// library carries 31 known vulnerabilities (govulncheck fails the security job)
+// and which sqlc v1.31.1 refuses to build under — it needs >= 1.26.0.
+toolchain go1.26.5
+
 require (
 	github.com/exaring/otelpgx v0.11.1
 	github.com/getkin/kin-openapi v0.146.0
