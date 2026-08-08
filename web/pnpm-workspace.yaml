@@ -1,0 +1,15 @@
+# pnpm does not run dependency lifecycle scripts by default, which is the right
+# default. These three genuinely need theirs; everything else stays barred.
+#
+#   esbuild        places its platform binary
+#   msw            writes the service worker used by the browser mocks
+#   unrs-resolver  native resolver behind eslint-import-resolver-typescript
+#
+# A package missing from this list does not merely skip its script: pnpm fails
+# the dependency-status check that runs before *any* `pnpm run <script>`, so
+# `pnpm run lint` dies before eslint starts. Running a tool from
+# node_modules/.bin bypasses that check and hides the problem.
+allowBuilds:
+  esbuild: true
+  msw: true
+  unrs-resolver: true

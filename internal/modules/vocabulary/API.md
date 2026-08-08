@@ -50,7 +50,6 @@ Dictionary lookup with senses, IPA, audio, examples
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `GET /api/v1/vocabulary/search`
 
 Search the dictionary
@@ -60,7 +59,6 @@ Search the dictionary
 | Permission | `content.read.published` |
 | Success | 200 |
 | Errors | standard set |
-
 
 ### `GET /api/v1/vocabulary/decks`
 
@@ -72,7 +70,6 @@ The learner's decks plus curated ones
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `POST /api/v1/vocabulary/decks`
 
 Create a deck
@@ -82,7 +79,6 @@ Create a deck
 | Permission | `self` |
 | Success | 201 |
 | Errors | `DECK_LIMIT_REACHED` |
-
 
 ### `POST /api/v1/vocabulary/decks/{id}/words`
 
@@ -94,7 +90,6 @@ Add a word sense to a deck
 | Success | 201 |
 | Errors | `WORD_ALREADY_IN_DECK` |
 
-
 ### `DELETE /api/v1/vocabulary/decks/{id}/words/{sense_id}`
 
 Remove
@@ -104,7 +99,6 @@ Remove
 | Permission | `self` |
 | Success | 204 |
 | Errors | standard set |
-
 
 ### `POST /api/v1/vocabulary/words/{sense_id}/state`
 
@@ -116,7 +110,6 @@ Mark known or ignored
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `POST /api/v1/admin/vocabulary/words`
 
 Create a word entry
@@ -126,7 +119,6 @@ Create a word entry
 | Permission | `content.create` |
 | Success | 201 |
 | Errors | standard set |
-
 
 <!-- END GENERATED: api-detail -->
 

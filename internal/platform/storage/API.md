@@ -43,7 +43,6 @@ Object counts and sizes per bucket
 | Success | 200 |
 | Errors | standard set |
 
-
 <!-- END GENERATED: api-detail -->
 
 ## Error codes

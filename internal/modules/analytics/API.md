@@ -48,7 +48,6 @@ Headline KPIs with period comparison
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `GET /api/v1/admin/analytics/funnel`
 
 Funnel conversion by cohort
@@ -58,7 +57,6 @@ Funnel conversion by cohort
 | Permission | `analytics.read` |
 | Success | 200 |
 | Errors | standard set |
-
 
 ### `GET /api/v1/admin/analytics/retention`
 
@@ -70,7 +68,6 @@ Retention curve by cohort
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `GET /api/v1/admin/analytics/outcomes`
 
 Learning outcome metrics
@@ -80,7 +77,6 @@ Learning outcome metrics
 | Permission | `analytics.read` |
 | Success | 200 |
 | Errors | standard set |
-
 
 ### `POST /api/v1/admin/analytics/export`
 
@@ -92,7 +88,6 @@ Async CSV export
 | Success | 202 |
 | Errors | standard set |
 
-
 ### `GET /api/v1/me/insights`
 
 The learner's own progress insights
@@ -102,7 +97,6 @@ The learner's own progress insights
 | Permission | `self` |
 | Success | 200 |
 | Errors | standard set |
-
 
 <!-- END GENERATED: api-detail -->
 

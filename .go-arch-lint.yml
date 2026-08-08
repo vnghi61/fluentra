@@ -10,17 +10,62 @@ workdir: internal
 allow:
   depOnAnyVendor: false
 
+# `shared` holds the cross-cutting primitives (errors, ids, config, http
+# helpers). Every component may use them, including the other shared packages,
+# so they are declared common rather than repeated in every rule below.
+commonComponents:
+  - s_apperr
+  - s_clock
+  - s_config
+  - s_dbx
+  - s_eventbus
+  - s_flags
+  - s_httpx
+  - s_i18n
+  - s_id
+  - s_idempotency
+  - s_money
+  - s_outbox
+  - s_pagination
+  - s_secret
+  - s_validation
+
 exclude:
   - mocks
   - testdata
 
 excludeFiles:
   - "^.*_test\\.go$"
+  # The namespace roots internal/modules and internal/platform hold only a
+  # package doc.go. They import nothing, so there is nothing to constrain.
+  - "^.*[\\\\/](modules|platform)[\\\\/]doc\\.go$"
 
 # ---------------------------------------------------------------- components
 
 components:
-  shared:        { in: shared/** }
+  # one component per shared primitive, so a dependency between two of them is
+  # a real edge the linter can see rather than an invisible self-reference
+  s_root:          { in: shared }
+  s_apperr:        { in: shared/apperr }
+  s_clock:         { in: shared/clock }
+  s_config:        { in: shared/config }
+  s_dbx:           { in: shared/dbx }
+  s_eventbus:      { in: shared/eventbus }
+  s_flags:         { in: shared/flags }
+  s_httpx:         { in: shared/httpx }
+  s_i18n:          { in: shared/i18n }
+  s_id:            { in: shared/id }
+  s_idempotency:   { in: shared/idempotency }
+  s_money:         { in: shared/money }
+  s_outbox:        { in: shared/outbox }
+  s_pagination:    { in: shared/pagination }
+  s_secret:        { in: shared/secret }
+  s_validation:    { in: shared/validation }
+
+  # sqlc output. It is a component rather than an `exclude` entry so that the
+  # edges *into* it stay visible: a module reaching for another schema's
+  # generated queries is exactly the L2 violation this file exists to catch.
+  generated:     { in: generated/** }
 
   # platform capabilities
   p_telemetry:   { in: platform/telemetry/** }
@@ -86,42 +131,63 @@ components:
 # whether it needs an ADR.
 
 deps:
-  shared:
-    mayDependOn: []
+  s_root:          { anyVendorDeps: true }
+  s_apperr:        { anyVendorDeps: true }
+  s_clock:         { anyVendorDeps: true }
+  s_config:        { anyVendorDeps: true }
+  s_dbx:           { anyVendorDeps: true }
+  s_eventbus:      { anyVendorDeps: true }
+  s_flags:         { anyVendorDeps: true }
+  s_httpx:         { anyVendorDeps: true }
+  s_i18n:          { anyVendorDeps: true }
+  s_id:            { anyVendorDeps: true }
+  s_idempotency:   { anyVendorDeps: true }
+  s_money:         { anyVendorDeps: true }
+  s_outbox:        { anyVendorDeps: true }
+  s_pagination:    { anyVendorDeps: true }
+  s_secret:        { anyVendorDeps: true }
+  s_validation:    { anyVendorDeps: true }
 
-  p_telemetry: { mayDependOn: [shared] }
-  p_cache:     { mayDependOn: [shared, p_telemetry] }
-  p_storage:   { mayDependOn: [shared, p_telemetry, p_job] }
-  p_job:       { mayDependOn: [shared, p_telemetry] }
-  p_mailer:    { mayDependOn: [shared, p_telemetry, p_job, p_storage] }
-  p_ai:        { mayDependOn: [shared, p_telemetry, p_cache, p_job] }
-  p_media:     { mayDependOn: [shared, p_telemetry, p_storage, p_job, p_ai] }
-  p_search:    { mayDependOn: [shared, p_telemetry, p_cache, p_job] }
+  # sqlc emits pgx types, so it needs the vendor allowance. It depends on nothing
+  # of ours, which is what makes it safe for any owner to import.
+  generated:   { anyVendorDeps: true }
+
+  # A platform capability exists to wrap a vendor SDK, so each may import one.
+  # Business modules deliberately may not: they reach external systems through
+  # these facades, which is what keeps an SDK swappable.
+  p_telemetry: { anyVendorDeps: true }
+  p_cache:     { mayDependOn: [p_telemetry], anyVendorDeps: true }
+  p_storage:   { mayDependOn: [p_telemetry, p_job], anyVendorDeps: true }
+  p_job:       { mayDependOn: [p_telemetry], anyVendorDeps: true }
+  p_mailer:    { mayDependOn: [p_telemetry, p_job, p_storage], anyVendorDeps: true }
+  p_ai:        { mayDependOn: [p_telemetry, p_cache, p_job], anyVendorDeps: true }
+  p_media:     { mayDependOn: [p_telemetry, p_storage, p_job, p_ai], anyVendorDeps: true }
+  p_search:    { mayDependOn: [p_telemetry, p_cache, p_job], anyVendorDeps: true }
 
   # core
-  m_auth:         { mayDependOn: [shared, p_cache, p_telemetry, p_mailer, c_user, c_rbac, c_audit] }
-  m_user:         { mayDependOn: [shared, p_storage, p_telemetry, p_mailer, p_job, c_audit] }
-  m_rbac:         { mayDependOn: [shared, p_cache, p_telemetry, c_audit] }
-  m_audit:        { mayDependOn: [shared, p_job, p_telemetry] }
-  m_admin:        { mayDependOn: [shared, p_cache, p_telemetry, c_user, c_rbac, c_audit, c_auth, c_content, c_analytics, c_subscription] }
-  m_notification: { mayDependOn: [shared, p_mailer, p_job, p_cache, p_telemetry, c_user] }
+  m_auth:         { mayDependOn: [p_cache, p_telemetry, p_mailer, c_user, c_rbac, c_audit] }
+  m_user:         { mayDependOn: [p_storage, p_telemetry, p_mailer, p_job, c_audit] }
+  m_rbac:         { mayDependOn: [p_cache, p_telemetry, c_audit] }
+  m_audit:        { mayDependOn: [p_job, p_telemetry] }
+  m_admin:        { mayDependOn: [p_cache, p_telemetry, c_user, c_rbac, c_audit, c_auth, c_content, c_analytics, c_subscription] }
+  m_notification: { mayDependOn: [p_mailer, p_job, p_cache, p_telemetry, c_user] }
 
   # learning
-  m_content:      { mayDependOn: [shared, p_storage, p_search, p_ai, p_media, p_cache, p_telemetry, c_audit] }
-  m_lesson:       { mayDependOn: [shared, p_cache, p_telemetry, c_content] }
-  m_learning:     { mayDependOn: [shared, p_cache, p_job, p_telemetry, c_lesson, c_content, c_srs] }
-  m_srs:          { mayDependOn: [shared, p_cache, p_job, p_telemetry, c_content] }
-  m_vocabulary:   { mayDependOn: [shared, p_cache, p_media, p_ai, p_search, p_telemetry, c_content, c_srs, c_learning] }
-  m_grammar:      { mayDependOn: [shared, p_cache, p_ai, p_telemetry, c_content, c_srs, c_learning] }
-  m_reading:      { mayDependOn: [shared, p_cache, p_telemetry, c_content, c_questionbank, c_vocabulary, c_learning] }
-  m_listening:    { mayDependOn: [shared, p_cache, p_media, p_storage, p_telemetry, c_content, c_questionbank, c_learning] }
-  m_speaking:     { mayDependOn: [shared, p_media, p_ai, p_storage, p_job, p_telemetry, c_content, c_learning] }
-  m_writing:      { mayDependOn: [shared, p_ai, p_job, p_telemetry, c_content, c_learning, c_notification] }
-  m_questionbank: { mayDependOn: [shared, p_ai, p_search, p_telemetry, c_content, c_audit] }
-  m_exam:         { mayDependOn: [shared, p_job, p_ai, p_telemetry, c_questionbank, c_writing, c_speaking, c_learning] }
-  m_gamification: { mayDependOn: [shared, p_cache, p_job, p_telemetry, c_learning, c_srs, c_notification] }
+  m_content:      { mayDependOn: [p_storage, p_search, p_ai, p_media, p_cache, p_telemetry, c_audit] }
+  m_lesson:       { mayDependOn: [p_cache, p_telemetry, c_content] }
+  m_learning:     { mayDependOn: [p_cache, p_job, p_telemetry, c_lesson, c_content, c_srs] }
+  m_srs:          { mayDependOn: [p_cache, p_job, p_telemetry, c_content] }
+  m_vocabulary:   { mayDependOn: [p_cache, p_media, p_ai, p_search, p_telemetry, c_content, c_srs, c_learning] }
+  m_grammar:      { mayDependOn: [p_cache, p_ai, p_telemetry, c_content, c_srs, c_learning] }
+  m_reading:      { mayDependOn: [p_cache, p_telemetry, c_content, c_questionbank, c_vocabulary, c_learning] }
+  m_listening:    { mayDependOn: [p_cache, p_media, p_storage, p_telemetry, c_content, c_questionbank, c_learning] }
+  m_speaking:     { mayDependOn: [p_media, p_ai, p_storage, p_job, p_telemetry, c_content, c_learning] }
+  m_writing:      { mayDependOn: [p_ai, p_job, p_telemetry, c_content, c_learning, c_notification] }
+  m_questionbank: { mayDependOn: [p_ai, p_search, p_telemetry, c_content, c_audit] }
+  m_exam:         { mayDependOn: [p_job, p_ai, p_telemetry, c_questionbank, c_writing, c_speaking, c_learning] }
+  m_gamification: { mayDependOn: [p_cache, p_job, p_telemetry, c_learning, c_srs, c_notification] }
 
   # commerce
-  m_analytics:    { mayDependOn: [shared, p_job, p_cache, p_telemetry] }
-  m_subscription: { mayDependOn: [shared, p_cache, p_job, p_telemetry, c_payment, c_user, c_notification, c_audit] }
-  m_payment:      { mayDependOn: [shared, p_job, p_mailer, p_storage, p_telemetry, c_subscription, c_audit] }
+  m_analytics:    { mayDependOn: [p_job, p_cache, p_telemetry] }
+  m_subscription: { mayDependOn: [p_cache, p_job, p_telemetry, c_payment, c_user, c_notification, c_audit] }
+  m_payment:      { mayDependOn: [p_job, p_mailer, p_storage, p_telemetry, c_subscription, c_audit] }

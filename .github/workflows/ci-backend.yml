@@ -1,0 +1,250 @@
+name: ci-backend
+
+# Every `uses:` is pinned to a commit SHA, not a tag. A tag is mutable: whoever
+# controls the action repository can repoint v4 at new code, and that code runs
+# with this workflow's token. The trailing comment is the human-readable version.
+
+# The two path lists are duplicated on purpose: GitHub Actions does not resolve
+# YAML anchors in workflow files, so `&backend-paths` / `*backend-paths` would be
+# silently accepted and then match nothing.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'db/**'
+      - 'api/openapi/**'
+      - 'sqlc.yaml'
+      - '.golangci.yml'
+      - '.go-arch-lint.yml'
+      - 'Makefile'
+      - 'scripts/**'
+      - '.github/workflows/ci-backend.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - '**.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'db/**'
+      - 'api/openapi/**'
+      - 'sqlc.yaml'
+      - '.golangci.yml'
+      - '.go-arch-lint.yml'
+      - 'Makefile'
+      - 'scripts/**'
+      - '.github/workflows/ci-backend.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Kept in step with the Makefile so `make ci` locally and CI agree.
+  COVERAGE_MIN: '45.0'
+  GOLANGCI_LINT_VERSION: v2.12.2
+
+jobs:
+  static:
+    name: Static analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Check formatting
+        run: make fmt-check
+
+      - name: Run go vet
+        run: make vet
+
+      # Two runs: the default one, and one with the integration build tag. Files
+      # behind `//go:build integration` are invisible to the first, and that is
+      # exactly where the container-backed tests live.
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: ${{ env.GOLANGCI_LINT_VERSION }}
+
+      - name: Run golangci-lint over integration-tagged files
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: ${{ env.GOLANGCI_LINT_VERSION }}
+          args: --build-tags=integration
+          skip-cache: true
+
+      # This is the gate that makes rules L1 and L2 real. The script proves the
+      # linter still fails on a genuine violation before trusting it to pass.
+      - name: Prove the architecture boundary linter
+        run: make arch
+
+  codegen:
+    name: Generated code is current
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+
+      # Versions are pinned. `@latest` in CI means a generator upgrade lands as a
+      # mystery diff on an unrelated pull request.
+      - name: Install code generators
+        run: |
+          go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
+          go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.8.0
+          go install github.com/matryer/moq@v0.7.1
+
+      # No `|| true`. A gate that cannot fail is not a gate: the previous version
+      # of this step let broken codegen pass, which is the whole reason P0.R11
+      # exists.
+      - name: Verify generated code matches the generators
+        run: make gen-check
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193 # 17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: fluentra_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+      redis:
+        image: redis@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2 # 7.4-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      TEST_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/fluentra_test?sslmode=disable
+      TEST_S3_ENDPOINT: 127.0.0.1:9000
+      TEST_S3_ACCESS_KEY: minioadmin
+      TEST_S3_SECRET_KEY: minioadmin
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      # MinIO cannot be a `services:` entry: it needs `server /data` as its
+      # command, and service containers cannot override an image's command.
+      - name: Start MinIO
+        run: |
+          docker run -d --name minio -p 9000:9000 \
+            -e MINIO_ROOT_USER=minioadmin \
+            -e MINIO_ROOT_PASSWORD=minioadmin \
+            minio/minio:latest server /data
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:9000/minio/health/live; then exit 0; fi
+            sleep 2
+          done
+          echo "MinIO did not become healthy"; docker logs minio; exit 1
+
+      - name: Run unit tests with the race detector
+        run: make test
+
+      # The integration tests skip themselves when TEST_* is unset, and a skipped
+      # test still prints `ok`. Without this check a misconfigured runner reports
+      # a fully green suite while running no container at all.
+      - name: Run integration tests
+        run: |
+          set -o pipefail
+          go test -race -tags=integration ./... -timeout 10m 2>&1 | tee integration.log
+          if grep -qE 'TEST_(DATABASE_URL|S3_ENDPOINT) is not set' integration.log; then
+            echo "::error::integration tests skipped themselves - the service containers are not reachable"
+            exit 1
+          fi
+
+      # Coverage is measured over the integration run, because that is the run
+      # that exercises the repository and storage layers.
+      - name: Check coverage gate
+        run: make cover-check COVERAGE_MIN=${{ env.COVERAGE_MIN }}
+
+      - name: Upload coverage profile
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: coverage
+          path: coverage.out
+          retention-days: 7
+
+      # The worker only fails in ways worth catching once it talks to a real
+      # database — every earlier check passes on a binary that cannot boot.
+      - name: Smoke-test the worker binary
+        env:
+          DB_DSN: postgres://postgres:postgres@127.0.0.1:5432/fluentra_test?sslmode=disable
+          REDIS_URL: redis://127.0.0.1:6379/0
+          HTTP_PORT: '8099'
+        run: |
+          go run ./cmd/migrate up
+          go build -o /tmp/worker ./cmd/worker
+          /tmp/worker & worker_pid=$!
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:8099/ready; then ready=1; break; fi
+            sleep 1
+          done
+          kill "$worker_pid" 2>/dev/null || true
+          if [ "${ready:-0}" != "1" ]; then echo "worker never became ready"; exit 1; fi
+
+  contract:
+    name: OpenAPI contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+
+      # The ruleset is what enforces `x-permission` on every operation. Without
+      # this step the rules exist as a file nobody runs. The fluentra-* rules are
+      # declared `severity: error` in .spectral.yaml precisely so this threshold
+      # catches them.
+      - name: Lint the OpenAPI contract with Spectral
+        run: npx --yes @stoplight/spectral-cli@6.16.3 lint api/openapi/openapi.yaml --fail-severity error

@@ -1,0 +1,75 @@
+# OpenTelemetry Collector — the single place every signal passes through.
+#
+# It previously received traces and exported them to `debug`, i.e. printed them
+# to its own stdout and dropped them. Nothing reached Tempo, Loki or Prometheus,
+# so the WP0 gate — one request producing three signals that share a trace_id —
+# could not have been met by configuration alone.
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      # The browser cannot speak OTLP/gRPC. The web SDK posts over HTTP, and
+      # without this receiver a frontend span never arrives at all.
+      http:
+        endpoint: 0.0.0.0:4318
+        cors:
+          allowed_origins:
+            - http://localhost:5173
+            - http://127.0.0.1:5173
+
+processors:
+  # Bound the collector's memory before it starts dropping data unpredictably.
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 75
+    spike_limit_percentage: 15
+  batch:
+    timeout: 1s
+    send_batch_size: 512
+
+exporters:
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+
+  # Loki accepts OTLP directly, which keeps trace_id and span_id as structured
+  # labels rather than something a log line has to be re-parsed for. That is
+  # what makes the log-to-trace jump in Grafana work.
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
+    tls:
+      insecure: true
+
+  # Prometheus scrapes this endpoint; see deploy/prometheus/prometheus.yml.
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    # Without this the resource attributes (service.name, deployment
+    # environment) are lost and every series looks like it came from nowhere.
+    resource_to_telemetry_conversion:
+      enabled: true
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+service:
+  extensions: [health_check]
+  telemetry:
+    logs:
+      level: info
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlp/tempo]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [prometheus]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlphttp/loki]

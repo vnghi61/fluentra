@@ -20,8 +20,6 @@ Sequence diagrams, state machines and business processes owned by this module.
 <!-- BEGIN GENERATED: flows -->
 ## Speaking attempt pipeline
 
-
-
 ```mermaid
 sequenceDiagram
     autonumber

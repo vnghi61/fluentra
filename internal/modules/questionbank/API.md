@@ -47,7 +47,6 @@ Search and filter items
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `POST /api/v1/admin/questions`
 
 Create an item
@@ -57,7 +56,6 @@ Create an item
 | Permission | `questionbank.create` |
 | Success | 201 |
 | Errors | standard set |
-
 
 ### `POST /api/v1/admin/questions/{id}/review`
 
@@ -69,7 +67,6 @@ Approve or reject
 | Success | 200 |
 | Errors | `SELF_APPROVAL_FORBIDDEN` |
 
-
 ### `POST /api/v1/admin/questions/generate`
 
 AI-generate draft items for review
@@ -80,7 +77,6 @@ AI-generate draft items for review
 | Success | 202 |
 | Errors | standard set |
 
-
 ### `GET /api/v1/admin/questions/{id}/stats`
 
 Empirical difficulty and discrimination
@@ -90,7 +86,6 @@ Empirical difficulty and discrimination
 | Permission | `questionbank.read` |
 | Success | 200 |
 | Errors | standard set |
-
 
 <!-- END GENERATED: api-detail -->
 

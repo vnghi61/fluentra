@@ -48,7 +48,6 @@ Available tasks
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `POST /api/v1/speaking/upload-intent`
 
 Presigned URL for the recording
@@ -58,7 +57,6 @@ Presigned URL for the recording
 | Permission | `self` |
 | Success | 200 |
 | Errors | `UNSUPPORTED_AUDIO_FORMAT`, `AUDIO_TOO_LONG` |
-
 
 ### `POST /api/v1/speaking/attempts`
 
@@ -70,7 +68,6 @@ Create the attempt after upload
 | Success | 202 |
 | Errors | `UPLOAD_VERIFICATION_FAILED`, `AI_QUOTA_EXCEEDED` |
 
-
 ### `GET /api/v1/speaking/attempts/{id}`
 
 Attempt with scores and feedback when ready
@@ -80,7 +77,6 @@ Attempt with scores and feedback when ready
 | Permission | `self` |
 | Success | 200 |
 | Errors | standard set |
-
 
 ### `GET /api/v1/speaking/attempts`
 
@@ -92,7 +88,6 @@ History with score progression
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `DELETE /api/v1/speaking/attempts/{id}/recording`
 
 Delete the audio while keeping the scores
@@ -102,7 +97,6 @@ Delete the audio while keeping the scores
 | Permission | `self` |
 | Success | 204 |
 | Errors | standard set |
-
 
 <!-- END GENERATED: api-detail -->
 

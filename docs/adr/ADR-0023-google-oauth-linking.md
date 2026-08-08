@@ -30,7 +30,7 @@ Implement Google sign-in using the authorization code flow with PKCE, a server-s
 | | |
 |---|---|
 | **Pros** | Smoothest possible experience |
-| **Cons** | An attacker registers victim@example.com locally without verifying it, waits, and later signs in through Google to claim the account — or the reverse, depending on which side is created first |
+| **Cons** | An attacker registers <victim@example.com> locally without verifying it, waits, and later signs in through Google to claim the account — or the reverse, depending on which side is created first |
 | **Why rejected** | This is the takeover path. The convenience is real but it is bought with the account's integrity. |
 
 ### B. Never link — separate accounts per provider

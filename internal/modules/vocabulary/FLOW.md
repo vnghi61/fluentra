@@ -20,8 +20,6 @@ Sequence diagrams, state machines and business processes owned by this module.
 <!-- BEGIN GENERATED: flows -->
 ## Learning a word end to end
 
-
-
 ```mermaid
 flowchart LR
     A[Learner meets a word<br/>in a reading passage] --> B[taps for a gloss]

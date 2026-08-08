@@ -17,7 +17,7 @@ Related: [AI_CONTEXT.md](AI_CONTEXT.md) (context strategy) ·
 
 ---
 
-# Part A — AI-assisted development
+## Part A — AI-assisted development
 
 ## A1. The working agreement
 
@@ -87,7 +87,7 @@ Beyond normal review, check specifically for:
 
 ---
 
-# Part B — Building AI features
+## Part B — Building AI features
 
 ## B1. Design principles
 

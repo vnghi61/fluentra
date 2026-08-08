@@ -47,7 +47,6 @@ Item with a presigned audio URL and the play policy
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `POST /api/v1/listening/attempts`
 
 Start an attempt
@@ -57,7 +56,6 @@ Start an attempt
 | Permission | `self` |
 | Success | 201 |
 | Errors | standard set |
-
 
 ### `POST /api/v1/listening/attempts/{id}/play`
 
@@ -69,7 +67,6 @@ Record a play (server-side counter)
 | Success | 200 |
 | Errors | `PLAY_LIMIT_REACHED` |
 
-
 ### `POST /api/v1/listening/attempts/{id}/submit`
 
 Submit answers
@@ -80,7 +77,6 @@ Submit answers
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `GET /api/v1/listening/attempts/{id}/transcript`
 
 Transcript after submission
@@ -90,7 +86,6 @@ Transcript after submission
 | Permission | `self` |
 | Success | 200 |
 | Errors | `TRANSCRIPT_LOCKED` |
-
 
 <!-- END GENERATED: api-detail -->
 

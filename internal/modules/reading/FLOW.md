@@ -20,8 +20,6 @@ Sequence diagrams, state machines and business processes owned by this module.
 <!-- BEGIN GENERATED: flows -->
 ## Timed reading attempt
 
-
-
 ```mermaid
 flowchart LR
     A[Start attempt] --> B[render passage, start timer]

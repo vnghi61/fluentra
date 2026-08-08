@@ -1,0 +1,68 @@
+Problem:
+  type: object
+  description: RFC 9457 Problem Details response.
+  required: [type, title, status, code, request_id]
+  properties:
+    type:
+      type: string
+      format: uri-reference
+      description: Stable URI identifying the problem type.
+      example: https://fluentra.dev/errors/validation-failed
+    title:
+      type: string
+      description: A short, safe, human-readable summary.
+      example: Validation failed
+    status:
+      type: integer
+      description: HTTP status code for this occurrence.
+      example: 422
+    detail:
+      type: string
+      description: A safe explanation of this occurrence.
+      example: One or more request fields are invalid.
+    instance:
+      type: string
+      description: Request path that produced the problem.
+      example: /api/v1/auth/register
+    code:
+      type: string
+      pattern: '^[A-Z][A-Z0-9_]*$'
+      description: Stable machine-readable error code.
+      example: VALIDATION_FAILED
+    request_id:
+      type: string
+      description: Correlation identifier for support and observability.
+      example: 01J8XQ7Z9K3M4N5P6Q7R8S9T0V
+    meta:
+      type: object
+      description: Safe, problem-specific metadata.
+      additionalProperties: true
+ValidationProblem:
+  allOf:
+    - $ref: '#/Problem'
+    - type: object
+      description: A validation problem with per-field failures.
+      required: [errors]
+      properties:
+        errors:
+          type: array
+          description: Field-level validation failures.
+          items:
+            $ref: '#/ValidationError'
+ValidationError:
+  type: object
+  description: One invalid request field.
+  required: [field, code, message]
+  properties:
+    field:
+      type: string
+      description: JSON field path that failed validation.
+      example: email
+    code:
+      type: string
+      description: Stable validation error code.
+      example: REQUIRED
+    message:
+      type: string
+      description: Localised, safe explanation of the validation failure.
+      example: Email is required.

@@ -569,7 +569,7 @@ erDiagram
     SUBSCRIPTIONS ||--o{ INVOICES : bills
 ```
 
-Full ER per schema: [docs/database/er/](docs/database/er/).
+Full ER per schema: `docs/database/er/` — **not written yet**; the migrations are the schema of record until it is.
 
 ### 8.4 Indexing & performance policy
 
@@ -964,6 +964,7 @@ role: user   → permissions: content.read.published, self.*
 ```
 
 Three enforcement points, all required:
+
 1. **Route group** — `/admin/*` requires role `admin`.
 2. **Service guard** — `authz.Require(ctx, "content.publish")`.
 3. **Ownership** — every read/write of user-owned data filters by `actor.UserID` in the query.
@@ -998,7 +999,7 @@ Point 3 is what actually prevents IDOR; points 1–2 are defence in depth.
 | Erasure | `/me/delete` → 30-day grace → anonymise + hard-delete PII |
 | AI processing | Disclosed in the UI; the user is told which provider processes their essay; opt-out disables AI grading only |
 
-OWASP ASVS L2 mapping: [docs/security/asvs-mapping.md](docs/security/asvs-mapping.md).
+OWASP ASVS L2 mapping: `docs/security/asvs-mapping.md` — **not written yet**.
 
 ---
 
@@ -1466,7 +1467,7 @@ Distributed transactions become sagas · debugging spans process boundaries (Tem
 handles this) · schema changes need contract versioning · local dev needs more containers ·
 eventual consistency becomes visible in the UI.
 
-Detail and per-module extraction notes: [docs/architecture/microservice-migration.md](docs/architecture/microservice-migration.md).
+Detail and per-module extraction notes: `docs/architecture/microservice-migration.md` — **not written yet**. Until it exists, extraction is not an approved option (see [/AGENT.md](AGENT.md) §10).
 
 ---
 

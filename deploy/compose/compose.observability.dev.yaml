@@ -1,0 +1,30 @@
+# Local port publishing for the observability stack. Separate from
+# compose.dev.yaml so that compose.dev.yaml remains usable on its own, and
+# separate from compose.observability.yaml so the production overlay does not
+# expose these ports.
+#
+# Requires compose.observability.yaml; see the Makefile's COMPOSE_DEV.
+services:
+  otel-collector:
+    # 4317 OTLP/gRPC for the Go services, 4318 OTLP/HTTP for the browser SDK,
+    # 13133 for the collector's own health check.
+    ports:
+      - "127.0.0.1:4317:4317"
+      - "127.0.0.1:4318:4318"
+      - "127.0.0.1:13133:13133"
+  grafana:
+    ports: ["127.0.0.1:3000:3000"]
+    volumes:
+      - ../grafana/provisioning:/etc/grafana/provisioning:ro
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+  # Published so the WP0 gate in docs/development/getting-started.md §5 can be
+  # run with curl rather than by clicking around Grafana.
+  tempo:
+    ports: ["127.0.0.1:3200:3200"]
+  loki:
+    ports: ["127.0.0.1:3100:3100"]
+  prometheus:
+    ports: ["127.0.0.1:9090:9090"]

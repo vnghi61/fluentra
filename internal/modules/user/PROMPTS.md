@@ -39,4 +39,3 @@ When done: make check, then update AGENT.md and TODO.md.
 <!-- BEGIN GENERATED: prompts-runtime -->
 **This module makes no LLM calls.** If you think it should, check whether an algorithm solves the problem better — see [/AI_GUIDE.md](../../../AI_GUIDE.md) §B2.
 <!-- END GENERATED: prompts-runtime -->
-

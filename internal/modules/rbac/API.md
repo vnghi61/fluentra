@@ -57,7 +57,6 @@ List roles and their permissions
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `POST /api/v1/admin/users/{id}/roles`
 
 Grant a role
@@ -68,7 +67,6 @@ Grant a role
 | Success | 200 |
 | Errors | `PERMISSION_DENIED`, `SELF_ELEVATION_FORBIDDEN` |
 
-
 ### `DELETE /api/v1/admin/users/{id}/roles/{role}`
 
 Revoke a role
@@ -78,7 +76,6 @@ Revoke a role
 | Permission | `rbac.assign` |
 | Success | 204 |
 | Errors | `LAST_ADMIN_PROTECTED` |
-
 
 <!-- END GENERATED: api-detail -->
 

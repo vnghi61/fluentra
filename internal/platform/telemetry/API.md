@@ -45,7 +45,6 @@ Liveness — the process is running
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `GET /ready`
 
 Readiness — dependencies reachable and migrations current
@@ -56,7 +55,6 @@ Readiness — dependencies reachable and migrations current
 | Success | 200 |
 | Errors | `DEPENDENCY_UNAVAILABLE` |
 
-
 ### `GET /version`
 
 Build version and commit
@@ -66,7 +64,6 @@ Build version and commit
 | Permission | `public` |
 | Success | 200 |
 | Errors | standard set |
-
 
 <!-- END GENERATED: api-detail -->
 

@@ -20,8 +20,6 @@ Sequence diagrams, state machines and business processes owned by this module.
 <!-- BEGIN GENERATED: flows -->
 ## Streak evaluation at the day boundary
 
-
-
 ```mermaid
 flowchart TD
     A[Nightly job, per timezone bucket] --> B{daily goal met yesterday?}

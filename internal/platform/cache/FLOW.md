@@ -20,8 +20,6 @@ Sequence diagrams, state machines and business processes owned by this module.
 <!-- BEGIN GENERATED: flows -->
 ## Cache-aside with single-flight and degradation
 
-
-
 ```mermaid
 flowchart TD
     A["GetOrLoad(key, loader)"] --> B{Redis reachable?}

@@ -20,8 +20,6 @@ Sequence diagrams, state machines and business processes owned by this module.
 <!-- BEGIN GENERATED: flows -->
 ## Entitlement check on an AI feature
 
-
-
 ```mermaid
 sequenceDiagram
     autonumber

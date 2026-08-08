@@ -1,0 +1,33 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Go
+bin/
+coverage.out
+coverage.html
+api/openapi/openapi.bundle.yaml
+*.test
+*.prof
+
+# Node and frontend build output
+node_modules/
+web/node_modules/
+web/dist/
+web/.vite/
+playwright-report/
+test-results/
+
+# Tooling and editor state
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Local service data
+deploy/volumes/
+tmp/
+
+.tmpbin/

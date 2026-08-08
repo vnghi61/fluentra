@@ -49,7 +49,6 @@ Build a review session from due cards
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `GET /api/v1/reviews/due-count`
 
 Badge count
@@ -59,7 +58,6 @@ Badge count
 | Permission | `self` |
 | Success | 200 |
 | Errors | standard set |
-
 
 ### `POST /api/v1/reviews/{card_id}/answer`
 
@@ -71,7 +69,6 @@ Record a grade and reschedule
 | Success | 200 |
 | Errors | `REVIEW_CARD_SUSPENDED`, `REVIEW_NOT_DUE` |
 
-
 ### `POST /api/v1/reviews/session/complete`
 
 Close the session
@@ -81,7 +78,6 @@ Close the session
 | Permission | `self` |
 | Success | 200 |
 | Errors | standard set |
-
 
 ### `POST /api/v1/reviews/{card_id}/suspend`
 
@@ -93,7 +89,6 @@ Stop scheduling this card
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `POST /api/v1/reviews/{card_id}/reset`
 
 Treat as new again
@@ -104,7 +99,6 @@ Treat as new again
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `GET /api/v1/reviews/forecast`
 
 Projected workload for the next 30 days
@@ -114,7 +108,6 @@ Projected workload for the next 30 days
 | Permission | `self` |
 | Success | 200 |
 | Errors | standard set |
-
 
 <!-- END GENERATED: api-detail -->
 

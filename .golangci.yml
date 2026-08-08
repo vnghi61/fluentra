@@ -1,0 +1,31 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: standard
+  enable:
+    - bodyclose
+    - containedctx
+    - contextcheck
+    - errcheck
+    - gocyclo
+    - goconst
+    - gosec
+    - govet
+    - lll
+    - nilerr
+    - revive
+    - sqlclosecheck
+    - staticcheck
+
+  settings:
+    gocyclo:
+      min-complexity: 15
+    lll:
+      line-length: 120
+
+formatters:
+  enable:
+    - gofmt

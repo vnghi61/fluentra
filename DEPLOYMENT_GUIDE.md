@@ -99,6 +99,7 @@ sequenceDiagram
 ```
 
 Rules:
+
 - **Migrations run before the new code and must be backward compatible** with the previous
   release (expand → migrate → contract). This is what makes rollback safe.
 - Old and new code run simultaneously during the rollout. Design every change for that.

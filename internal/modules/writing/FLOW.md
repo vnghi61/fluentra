@@ -20,8 +20,6 @@ Sequence diagrams, state machines and business processes owned by this module.
 <!-- BEGIN GENERATED: flows -->
 ## Submit and stream feedback
 
-
-
 ```mermaid
 sequenceDiagram
     autonumber
@@ -59,8 +57,6 @@ sequenceDiagram
 
 <!-- BEGIN GENERATED: states -->
 ## State machine
-
-
 
 ```mermaid
 stateDiagram-v2

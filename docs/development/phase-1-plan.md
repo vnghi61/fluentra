@@ -16,6 +16,8 @@ last_verified: 2026-08-06
 >
 > No learning features yet. That is Phase 2.
 
+---
+
 > **Revision 2 (2026-08-07)** — three additions to authentication and one to the frontend:
 > email **OTP** verification instead of links (ADR-0021), **persistent sign-in** (ADR-0022),
 > **Google OAuth** moved forward from Phase 2 (ADR-0023), and a **mobile-first responsive**
@@ -56,7 +58,89 @@ roughly 6 calendar weeks.
 A task is sized so that its diff is reviewable in one sitting. If a task's PR exceeds ~400
 changed lines excluding generated code, it was too big — split it and say so.
 
-### 1.2 The canonical agent prompt
+### 1.2 Branching — there is no "Phase 1 branch"
+
+**Do not create a long-lived branch for this plan.** Forty-five tasks over roughly eight weeks on
+one branch produces a diff nobody can review, continuous conflicts with everyone else, and an
+integration event at the end that is indistinguishable from a rewrite. `CONTRIBUTING.md` §4 and
+`RELEASE_GUIDE.md` §3 already forbid it: short-lived branches off `main`, squash-merged, no
+`develop`, no release branches.
+
+Phase 1 is **45 branches**, not one. Each lives for a day or two.
+
+| Element | Convention | Example |
+|---|---|---|
+| Branch | `<type>/<module>-<slug>` | `feat/auth-otp-challenges` |
+| Type | `feat` · `fix` · `chore` · `docs` · `test` · `ci` · `refactor` | — |
+| Commit | `<type>(<scope>): <subject>` | `feat(auth): add OTP challenge subsystem` |
+| Commit footer | `Refs: <task id>` | `Refs: P2.1b` |
+| PR title | `<commit subject> [<task id>]` | `feat(auth): add OTP challenge subsystem [P2.1b]` |
+
+The task ID lives in the PR title and the commit footer, not in the branch name — branches stay
+readable, and traceability back to this plan survives the squash-merge.
+
+**Branch name per task** (derive the rest from the pattern):
+
+| Task | Branch |
+|---|---|
+| P0.1 | `chore/repo-bootstrap` |
+| P0.2 | `feat/shared-primitives` |
+| P0.3 | `feat/telemetry-otel-setup` |
+| P0.4 | `chore/compose-infrastructure` |
+| P0.5 | `feat/api-skeleton` |
+| P0.6 | `feat/db-migrations-sqlc` |
+| P0.7 | `feat/openapi-pipeline` |
+| P0.8 | `feat/cache-redis-facade` |
+| P0.9 | `feat/storage-minio-facade` |
+| P0.10 | `feat/job-river-outbox` |
+| P0.11 | `feat/mailer-smtp` |
+| P0.12 | `feat/shared-eventbus` |
+| P0.13 | `chore/arch-lint-proof` |
+| P0.14 | `ci/github-actions` |
+| P0.15 | `feat/web-shell` |
+| P0.16 | `ci/docs-drift-checks` |
+| P1.1 | `feat/user-core-schema` |
+| P1.2 | `feat/user-module` |
+| P1.3 | `feat/rbac-module` |
+| P1.4 | `feat/audit-module` |
+| P1.5 | `chore/wire-identity-modules` |
+| P2.1 | `feat/auth-credentials` |
+| P2.1b | `feat/auth-otp-challenges` |
+| P2.2 | `feat/auth-register-otp` |
+| P2.3 | `feat/auth-login-lockout` |
+| P2.4 | `feat/auth-jwt-middleware` |
+| P2.5 | `feat/auth-refresh-rotation` |
+| P2.6 | `feat/auth-sessions` |
+| P2.7 | `feat/auth-password-reset` |
+| P2.8 | `feat/auth-rate-limiting` |
+| P2.9 | `feat/auth-persistent-sessions` |
+| P2.10 | `feat/auth-google-oauth` |
+| P3.1 | `feat/user-avatar-upload` |
+| P3.2 | `feat/user-data-export` |
+| P3.3 | `feat/user-account-deletion` |
+| P4.1 | `feat/admin-user-management` |
+| P4.2 | `feat/admin-feature-flags` |
+| P4.3 | `chore/observability-dashboards` |
+| P5.1 | `feat/web-auth-flows` |
+| P5.2 | `feat/web-account-settings` |
+| P5.3 | `feat/web-admin` |
+| P5.3b | `feat/web-responsive-mobile` |
+| P5.4 | `test/e2e-journeys` |
+| P5.5 | `chore/security-hardening` |
+| P5.6 | `chore/release-v0.1.0` |
+
+**Phase 1 is marked complete by a tag, not by a merge:** `v0.1.0` on `main` after P5.6.
+
+#### Why trunk-based is safe here specifically
+
+There is no production yet. Nothing on `main` can break a learner. Once there is — from
+`v0.1.0` onward — anything risky ships behind a feature flag defaulting to off
+(`RELEASE_GUIDE.md` §7), which is what keeps `main` deployable without a staging branch.
+
+The one real constraint: until **P0.14** lands there is no CI protecting `main`. Until then,
+`make ci` locally before every merge is the gate, and it is not optional.
+
+### 1.3 The canonical agent prompt
 
 Use this for every task. Fill the four bracketed fields from the task card.
 
@@ -80,7 +164,7 @@ When done:
   4. update the module's AGENT.md and TODO.md if this task changed either
 ```
 
-### 1.3 Per-task Definition of Done
+### 1.4 Per-task Definition of Done
 
 Every task is done when **all** of these hold — not most:
 
@@ -94,7 +178,7 @@ Every task is done when **all** of these hold — not most:
 - [ ] The module's `TODO.md` item checked off
 - [ ] `CHANGELOG.md` entry under `Unreleased` if user-visible
 
-### 1.4 Verification per work package
+### 1.5 Verification per work package
 
 | WP | Gate |
 |---|---|
@@ -715,12 +799,12 @@ WP1 tasks P1.2, P1.3, P1.4 are independent of each other once P1.1 lands.
 | P0.8 | platform/cache | 0 | M | P0.5 | 1 | ☐ |
 | P0.9 | platform/storage | 0 | M | P0.5 | 1 | ☐ |
 | P0.10 | platform/job + outbox | 0 | L | P0.5 | 1 | ☐ |
-| P0.11 | platform/mailer | 0 | M | P0.10 | 1 | ☐ |
-| P0.12 | shared/eventbus | 0 | S | P0.5 | 1 | ☐ |
-| P0.13 | Boundary enforcement proof | 0 | S | P0.5 | 1 | ☐ |
-| P0.14 | CI workflows | 0 | M | P0.13 | 1 | ☐ |
-| P0.15 | Web application shell | 0 | L | P0.7 | 1 | ☐ |
-| P0.16 | Documentation CI | 0 | S | P0.14 | 1 | ☐ |
+| P0.11 | platform/mailer | 0 | M | P0.10 | 1 | ☑ |
+| P0.12 | shared/eventbus | 0 | S | P0.5 | 1 | ☑ |
+| P0.13 | Boundary enforcement proof | 0 | S | P0.5 | 1 | ☑ |
+| P0.14 | CI workflows | 0 | M | P0.13 | 1 | ☑ |
+| P0.15 | Web application shell | 0 | L | P0.7 | 1 | ☑ |
+| P0.16 | Documentation CI | 0 | S | P0.14 | 1 | ☑ |
 | P1.1 | core schema | 1 | M | P0.6 | 1 | ☐ |
 | P1.2 | user module | 1 | L | P1.1 | 1 | ☐ |
 | P1.3 | rbac module | 1 | M | P1.1 | **2** | ☐ |

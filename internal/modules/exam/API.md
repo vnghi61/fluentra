@@ -49,7 +49,6 @@ Available mock exams
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `POST /api/v1/exams/{id}/attempts`
 
 Start a sitting
@@ -59,7 +58,6 @@ Start a sitting
 | Permission | `self` |
 | Success | 201 |
 | Errors | `EXAM_WINDOW_CLOSED`, `ATTEMPT_IN_PROGRESS`, `INSUFFICIENT_ITEMS` |
-
 
 ### `GET /api/v1/exam-attempts/{id}`
 
@@ -71,7 +69,6 @@ Current state with server time remaining
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `PUT /api/v1/exam-attempts/{id}/answers`
 
 Save answers (autosave)
@@ -82,7 +79,6 @@ Save answers (autosave)
 | Success | 200 |
 | Errors | `ATTEMPT_EXPIRED` |
 
-
 ### `POST /api/v1/exam-attempts/{id}/sections/{n}/complete`
 
 Finish a section
@@ -92,7 +88,6 @@ Finish a section
 | Permission | `self` |
 | Success | 200 |
 | Errors | standard set |
-
 
 ### `POST /api/v1/exam-attempts/{id}/submit`
 
@@ -114,7 +109,6 @@ Score report when ready
 | Permission | `self` |
 | Success | 200 |
 | Errors | standard set |
-
 
 <!-- END GENERATED: api-detail -->
 

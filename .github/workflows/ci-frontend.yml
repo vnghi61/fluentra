@@ -1,0 +1,75 @@
+name: ci-frontend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'web/**'
+      - 'api/openapi/**'
+      - '.github/workflows/ci-frontend.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'web/**'
+      - 'api/openapi/**'
+      - '.github/workflows/ci-frontend.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: web
+
+jobs:
+  verify:
+    name: Frontend CI
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The generated client is checked the same way the Go one is: regenerate
+      # and require no diff. A hand-edited api.ts silently diverging from the
+      # spec is the frontend's version of a stale server stub.
+      - name: Verify the generated API types are current
+        run: |
+          pnpm run gen:api
+          git diff --exit-code src/types/api.ts
+
+      # Full strict TypeScript, including noUncheckedIndexedAccess and
+      # exactOptionalPropertyTypes.
+      - name: Type-check
+        run: pnpm run typecheck
+
+      # eslint-plugin-boundaries is the frontend's arch-lint: it fails on a deep
+      # import across feature slices.
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Test
+        run: pnpm run test
+
+      # `build` ends in scripts/check-bundle.mjs, which fails when the initial
+      # download exceeds its gzipped budget.
+      - name: Build and enforce the bundle budget
+        run: pnpm run build

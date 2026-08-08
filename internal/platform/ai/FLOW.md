@@ -20,8 +20,6 @@ Sequence diagrams, state machines and business processes owned by this module.
 <!-- BEGIN GENERATED: flows -->
 ## A task call, end to end
 
-
-
 ```mermaid
 flowchart TD
     A["ai.Client.Run(task, input)"] --> B{Task in routing config?}

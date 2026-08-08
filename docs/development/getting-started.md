@@ -54,15 +54,15 @@ make dev
 
 | Service | URL | Notes |
 |---|---|---|
-| Web app | http://localhost:5173 | Vite dev server with HMR |
-| API | http://localhost:8080 | `air` hot reload |
-| API docs | http://localhost:8080/docs | Rendered from the OpenAPI spec |
-| Grafana | http://localhost:3000 | `admin` / `admin` |
-| Mailpit | http://localhost:8025 | Catches all outbound email |
-| MinIO console | http://localhost:9001 | `minioadmin` / `minioadmin` |
-| Jaeger (dev only) | http://localhost:16686 | Convenience UI; production uses Tempo |
-| River UI | http://localhost:8081 | Job queue inspection |
-| Adminer | http://localhost:8082 | Database browsing |
+| Web app | <http://localhost:5173> | Vite dev server with HMR |
+| API | <http://localhost:8080> | `air` hot reload |
+| API docs | <http://localhost:8080/docs> | Rendered from the OpenAPI spec |
+| Grafana | <http://localhost:3000> | `admin` / `admin` |
+| Mailpit | <http://localhost:8025> | Catches all outbound email |
+| MinIO console | <http://localhost:9001> | `minioadmin` / `minioadmin` |
+| Jaeger (dev only) | <http://localhost:16686> | Convenience UI; production uses Tempo |
+| River UI | <http://localhost:8081> | Job queue inspection |
+| Adminer | <http://localhost:8082> | Database browsing |
 
 First start takes a few minutes while images build. Subsequent starts are seconds.
 
@@ -78,18 +78,70 @@ These exist only in the development seed; there is no default password anywhere 
 
 ## 5. The 15-minute exercise — follow one request
 
-1. Sign in as the learner at http://localhost:5173.
-2. Open the dashboard. Note the `X-Request-Id` response header in the browser devtools
-   network panel.
-3. **Trace:** open Grafana → Explore → Tempo, search by that trace ID. You should see the root
-   HTTP span, the service spans, and the pgx spans beneath them, with their timings.
-4. **Logs:** switch the datasource to Loki, query `{service="fluentra-api"} |= "<trace_id>"`.
-   The same request's log lines carry the trace ID. Click it — Grafana links back to the trace.
-5. **Metrics:** switch to Prometheus, query
-   `histogram_quantile(0.95, sum by (le, route) (rate(http_server_request_duration_seconds_bucket[5m])))`.
-   Find the route you just hit.
+This is the WP0 gate: **one** request must produce three signals that share a trace ID. The
+steps below were run end to end and are written from what actually happened, not from what the
+setup was meant to do.
 
-If any of those three steps does not work, that is a bug in the observability setup and it is
+There is no sign-in yet and no frontend route that calls the API on load, so the request is made
+with `curl` rather than by clicking. `/api/v1/ping` exists precisely for this: it touches
+PostgreSQL and Redis so the trace has children worth looking at.
+
+```bash
+curl -i http://localhost:8080/api/v1/ping
+```
+
+Note the `X-Request-Id` from the response headers. Wait about 15 seconds — the SDK batches, and
+Prometheus scrapes every 15s — then:
+
+**1. The log line (Loki).** `trace_id` and `request_id` arrive as OTLP structured metadata, not
+as stream labels, so they are filtered *after* the stream selector. `{request_id="..."}` on its
+own matches nothing:
+
+```bash
+curl -sG http://localhost:3100/loki/api/v1/query_range   --data-urlencode 'query={service_name="fluentra-api"} | request_id=`YOUR_REQUEST_ID`'
+```
+
+The line reads `request completed` and carries `trace_id`, `span_id`, `route`, `status` and
+`duration_ms`.
+
+**2. The trace (Tempo).** Take the `trace_id` from that log line:
+
+```bash
+curl -s http://localhost:3200/api/traces/YOUR_TRACE_ID | jq '[.. | .name? // empty] | unique'
+```
+
+Ten spans, and the three that matter are the HTTP root plus one child per dependency:
+
+| Span | What it proves |
+|---|---|
+| `GET /api/v1/ping` | the HTTP root span, named by route template — no ID in the name |
+| `pgx.query`, `query SELECT 1`, `pool.acquire` | PostgreSQL is instrumented and nested under the request |
+| `redis.ping` | Redis likewise |
+
+**3. The metric (Prometheus).**
+
+```bash
+curl -sG http://localhost:9090/api/v1/query   --data-urlencode 'query=http_server_request_duration_seconds_count{route="/api/v1/ping"}'
+```
+
+The counter carries `route`, `method`, `status_class` and `service_name`. Prometheus scrapes the
+collector at `otel-collector:8889`, not the application — the application only pushes OTLP.
+
+In Grafana (<http://localhost:3000>, anonymous admin, datasources provisioned from
+`deploy/grafana/provisioning/`) the Loki `trace_id` field is a link: clicking it opens the trace
+in Tempo. That link is the point of the exercise.
+
+### Two other things this stack guarantees
+
+- **Readiness is real.** `docker stop fluentra-postgres-1` makes `/ready` return **503**
+  (`{"status":"unavailable"}`) while `/health` stays **200** — a dependency outage should pull
+  the instance out of rotation, not restart the process. Starting Postgres returns `/ready` to
+  200.
+- **Shutdown flushes.** A request issued milliseconds before `SIGTERM` still lands: its log line
+  reaches Loki and all of its spans reach Tempo. Spans buffered in the batch processor are not
+  lost on deploy.
+
+If any of the three steps does not work, that is a bug in the observability setup and it is
 worth more of your attention right now than any feature.
 
 ## 6. Verify the toolchain
@@ -139,7 +191,7 @@ template. Expect the review to be about boundaries and tests, not style — styl
 | Port already in use | Another project's stack is running; `docker ps` |
 | Slow Docker on macOS/Windows | Enable VirtioFS / WSL2 backend |
 
-More: [`troubleshooting.md`](troubleshooting.md).
+More: `docs/development/troubleshooting.md` — **not written yet**.
 
 ## Do not
 

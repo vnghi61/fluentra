@@ -1,0 +1,16 @@
+@import 'tailwindcss';
+
+/*
+ * Dark mode is driven by a class on <html>, set by the inline script in
+ * index.html before first paint. A media-query-only scheme cannot honour an
+ * explicit user choice, and a JS-only one flashes.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  color-scheme: light dark;
+}
+
+body {
+  @apply bg-white text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
+}

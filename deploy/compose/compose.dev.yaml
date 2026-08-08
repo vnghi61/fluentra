@@ -1,0 +1,24 @@
+# Local port publishing for the data services only.
+#
+# This file must stay valid when combined with compose.yaml *alone*. Overrides
+# for services that only exist in compose.observability.yaml belong in
+# compose.observability.dev.yaml — put one here and
+# `docker compose -f compose.yaml -f compose.dev.yaml up` fails with
+# "service X has neither an image nor a build context specified", because
+# compose sees a service whose entire definition is a ports list.
+services:
+  postgres:
+    ports: ["127.0.0.1:5432:5432"]
+  redis:
+    ports: ["127.0.0.1:6379:6379"]
+  minio:
+    ports: ["127.0.0.1:9000:9000", "127.0.0.1:9001:9001"]
+  mailpit:
+    image: axllent/mailpit:latest
+    ports: ["127.0.0.1:8025:8025"]
+    networks: [backend]
+    healthcheck:
+      test: [CMD, wget, -qO-, http://localhost:8025/livez]
+      interval: 5s
+      timeout: 3s
+      retries: 20

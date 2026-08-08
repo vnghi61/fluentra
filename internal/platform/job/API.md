@@ -46,7 +46,6 @@ List jobs by queue and state
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `POST /api/v1/admin/jobs/{id}/retry`
 
 Retry a failed job
@@ -56,7 +55,6 @@ Retry a failed job
 | Permission | `system.jobs` |
 | Success | 202 |
 | Errors | standard set |
-
 
 ### `POST /api/v1/admin/jobs/{id}/cancel`
 
@@ -68,7 +66,6 @@ Cancel a pending job
 | Success | 204 |
 | Errors | standard set |
 
-
 ### `GET /api/v1/admin/queues`
 
 Depth, oldest pending age, throughput per queue
@@ -78,7 +75,6 @@ Depth, oldest pending age, throughput per queue
 | Permission | `system.jobs` |
 | Success | 200 |
 | Errors | standard set |
-
 
 <!-- END GENERATED: api-detail -->
 

@@ -47,7 +47,6 @@ Catalogue with level filters
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `GET /api/v1/courses/{slug}`
 
 Course with units and lesson summaries
@@ -57,7 +56,6 @@ Course with units and lesson summaries
 | Permission | `content.read.published` |
 | Success | 200 |
 | Errors | standard set |
-
 
 ### `GET /api/v1/lessons/{id}`
 
@@ -69,7 +67,6 @@ Lesson with its activities and resolved content
 | Success | 200 |
 | Errors | `LESSON_LOCKED` |
 
-
 ### `POST /api/v1/admin/courses`
 
 Create a course
@@ -80,7 +77,6 @@ Create a course
 | Success | 201 |
 | Errors | standard set |
 
-
 ### `PUT /api/v1/admin/lessons/{id}/activities`
 
 Reorder or replace the activity list
@@ -90,7 +86,6 @@ Reorder or replace the activity list
 | Permission | `content.edit` |
 | Success | 200 |
 | Errors | standard set |
-
 
 <!-- END GENERATED: api-detail -->
 

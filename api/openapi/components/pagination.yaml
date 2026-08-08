@@ -1,0 +1,23 @@
+Cursor:
+  type: string
+  description: Opaque, URL-safe cursor encoding a stable sort value and ID.
+  minLength: 1
+  example: eyJjIjoiMjAyNi0wOC0wNlQxMDowMDowMFoiLCJpIjoiMDE5M2E3In0
+Page:
+  type: object
+  description: Cursor pagination metadata returned with every user-facing list.
+  required: [has_more, limit]
+  properties:
+    next_cursor:
+      $ref: '#/Cursor'
+      description: Opaque cursor for the next page, omitted when there is no next page.
+    has_more:
+      type: boolean
+      description: Whether another page can be requested using next_cursor.
+      example: true
+    limit:
+      type: integer
+      minimum: 1
+      maximum: 100
+      description: Number of items requested for this page.
+      example: 20

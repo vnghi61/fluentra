@@ -49,7 +49,6 @@ Available tasks by level and type
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `PUT /api/v1/writing/tasks/{id}/draft`
 
 Autosave a draft
@@ -59,7 +58,6 @@ Autosave a draft
 | Permission | `self` |
 | Success | 200 |
 | Errors | standard set |
-
 
 ### `POST /api/v1/writing/submissions`
 
@@ -82,7 +80,6 @@ Submission with feedback when ready
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `GET /api/v1/writing/submissions/{id}/stream`
 
 SSE stream of grading progress and partial feedback
@@ -92,7 +89,6 @@ SSE stream of grading progress and partial feedback
 | Permission | `self` |
 | Success | 200 |
 | Errors | standard set |
-
 
 ### `GET /api/v1/writing/submissions`
 
@@ -104,7 +100,6 @@ History with band progression
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `POST /api/v1/writing/submissions/{id}/dispute`
 
 Flag a grade for human review
@@ -114,7 +109,6 @@ Flag a grade for human review
 | Permission | `self` |
 | Success | 202 |
 | Errors | standard set |
-
 
 <!-- END GENERATED: api-detail -->
 

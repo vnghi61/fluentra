@@ -20,8 +20,6 @@ Sequence diagrams, state machines and business processes owned by this module.
 <!-- BEGIN GENERATED: flows -->
 ## Exam sitting with auto-submit
 
-
-
 ```mermaid
 sequenceDiagram
     autonumber
@@ -64,8 +62,6 @@ sequenceDiagram
 
 <!-- BEGIN GENERATED: states -->
 ## State machine
-
-
 
 ```mermaid
 stateDiagram-v2

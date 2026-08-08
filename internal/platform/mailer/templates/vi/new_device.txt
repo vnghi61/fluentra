@@ -1,0 +1,5 @@
+Xin chào {{.DisplayName}},
+
+Phát hiện đăng nhập mới trên thiết bị: {{.DeviceName}}
+
+Nếu không phải bạn, vui lòng đổi mật khẩu ngay lập tức.

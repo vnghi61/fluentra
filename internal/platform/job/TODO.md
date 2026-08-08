@@ -36,6 +36,20 @@ agent knows what is already handled and what is deliberately deferred.
 _Nothing deferred._
 <!-- END GENERATED: todo-deferred -->
 
+### Carried over from P0.R6 — the two `[~]` items above are half done
+
+- **`job.failed_permanently` event.** `ops.job_failures` is written on the attempt that exhausts
+  the budget (BR-JOB-08), verified by integration test. The _event_ half is not published: doing it
+  from River's `ErrorHandler` would need an outbox write outside the job's transaction, which is the
+  one place the outbox contract does not fit. Decide the shape when the first consumer exists.
+- **`job_queue_depth`.** `job_oldest_pending_seconds` now has a callback and reports real values.
+  `job_queue_depth` is still declared in `telemetry.Instruments` with nothing writing to it. It is
+  an `Int64UpDownCounter`, which is the wrong instrument for a value read from a table — it wants
+  to be an observable gauge alongside the age one. Changing its type is a telemetry change, not a
+  job change, so it was left alone rather than half-wired here.
+- **Alerts.** The metrics exist; no alert rule consumes them yet. That belongs with the Grafana
+  provisioning in P0.R15.
+
 ## Future improvements
 
 <!-- BEGIN GENERATED: todo-future -->

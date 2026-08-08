@@ -55,7 +55,6 @@ Full profile of the caller
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `PATCH /api/v1/me`
 
 Update profile fields
@@ -65,7 +64,6 @@ Update profile fields
 | Permission | `self` |
 | Success | 200 |
 | Errors | `VALIDATION_FAILED` |
-
 
 ### `GET /api/v1/me/preferences`
 
@@ -77,7 +75,6 @@ Read preferences
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `PUT /api/v1/me/preferences`
 
 Replace preferences
@@ -87,7 +84,6 @@ Replace preferences
 | Permission | `self` |
 | Success | 200 |
 | Errors | standard set |
-
 
 ### `POST /api/v1/me/avatar/upload-intent`
 
@@ -99,7 +95,6 @@ Get a presigned URL for an avatar upload
 | Success | 200 |
 | Errors | `UNSUPPORTED_MEDIA_TYPE`, `TOO_LARGE` |
 
-
 ### `PUT /api/v1/me/avatar`
 
 Confirm the uploaded avatar
@@ -109,7 +104,6 @@ Confirm the uploaded avatar
 | Permission | `self` |
 | Success | 200 |
 | Errors | standard set |
-
 
 ### `POST /api/v1/me/export`
 
@@ -121,7 +115,6 @@ Request a data export
 | Success | 202 |
 | Errors | standard set |
 
-
 ### `DELETE /api/v1/me`
 
 Request account deletion (30-day grace)
@@ -131,7 +124,6 @@ Request account deletion (30-day grace)
 | Permission | `self` |
 | Success | 202 |
 | Errors | standard set |
-
 
 ### `POST /api/v1/me/deletion/cancel`
 
@@ -143,7 +135,6 @@ Cancel a pending deletion
 | Success | 200 |
 | Errors | `INVALID_STATE_TRANSITION` |
 
-
 ### `GET /api/v1/admin/users`
 
 Search and list users
@@ -153,7 +144,6 @@ Search and list users
 | Permission | `user.list` |
 | Success | 200 |
 | Errors | standard set |
-
 
 ### `GET /api/v1/admin/users/{id}`
 
@@ -165,7 +155,6 @@ Read one user
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `POST /api/v1/admin/users/{id}/suspend`
 
 Suspend an account
@@ -176,7 +165,6 @@ Suspend an account
 | Success | 200 |
 | Errors | `INVALID_STATE_TRANSITION` |
 
-
 ### `POST /api/v1/admin/users/{id}/reinstate`
 
 Reinstate a suspended account
@@ -186,7 +174,6 @@ Reinstate a suspended account
 | Permission | `user.suspend` |
 | Success | 200 |
 | Errors | standard set |
-
 
 <!-- END GENERATED: api-detail -->
 

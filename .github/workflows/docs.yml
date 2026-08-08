@@ -1,0 +1,122 @@
+name: docs
+
+# The documentation in this repository is load-bearing: agents are instructed to
+# trust a module's AGENT.md over reading its code. A stale document is therefore
+# a defect with the same blast radius as a stale generated client, and this
+# workflow treats it as one.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**.md'
+      - 'tools/docgen/**'
+      - 'db/migrations/**'
+      - 'api/openapi/**'
+      - '.go-arch-lint.yml'
+      - '.markdownlint-cli2.jsonc'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - '**.md'
+      - 'tools/docgen/**'
+      - 'db/migrations/**'
+      - 'api/openapi/**'
+      - '.go-arch-lint.yml'
+      - '.markdownlint-cli2.jsonc'
+      - '.github/workflows/docs.yml'
+  schedule:
+    # Weekly staleness sweep. It runs on a schedule rather than per pull request
+    # because last_verified ages by the calendar, and a branch nobody touched
+    # should not turn red on a Tuesday.
+    - cron: '0 6 * * 1'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Markdown lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+
+      # Rule selection lives in .markdownlint-cli2.jsonc, with a reason next to
+      # every rule that is switched off.
+      - name: Run markdownlint
+        run: npx --yes markdownlint-cli2@0.20.0
+
+  drift:
+    name: Documentation drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+
+      # Front-matter schema, required AGENT.md sections, migrations vs `tables:`,
+      # arch-lint contract edges vs MODULE_INDEX.md, and openapi.yaml vs API.md.
+      - name: Check documentation drift
+        run: node tools/docgen/check-drift.mjs
+
+      # No `|| true`. This previously ran with its failure discarded, which meant
+      # 79 out-of-date documents sat in the tree with a green tick beside them.
+      - name: Check generated documentation is current
+        run: node tools/docgen/generate.mjs --check
+
+  links:
+    name: Link check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Offline mode: relative links between documents are checked, external
+      # URLs are not. An external site being down is not a defect in this
+      # repository, and a link checker that fails for someone else's outage is a
+      # link checker people start ignoring.
+      - name: Check links
+        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
+        with:
+          args: >-
+            --offline
+            --no-progress
+            --exclude-path node_modules
+            --exclude-path web/node_modules
+            '**/*.md'
+          fail: true
+
+  staleness:
+    name: Staleness report
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+
+      - name: Report AGENT.md files older than 90 days
+        run: node tools/docgen/check-drift.mjs --staleness

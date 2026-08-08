@@ -20,8 +20,6 @@ Sequence diagrams, state machines and business processes owned by this module.
 <!-- BEGIN GENERATED: flows -->
 ## Send with retry and suppression
 
-
-
 ```mermaid
 flowchart TD
     A["Sender.Send(msg)"] --> B[enqueue email.send job]

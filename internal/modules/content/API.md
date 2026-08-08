@@ -51,7 +51,6 @@ Fetch a published content version
 | Success | 200 |
 | Errors | `CONTENT_NOT_PUBLISHED` |
 
-
 ### `GET /api/v1/content`
 
 Browse published content with taxonomy filters
@@ -61,7 +60,6 @@ Browse published content with taxonomy filters
 | Permission | `content.read.published` |
 | Success | 200 |
 | Errors | standard set |
-
 
 ### `POST /api/v1/admin/content`
 
@@ -73,7 +71,6 @@ Create a draft item
 | Success | 201 |
 | Errors | standard set |
 
-
 ### `PUT /api/v1/admin/content/{id}/draft`
 
 Update the working draft
@@ -83,7 +80,6 @@ Update the working draft
 | Permission | `content.edit` |
 | Success | 200 |
 | Errors | `INVALID_STATE_TRANSITION` |
-
 
 ### `POST /api/v1/admin/content/{id}/submit`
 
@@ -95,7 +91,6 @@ Submit for review
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `POST /api/v1/admin/content/{id}/review`
 
 Approve or request changes
@@ -105,7 +100,6 @@ Approve or request changes
 | Permission | `content.review` |
 | Success | 200 |
 | Errors | `SELF_APPROVAL_FORBIDDEN` |
-
 
 ### `POST /api/v1/admin/content/{id}/publish`
 
@@ -117,7 +111,6 @@ Publish the approved version
 | Success | 200 |
 | Errors | standard set |
 
-
 ### `POST /api/v1/admin/content/{id}/archive`
 
 Archive
@@ -128,7 +121,6 @@ Archive
 | Success | 200 |
 | Errors | `CONTENT_IN_USE` |
 
-
 ### `POST /api/v1/admin/content/{id}/estimate-level`
 
 AI-suggested CEFR level for the author to confirm
@@ -138,7 +130,6 @@ AI-suggested CEFR level for the author to confirm
 | Permission | `content.edit` |
 | Success | 200 |
 | Errors | standard set |
-
 
 <!-- END GENERATED: api-detail -->
 

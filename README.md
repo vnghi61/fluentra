@@ -4,10 +4,10 @@
 > vocabulary, grammar, reading, listening, speaking and writing through adaptive lessons,
 > spaced repetition, and AI-graded practice.
 
-[![status](https://img.shields.io/badge/status-architecture--phase-blue)]()
-[![go](https://img.shields.io/badge/go-1.25-00ADD8)]()
-[![react](https://img.shields.io/badge/react-19-61DAFB)]()
-[![license](https://img.shields.io/badge/license-proprietary-lightgrey)]()
+[![status](https://img.shields.io/badge/status-architecture--phase-blue)](docs/development/phase-1-plan.md)
+[![go](https://img.shields.io/badge/go-1.25-00ADD8)](go.mod)
+[![react](https://img.shields.io/badge/react-19-61DAFB)](web/package.json)
+[![license](https://img.shields.io/badge/license-proprietary-lightgrey)](DEPENDENCIES.md)
 
 ---
 
@@ -138,12 +138,12 @@ Then open:
 
 | Service | URL |
 |---|---|
-| Web app | http://localhost:5173 |
-| API | http://localhost:8080 |
-| API docs (Scalar) | http://localhost:8080/docs |
-| Grafana | http://localhost:3000 |
-| MinIO console | http://localhost:9001 |
-| Mailpit | http://localhost:8025 |
+| Web app | <http://localhost:5173> |
+| API | <http://localhost:8080> |
+| API docs (Scalar) | <http://localhost:8080/docs> |
+| Grafana | <http://localhost:3000> |
+| MinIO console | <http://localhost:9001> |
+| Mailpit | <http://localhost:8025> |
 
 ## License
 

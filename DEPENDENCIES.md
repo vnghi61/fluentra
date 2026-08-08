@@ -106,6 +106,13 @@ adds load to the primary DB; younger project than asynq.
 **Migration path:** the `job` platform module exposes an `Enqueuer` interface, so moving to
 NATS later is an adapter swap.
 
+**`riverqueue/river/riverdriver/riverpgxv5`** — River ships its database access as a separate
+driver module. This is the pgx v5 one, which is mandatory rather than a choice: it is what lets a
+job be inserted on the caller's own `pgx.Tx`, and transactional enqueue is the entire reason River
+was chosen. It also carries River's own schema migrations (`rivermigrate`), applied into the `ops`
+schema at worker start-up. No alternative was considered — the only other drivers target
+`database/sql`, which cannot share our pgx transaction.
+
 ### 1.5 Configuration
 
 | Library | Verdict | Notes |
@@ -147,6 +154,7 @@ Two-layer approach: struct tags validate *shape* at the transport edge; the doma
 | Library | Verdict | Notes |
 |---|---|---|
 | **`oapi-codegen` v2** ✅ | **Chosen** | Spec-first: generates chi server interfaces, typed clients, request validation middleware |
+| **`getkin/kin-openapi`** ✅ | **Chosen** | OpenAPI 3.0/3.1 model and validator in Go, dependency of oapi-codegen generated server |
 | `danielgtaylor/huma` v2 | Strong alternative | Code-first, generates the spec — rejected because we want the spec reviewable *before* implementation, and shared with the frontend team |
 | `ogen` | Considered | Very fast generated code, stricter spec support; smaller community |
 | `swaggo/swag` | Rejected | Comment-driven, OpenAPI 2/3.0 only, drifts easily |
