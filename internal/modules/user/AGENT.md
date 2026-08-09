@@ -10,7 +10,7 @@ tables: [users, profiles, user_preferences, learning_profiles, user_deletion_req
 depends_on: [storage, mailer, audit]
 depended_on_by: [auth, admin, learning, notification, subscription, gamification]
 spec_version: 1.0.0
-last_verified: 2026-08-06
+last_verified: 2026-08-09
 ---
 
 # user — AGENT.md
@@ -107,6 +107,30 @@ Migrations: `db/migrations/user/` · Queries: `db/queries/user/`
 | `core.user_exports` | Data export jobs and artefacts | `status`, `object_key`, `expires_at` |
 
 <!-- END GENERATED: schema -->
+
+### What exists today (P1.1, `db/migrations/user/1700000010_create_core_user_tables.sql`)
+
+Four of the six tables above are real: `users`, `profiles`, `user_preferences`,
+`learning_profiles`. `user_deletion_requests` and `user_exports` arrive with WP3 (P3.2, P3.3).
+
+| Object | Notes |
+|---|---|
+| extension `citext` | Created by this migration. It is what makes BR-USER-01 a database guarantee instead of a convention every query has to remember |
+| enum `core.user_status` | `active`, `suspended`, `pending_deletion`, `deleted` |
+| enum `core.ui_theme` | `light`, `dark`, `system` |
+| enum `core.cefr_level` | `a1`…`c2`, lower-case |
+| enum `core.target_exam` | `ielts`, `toeic`, `none` |
+
+`core.users` carries exactly six columns — `id`, `email`, `status`, `email_verified_at`,
+`created_at`, `updated_at` — and an integration test fails if a seventh appears. Everything
+descriptive belongs to `profiles`, every setting to `user_preferences`.
+
+The three satellite tables are 1:1 with `users` via a `UNIQUE` constraint on `user_id`, which
+is also the index the foreign key needs; they cascade on delete.
+
+The enums are written as bare `CREATE TYPE` rather than guarded by a `DO` block, because sqlc
+parses the migration as its schema source and cannot see inside a `DO` block — guarded, every
+enum column generates `interface{}` instead of a typed Go constant.
 
 ## 6. HTTP endpoints
 

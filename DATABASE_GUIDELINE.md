@@ -215,6 +215,6 @@ Partition by month on `created_at` from day one for high-growth tables:
 | Restore drill | Monthly, timed, documented in `docs/operations/runbooks/restore.md` |
 | Monitoring | `postgres_exporter`: connections, locks, replication lag, bloat, slow queries, cache hit ratio |
 | Vacuum | Autovacuum tuned per hot table; monitored for wraparound risk |
-| Extensions | `pgcrypto`, `pg_stat_statements`, `pg_trgm`, `btree_gin`; `pgvector` when semantic caching ships |
+| Extensions | `pgcrypto`, `pg_stat_statements`, `pg_trgm`, `btree_gin`, `citext` (case-insensitive email, created by `db/migrations/user/`); `pgvector` when semantic caching ships |
 | Access | The app uses a least-privilege role; migrations use a separate owner role; no superuser at runtime |
 | PII | Encrypted columns for MFA secrets and refresh-token hashes; anonymisation script for deleted users |
