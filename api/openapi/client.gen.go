@@ -4,6 +4,7 @@
 package openapi
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -96,6 +97,56 @@ type ClientInterface interface {
 	// Corresponds with GET /health (the `SystemHealth` operationId).
 	SystemHealth(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// UserGetMe Read the caller's own account.
+	//
+	// Returns the account belonging to the access token. There is deliberately no `/users/{id}` counterpart in this version: the actor comes from the token, so one user cannot read another by changing a path segment.
+	//
+	// Corresponds with GET /me (the `UserGetMe` operationId).
+	UserGetMe(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UserUpdateMeWithBody Update the caller's own profile.
+	//
+	// Partially updates the profile. Omitted fields are left alone; unknown and null fields are rejected with 422.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /me (the `UserUpdateMe` operationId).
+	UserUpdateMeWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UserUpdateMe Update the caller's own profile.
+	//
+	// Partially updates the profile. Omitted fields are left alone; unknown and null fields are rejected with 422.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PATCH /me (the `UserUpdateMe` operationId).
+	UserUpdateMe(ctx context.Context, body UserUpdateMeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UserGetMyPreferences Read the caller's preferences.
+	//
+	// Returns the full preference set. Every account has one from registration onwards, so this never returns an empty body.
+	//
+	// Corresponds with GET /me/preferences (the `UserGetMyPreferences` operationId).
+	UserGetMyPreferences(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UserReplaceMyPreferencesWithBody Replace the caller's preferences.
+	//
+	// Replaces the whole preference set. A field left out is not "unchanged", it is a validation failure -- which is what makes this idempotent.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /me/preferences (the `UserReplaceMyPreferences` operationId).
+	UserReplaceMyPreferencesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UserReplaceMyPreferences Replace the caller's preferences.
+	//
+	// Replaces the whole preference set. A field left out is not "unchanged", it is a validation failure -- which is what makes this idempotent.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /me/preferences (the `UserReplaceMyPreferences` operationId).
+	UserReplaceMyPreferences(ctx context.Context, body UserReplaceMyPreferencesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// SystemPing Check API dependency connectivity.
 	//
 	// Performs lightweight PostgreSQL and Redis checks for the trace proof.
@@ -125,6 +176,116 @@ type ClientInterface interface {
 // Corresponds with GET /health (the `SystemHealth` operationId).
 func (c *Client) SystemHealth(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSystemHealthRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UserGetMe Read the caller's own account.
+//
+// Returns the account belonging to the access token. There is deliberately no `/users/{id}` counterpart in this version: the actor comes from the token, so one user cannot read another by changing a path segment.
+//
+// Corresponds with GET /me (the `UserGetMe` operationId).
+func (c *Client) UserGetMe(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserGetMeRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UserUpdateMeWithBody Update the caller's own profile.
+//
+// Partially updates the profile. Omitted fields are left alone; unknown and null fields are rejected with 422.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /me (the `UserUpdateMe` operationId).
+func (c *Client) UserUpdateMeWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserUpdateMeRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UserUpdateMe Update the caller's own profile.
+//
+// Partially updates the profile. Omitted fields are left alone; unknown and null fields are rejected with 422.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PATCH /me (the `UserUpdateMe` operationId).
+func (c *Client) UserUpdateMe(ctx context.Context, body UserUpdateMeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserUpdateMeRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UserGetMyPreferences Read the caller's preferences.
+//
+// Returns the full preference set. Every account has one from registration onwards, so this never returns an empty body.
+//
+// Corresponds with GET /me/preferences (the `UserGetMyPreferences` operationId).
+func (c *Client) UserGetMyPreferences(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserGetMyPreferencesRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UserReplaceMyPreferencesWithBody Replace the caller's preferences.
+//
+// Replaces the whole preference set. A field left out is not "unchanged", it is a validation failure -- which is what makes this idempotent.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /me/preferences (the `UserReplaceMyPreferences` operationId).
+func (c *Client) UserReplaceMyPreferencesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserReplaceMyPreferencesRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UserReplaceMyPreferences Replace the caller's preferences.
+//
+// Replaces the whole preference set. A field left out is not "unchanged", it is a validation failure -- which is what makes this idempotent.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /me/preferences (the `UserReplaceMyPreferences` operationId).
+func (c *Client) UserReplaceMyPreferences(ctx context.Context, body UserReplaceMyPreferencesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserReplaceMyPreferencesRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -209,6 +370,140 @@ func NewSystemHealthRequest(server string) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewUserGetMeRequest constructs an http.Request for the UserGetMe method
+func NewUserGetMeRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUserUpdateMeRequest calls the generic UserUpdateMe builder with application/json body
+func NewUserUpdateMeRequest(server string, body UserUpdateMeJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUserUpdateMeRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewUserUpdateMeRequestWithBody constructs an http.Request for the UserUpdateMe method, with any body, and a specified content type
+func NewUserUpdateMeRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewUserGetMyPreferencesRequest constructs an http.Request for the UserGetMyPreferences method
+func NewUserGetMyPreferencesRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/preferences")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUserReplaceMyPreferencesRequest calls the generic UserReplaceMyPreferences builder with application/json body
+func NewUserReplaceMyPreferencesRequest(server string, body UserReplaceMyPreferencesJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUserReplaceMyPreferencesRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewUserReplaceMyPreferencesRequestWithBody constructs an http.Request for the UserReplaceMyPreferences method, with any body, and a specified content type
+func NewUserReplaceMyPreferencesRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/preferences")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -347,6 +642,60 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /health (the `SystemHealth` operationId).
 	SystemHealthWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*SystemHealthResponse, error)
 
+	// UserGetMeWithResponse Read the caller's own account.
+	//
+	// Returns the account belonging to the access token. There is deliberately no `/users/{id}` counterpart in this version: the actor comes from the token, so one user cannot read another by changing a path segment.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /me (the `UserGetMe` operationId).
+	UserGetMeWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*UserGetMeResponse, error)
+
+	// UserUpdateMeWithBodyWithResponse Update the caller's own profile.
+	//
+	// Partially updates the profile. Omitted fields are left alone; unknown and null fields are rejected with 422.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /me (the `UserUpdateMe` operationId).
+	UserUpdateMeWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UserUpdateMeResponse, error)
+
+	// UserUpdateMeWithResponse Update the caller's own profile.
+	//
+	// Partially updates the profile. Omitted fields are left alone; unknown and null fields are rejected with 422.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /me (the `UserUpdateMe` operationId).
+	UserUpdateMeWithResponse(ctx context.Context, body UserUpdateMeJSONRequestBody, reqEditors ...RequestEditorFn) (*UserUpdateMeResponse, error)
+
+	// UserGetMyPreferencesWithResponse Read the caller's preferences.
+	//
+	// Returns the full preference set. Every account has one from registration onwards, so this never returns an empty body.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /me/preferences (the `UserGetMyPreferences` operationId).
+	UserGetMyPreferencesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*UserGetMyPreferencesResponse, error)
+
+	// UserReplaceMyPreferencesWithBodyWithResponse Replace the caller's preferences.
+	//
+	// Replaces the whole preference set. A field left out is not "unchanged", it is a validation failure -- which is what makes this idempotent.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /me/preferences (the `UserReplaceMyPreferences` operationId).
+	UserReplaceMyPreferencesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UserReplaceMyPreferencesResponse, error)
+
+	// UserReplaceMyPreferencesWithResponse Replace the caller's preferences.
+	//
+	// Replaces the whole preference set. A field left out is not "unchanged", it is a validation failure -- which is what makes this idempotent.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /me/preferences (the `UserReplaceMyPreferences` operationId).
+	UserReplaceMyPreferencesWithResponse(ctx context.Context, body UserReplaceMyPreferencesJSONRequestBody, reqEditors ...RequestEditorFn) (*UserReplaceMyPreferencesResponse, error)
+
 	// SystemPingWithResponse Check API dependency connectivity.
 	//
 	// Performs lightweight PostgreSQL and Redis checks for the trace proof.
@@ -417,6 +766,282 @@ func (r SystemHealthResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r SystemHealthResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// UserGetMeResponse200Headers the declared response headers of an HTTP 200 response for UserGetMe
+type UserGetMeResponse200Headers struct {
+	XRequestId *string
+}
+
+type UserGetMeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Me
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *UserGetMeResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UserGetMeResponse) GetJSON200() *Me {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r UserGetMeResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r UserGetMeResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r UserGetMeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UserGetMeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UserGetMeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UserGetMeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// UserUpdateMeResponse200Headers the declared response headers of an HTTP 200 response for UserUpdateMe
+type UserUpdateMeResponse200Headers struct {
+	XRequestId *string
+}
+
+type UserUpdateMeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Me
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *UserUpdateMeResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UserUpdateMeResponse) GetJSON200() *Me {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r UserUpdateMeResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r UserUpdateMeResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r UserUpdateMeResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r UserUpdateMeResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r UserUpdateMeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UserUpdateMeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UserUpdateMeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UserUpdateMeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// UserGetMyPreferencesResponse200Headers the declared response headers of an HTTP 200 response for UserGetMyPreferences
+type UserGetMyPreferencesResponse200Headers struct {
+	XRequestId *string
+}
+
+type UserGetMyPreferencesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Preferences
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *UserGetMyPreferencesResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UserGetMyPreferencesResponse) GetJSON200() *Preferences {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r UserGetMyPreferencesResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r UserGetMyPreferencesResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r UserGetMyPreferencesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UserGetMyPreferencesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UserGetMyPreferencesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UserGetMyPreferencesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// UserReplaceMyPreferencesResponse200Headers the declared response headers of an HTTP 200 response for UserReplaceMyPreferences
+type UserReplaceMyPreferencesResponse200Headers struct {
+	XRequestId *string
+}
+
+type UserReplaceMyPreferencesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Preferences
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *UserReplaceMyPreferencesResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UserReplaceMyPreferencesResponse) GetJSON200() *Preferences {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r UserReplaceMyPreferencesResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r UserReplaceMyPreferencesResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r UserReplaceMyPreferencesResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r UserReplaceMyPreferencesResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r UserReplaceMyPreferencesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UserReplaceMyPreferencesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UserReplaceMyPreferencesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UserReplaceMyPreferencesResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -596,6 +1221,96 @@ func (c *ClientWithResponses) SystemHealthWithResponse(ctx context.Context, reqE
 	return ParseSystemHealthResponse(rsp)
 }
 
+// UserGetMeWithResponse Read the caller's own account.
+//
+// Returns the account belonging to the access token. There is deliberately no `/users/{id}` counterpart in this version: the actor comes from the token, so one user cannot read another by changing a path segment.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /me (the `UserGetMe` operationId).
+func (c *ClientWithResponses) UserGetMeWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*UserGetMeResponse, error) {
+	rsp, err := c.UserGetMe(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserGetMeResponse(rsp)
+}
+
+// UserUpdateMeWithBodyWithResponse Update the caller's own profile.
+//
+// Partially updates the profile. Omitted fields are left alone; unknown and null fields are rejected with 422.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /me (the `UserUpdateMe` operationId).
+func (c *ClientWithResponses) UserUpdateMeWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UserUpdateMeResponse, error) {
+	rsp, err := c.UserUpdateMeWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserUpdateMeResponse(rsp)
+}
+
+// UserUpdateMeWithResponse Update the caller's own profile.
+//
+// Partially updates the profile. Omitted fields are left alone; unknown and null fields are rejected with 422.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /me (the `UserUpdateMe` operationId).
+func (c *ClientWithResponses) UserUpdateMeWithResponse(ctx context.Context, body UserUpdateMeJSONRequestBody, reqEditors ...RequestEditorFn) (*UserUpdateMeResponse, error) {
+	rsp, err := c.UserUpdateMe(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserUpdateMeResponse(rsp)
+}
+
+// UserGetMyPreferencesWithResponse Read the caller's preferences.
+//
+// Returns the full preference set. Every account has one from registration onwards, so this never returns an empty body.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /me/preferences (the `UserGetMyPreferences` operationId).
+func (c *ClientWithResponses) UserGetMyPreferencesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*UserGetMyPreferencesResponse, error) {
+	rsp, err := c.UserGetMyPreferences(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserGetMyPreferencesResponse(rsp)
+}
+
+// UserReplaceMyPreferencesWithBodyWithResponse Replace the caller's preferences.
+//
+// Replaces the whole preference set. A field left out is not "unchanged", it is a validation failure -- which is what makes this idempotent.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /me/preferences (the `UserReplaceMyPreferences` operationId).
+func (c *ClientWithResponses) UserReplaceMyPreferencesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UserReplaceMyPreferencesResponse, error) {
+	rsp, err := c.UserReplaceMyPreferencesWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserReplaceMyPreferencesResponse(rsp)
+}
+
+// UserReplaceMyPreferencesWithResponse Replace the caller's preferences.
+//
+// Replaces the whole preference set. A field left out is not "unchanged", it is a validation failure -- which is what makes this idempotent.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /me/preferences (the `UserReplaceMyPreferences` operationId).
+func (c *ClientWithResponses) UserReplaceMyPreferencesWithResponse(ctx context.Context, body UserReplaceMyPreferencesJSONRequestBody, reqEditors ...RequestEditorFn) (*UserReplaceMyPreferencesResponse, error) {
+	rsp, err := c.UserReplaceMyPreferences(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserReplaceMyPreferencesResponse(rsp)
+}
+
 // SystemPingWithResponse Check API dependency connectivity.
 //
 // Performs lightweight PostgreSQL and Redis checks for the trace proof.
@@ -667,6 +1382,246 @@ func ParseSystemHealthResponse(rsp *http.Response) (*SystemHealthResponse, error
 	switch {
 	case rsp.StatusCode == 200:
 		var headers SystemHealthResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseUserGetMeResponse parses an HTTP response from a UserGetMeWithResponse call
+func ParseUserGetMeResponse(rsp *http.Response) (*UserGetMeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UserGetMeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Me
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers UserGetMeResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseUserUpdateMeResponse parses an HTTP response from a UserUpdateMeWithResponse call
+func ParseUserUpdateMeResponse(rsp *http.Response) (*UserUpdateMeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UserUpdateMeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Me
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers UserUpdateMeResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseUserGetMyPreferencesResponse parses an HTTP response from a UserGetMyPreferencesWithResponse call
+func ParseUserGetMyPreferencesResponse(rsp *http.Response) (*UserGetMyPreferencesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UserGetMyPreferencesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Preferences
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers UserGetMyPreferencesResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseUserReplaceMyPreferencesResponse parses an HTTP response from a UserReplaceMyPreferencesWithResponse call
+func ParseUserReplaceMyPreferencesResponse(rsp *http.Response) (*UserReplaceMyPreferencesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UserReplaceMyPreferencesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Preferences
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers UserReplaceMyPreferencesResponse200Headers
 		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
 			var value string
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {

@@ -38,10 +38,13 @@ ticked by hand — `make docs` would put them back. Completed work is recorded h
 | Task | Done | What landed |
 |---|---|---|
 | P1.1 | 2026-08-09 | `core.users`, `core.profiles`, `core.user_preferences`, `core.learning_profiles`, the four `core` enums and the `citext` extension; the sqlc query set in `db/queries/user/`; schema and query integration tests |
+| P1.2 | 2026-08-09 | The vertical slice: `contract` (`Reader` with batched `GetManyByIDs`, `Creator`, `Summary`, events), `domain`, `repository`, `service`, `transport/http`. `GET`/`PATCH /me` and `GET`/`PUT /me/preferences` |
 
-That leaves the first generated item — "`users`, `profiles`, `user_preferences` tables and
-CRUD" — half done: the tables and the SQL exist, the module that calls them does not. **P1.2**
-adds `contract`, `domain`, `service`, `repository` and `transport/http`.
+That closes the first two generated items. Still open in Phase 1: avatar upload (P3.1), the
+admin user group (P4.1), deletion (P3.3), export (P3.2) and the `user.deleted` fan-out.
+
+Not started, and deliberately: `core.learning_profiles` has a table and queries but no service or
+endpoint. It gets one when onboarding needs it.
 
 ## Deferred (deliberately not doing yet)
 

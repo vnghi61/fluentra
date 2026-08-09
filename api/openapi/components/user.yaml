@@ -1,0 +1,206 @@
+Me:
+  type: object
+  description: >-
+    The authenticated caller's own account. There is no operation that returns
+    this shape for anybody else: the server reads the actor from the access
+    token and the path carries no user id.
+  required: [id, email, status, created_at, updated_at, profile]
+  properties:
+    id:
+      type: string
+      format: uuid
+      description: Stable identifier every other resource references.
+    email:
+      type: string
+      format: email
+      description: >-
+        Returned only here. No other operation exposes a user's email address.
+      example: learner@example.com
+    status:
+      $ref: '#/UserStatus'
+    email_verified_at:
+      type: [string, 'null']
+      format: date-time
+      description: When the address was verified, or null while it is unverified.
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+    profile:
+      $ref: '#/MeProfile'
+
+UserStatus:
+  type: string
+  enum: [active, suspended, pending_deletion, deleted]
+  description: >-
+    Account lifecycle state. `pending_deletion` is the 30-day grace period, in
+    which the account is unusable but still recoverable by the owner.
+
+MeProfile:
+  type: object
+  description: Descriptive data about the caller. Nothing here is used to authenticate.
+  required: [display_name, timezone]
+  properties:
+    display_name:
+      type: string
+      minLength: 1
+      maxLength: 50
+      description: >-
+        Shown to other learners. Names that impersonate Fluentra staff are
+        rejected.
+      example: Nghi
+    avatar_url:
+      type: [string, 'null']
+      format: uri
+      description: Public avatar URL, or null when none has been uploaded.
+    country:
+      type: [string, 'null']
+      pattern: '^[A-Z]{2}$'
+      description: ISO 3166-1 alpha-2 country code, or null.
+      example: VN
+    timezone:
+      type: string
+      description: >-
+        IANA timezone name. Every timestamp in the API stays UTC; this is used
+        to place reminders and streak boundaries in the learner's day.
+      example: Asia/Ho_Chi_Minh
+    date_of_birth:
+      type: [string, 'null']
+      format: date
+      description: >-
+        Used only for the age gate. It is never shown to other learners and
+        never leaves this operation.
+
+UpdateMeRequest:
+  type: object
+  description: >-
+    A partial update. Omit a field to leave it unchanged; an unknown field is a
+    validation failure rather than something quietly ignored, because a
+    misspelled field name that returns 200 is indistinguishable from success.
+  additionalProperties: false
+  minProperties: 1
+  properties:
+    display_name:
+      type: string
+      minLength: 1
+      maxLength: 50
+      example: Nghi Nguyen
+    country:
+      type: string
+      pattern: '^[A-Z]{2}$'
+      example: VN
+    timezone:
+      type: string
+      example: Asia/Ho_Chi_Minh
+    date_of_birth:
+      type: string
+      format: date
+      example: '1998-03-04'
+
+Preferences:
+  type: object
+  description: The caller's settings. Replaced as a whole, never patched.
+  required:
+    - locale
+    - theme
+    - daily_goal_minutes
+    - notification_channels
+    - ai_processing_opt_out
+    - updated_at
+  properties:
+    locale:
+      type: string
+      pattern: '^[a-z]{2}(-[A-Z]{2})?$'
+      description: BCP 47 language tag, optionally with a region.
+      example: vi
+    theme:
+      type: string
+      enum: [light, dark, system]
+    daily_goal_minutes:
+      type: integer
+      minimum: 5
+      maximum: 480
+      description: Minutes of study the learner is aiming for each day.
+      example: 15
+    notification_channels:
+      type: array
+      description: Channels the learner accepts notifications on.
+      uniqueItems: true
+      items:
+        type: string
+        enum: [in_app, email, push]
+      example: [in_app, email]
+    quiet_hours:
+      oneOf:
+        - $ref: '#/QuietHours'
+        - type: 'null'
+      description: >-
+        A window in which no notification is delivered, or null for none. It is
+        one object rather than two fields so that half a window cannot be
+        expressed.
+    ai_processing_opt_out:
+      type: boolean
+      description: >-
+        Disables AI grading only. Deterministic exercises keep working, so
+        opting out never costs the learner access to the product.
+    updated_at:
+      type: string
+      format: date-time
+
+QuietHours:
+  type: object
+  description: >-
+    Local wall-clock times in the learner's timezone. A window may wrap past
+    midnight, which is the normal case for sleeping hours.
+  required: [start, end]
+  properties:
+    start:
+      type: string
+      pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+      example: '22:00'
+    end:
+      type: string
+      pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+      example: '07:00'
+
+ReplacePreferencesRequest:
+  type: object
+  description: >-
+    The complete preference set. This is a PUT: every field is required, and
+    what the caller sends is exactly what is stored.
+  additionalProperties: false
+  required:
+    - locale
+    - theme
+    - daily_goal_minutes
+    - notification_channels
+    - ai_processing_opt_out
+  properties:
+    locale:
+      type: string
+      pattern: '^[a-z]{2}(-[A-Z]{2})?$'
+      example: vi
+    theme:
+      type: string
+      enum: [light, dark, system]
+    daily_goal_minutes:
+      type: integer
+      minimum: 5
+      maximum: 480
+      example: 30
+    notification_channels:
+      type: array
+      uniqueItems: true
+      items:
+        type: string
+        enum: [in_app, email, push]
+      example: [in_app, push]
+    quiet_hours:
+      oneOf:
+        - $ref: '#/QuietHours'
+        - type: 'null'
+    ai_processing_opt_out:
+      type: boolean
+      example: false
