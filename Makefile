@@ -168,7 +168,13 @@ cover: ## Coverage report
 # COVERAGE_MIN is a ratchet, not a target. It sits just under the measured
 # figure so an ordinary refactor does not trip it, while deleting a test suite
 # does. Raise it when coverage rises; never lower it to make a build pass.
-COVERAGE_MIN ?= 45.0
+#
+# Raised from 45.0 when the gate started measuring hand-written code only (see
+# cover-gate). Over that set, `main` reads 61.6% and this branch 67.2%. The
+# ratchet sits under both rather than just under the higher one: pinning it to
+# a single branch's figure makes the next task fail on its first commit for
+# reasons that have nothing to do with its tests.
+COVERAGE_MIN ?= 60.0
 
 cover-check: ## Run the integration suite for coverage, then gate on it
 	go test -tags=integration -coverprofile=coverage.out -covermode=atomic ./... > /dev/null
@@ -178,17 +184,20 @@ cover-check: ## Run the integration suite for coverage, then gate on it
 # CI can produce the profile once during its integration step instead of paying
 # for a third full pass through the suite.
 #
-# internal/generated is filtered out first. `go test -coverprofile` instruments
-# only the package under test, so a generated query package is pure denominator:
-# nothing can ever cover it, and every module that adds sqlc queries drags the
-# ratchet down for a reason that says nothing about test quality. The user
-# module's first four query files alone moved the total from 46.9% to 43.8% and
-# would have failed this gate. Measured over hand-written code only, the same
-# tree reads 47.0% both before and after those files existed — which is the
-# number the ratchet is supposed to be watching.
+# Generated code is filtered out first: everything under internal/generated, and
+# every *.gen.go. That is the same set GENERATED_PATHS names, because it is the
+# same idea — what the generators write, nobody writes tests for.
+#
+# `go test -coverprofile` instruments only the package under test, so generated
+# code is pure denominator: nothing can ever cover it, and every module that
+# adds queries or endpoints drags the ratchet down for a reason that says
+# nothing about test quality. Both halves have been measured. The user module's
+# first four sqlc query files moved the total from 46.9% to 43.8%; its four
+# OpenAPI operations then tripled client.gen.go and took it to 44.9%. Neither
+# had anything to do with how well the hand-written code was tested.
 cover-gate: ## Fail if coverage.out is below COVERAGE_MIN
 	@test -f coverage.out || (echo "no coverage.out; run make cover-check" && exit 1)
-	@grep -v '/internal/generated/' coverage.out > coverage.handwritten.out; \
+	@grep -v -e '/internal/generated/' -e '\.gen\.go:' coverage.out > coverage.handwritten.out; \
 	 total=$$(go tool cover -func=coverage.handwritten.out | awk '/^total:/ {print $$3}' | tr -d '%'); \
 	 rm -f coverage.handwritten.out; \
 	 echo "total coverage: $$total% of hand-written code (minimum $(COVERAGE_MIN)%)"; \
