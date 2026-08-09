@@ -26,10 +26,24 @@ function fail(check, message) {
 // ---------------------------------------------------------------- front matter
 
 /**
+ * Reads a file with line endings normalised to LF.
+ *
+ * Every parser here is line-oriented, and a Windows checkout with
+ * `core.autocrlf=true` produces `\r\n`. In JavaScript `\r` is a line terminator
+ * that `.` does not match, so `(.*)$` failed on every front-matter field and
+ * this checker reported all 263 entries as missing — while staying green in CI,
+ * because Linux checkouts are LF. Green on the runner and nonsense on the
+ * maintainer's machine is the worst way for a gate to be wrong.
+ */
+function readText(file) {
+  return fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
+}
+
+/**
  * Minimal front-matter reader. Deliberately not a YAML parser: the front-matter
  * in this repository is flat scalars and inline `[a, b]` lists, and adding a
  * dependency to a checker that must run before `npm install` would be a
- * bootstrap problem.
+ * bootstrap problem. Expects LF input — read through readText.
  */
 function frontMatter(content) {
   if (!content.startsWith('---')) return null;
@@ -118,7 +132,7 @@ const modules = new Map();
 console.log('==> 1. AGENT.md front-matter schema and required sections');
 for (const file of moduleAgentFiles) {
   const where = rel(file);
-  const content = fs.readFileSync(file, 'utf8');
+  const content = readText(file);
   const fields = frontMatter(content);
 
   if (!fields) {
@@ -212,8 +226,8 @@ const archPath = path.join(ROOT, '.go-arch-lint.yml');
 const indexPath = path.join(ROOT, 'MODULE_INDEX.md');
 
 if (fs.existsSync(archPath) && fs.existsSync(indexPath)) {
-  const arch = fs.readFileSync(archPath, 'utf8');
-  const index = fs.readFileSync(indexPath, 'utf8');
+  const arch = readText(archPath);
+  const index = readText(indexPath);
 
   // Mermaid node aliases: `AUTH[auth]` -> AUTH = auth
   const alias = new Map();
@@ -291,7 +305,7 @@ console.log('==> 4. openapi.yaml paths vs the owning module API.md');
 // moment a module ships its first endpoint.
 const specPath = path.join(ROOT, 'api', 'openapi', 'openapi.yaml');
 if (fs.existsSync(specPath)) {
-  const spec = fs.readFileSync(specPath, 'utf8');
+  const spec = readText(specPath);
   const pathsBlock = spec.split(/^paths:/m)[1] || '';
 
   let currentPath = null;
@@ -321,7 +335,7 @@ if (fs.existsSync(specPath)) {
       continue;
     }
     checked += 1;
-    if (!fs.readFileSync(apiDoc, 'utf8').includes(apiPath)) {
+    if (!readText(apiDoc).includes(apiPath)) {
       fail('api-drift', `${apiPath} is in openapi.yaml but ${rel(apiDoc)} does not mention it`);
     }
   }
