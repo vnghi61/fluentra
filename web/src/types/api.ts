@@ -108,6 +108,26 @@ export interface paths {
         patch: operations["userUpdateMe"];
         trace?: never;
     };
+    "/me/permissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read the caller's own effective permissions.
+         * @description Resolves the caller's roles to the flat set of named permissions they grant. Advisory only: it exists so the interface can hide actions that would fail, and every server call re-checks regardless of what the client believes.
+         */
+        get: operations["rbacGetMyPermissions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/me/preferences": {
         parameters: {
             query?: never;
@@ -127,6 +147,74 @@ export interface paths {
         put: operations["userReplaceMyPreferences"];
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List roles and the permissions they grant.
+         * @description The catalogue is small and fixed, so it is returned whole rather than paginated.
+         */
+        get: operations["rbacListRoles"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/users/{id}/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The user whose roles are being changed. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Grant a role to a user.
+         * @description Granting is idempotent: a role the user already holds is not an error. An actor cannot grant themselves a role they do not already hold.
+         */
+        post: operations["rbacAssignRole"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/users/{id}/roles/{role}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The user whose roles are being changed. */
+                id: string;
+                /** @description The role to revoke. */
+                role: components["schemas"]["RoleName"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Revoke a role from a user.
+         * @description Revoking is idempotent. Two revocations are refused: an actor removing their own `admin` role, and any revocation that would leave the system with no administrator.
+         */
+        delete: operations["rbacRevokeRole"];
         options?: never;
         head?: never;
         patch?: never;
@@ -379,6 +467,63 @@ export interface components {
             quiet_hours?: components["schemas"]["QuietHours"] | null;
             /** @example false */
             ai_processing_opt_out: boolean;
+        };
+        /**
+         * @description What the caller is allowed to do, as the server currently sees it.
+         *     This is advisory (BR-RBAC-08). It exists so the interface can hide actions that would fail, not so the client can decide anything: every server call re-checks, and a client that has this list is no closer to using a permission it was not granted.
+         */
+        MyPermissions: {
+            /**
+             * @description The roles assigned to the caller. There are exactly two in this product.
+             * @example [
+             *       "user"
+             *     ]
+             */
+            roles: components["schemas"]["RoleName"][];
+            /**
+             * @description Every named permission the caller's roles grant, resolved and flattened. A learner holds none of these — access to their own data is not a named permission, it is what `/me` means.
+             * @example []
+             */
+            permissions: string[];
+        };
+        /**
+         * @description Exactly two roles exist (BR-RBAC-02). A third is an ADR, not a row: it changes the shape of the product rather than its data.
+         * @enum {string}
+         */
+        RoleName: "admin" | "user";
+        /** @description A role and the permissions it grants. */
+        Role: {
+            name: components["schemas"]["RoleName"];
+            /** @example Full administrative access. */
+            description: string;
+            /**
+             * @example [
+             *       "rbac.assign",
+             *       "rbac.read",
+             *       "user.list"
+             *     ]
+             */
+            permissions: string[];
+        };
+        /** @description The role catalogue. It is small and fixed, so it is not paginated. */
+        RoleList: {
+            items: components["schemas"]["Role"][];
+        };
+        /** @description Grant a role to a user. */
+        AssignRoleRequest: {
+            role: components["schemas"]["RoleName"];
+        };
+        /** @description The roles held by one user, after the change. */
+        UserRoles: {
+            /** Format: uuid */
+            user_id: string;
+            /**
+             * @example [
+             *       "admin",
+             *       "user"
+             *     ]
+             */
+            roles: components["schemas"]["RoleName"][];
         };
     };
     responses: {
@@ -803,6 +948,36 @@ export interface operations {
             422: components["responses"]["ValidationFailed"];
         };
     };
+    rbacGetMyPermissions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The caller's roles and permissions. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "roles": [
+                     *         "user"
+                     *       ],
+                     *       "permissions": []
+                     *     }
+                     */
+                    "application/json": components["schemas"]["MyPermissions"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
     userGetMyPreferences: {
         parameters: {
             query?: never;
@@ -903,6 +1078,135 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
             422: components["responses"]["ValidationFailed"];
+        };
+    };
+    rbacListRoles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every role, with its permissions. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "name": "admin",
+                     *           "description": "Full administrative access.",
+                     *           "permissions": [
+                     *             "rbac.assign",
+                     *             "rbac.read",
+                     *             "user.list"
+                     *           ]
+                     *         },
+                     *         {
+                     *           "name": "user",
+                     *           "description": "A learner. Holds no named permissions.",
+                     *           "permissions": []
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["RoleList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    rbacAssignRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The user whose roles are being changed. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "role": "admin"
+                 *     }
+                 */
+                "application/json": components["schemas"]["AssignRoleRequest"];
+            };
+        };
+        responses: {
+            /** @description The user's roles after the grant. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "roles": [
+                     *         "admin",
+                     *         "user"
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["UserRoles"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    rbacRevokeRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The user whose roles are being changed. */
+                id: string;
+                /** @description The role to revoke. */
+                role: components["schemas"]["RoleName"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The user's roles after the revocation. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "roles": [
+                     *         "admin",
+                     *         "user"
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["UserRoles"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
 }

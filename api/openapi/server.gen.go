@@ -18,6 +18,7 @@ import (
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-chi/chi/v5"
+	"github.com/oapi-codegen/runtime"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
@@ -150,6 +151,24 @@ func (e ReplacePreferencesRequestTheme) Valid() bool {
 	}
 }
 
+// Defines values for RoleName.
+const (
+	Admin RoleName = "admin"
+	User  RoleName = "user"
+)
+
+// Valid indicates whether the value is a known member of the RoleName enum.
+func (e RoleName) Valid() bool {
+	switch e {
+	case Admin:
+		return true
+	case User:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for UserStatus.
 const (
 	Active          UserStatus = "active"
@@ -172,6 +191,12 @@ func (e UserStatus) Valid() bool {
 	default:
 		return false
 	}
+}
+
+// AssignRoleRequest Grant a role to a user.
+type AssignRoleRequest struct {
+	// Role Exactly two roles exist (BR-RBAC-02). A third is an ADR, not a row: it changes the shape of the product rather than its data.
+	Role RoleName `json:"role"`
 }
 
 // Cursor Opaque, URL-safe cursor encoding a stable sort value and ID.
@@ -223,6 +248,16 @@ type MeProfile struct {
 
 	// Timezone IANA timezone name. Every timestamp in the API stays UTC; this is used to place reminders and streak boundaries in the learner's day.
 	Timezone string `json:"timezone"`
+}
+
+// MyPermissions What the caller is allowed to do, as the server currently sees it.
+// This is advisory (BR-RBAC-08). It exists so the interface can hide actions that would fail, not so the client can decide anything: every server call re-checks, and a client that has this list is no closer to using a permission it was not granted.
+type MyPermissions struct {
+	// Permissions Every named permission the caller's roles grant, resolved and flattened. A learner holds none of these — access to their own data is not a named permission, it is what `/me` means.
+	Permissions []string `json:"permissions"`
+
+	// Roles The roles assigned to the caller. There are exactly two in this product.
+	Roles []RoleName `json:"roles"`
 }
 
 // Page Cursor pagination metadata returned with every user-facing list.
@@ -330,12 +365,35 @@ type ReplacePreferencesRequestNotificationChannels string
 // ReplacePreferencesRequestTheme defines model for ReplacePreferencesRequest.Theme.
 type ReplacePreferencesRequestTheme string
 
+// Role A role and the permissions it grants.
+type Role struct {
+	Description string `json:"description"`
+
+	// Name Exactly two roles exist (BR-RBAC-02). A third is an ADR, not a row: it changes the shape of the product rather than its data.
+	Name        RoleName `json:"name"`
+	Permissions []string `json:"permissions"`
+}
+
+// RoleList The role catalogue. It is small and fixed, so it is not paginated.
+type RoleList struct {
+	Items []Role `json:"items"`
+}
+
+// RoleName Exactly two roles exist (BR-RBAC-02). A third is an ADR, not a row: it changes the shape of the product rather than its data.
+type RoleName string
+
 // UpdateMeRequest A partial update. Omit a field to leave it unchanged; an unknown field is a validation failure rather than something quietly ignored, because a misspelled field name that returns 200 is indistinguishable from success.
 type UpdateMeRequest struct {
 	Country     *string             `json:"country,omitempty"`
 	DateOfBirth *openapi_types.Date `json:"date_of_birth,omitempty"`
 	DisplayName *string             `json:"display_name,omitempty"`
 	Timezone    *string             `json:"timezone,omitempty"`
+}
+
+// UserRoles The roles held by one user, after the change.
+type UserRoles struct {
+	Roles  []RoleName         `json:"roles"`
+	UserId openapi_types.UUID `json:"user_id"`
 }
 
 // UserStatus Account lifecycle state. `pending_deletion` is the 30-day grace period, in which the account is unusable but still recoverable by the owner.
@@ -416,6 +474,9 @@ type Unauthorized = Problem
 // ValidationFailed defines model for ValidationFailed.
 type ValidationFailed = ValidationProblem
 
+// RbacAssignRoleJSONRequestBody defines body for RbacAssignRole for application/json ContentType.
+type RbacAssignRoleJSONRequestBody = AssignRoleRequest
+
 // UserUpdateMeJSONRequestBody defines body for UserUpdateMe for application/json ContentType.
 type UserUpdateMeJSONRequestBody = UpdateMeRequest
 
@@ -424,6 +485,15 @@ type UserReplaceMyPreferencesJSONRequestBody = ReplacePreferencesRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// RbacListRoles List roles and the permissions they grant.
+	// (GET /admin/roles)
+	RbacListRoles(w http.ResponseWriter, r *http.Request)
+	// RbacAssignRole Grant a role to a user.
+	// (POST /admin/users/{id}/roles)
+	RbacAssignRole(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	// RbacRevokeRole Revoke a role from a user.
+	// (DELETE /admin/users/{id}/roles/{role})
+	RbacRevokeRole(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, role RoleName)
 	// SystemHealth Check process liveness.
 	// (GET /health)
 	SystemHealth(w http.ResponseWriter, r *http.Request)
@@ -433,6 +503,9 @@ type ServerInterface interface {
 	// UserUpdateMe Update the caller's own profile.
 	// (PATCH /me)
 	UserUpdateMe(w http.ResponseWriter, r *http.Request)
+	// RbacGetMyPermissions Read the caller's own effective permissions.
+	// (GET /me/permissions)
+	RbacGetMyPermissions(w http.ResponseWriter, r *http.Request)
 	// UserGetMyPreferences Read the caller's preferences.
 	// (GET /me/preferences)
 	UserGetMyPreferences(w http.ResponseWriter, r *http.Request)
@@ -454,6 +527,24 @@ type ServerInterface interface {
 
 type Unimplemented struct{}
 
+// RbacListRoles List roles and the permissions they grant.
+// (GET /admin/roles)
+func (_ Unimplemented) RbacListRoles(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// RbacAssignRole Grant a role to a user.
+// (POST /admin/users/{id}/roles)
+func (_ Unimplemented) RbacAssignRole(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// RbacRevokeRole Revoke a role from a user.
+// (DELETE /admin/users/{id}/roles/{role})
+func (_ Unimplemented) RbacRevokeRole(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, role RoleName) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // SystemHealth Check process liveness.
 // (GET /health)
 func (_ Unimplemented) SystemHealth(w http.ResponseWriter, r *http.Request) {
@@ -469,6 +560,12 @@ func (_ Unimplemented) UserGetMe(w http.ResponseWriter, r *http.Request) {
 // UserUpdateMe Update the caller's own profile.
 // (PATCH /me)
 func (_ Unimplemented) UserUpdateMe(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// RbacGetMyPermissions Read the caller's own effective permissions.
+// (GET /me/permissions)
+func (_ Unimplemented) RbacGetMyPermissions(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -511,6 +608,81 @@ type ServerInterfaceWrapper struct {
 
 type MiddlewareFunc func(http.Handler) http.Handler
 
+// RbacListRoles operation middleware
+func (siw *ServerInterfaceWrapper) RbacListRoles(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RbacListRoles(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RbacAssignRole operation middleware
+func (siw *ServerInterfaceWrapper) RbacAssignRole(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RbacAssignRole(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RbacRevokeRole operation middleware
+func (siw *ServerInterfaceWrapper) RbacRevokeRole(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "role" -------------
+	var role RoleName
+
+	err = runtime.BindStyledParameterWithOptions("simple", "role", chi.URLParam(r, "role"), &role, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "role", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RbacRevokeRole(w, r, id, role)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // SystemHealth operation middleware
 func (siw *ServerInterfaceWrapper) SystemHealth(w http.ResponseWriter, r *http.Request) {
 
@@ -544,6 +716,20 @@ func (siw *ServerInterfaceWrapper) UserUpdateMe(w http.ResponseWriter, r *http.R
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UserUpdateMe(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RbacGetMyPermissions operation middleware
+func (siw *ServerInterfaceWrapper) RbacGetMyPermissions(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RbacGetMyPermissions(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -755,10 +941,22 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Patch(options.BaseURL+"/me", wrapper.UserUpdateMe)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/me/permissions", wrapper.RbacGetMyPermissions)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/me/preferences", wrapper.UserGetMyPreferences)
 	})
 	r.Group(func(r chi.Router) {
 		r.Put(options.BaseURL+"/me/preferences", wrapper.UserReplaceMyPreferences)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/admin/roles", wrapper.RbacListRoles)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/admin/users/{id}/roles", wrapper.RbacAssignRole)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/admin/users/{id}/roles/{role}", wrapper.RbacRevokeRole)
 	})
 
 	return r
@@ -795,6 +993,279 @@ type TooManyRequestsApplicationProblemPlusJSONResponse struct {
 type UnauthorizedApplicationProblemPlusJSONResponse Problem
 
 type ValidationFailedApplicationProblemPlusJSONResponse ValidationProblem
+
+type RbacListRolesRequestObject struct {
+}
+
+type RbacListRolesResponseObject interface {
+	VisitRbacListRolesResponse(w http.ResponseWriter) error
+}
+
+type RbacListRoles200ResponseHeaders struct {
+	XRequestId *string
+}
+
+type RbacListRoles200JSONResponse struct {
+	Body    RoleList
+	Headers RbacListRoles200ResponseHeaders
+}
+
+func (response RbacListRoles200JSONResponse) VisitRbacListRolesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.XRequestId != nil {
+		w.Header().Set("X-Request-Id", fmt.Sprint(*response.Headers.XRequestId))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RbacListRoles401ApplicationProblemPlusJSONResponse struct {
+	UnauthorizedApplicationProblemPlusJSONResponse
+}
+
+func (response RbacListRoles401ApplicationProblemPlusJSONResponse) VisitRbacListRolesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RbacListRoles403ApplicationProblemPlusJSONResponse struct {
+	ForbiddenApplicationProblemPlusJSONResponse
+}
+
+func (response RbacListRoles403ApplicationProblemPlusJSONResponse) VisitRbacListRolesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RbacAssignRoleRequestObject struct {
+	Id   openapi_types.UUID `json:"id"`
+	Body *RbacAssignRoleJSONRequestBody
+}
+
+type RbacAssignRoleResponseObject interface {
+	VisitRbacAssignRoleResponse(w http.ResponseWriter) error
+}
+
+type RbacAssignRole200ResponseHeaders struct {
+	XRequestId *string
+}
+
+type RbacAssignRole200JSONResponse struct {
+	Body    UserRoles
+	Headers RbacAssignRole200ResponseHeaders
+}
+
+func (response RbacAssignRole200JSONResponse) VisitRbacAssignRoleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.XRequestId != nil {
+		w.Header().Set("X-Request-Id", fmt.Sprint(*response.Headers.XRequestId))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RbacAssignRole400ApplicationProblemPlusJSONResponse struct {
+	BadRequestApplicationProblemPlusJSONResponse
+}
+
+func (response RbacAssignRole400ApplicationProblemPlusJSONResponse) VisitRbacAssignRoleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RbacAssignRole401ApplicationProblemPlusJSONResponse struct {
+	UnauthorizedApplicationProblemPlusJSONResponse
+}
+
+func (response RbacAssignRole401ApplicationProblemPlusJSONResponse) VisitRbacAssignRoleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RbacAssignRole403ApplicationProblemPlusJSONResponse struct {
+	ForbiddenApplicationProblemPlusJSONResponse
+}
+
+func (response RbacAssignRole403ApplicationProblemPlusJSONResponse) VisitRbacAssignRoleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RbacAssignRole404ApplicationProblemPlusJSONResponse struct {
+	NotFoundApplicationProblemPlusJSONResponse
+}
+
+func (response RbacAssignRole404ApplicationProblemPlusJSONResponse) VisitRbacAssignRoleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RbacAssignRole422ApplicationProblemPlusJSONResponse struct {
+	ValidationFailedApplicationProblemPlusJSONResponse
+}
+
+func (response RbacAssignRole422ApplicationProblemPlusJSONResponse) VisitRbacAssignRoleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RbacRevokeRoleRequestObject struct {
+	Id   openapi_types.UUID `json:"id"`
+	Role RoleName           `json:"role"`
+}
+
+type RbacRevokeRoleResponseObject interface {
+	VisitRbacRevokeRoleResponse(w http.ResponseWriter) error
+}
+
+type RbacRevokeRole200ResponseHeaders struct {
+	XRequestId *string
+}
+
+type RbacRevokeRole200JSONResponse struct {
+	Body    UserRoles
+	Headers RbacRevokeRole200ResponseHeaders
+}
+
+func (response RbacRevokeRole200JSONResponse) VisitRbacRevokeRoleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.XRequestId != nil {
+		w.Header().Set("X-Request-Id", fmt.Sprint(*response.Headers.XRequestId))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RbacRevokeRole401ApplicationProblemPlusJSONResponse struct {
+	UnauthorizedApplicationProblemPlusJSONResponse
+}
+
+func (response RbacRevokeRole401ApplicationProblemPlusJSONResponse) VisitRbacRevokeRoleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RbacRevokeRole403ApplicationProblemPlusJSONResponse struct {
+	ForbiddenApplicationProblemPlusJSONResponse
+}
+
+func (response RbacRevokeRole403ApplicationProblemPlusJSONResponse) VisitRbacRevokeRoleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RbacRevokeRole404ApplicationProblemPlusJSONResponse struct {
+	NotFoundApplicationProblemPlusJSONResponse
+}
+
+func (response RbacRevokeRole404ApplicationProblemPlusJSONResponse) VisitRbacRevokeRoleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RbacRevokeRole409ApplicationProblemPlusJSONResponse struct {
+	ConflictApplicationProblemPlusJSONResponse
+}
+
+func (response RbacRevokeRole409ApplicationProblemPlusJSONResponse) VisitRbacRevokeRoleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
 
 type SystemHealthRequestObject struct {
 }
@@ -982,6 +1453,53 @@ func (response UserUpdateMe422ApplicationProblemPlusJSONResponse) VisitUserUpdat
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RbacGetMyPermissionsRequestObject struct {
+}
+
+type RbacGetMyPermissionsResponseObject interface {
+	VisitRbacGetMyPermissionsResponse(w http.ResponseWriter) error
+}
+
+type RbacGetMyPermissions200ResponseHeaders struct {
+	XRequestId *string
+}
+
+type RbacGetMyPermissions200JSONResponse struct {
+	Body    MyPermissions
+	Headers RbacGetMyPermissions200ResponseHeaders
+}
+
+func (response RbacGetMyPermissions200JSONResponse) VisitRbacGetMyPermissionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.XRequestId != nil {
+		w.Header().Set("X-Request-Id", fmt.Sprint(*response.Headers.XRequestId))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RbacGetMyPermissions401ApplicationProblemPlusJSONResponse struct {
+	UnauthorizedApplicationProblemPlusJSONResponse
+}
+
+func (response RbacGetMyPermissions401ApplicationProblemPlusJSONResponse) VisitRbacGetMyPermissionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -1259,6 +1777,15 @@ func (response SystemVersion200JSONResponse) VisitSystemVersionResponse(w http.R
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+	// RbacListRoles List roles and the permissions they grant.
+	// (GET /admin/roles)
+	RbacListRoles(ctx context.Context, request RbacListRolesRequestObject) (RbacListRolesResponseObject, error)
+	// RbacAssignRole Grant a role to a user.
+	// (POST /admin/users/{id}/roles)
+	RbacAssignRole(ctx context.Context, request RbacAssignRoleRequestObject) (RbacAssignRoleResponseObject, error)
+	// RbacRevokeRole Revoke a role from a user.
+	// (DELETE /admin/users/{id}/roles/{role})
+	RbacRevokeRole(ctx context.Context, request RbacRevokeRoleRequestObject) (RbacRevokeRoleResponseObject, error)
 	// SystemHealth Check process liveness.
 	// (GET /health)
 	SystemHealth(ctx context.Context, request SystemHealthRequestObject) (SystemHealthResponseObject, error)
@@ -1268,6 +1795,9 @@ type StrictServerInterface interface {
 	// UserUpdateMe Update the caller's own profile.
 	// (PATCH /me)
 	UserUpdateMe(ctx context.Context, request UserUpdateMeRequestObject) (UserUpdateMeResponseObject, error)
+	// RbacGetMyPermissions Read the caller's own effective permissions.
+	// (GET /me/permissions)
+	RbacGetMyPermissions(ctx context.Context, request RbacGetMyPermissionsRequestObject) (RbacGetMyPermissionsResponseObject, error)
 	// UserGetMyPreferences Read the caller's preferences.
 	// (GET /me/preferences)
 	UserGetMyPreferences(ctx context.Context, request UserGetMyPreferencesRequestObject) (UserGetMyPreferencesResponseObject, error)
@@ -1322,6 +1852,90 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictHTTPServerOptions
+}
+
+// RbacListRoles operation middleware
+func (sh *strictHandler) RbacListRoles(w http.ResponseWriter, r *http.Request) {
+	var request RbacListRolesRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RbacListRoles(ctx, request.(RbacListRolesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RbacListRoles")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RbacListRolesResponseObject); ok {
+		if err := validResponse.VisitRbacListRolesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RbacAssignRole operation middleware
+func (sh *strictHandler) RbacAssignRole(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	var request RbacAssignRoleRequestObject
+
+	request.Id = id
+
+	var body RbacAssignRoleJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RbacAssignRole(ctx, request.(RbacAssignRoleRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RbacAssignRole")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RbacAssignRoleResponseObject); ok {
+		if err := validResponse.VisitRbacAssignRoleResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RbacRevokeRole operation middleware
+func (sh *strictHandler) RbacRevokeRole(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, role RoleName) {
+	var request RbacRevokeRoleRequestObject
+
+	request.Id = id
+	request.Role = role
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RbacRevokeRole(ctx, request.(RbacRevokeRoleRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RbacRevokeRole")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RbacRevokeRoleResponseObject); ok {
+		if err := validResponse.VisitRbacRevokeRoleResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
 }
 
 // SystemHealth operation middleware
@@ -1396,6 +2010,30 @@ func (sh *strictHandler) UserUpdateMe(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(UserUpdateMeResponseObject); ok {
 		if err := validResponse.VisitUserUpdateMeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RbacGetMyPermissions operation middleware
+func (sh *strictHandler) RbacGetMyPermissions(w http.ResponseWriter, r *http.Request) {
+	var request RbacGetMyPermissionsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RbacGetMyPermissions(ctx, request.(RbacGetMyPermissionsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RbacGetMyPermissions")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RbacGetMyPermissionsResponseObject); ok {
+		if err := validResponse.VisitRbacGetMyPermissionsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -1535,93 +2173,113 @@ func (sh *strictHandler) SystemVersion(w http.ResponseWriter, r *http.Request) {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
-	"S6mJKwTbEPhw8/B/AQAA//8=",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

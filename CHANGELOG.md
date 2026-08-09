@@ -28,6 +28,9 @@ generated text describes commits; release notes should describe change.
 - The `core` identity schema: `users`, `profiles`, `user_preferences`, `learning_profiles`
 - `GET` and `PATCH /api/v1/me` — read and update your own profile
 - `GET` and `PUT /api/v1/me/preferences` — read and replace your own settings
+- Roles and permissions: the `core` tables, the seeded two-role catalogue, and the guard
+- `GET /api/v1/me/permissions` — what the caller is allowed to do
+- `GET /api/v1/admin/roles`, and granting and revoking a user's roles
 
 ### Notes
 

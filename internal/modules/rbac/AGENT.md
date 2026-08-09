@@ -10,7 +10,7 @@ tables: [roles, permissions, role_permissions, user_roles]
 depends_on: [cache, audit]
 depended_on_by: [auth, admin, content, questionbank, exam, user]
 spec_version: 1.0.0
-last_verified: 2026-08-06
+last_verified: 2026-08-10
 ---
 
 # rbac — AGENT.md
@@ -100,6 +100,21 @@ Migrations: `db/migrations/rbac/` · Queries: `db/queries/rbac/`
 
 <!-- END GENERATED: schema -->
 
+### What exists today (P1.3, `db/migrations/rbac/1700000020_create_rbac_tables.sql`)
+
+All four tables, plus the reference data.
+
+**The roles, the permission catalogue and the admin mapping are in the migration, not in
+`db/seeds/rbac.sql`.** Authorization is deny-by-default, so a database with an empty catalogue is
+one where every administrative operation is refused and nobody can grant themselves the ability
+to fix it. A deployment that ran migrations but not seeds would be unadministrable. The seed file
+does the part that genuinely is development data: giving a local account the admin role.
+
+`admin` holds every permission, expressed as a `CROSS JOIN` rather than a list — so a permission
+added by a later migration is granted without this one having to be edited, and the two cannot
+drift apart. `user` holds none: reading your own profile is not a named permission, it is what the
+`/me` routes mean.
+
 ## 6. HTTP endpoints
 
 Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openapi.yaml)
@@ -113,6 +128,16 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | `POST` | `/api/v1/admin/users/{id}/roles` | `rbac.assign` | Grant a role |
 | `DELETE` | `/api/v1/admin/users/{id}/roles/{role}` | `rbac.assign` | Revoke a role |
 <!-- END GENERATED: endpoints -->
+
+### Implemented (P1.3)
+
+All four. Two things to know before adding a fifth:
+
+- **The `/admin` group has a middleware *and* every handler calls `Require`.** The middleware says
+  "you are staff"; the guard says "you may do this particular thing". Neither replaces the other,
+  and an operation reached by a job or an event consumer has no middleware at all.
+- **A malformed user id in the path is a 404, not a 400.** Telling an unauthorised caller that
+  their input was not a uuid tells them something about what they are probing.
 
 ## 7. Folder map
 
@@ -179,6 +204,12 @@ and fails `go-arch-lint` in CI.
 - No time-bounded grants.
 - Permission changes take up to 5 minutes to propagate through the cache unless explicitly busted.
 <!-- END GENERATED: limitations -->
+
+- BR-RBAC-06 (granting `admin` forces MFA enrolment) is not implemented: MFA arrives with WP2.
+  The grant succeeds and enrolment is not yet demanded.
+- BR-RBAC-07 raises the `warn` log today. The audit event type exists in `contract`
+  (`rbac.access_denied`) but nothing publishes it: a denial happens outside any transaction, so it
+  cannot go through the outbox the way a role change does. It is wired when `audit` lands (P1.4).
 
 ## 12. Coding conventions (module-specific)
 

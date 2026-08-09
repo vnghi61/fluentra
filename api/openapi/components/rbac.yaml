@@ -1,0 +1,87 @@
+MyPermissions:
+  type: object
+  description: >-
+    What the caller is allowed to do, as the server currently sees it.
+
+    This is advisory (BR-RBAC-08). It exists so the interface can hide actions
+    that would fail, not so the client can decide anything: every server call
+    re-checks, and a client that has this list is no closer to using a
+    permission it was not granted.
+  required: [roles, permissions]
+  properties:
+    roles:
+      type: array
+      description: The roles assigned to the caller. There are exactly two in this product.
+      uniqueItems: true
+      items:
+        $ref: '#/RoleName'
+      example: [user]
+    permissions:
+      type: array
+      description: >-
+        Every named permission the caller's roles grant, resolved and flattened.
+        A learner holds none of these — access to their own data is not a named
+        permission, it is what `/me` means.
+      uniqueItems: true
+      items:
+        type: string
+        pattern: '^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)?$'
+      example: []
+
+RoleName:
+  type: string
+  enum: [admin, user]
+  description: >-
+    Exactly two roles exist (BR-RBAC-02). A third is an ADR, not a row: it
+    changes the shape of the product rather than its data.
+
+Role:
+  type: object
+  description: A role and the permissions it grants.
+  required: [name, description, permissions]
+  properties:
+    name:
+      $ref: '#/RoleName'
+    description:
+      type: string
+      example: Full administrative access.
+    permissions:
+      type: array
+      uniqueItems: true
+      items:
+        type: string
+      example: [rbac.assign, rbac.read, user.list]
+
+RoleList:
+  type: object
+  description: The role catalogue. It is small and fixed, so it is not paginated.
+  required: [items]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/Role'
+
+AssignRoleRequest:
+  type: object
+  description: Grant a role to a user.
+  additionalProperties: false
+  required: [role]
+  properties:
+    role:
+      $ref: '#/RoleName'
+
+UserRoles:
+  type: object
+  description: The roles held by one user, after the change.
+  required: [user_id, roles]
+  properties:
+    user_id:
+      type: string
+      format: uuid
+    roles:
+      type: array
+      uniqueItems: true
+      items:
+        $ref: '#/RoleName'
+      example: [admin, user]
