@@ -84,6 +84,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read the caller's own account.
+         * @description Returns the account belonging to the access token. There is deliberately no `/users/{id}` counterpart in this version: the actor comes from the token, so one user cannot read another by changing a path segment.
+         */
+        get: operations["userGetMe"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update the caller's own profile.
+         * @description Partially updates the profile. Omitted fields are left alone; unknown and null fields are rejected with 422.
+         */
+        patch: operations["userUpdateMe"];
+        trace?: never;
+    };
+    "/me/preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read the caller's preferences.
+         * @description Returns the full preference set. Every account has one from registration onwards, so this never returns an empty body.
+         */
+        get: operations["userGetMyPreferences"];
+        /**
+         * Replace the caller's preferences.
+         * @description Replaces the whole preference set. A field left out is not "unchanged", it is a validation failure -- which is what makes this idempotent.
+         */
+        put: operations["userReplaceMyPreferences"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -204,6 +252,133 @@ export interface components {
              * @example 0.1.0
              */
             version: string;
+        };
+        /** @description The authenticated caller's own account. There is no operation that returns this shape for anybody else: the server reads the actor from the access token and the path carries no user id. */
+        Me: {
+            /**
+             * Format: uuid
+             * @description Stable identifier every other resource references.
+             */
+            id: string;
+            /**
+             * Format: email
+             * @description Returned only here. No other operation exposes a user's email address.
+             * @example learner@example.com
+             */
+            email: string;
+            status: components["schemas"]["UserStatus"];
+            /**
+             * Format: date-time
+             * @description When the address was verified, or null while it is unverified.
+             */
+            email_verified_at?: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            profile: components["schemas"]["MeProfile"];
+        };
+        /** @description Descriptive data about the caller. Nothing here is used to authenticate. */
+        MeProfile: {
+            /**
+             * @description Shown to other learners. Names that impersonate Fluentra staff are rejected.
+             * @example Nghi
+             */
+            display_name: string;
+            /**
+             * Format: uri
+             * @description Public avatar URL, or null when none has been uploaded.
+             */
+            avatar_url?: string | null;
+            /**
+             * @description ISO 3166-1 alpha-2 country code, or null.
+             * @example VN
+             */
+            country?: string | null;
+            /**
+             * @description IANA timezone name. Every timestamp in the API stays UTC; this is used to place reminders and streak boundaries in the learner's day.
+             * @example Asia/Ho_Chi_Minh
+             */
+            timezone: string;
+            /**
+             * Format: date
+             * @description Used only for the age gate. It is never shown to other learners and never leaves this operation.
+             */
+            date_of_birth?: string | null;
+        };
+        /**
+         * @description Account lifecycle state. `pending_deletion` is the 30-day grace period, in which the account is unusable but still recoverable by the owner.
+         * @enum {string}
+         */
+        UserStatus: "active" | "suspended" | "pending_deletion" | "deleted";
+        /** @description A partial update. Omit a field to leave it unchanged; an unknown field is a validation failure rather than something quietly ignored, because a misspelled field name that returns 200 is indistinguishable from success. */
+        UpdateMeRequest: {
+            /** @example Nghi Nguyen */
+            display_name?: string;
+            /** @example VN */
+            country?: string;
+            /** @example Asia/Ho_Chi_Minh */
+            timezone?: string;
+            /**
+             * Format: date
+             * @example 1998-03-04
+             */
+            date_of_birth?: string;
+        };
+        /** @description The caller's settings. Replaced as a whole, never patched. */
+        Preferences: {
+            /**
+             * @description BCP 47 language tag, optionally with a region.
+             * @example vi
+             */
+            locale: string;
+            /** @enum {string} */
+            theme: "light" | "dark" | "system";
+            /**
+             * @description Minutes of study the learner is aiming for each day.
+             * @example 15
+             */
+            daily_goal_minutes: number;
+            /**
+             * @description Channels the learner accepts notifications on.
+             * @example [
+             *       "in_app",
+             *       "email"
+             *     ]
+             */
+            notification_channels: ("in_app" | "email" | "push")[];
+            /** @description A window in which no notification is delivered, or null for none. It is one object rather than two fields so that half a window cannot be expressed. */
+            quiet_hours?: components["schemas"]["QuietHours"] | null;
+            /** @description Disables AI grading only. Deterministic exercises keep working, so opting out never costs the learner access to the product. */
+            ai_processing_opt_out: boolean;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        /** @description Local wall-clock times in the learner's timezone. A window may wrap past midnight, which is the normal case for sleeping hours. */
+        QuietHours: {
+            /** @example 22:00 */
+            start: string;
+            /** @example 07:00 */
+            end: string;
+        };
+        /** @description The complete preference set. This is a PUT: every field is required, and what the caller sends is exactly what is stored. */
+        ReplacePreferencesRequest: {
+            /** @example vi */
+            locale: string;
+            /** @enum {string} */
+            theme: "light" | "dark" | "system";
+            /** @example 30 */
+            daily_goal_minutes: number;
+            /**
+             * @example [
+             *       "in_app",
+             *       "push"
+             *     ]
+             */
+            notification_channels: ("in_app" | "email" | "push")[];
+            quiet_hours?: components["schemas"]["QuietHours"] | null;
+            /** @example false */
+            ai_processing_opt_out: boolean;
         };
     };
     responses: {
@@ -534,6 +709,200 @@ export interface operations {
                     "application/json": components["schemas"]["Version"];
                 };
             };
+        };
+    };
+    userGetMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The caller's account. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "email": "learner@example.com",
+                     *       "status": "active",
+                     *       "email_verified_at": "2026-08-09T04:21:07Z",
+                     *       "created_at": "2026-08-01T09:15:00Z",
+                     *       "updated_at": "2026-08-09T04:21:07Z",
+                     *       "profile": {
+                     *         "display_name": "Nghi",
+                     *         "avatar_url": null,
+                     *         "country": "VN",
+                     *         "timezone": "Asia/Ho_Chi_Minh",
+                     *         "date_of_birth": "1998-03-04"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Me"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    userUpdateMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "display_name": "Nghi Nguyen",
+                 *       "timezone": "Asia/Ho_Chi_Minh"
+                 *     }
+                 */
+                "application/json": components["schemas"]["UpdateMeRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated account. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "email": "learner@example.com",
+                     *       "status": "active",
+                     *       "email_verified_at": "2026-08-09T04:21:07Z",
+                     *       "created_at": "2026-08-01T09:15:00Z",
+                     *       "updated_at": "2026-08-09T04:21:07Z",
+                     *       "profile": {
+                     *         "display_name": "Nghi",
+                     *         "avatar_url": null,
+                     *         "country": "VN",
+                     *         "timezone": "Asia/Ho_Chi_Minh",
+                     *         "date_of_birth": "1998-03-04"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Me"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    userGetMyPreferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The caller's preferences. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "locale": "vi",
+                     *       "theme": "dark",
+                     *       "daily_goal_minutes": 30,
+                     *       "notification_channels": [
+                     *         "in_app",
+                     *         "push"
+                     *       ],
+                     *       "quiet_hours": {
+                     *         "start": "22:00",
+                     *         "end": "07:00"
+                     *       },
+                     *       "ai_processing_opt_out": false,
+                     *       "updated_at": "2026-08-09T04:21:07Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Preferences"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    userReplaceMyPreferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "locale": "vi",
+                 *       "theme": "dark",
+                 *       "daily_goal_minutes": 30,
+                 *       "notification_channels": [
+                 *         "in_app",
+                 *         "push"
+                 *       ],
+                 *       "quiet_hours": {
+                 *         "start": "22:00",
+                 *         "end": "07:00"
+                 *       },
+                 *       "ai_processing_opt_out": false
+                 *     }
+                 */
+                "application/json": components["schemas"]["ReplacePreferencesRequest"];
+            };
+        };
+        responses: {
+            /** @description The stored preferences. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "locale": "vi",
+                     *       "theme": "dark",
+                     *       "daily_goal_minutes": 30,
+                     *       "notification_channels": [
+                     *         "in_app",
+                     *         "push"
+                     *       ],
+                     *       "quiet_hours": {
+                     *         "start": "22:00",
+                     *         "end": "07:00"
+                     *       },
+                     *       "ai_processing_opt_out": false,
+                     *       "updated_at": "2026-08-09T04:21:07Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Preferences"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
         };
     };
 }
