@@ -10,7 +10,7 @@ tables: [roles, permissions, role_permissions, user_roles]
 depends_on: [cache, audit]
 depended_on_by: [auth, admin, content, questionbank, exam, user]
 spec_version: 1.0.0
-last_verified: 2026-08-06
+last_verified: 2026-08-10
 ---
 
 # rbac — API Reference
@@ -21,6 +21,15 @@ last_verified: 2026-08-06
 
 Conventions: [`/API_GUIDELINE.md`](../../../API_GUIDELINE.md).
 Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR_HANDLING.md).
+
+## What is live
+
+All four operations exist as of **P1.3**. `GET /api/v1/me/permissions` needs only a caller;
+the three `/admin` operations require the `admin` role *and* the permission named below.
+
+The permission list is advisory (BR-RBAC-08). It exists so the interface can hide actions that
+would fail — every server call re-checks, and a client holding the list is no closer to using a
+permission it was not granted.
 
 ## Endpoint summary
 

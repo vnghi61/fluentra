@@ -18,6 +18,10 @@ tags:
     description: >-
       The caller's own account: profile and preferences. Every operation here
       acts on the actor in the access token, never on a user id in the path.
+  - name: rbac
+    description: >-
+      Roles and permissions. What the caller may do, and the administrative
+      operations that change it.
 security:
   - BearerAuth: []
 paths:
@@ -172,6 +176,32 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+  /me/permissions:
+    get:
+      tags: [rbac]
+      operationId: rbacGetMyPermissions
+      summary: Read the caller's own effective permissions.
+      description: >-
+        Resolves the caller's roles to the flat set of named permissions they
+        grant. Advisory only: it exists so the interface can hide actions that
+        would fail, and every server call re-checks regardless of what the
+        client believes.
+      x-permission: self
+      responses:
+        '200':
+          description: The caller's roles and permissions.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyPermissions'
+              example:
+                roles: [user]
+                permissions: []
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /me/preferences:
     get:
       tags: [user]
@@ -247,6 +277,128 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+  /admin/roles:
+    get:
+      tags: [rbac]
+      operationId: rbacListRoles
+      summary: List roles and the permissions they grant.
+      description: >-
+        The catalogue is small and fixed, so it is returned whole rather than
+        paginated.
+      x-permission: rbac.read
+      responses:
+        '200':
+          description: Every role, with its permissions.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoleList'
+              example:
+                items:
+                  - name: admin
+                    description: Full administrative access.
+                    permissions: [rbac.assign, rbac.read, user.list]
+                  - name: user
+                    description: A learner. Holds no named permissions.
+                    permissions: []
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/users/{id}/roles:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: The user whose roles are being changed.
+        schema:
+          type: string
+          format: uuid
+    post:
+      tags: [rbac]
+      operationId: rbacAssignRole
+      summary: Grant a role to a user.
+      description: >-
+        Granting is idempotent: a role the user already holds is not an error.
+        An actor cannot grant themselves a role they do not already hold.
+      x-permission: rbac.assign
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignRoleRequest'
+            example:
+              role: admin
+      responses:
+        '200':
+          description: The user's roles after the grant.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRoles'
+              example: &userRolesExample
+                user_id: 0199a1c2-3d4e-7f80-9abc-def012345678
+                roles: [admin, user]
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /admin/users/{id}/roles/{role}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: The user whose roles are being changed.
+        schema:
+          type: string
+          format: uuid
+      - name: role
+        in: path
+        required: true
+        description: The role to revoke.
+        schema:
+          $ref: '#/components/schemas/RoleName'
+    delete:
+      tags: [rbac]
+      operationId: rbacRevokeRole
+      summary: Revoke a role from a user.
+      description: >-
+        Revoking is idempotent. Two revocations are refused: an actor removing
+        their own `admin` role, and any revocation that would leave the system
+        with no administrator.
+      x-permission: rbac.assign
+      responses:
+        '200':
+          description: The user's roles after the revocation.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRoles'
+              example: *userRolesExample
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
 components:
   securitySchemes:
     BearerAuth:
@@ -292,6 +444,18 @@ components:
       $ref: ./components/user.yaml#/QuietHours
     ReplacePreferencesRequest:
       $ref: ./components/user.yaml#/ReplacePreferencesRequest
+    MyPermissions:
+      $ref: ./components/rbac.yaml#/MyPermissions
+    RoleName:
+      $ref: ./components/rbac.yaml#/RoleName
+    Role:
+      $ref: ./components/rbac.yaml#/Role
+    RoleList:
+      $ref: ./components/rbac.yaml#/RoleList
+    AssignRoleRequest:
+      $ref: ./components/rbac.yaml#/AssignRoleRequest
+    UserRoles:
+      $ref: ./components/rbac.yaml#/UserRoles
   headers:
     X-Request-Id:
       $ref: ./components/headers.yaml#/X-Request-Id

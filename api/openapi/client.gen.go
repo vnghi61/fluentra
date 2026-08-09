@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/oapi-codegen/runtime"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 // RequestEditorFn is the function signature for the RequestEditor callback function
@@ -90,6 +91,38 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 // The interface specification for the client above.
 type ClientInterface interface {
 
+	// RbacListRoles List roles and the permissions they grant.
+	//
+	// The catalogue is small and fixed, so it is returned whole rather than paginated.
+	//
+	// Corresponds with GET /admin/roles (the `RbacListRoles` operationId).
+	RbacListRoles(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RbacAssignRoleWithBody Grant a role to a user.
+	//
+	// Granting is idempotent: a role the user already holds is not an error. An actor cannot grant themselves a role they do not already hold.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /admin/users/{id}/roles (the `RbacAssignRole` operationId).
+	RbacAssignRoleWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RbacAssignRole Grant a role to a user.
+	//
+	// Granting is idempotent: a role the user already holds is not an error. An actor cannot grant themselves a role they do not already hold.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /admin/users/{id}/roles (the `RbacAssignRole` operationId).
+	RbacAssignRole(ctx context.Context, id openapi_types.UUID, body RbacAssignRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RbacRevokeRole Revoke a role from a user.
+	//
+	// Revoking is idempotent. Two revocations are refused: an actor removing their own `admin` role, and any revocation that would leave the system with no administrator.
+	//
+	// Corresponds with DELETE /admin/users/{id}/roles/{role} (the `RbacRevokeRole` operationId).
+	RbacRevokeRole(ctx context.Context, id openapi_types.UUID, role RoleName, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// SystemHealth Check process liveness.
 	//
 	// Returns success when the API process is able to serve requests.
@@ -121,6 +154,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with PATCH /me (the `UserUpdateMe` operationId).
 	UserUpdateMe(ctx context.Context, body UserUpdateMeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RbacGetMyPermissions Read the caller's own effective permissions.
+	//
+	// Resolves the caller's roles to the flat set of named permissions they grant. Advisory only: it exists so the interface can hide actions that would fail, and every server call re-checks regardless of what the client believes.
+	//
+	// Corresponds with GET /me/permissions (the `RbacGetMyPermissions` operationId).
+	RbacGetMyPermissions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UserGetMyPreferences Read the caller's preferences.
 	//
@@ -167,6 +207,78 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /version (the `SystemVersion` operationId).
 	SystemVersion(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+// RbacListRoles List roles and the permissions they grant.
+//
+// The catalogue is small and fixed, so it is returned whole rather than paginated.
+//
+// Corresponds with GET /admin/roles (the `RbacListRoles` operationId).
+func (c *Client) RbacListRoles(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRbacListRolesRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RbacAssignRoleWithBody Grant a role to a user.
+//
+// Granting is idempotent: a role the user already holds is not an error. An actor cannot grant themselves a role they do not already hold.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /admin/users/{id}/roles (the `RbacAssignRole` operationId).
+func (c *Client) RbacAssignRoleWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRbacAssignRoleRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RbacAssignRole Grant a role to a user.
+//
+// Granting is idempotent: a role the user already holds is not an error. An actor cannot grant themselves a role they do not already hold.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /admin/users/{id}/roles (the `RbacAssignRole` operationId).
+func (c *Client) RbacAssignRole(ctx context.Context, id openapi_types.UUID, body RbacAssignRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRbacAssignRoleRequest(c.Server, id, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RbacRevokeRole Revoke a role from a user.
+//
+// Revoking is idempotent. Two revocations are refused: an actor removing their own `admin` role, and any revocation that would leave the system with no administrator.
+//
+// Corresponds with DELETE /admin/users/{id}/roles/{role} (the `RbacRevokeRole` operationId).
+func (c *Client) RbacRevokeRole(ctx context.Context, id openapi_types.UUID, role RoleName, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRbacRevokeRoleRequest(c.Server, id, role)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 // SystemHealth Check process liveness.
@@ -231,6 +343,23 @@ func (c *Client) UserUpdateMeWithBody(ctx context.Context, contentType string, b
 // Corresponds with PATCH /me (the `UserUpdateMe` operationId).
 func (c *Client) UserUpdateMe(ctx context.Context, body UserUpdateMeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUserUpdateMeRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RbacGetMyPermissions Read the caller's own effective permissions.
+//
+// Resolves the caller's roles to the flat set of named permissions they grant. Advisory only: it exists so the interface can hide actions that would fail, and every server call re-checks regardless of what the client believes.
+//
+// Corresponds with GET /me/permissions (the `RbacGetMyPermissions` operationId).
+func (c *Client) RbacGetMyPermissions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRbacGetMyPermissionsRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -347,6 +476,121 @@ func (c *Client) SystemVersion(ctx context.Context, reqEditors ...RequestEditorF
 	return c.Client.Do(req)
 }
 
+// NewRbacListRolesRequest constructs an http.Request for the RbacListRoles method
+func NewRbacListRolesRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/roles")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewRbacAssignRoleRequest calls the generic RbacAssignRole builder with application/json body
+func NewRbacAssignRoleRequest(server string, id openapi_types.UUID, body RbacAssignRoleJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRbacAssignRoleRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewRbacAssignRoleRequestWithBody constructs an http.Request for the RbacAssignRole method, with any body, and a specified content type
+func NewRbacAssignRoleRequestWithBody(server string, id openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/users/%s/roles", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewRbacRevokeRoleRequest constructs an http.Request for the RbacRevokeRole method
+func NewRbacRevokeRoleRequest(server string, id openapi_types.UUID, role RoleName) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "role", role, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/users/%s/roles/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewSystemHealthRequest constructs an http.Request for the SystemHealth method
 func NewSystemHealthRequest(server string) (*http.Request, error) {
 	var err error
@@ -437,6 +681,33 @@ func NewUserUpdateMeRequestWithBody(server string, contentType string, body io.R
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewRbacGetMyPermissionsRequest constructs an http.Request for the RbacGetMyPermissions method
+func NewRbacGetMyPermissionsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/permissions")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -633,6 +904,42 @@ func WithBaseURL(baseURL string) ClientOption {
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
 
+	// RbacListRolesWithResponse List roles and the permissions they grant.
+	//
+	// The catalogue is small and fixed, so it is returned whole rather than paginated.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/roles (the `RbacListRoles` operationId).
+	RbacListRolesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*RbacListRolesResponse, error)
+
+	// RbacAssignRoleWithBodyWithResponse Grant a role to a user.
+	//
+	// Granting is idempotent: a role the user already holds is not an error. An actor cannot grant themselves a role they do not already hold.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/users/{id}/roles (the `RbacAssignRole` operationId).
+	RbacAssignRoleWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RbacAssignRoleResponse, error)
+
+	// RbacAssignRoleWithResponse Grant a role to a user.
+	//
+	// Granting is idempotent: a role the user already holds is not an error. An actor cannot grant themselves a role they do not already hold.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/users/{id}/roles (the `RbacAssignRole` operationId).
+	RbacAssignRoleWithResponse(ctx context.Context, id openapi_types.UUID, body RbacAssignRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*RbacAssignRoleResponse, error)
+
+	// RbacRevokeRoleWithResponse Revoke a role from a user.
+	//
+	// Revoking is idempotent. Two revocations are refused: an actor removing their own `admin` role, and any revocation that would leave the system with no administrator.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /admin/users/{id}/roles/{role} (the `RbacRevokeRole` operationId).
+	RbacRevokeRoleWithResponse(ctx context.Context, id openapi_types.UUID, role RoleName, reqEditors ...RequestEditorFn) (*RbacRevokeRoleResponse, error)
+
 	// SystemHealthWithResponse Check process liveness.
 	//
 	// Returns success when the API process is able to serve requests.
@@ -668,6 +975,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with PATCH /me (the `UserUpdateMe` operationId).
 	UserUpdateMeWithResponse(ctx context.Context, body UserUpdateMeJSONRequestBody, reqEditors ...RequestEditorFn) (*UserUpdateMeResponse, error)
+
+	// RbacGetMyPermissionsWithResponse Read the caller's own effective permissions.
+	//
+	// Resolves the caller's roles to the flat set of named permissions they grant. Advisory only: it exists so the interface can hide actions that would fail, and every server call re-checks regardless of what the client believes.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /me/permissions (the `RbacGetMyPermissions` operationId).
+	RbacGetMyPermissionsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*RbacGetMyPermissionsResponse, error)
 
 	// UserGetMyPreferencesWithResponse Read the caller's preferences.
 	//
@@ -722,6 +1038,227 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /version (the `SystemVersion` operationId).
 	SystemVersionWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*SystemVersionResponse, error)
+}
+
+// RbacListRolesResponse200Headers the declared response headers of an HTTP 200 response for RbacListRoles
+type RbacListRolesResponse200Headers struct {
+	XRequestId *string
+}
+
+type RbacListRolesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *RoleList
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *RbacListRolesResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RbacListRolesResponse) GetJSON200() *RoleList {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r RbacListRolesResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r RbacListRolesResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetBody returns the raw response body bytes
+func (r RbacListRolesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RbacListRolesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RbacListRolesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RbacListRolesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// RbacAssignRoleResponse200Headers the declared response headers of an HTTP 200 response for RbacAssignRole
+type RbacAssignRoleResponse200Headers struct {
+	XRequestId *string
+}
+
+type RbacAssignRoleResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *UserRoles
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *RbacAssignRoleResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RbacAssignRoleResponse) GetJSON200() *UserRoles {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r RbacAssignRoleResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r RbacAssignRoleResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r RbacAssignRoleResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r RbacAssignRoleResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r RbacAssignRoleResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r RbacAssignRoleResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RbacAssignRoleResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RbacAssignRoleResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RbacAssignRoleResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// RbacRevokeRoleResponse200Headers the declared response headers of an HTTP 200 response for RbacRevokeRole
+type RbacRevokeRoleResponse200Headers struct {
+	XRequestId *string
+}
+
+type RbacRevokeRoleResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *UserRoles
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *RbacRevokeRoleResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RbacRevokeRoleResponse) GetJSON200() *UserRoles {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r RbacRevokeRoleResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r RbacRevokeRoleResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r RbacRevokeRoleResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r RbacRevokeRoleResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r RbacRevokeRoleResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RbacRevokeRoleResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RbacRevokeRoleResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RbacRevokeRoleResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 // SystemHealthResponse200Headers the declared response headers of an HTTP 200 response for SystemHealth
@@ -904,6 +1441,61 @@ func (r UserUpdateMeResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r UserUpdateMeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// RbacGetMyPermissionsResponse200Headers the declared response headers of an HTTP 200 response for RbacGetMyPermissions
+type RbacGetMyPermissionsResponse200Headers struct {
+	XRequestId *string
+}
+
+type RbacGetMyPermissionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *MyPermissions
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *RbacGetMyPermissionsResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RbacGetMyPermissionsResponse) GetJSON200() *MyPermissions {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r RbacGetMyPermissionsResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetBody returns the raw response body bytes
+func (r RbacGetMyPermissionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RbacGetMyPermissionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RbacGetMyPermissionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RbacGetMyPermissionsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -1206,6 +1798,66 @@ func (r SystemVersionResponse) ContentType() string {
 	return ""
 }
 
+// RbacListRolesWithResponse List roles and the permissions they grant.
+//
+// The catalogue is small and fixed, so it is returned whole rather than paginated.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/roles (the `RbacListRoles` operationId).
+func (c *ClientWithResponses) RbacListRolesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*RbacListRolesResponse, error) {
+	rsp, err := c.RbacListRoles(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRbacListRolesResponse(rsp)
+}
+
+// RbacAssignRoleWithBodyWithResponse Grant a role to a user.
+//
+// Granting is idempotent: a role the user already holds is not an error. An actor cannot grant themselves a role they do not already hold.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/users/{id}/roles (the `RbacAssignRole` operationId).
+func (c *ClientWithResponses) RbacAssignRoleWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RbacAssignRoleResponse, error) {
+	rsp, err := c.RbacAssignRoleWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRbacAssignRoleResponse(rsp)
+}
+
+// RbacAssignRoleWithResponse Grant a role to a user.
+//
+// Granting is idempotent: a role the user already holds is not an error. An actor cannot grant themselves a role they do not already hold.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/users/{id}/roles (the `RbacAssignRole` operationId).
+func (c *ClientWithResponses) RbacAssignRoleWithResponse(ctx context.Context, id openapi_types.UUID, body RbacAssignRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*RbacAssignRoleResponse, error) {
+	rsp, err := c.RbacAssignRole(ctx, id, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRbacAssignRoleResponse(rsp)
+}
+
+// RbacRevokeRoleWithResponse Revoke a role from a user.
+//
+// Revoking is idempotent. Two revocations are refused: an actor removing their own `admin` role, and any revocation that would leave the system with no administrator.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /admin/users/{id}/roles/{role} (the `RbacRevokeRole` operationId).
+func (c *ClientWithResponses) RbacRevokeRoleWithResponse(ctx context.Context, id openapi_types.UUID, role RoleName, reqEditors ...RequestEditorFn) (*RbacRevokeRoleResponse, error) {
+	rsp, err := c.RbacRevokeRole(ctx, id, role, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRbacRevokeRoleResponse(rsp)
+}
+
 // SystemHealthWithResponse Check process liveness.
 //
 // Returns success when the API process is able to serve requests.
@@ -1264,6 +1916,21 @@ func (c *ClientWithResponses) UserUpdateMeWithResponse(ctx context.Context, body
 		return nil, err
 	}
 	return ParseUserUpdateMeResponse(rsp)
+}
+
+// RbacGetMyPermissionsWithResponse Read the caller's own effective permissions.
+//
+// Resolves the caller's roles to the flat set of named permissions they grant. Advisory only: it exists so the interface can hide actions that would fail, and every server call re-checks regardless of what the client believes.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /me/permissions (the `RbacGetMyPermissions` operationId).
+func (c *ClientWithResponses) RbacGetMyPermissionsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*RbacGetMyPermissionsResponse, error) {
+	rsp, err := c.RbacGetMyPermissions(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRbacGetMyPermissionsResponse(rsp)
 }
 
 // UserGetMyPreferencesWithResponse Read the caller's preferences.
@@ -1354,6 +2021,200 @@ func (c *ClientWithResponses) SystemVersionWithResponse(ctx context.Context, req
 		return nil, err
 	}
 	return ParseSystemVersionResponse(rsp)
+}
+
+// ParseRbacListRolesResponse parses an HTTP response from a RbacListRolesWithResponse call
+func ParseRbacListRolesResponse(rsp *http.Response) (*RbacListRolesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RbacListRolesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest RoleList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers RbacListRolesResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseRbacAssignRoleResponse parses an HTTP response from a RbacAssignRoleWithResponse call
+func ParseRbacAssignRoleResponse(rsp *http.Response) (*RbacAssignRoleResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RbacAssignRoleResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UserRoles
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers RbacAssignRoleResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseRbacRevokeRoleResponse parses an HTTP response from a RbacRevokeRoleWithResponse call
+func ParseRbacRevokeRoleResponse(rsp *http.Response) (*RbacRevokeRoleResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RbacRevokeRoleResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UserRoles
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers RbacRevokeRoleResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
 }
 
 // ParseSystemHealthResponse parses an HTTP response from a SystemHealthWithResponse call
@@ -1502,6 +2363,52 @@ func ParseUserUpdateMeResponse(rsp *http.Response) (*UserUpdateMeResponse, error
 	switch {
 	case rsp.StatusCode == 200:
 		var headers UserUpdateMeResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseRbacGetMyPermissionsResponse parses an HTTP response from a RbacGetMyPermissionsWithResponse call
+func ParseRbacGetMyPermissionsResponse(rsp *http.Response) (*RbacGetMyPermissionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RbacGetMyPermissionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest MyPermissions
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers RbacGetMyPermissionsResponse200Headers
 		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
 			var value string
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {

@@ -98,6 +98,7 @@ components:
   # everybody's.
   g_ops:         { in: generated/ops/sqlc }
   g_user:        { in: generated/user/sqlc }
+  g_rbac:        { in: generated/rbac/sqlc }
 
   # platform capabilities
   p_telemetry:   { in: platform/telemetry/** }
@@ -152,7 +153,11 @@ components:
   m_user_repository: { in: modules/user/repository }
   m_user_service:  { in: modules/user/service }
   m_user_http:     { in: modules/user/transport/http }
-  m_rbac:          { in: modules/rbac/** }
+  m_rbac:          { in: modules/rbac }
+  m_rbac_domain:   { in: modules/rbac/domain }
+  m_rbac_repository: { in: modules/rbac/repository }
+  m_rbac_service:  { in: modules/rbac/service }
+  m_rbac_http:     { in: modules/rbac/transport/http }
   m_audit:         { in: modules/audit/** }
   m_admin:         { in: modules/admin/** }
   m_notification:  { in: modules/notification/** }
@@ -205,6 +210,7 @@ deps:
   # of ours, which is what makes it safe for its owner to import.
   g_ops:       { anyVendorDeps: true }
   g_user:      { anyVendorDeps: true }
+  g_rbac:      { anyVendorDeps: true }
 
   # A platform capability exists to wrap a vendor SDK, so each may import one.
   # Business modules deliberately may not: they reach external systems through
@@ -232,7 +238,15 @@ deps:
   m_user_service:    { mayDependOn: [m_user_domain, c_user, p_storage, p_telemetry, p_mailer, p_job, c_audit] }
   m_user_http:       { mayDependOn: [m_user_domain, m_user_service] }
   m_user:            { mayDependOn: [m_user_domain, m_user_repository, m_user_service, m_user_http, c_user] }
-  m_rbac:         { mayDependOn: [p_cache, p_telemetry, c_audit] }
+
+  # rbac, by layer. The domain depends on its own contract because the guard's
+  # types — Permission, Role — are the contract: they are what other modules
+  # pass in, so putting them anywhere else would mean two names for one thing.
+  m_rbac_domain:     { mayDependOn: [c_rbac] }
+  m_rbac_repository: { mayDependOn: [m_rbac_domain, c_rbac, g_rbac] }
+  m_rbac_service:    { mayDependOn: [m_rbac_domain, c_rbac, p_cache, p_telemetry, c_audit] }
+  m_rbac_http:       { mayDependOn: [m_rbac_domain, m_rbac_service, c_rbac] }
+  m_rbac:            { mayDependOn: [m_rbac_domain, m_rbac_repository, m_rbac_service, m_rbac_http, c_rbac] }
   m_audit:        { mayDependOn: [p_job, p_telemetry] }
   m_admin:        { mayDependOn: [p_cache, p_telemetry, c_user, c_rbac, c_audit, c_auth, c_content, c_analytics, c_subscription] }
   m_notification: { mayDependOn: [p_mailer, p_job, p_cache, p_telemetry, c_user] }

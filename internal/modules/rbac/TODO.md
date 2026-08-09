@@ -10,7 +10,7 @@ tables: [roles, permissions, role_permissions, user_roles]
 depends_on: [cache, audit]
 depended_on_by: [auth, admin, content, questionbank, exam, user]
 spec_version: 1.0.0
-last_verified: 2026-08-06
+last_verified: 2026-08-10
 ---
 
 # rbac — TODO
@@ -28,6 +28,18 @@ agent knows what is already handled and what is deliberately deferred.
 - [ ] Self-elevation and last-admin protections
 - [ ] A CI check that every non-public OpenAPI operation declares `x-permission`
 <!-- END GENERATED: todo -->
+
+## Progress
+
+The list above is generated from `tools/docgen/data/core.json`, so its checkboxes cannot be ticked
+by hand. Completed work is recorded here instead.
+
+| Task | Done | What landed |
+|---|---|---|
+| P1.3 | 2026-08-10 | Four tables, the seeded role and permission catalogue, `Authorizer.Require`/`Can` with cached resolution and eager invalidation, the `/admin/*` middleware, `GET /me/permissions`, the role catalogue and grant/revoke operations, self-elevation and last-admin protections |
+
+Still open in Phase 1: MFA enrolment on an `admin` grant (BR-RBAC-06, needs WP2), and publishing
+`rbac.access_denied` to the audit trail (BR-RBAC-07, needs P1.4).
 
 ## Deferred (deliberately not doing yet)
 
