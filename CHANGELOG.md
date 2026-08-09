@@ -25,11 +25,15 @@ generated text describes commits; release notes should describe change.
 - Module documentation generator (`tools/docgen`) with drift checking
 - Module boundary enforcement configuration (`.go-arch-lint.yml`)
 - Configuration reference (`.env.example`) and `Makefile`
+- The `core` identity schema: `users`, `profiles`, `user_preferences`, `learning_profiles`
+- `GET` and `PATCH /api/v1/me` — read and update your own profile
+- `GET` and `PUT /api/v1/me/preferences` — read and replace your own settings
 
 ### Notes
 
-No implementation code yet — this is deliberate. See [README.md](README.md) for what the
-repository currently contains and [ROADMAP.md](ROADMAP.md) for what comes next.
+The four `/me` operations are specified and implemented but not yet reachable: nothing mounts
+them, and there is no authentication to put a caller in the request context. Both arrive in
+Phase 1 (P1.5 and P2.4). See [ROADMAP.md](ROADMAP.md).
 
 ---
 

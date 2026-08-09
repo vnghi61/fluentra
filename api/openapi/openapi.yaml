@@ -14,6 +14,10 @@ servers:
 tags:
   - name: system
     description: Platform health and diagnostics.
+  - name: user
+    description: >-
+      The caller's own account: profile and preferences. Every operation here
+      acts on the actor in the access token, never on a user id in the path.
 security:
   - BearerAuth: []
 paths:
@@ -95,6 +99,154 @@ paths:
                 $ref: '#/components/schemas/Version'
               example:
                 version: 0.1.0
+  /me:
+    get:
+      tags: [user]
+      operationId: userGetMe
+      summary: Read the caller's own account.
+      description: >-
+        Returns the account belonging to the access token. There is deliberately
+        no `/users/{id}` counterpart in this version: the actor comes from the
+        token, so one user cannot read another by changing a path segment.
+      x-permission: self
+      responses:
+        '200':
+          description: The caller's account.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+              example: &meExample
+                id: 0199a1c2-3d4e-7f80-9abc-def012345678
+                email: learner@example.com
+                status: active
+                email_verified_at: '2026-08-09T04:21:07Z'
+                created_at: '2026-08-01T09:15:00Z'
+                updated_at: '2026-08-09T04:21:07Z'
+                profile:
+                  display_name: Nghi
+                  avatar_url: null
+                  country: VN
+                  timezone: Asia/Ho_Chi_Minh
+                  date_of_birth: '1998-03-04'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [user]
+      operationId: userUpdateMe
+      summary: Update the caller's own profile.
+      description: >-
+        Partially updates the profile. Omitted fields are left alone; unknown
+        and null fields are rejected with 422.
+      x-permission: self
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMeRequest'
+            example:
+              display_name: Nghi Nguyen
+              timezone: Asia/Ho_Chi_Minh
+      responses:
+        '200':
+          description: The updated account.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+              example: *meExample
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /me/preferences:
+    get:
+      tags: [user]
+      operationId: userGetMyPreferences
+      summary: Read the caller's preferences.
+      description: >-
+        Returns the full preference set. Every account has one from
+        registration onwards, so this never returns an empty body.
+      x-permission: self
+      responses:
+        '200':
+          description: The caller's preferences.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Preferences'
+              example: &preferencesExample
+                locale: vi
+                theme: dark
+                daily_goal_minutes: 30
+                notification_channels: [in_app, push]
+                quiet_hours:
+                  start: '22:00'
+                  end: '07:00'
+                ai_processing_opt_out: false
+                updated_at: '2026-08-09T04:21:07Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [user]
+      operationId: userReplaceMyPreferences
+      summary: Replace the caller's preferences.
+      description: >-
+        Replaces the whole preference set. A field left out is not "unchanged",
+        it is a validation failure -- which is what makes this idempotent.
+      x-permission: self
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplacePreferencesRequest'
+            example:
+              locale: vi
+              theme: dark
+              daily_goal_minutes: 30
+              notification_channels: [in_app, push]
+              quiet_hours:
+                start: '22:00'
+                end: '07:00'
+              ai_processing_opt_out: false
+      responses:
+        '200':
+          description: The stored preferences.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Preferences'
+              example: *preferencesExample
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
 components:
   securitySchemes:
     BearerAuth:
@@ -126,6 +278,20 @@ components:
       $ref: ./components/system.yaml#/Ready
     Version:
       $ref: ./components/system.yaml#/Version
+    Me:
+      $ref: ./components/user.yaml#/Me
+    MeProfile:
+      $ref: ./components/user.yaml#/MeProfile
+    UserStatus:
+      $ref: ./components/user.yaml#/UserStatus
+    UpdateMeRequest:
+      $ref: ./components/user.yaml#/UpdateMeRequest
+    Preferences:
+      $ref: ./components/user.yaml#/Preferences
+    QuietHours:
+      $ref: ./components/user.yaml#/QuietHours
+    ReplacePreferencesRequest:
+      $ref: ./components/user.yaml#/ReplacePreferencesRequest
   headers:
     X-Request-Id:
       $ref: ./components/headers.yaml#/X-Request-Id

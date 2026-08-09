@@ -10,7 +10,7 @@ tables: [users, profiles, user_preferences, learning_profiles, user_deletion_req
 depends_on: [storage, mailer, audit]
 depended_on_by: [auth, admin, learning, notification, subscription, gamification]
 spec_version: 1.0.0
-last_verified: 2026-08-06
+last_verified: 2026-08-09
 ---
 
 # user — API Reference
@@ -21,6 +21,25 @@ last_verified: 2026-08-06
 
 Conventions: [`/API_GUIDELINE.md`](../../../API_GUIDELINE.md).
 Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR_HANDLING.md).
+
+## What is live
+
+Four of the thirteen operations below exist as of **P1.2**:
+
+| Method | Path | Notes |
+|---|---|---|
+| `GET` | `/api/v1/me` | Identity plus profile. The learning profile is not exposed yet |
+| `PATCH` | `/api/v1/me` | `display_name`, `country`, `timezone`, `date_of_birth`. Unknown and null members are 422 |
+| `GET` | `/api/v1/me/preferences` | |
+| `PUT` | `/api/v1/me/preferences` | Full replacement; a missing member is 422, not "unchanged" |
+
+The rest are specified here and not implemented: avatar and export arrive with WP3, the
+`/admin/users` group with P4.1.
+
+**There is no operation that takes a user id.** `GET /me` reads the actor from the access token,
+and this module exposes no `/users/{id}` route at all, so one learner cannot reach another's
+record by changing a path segment. That is a property of the routing table, not of a permission
+check, and there is a test that fails if a user-id route ever appears.
 
 ## Endpoint summary
 

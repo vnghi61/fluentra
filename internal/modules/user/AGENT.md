@@ -155,6 +155,22 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | `POST` | `/api/v1/admin/users/{id}/reinstate` | `user.suspend` | Reinstate a suspended account |
 <!-- END GENERATED: endpoints -->
 
+### Implemented (P1.2)
+
+`GET`/`PATCH /api/v1/me` and `GET`/`PUT /api/v1/me/preferences`. The rest of the table above is
+specification, not code.
+
+Two decisions worth knowing before you add the fifth:
+
+- **The actor comes from the request context, never from the request.** `httpx.ActorFrom` returns
+  `(Actor, bool)` and the handlers refuse the request when it is false. No route in this module
+  carries a user id. Adding one is how the "impossible by construction" property gets lost.
+- **Request DTOs are hand-written, not taken from `api/openapi`.** A business module importing the
+  generated models would couple it to every other module's spec. What keeps them honest is
+  `contract_test.go`, which validates real responses against `openapi.bundle.yaml` — run it with
+  `make test-contract`. If you change a response shape, that test is the one that tells you the
+  spec no longer matches.
+
 ## 7. Folder map
 
 <!-- BEGIN GENERATED: folders -->
@@ -231,6 +247,12 @@ and fails `go-arch-lint` in CI.
 - Avatar moderation is manual and report-driven; there is no automated image classification.
 - The export format is a ZIP of JSON and media; there is no interoperable standard we target.
 <!-- END GENERATED: limitations -->
+
+- `core.learning_profiles` has a table and queries but no endpoint. `GET /me` returns identity and
+  profile only. It is wired in when onboarding needs it, rather than shipping a write path nothing
+  calls.
+- `Summary.AvatarURL` is always null. The asset id is stored; turning it into a URL needs the
+  storage facade, which arrives with P3.1.
 
 ## 12. Coding conventions (module-specific)
 

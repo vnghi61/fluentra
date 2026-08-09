@@ -275,17 +275,33 @@ if (fs.existsSync(archPath) && fs.existsSync(indexPath)) {
     }
   }
 
+  // A module with code is declared one component per layer (`m_user_service`,
+  // `m_user_http`, …). The arrow in MODULE_INDEX is drawn for the module, so
+  // the layer suffix is stripped before looking it up — otherwise every layered
+  // module would demand arrows for components the diagram has never heard of.
+  const LAYERS = ['domain', 'repository', 'service', 'http', 'job'];
+  const moduleOf = (component) => {
+    for (const layer of LAYERS) {
+      if (component.endsWith(`_${layer}`)) return component.slice(0, -(layer.length + 1));
+    }
+    return component;
+  };
+
   // Only cross-module contract edges (`c_*`) are compared. Platform edges (`p_*`)
   // are covered by the tier-level arrows (`core --> platform`), which is how
   // MODULE_INDEX deliberately draws them.
-  for (const [, component, deps] of arch.matchAll(/^\s*m_([a-z_]+):\s*\{\s*mayDependOn:\s*\[([^\]]*)\]/gm)) {
+  for (const [, rawComponent, deps] of arch.matchAll(/^\s*m_([a-z_]+):\s*\{\s*mayDependOn:\s*\[([^\]]*)\]/gm)) {
+    const component = moduleOf(rawComponent);
     for (const dep of deps.split(',').map((d) => d.trim())) {
       if (!dep.startsWith('c_')) continue;
       const target = dep.slice(2);
+      // A module implementing its own contract is not a boundary crossing, and
+      // an arrow from a node to itself is not something the diagram can draw.
+      if (target === component) continue;
       if (!arrows.has(`${component}->${target}`)) {
         fail(
           'dep-drift',
-          `.go-arch-lint.yml lets m_${component} depend on ${dep}, but MODULE_INDEX.md §3 ` +
+          `.go-arch-lint.yml lets m_${rawComponent} depend on ${dep}, but MODULE_INDEX.md §3 ` +
             `draws no "${component} --> ${target}" arrow`,
         );
       }

@@ -10,6 +10,28 @@ workdir: internal
 allow:
   depOnAnyVendor: false
 
+# The three third-party packages every layer of every module touches.
+#
+# `depOnAnyVendor: false` exists to keep provider SDKs — S3, SMTP, Redis, an LLM
+# client — out of business modules, so that swapping one is a change to a
+# platform facade and nothing else. These three are not that. They are the
+# substrate the repository's own shared primitives are written in: shared/id
+# returns a uuid.UUID, dbx.InTx hands its callback a pgx.Tx, and shared/httpx
+# builds a chi router. A module that may not import them cannot use the shared
+# kernel at all.
+#
+# This was not discovered until the first module was written, because until then
+# no code under internal/modules imported anything.
+vendors:
+  v_uuid: { in: github.com/google/uuid }
+  v_pgx:  { in: [github.com/jackc/pgx/v5, github.com/jackc/pgx/v5/**] }
+  v_chi:  { in: [github.com/go-chi/chi/v5, github.com/go-chi/chi/v5/**] }
+
+commonVendors:
+  - v_uuid
+  - v_pgx
+  - v_chi
+
 # `shared` holds the cross-cutting primitives (errors, ids, config, http
 # helpers). Every component may use them, including the other shared packages,
 # so they are declared common rather than repeated in every rule below.
@@ -62,10 +84,20 @@ components:
   s_secret:        { in: shared/secret }
   s_validation:    { in: shared/validation }
 
-  # sqlc output. It is a component rather than an `exclude` entry so that the
-  # edges *into* it stay visible: a module reaching for another schema's
-  # generated queries is exactly the L2 violation this file exists to catch.
-  generated:     { in: generated/** }
+  # These are exact paths, not `generated/**`. A `**` glob matches nothing at
+  # all on Windows in go-arch-lint v1.17 while matching normally on Linux, so a
+  # component declared with one is silently inert on a maintainer's machine and
+  # enforced in CI. Exact paths behave the same on both, which is the only way
+  # this gate means anything locally.
+  #
+  # sqlc output, one component per owning module. It is components rather than
+  # an `exclude` entry so that the edges *into* it stay visible: a module
+  # reaching for another schema's generated queries is exactly the L2 violation
+  # this file exists to catch. One `generated: { in: generated/** }` component
+  # would not catch it — granting a module its own queries would grant it
+  # everybody's.
+  g_ops:         { in: generated/ops/sqlc }
+  g_user:        { in: generated/user/sqlc }
 
   # platform capabilities
   p_telemetry:   { in: platform/telemetry/** }
@@ -102,8 +134,24 @@ components:
   c_payment:       { in: modules/payment/contract }
 
   # module internals — never importable from outside the module itself
+  #
+  # A module with code is declared one component per layer, not one component
+  # for the whole module. Two reasons. go-arch-lint reports an import between
+  # two packages of the same component as a violation, and listing the component
+  # in its own `mayDependOn` does not change that — so a lumped component cannot
+  # describe a module that has a service and a repository. And splitting them
+  # lets the linter enforce the layering in /AGENT.md §6 (transport -> service ->
+  # repository -> domain, always inward), which a single component cannot see.
+  #
+  # Modules without code keep the `**` form until they get some; it is correct
+  # for a module that is one package, and it is what the next module changes
+  # when it grows a second.
   m_auth:          { in: modules/auth/** }
-  m_user:          { in: modules/user/** }
+  m_user:          { in: modules/user }
+  m_user_domain:   { in: modules/user/domain }
+  m_user_repository: { in: modules/user/repository }
+  m_user_service:  { in: modules/user/service }
+  m_user_http:     { in: modules/user/transport/http }
   m_rbac:          { in: modules/rbac/** }
   m_audit:         { in: modules/audit/** }
   m_admin:         { in: modules/admin/** }
@@ -129,6 +177,11 @@ components:
 # `mayDependOn` lists are deliberately minimal. Adding an entry here is a
 # boundary change: update MODULE_INDEX.md §3 in the same commit, and consider
 # whether it needs an ADR.
+#
+# Two entries are not boundary changes and appear on every module that has code:
+# the component itself (`m_x`), because a module's layers import each other, and
+# its own contract (`c_x`), because the service is what implements it. Neither
+# crosses a boundary, and the dep-drift check skips them for that reason.
 
 deps:
   s_root:          { anyVendorDeps: true }
@@ -149,8 +202,9 @@ deps:
   s_validation:    { anyVendorDeps: true }
 
   # sqlc emits pgx types, so it needs the vendor allowance. It depends on nothing
-  # of ours, which is what makes it safe for any owner to import.
-  generated:   { anyVendorDeps: true }
+  # of ours, which is what makes it safe for its owner to import.
+  g_ops:       { anyVendorDeps: true }
+  g_user:      { anyVendorDeps: true }
 
   # A platform capability exists to wrap a vendor SDK, so each may import one.
   # Business modules deliberately may not: they reach external systems through
@@ -166,7 +220,18 @@ deps:
 
   # core
   m_auth:         { mayDependOn: [p_cache, p_telemetry, p_mailer, c_user, c_rbac, c_audit] }
-  m_user:         { mayDependOn: [p_storage, p_telemetry, p_mailer, p_job, c_audit] }
+
+  # user, by layer. Reading down this block is reading the dependency direction:
+  # domain depends on nothing of ours, and each layer above it may reach only
+  # inward. The composition root (module.go) is the one place that sees every
+  # layer, because assembling them is what it is for.
+  # m_user_domain has no rule at all: it imports nothing of ours beyond the
+  # shared kernel, which is what makes it testable with zero setup, and the
+  # linter rejects both an empty mayDependOn and a rule with no allowance.
+  m_user_repository: { mayDependOn: [m_user_domain, g_user] }
+  m_user_service:    { mayDependOn: [m_user_domain, c_user, p_storage, p_telemetry, p_mailer, p_job, c_audit] }
+  m_user_http:       { mayDependOn: [m_user_domain, m_user_service] }
+  m_user:            { mayDependOn: [m_user_domain, m_user_repository, m_user_service, m_user_http, c_user] }
   m_rbac:         { mayDependOn: [p_cache, p_telemetry, c_audit] }
   m_audit:        { mayDependOn: [p_job, p_telemetry] }
   m_admin:        { mayDependOn: [p_cache, p_telemetry, c_user, c_rbac, c_audit, c_auth, c_content, c_analytics, c_subscription] }

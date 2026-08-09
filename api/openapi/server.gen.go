@@ -14,9 +14,11 @@ import (
 	"net/url"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-chi/chi/v5"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 // Defines values for HealthStatus.
@@ -49,6 +51,48 @@ func (e PingStatus) Valid() bool {
 	}
 }
 
+// Defines values for PreferencesNotificationChannels.
+const (
+	PreferencesNotificationChannelsEmail PreferencesNotificationChannels = "email"
+	PreferencesNotificationChannelsInApp PreferencesNotificationChannels = "in_app"
+	PreferencesNotificationChannelsPush  PreferencesNotificationChannels = "push"
+)
+
+// Valid indicates whether the value is a known member of the PreferencesNotificationChannels enum.
+func (e PreferencesNotificationChannels) Valid() bool {
+	switch e {
+	case PreferencesNotificationChannelsEmail:
+		return true
+	case PreferencesNotificationChannelsInApp:
+		return true
+	case PreferencesNotificationChannelsPush:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PreferencesTheme.
+const (
+	PreferencesThemeDark   PreferencesTheme = "dark"
+	PreferencesThemeLight  PreferencesTheme = "light"
+	PreferencesThemeSystem PreferencesTheme = "system"
+)
+
+// Valid indicates whether the value is a known member of the PreferencesTheme enum.
+func (e PreferencesTheme) Valid() bool {
+	switch e {
+	case PreferencesThemeDark:
+		return true
+	case PreferencesThemeLight:
+		return true
+	case PreferencesThemeSystem:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ReadyStatus.
 const (
 	ReadyStatusReady ReadyStatus = "ready"
@@ -58,6 +102,72 @@ const (
 func (e ReadyStatus) Valid() bool {
 	switch e {
 	case ReadyStatusReady:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ReplacePreferencesRequestNotificationChannels.
+const (
+	ReplacePreferencesRequestNotificationChannelsEmail ReplacePreferencesRequestNotificationChannels = "email"
+	ReplacePreferencesRequestNotificationChannelsInApp ReplacePreferencesRequestNotificationChannels = "in_app"
+	ReplacePreferencesRequestNotificationChannelsPush  ReplacePreferencesRequestNotificationChannels = "push"
+)
+
+// Valid indicates whether the value is a known member of the ReplacePreferencesRequestNotificationChannels enum.
+func (e ReplacePreferencesRequestNotificationChannels) Valid() bool {
+	switch e {
+	case ReplacePreferencesRequestNotificationChannelsEmail:
+		return true
+	case ReplacePreferencesRequestNotificationChannelsInApp:
+		return true
+	case ReplacePreferencesRequestNotificationChannelsPush:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ReplacePreferencesRequestTheme.
+const (
+	ReplacePreferencesRequestThemeDark   ReplacePreferencesRequestTheme = "dark"
+	ReplacePreferencesRequestThemeLight  ReplacePreferencesRequestTheme = "light"
+	ReplacePreferencesRequestThemeSystem ReplacePreferencesRequestTheme = "system"
+)
+
+// Valid indicates whether the value is a known member of the ReplacePreferencesRequestTheme enum.
+func (e ReplacePreferencesRequestTheme) Valid() bool {
+	switch e {
+	case ReplacePreferencesRequestThemeDark:
+		return true
+	case ReplacePreferencesRequestThemeLight:
+		return true
+	case ReplacePreferencesRequestThemeSystem:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UserStatus.
+const (
+	Active          UserStatus = "active"
+	Deleted         UserStatus = "deleted"
+	PendingDeletion UserStatus = "pending_deletion"
+	Suspended       UserStatus = "suspended"
+)
+
+// Valid indicates whether the value is a known member of the UserStatus enum.
+func (e UserStatus) Valid() bool {
+	switch e {
+	case Active:
+		return true
+	case Deleted:
+		return true
+	case PendingDeletion:
+		return true
+	case Suspended:
 		return true
 	default:
 		return false
@@ -75,6 +185,45 @@ type Health struct {
 
 // HealthStatus Confirms that the process is serving requests.
 type HealthStatus string
+
+// Me The authenticated caller's own account. There is no operation that returns this shape for anybody else: the server reads the actor from the access token and the path carries no user id.
+type Me struct {
+	CreatedAt time.Time `json:"created_at"`
+
+	// Email Returned only here. No other operation exposes a user's email address.
+	Email openapi_types.Email `json:"email"`
+
+	// EmailVerifiedAt When the address was verified, or null while it is unverified.
+	EmailVerifiedAt *time.Time `json:"email_verified_at,omitempty"`
+
+	// Id Stable identifier every other resource references.
+	Id openapi_types.UUID `json:"id"`
+
+	// Profile Descriptive data about the caller. Nothing here is used to authenticate.
+	Profile MeProfile `json:"profile"`
+
+	// Status Account lifecycle state. `pending_deletion` is the 30-day grace period, in which the account is unusable but still recoverable by the owner.
+	Status    UserStatus `json:"status"`
+	UpdatedAt time.Time  `json:"updated_at"`
+}
+
+// MeProfile Descriptive data about the caller. Nothing here is used to authenticate.
+type MeProfile struct {
+	// AvatarUrl Public avatar URL, or null when none has been uploaded.
+	AvatarUrl *string `json:"avatar_url,omitempty"`
+
+	// Country ISO 3166-1 alpha-2 country code, or null.
+	Country *string `json:"country,omitempty"`
+
+	// DateOfBirth Used only for the age gate. It is never shown to other learners and never leaves this operation.
+	DateOfBirth *openapi_types.Date `json:"date_of_birth,omitempty"`
+
+	// DisplayName Shown to other learners. Names that impersonate Fluentra staff are rejected.
+	DisplayName string `json:"display_name"`
+
+	// Timezone IANA timezone name. Every timestamp in the API stays UTC; this is used to place reminders and streak boundaries in the learner's day.
+	Timezone string `json:"timezone"`
+}
 
 // Page Cursor pagination metadata returned with every user-facing list.
 type Page struct {
@@ -96,6 +245,32 @@ type Ping struct {
 
 // PingStatus Confirms that PostgreSQL and Redis responded.
 type PingStatus string
+
+// Preferences The caller's settings. Replaced as a whole, never patched.
+type Preferences struct {
+	// AiProcessingOptOut Disables AI grading only. Deterministic exercises keep working, so opting out never costs the learner access to the product.
+	AiProcessingOptOut bool `json:"ai_processing_opt_out"`
+
+	// DailyGoalMinutes Minutes of study the learner is aiming for each day.
+	DailyGoalMinutes int `json:"daily_goal_minutes"`
+
+	// Locale BCP 47 language tag, optionally with a region.
+	Locale string `json:"locale"`
+
+	// NotificationChannels Channels the learner accepts notifications on.
+	NotificationChannels []PreferencesNotificationChannels `json:"notification_channels"`
+
+	// QuietHours A window in which no notification is delivered, or null for none. It is one object rather than two fields so that half a window cannot be expressed.
+	QuietHours *QuietHours      `json:"quiet_hours,omitempty"`
+	Theme      PreferencesTheme `json:"theme"`
+	UpdatedAt  time.Time        `json:"updated_at"`
+}
+
+// PreferencesNotificationChannels defines model for Preferences.NotificationChannels.
+type PreferencesNotificationChannels string
+
+// PreferencesTheme defines model for Preferences.Theme.
+type PreferencesTheme string
 
 // Problem RFC 9457 Problem Details response.
 type Problem struct {
@@ -124,6 +299,12 @@ type Problem struct {
 	Type string `json:"type"`
 }
 
+// QuietHours Local wall-clock times in the learner's timezone. A window may wrap past midnight, which is the normal case for sleeping hours.
+type QuietHours struct {
+	End   string `json:"end"`
+	Start string `json:"start"`
+}
+
 // Ready Successful hard dependency readiness result.
 type Ready struct {
 	// Status Confirms that every hard dependency is usable.
@@ -132,6 +313,33 @@ type Ready struct {
 
 // ReadyStatus Confirms that every hard dependency is usable.
 type ReadyStatus string
+
+// ReplacePreferencesRequest The complete preference set. This is a PUT: every field is required, and what the caller sends is exactly what is stored.
+type ReplacePreferencesRequest struct {
+	AiProcessingOptOut   bool                                            `json:"ai_processing_opt_out"`
+	DailyGoalMinutes     int                                             `json:"daily_goal_minutes"`
+	Locale               string                                          `json:"locale"`
+	NotificationChannels []ReplacePreferencesRequestNotificationChannels `json:"notification_channels"`
+	QuietHours           *QuietHours                                     `json:"quiet_hours,omitempty"`
+	Theme                ReplacePreferencesRequestTheme                  `json:"theme"`
+}
+
+// ReplacePreferencesRequestNotificationChannels defines model for ReplacePreferencesRequest.NotificationChannels.
+type ReplacePreferencesRequestNotificationChannels string
+
+// ReplacePreferencesRequestTheme defines model for ReplacePreferencesRequest.Theme.
+type ReplacePreferencesRequestTheme string
+
+// UpdateMeRequest A partial update. Omit a field to leave it unchanged; an unknown field is a validation failure rather than something quietly ignored, because a misspelled field name that returns 200 is indistinguishable from success.
+type UpdateMeRequest struct {
+	Country     *string             `json:"country,omitempty"`
+	DateOfBirth *openapi_types.Date `json:"date_of_birth,omitempty"`
+	DisplayName *string             `json:"display_name,omitempty"`
+	Timezone    *string             `json:"timezone,omitempty"`
+}
+
+// UserStatus Account lifecycle state. `pending_deletion` is the 30-day grace period, in which the account is unusable but still recoverable by the owner.
+type UserStatus string
 
 // ValidationError One invalid request field.
 type ValidationError struct {
@@ -208,11 +416,29 @@ type Unauthorized = Problem
 // ValidationFailed defines model for ValidationFailed.
 type ValidationFailed = ValidationProblem
 
+// UserUpdateMeJSONRequestBody defines body for UserUpdateMe for application/json ContentType.
+type UserUpdateMeJSONRequestBody = UpdateMeRequest
+
+// UserReplaceMyPreferencesJSONRequestBody defines body for UserReplaceMyPreferences for application/json ContentType.
+type UserReplaceMyPreferencesJSONRequestBody = ReplacePreferencesRequest
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// SystemHealth Check process liveness.
 	// (GET /health)
 	SystemHealth(w http.ResponseWriter, r *http.Request)
+	// UserGetMe Read the caller's own account.
+	// (GET /me)
+	UserGetMe(w http.ResponseWriter, r *http.Request)
+	// UserUpdateMe Update the caller's own profile.
+	// (PATCH /me)
+	UserUpdateMe(w http.ResponseWriter, r *http.Request)
+	// UserGetMyPreferences Read the caller's preferences.
+	// (GET /me/preferences)
+	UserGetMyPreferences(w http.ResponseWriter, r *http.Request)
+	// UserReplaceMyPreferences Replace the caller's preferences.
+	// (PUT /me/preferences)
+	UserReplaceMyPreferences(w http.ResponseWriter, r *http.Request)
 	// SystemPing Check API dependency connectivity.
 	// (GET /ping)
 	SystemPing(w http.ResponseWriter, r *http.Request)
@@ -231,6 +457,30 @@ type Unimplemented struct{}
 // SystemHealth Check process liveness.
 // (GET /health)
 func (_ Unimplemented) SystemHealth(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UserGetMe Read the caller's own account.
+// (GET /me)
+func (_ Unimplemented) UserGetMe(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UserUpdateMe Update the caller's own profile.
+// (PATCH /me)
+func (_ Unimplemented) UserUpdateMe(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UserGetMyPreferences Read the caller's preferences.
+// (GET /me/preferences)
+func (_ Unimplemented) UserGetMyPreferences(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UserReplaceMyPreferences Replace the caller's preferences.
+// (PUT /me/preferences)
+func (_ Unimplemented) UserReplaceMyPreferences(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -266,6 +516,62 @@ func (siw *ServerInterfaceWrapper) SystemHealth(w http.ResponseWriter, r *http.R
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.SystemHealth(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UserGetMe operation middleware
+func (siw *ServerInterfaceWrapper) UserGetMe(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UserGetMe(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UserUpdateMe operation middleware
+func (siw *ServerInterfaceWrapper) UserUpdateMe(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UserUpdateMe(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UserGetMyPreferences operation middleware
+func (siw *ServerInterfaceWrapper) UserGetMyPreferences(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UserGetMyPreferences(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UserReplaceMyPreferences operation middleware
+func (siw *ServerInterfaceWrapper) UserReplaceMyPreferences(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UserReplaceMyPreferences(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -442,6 +748,18 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/version", wrapper.SystemVersion)
 	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/me", wrapper.UserGetMe)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/me", wrapper.UserUpdateMe)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/me/preferences", wrapper.UserGetMyPreferences)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/me/preferences", wrapper.UserReplaceMyPreferences)
+	})
 
 	return r
 }
@@ -505,6 +823,324 @@ func (response SystemHealth200JSONResponse) VisitSystemHealthResponse(w http.Res
 		w.Header().Set("X-Request-Id", fmt.Sprint(*response.Headers.XRequestId))
 	}
 	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UserGetMeRequestObject struct {
+}
+
+type UserGetMeResponseObject interface {
+	VisitUserGetMeResponse(w http.ResponseWriter) error
+}
+
+type UserGetMe200ResponseHeaders struct {
+	XRequestId *string
+}
+
+type UserGetMe200JSONResponse struct {
+	Body    Me
+	Headers UserGetMe200ResponseHeaders
+}
+
+func (response UserGetMe200JSONResponse) VisitUserGetMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.XRequestId != nil {
+		w.Header().Set("X-Request-Id", fmt.Sprint(*response.Headers.XRequestId))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UserGetMe401ApplicationProblemPlusJSONResponse struct {
+	UnauthorizedApplicationProblemPlusJSONResponse
+}
+
+func (response UserGetMe401ApplicationProblemPlusJSONResponse) VisitUserGetMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UserGetMe404ApplicationProblemPlusJSONResponse struct {
+	NotFoundApplicationProblemPlusJSONResponse
+}
+
+func (response UserGetMe404ApplicationProblemPlusJSONResponse) VisitUserGetMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UserUpdateMeRequestObject struct {
+	Body *UserUpdateMeJSONRequestBody
+}
+
+type UserUpdateMeResponseObject interface {
+	VisitUserUpdateMeResponse(w http.ResponseWriter) error
+}
+
+type UserUpdateMe200ResponseHeaders struct {
+	XRequestId *string
+}
+
+type UserUpdateMe200JSONResponse struct {
+	Body    Me
+	Headers UserUpdateMe200ResponseHeaders
+}
+
+func (response UserUpdateMe200JSONResponse) VisitUserUpdateMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.XRequestId != nil {
+		w.Header().Set("X-Request-Id", fmt.Sprint(*response.Headers.XRequestId))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UserUpdateMe400ApplicationProblemPlusJSONResponse struct {
+	BadRequestApplicationProblemPlusJSONResponse
+}
+
+func (response UserUpdateMe400ApplicationProblemPlusJSONResponse) VisitUserUpdateMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UserUpdateMe401ApplicationProblemPlusJSONResponse struct {
+	UnauthorizedApplicationProblemPlusJSONResponse
+}
+
+func (response UserUpdateMe401ApplicationProblemPlusJSONResponse) VisitUserUpdateMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UserUpdateMe404ApplicationProblemPlusJSONResponse struct {
+	NotFoundApplicationProblemPlusJSONResponse
+}
+
+func (response UserUpdateMe404ApplicationProblemPlusJSONResponse) VisitUserUpdateMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UserUpdateMe422ApplicationProblemPlusJSONResponse struct {
+	ValidationFailedApplicationProblemPlusJSONResponse
+}
+
+func (response UserUpdateMe422ApplicationProblemPlusJSONResponse) VisitUserUpdateMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UserGetMyPreferencesRequestObject struct {
+}
+
+type UserGetMyPreferencesResponseObject interface {
+	VisitUserGetMyPreferencesResponse(w http.ResponseWriter) error
+}
+
+type UserGetMyPreferences200ResponseHeaders struct {
+	XRequestId *string
+}
+
+type UserGetMyPreferences200JSONResponse struct {
+	Body    Preferences
+	Headers UserGetMyPreferences200ResponseHeaders
+}
+
+func (response UserGetMyPreferences200JSONResponse) VisitUserGetMyPreferencesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.XRequestId != nil {
+		w.Header().Set("X-Request-Id", fmt.Sprint(*response.Headers.XRequestId))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UserGetMyPreferences401ApplicationProblemPlusJSONResponse struct {
+	UnauthorizedApplicationProblemPlusJSONResponse
+}
+
+func (response UserGetMyPreferences401ApplicationProblemPlusJSONResponse) VisitUserGetMyPreferencesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UserGetMyPreferences404ApplicationProblemPlusJSONResponse struct {
+	NotFoundApplicationProblemPlusJSONResponse
+}
+
+func (response UserGetMyPreferences404ApplicationProblemPlusJSONResponse) VisitUserGetMyPreferencesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UserReplaceMyPreferencesRequestObject struct {
+	Body *UserReplaceMyPreferencesJSONRequestBody
+}
+
+type UserReplaceMyPreferencesResponseObject interface {
+	VisitUserReplaceMyPreferencesResponse(w http.ResponseWriter) error
+}
+
+type UserReplaceMyPreferences200ResponseHeaders struct {
+	XRequestId *string
+}
+
+type UserReplaceMyPreferences200JSONResponse struct {
+	Body    Preferences
+	Headers UserReplaceMyPreferences200ResponseHeaders
+}
+
+func (response UserReplaceMyPreferences200JSONResponse) VisitUserReplaceMyPreferencesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.XRequestId != nil {
+		w.Header().Set("X-Request-Id", fmt.Sprint(*response.Headers.XRequestId))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UserReplaceMyPreferences400ApplicationProblemPlusJSONResponse struct {
+	BadRequestApplicationProblemPlusJSONResponse
+}
+
+func (response UserReplaceMyPreferences400ApplicationProblemPlusJSONResponse) VisitUserReplaceMyPreferencesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UserReplaceMyPreferences401ApplicationProblemPlusJSONResponse struct {
+	UnauthorizedApplicationProblemPlusJSONResponse
+}
+
+func (response UserReplaceMyPreferences401ApplicationProblemPlusJSONResponse) VisitUserReplaceMyPreferencesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UserReplaceMyPreferences404ApplicationProblemPlusJSONResponse struct {
+	NotFoundApplicationProblemPlusJSONResponse
+}
+
+func (response UserReplaceMyPreferences404ApplicationProblemPlusJSONResponse) VisitUserReplaceMyPreferencesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UserReplaceMyPreferences422ApplicationProblemPlusJSONResponse struct {
+	ValidationFailedApplicationProblemPlusJSONResponse
+}
+
+func (response UserReplaceMyPreferences422ApplicationProblemPlusJSONResponse) VisitUserReplaceMyPreferencesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(422)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -626,6 +1262,18 @@ type StrictServerInterface interface {
 	// SystemHealth Check process liveness.
 	// (GET /health)
 	SystemHealth(ctx context.Context, request SystemHealthRequestObject) (SystemHealthResponseObject, error)
+	// UserGetMe Read the caller's own account.
+	// (GET /me)
+	UserGetMe(ctx context.Context, request UserGetMeRequestObject) (UserGetMeResponseObject, error)
+	// UserUpdateMe Update the caller's own profile.
+	// (PATCH /me)
+	UserUpdateMe(ctx context.Context, request UserUpdateMeRequestObject) (UserUpdateMeResponseObject, error)
+	// UserGetMyPreferences Read the caller's preferences.
+	// (GET /me/preferences)
+	UserGetMyPreferences(ctx context.Context, request UserGetMyPreferencesRequestObject) (UserGetMyPreferencesResponseObject, error)
+	// UserReplaceMyPreferences Replace the caller's preferences.
+	// (PUT /me/preferences)
+	UserReplaceMyPreferences(ctx context.Context, request UserReplaceMyPreferencesRequestObject) (UserReplaceMyPreferencesResponseObject, error)
 	// SystemPing Check API dependency connectivity.
 	// (GET /ping)
 	SystemPing(ctx context.Context, request SystemPingRequestObject) (SystemPingResponseObject, error)
@@ -693,6 +1341,116 @@ func (sh *strictHandler) SystemHealth(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(SystemHealthResponseObject); ok {
 		if err := validResponse.VisitSystemHealthResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UserGetMe operation middleware
+func (sh *strictHandler) UserGetMe(w http.ResponseWriter, r *http.Request) {
+	var request UserGetMeRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UserGetMe(ctx, request.(UserGetMeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UserGetMe")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UserGetMeResponseObject); ok {
+		if err := validResponse.VisitUserGetMeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UserUpdateMe operation middleware
+func (sh *strictHandler) UserUpdateMe(w http.ResponseWriter, r *http.Request) {
+	var request UserUpdateMeRequestObject
+
+	var body UserUpdateMeJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UserUpdateMe(ctx, request.(UserUpdateMeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UserUpdateMe")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UserUpdateMeResponseObject); ok {
+		if err := validResponse.VisitUserUpdateMeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UserGetMyPreferences operation middleware
+func (sh *strictHandler) UserGetMyPreferences(w http.ResponseWriter, r *http.Request) {
+	var request UserGetMyPreferencesRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UserGetMyPreferences(ctx, request.(UserGetMyPreferencesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UserGetMyPreferences")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UserGetMyPreferencesResponseObject); ok {
+		if err := validResponse.VisitUserGetMyPreferencesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UserReplaceMyPreferences operation middleware
+func (sh *strictHandler) UserReplaceMyPreferences(w http.ResponseWriter, r *http.Request) {
+	var request UserReplaceMyPreferencesRequestObject
+
+	var body UserReplaceMyPreferencesJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UserReplaceMyPreferences(ctx, request.(UserReplaceMyPreferencesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UserReplaceMyPreferences")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UserReplaceMyPreferencesResponseObject); ok {
+		if err := validResponse.VisitUserReplaceMyPreferencesResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -777,55 +1535,93 @@ func (sh *strictHandler) SystemVersion(w http.ResponseWriter, r *http.Request) {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
+	"S6mJKwTbEPhw8/B/AQAA//8=",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,
