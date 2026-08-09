@@ -77,6 +77,19 @@ gen-mocks: ## moq: interfaces -> mocks
 gen-web: ## openapi-typescript: OpenAPI -> TS types + MSW handlers
 	cd web && pnpm run gen:api
 
+# gen-check-web is the frontend half of the staleness gate. It is separate from
+# gen-check because the backend "generated code is current" CI job has Node but
+# not pnpm and does not install web dependencies, so folding this into gen-check
+# would break that job.
+#
+# It exists because gen-check alone was not enough: P1.2 added four operations
+# to openapi.yaml, `make gen-check` was green, and the frontend job failed on a
+# stale src/types/api.ts. A spec change writes generated code on both sides of
+# the repository, and a gate that only checks one side reports success for a
+# tree that does not build.
+gen-check-web: gen-web ## Fail if the generated web types are not what the generator produces
+	@dirty=$$(git status --porcelain -- web/src/types/api.ts); 	 if [ -n "$$dirty" ]; then 	   echo "generated web types are stale: run make gen-web and commit the result"; 	   git diff --stat -- web/src/types/api.ts; 	   exit 1; 	 fi
+
 ## ----------------------------------------------------------------- database
 
 migrate-up: ## Apply all migrations
@@ -238,13 +251,25 @@ docs-check: ## Fail if documentation is stale or has drifted
 
 ## ----------------------------------------------------------------- ci
 
-ci: ## Run exactly what CI runs, in the same order
+# `ci` mirrors both workflows, backend and frontend. It used to run only the Go
+# half while claiming to run everything, which is how a stale web artefact got
+# merged: the local gate said green and the frontend job said red.
+ci: ci-backend ci-frontend ## Run exactly what CI runs, in the same order
+
+ci-backend: ## The ci-backend.yml gates
 	$(MAKE) fmt-check vet lint lint-int arch
 	$(MAKE) gen-check
 	$(MAKE) test
 	$(MAKE) test-int
 	$(MAKE) cover-check
 	$(MAKE) docs-check
+
+ci-frontend: ## The ci-frontend.yml gates
+	$(MAKE) gen-check-web
+	cd web && pnpm run typecheck
+	cd web && pnpm run lint
+	cd web && pnpm run test
+	cd web && pnpm run build
 
 ci-fast: fmt vet lint arch test ## Inner-loop subset
 
@@ -254,6 +279,7 @@ security: ## Security scans
 	cd web && pnpm audit --audit-level=high
 
 .PHONY: help setup dev dev-down logs prod-up gen gen-backend gen-sql gen-api gen-mocks gen-web \
-        gen-check migrate-up migrate-down migrate-status migrate-new seed db-reset-DANGEROUS \
-        check fmt fmt-check vet lint lint-int lint-go arch test test-int test-contract test-web \
-        test-e2e test-load test-eval cover cover-check docs docs-check ci ci-fast security
+        gen-check gen-check-web migrate-up migrate-down migrate-status migrate-new seed \
+        db-reset-DANGEROUS check fmt fmt-check vet lint lint-int lint-go arch test test-int \
+        test-contract test-web test-e2e test-load test-eval cover cover-check cover-gate docs \
+        docs-check ci ci-backend ci-frontend ci-fast security
