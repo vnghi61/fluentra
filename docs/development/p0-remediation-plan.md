@@ -1,9 +1,9 @@
 ---
 doc_type: execution_plan
 phase: "0 — remediation"
-status: ready
+status: complete
 owner: "@backend-team"
-last_verified: 2026-08-07
+last_verified: 2026-08-09
 ---
 
 # Phase 0 — Remediation Plan (P0.R)
@@ -402,7 +402,29 @@ lên, nên một backlog **đã tới hạn** nằm ở `scheduled` và gauge b�
 danh sách, giữ nguyên `scheduled_at <= now()` để việc hẹn tương lai không bị tính là backlog. Có
 test cho cả hai chiều.
 
-### Trạng thái bàn giao (2026-08-08, P0 hoàn thành)
+### ✅ P0 HOÀN THÀNH (2026-08-09)
+
+**21/21 card xong. Cả 5 workflow xanh trên GitHub Actions** (PR #1 và #2).
+
+CI chạy thật lần đầu đã **đỏ 4 job**, và cả bốn đều là lỗi mà không lần chạy local nào có thể
+lộ ra:
+
+| Lỗi CI | Nguyên nhân | Vì sao local không thấy |
+|---|---|---|
+| govulncheck: 31 CVE | `go.mod` chỉ khai `go 1.25.0`, `setup-go` cài đúng bản đó | máy dev chạy Go 1.26.5 |
+| sqlc cần go ≥ 1.26 | cùng nguyên nhân | như trên |
+| `make arch`: `Illegal option -o pipefail` | Makefile gọi `sh script.sh`; `sh` trên Ubuntu là dash | Git for Windows cài bash làm `sh`, nên `sh` ở local **là** bash |
+| `No pnpm version is specified` | `pnpm/action-setup` đọc `package.json` ở **gốc repo**; repo không có file đó | `pnpm --version` chỉ chứng minh field đúng, không chứng minh action đọc được |
+
+**Bài học chung: một cổng chưa từng chạy trên runner thật là một cổng chưa được kiểm.** Ba lần
+trong plan này việc verify đi đường tắt — `node_modules/.bin/eslint` thay vì `pnpm run lint`,
+`pnpm --version` thay vì đọc `action.yml`, `sh` trên Windows thay vì dash — và cả ba lần đường
+tắt đó che mất lỗi thật.
+
+Một lỗi nữa cùng họ, tìm được sau khi CI đã xanh: `check-drift.mjs` parse front-matter bằng
+`(.*)$`, mà trong JavaScript `\r` là line terminator nên `.` không khớp. Trên checkout Windows
+(CRLF) nó báo **263 lỗi giả**; trên runner Linux (LF) nó xanh. Đã sửa bằng `readText()` chuẩn
+hoá về LF.
 
 **Xong 21/21 card.** Mỗi card verify bằng hạ tầng thật.
 
