@@ -43,16 +43,13 @@ ticked by hand. Completed work is recorded here instead.
 - [x] **Wire the module in (P1.5).** Done 2026-08-10. `cmd/api` constructs it and adapts
       `rbac.Authorizer` to `audit.Deps.Guard`; `cmd/worker` calls `Subscribe(bus)` and registers
       `CronJobs()`. Proven by `cmd/api/wiring_integration_test.go`.
-- [ ] **Carry the request's trace into the entry.** P1.5's acceptance criterion asked for the
-      right actor _and trace id_; the actor is right, the trace id is the worker's rather than
-      the request's. `ops.outbox_events` holds no trace context, so `user` publishes in one
-      trace and `audit` records in another, and BR-AUDIT-07's promise — that a row links
-      straight through to the trace of the action — is only half kept. The fix is a
-      `traceparent` column on the outbox row, written by `shared/outbox.Writer` from the
-      caller's context and carried through `outbox.Event` and `eventbus.Message`; the consumer
-      already reads its envelope structurally. That spans `shared/outbox`, `shared/eventbus` and
-      `db/migrations/job`, so it is a card of its own. `TestTheTrailRecordsATraceID` asserts
-      today's behaviour and will fail loudly when it changes.
+- [x] **Carry the request's trace into the entry.** Done 2026-08-10. `ops.outbox_events` now
+      holds the producing transaction's `traceparent`, and the publisher restores it into the
+      context it dispatches with — so BR-AUDIT-07 is kept in full: the id in the row is the one
+      an operator pastes into Tempo to see the request. This module did not change; it already
+      read the trace from the context it was handed. `TestTheTrailRecordsTheRequestsTraceID`
+      in `cmd/api` is the end-to-end proof, and it drains in a deliberately different trace so
+      it cannot pass by coincidence.
 - [ ] **`GET /admin/audit-logs/export`.** Specified in AGENT.md §6, absent from `openapi.yaml`.
       An async export needs `platform/storage` for the signed URL and `audit` depends only on
       `job`, so it needs the dependency arrow added to `MODULE_INDEX.md` §3 and

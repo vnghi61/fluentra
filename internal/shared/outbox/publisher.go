@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/propagation"
 )
 
 const (
@@ -30,10 +31,37 @@ type Event struct {
 	Name      string
 	Payload   json.RawMessage
 	Attempt   int
+
+	// TraceParent is the W3C traceparent of the transaction that wrote the
+	// event, or "" when it was written outside a span.
+	//
+	// Consumers do not read it. The publisher restores it into the context it
+	// dispatches with, so a handler that asks the context for its trace gets
+	// the producer's — which is the whole point, and is why nothing downstream
+	// had to change to get it.
+	TraceParent string
 }
 
 // Topic is the event name a broker would route on.
 func (e Event) Topic() string { return e.Aggregate + "." + e.Name }
+
+// DispatchContext returns ctx with the event's originating span restored, so
+// the delivery continues the trace that produced it instead of starting a new
+// one.
+//
+// An event with no traceparent, or one the propagator will not parse, returns
+// ctx unchanged: a delivery that loses its trace is worth less than one that
+// keeps it, and far more than one that fails.
+//
+// The Publisher calls this for every event. It is exported because a broker
+// implementation replacing the Publisher would have to do the same thing, and
+// having to reimplement it is how the trace would go missing again.
+func (e Event) DispatchContext(ctx context.Context) context.Context {
+	if e.TraceParent == "" {
+		return ctx
+	}
+	return tracePropagator.Extract(ctx, propagation.MapCarrier{traceParentHeader: e.TraceParent})
+}
 
 // EventDispatcher delivers one outbox event. Every type in the signature is
 // exported, so an implementation can live in any package.
@@ -164,7 +192,7 @@ func (p *Publisher) ProcessBatch(ctx context.Context) error {
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	const selectQuery = `
-		SELECT event_id, aggregate, event, payload, attempts
+		SELECT event_id, aggregate, event, payload, attempts, COALESCE(traceparent, '')
 		FROM ops.outbox_events
 		WHERE published_at IS NULL
 		  AND dead_lettered_at IS NULL
@@ -181,7 +209,8 @@ func (p *Publisher) ProcessBatch(ctx context.Context) error {
 	batch := make([]Event, 0, p.batchSize)
 	for rows.Next() {
 		var event Event
-		if err := rows.Scan(&event.ID, &event.Aggregate, &event.Name, &event.Payload, &event.Attempt); err != nil {
+		if err := rows.Scan(&event.ID, &event.Aggregate, &event.Name,
+			&event.Payload, &event.Attempt, &event.TraceParent); err != nil {
 			rows.Close()
 			return fmt.Errorf("scan outbox event: %w", err)
 		}
@@ -196,7 +225,11 @@ func (p *Publisher) ProcessBatch(ctx context.Context) error {
 	}
 
 	for _, event := range batch {
-		dispatchErr := p.dispatcher.Dispatch(ctx, event)
+		// Dispatched in the trace the event was written in, not the trace of
+		// this polling loop. The bookkeeping below stays on ctx: marking a row
+		// published belongs to the publisher, not to the request that caused
+		// the event months of partitions ago.
+		dispatchErr := p.dispatcher.Dispatch(event.DispatchContext(ctx), event)
 		if dispatchErr == nil {
 			const markPublished = `UPDATE ops.outbox_events SET published_at = now() WHERE event_id = $1`
 			if _, err := tx.Exec(ctx, markPublished, event.ID); err != nil {
