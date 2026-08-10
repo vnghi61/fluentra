@@ -117,8 +117,15 @@ func TestPublisher_DispatchesCommittedEventExactlyOnce(t *testing.T) {
 	if dispatcher.seen[0].ID != eventID {
 		t.Errorf("event id = %s, want %s", dispatcher.seen[0].ID, eventID)
 	}
-	if dispatcher.seen[0].Topic() != "user.user.created" {
-		t.Errorf("topic = %q", dispatcher.seen[0].Topic())
+	// "user.created", not "user.user.created".
+	//
+	// This assertion used to expect the doubled form, and expecting it is why
+	// the bug survived from P1.2 until P1.5 wired the first consumer: the
+	// writer stored the caller's already-qualified event constant verbatim and
+	// Topic() prefixed it again, so nothing a module subscribed to could ever
+	// match. See TestTopicRoundTripsContractNames.
+	if dispatcher.seen[0].Topic() != "user.created" {
+		t.Errorf("topic = %q, want %q", dispatcher.seen[0].Topic(), "user.created")
 	}
 
 	// A second pass must not redeliver a published event.
@@ -200,7 +207,9 @@ func TestPublisher_DeadLettersAfterMaxAttempts(t *testing.T) {
 		t.Fatalf("dead-lettered rows = %d, want 1", got)
 	}
 	const failuresForKind = "SELECT count(*) FROM ops.job_failures WHERE kind = $1"
-	if got := countRows(t, pool, failuresForKind, "outbox.user.user.created"); got != 1 {
+	// The dead-letter kind is "outbox." + the topic, so it carried the doubled
+	// name too.
+	if got := countRows(t, pool, failuresForKind, "outbox.user.created"); got != 1 {
 		t.Fatalf("job_failures rows = %d, want 1", got)
 	}
 

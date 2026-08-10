@@ -37,15 +37,30 @@ const (
 	retentionInterval = 24 * time.Hour
 )
 
+// Guard is the authorization surface this module's admin operations need,
+// re-exported so the composition root can name it without reaching into
+// transport/http.
+//
+// It takes a permission as a string because `audit` does not depend on `rbac`:
+// every arrow in MODULE_INDEX.md §3 points into this module. The composition
+// root adapts the real Authorizer, and it is the only place entitled to see
+// both.
+type Guard = audithttp.Guard
+
 // Deps are what the composition root supplies.
 type Deps struct {
 	Pool  *pgxpool.Pool
 	Clock clock.Clock
 
-	// Guard authorises the admin operations. It is an interface taking a
-	// permission string rather than rbac's Authorizer because `audit` does not
-	// depend on `rbac` — see the type's own documentation.
-	Guard audithttp.Guard
+	// Guard authorises the admin operations.
+	//
+	// It may resolve its authorizer lazily, and in the composition root it
+	// does. `rbac` records into `audit`, so `audit` is constructed first; but
+	// `audit`'s own admin operations are guarded by `rbac`. That circle is real
+	// and an indirection here is where it is broken, rather than by building
+	// the two in an order that only works while `rbac` happens not to need a
+	// recorder yet.
+	Guard Guard
 
 	// IPHashKey keys the HMAC that turns a client address into a stored hash.
 	// Empty means no address is recorded at all, which is the safe default: an

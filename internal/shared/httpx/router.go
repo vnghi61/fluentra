@@ -37,6 +37,18 @@ type RouterDependencies struct {
 	// ClientIP resolves the address used for per-IP lockout and rate limiting.
 	// Leaving it nil trusts no forwarding header, which is the safe default.
 	ClientIP *ClientIPResolver
+
+	// Modules mounts the business modules' operations under `/api/v1`, after
+	// the standard middleware chain and beside `/ping`.
+	//
+	// It is a callback rather than a list of handlers because only the
+	// composition root knows what a module needs — which guard wraps it, which
+	// other module it was built from. This package supplies the mount point and
+	// the middleware, and stays ignorant of everything above it.
+	//
+	// Nil serves the infrastructure endpoints alone, which is what every test
+	// of this package wants.
+	Modules func(chi.Router)
 }
 
 // NewRouter builds the API router and applies the standard HTTP middleware chain.
@@ -71,6 +83,9 @@ func NewRouter(deps RouterDependencies) http.Handler {
 	}
 	router.Route("/api/v1", func(router chi.Router) {
 		router.Get("/ping", pingHandler(deps.Database, deps.Cache))
+		if deps.Modules != nil {
+			deps.Modules(router)
+		}
 	})
 
 	return router

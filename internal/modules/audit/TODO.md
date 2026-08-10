@@ -40,10 +40,19 @@ ticked by hand. Completed work is recorded here instead.
 
 ## Open after P1.4
 
-- [ ] **Wire the module in (P1.5).** `cmd/api` constructs it and adapts `rbac.Authorizer` to
-      `audit.Deps.Guard`; `cmd/worker` calls `Subscribe(bus)` and registers `CronJobs()`. Done
-      when a profile update through the API appears in `audit_logs` with the right actor and
-      trace id. Nothing in this module is reachable until then.
+- [x] **Wire the module in (P1.5).** Done 2026-08-10. `cmd/api` constructs it and adapts
+      `rbac.Authorizer` to `audit.Deps.Guard`; `cmd/worker` calls `Subscribe(bus)` and registers
+      `CronJobs()`. Proven by `cmd/api/wiring_integration_test.go`.
+- [ ] **Carry the request's trace into the entry.** P1.5's acceptance criterion asked for the
+      right actor _and trace id_; the actor is right, the trace id is the worker's rather than
+      the request's. `ops.outbox_events` holds no trace context, so `user` publishes in one
+      trace and `audit` records in another, and BR-AUDIT-07's promise — that a row links
+      straight through to the trace of the action — is only half kept. The fix is a
+      `traceparent` column on the outbox row, written by `shared/outbox.Writer` from the
+      caller's context and carried through `outbox.Event` and `eventbus.Message`; the consumer
+      already reads its envelope structurally. That spans `shared/outbox`, `shared/eventbus` and
+      `db/migrations/job`, so it is a card of its own. `TestTheTrailRecordsATraceID` asserts
+      today's behaviour and will fail loudly when it changes.
 - [ ] **`GET /admin/audit-logs/export`.** Specified in AGENT.md §6, absent from `openapi.yaml`.
       An async export needs `platform/storage` for the signed URL and `audit` depends only on
       `job`, so it needs the dependency arrow added to `MODULE_INDEX.md` §3 and

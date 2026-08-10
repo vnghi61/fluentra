@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/exaring/otelpgx"
+	"github.com/fluentra/fluentra/internal/platform/cache"
 	"github.com/fluentra/fluentra/internal/platform/telemetry"
 	"github.com/fluentra/fluentra/internal/shared/config"
 	"github.com/fluentra/fluentra/internal/shared/httpx"
@@ -129,6 +130,18 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("config key http.trusted_proxies: %w", err)
 	}
 
+	// The business modules, after the infrastructure they are built over and
+	// before the router that mounts them (ARCHITECTURE.md §6.3).
+	//
+	// The cache is passed as rbac's own narrow interface rather than the Redis
+	// client: a permission check falls through to the database when the cache
+	// is unavailable, and the module is what decides that, not this file.
+	modules := newIdentity(identityDeps{
+		Pool:  pool,
+		Cache: cache.NewRedisCache[[]string](redisClient),
+		Env:   cfg.App.Environment,
+	})
+
 	health := telemetry.NewHealthHandler(cfg.App.Version,
 		readinessCheck(pool.Ping),
 		readinessCheck(redisPing(redisClient)),
@@ -144,6 +157,7 @@ func run(ctx context.Context) error {
 			Version:        health.Version,
 			RequestTimeout: cfg.HTTP.RequestTimeout,
 			ClientIP:       clientIP,
+			Modules:        modules.Routes,
 			Middleware: func(next http.Handler) http.Handler {
 				return telemetry.Middleware(routePattern, next)
 			},

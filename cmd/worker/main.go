@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/fluentra/fluentra/internal/modules/audit"
 	"github.com/fluentra/fluentra/internal/platform/job"
 	"github.com/fluentra/fluentra/internal/platform/telemetry"
 	"github.com/fluentra/fluentra/internal/shared/config"
@@ -168,9 +169,19 @@ func run(ctx context.Context) error {
 	redisClient := redis.NewClient(redisOpt)
 	defer func() { _ = redisClient.Close() }()
 
-	// Event bus and outbox publisher. Module consumers register their handlers
-	// on the bus; the publisher is what moves committed events onto it.
+	// Event bus, module consumers, and the outbox publisher that feeds them.
+	//
+	// The consumers are registered before the publisher starts, and that is not
+	// a style choice. The publisher marks an event published once every handler
+	// for its topic has accepted it, and a topic with no handlers is accepted
+	// trivially — so an event delivered in the window before `audit` subscribed
+	// would be marked done without anybody recording it, and never redelivered.
 	bus := eventbus.NewInProcessBus(eventbus.NewRegistry())
+	cron := job.NewCronScheduler(pool)
+	if err := startModules(ctx, pool, bus, cron); err != nil {
+		return err
+	}
+
 	publisher := outbox.NewPublisher(pool, busDispatcher{bus: bus}, cfg.Outbox.BatchSize, cfg.Outbox.PollInterval).
 		WithMaxAttempts(cfg.Job.MaxAttempts)
 	go func() {
@@ -215,8 +226,6 @@ func run(ctx context.Context) error {
 		slog.Info("river worker consuming", "count", kinds)
 	}
 
-	// Cron scheduler
-	cron := job.NewCronScheduler(pool)
 	cron.Start(ctx)
 
 	// Metrics / Health HTTP server
@@ -255,6 +264,40 @@ func run(ctx context.Context) error {
 	_ = provider.Shutdown(shutdownCtx)
 
 	slog.Info("fluentra worker stopped cleanly")
+	return nil
+}
+
+// startModules builds the business modules this binary works for, subscribes
+// their event consumers, and hands their scheduled work to the cron scheduler.
+//
+// `audit` is the only one so far. It takes no Guard: that authorises HTTP
+// operations, and this process serves none.
+func startModules(
+	ctx context.Context, pool *pgxpool.Pool, bus *eventbus.InProcessBus, cron *job.CronScheduler,
+) error {
+	trail := audit.New(audit.Deps{Pool: pool})
+
+	if err := trail.Subscribe(bus); err != nil {
+		return err
+	}
+
+	// The scheduler guards each job with a Postgres advisory lock, so a second
+	// replica running the same tick is harmless.
+	for _, scheduled := range trail.CronJobs() {
+		cron.Register(scheduled)
+	}
+
+	// Rotation runs once at boot rather than waiting for the first tick. A
+	// deployment onto a database whose partitions have lapsed would otherwise
+	// refuse every audited write until the interval elapsed, and the whole
+	// point of creating three months ahead is that nobody is ever waiting.
+	//
+	// A failure here is logged rather than returned: the tick will retry, and
+	// refusing to boot would also stop the outbox publisher and every queue.
+	if err := trail.RotatePartitions(ctx); err != nil {
+		slog.ErrorContext(ctx, "could not rotate audit partitions at start-up; the scheduled job will retry",
+			"error", err)
+	}
 	return nil
 }
 
