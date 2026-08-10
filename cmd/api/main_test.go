@@ -92,6 +92,7 @@ func TestLoadConfigReadsDocumentedEnvironmentKeys(t *testing.T) {
 	t.Setenv("HTTP_REQUEST_TIMEOUT", "10s")
 	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", testOTLPEndpoint)
 	t.Setenv("OTEL_SERVICE_NAME", "fluentra-api-test")
+	t.Setenv("OTP_HMAC_KEY", "test-otp-hmac-key-at-least-32-bytes-long")
 
 	cfg, err := loadConfig(context.Background())
 	if err != nil {

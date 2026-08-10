@@ -83,7 +83,7 @@ func TestHandler_Register_Success(t *testing.T) {
 	serviceFake := &fakeRegistrationService{}
 	router := newTestRouter(serviceFake)
 
-	body := `{"email":"learner@example.com","password":"valid-pass-1234","display_name":"Learner"}`
+	body := `{"email":"learner@example.com","password":"password12345","display_name":"Learner"}` // gitleaks:allow
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
@@ -226,7 +226,7 @@ func TestHandler_CodeNeverInResponseJSON(t *testing.T) {
 	}
 	router := newTestRouter(serviceFake)
 
-	body := `{"email":"learner@example.com","password":"valid-pass-1234","display_name":"Learner"}`
+	body := `{"email":"learner@example.com","password":"password12345","display_name":"Learner"}` // gitleaks:allow
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
