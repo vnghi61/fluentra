@@ -57,6 +57,11 @@ func TestLoadConfig_ResolvesEveryKeyFromEnvExample(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load config from .env.example: %v", err)
 	}
+	assertWorkerConfig(t, cfg)
+}
+
+func assertWorkerConfig(t *testing.T, cfg workerConfig) {
+	t.Helper()
 	if cfg.Database.DSN == "" || cfg.Redis.URL == "" {
 		t.Errorf("required connection settings not decoded: %#v", cfg)
 	}

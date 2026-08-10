@@ -20,6 +20,11 @@ import (
 	"github.com/fluentra/fluentra/internal/shared/secret"
 )
 
+const (
+	accountStatusActive = "active"
+	testPassword        = "password-12345"
+)
+
 type fakeAccounts struct {
 	mu          sync.Mutex
 	accounts    map[string]service.Account
@@ -55,7 +60,7 @@ func (f *fakeAccounts) CreateAccount(_ context.Context, input service.NewAccount
 	}
 
 	id := uuid.New()
-	acc := service.Account{ID: id, Verified: false, Status: "active"}
+	acc := service.Account{ID: id, Verified: false, Status: accountStatusActive}
 	f.accounts[email] = acc
 	f.byID[id] = service.Contact{Email: email, DisplayName: input.DisplayName, Locale: input.Locale}
 	return id, nil
@@ -105,7 +110,7 @@ func (f *fakeAccounts) PurgeUnverifiedBefore(_ context.Context, _ time.Time) (in
 	}
 	count := 0
 	for email, acc := range f.accounts {
-		if !acc.Verified && acc.Status == "active" {
+		if !acc.Verified && acc.Status == accountStatusActive {
 			delete(f.accounts, email)
 			delete(f.byID, acc.ID)
 			count++
@@ -126,7 +131,9 @@ func newFakeCredentials() *fakeCredentials {
 	return &fakeCredentials{credentials: make(map[uuid.UUID]domain.Credential)}
 }
 
-func (f *fakeCredentials) Create(_ context.Context, id, userID uuid.UUID, passwordHash string) (domain.Credential, error) {
+func (f *fakeCredentials) Create(
+	_ context.Context, id, userID uuid.UUID, passwordHash string,
+) (domain.Credential, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
@@ -144,7 +151,9 @@ func (f *fakeCredentials) Create(_ context.Context, id, userID uuid.UUID, passwo
 	return cred, nil
 }
 
-func (f *fakeCredentials) ReplaceHash(_ context.Context, userID uuid.UUID, passwordHash string) (domain.Credential, error) {
+func (f *fakeCredentials) ReplaceHash(
+	_ context.Context, userID uuid.UUID, passwordHash string,
+) (domain.Credential, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
@@ -186,7 +195,9 @@ func newFakeEventWriter() *fakeEventWriter {
 	return &fakeEventWriter{}
 }
 
-func (f *fakeEventWriter) Write(_ context.Context, _ service.OutboxTx, aggregate, event string, payload any) (uuid.UUID, error) {
+func (f *fakeEventWriter) Write(
+	_ context.Context, _ service.OutboxTx, aggregate, event string, payload any,
+) (uuid.UUID, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
@@ -341,7 +352,7 @@ func TestRegister_AlreadyVerifiedAddressIsEnumerationSafe(t *testing.T) {
 
 	// Pre-create verified account
 	accID := uuid.New()
-	h.accounts.accounts[email] = service.Account{ID: accID, Verified: true, Status: "active"}
+	h.accounts.accounts[email] = service.Account{ID: accID, Verified: true, Status: accountStatusActive}
 
 	req := service.Registration{
 		Email:       email,
@@ -431,7 +442,7 @@ func TestVerifyEmail_MarksAddressVerified(t *testing.T) {
 
 	req := service.Registration{
 		Email:       email,
-		Password:    "password-12345",
+		Password:    testPassword,
 		DisplayName: "Test Verify",
 	}
 	issued, err := h.service.Register(context.Background(), req)
@@ -464,10 +475,10 @@ func TestPurgeUnverified_SweepsOnlyUnverified(t *testing.T) {
 	// Pre-populate: 1 unverified, 1 verified
 	id1 := uuid.New()
 	id2 := uuid.New()
-	h.accounts.accounts["unverified@test.com"] = service.Account{ID: id1, Verified: false, Status: "active"}
+	h.accounts.accounts["unverified@test.com"] = service.Account{ID: id1, Verified: false, Status: accountStatusActive}
 	h.accounts.byID[id1] = service.Contact{Email: "unverified@test.com"}
 
-	h.accounts.accounts["verified@test.com"] = service.Account{ID: id2, Verified: true, Status: "active"}
+	h.accounts.accounts["verified@test.com"] = service.Account{ID: id2, Verified: true, Status: accountStatusActive}
 	h.accounts.byID[id2] = service.Contact{Email: "verified@test.com"}
 
 	if err := h.service.PurgeUnverified(context.Background()); err != nil {
@@ -488,7 +499,7 @@ func TestRegistration_CodeNeverRevealedInResponse(t *testing.T) {
 
 	req := service.Registration{
 		Email:       "noreveal@example.com",
-		Password:    "password-12345",
+		Password:    testPassword,
 		DisplayName: "No Reveal",
 	}
 
@@ -510,7 +521,7 @@ func TestRegister_SucceedsEvenIfMailerIsDown(t *testing.T) {
 	// Outbox event is successfully written regardless of mailer availability.
 	req := service.Registration{
 		Email:       "mailerdown@example.com",
-		Password:    "password-12345",
+		Password:    testPassword,
 		DisplayName: "Mailer Down",
 	}
 
