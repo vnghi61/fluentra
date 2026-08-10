@@ -69,7 +69,7 @@ func TestOutboxReachesEventBus(t *testing.T) {
 	bus := eventbus.NewInProcessBus(eventbus.NewRegistry())
 	var received eventbus.Message
 	var deliveries int
-	if err := bus.Subscribe("user.user.created", func(_ context.Context, message eventbus.Message) error {
+	if err := bus.Subscribe("user.created", func(_ context.Context, message eventbus.Message) error {
 		deliveries++
 		received = message
 		return nil
@@ -126,7 +126,7 @@ func TestFailingHandlerKeepsEventPending(t *testing.T) {
 	ctx := context.Background()
 
 	bus := eventbus.NewInProcessBus(eventbus.NewRegistry())
-	_ = bus.Subscribe("user.user.created", func(context.Context, eventbus.Message) error {
+	_ = bus.Subscribe("user.created", func(context.Context, eventbus.Message) error {
 		return errors.New("consumer is down")
 	})
 

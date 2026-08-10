@@ -457,9 +457,17 @@ func TestForgetUserRemovesAssignments(t *testing.T) {
 	}
 }
 
+// outboxEvents returns the topics of the rows in the outbox — what a consumer
+// subscribes to, and what this module's contract constants declare.
+//
+// The `event` column holds the bare name and the aggregate is joined back on
+// here, exactly as outbox.Event.Topic() does. Comparing the raw column against
+// the contract constant is what this helper used to do, and it is why the
+// doubled-topic bug survived until P1.5 wired a consumer.
 func outboxEvents(t *testing.T) []string {
 	t.Helper()
-	rows, err := pool.Query(context.Background(), `SELECT event FROM ops.outbox_events ORDER BY created_at`)
+	const query = `SELECT aggregate || '.' || event FROM ops.outbox_events ORDER BY created_at`
+	rows, err := pool.Query(context.Background(), query)
 	if err != nil {
 		t.Fatalf("read outbox: %v", err)
 	}

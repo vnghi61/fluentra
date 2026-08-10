@@ -41,11 +41,26 @@ generated text describes commits; release notes should describe change.
   entries, exactly once per event
 - Scheduled partition rotation and two-year retention
 
+- The identity modules wired into the running API and worker: every operation above is now
+  mounted, and every audited write reaches `audit_logs` through the worker
+
+### Fixed
+
+- Outbox events were published under a doubled topic (`user.user.profile_updated`), so no
+  consumer could ever match one. Because an event with no handlers is accepted rather than
+  retried, every event published since the `user` module landed was marked delivered and
+  discarded. Nothing had subscribed yet, so nothing noticed.
+
 ### Notes
 
-The four `/me` operations and the three `/admin` audit operations are specified and implemented
-but not yet reachable: nothing mounts them, and there is no authentication to put a caller in
-the request context. Both arrive in Phase 1 (P1.5 and P2.4). See [ROADMAP.md](ROADMAP.md).
+The operations above are mounted but still not usable by a real client: there is no
+authentication yet, so nothing puts a caller in the request context and every one of them
+answers 401. That arrives with P2.4. See [ROADMAP.md](ROADMAP.md).
+
+An audit entry currently carries the trace of the worker that recorded it, not of the request
+that caused the change — the outbox row carries no trace context, so the two are separate
+traces. Correlation by actor, action and time works; clicking straight through to the request's
+trace does not.
 
 Audit entries record **which fields changed, not what they changed to**, and redact anything on
 the PII deny-list if a value is supplied. An audit log holding a copy of every old display name

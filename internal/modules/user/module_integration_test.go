@@ -222,6 +222,15 @@ type outboxRow struct {
 	Payload   map[string]any
 }
 
+// Topic is what a consumer subscribes to, and what these tests assert against.
+//
+// The `event` column holds the bare name; the contract constant that other
+// modules match on is the qualified one, and the two are joined here exactly as
+// outbox.Event.Topic() joins them. Asserting the raw column against the
+// constant is what these tests used to do, and it is why the doubled-topic bug
+// went unnoticed until P1.5 wired a consumer.
+func (r outboxRow) Topic() string { return r.Aggregate + "." + r.Event }
+
 // TestModule_ProfileUpdateIsServedAndRecorded is the WP1 gate for this module,
 // end to end: a real request changes a real row and leaves exactly one event
 // for `audit` to consume. Every layer in the slice is the production one.
@@ -248,9 +257,9 @@ func TestModule_ProfileUpdateIsServedAndRecorded(t *testing.T) {
 	if len(events) != 1 {
 		t.Fatalf("outbox has %d rows, want exactly 1: %+v", len(events), events)
 	}
-	if events[0].Aggregate != contract.Aggregate || events[0].Event != contract.EventProfileUpdated {
-		t.Fatalf("event = %s/%s, want %s/%s",
-			events[0].Aggregate, events[0].Event, contract.Aggregate, contract.EventProfileUpdated)
+	if events[0].Aggregate != contract.Aggregate || events[0].Topic() != contract.EventProfileUpdated {
+		t.Fatalf("aggregate/topic = %s/%s, want %s/%s",
+			events[0].Aggregate, events[0].Topic(), contract.Aggregate, contract.EventProfileUpdated)
 	}
 	if events[0].Payload["user_id"] != actor.String() {
 		t.Errorf("payload user_id = %v, want %s", events[0].Payload["user_id"], actor)
@@ -330,7 +339,7 @@ func TestModule_PreferencesRoundTripThroughHTTP(t *testing.T) {
 		t.Errorf("GET after PUT returned\n%s\nwant\n%s", again.Body, written.Body)
 	}
 
-	if events := outboxRows(t); len(events) != 1 || events[0].Event != contract.EventPreferencesUpdated {
+	if events := outboxRows(t); len(events) != 1 || events[0].Topic() != contract.EventPreferencesUpdated {
 		t.Errorf("outbox = %+v, want one %s", events, contract.EventPreferencesUpdated)
 	}
 }
