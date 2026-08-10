@@ -77,6 +77,9 @@ func TestLoadConfig_ResolvesEveryKeyFromEnvExample(t *testing.T) {
 	if cfg.Telemetry.Endpoint != defaultOTLPEndpoint {
 		t.Errorf("Telemetry.Endpoint = %q, want the scheme stripped for gRPC", cfg.Telemetry.Endpoint)
 	}
+	if cfg.Mail.From != "Fluentra <no-reply@fluentra.dev>" {
+		t.Errorf("Mail.From = %q, want the documented MAIL_FROM value", cfg.Mail.From)
+	}
 }
 
 func TestLoadConfigReadsDocumentedEnvironmentKeys(t *testing.T) {
@@ -93,6 +96,7 @@ func TestLoadConfigReadsDocumentedEnvironmentKeys(t *testing.T) {
 	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", testOTLPEndpoint)
 	t.Setenv("OTEL_SERVICE_NAME", "fluentra-api-test")
 	t.Setenv("OTP_HMAC_KEY", "test-otp-hmac-key-at-least-32-bytes-long")
+	t.Setenv("MAIL_FROM", "Fluentra Test <no-reply@test.example>")
 
 	cfg, err := loadConfig(context.Background())
 	if err != nil {
@@ -106,6 +110,9 @@ func TestLoadConfigReadsDocumentedEnvironmentKeys(t *testing.T) {
 	}
 	if cfg.Telemetry.Endpoint != testOTLPEndpoint || cfg.Telemetry.ServiceName != "fluentra-api-test" {
 		t.Fatalf("telemetry environment was not decoded: %#v", cfg.Telemetry)
+	}
+	if cfg.Mail.From != "Fluentra Test <no-reply@test.example>" {
+		t.Fatalf("MAIL_FROM was not decoded: %q", cfg.Mail.From)
 	}
 }
 

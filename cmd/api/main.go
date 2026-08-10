@@ -67,12 +67,14 @@ type applicationConfig struct {
 	OTP struct {
 		HMACKey string `koanf:"hmac_key"`
 	} `koanf:"otp"`
+	Mail struct {
+		From string `koanf:"from"`
+	} `koanf:"mail"`
 	SMTP struct {
 		Host     string `koanf:"host"`
 		Port     int    `koanf:"port"`
 		Username string `koanf:"username"`
 		Password string `koanf:"password"`
-		From     string `koanf:"from"`
 		DevMode  bool   `koanf:"dev_mode"`
 	} `koanf:"smtp"`
 }
@@ -158,7 +160,7 @@ func run(ctx context.Context) error {
 			Port:     cfg.SMTP.Port,
 			Username: cfg.SMTP.Username,
 			Password: cfg.SMTP.Password,
-			From:     cfg.SMTP.From,
+			From:     cfg.Mail.From,
 			DevMode:  cfg.SMTP.DevMode,
 		},
 	})
@@ -242,6 +244,7 @@ func configOptions() config.Options {
 			"smtp.host":                   "localhost",
 			"smtp.port":                   1025,
 			"smtp.dev_mode":               true,
+			"mail.from":                   "no-reply@fluentra.local",
 		},
 		Required: []config.RequiredKey{
 			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},

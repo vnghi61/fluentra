@@ -69,12 +69,14 @@ type workerConfig struct {
 	OTP struct {
 		HMACKey string `koanf:"hmac_key"`
 	} `koanf:"otp"`
+	Mail struct {
+		From string `koanf:"from"`
+	} `koanf:"mail"`
 	SMTP struct {
 		Host     string `koanf:"host"`
 		Port     int    `koanf:"port"`
 		Username string `koanf:"username"`
 		Password string `koanf:"password"`
-		From     string `koanf:"from"`
 		DevMode  bool   `koanf:"dev_mode"`
 	} `koanf:"smtp"`
 }
@@ -99,6 +101,7 @@ func configOptions() config.Options {
 			"smtp.host":                   "localhost",
 			"smtp.port":                   1025,
 			"smtp.dev_mode":               true,
+			"mail.from":                   "no-reply@fluentra.local",
 		},
 		Required: []config.RequiredKey{
 			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},
@@ -333,12 +336,7 @@ func startModules(
 	if err != nil {
 		return fmt.Errorf("build mailer renderer: %w", err)
 	}
-	sender := mailer.NewSMTPSender(mailer.SMTPConfig{
-		Host:    cfg.SMTP.Host,
-		Port:    cfg.SMTP.Port,
-		From:    cfg.SMTP.From,
-		DevMode: cfg.SMTP.DevMode,
-	}, renderer, nil, nil)
+	sender := mailer.NewSMTPSender(smtpConfig(cfg), renderer, nil, nil)
 
 	authModule := auth.New(auth.Deps{
 		Pool:       pool,
@@ -355,6 +353,21 @@ func startModules(
 	}
 
 	return nil
+}
+
+// smtpConfig keeps the worker's transport configuration complete. The API and
+// worker run in separate processes: registration writes the outbox event in
+// the API, but this worker is the process that authenticates to SMTP and sends
+// the OTP, so omitting credentials here makes every production delivery fail.
+func smtpConfig(cfg workerConfig) mailer.SMTPConfig {
+	return mailer.SMTPConfig{
+		Host:     cfg.SMTP.Host,
+		Port:     cfg.SMTP.Port,
+		Username: cfg.SMTP.Username,
+		Password: cfg.SMTP.Password,
+		From:     cfg.Mail.From,
+		DevMode:  cfg.SMTP.DevMode,
+	}
 }
 
 // registerJobKinds is where a module's job handlers are added to the bundle, and
