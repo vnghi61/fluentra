@@ -43,6 +43,9 @@ agent knows what is already handled and what is deliberately deferred.
 <!-- END GENERATED: todo -->
 
 ## Progress
+<!-- END GENERATED: todo -->
+
+## Progress
 
 The list above is generated from `tools/docgen/data/core.json`, so its checkboxes cannot be ticked
 by hand. Completed work is recorded here instead.
@@ -51,6 +54,7 @@ by hand. Completed work is recorded here instead.
 |---|---|---|
 | P2.1 | 2026-08-10 | `core.credentials`, with the cost parameters as a generated column and a CHECK that only a PHC-encoded Argon2id hash may be stored; `domain.Hasher` at m=64 MiB/t=3/p=2, parameters embedded in the hash, a rehash decision returned by every verify; `domain.Policy` — length, not equal to the email local part, and the breach corpus, failing open; `domain.PasswordRange` and the HIBP k-anonymity adapter over `net/http` |
 | P2.1b | 2026-08-10 | `core.auth_challenges` with the `purpose` enum, the attempt cap as a CHECK and no `burned_at`; `domain.Keyring` — subject and code HMACs, the code hash bound to the challenge id; uniform code draw from `crypto/rand`; `ChallengeService.Issue`/`Verify`/`Resend` with the two issuance limiters and the resend cooldown; every state transition a guarded single-statement UPDATE, proven single-use under ten concurrent consumers |
+| P2.2 | 2026-08-10 | `module.go` — `New(Deps)`, `Routes`, `Subscribe`, `CronJobs`, adapters for all service surfaces; `RegisterService.Register/VerifyEmail/Resend/PurgeUnverified`; three HTTP endpoints (`POST /auth/register`, `POST /auth/challenges/{id}/verify`, `POST /auth/challenges/{id}/resend`); `registration_attempt` email template (en + vi); outbox consumer for `auth.verification_requested` and `auth.registration_attempted`; `purge_unverified` cron job; OTP_HMAC_KEY and SMTP config wired in both `cmd/api` and `cmd/worker` |
 
 ## Open after P2.1
 
@@ -84,14 +88,28 @@ by hand. Completed work is recorded here instead.
       payload follows the field convention `audit` reads structurally (`occurred_at`, `user_id`,
       `severity`). Blocked on nothing but scope. Done when burning a challenge produces a row in
       `security_events`.
-- [ ] **Wire the subsystem in.** There is no `module.go` yet, so nothing reads `OTP_TTL`,
-      `OTP_MAX_ATTEMPTS`, `OTP_CODE_LENGTH`, `OTP_RESEND_COOLDOWN`, `OTP_ISSUE_PER_SUBJECT_PER_HOUR`,
-      `OTP_ISSUE_PER_IP_PER_HOUR` or `OTP_HMAC_KEY`. `service.DefaultConfig` carries the same
-      values, so the defaults are the documented ones. P2.2 does this as part of registration.
+- [x] **Wire the subsystem in.** `module.go` now reads `OTP_HMAC_KEY` and both binaries declare
+      it as a required key. The six OTP tuning parameters (`OTP_TTL`, `OTP_MAX_ATTEMPTS`,
+      `OTP_CODE_LENGTH`, `OTP_RESEND_COOLDOWN`, `OTP_ISSUE_PER_SUBJECT_PER_HOUR`,
+      `OTP_ISSUE_PER_IP_PER_HOUR`) are still read from `service.DefaultConfig`; wiring them to
+      the env block is a follow-up that belongs in P2.8 alongside the rate-limiter wiring.
 - [ ] **A rotation story for `OTP_HMAC_KEY`.** Changing the key invalidates every live challenge —
       ten minutes of them, so the blast radius is small, but it is currently undocumented and
       there is no two-key path as `JWT_PREVIOUS_KEY` gives tokens. Done when the operational
       consequence is written down in `docs/deployment/configuration.md`.
+
+## Open after P2.2
+
+- [ ] **The code-in-plaintext outbox payload.** `ops.outbox_events` currently keeps published rows
+      indefinitely, so `auth.verification_requested` payloads carry the OTP code after the
+      challenge has expired and the code is worthless. The exposure is bounded by the ten-minute
+      TTL — nobody can complete the challenge with a stale code — but the record outlives its
+      usefulness. Done when the outbox pruner in `shared/outbox` deletes published rows older
+      than some configurable window (tracked in `shared/outbox/TODO.md`).
+- [ ] **OTP tuning parameters wired to config.** `OTP_TTL`, `OTP_MAX_ATTEMPTS`, `OTP_CODE_LENGTH`,
+      `OTP_RESEND_COOLDOWN`, `OTP_ISSUE_PER_SUBJECT_PER_HOUR`, and `OTP_ISSUE_PER_IP_PER_HOUR`
+      are all in `.env.example` and all read from `service.DefaultConfig` today. Done when
+      `cmd/api` loads them and a test proves a non-default `OTP_CODE_LENGTH` takes effect (P2.8).
 
 ## Deferred (deliberately not doing yet)
 

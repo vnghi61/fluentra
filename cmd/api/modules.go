@@ -7,29 +7,34 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/fluentra/fluentra/internal/modules/audit"
+	"github.com/fluentra/fluentra/internal/modules/auth"
 	"github.com/fluentra/fluentra/internal/modules/rbac"
 	rbaccontract "github.com/fluentra/fluentra/internal/modules/rbac/contract"
 	"github.com/fluentra/fluentra/internal/modules/user"
+	"github.com/fluentra/fluentra/internal/platform/mailer"
 )
 
-// identity is WP1 assembled: the modules that know who a caller is and what
+// identity is WP1+WP2 assembled: the modules that know who a caller is and what
 // they may do, and the record of what they did.
 type identity struct {
 	audit *audit.Module
 	rbac  *rbac.Module
 	user  *user.Module
+	auth  *auth.Module
 }
 
 // identityDeps are the infrastructure the modules are built over.
 type identityDeps struct {
-	Pool  *pgxpool.Pool
-	Cache rbac.PermissionCache
-	Env   string
+	Pool       *pgxpool.Pool
+	Cache      rbac.PermissionCache
+	Env        string
+	OTPHMACKey []byte
+	SMTP       mailer.SMTPConfig
 }
 
 // newIdentity constructs the modules in dependency order — audit, then rbac,
-// then user. That is the order MODULE_INDEX.md §3 draws the arrows in: `rbac`
-// and `user` record into `audit`, and nothing records into theirs.
+// then user, then auth. That is the order MODULE_INDEX.md §3 draws the arrows
+// in: `rbac` and `user` record into `audit`, and `auth` depends on `user`.
 //
 // There is one circle, and it is worth naming. `audit`'s own admin operations
 // are guarded by `rbac`, while `rbac` records into `audit`. Today the second
@@ -67,6 +72,26 @@ func newIdentity(deps identityDeps) *identity {
 
 	assembled.user = user.New(user.Deps{Pool: deps.Pool})
 
+	// `auth` comes after `user` because it holds a reference to user.Registrar.
+	// The mailer renderer is built with DefaultTemplates so startup fails if a
+	// template is missing from either locale — a missing template discovered at
+	// request time would fail one learner's request rather than the boot.
+	renderer, err := mailer.NewRenderer(nil, nil)
+	if err != nil {
+		// NewRenderer fails only if a template is malformed or missing — that is
+		// a programmer error, not an operational one. Panic rather than returning
+		// an error that main would have to propagate through newIdentity.
+		panic("mailer.NewRenderer: " + err.Error())
+	}
+	sender := mailer.NewSMTPSender(deps.SMTP, renderer, nil, nil)
+
+	assembled.auth = auth.New(auth.Deps{
+		Pool:       deps.Pool,
+		OTPHMACKey: deps.OTPHMACKey,
+		Mailer:     sender,
+		Registrar:  assembled.user.Registrar(),
+	})
+
 	return assembled
 }
 
@@ -80,6 +105,7 @@ func newIdentity(deps identityDeps) *identity {
 func (i *identity) Routes(api chi.Router) {
 	i.user.Routes(api)
 	i.rbac.Routes(api)
+	i.auth.Routes(api)
 
 	api.Group(func(admin chi.Router) {
 		admin.Use(i.rbac.AdminOnly())

@@ -1,0 +1,10 @@
+Hello,
+
+Someone tried to register a new Fluentra account using your email address ({{.Email}}).
+
+If this was you, you can ignore this message — your existing account is untouched.
+
+If this was not you, no action is needed. Nobody can create an account on your address without
+access to your inbox.
+
+— The Fluentra team

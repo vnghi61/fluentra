@@ -14,7 +14,10 @@ import (
 	"time"
 
 	"github.com/fluentra/fluentra/internal/modules/audit"
+	"github.com/fluentra/fluentra/internal/modules/auth"
+	"github.com/fluentra/fluentra/internal/modules/user"
 	"github.com/fluentra/fluentra/internal/platform/job"
+	"github.com/fluentra/fluentra/internal/platform/mailer"
 	"github.com/fluentra/fluentra/internal/platform/telemetry"
 	"github.com/fluentra/fluentra/internal/shared/config"
 	"github.com/fluentra/fluentra/internal/shared/eventbus"
@@ -63,6 +66,17 @@ type workerConfig struct {
 		Endpoint    string `koanf:"exporter_otlp_endpoint"`
 		ServiceName string `koanf:"service_name"`
 	} `koanf:"otel"`
+	OTP struct {
+		HMACKey string `koanf:"hmac_key"`
+	} `koanf:"otp"`
+	SMTP struct {
+		Host     string `koanf:"host"`
+		Port     int    `koanf:"port"`
+		Username string `koanf:"username"`
+		Password string `koanf:"password"`
+		From     string `koanf:"from"`
+		DevMode  bool   `koanf:"dev_mode"`
+	} `koanf:"smtp"`
 }
 
 // configOptions declares every key this binary reads. A key absent from here
@@ -82,10 +96,14 @@ func configOptions() config.Options {
 			"job.timeout":                 "5m",
 			"otel.exporter_otlp_endpoint": "localhost:4317",
 			"otel.service_name":           "fluentra-worker",
+			"smtp.host":                   "localhost",
+			"smtp.port":                   1025,
+			"smtp.dev_mode":               true,
 		},
 		Required: []config.RequiredKey{
 			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},
 			{Name: "redis.url", DocSection: "docs/deployment/configuration.md#redis"},
+			{Name: "otp.hmac_key", DocSection: "docs/deployment/configuration.md#auth"},
 		},
 	}
 }
@@ -178,7 +196,7 @@ func run(ctx context.Context) error {
 	// would be marked done without anybody recording it, and never redelivered.
 	bus := eventbus.NewInProcessBus(eventbus.NewRegistry())
 	cron := job.NewCronScheduler(pool)
-	if err := startModules(ctx, pool, bus, cron); err != nil {
+	if err := startModules(ctx, pool, bus, cron, cfg); err != nil {
 		return err
 	}
 
@@ -270,10 +288,14 @@ func run(ctx context.Context) error {
 // startModules builds the business modules this binary works for, subscribes
 // their event consumers, and hands their scheduled work to the cron scheduler.
 //
-// `audit` is the only one so far. It takes no Guard: that authorises HTTP
-// operations, and this process serves none.
+// The `auth` module's consumer delivers registration emails and warning emails
+// for the already-verified path, using the outbox events written inside the
+// same transaction as the business write. The `audit` consumer records every
+// event. Both subscribe before the outbox publisher starts (in run()) so no
+// event can be marked published before a consumer has accepted it.
 func startModules(
 	ctx context.Context, pool *pgxpool.Pool, bus *eventbus.InProcessBus, cron *job.CronScheduler,
+	cfg workerConfig,
 ) error {
 	trail := audit.New(audit.Deps{Pool: pool})
 
@@ -298,6 +320,40 @@ func startModules(
 		slog.ErrorContext(ctx, "could not rotate audit partitions at start-up; the scheduled job will retry",
 			"error", err)
 	}
+
+	// user is constructed here rather than imported from cmd/api because the two
+	// processes are independent — they share a pool and a database, but each
+	// builds its own module graph. The worker needs user only as the Registrar
+	// surface that auth adapts to.
+	userModule := user.New(user.Deps{Pool: pool})
+
+	// The renderer is built at startup so a missing or malformed template fails
+	// the worker boot rather than one consumer invocation.
+	renderer, err := mailer.NewRenderer(nil, nil)
+	if err != nil {
+		return fmt.Errorf("build mailer renderer: %w", err)
+	}
+	sender := mailer.NewSMTPSender(mailer.SMTPConfig{
+		Host:    cfg.SMTP.Host,
+		Port:    cfg.SMTP.Port,
+		From:    cfg.SMTP.From,
+		DevMode: cfg.SMTP.DevMode,
+	}, renderer, nil, nil)
+
+	authModule := auth.New(auth.Deps{
+		Pool:       pool,
+		OTPHMACKey: []byte(cfg.OTP.HMACKey),
+		Mailer:     sender,
+		Registrar:  userModule.Registrar(),
+	})
+
+	if err := authModule.Subscribe(bus); err != nil {
+		return err
+	}
+	for _, scheduled := range authModule.CronJobs() {
+		cron.Register(scheduled)
+	}
+
 	return nil
 }
 
