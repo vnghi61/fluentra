@@ -119,4 +119,25 @@ VerifiedChallenge:
     verified_at:
       type: string
       format: date-time
-      description: When the code was accepted.
+      description: The timestamp at which the address was marked verified.
+
+LoginRequest:
+  type: object
+  required: [email, password]
+  additionalProperties: false
+  properties:
+    email:
+      type: string
+      format: email
+      maxLength: 254
+      example: learner@example.com
+    password:
+      type: string
+      format: password
+      example: a-secret-password
+    remember_device:
+      type: boolean
+      default: false
+    device_id:
+      type: string
+      maxLength: 128

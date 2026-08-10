@@ -151,6 +151,17 @@ func (f *fakeCredentials) Create(
 	return cred, nil
 }
 
+func (f *fakeCredentials) GetByUserID(_ context.Context, userID uuid.UUID) (domain.Credential, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	cred, ok := f.credentials[userID]
+	if !ok {
+		return domain.Credential{}, domain.ErrCredentialNotFound
+	}
+	return cred, nil
+}
+
 func (f *fakeCredentials) ReplaceHash(
 	_ context.Context, userID uuid.UUID, passwordHash string,
 ) (domain.Credential, error) {

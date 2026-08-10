@@ -188,6 +188,24 @@ type ClientInterface interface {
 	// Corresponds with POST /auth/challenges/{id}/verify (the `AuthVerifyChallenge` operationId).
 	AuthVerifyChallenge(ctx context.Context, id openapi_types.UUID, body AuthVerifyChallengeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AuthLoginWithBody Authenticate a user with email and password.
+	//
+	// Authenticates a user account. Enforces constant-time verification even for unknown emails (BR-AUTH-02) and applies independent per-account and per-IP lockout rate limits (BR-AUTH-08).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /auth/login (the `AuthLogin` operationId).
+	AuthLoginWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AuthLogin Authenticate a user with email and password.
+	//
+	// Authenticates a user account. Enforces constant-time verification even for unknown emails (BR-AUTH-02) and applies independent per-account and per-IP lockout rate limits (BR-AUTH-08).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /auth/login (the `AuthLogin` operationId).
+	AuthLogin(ctx context.Context, body AuthLoginJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AuthRegisterWithBody Open an account and start email verification.
 	//
 	// Creates the account and issues a `verify_email` challenge. The six-digit code goes to the address by email; the response carries only the challenge handle.
@@ -497,6 +515,44 @@ func (c *Client) AuthVerifyChallengeWithBody(ctx context.Context, id openapi_typ
 // Corresponds with POST /auth/challenges/{id}/verify (the `AuthVerifyChallenge` operationId).
 func (c *Client) AuthVerifyChallenge(ctx context.Context, id openapi_types.UUID, body AuthVerifyChallengeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAuthVerifyChallengeRequest(c.Server, id, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AuthLoginWithBody Authenticate a user with email and password.
+//
+// Authenticates a user account. Enforces constant-time verification even for unknown emails (BR-AUTH-02) and applies independent per-account and per-IP lockout rate limits (BR-AUTH-08).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /auth/login (the `AuthLogin` operationId).
+func (c *Client) AuthLoginWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthLoginRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AuthLogin Authenticate a user with email and password.
+//
+// Authenticates a user account. Enforces constant-time verification even for unknown emails (BR-AUTH-02) and applies independent per-account and per-IP lockout rate limits (BR-AUTH-08).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /auth/login (the `AuthLogin` operationId).
+func (c *Client) AuthLogin(ctx context.Context, body AuthLoginJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthLoginRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1267,6 +1323,46 @@ func NewAuthVerifyChallengeRequestWithBody(server string, id openapi_types.UUID,
 	return req, nil
 }
 
+// NewAuthLoginRequest calls the generic AuthLogin builder with application/json body
+func NewAuthLoginRequest(server string, body AuthLoginJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAuthLoginRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewAuthLoginRequestWithBody constructs an http.Request for the AuthLogin method, with any body, and a specified content type
+func NewAuthLoginRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/login")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewAuthRegisterRequest calls the generic AuthRegister builder with application/json body
 func NewAuthRegisterRequest(server string, body AuthRegisterJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -1726,6 +1822,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /auth/challenges/{id}/verify (the `AuthVerifyChallenge` operationId).
 	AuthVerifyChallengeWithResponse(ctx context.Context, id openapi_types.UUID, body AuthVerifyChallengeJSONRequestBody, reqEditors ...RequestEditorFn) (*AuthVerifyChallengeResponse, error)
+
+	// AuthLoginWithBodyWithResponse Authenticate a user with email and password.
+	//
+	// Authenticates a user account. Enforces constant-time verification even for unknown emails (BR-AUTH-02) and applies independent per-account and per-IP lockout rate limits (BR-AUTH-08).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /auth/login (the `AuthLogin` operationId).
+	AuthLoginWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AuthLoginResponse, error)
+
+	// AuthLoginWithResponse Authenticate a user with email and password.
+	//
+	// Authenticates a user account. Enforces constant-time verification even for unknown emails (BR-AUTH-02) and applies independent per-account and per-IP lockout rate limits (BR-AUTH-08).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /auth/login (the `AuthLogin` operationId).
+	AuthLoginWithResponse(ctx context.Context, body AuthLoginJSONRequestBody, reqEditors ...RequestEditorFn) (*AuthLoginResponse, error)
 
 	// AuthRegisterWithBodyWithResponse Open an account and start email verification.
 	//
@@ -2490,6 +2604,81 @@ func (r AuthVerifyChallengeResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r AuthVerifyChallengeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AuthLoginResponse200Headers the declared response headers of an HTTP 200 response for AuthLogin
+type AuthLoginResponse200Headers struct {
+	XRequestId *string
+}
+
+// AuthLoginResponse429Headers the declared response headers of an HTTP 429 response for AuthLogin
+type AuthLoginResponse429Headers struct {
+	RetryAfter *int
+}
+
+type AuthLoginResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		UserId   openapi_types.UUID `json:"user_id"`
+		Verified bool               `json:"verified"`
+	}
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AuthLoginResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AuthLoginResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AuthLoginResponse) GetJSON200() *struct {
+	UserId   openapi_types.UUID `json:"user_id"`
+	Verified bool               `json:"verified"`
+} {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AuthLoginResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AuthLoginResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetBody returns the raw response body bytes
+func (r AuthLoginResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AuthLoginResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AuthLoginResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AuthLoginResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -3282,6 +3471,36 @@ func (c *ClientWithResponses) AuthVerifyChallengeWithResponse(ctx context.Contex
 	return ParseAuthVerifyChallengeResponse(rsp)
 }
 
+// AuthLoginWithBodyWithResponse Authenticate a user with email and password.
+//
+// Authenticates a user account. Enforces constant-time verification even for unknown emails (BR-AUTH-02) and applies independent per-account and per-IP lockout rate limits (BR-AUTH-08).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /auth/login (the `AuthLogin` operationId).
+func (c *ClientWithResponses) AuthLoginWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AuthLoginResponse, error) {
+	rsp, err := c.AuthLoginWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthLoginResponse(rsp)
+}
+
+// AuthLoginWithResponse Authenticate a user with email and password.
+//
+// Authenticates a user account. Enforces constant-time verification even for unknown emails (BR-AUTH-02) and applies independent per-account and per-IP lockout rate limits (BR-AUTH-08).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /auth/login (the `AuthLogin` operationId).
+func (c *ClientWithResponses) AuthLoginWithResponse(ctx context.Context, body AuthLoginJSONRequestBody, reqEditors ...RequestEditorFn) (*AuthLoginResponse, error) {
+	rsp, err := c.AuthLogin(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthLoginResponse(rsp)
+}
+
 // AuthRegisterWithBodyWithResponse Open an account and start email verification.
 //
 // Creates the account and issues a `verify_email` challenge. The six-digit code goes to the address by email; the response carries only the challenge handle.
@@ -4049,6 +4268,72 @@ func ParseAuthVerifyChallengeResponse(rsp *http.Response) (*AuthVerifyChallengeR
 		response.Headers200 = &headers
 	case rsp.StatusCode == 429:
 		var headers AuthVerifyChallengeResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAuthLoginResponse parses an HTTP response from a AuthLoginWithResponse call
+func ParseAuthLoginResponse(rsp *http.Response) (*AuthLoginResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AuthLoginResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			UserId   openapi_types.UUID `json:"user_id"`
+			Verified bool               `json:"verified"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AuthLoginResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AuthLoginResponse429Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

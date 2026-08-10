@@ -11,6 +11,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/rbac"
 	rbaccontract "github.com/fluentra/fluentra/internal/modules/rbac/contract"
 	"github.com/fluentra/fluentra/internal/modules/user"
+	"github.com/fluentra/fluentra/internal/platform/cache"
 	"github.com/fluentra/fluentra/internal/platform/mailer"
 )
 
@@ -27,6 +28,7 @@ type identity struct {
 type identityDeps struct {
 	Pool       *pgxpool.Pool
 	Cache      rbac.PermissionCache
+	Limiter    cache.Limiter
 	Env        string
 	OTPHMACKey []byte
 	SMTP       mailer.SMTPConfig
@@ -90,6 +92,7 @@ func newIdentity(deps identityDeps) *identity {
 		OTPHMACKey: deps.OTPHMACKey,
 		Mailer:     sender,
 		Registrar:  assembled.user.Registrar(),
+		Limiter:    deps.Limiter,
 	})
 
 	return assembled

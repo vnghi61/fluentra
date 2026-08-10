@@ -108,6 +108,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Authenticate a user with email and password.
+         * @description Authenticates a user account. Enforces constant-time verification even for unknown emails (BR-AUTH-02) and applies independent per-account and per-IP lockout rate limits (BR-AUTH-08).
+         */
+        post: operations["authLogin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/challenges/{id}/verify": {
         parameters: {
             query?: never;
@@ -561,9 +581,24 @@ export interface components {
             purpose: components["schemas"]["ChallengePurpose"];
             /**
              * Format: date-time
-             * @description When the code was accepted.
+             * @description The timestamp at which the address was marked verified.
              */
             verified_at: string;
+        };
+        LoginRequest: {
+            /**
+             * Format: email
+             * @example learner@example.com
+             */
+            email: string;
+            /**
+             * Format: password
+             * @example a-secret-password
+             */
+            password: string;
+            /** @default false */
+            remember_device: boolean;
+            device_id?: string;
         };
         /** @description The authenticated caller's own account. There is no operation that returns this shape for anybody else: the server reads the actor from the access token and the path carries no user id. */
         Me: {
@@ -1268,6 +1303,43 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             422: components["responses"]["ValidationFailed"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    authLogin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "email": "learner@example.com",
+                 *       "password": "a-secret-password"
+                 *     }
+                 */
+                "application/json": components["schemas"]["LoginRequest"];
+            };
+        };
+        responses: {
+            /** @description User authenticated successfully. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        user_id: string;
+                        verified: boolean;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
             429: components["responses"]["TooManyRequests"];
         };
     };

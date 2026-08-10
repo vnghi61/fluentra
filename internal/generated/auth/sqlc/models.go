@@ -269,6 +269,25 @@ type CoreLearningProfile struct {
 	UpdatedAt         time.Time
 }
 
+type CoreLoginAttempt struct {
+	ID            uuid.UUID
+	UserID        *uuid.UUID
+	EmailHash     []byte
+	IpHash        []byte
+	Success       bool
+	FailureReason *string
+	CreatedAt     time.Time
+}
+
+type CoreLoginLockout struct {
+	Scope        string
+	SubjectHash  []byte
+	LockoutLevel int32
+	LockedUntil  time.Time
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
+
 type CoreProfile struct {
 	ID            uuid.UUID
 	UserID        uuid.UUID

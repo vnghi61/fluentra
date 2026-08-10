@@ -28,24 +28,48 @@ type Registration interface {
 	Resend(ctx context.Context, challengeID uuid.UUID) (service.Issued, error)
 }
 
+// Authenticator is the login surface required by Handler.
+type Authenticator interface {
+	Login(ctx context.Context, input service.LoginInput) (service.LoginResult, error)
+}
+
 // Handler serves the auth module's HTTP operations.
 type Handler struct {
-	registration Registration
+	registration  Registration
+	authenticator Authenticator
 }
 
 // NewHandler creates the handler.
-func NewHandler(registration Registration) *Handler {
-	return &Handler{registration: registration}
+func NewHandler(registration Registration, authenticator Authenticator) *Handler {
+	return &Handler{registration: registration, authenticator: authenticator}
 }
 
 // Routes mounts this module's operations on router, relative to /api/v1.
 func (h *Handler) Routes(router chi.Router) {
 	router.Route("/auth", func(auth chi.Router) {
 		auth.Post("/register", h.register)
+		auth.Post("/login", h.login)
 		auth.Route("/challenges/{id}", func(challenge chi.Router) {
 			challenge.Post("/verify", h.verify)
 			challenge.Post("/resend", h.resend)
 		})
+	})
+}
+
+func (h *Handler) login(writer http.ResponseWriter, request *http.Request) {
+	input, err := decodeLoginRequest(request)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	result, err := h.authenticator.Login(request.Context(), input)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	httpx.WriteJSON(writer, request, http.StatusOK, map[string]any{
+		"user_id":  result.UserID.String(),
+		"verified": result.Verified,
 	})
 }
 

@@ -173,6 +173,46 @@ paths:
           $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+  /auth/login:
+    post:
+      tags: [auth]
+      operationId: authLogin
+      summary: Authenticate a user with email and password.
+      description: >-
+        Authenticates a user account. Enforces constant-time verification even
+        for unknown emails (BR-AUTH-02) and applies independent per-account and
+        per-IP lockout rate limits (BR-AUTH-08).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: learner@example.com
+              password: a-secret-password
+      responses:
+        '200':
+          description: User authenticated successfully.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user_id, verified]
+                properties:
+                  user_id:
+                    type: string
+                    format: uuid
+                  verified:
+                    type: boolean
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
   /auth/challenges/{id}/verify:
     parameters:
       - name: id
@@ -880,6 +920,8 @@ components:
       $ref: ./components/auth.yaml#/VerifyChallengeRequest
     VerifiedChallenge:
       $ref: ./components/auth.yaml#/VerifiedChallenge
+    LoginRequest:
+      $ref: ./components/auth.yaml#/LoginRequest
     Me:
       $ref: ./components/user.yaml#/Me
     MeProfile:
