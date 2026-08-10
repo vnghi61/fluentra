@@ -10,7 +10,7 @@ tables: [credentials, sessions, refresh_tokens, mfa_secrets, verification_tokens
 depends_on: [user, rbac, audit, mailer, cache]
 depended_on_by: [admin]
 spec_version: 1.0.0
-last_verified: 2026-08-06
+last_verified: 2026-08-10
 ---
 
 # auth — AGENT.md
@@ -124,6 +124,24 @@ Migrations: `db/migrations/auth/` · Queries: `db/queries/auth/`
 - `idx_sessions_user_active` — partial index `WHERE revoked_at IS NULL`
 - `idx_login_attempts_email_time` — the lockout query
 <!-- END GENERATED: schema -->
+
+### What exists today
+
+Only `core.credentials`, from P2.1 (`db/migrations/auth/1700000050_create_credentials.sql`). The
+rest of the table above is specification, not schema — each arrives with the card that needs it.
+
+Two things about the credential row that the summary does not carry:
+
+- `algo_params` is a **generated** column, `split_part(password_hash, '$', 4)`. The PHC string is
+  the only source of truth for the cost parameters; the column exists so a rehash campaign can be
+  sized and indexed without parsing hashes in the application, and it is generated so the two can
+  never disagree. Writing to it directly fails.
+- `ck_credentials_hash_is_argon2id` rejects anything that is not a PHC-encoded Argon2id hash. It
+  is cheap, and the bug it catches — a plaintext password reaching the column — is the one that
+  would otherwise be discovered in production.
+
+An account may legitimately have no row here: Google sign-in (P2.10) creates no credential, which
+is why this is a separate table rather than columns on `core.users`.
 
 ## 6. HTTP endpoints
 
@@ -300,7 +318,10 @@ for this module:
 | `MFA_REQUIRED` | 401 | Second factor needed to complete login |
 | `MFA_INVALID` | 401 | Wrong or reused TOTP code |
 | `EMAIL_ALREADY_REGISTERED` | 409 | Registration conflict |
-| `PASSWORD_TOO_WEAK` | 422 | Fails policy or found in a breach corpus |
+| `PASSWORD_TOO_WEAK` | 422 | Fails policy or found in a breach corpus — one code for all three rules, so the response never confirms an address is in the corpus |
+| `CREDENTIAL_NOT_FOUND` | 404 | The account exists but has no password. Not an error state: a Google-only account has none |
+| `CREDENTIAL_ALREADY_EXISTS` | 409 | A second password was written for one account — a caller bug, not something a learner can provoke |
+| `PASSWORD_HASH_MALFORMED` | 500 | The stored string is not a readable Argon2id hash. Deliberately not reported as a wrong password, which would lock a learner out of an account nothing is wrong with |
 
 ### Security considerations
 
