@@ -14,6 +14,7 @@ import (
 
 	"github.com/exaring/otelpgx"
 	"github.com/fluentra/fluentra/internal/platform/cache"
+	"github.com/fluentra/fluentra/internal/platform/mailer"
 	"github.com/fluentra/fluentra/internal/platform/telemetry"
 	"github.com/fluentra/fluentra/internal/shared/config"
 	"github.com/fluentra/fluentra/internal/shared/httpx"
@@ -63,6 +64,17 @@ type applicationConfig struct {
 		Endpoint    string `koanf:"exporter_otlp_endpoint"`
 		ServiceName string `koanf:"service_name"`
 	} `koanf:"otel"`
+	OTP struct {
+		HMACKey string `koanf:"hmac_key"`
+	} `koanf:"otp"`
+	SMTP struct {
+		Host     string `koanf:"host"`
+		Port     int    `koanf:"port"`
+		Username string `koanf:"username"`
+		Password string `koanf:"password"`
+		From     string `koanf:"from"`
+		DevMode  bool   `koanf:"dev_mode"`
+	} `koanf:"smtp"`
 }
 
 func main() {
@@ -137,9 +149,18 @@ func run(ctx context.Context) error {
 	// client: a permission check falls through to the database when the cache
 	// is unavailable, and the module is what decides that, not this file.
 	modules := newIdentity(identityDeps{
-		Pool:  pool,
-		Cache: cache.NewRedisCache[[]string](redisClient),
-		Env:   cfg.App.Environment,
+		Pool:       pool,
+		Cache:      cache.NewRedisCache[[]string](redisClient),
+		Env:        cfg.App.Environment,
+		OTPHMACKey: []byte(cfg.OTP.HMACKey),
+		SMTP: mailer.SMTPConfig{
+			Host:     cfg.SMTP.Host,
+			Port:     cfg.SMTP.Port,
+			Username: cfg.SMTP.Username,
+			Password: cfg.SMTP.Password,
+			From:     cfg.SMTP.From,
+			DevMode:  cfg.SMTP.DevMode,
+		},
 	})
 
 	health := telemetry.NewHealthHandler(cfg.App.Version,
@@ -218,6 +239,9 @@ func configOptions() config.Options {
 			"s3.use_ssl":                  false,
 			"otel.exporter_otlp_endpoint": defaultOTLPEndpoint,
 			"otel.service_name":           "fluentra-api",
+			"smtp.host":                   "localhost",
+			"smtp.port":                   1025,
+			"smtp.dev_mode":               true,
 		},
 		Required: []config.RequiredKey{
 			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},
@@ -225,6 +249,7 @@ func configOptions() config.Options {
 			{Name: "s3.endpoint", DocSection: docSectionStorage},
 			{Name: "s3.access_key", DocSection: docSectionStorage},
 			{Name: "s3.secret_key", DocSection: docSectionStorage},
+			{Name: "otp.hmac_key", DocSection: "docs/deployment/configuration.md#auth"},
 		},
 	}
 }

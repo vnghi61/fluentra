@@ -53,6 +53,7 @@ func (f *fakeRepository) CreateChallenge(_ context.Context, input domain.NewChal
 		Attempts:    0,
 		MaxAttempts: input.MaxAttempts,
 		ExpiresAt:   input.ExpiresAt,
+		UserID:      input.UserID,
 		LastSentAt:  input.Now,
 		CreatedAt:   input.Now,
 		UpdatedAt:   input.Now,

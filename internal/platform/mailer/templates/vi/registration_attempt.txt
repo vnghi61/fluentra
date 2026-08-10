@@ -1,0 +1,10 @@
+Xin chào,
+
+Ai đó đã cố đăng ký tài khoản Fluentra mới bằng địa chỉ email của bạn ({{.Email}}).
+
+Nếu đây là bạn, bạn có thể bỏ qua thông báo này — tài khoản hiện tại của bạn vẫn nguyên vẹn.
+
+Nếu không phải bạn, bạn không cần làm gì cả. Không ai có thể tạo tài khoản trên địa chỉ của
+bạn mà không cần truy cập vào hộp thư đến của bạn.
+
+— Đội ngũ Fluentra

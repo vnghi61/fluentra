@@ -160,6 +160,7 @@ components:
   m_auth_domain:     { in: modules/auth/domain }
   m_auth_repository: { in: modules/auth/repository }
   m_auth_service:    { in: modules/auth/service }
+  m_auth_http:       { in: modules/auth/transport/http }
   m_user:          { in: modules/user }
   m_user_domain:   { in: modules/user/domain }
   m_user_repository: { in: modules/user/repository }
@@ -252,8 +253,15 @@ deps:
   # testable with no setup at all.
   m_auth_domain:     { canUse: [v_argon2id] }
   m_auth_repository: { mayDependOn: [m_auth_domain, g_auth] }
-  m_auth_service:    { mayDependOn: [m_auth_domain, p_cache] }
-  m_auth:            { mayDependOn: [m_auth_domain, m_auth_repository, m_auth_service, c_auth, p_cache, p_telemetry, p_mailer, c_user, c_rbac, c_audit] }
+  m_auth_service:    { mayDependOn: [m_auth_domain, c_auth, p_cache] }
+  # m_auth_service is here for the same reason it is on m_audit_http and
+  # m_rbac_http: module.go passes the concrete *service.RegisterService into
+  # authhttp.NewHandler, and go-arch-lint's deepScan reads that injection as an
+  # edge from m_auth_http into m_auth_service. Without this entry the check
+  # fails on Linux. It is not a widening: transport -> service is the direction
+  # /AGENT.md §6 prescribes.
+  m_auth_http:       { mayDependOn: [m_auth_domain, m_auth_service] }
+  m_auth:            { mayDependOn: [m_auth_domain, m_auth_repository, m_auth_service, m_auth_http, c_auth, p_cache, p_telemetry, p_mailer, p_job, c_user, c_rbac, c_audit] }
 
   # user, by layer. Reading down this block is reading the dependency direction:
   # domain depends on nothing of ours, and each layer above it may reach only
