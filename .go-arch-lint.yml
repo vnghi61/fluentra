@@ -262,7 +262,17 @@ deps:
   m_audit_domain:     { mayDependOn: [c_audit] }
   m_audit_repository: { mayDependOn: [m_audit_domain, c_audit, g_audit] }
   m_audit_service:    { mayDependOn: [m_audit_domain, c_audit] }
-  m_audit_http:       { mayDependOn: [m_audit_domain, c_audit] }
+  # m_audit_service is here for the same reason it is on m_rbac_http, and the
+  # reason is the `deepScan` linter rather than an import. The handler imports
+  # nothing from service/ — it declares its own `Trail` and `Guard` interfaces.
+  # But module.go passes the concrete *service.Service into NewHandler, and
+  # go-arch-lint reads that injection as an edge and checks it against the
+  # receiving component's allowance. Omitting it fails on Linux and passes on
+  # Windows, which is how it reached CI.
+  #
+  # It is not a widening: transport -> service is the direction /AGENT.md §6
+  # prescribes. What would be wrong is the reverse.
+  m_audit_http:       { mayDependOn: [m_audit_domain, m_audit_service, c_audit] }
   m_audit:            { mayDependOn: [m_audit_domain, m_audit_repository, m_audit_service, m_audit_http, c_audit, p_job, p_telemetry] }
   m_admin:        { mayDependOn: [p_cache, p_telemetry, c_user, c_rbac, c_audit, c_auth, c_content, c_analytics, c_subscription] }
   m_notification: { mayDependOn: [p_mailer, p_job, p_cache, p_telemetry, c_user] }
