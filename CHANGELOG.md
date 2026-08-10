@@ -31,12 +31,26 @@ generated text describes commits; release notes should describe change.
 - Roles and permissions: the `core` tables, the seeded two-role catalogue, and the guard
 - `GET /api/v1/me/permissions` — what the caller is allowed to do
 - `GET /api/v1/admin/roles`, and granting and revoking a user's roles
+- The append-only audit trail: `audit_logs` and `security_events`, partitioned by month, with
+  the application role holding `INSERT` and `SELECT` and nothing else
+- `GET /api/v1/admin/audit-logs` and `GET /api/v1/admin/security-events` — search the trail and
+  the security feed, filtered and paged
+- `POST /api/v1/admin/security-events/{id}/resolve` — mark an event triaged, with a required
+  reason
+- An outbox consumer that turns the events `user` and `rbac` already publish into audit
+  entries, exactly once per event
+- Scheduled partition rotation and two-year retention
 
 ### Notes
 
-The four `/me` operations are specified and implemented but not yet reachable: nothing mounts
-them, and there is no authentication to put a caller in the request context. Both arrive in
-Phase 1 (P1.5 and P2.4). See [ROADMAP.md](ROADMAP.md).
+The four `/me` operations and the three `/admin` audit operations are specified and implemented
+but not yet reachable: nothing mounts them, and there is no authentication to put a caller in
+the request context. Both arrive in Phase 1 (P1.5 and P2.4). See [ROADMAP.md](ROADMAP.md).
+
+Audit entries record **which fields changed, not what they changed to**, and redact anything on
+the PII deny-list if a value is supplied. An audit log holding a copy of every old display name
+would be a second store of personal data with a longer retention period than the first. Client
+addresses are stored as a keyed HMAC and never in the clear.
 
 ---
 

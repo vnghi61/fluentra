@@ -1,0 +1,199 @@
+AuditLog:
+  type: object
+  description: >-
+    One recorded action: who did it, to what, and which fields moved.
+
+    It deliberately does not carry the values that changed (BR-AUDIT-04). An
+    audit trail that stored the old and new display name would be a second copy
+    of personal data with a longer retention period than the first, which is
+    the opposite of what an audit trail is for.
+  required: [id, created_at, action, changed_fields, meta]
+  properties:
+    id:
+      type: string
+      format: uuid
+      description: Stable identifier for this entry.
+    created_at:
+      type: string
+      format: date-time
+      description: >-
+        When the action happened, taken from the emitting module's event rather
+        than from when this row was written. It is also the partition key, so
+        every search is bounded by it.
+      example: '2026-08-10T09:15:00Z'
+    actor_id:
+      type: [string, 'null']
+      format: uuid
+      description: >-
+        The account that performed the action, or null when the system did it
+        or when the actor's account has since been erased. Entries outlive the
+        people in them (BR-AUDIT-06).
+    actor_role:
+      $ref: '#/ActorRole'
+    action:
+      $ref: '#/AuditAction'
+    target_type:
+      type: [string, 'null']
+      description: The kind of thing acted on, such as `user` or `role_assignment`.
+      example: user
+    target_id:
+      type: [string, 'null']
+      description: >-
+        Identifier of the thing acted on. It is a string rather than a uuid
+        because not every auditable target is keyed by one.
+      example: 0199a1c2-3d4e-7f80-9abc-def012345678
+    changed_fields:
+      type: array
+      description: >-
+        Names of the fields the action moved, sorted. Empty when the action
+        changed no fields — a read, a grant, a revocation.
+      uniqueItems: true
+      items:
+        type: string
+      example: [display_name, timezone]
+    before:
+      type: ['object', 'null']
+      description: >-
+        Prior values for the changed fields, with anything on the PII deny-list
+        replaced by `[redacted]`. Null when the emitting module sent field names
+        only, which is the Phase 1 default.
+      additionalProperties: true
+    after:
+      type: ['object', 'null']
+      description: New values, redacted on the same terms as `before`.
+      additionalProperties: true
+    meta:
+      type: object
+      description: >-
+        Context that is not a field of the target — the reason an administrator
+        gave, the outbox event that produced the entry. Redacted on the same
+        deny-list as the diff.
+      additionalProperties: true
+      example:
+        source: outbox
+    trace_id:
+      type: [string, 'null']
+      description: >-
+        The W3C trace this action belongs to (BR-AUDIT-07), so an entry links
+        straight through to the distributed trace that produced it.
+      pattern: '^[0-9a-f]{32}$'
+      example: 4bf92f3577b34da6a3ce929d0e0e4736
+
+ActorRole:
+  type: [string, 'null']
+  enum: [admin, user, system, null]
+  description: >-
+    The role the actor held at the time, recorded rather than resolved: a
+    revoked admin must still show as an admin in the entries they left behind.
+
+AuditAction:
+  type: string
+  description: >-
+    What happened, named `<module>.<verb>_<object>`. The catalogue lives in
+    `internal/modules/audit/AGENT.md`; unknown names are stored rather than
+    rejected, because refusing an entry loses the record of the very thing that
+    was unexpected.
+  pattern: '^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$'
+  example: user.profile_updated
+
+AuditLogPage:
+  type: object
+  description: One page of audit entries, newest first.
+  required: [items, page]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/AuditLog'
+    page:
+      $ref: './pagination.yaml#/Page'
+
+SecurityEventSeverity:
+  type: string
+  enum: [low, medium, high, critical]
+  description: >-
+    How much attention the event deserves. `critical` is reserved for events
+    that indicate a compromise in progress, such as refresh-token reuse.
+
+SecurityEvent:
+  type: object
+  description: >-
+    A security-relevant occurrence: a failed permission check, a lockout, a
+    token reuse. Separate from the audit trail because these are triaged rather
+    than merely recorded, and because they are not always attributable to a
+    known actor.
+  required: [id, created_at, kind, severity, detail]
+  properties:
+    id:
+      type: string
+      format: uuid
+    created_at:
+      type: string
+      format: date-time
+      description: When the event occurred. Also the partition key.
+      example: '2026-08-10T09:15:00Z'
+    kind:
+      type: string
+      description: What happened, named `<module>.<event>`.
+      pattern: '^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$'
+      example: rbac.access_denied
+    severity:
+      $ref: '#/SecurityEventSeverity'
+    user_id:
+      type: [string, 'null']
+      format: uuid
+      description: >-
+        The account involved, when one is known. Null for events observed
+        before authentication succeeded.
+    detail:
+      type: object
+      description: >-
+        Structured context for triage, redacted on the same terms as an audit
+        diff. It never carries the request body: an event raised by an attacker
+        would otherwise store whatever they chose to send.
+      additionalProperties: true
+      example:
+        permission: user.suspend
+    trace_id:
+      type: [string, 'null']
+      pattern: '^[0-9a-f]{32}$'
+      description: The trace the event was raised in.
+      example: 4bf92f3577b34da6a3ce929d0e0e4736
+    resolved_at:
+      type: [string, 'null']
+      format: date-time
+      description: When an administrator marked the event triaged, or null while it is open.
+    resolved_by:
+      type: [string, 'null']
+      format: uuid
+      description: The administrator who triaged it.
+    resolution_note:
+      type: [string, 'null']
+      description: Why it was closed. Required when resolving, so a closed event explains itself.
+      example: Known load test, permission denial expected.
+
+SecurityEventPage:
+  type: object
+  description: One page of security events, newest first.
+  required: [items, page]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/SecurityEvent'
+    page:
+      $ref: './pagination.yaml#/Page'
+
+ResolveSecurityEventRequest:
+  type: object
+  description: >-
+    Mark a security event triaged. The note is required: an event closed with
+    no reason is indistinguishable from one closed by accident.
+  additionalProperties: false
+  required: [note]
+  properties:
+    note:
+      type: string
+      minLength: 1
+      maxLength: 500
+      example: Known load test, permission denial expected.
