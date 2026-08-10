@@ -59,6 +59,50 @@ func (ns NullCoreCefrLevel) Value() (driver.Value, error) {
 	return string(ns.CoreCefrLevel), nil
 }
 
+type CoreChallengePurpose string
+
+const (
+	CoreChallengePurposeVerifyEmail   CoreChallengePurpose = "verify_email"
+	CoreChallengePurposeLoginOtp      CoreChallengePurpose = "login_otp"
+	CoreChallengePurposePasswordReset CoreChallengePurpose = "password_reset"
+	CoreChallengePurposeLinkOauth     CoreChallengePurpose = "link_oauth"
+)
+
+func (e *CoreChallengePurpose) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = CoreChallengePurpose(s)
+	case string:
+		*e = CoreChallengePurpose(s)
+	default:
+		return fmt.Errorf("unsupported scan type for CoreChallengePurpose: %T", src)
+	}
+	return nil
+}
+
+type NullCoreChallengePurpose struct {
+	CoreChallengePurpose CoreChallengePurpose
+	Valid                bool // Valid is true if CoreChallengePurpose is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullCoreChallengePurpose) Scan(value interface{}) error {
+	if value == nil {
+		ns.CoreChallengePurpose, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.CoreChallengePurpose.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullCoreChallengePurpose) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.CoreChallengePurpose), nil
+}
+
 type CoreTargetExam string
 
 const (
@@ -187,6 +231,20 @@ func (ns NullCoreUserStatus) Value() (driver.Value, error) {
 		return nil, nil
 	}
 	return string(ns.CoreUserStatus), nil
+}
+
+type CoreAuthChallenge struct {
+	ID          uuid.UUID
+	Purpose     CoreChallengePurpose
+	SubjectHash []byte
+	CodeHash    []byte
+	Attempts    int32
+	MaxAttempts int32
+	ExpiresAt   time.Time
+	ConsumedAt  *time.Time
+	LastSentAt  time.Time
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 type CoreCredential struct {
