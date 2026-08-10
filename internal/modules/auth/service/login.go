@@ -16,7 +16,7 @@ import (
 	"github.com/fluentra/fluentra/internal/shared/clock"
 )
 
-const invalidCredentialsReason = "invalid_credentials"
+const invalidCredentialsReason = "invalid_credentials" // #nosec G101
 
 // LoginInput is what a caller presents on POST /auth/login.
 type LoginInput struct {
@@ -205,9 +205,9 @@ func (s *LoginService) activeLockout(
 }
 
 func (s *LoginService) startLockout(ctx context.Context, scope string, subjectHash []byte, now time.Time) error {
-	_, _, err := s.repo.AdvanceLoginLockout(ctx, scope, subjectHash, now)
-	if err != nil {
+	if _, _, err := s.repo.AdvanceLoginLockout(ctx, scope, subjectHash, now); err != nil {
 		// Rate limiting fails open when its backing store is unavailable.
+		slog.WarnContext(ctx, "failed to advance lockout", "module", "auth", "error", err)
 		return nil
 	}
 	return lockedError()
