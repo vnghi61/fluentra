@@ -9,6 +9,7 @@ import (
 	"github.com/fluentra/fluentra/internal/shared/id"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
+	"go.opentelemetry.io/otel/propagation"
 )
 
 // DBTx is the transaction surface the writer needs. Its signature matches
@@ -19,6 +20,20 @@ import (
 type DBTx interface {
 	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
 }
+
+// tracePropagator serialises the caller's span context onto the outbox row.
+//
+// It is `propagation.TraceContext` directly rather than the globally configured
+// propagator, for two reasons. `shared` may not depend on `platform/telemetry`,
+// where the composite lives. And the behaviour should not depend on whether a
+// provider was installed: a binary that never called telemetry.NewProvider —
+// cmd/seed, a test — would otherwise write a column that silently means
+// something different.
+//
+// The header name is the W3C one, which is also what the column is called.
+var tracePropagator = propagation.TraceContext{}
+
+const traceParentHeader = "traceparent"
 
 // Writer writes events into ops.outbox_events inside the caller's transaction.
 type Writer struct{}
@@ -61,13 +76,30 @@ func (w *Writer) Write(ctx context.Context, tx DBTx, aggregate, event string, pa
 	}
 
 	const query = `
-		INSERT INTO ops.outbox_events (event_id, aggregate, event, payload)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO ops.outbox_events (event_id, aggregate, event, payload, traceparent)
+		VALUES ($1, $2, $3, $4, $5)
 	`
-	if _, err := tx.Exec(ctx, query, eventID, aggregate, name, payloadBytes); err != nil {
+	if _, err := tx.Exec(ctx, query, eventID, aggregate, name, payloadBytes, traceParentOf(ctx)); err != nil {
 		return uuid.Nil, fmt.Errorf("insert outbox event: %w", err)
 	}
 	return eventID, nil
+}
+
+// traceParentOf serialises the span the caller is in, or returns nil when there
+// is none.
+//
+// nil rather than "" so the column holds SQL NULL: an event written outside a
+// span genuinely has no trace, and an empty string would be a value that looks
+// like one. The check constraint on the column rejects the empty string for the
+// same reason.
+func traceParentOf(ctx context.Context) *string {
+	carrier := propagation.MapCarrier{}
+	tracePropagator.Inject(ctx, carrier)
+	header := carrier.Get(traceParentHeader)
+	if header == "" {
+		return nil
+	}
+	return &header
 }
 
 // BareEventName strips a leading `<aggregate>.` from an event name, so that

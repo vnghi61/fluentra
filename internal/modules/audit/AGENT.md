@@ -111,6 +111,12 @@ The cost is that renaming an event in `user` does not break this at compile time
 it is `TestOutboxEventBecomesAnAuditEntry`, which drives a real outbox row through the real
 publisher and asserts a row appears.
 
+**The trace id on an entry is the request's, not the worker's.** `audit` does nothing to
+achieve that beyond reading `httpx.TraceID(ctx)`: `ops.outbox_events` carries the producing
+transaction's `traceparent`, and `shared/outbox`'s publisher restores it into the context it
+dispatches with, so the consumer is already inside the trace of the action. An event written
+outside a span — a seed, a migration — records no trace rather than an invented one.
+
 **A module wiring `audit` in needs to know two things.** `Deps.Guard` is a
 `Require(ctx, permission string) error` declared by this module — the composition root adapts
 `rbac.Authorizer` to it, because `audit` cannot import `rbac`. And `Deps.IPHashKey` keys the

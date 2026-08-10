@@ -28,6 +28,7 @@ func storedEvent(t *testing.T, tx *recordingTx) (aggregate, event string) {
 const (
 	aggregateUser       = "user"
 	eventProfileUpdated = "profile_updated"
+	eventCreated        = "created"
 )
 
 // TestTopicRoundTripsContractNames is the regression test for the bug P1.5

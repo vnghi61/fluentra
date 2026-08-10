@@ -51,16 +51,15 @@ generated text describes commits; release notes should describe change.
   retried, every event published since the `user` module landed was marked delivered and
   discarded. Nothing had subscribed yet, so nothing noticed.
 
+- Outbox events carry the producing transaction's W3C `traceparent`, so work done in the worker
+  continues the trace of the request that caused it. An audit entry now records the trace of
+  the action rather than of the worker that filed it (BR-AUDIT-07)
+
 ### Notes
 
 The operations above are mounted but still not usable by a real client: there is no
 authentication yet, so nothing puts a caller in the request context and every one of them
 answers 401. That arrives with P2.4. See [ROADMAP.md](ROADMAP.md).
-
-An audit entry currently carries the trace of the worker that recorded it, not of the request
-that caused the change — the outbox row carries no trace context, so the two are separate
-traces. Correlation by actor, action and time works; clicking straight through to the request's
-trace does not.
 
 Audit entries record **which fields changed, not what they changed to**, and redact anything on
 the PII deny-list if a value is supplied. An audit log holding a copy of every old display name

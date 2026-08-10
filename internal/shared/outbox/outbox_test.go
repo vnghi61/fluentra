@@ -53,15 +53,15 @@ func TestWriter_WriteInsertsEventWithGeneratedID(t *testing.T) {
 	tx := &recordingTx{}
 
 	eventID, err := outbox.NewWriter().Write(
-		context.Background(), tx, "user", "user.created", map[string]string{"id": "u123"})
+		context.Background(), tx, aggregateUser, "user."+eventCreated, map[string]string{"id": "u123"})
 	if err != nil {
 		t.Fatalf("write: %v", err)
 	}
 	if eventID == uuid.Nil {
 		t.Fatal("writer returned a nil event id")
 	}
-	if len(tx.calls) != 1 || len(tx.calls[0]) != 4 {
-		t.Fatalf("query args = %#v, want event_id, aggregate, event, payload", tx.calls)
+	if len(tx.calls) != 1 || len(tx.calls[0]) != 5 {
+		t.Fatalf("query args = %#v, want event_id, aggregate, event, payload, traceparent", tx.calls)
 	}
 	if tx.calls[0][0] != eventID {
 		t.Errorf("first argument = %v, want the returned event id", tx.calls[0][0])

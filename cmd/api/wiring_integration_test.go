@@ -431,18 +431,20 @@ func TestAuditSearchIsServedAndGuarded(t *testing.T) {
 	}
 }
 
-// TestTheTrailRecordsATraceID is BR-AUDIT-07 as far as this wiring can carry
-// it, and the assertion is deliberately narrower than the P1.5 card's wording.
+// TestTheTrailRecordsTheRequestsTraceID is BR-AUDIT-07 end to end: an audit row
+// links to the trace of the action, not to the trace of the worker that filed
+// it.
 //
-// The card asks for "the correct trace ID". What lands in the row is the trace
-// of the *consumer*, not of the request that caused the change: the outbox row
-// carries no trace context, so `user` publishes in one trace and `audit`
-// records in another. Asserting the request's trace id here would be asserting
-// something the system does not do.
+// That distinction is the whole value of the field. The audit trail and the
+// distributed trace answer different halves of the same question — "what
+// changed" and "what happened" — and they are only worth joining if the id in
+// the row is the one an operator can paste into Tempo and see the request.
 //
-// Closing that needs trace context on ops.outbox_events, which is
-// `shared/outbox` and the `job` migrations — outside this card. See the PR.
-func TestTheTrailRecordsATraceID(t *testing.T) {
+// It works because `ops.outbox_events` carries the producing transaction's
+// traceparent and the publisher restores it into the context it dispatches
+// with. `audit` reads the trace from the context it is handed and did not
+// change at all.
+func TestTheTrailRecordsTheRequestsTraceID(t *testing.T) {
 	stack := newTestStack(t)
 
 	learner := createLearner(t, stack, "traced@fluentra.test", "Traced")
@@ -452,12 +454,26 @@ func TestTheTrailRecordsATraceID(t *testing.T) {
 		t.Fatalf("PATCH /me = %d (body %s)", recorder.Code, recorder.Body)
 	}
 
-	// Drain inside a recording span, which is what the worker does: the
-	// eventbus starts one per delivery.
+	// The row records the request's traceparent at write time.
+	var storedParent *string
+	if err := pool.QueryRow(context.Background(),
+		`SELECT traceparent FROM ops.outbox_events`).Scan(&storedParent); err != nil {
+		t.Fatalf("read the outbox traceparent: %v", err)
+	}
+	if storedParent == nil || !strings.Contains(*storedParent, requestTrace) {
+		t.Fatalf("outbox traceparent = %v, want it to carry the request's trace %s",
+			storedParent, requestTrace)
+	}
+
+	// Drain in a *different* trace, which is what the worker really is: its
+	// polling loop has nothing to do with the request that caused the event.
 	provider := sdktrace.NewTracerProvider()
 	defer func() { _ = provider.Shutdown(context.Background()) }()
 	ctx, span := provider.Tracer("wiring-test").Start(context.Background(), "worker.drain")
-	consumerTrace := span.SpanContext().TraceID().String()
+	workerTrace := span.SpanContext().TraceID().String()
+	if workerTrace == requestTrace {
+		t.Fatal("the worker span landed in the request's trace; the test cannot tell them apart")
+	}
 
 	publisher := outbox.NewPublisher(pool, busDispatcher{bus: stack.bus}, 50, time.Second)
 	if err := publisher.ProcessBatch(ctx); err != nil {
@@ -476,12 +492,52 @@ func TestTheTrailRecordsATraceID(t *testing.T) {
 	if _, err := trace.TraceIDFromHex(*traceID); err != nil {
 		t.Errorf("trace_id = %q, which is not a W3C trace id: %v", *traceID, err)
 	}
-	if *traceID != consumerTrace {
-		t.Errorf("trace_id = %q, want the consumer's trace %q", *traceID, consumerTrace)
+	if *traceID != requestTrace {
+		t.Errorf("trace_id = %q, want the request's trace %q", *traceID, requestTrace)
 	}
-	if *traceID == requestTrace {
-		t.Errorf("trace_id unexpectedly matched the request's trace %q — "+
-			"if the outbox now carries trace context, this test and its comment are stale", requestTrace)
+	if *traceID == workerTrace {
+		t.Errorf("trace_id = %q, which is the worker's trace — the traceparent was not carried",
+			*traceID)
+	}
+}
+
+// TestAnEventWrittenOutsideASpanStillRecords. Not every write happens in a
+// request: a seed, a job, a migration. Those have no trace, and the entry must
+// still be filed rather than dropped.
+func TestAnEventWrittenOutsideASpanStillRecords(t *testing.T) {
+	stack := newTestStack(t)
+
+	learner := createLearner(t, stack, "untraced@fluentra.test", "Untraced")
+
+	// Written with a plain context: no span, so no traceparent.
+	writer := outbox.NewWriter()
+	tx, err := pool.Begin(context.Background())
+	if err != nil {
+		t.Fatalf("begin: %v", err)
+	}
+	if _, err := writer.Write(context.Background(), tx, "user", "user.profile_updated",
+		map[string]any{"user_id": learner, "changed_fields": []string{"timezone"}}); err != nil {
+		_ = tx.Rollback(context.Background())
+		t.Fatalf("write: %v", err)
+	}
+	if err := tx.Commit(context.Background()); err != nil {
+		t.Fatalf("commit: %v", err)
+	}
+
+	stack.drainOutbox(t)
+
+	var action string
+	var traceID *string
+	if err := pool.QueryRow(context.Background(),
+		`SELECT action, trace_id FROM audit.audit_logs`).Scan(&action, &traceID); err != nil {
+		t.Fatalf("read the audit entry: %v", err)
+	}
+	if action != "user.profile_updated" {
+		t.Errorf("action = %q", action)
+	}
+	if traceID != nil {
+		t.Errorf("trace_id = %q for an event written outside a span, want null rather than an invented one",
+			*traceID)
 	}
 }
 
