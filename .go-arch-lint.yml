@@ -159,6 +159,7 @@ components:
   m_auth:            { in: modules/auth }
   m_auth_domain:     { in: modules/auth/domain }
   m_auth_repository: { in: modules/auth/repository }
+  m_auth_service:    { in: modules/auth/service }
   m_user:          { in: modules/user }
   m_user_domain:   { in: modules/user/domain }
   m_user_repository: { in: modules/user/repository }
@@ -241,18 +242,18 @@ deps:
   p_media:     { mayDependOn: [p_telemetry, p_storage, p_job, p_ai], anyVendorDeps: true }
   p_search:    { mayDependOn: [p_telemetry, p_cache, p_job], anyVendorDeps: true }
 
-  # auth, by layer. Only two layers exist so far (P2.1 builds credentials and
-  # the password policy; the service and transport arrive with registration in
-  # P2.2), so only two are declared — a component for a package that does not
-  # exist yet would be a rule nothing is checked against.
+  # auth, by layer. Transport does not exist yet — it arrives with registration
+  # in P2.2 — so it is not declared; a component for a package that does not
+  # exist is a rule nothing is checked against.
   #
   # m_auth_domain is the one place in the repository allowed to hash a password.
   # It has no mayDependOn because it imports nothing of ours beyond the shared
-  # kernel, which is what keeps the policy and the verifier testable with no
-  # setup at all.
+  # kernel, which is what keeps the policy, the verifier and the OTP primitives
+  # testable with no setup at all.
   m_auth_domain:     { canUse: [v_argon2id] }
   m_auth_repository: { mayDependOn: [m_auth_domain, g_auth] }
-  m_auth:            { mayDependOn: [m_auth_domain, m_auth_repository, c_auth, p_cache, p_telemetry, p_mailer, c_user, c_rbac, c_audit] }
+  m_auth_service:    { mayDependOn: [m_auth_domain, p_cache] }
+  m_auth:            { mayDependOn: [m_auth_domain, m_auth_repository, m_auth_service, c_auth, p_cache, p_telemetry, p_mailer, c_user, c_rbac, c_audit] }
 
   # user, by layer. Reading down this block is reading the dependency direction:
   # domain depends on nothing of ours, and each layer above it may reach only

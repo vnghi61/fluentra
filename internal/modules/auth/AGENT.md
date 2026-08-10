@@ -6,7 +6,7 @@ status: PLANNED
 phase: 1
 owner: "@backend-team"
 schema: core
-tables: [credentials, sessions, refresh_tokens, mfa_secrets, verification_tokens, login_attempts, oauth_identities]
+tables: [credentials, sessions, refresh_tokens, mfa_secrets, auth_challenges, trusted_devices, login_attempts, oauth_identities, oauth_states]
 depends_on: [user, rbac, audit, mailer, cache]
 depended_on_by: [admin]
 spec_version: 1.0.0
@@ -127,8 +127,8 @@ Migrations: `db/migrations/auth/` · Queries: `db/queries/auth/`
 
 ### What exists today
 
-Only `core.credentials`, from P2.1 (`db/migrations/auth/1700000050_create_credentials.sql`). The
-rest of the table above is specification, not schema — each arrives with the card that needs it.
+`core.credentials` (P2.1, `1700000050`) and `core.auth_challenges` (P2.1b, `1700000060`). The rest
+of the table above is specification, not schema — each arrives with the card that needs it.
 
 Two things about the credential row that the summary does not carry:
 
@@ -142,6 +142,24 @@ Two things about the credential row that the summary does not carry:
 
 An account may legitimately have no row here: Google sign-in (P2.10) creates no credential, which
 is why this is a separate table rather than columns on `core.users`.
+
+Three things about `core.auth_challenges` beyond the summary:
+
+- `code_hash` is `HMAC-SHA256(challenge_id ‖ 0x00 ‖ code, server_key)`, **not** the code alone.
+  Binding the id in is what makes "a code from challenge A does not verify challenge B" a property
+  of the construction rather than a one-in-a-million coincidence between two live challenges that
+  drew the same six digits.
+- There is no `burned_at` column. Burned is `attempts >= max_attempts`, derived — a second stored
+  record of the same fact could disagree with the first, and a disagreement is what an attacker
+  looks for. `ck_auth_challenges_attempts` makes the cap a constraint, so a missing guard in
+  application code is a failed statement rather than an unbounded guessing budget.
+- `last_sent_at` backs the resend cooldown in the database as well as in Redis. `cache.Limiter`
+  allows the request when Redis is unreachable, by design; without the second guard a Redis outage
+  would turn resend into an email flood aimed at any address an attacker names.
+
+The table has no `user_id` and no foreign key. A challenge identifies its subject only by an HMAC,
+so the row says nothing about which account it belongs to and can exist for an address that has no
+account yet.
 
 ## 6. HTTP endpoints
 
@@ -322,6 +340,13 @@ for this module:
 | `CREDENTIAL_NOT_FOUND` | 404 | The account exists but has no password. Not an error state: a Google-only account has none |
 | `CREDENTIAL_ALREADY_EXISTS` | 409 | A second password was written for one account — a caller bug, not something a learner can provoke |
 | `PASSWORD_HASH_MALFORMED` | 500 | The stored string is not a readable Argon2id hash. Deliberately not reported as a wrong password, which would lock a learner out of an account nothing is wrong with |
+| `CHALLENGE_NOT_FOUND` | 404 | Unknown challenge id. Also what an id that never existed returns — the id is the secret gating the flow (BR-AUTH-11), so "wrong id" and "swept" must not be distinguishable |
+| `OTP_INVALID` | 401 | Wrong code. Carries `attempts_remaining` in `meta`, which ADR-0021 promises the learner |
+| `OTP_EXPIRED` | 401 | The ten-minute window closed. Separate from a wrong code because the next action differs: request a new challenge, do not re-read the email |
+| `OTP_ATTEMPTS_EXCEEDED` | 429 | The challenge is burned (BR-AUTH-12). A 429 rather than a 401: nothing is wrong with the code presented, the budget for presenting one is spent |
+| `OTP_ALREADY_USED` | 409 | A code presented twice. Single use is the point of a one-time code |
+| `OTP_RESEND_TOO_SOON` | 429 | Inside the 60-second cooldown; carries `Retry-After` |
+| `OTP_ISSUE_LIMIT_REACHED` | 429 | Either issuance cap — per subject or per IP. One code for both, because naming the limit tells a caller how to spread load around it |
 
 ### Security considerations
 

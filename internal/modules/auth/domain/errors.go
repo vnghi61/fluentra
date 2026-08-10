@@ -28,6 +28,47 @@ var (
 	ErrCredentialAlreadyExists = apperr.New(
 		apperr.Conflict, "CREDENTIAL_ALREADY_EXISTS", "This account already has a password.")
 
+	// ErrChallengeNotFound is an unknown challenge id. It is also what a caller
+	// gets for an id that never existed, which is the same 404 — the id is the
+	// secret gating the whole flow (BR-AUTH-11), so distinguishing "wrong id"
+	// from "expired and swept" would be a probe.
+	ErrChallengeNotFound = apperr.New(
+		apperr.NotFound, "CHALLENGE_NOT_FOUND", "That verification request was not found.")
+
+	// ErrChallengeInvalidCode is a wrong code. It carries the remaining attempt
+	// count in Meta, because ADR-0021 promises the learner immediate,
+	// understandable feedback and a count they can act on.
+	ErrChallengeInvalidCode = apperr.New(
+		apperr.Unauthenticated, "OTP_INVALID", "That code is not correct.")
+
+	// ErrChallengeExpired means the ten-minute window closed. Separate from a
+	// wrong code because the learner's next action is different: request a new
+	// challenge, do not re-read the email.
+	ErrChallengeExpired = apperr.New(
+		apperr.Unauthenticated, "OTP_EXPIRED", "That code has expired. Request a new one.")
+
+	// ErrChallengeAttemptsExceeded is the burned challenge (BR-AUTH-12). It is
+	// a 429 rather than a 401: nothing is wrong with the credential presented,
+	// the budget for presenting one is spent.
+	ErrChallengeAttemptsExceeded = apperr.New(
+		apperr.RateLimited, "OTP_ATTEMPTS_EXCEEDED", "Too many incorrect codes. Request a new one.")
+
+	// ErrChallengeAlreadyUsed is a code presented twice. Single use is the
+	// whole point of a one-time code.
+	ErrChallengeAlreadyUsed = apperr.New(
+		apperr.Conflict, "OTP_ALREADY_USED", "That code has already been used.")
+
+	// ErrChallengeResendTooSoon is the 60-second cooldown (BR-AUTH-13).
+	ErrChallengeResendTooSoon = apperr.New(
+		apperr.RateLimited, "OTP_RESEND_TOO_SOON", "A code was sent recently. Wait before requesting another.")
+
+	// ErrChallengeIssueLimitReached covers both issuance limiters — three per
+	// subject per hour and the global per-IP cap. One code for both, because
+	// telling a caller which limit they hit tells them how to spread the load
+	// to avoid it.
+	ErrChallengeIssueLimitReached = apperr.New(
+		apperr.RateLimited, "OTP_ISSUE_LIMIT_REACHED", "Too many codes requested. Try again later.")
+
 	// ErrPasswordHashMalformed means the stored string is not a PHC-encoded
 	// Argon2id hash. The database CHECK makes this all but unreachable; it
 	// exists so the verifier fails loudly instead of returning "no match" for

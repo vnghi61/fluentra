@@ -6,7 +6,7 @@ status: PLANNED
 phase: 1
 owner: "@backend-team"
 schema: core
-tables: [credentials, sessions, refresh_tokens, mfa_secrets, verification_tokens, login_attempts, oauth_identities]
+tables: [credentials, sessions, refresh_tokens, mfa_secrets, auth_challenges, trusted_devices, login_attempts, oauth_identities, oauth_states]
 depends_on: [user, rbac, audit, mailer, cache]
 depended_on_by: [admin]
 spec_version: 1.0.0
