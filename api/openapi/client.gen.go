@@ -157,6 +157,63 @@ type ClientInterface interface {
 	// Corresponds with DELETE /admin/users/{id}/roles/{role} (the `RbacRevokeRole` operationId).
 	RbacRevokeRole(ctx context.Context, id openapi_types.UUID, role RoleName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AuthResendChallenge Send a new code for a challenge.
+	//
+	// Replaces the code and clears the attempt count. It does **not** extend `expires_at`: resending gives the learner a fresh code, not an indefinitely valid challenge.
+	//
+	// There is a 60-second cooldown per challenge and a cap on issuances per address per hour. A challenge that is already burned cannot be resent -- request a new one.
+	//
+	// Corresponds with POST /auth/challenges/{id}/resend (the `AuthResendChallenge` operationId).
+	AuthResendChallenge(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AuthVerifyChallengeWithBody Submit the code for a challenge.
+	//
+	// Accepts the six digits and consumes the challenge. For a `verify_email` challenge this marks the address verified.
+	//
+	// The code is single-use and expires ten minutes after issuance. Five wrong codes burn the challenge permanently -- a new one must be requested rather than retried. A wrong code returns 401 with the number of attempts left in `meta`.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /auth/challenges/{id}/verify (the `AuthVerifyChallenge` operationId).
+	AuthVerifyChallengeWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AuthVerifyChallenge Submit the code for a challenge.
+	//
+	// Accepts the six digits and consumes the challenge. For a `verify_email` challenge this marks the address verified.
+	//
+	// The code is single-use and expires ten minutes after issuance. Five wrong codes burn the challenge permanently -- a new one must be requested rather than retried. A wrong code returns 401 with the number of attempts left in `meta`.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /auth/challenges/{id}/verify (the `AuthVerifyChallenge` operationId).
+	AuthVerifyChallenge(ctx context.Context, id openapi_types.UUID, body AuthVerifyChallengeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AuthRegisterWithBody Open an account and start email verification.
+	//
+	// Creates the account and issues a `verify_email` challenge. The six-digit code goes to the address by email; the response carries only the challenge handle.
+	//
+	// This operation never reveals whether an address is already registered. An address that is already verified gets the same response shape as a fresh registration, and its owner receives a "someone tried to register with your address" email instead of a code -- so a caller probing for accounts learns nothing from either the status or the body.
+	//
+	// An address registered but **not yet** verified is treated as a fresh registration: the submitted password replaces the stored one and a new challenge is issued. Reissuing the pending challenge instead would be an account-takeover path -- somebody registers an address they do not own, its real owner registers it too, receives the code, verifies, and ends up with an account whose password the first party chose.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /auth/register (the `AuthRegister` operationId).
+	AuthRegisterWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AuthRegister Open an account and start email verification.
+	//
+	// Creates the account and issues a `verify_email` challenge. The six-digit code goes to the address by email; the response carries only the challenge handle.
+	//
+	// This operation never reveals whether an address is already registered. An address that is already verified gets the same response shape as a fresh registration, and its owner receives a "someone tried to register with your address" email instead of a code -- so a caller probing for accounts learns nothing from either the status or the body.
+	//
+	// An address registered but **not yet** verified is treated as a fresh registration: the submitted password replaces the stored one and a new challenge is issued. Reissuing the pending challenge instead would be an account-takeover path -- somebody registers an address they do not own, its real owner registers it too, receives the code, verifies, and ends up with an account whose password the first party chose.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /auth/register (the `AuthRegister` operationId).
+	AuthRegister(ctx context.Context, body AuthRegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// SystemHealth Check process liveness.
 	//
 	// Returns success when the API process is able to serve requests.
@@ -379,6 +436,113 @@ func (c *Client) RbacAssignRole(ctx context.Context, id openapi_types.UUID, body
 // Corresponds with DELETE /admin/users/{id}/roles/{role} (the `RbacRevokeRole` operationId).
 func (c *Client) RbacRevokeRole(ctx context.Context, id openapi_types.UUID, role RoleName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRbacRevokeRoleRequest(c.Server, id, role)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AuthResendChallenge Send a new code for a challenge.
+//
+// Replaces the code and clears the attempt count. It does **not** extend `expires_at`: resending gives the learner a fresh code, not an indefinitely valid challenge.
+//
+// There is a 60-second cooldown per challenge and a cap on issuances per address per hour. A challenge that is already burned cannot be resent -- request a new one.
+//
+// Corresponds with POST /auth/challenges/{id}/resend (the `AuthResendChallenge` operationId).
+func (c *Client) AuthResendChallenge(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthResendChallengeRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AuthVerifyChallengeWithBody Submit the code for a challenge.
+//
+// Accepts the six digits and consumes the challenge. For a `verify_email` challenge this marks the address verified.
+//
+// The code is single-use and expires ten minutes after issuance. Five wrong codes burn the challenge permanently -- a new one must be requested rather than retried. A wrong code returns 401 with the number of attempts left in `meta`.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /auth/challenges/{id}/verify (the `AuthVerifyChallenge` operationId).
+func (c *Client) AuthVerifyChallengeWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthVerifyChallengeRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AuthVerifyChallenge Submit the code for a challenge.
+//
+// Accepts the six digits and consumes the challenge. For a `verify_email` challenge this marks the address verified.
+//
+// The code is single-use and expires ten minutes after issuance. Five wrong codes burn the challenge permanently -- a new one must be requested rather than retried. A wrong code returns 401 with the number of attempts left in `meta`.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /auth/challenges/{id}/verify (the `AuthVerifyChallenge` operationId).
+func (c *Client) AuthVerifyChallenge(ctx context.Context, id openapi_types.UUID, body AuthVerifyChallengeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthVerifyChallengeRequest(c.Server, id, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AuthRegisterWithBody Open an account and start email verification.
+//
+// Creates the account and issues a `verify_email` challenge. The six-digit code goes to the address by email; the response carries only the challenge handle.
+//
+// This operation never reveals whether an address is already registered. An address that is already verified gets the same response shape as a fresh registration, and its owner receives a "someone tried to register with your address" email instead of a code -- so a caller probing for accounts learns nothing from either the status or the body.
+//
+// An address registered but **not yet** verified is treated as a fresh registration: the submitted password replaces the stored one and a new challenge is issued. Reissuing the pending challenge instead would be an account-takeover path -- somebody registers an address they do not own, its real owner registers it too, receives the code, verifies, and ends up with an account whose password the first party chose.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /auth/register (the `AuthRegister` operationId).
+func (c *Client) AuthRegisterWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthRegisterRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AuthRegister Open an account and start email verification.
+//
+// Creates the account and issues a `verify_email` challenge. The six-digit code goes to the address by email; the response carries only the challenge handle.
+//
+// This operation never reveals whether an address is already registered. An address that is already verified gets the same response shape as a fresh registration, and its owner receives a "someone tried to register with your address" email instead of a code -- so a caller probing for accounts learns nothing from either the status or the body.
+//
+// An address registered but **not yet** verified is treated as a fresh registration: the submitted password replaces the stored one and a new challenge is issued. Reissuing the pending challenge instead would be an account-takeover path -- somebody registers an address they do not own, its real owner registers it too, receives the code, verifies, and ends up with an account whose password the first party chose.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /auth/register (the `AuthRegister` operationId).
+func (c *Client) AuthRegister(ctx context.Context, body AuthRegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthRegisterRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1022,6 +1186,127 @@ func NewRbacRevokeRoleRequest(server string, id openapi_types.UUID, role RoleNam
 	return req, nil
 }
 
+// NewAuthResendChallengeRequest constructs an http.Request for the AuthResendChallenge method
+func NewAuthResendChallengeRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/challenges/%s/resend", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAuthVerifyChallengeRequest calls the generic AuthVerifyChallenge builder with application/json body
+func NewAuthVerifyChallengeRequest(server string, id openapi_types.UUID, body AuthVerifyChallengeJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAuthVerifyChallengeRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewAuthVerifyChallengeRequestWithBody constructs an http.Request for the AuthVerifyChallenge method, with any body, and a specified content type
+func NewAuthVerifyChallengeRequestWithBody(server string, id openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/challenges/%s/verify", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewAuthRegisterRequest calls the generic AuthRegister builder with application/json body
+func NewAuthRegisterRequest(server string, body AuthRegisterJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAuthRegisterRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewAuthRegisterRequestWithBody constructs an http.Request for the AuthRegister method, with any body, and a specified content type
+func NewAuthRegisterRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/register")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewSystemHealthRequest constructs an http.Request for the SystemHealth method
 func NewSystemHealthRequest(server string) (*http.Request, error) {
 	var err error
@@ -1408,6 +1693,65 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with DELETE /admin/users/{id}/roles/{role} (the `RbacRevokeRole` operationId).
 	RbacRevokeRoleWithResponse(ctx context.Context, id openapi_types.UUID, role RoleName, reqEditors ...RequestEditorFn) (*RbacRevokeRoleResponse, error)
+
+	// AuthResendChallengeWithResponse Send a new code for a challenge.
+	//
+	// Replaces the code and clears the attempt count. It does **not** extend `expires_at`: resending gives the learner a fresh code, not an indefinitely valid challenge.
+	//
+	// There is a 60-second cooldown per challenge and a cap on issuances per address per hour. A challenge that is already burned cannot be resent -- request a new one.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /auth/challenges/{id}/resend (the `AuthResendChallenge` operationId).
+	AuthResendChallengeWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*AuthResendChallengeResponse, error)
+
+	// AuthVerifyChallengeWithBodyWithResponse Submit the code for a challenge.
+	//
+	// Accepts the six digits and consumes the challenge. For a `verify_email` challenge this marks the address verified.
+	//
+	// The code is single-use and expires ten minutes after issuance. Five wrong codes burn the challenge permanently -- a new one must be requested rather than retried. A wrong code returns 401 with the number of attempts left in `meta`.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /auth/challenges/{id}/verify (the `AuthVerifyChallenge` operationId).
+	AuthVerifyChallengeWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AuthVerifyChallengeResponse, error)
+
+	// AuthVerifyChallengeWithResponse Submit the code for a challenge.
+	//
+	// Accepts the six digits and consumes the challenge. For a `verify_email` challenge this marks the address verified.
+	//
+	// The code is single-use and expires ten minutes after issuance. Five wrong codes burn the challenge permanently -- a new one must be requested rather than retried. A wrong code returns 401 with the number of attempts left in `meta`.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /auth/challenges/{id}/verify (the `AuthVerifyChallenge` operationId).
+	AuthVerifyChallengeWithResponse(ctx context.Context, id openapi_types.UUID, body AuthVerifyChallengeJSONRequestBody, reqEditors ...RequestEditorFn) (*AuthVerifyChallengeResponse, error)
+
+	// AuthRegisterWithBodyWithResponse Open an account and start email verification.
+	//
+	// Creates the account and issues a `verify_email` challenge. The six-digit code goes to the address by email; the response carries only the challenge handle.
+	//
+	// This operation never reveals whether an address is already registered. An address that is already verified gets the same response shape as a fresh registration, and its owner receives a "someone tried to register with your address" email instead of a code -- so a caller probing for accounts learns nothing from either the status or the body.
+	//
+	// An address registered but **not yet** verified is treated as a fresh registration: the submitted password replaces the stored one and a new challenge is issued. Reissuing the pending challenge instead would be an account-takeover path -- somebody registers an address they do not own, its real owner registers it too, receives the code, verifies, and ends up with an account whose password the first party chose.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /auth/register (the `AuthRegister` operationId).
+	AuthRegisterWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AuthRegisterResponse, error)
+
+	// AuthRegisterWithResponse Open an account and start email verification.
+	//
+	// Creates the account and issues a `verify_email` challenge. The six-digit code goes to the address by email; the response carries only the challenge handle.
+	//
+	// This operation never reveals whether an address is already registered. An address that is already verified gets the same response shape as a fresh registration, and its owner receives a "someone tried to register with your address" email instead of a code -- so a caller probing for accounts learns nothing from either the status or the body.
+	//
+	// An address registered but **not yet** verified is treated as a fresh registration: the submitted password replaces the stored one and a new challenge is issued. Reissuing the pending challenge instead would be an account-takeover path -- somebody registers an address they do not own, its real owner registers it too, receives the code, verifies, and ends up with an account whose password the first party chose.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /auth/register (the `AuthRegister` operationId).
+	AuthRegisterWithResponse(ctx context.Context, body AuthRegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*AuthRegisterResponse, error)
 
 	// SystemHealthWithResponse Check process liveness.
 	//
@@ -1966,6 +2310,262 @@ func (r RbacRevokeRoleResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r RbacRevokeRoleResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AuthResendChallengeResponse200Headers the declared response headers of an HTTP 200 response for AuthResendChallenge
+type AuthResendChallengeResponse200Headers struct {
+	XRequestId *string
+}
+
+// AuthResendChallengeResponse429Headers the declared response headers of an HTTP 429 response for AuthResendChallenge
+type AuthResendChallengeResponse429Headers struct {
+	RetryAfter *int
+}
+
+type AuthResendChallengeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Challenge
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AuthResendChallengeResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AuthResendChallengeResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AuthResendChallengeResponse) GetJSON200() *Challenge {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AuthResendChallengeResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AuthResendChallengeResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AuthResendChallengeResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AuthResendChallengeResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetBody returns the raw response body bytes
+func (r AuthResendChallengeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AuthResendChallengeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AuthResendChallengeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AuthResendChallengeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AuthVerifyChallengeResponse200Headers the declared response headers of an HTTP 200 response for AuthVerifyChallenge
+type AuthVerifyChallengeResponse200Headers struct {
+	XRequestId *string
+}
+
+// AuthVerifyChallengeResponse429Headers the declared response headers of an HTTP 429 response for AuthVerifyChallenge
+type AuthVerifyChallengeResponse429Headers struct {
+	RetryAfter *int
+}
+
+type AuthVerifyChallengeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *VerifiedChallenge
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AuthVerifyChallengeResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AuthVerifyChallengeResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AuthVerifyChallengeResponse) GetJSON200() *VerifiedChallenge {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r AuthVerifyChallengeResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AuthVerifyChallengeResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AuthVerifyChallengeResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AuthVerifyChallengeResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AuthVerifyChallengeResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AuthVerifyChallengeResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetBody returns the raw response body bytes
+func (r AuthVerifyChallengeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AuthVerifyChallengeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AuthVerifyChallengeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AuthVerifyChallengeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AuthRegisterResponse201Headers the declared response headers of an HTTP 201 response for AuthRegister
+type AuthRegisterResponse201Headers struct {
+	XRequestId *string
+}
+
+// AuthRegisterResponse429Headers the declared response headers of an HTTP 429 response for AuthRegister
+type AuthRegisterResponse429Headers struct {
+	RetryAfter *int
+}
+
+type AuthRegisterResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *Challenge
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *AuthRegisterResponse201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AuthRegisterResponse429Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r AuthRegisterResponse) GetJSON201() *Challenge {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r AuthRegisterResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AuthRegisterResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AuthRegisterResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetBody returns the raw response body bytes
+func (r AuthRegisterResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AuthRegisterResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AuthRegisterResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AuthRegisterResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -2631,6 +3231,95 @@ func (c *ClientWithResponses) RbacRevokeRoleWithResponse(ctx context.Context, id
 	return ParseRbacRevokeRoleResponse(rsp)
 }
 
+// AuthResendChallengeWithResponse Send a new code for a challenge.
+//
+// Replaces the code and clears the attempt count. It does **not** extend `expires_at`: resending gives the learner a fresh code, not an indefinitely valid challenge.
+//
+// There is a 60-second cooldown per challenge and a cap on issuances per address per hour. A challenge that is already burned cannot be resent -- request a new one.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /auth/challenges/{id}/resend (the `AuthResendChallenge` operationId).
+func (c *ClientWithResponses) AuthResendChallengeWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*AuthResendChallengeResponse, error) {
+	rsp, err := c.AuthResendChallenge(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthResendChallengeResponse(rsp)
+}
+
+// AuthVerifyChallengeWithBodyWithResponse Submit the code for a challenge.
+//
+// Accepts the six digits and consumes the challenge. For a `verify_email` challenge this marks the address verified.
+//
+// The code is single-use and expires ten minutes after issuance. Five wrong codes burn the challenge permanently -- a new one must be requested rather than retried. A wrong code returns 401 with the number of attempts left in `meta`.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /auth/challenges/{id}/verify (the `AuthVerifyChallenge` operationId).
+func (c *ClientWithResponses) AuthVerifyChallengeWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AuthVerifyChallengeResponse, error) {
+	rsp, err := c.AuthVerifyChallengeWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthVerifyChallengeResponse(rsp)
+}
+
+// AuthVerifyChallengeWithResponse Submit the code for a challenge.
+//
+// Accepts the six digits and consumes the challenge. For a `verify_email` challenge this marks the address verified.
+//
+// The code is single-use and expires ten minutes after issuance. Five wrong codes burn the challenge permanently -- a new one must be requested rather than retried. A wrong code returns 401 with the number of attempts left in `meta`.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /auth/challenges/{id}/verify (the `AuthVerifyChallenge` operationId).
+func (c *ClientWithResponses) AuthVerifyChallengeWithResponse(ctx context.Context, id openapi_types.UUID, body AuthVerifyChallengeJSONRequestBody, reqEditors ...RequestEditorFn) (*AuthVerifyChallengeResponse, error) {
+	rsp, err := c.AuthVerifyChallenge(ctx, id, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthVerifyChallengeResponse(rsp)
+}
+
+// AuthRegisterWithBodyWithResponse Open an account and start email verification.
+//
+// Creates the account and issues a `verify_email` challenge. The six-digit code goes to the address by email; the response carries only the challenge handle.
+//
+// This operation never reveals whether an address is already registered. An address that is already verified gets the same response shape as a fresh registration, and its owner receives a "someone tried to register with your address" email instead of a code -- so a caller probing for accounts learns nothing from either the status or the body.
+//
+// An address registered but **not yet** verified is treated as a fresh registration: the submitted password replaces the stored one and a new challenge is issued. Reissuing the pending challenge instead would be an account-takeover path -- somebody registers an address they do not own, its real owner registers it too, receives the code, verifies, and ends up with an account whose password the first party chose.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /auth/register (the `AuthRegister` operationId).
+func (c *ClientWithResponses) AuthRegisterWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AuthRegisterResponse, error) {
+	rsp, err := c.AuthRegisterWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthRegisterResponse(rsp)
+}
+
+// AuthRegisterWithResponse Open an account and start email verification.
+//
+// Creates the account and issues a `verify_email` challenge. The six-digit code goes to the address by email; the response carries only the challenge handle.
+//
+// This operation never reveals whether an address is already registered. An address that is already verified gets the same response shape as a fresh registration, and its owner receives a "someone tried to register with your address" email instead of a code -- so a caller probing for accounts learns nothing from either the status or the body.
+//
+// An address registered but **not yet** verified is treated as a fresh registration: the submitted password replaces the stored one and a new challenge is issued. Reissuing the pending challenge instead would be an account-takeover path -- somebody registers an address they do not own, its real owner registers it too, receives the code, verifies, and ends up with an account whose password the first party chose.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /auth/register (the `AuthRegister` operationId).
+func (c *ClientWithResponses) AuthRegisterWithResponse(ctx context.Context, body AuthRegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*AuthRegisterResponse, error) {
+	rsp, err := c.AuthRegister(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthRegisterResponse(rsp)
+}
+
 // SystemHealthWithResponse Check process liveness.
 //
 // Returns success when the API process is able to serve requests.
@@ -3200,6 +3889,244 @@ func ParseRbacRevokeRoleResponse(rsp *http.Response) (*RbacRevokeRoleResponse, e
 			headers.XRequestId = &value
 		}
 		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAuthResendChallengeResponse parses an HTTP response from a AuthResendChallengeWithResponse call
+func ParseAuthResendChallengeResponse(rsp *http.Response) (*AuthResendChallengeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AuthResendChallengeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Challenge
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AuthResendChallengeResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AuthResendChallengeResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAuthVerifyChallengeResponse parses an HTTP response from a AuthVerifyChallengeWithResponse call
+func ParseAuthVerifyChallengeResponse(rsp *http.Response) (*AuthVerifyChallengeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AuthVerifyChallengeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest VerifiedChallenge
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AuthVerifyChallengeResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AuthVerifyChallengeResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAuthRegisterResponse parses an HTTP response from a AuthRegisterWithResponse call
+func ParseAuthRegisterResponse(rsp *http.Response) (*AuthRegisterResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AuthRegisterResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest Challenge
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers AuthRegisterResponse201Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers AuthRegisterResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers429 = &headers
 	}
 
 	return response, nil

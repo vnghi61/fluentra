@@ -64,6 +64,11 @@ func (m *Module) Reader() contract.Reader { return m.service }
 // Creator is this module's write contract. Only `auth` uses it.
 func (m *Module) Creator() contract.Creator { return m.service }
 
+// Registrar is the registration-lifecycle contract: create an account, ask
+// whether an address is already claimed, mark it proved, and sweep the ones
+// that never were. Only `auth` uses it.
+func (m *Module) Registrar() contract.Registrar { return m.service }
+
 // repositoryAdapter narrows *repository.Repository to the interface the
 // service declares. Go has no covariant return types, so WithTx returning
 // *Repository cannot satisfy a method returning service.Repository — this is

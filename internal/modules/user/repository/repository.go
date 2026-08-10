@@ -54,6 +54,43 @@ func (r *Repository) GetUser(ctx context.Context, id uuid.UUID) (domain.User, er
 	return toDomainUser(row)
 }
 
+// GetUserByEmail reads the identity record by address.
+//
+// email is citext, so the match is case-insensitive in the database rather than
+// by a lower() the caller could forget (BR-USER-01).
+func (r *Repository) GetUserByEmail(ctx context.Context, email string) (domain.User, error) {
+	row, err := r.queries.GetUserByEmail(ctx, email)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.User{}, domain.ErrUserNotFound
+		}
+		return domain.User{}, fmt.Errorf("get user by email: %w", err)
+	}
+	return toDomainUser(row)
+}
+
+// MarkEmailVerified stamps the address as proved, keeping the first timestamp
+// if there already is one.
+func (r *Repository) MarkEmailVerified(ctx context.Context, userID uuid.UUID) (domain.User, error) {
+	row, err := r.queries.MarkUserEmailVerified(ctx, userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.User{}, domain.ErrUserNotFound
+		}
+		return domain.User{}, fmt.Errorf("mark user email verified: %w", err)
+	}
+	return toDomainUser(row)
+}
+
+// PurgeUnverifiedBefore deletes accounts that never completed verification.
+func (r *Repository) PurgeUnverifiedBefore(ctx context.Context, cutoff time.Time) (int, error) {
+	removed, err := r.queries.PurgeUnverifiedUsersBefore(ctx, cutoff)
+	if err != nil {
+		return 0, fmt.Errorf("purge unverified users: %w", err)
+	}
+	return int(removed), nil
+}
+
 // Exists reports whether the account exists.
 func (r *Repository) Exists(ctx context.Context, id uuid.UUID) (bool, error) {
 	exists, err := r.queries.UserExists(ctx, id)

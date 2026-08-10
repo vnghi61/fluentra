@@ -60,9 +60,10 @@ const (
 
 // Challenge is one short-lived one-time code.
 //
-// It carries no user id and no foreign key: the subject is identified only by an
-// HMAC, so the row says nothing about which account it belongs to and a
-// challenge can exist for an address that has no account yet.
+// The subject is stored only as a keyed HMAC, so the row carries no address.
+// UserID is separate and is the account it belongs to: the digest is
+// irreversible by design, so verification could not otherwise find the account
+// it is supposed to mark verified.
 type Challenge struct {
 	ID      uuid.UUID
 	Purpose Purpose
@@ -72,6 +73,11 @@ type Challenge struct {
 	// something to print, so they are not rendered by any method here.
 	SubjectHash []byte
 	CodeHash    []byte
+
+	// UserID is the account the challenge belongs to, when there is one. It is
+	// a pointer because a challenge can legitimately precede an account:
+	// link_oauth runs before a Google sign-up has one.
+	UserID *uuid.UUID
 
 	Attempts    int
 	MaxAttempts int
@@ -97,6 +103,7 @@ type NewChallengeInput struct {
 	CodeHash    []byte
 	MaxAttempts int
 	ExpiresAt   time.Time
+	UserID      *uuid.UUID
 	Now         time.Time
 }
 

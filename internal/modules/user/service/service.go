@@ -6,6 +6,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -38,6 +39,13 @@ type Repository interface {
 
 	GetSummary(ctx context.Context, id uuid.UUID) (domain.Summary, error)
 	ListSummaries(ctx context.Context, ids []uuid.UUID) ([]domain.Summary, error)
+
+	// The registration lifecycle, for contract.Registrar. `auth` owns no user
+	// table and rule L2 forbids it reading one, so each of these exists to
+	// replace a cross-schema join it would otherwise have to write.
+	GetUserByEmail(ctx context.Context, email string) (domain.User, error)
+	MarkEmailVerified(ctx context.Context, userID uuid.UUID) (domain.User, error)
+	PurgeUnverifiedBefore(ctx context.Context, cutoff time.Time) (int, error)
 
 	WithTx(tx pgx.Tx) Repository
 }

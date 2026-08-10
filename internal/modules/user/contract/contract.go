@@ -59,6 +59,68 @@ type Creator interface {
 	CreateUser(ctx context.Context, newUser NewUser) (uuid.UUID, error)
 }
 
+// Account is what registration needs to know about an existing address, and
+// nothing more.
+//
+// It is not Summary. Summary is for rendering a person and carries a display
+// name; this carries whether the address has been verified, which is a fact
+// about the account's security state that no rendering path should see.
+type Account struct {
+	ID       uuid.UUID
+	Verified bool
+	Status   string
+}
+
+// Contact is an account's mailing details. It is separate from Summary because
+// Summary is for rendering a person to other learners and must never carry an
+// address.
+type Contact struct {
+	Email       string
+	DisplayName string
+	Locale      string
+}
+
+// Registrar is the surface `auth` needs to run registration and email
+// verification. It is separate from Creator because these three are not about
+// creating an account — they are about the window between an address being
+// claimed and being proved.
+//
+// Each method exists because `auth` owns no user table and rule L2 forbids it
+// reading one. The alternative to every one of them is a cross-schema join.
+type Registrar interface {
+	Creator
+
+	// FindByEmail reports whether an address is registered, and whether it has
+	// been verified.
+	//
+	// It exists so registration can be enumeration-safe: `auth` has to answer
+	// "already verified, already claimed, or new?" to choose between sending a
+	// code and sending a warning, and it must answer without the response
+	// differing. Returning false rather than an error for an unknown address is
+	// what keeps the two paths the same shape at the call site.
+	FindByEmail(ctx context.Context, email string) (Account, bool, error)
+
+	// Recipient returns what a transactional email needs to reach an account:
+	// the address, the name to greet, and the language to write in.
+	//
+	// It is the one place outside `GET /me` that yields an address, and it
+	// exists because mail has to be addressed to something. `auth` holds the
+	// address at registration but not at resend — the challenge row stores only
+	// a keyed digest of it — so without this, a resend has nowhere to send.
+	Recipient(ctx context.Context, userID uuid.UUID) (Contact, error)
+
+	// MarkEmailVerified records that the address was proved. It is idempotent:
+	// verifying twice keeps the first timestamp, which is the one the audit
+	// trail already recorded.
+	MarkEmailVerified(ctx context.Context, userID uuid.UUID) error
+
+	// PurgeUnverifiedBefore deletes accounts that never completed verification
+	// and returns how many went. An address claimed but never proved must not
+	// hold that address forever, or claiming addresses becomes a denial of
+	// service against the people who own them.
+	PurgeUnverifiedBefore(ctx context.Context, cutoff time.Time) (int, error)
+}
+
 // Event names published by this module. They are strings rather than a Go type
 // because a consumer in another module matches on the wire value, and a typed
 // constant it cannot import would not help it.
