@@ -63,7 +63,7 @@ the new auth code has a single test.**
 
 ---
 
-## 2. Decisions already made. Do not relitigate these.
+## 2. Decisions already made — do not relitigate these
 
 The human answered these explicitly. They are settled.
 
@@ -85,7 +85,7 @@ Two further design corrections were made mid-implementation and are already in t
 
 ---
 
-## 3. Environment traps. Every one of these has already cost a session.
+## 3. Environment traps — every one has already cost a session
 
 1. **Never run `make check`.** It calls `make fmt`, which runs `goimports-reviser` and prettier and
    reformats ~37 unrelated files. CI enforces neither. Use individual targets, or `make ci`.
@@ -150,7 +150,7 @@ flakiness under load already known on `main`. Re-run it alone; do not chase it.
 
 ---
 
-## 4. Patterns to follow. Do not invent alternatives.
+## 4. Patterns to follow — do not invent alternatives
 
 **Module layout.** `contract/` (the only package other modules may import) · `domain/` (pure, no
 I/O) · `repository/` (takes `dbx.Querier`, has `WithTx(pgx.Tx)`) · `service/` (declares its own
