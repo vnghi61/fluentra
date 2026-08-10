@@ -2,12 +2,14 @@ package service
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
 	"github.com/fluentra/fluentra/internal/modules/user/contract"
 	"github.com/fluentra/fluentra/internal/modules/user/domain"
+	"github.com/fluentra/fluentra/internal/shared/apperr"
 	"github.com/fluentra/fluentra/internal/shared/dbx"
 )
 
@@ -16,8 +18,9 @@ import (
 // error in this package rather than a runtime surprise in whichever module
 // depends on it.
 var (
-	_ contract.Reader  = (*Service)(nil)
-	_ contract.Creator = (*Service)(nil)
+	_ contract.Reader    = (*Service)(nil)
+	_ contract.Creator   = (*Service)(nil)
+	_ contract.Registrar = (*Service)(nil)
 )
 
 // GetByID returns one rendering summary.
@@ -106,6 +109,52 @@ func (s *Service) CreateUser(ctx context.Context, newUser contract.NewUser) (uui
 		return uuid.Nil, err
 	}
 	return userID, nil
+}
+
+// FindByEmail reports whether an address is registered, and whether it has been
+// verified. An unknown address is `false, nil` rather than an error: the caller
+// is `auth` deciding between two registration paths, and both are ordinary.
+func (s *Service) FindByEmail(ctx context.Context, email string) (contract.Account, bool, error) {
+	user, err := s.repo.GetUserByEmail(ctx, email)
+	if err != nil {
+		if apperr.Is(err, apperr.NotFound) {
+			return contract.Account{}, false, nil
+		}
+		return contract.Account{}, false, err
+	}
+	return contract.Account{
+		ID:       user.ID,
+		Verified: user.EmailVerified(),
+		Status:   string(user.Status),
+	}, true, nil
+}
+
+// Recipient returns the account's mailing details.
+func (s *Service) Recipient(ctx context.Context, userID uuid.UUID) (contract.Contact, error) {
+	user, err := s.repo.GetUser(ctx, userID)
+	if err != nil {
+		return contract.Contact{}, err
+	}
+	summary, err := s.repo.GetSummary(ctx, userID)
+	if err != nil {
+		return contract.Contact{}, err
+	}
+	return contract.Contact{
+		Email:       user.Email,
+		DisplayName: summary.DisplayName,
+		Locale:      summary.Locale,
+	}, nil
+}
+
+// MarkEmailVerified records that the address was proved.
+func (s *Service) MarkEmailVerified(ctx context.Context, userID uuid.UUID) error {
+	_, err := s.repo.MarkEmailVerified(ctx, userID)
+	return err
+}
+
+// PurgeUnverifiedBefore deletes accounts that never completed verification.
+func (s *Service) PurgeUnverifiedBefore(ctx context.Context, cutoff time.Time) (int, error) {
+	return s.repo.PurgeUnverifiedBefore(ctx, cutoff)
 }
 
 // toContractSummary converts the internal shape to the published one. The

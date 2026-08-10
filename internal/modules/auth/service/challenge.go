@@ -135,6 +135,10 @@ type IssueRequest struct {
 	// for this purpose. It is hashed before it touches the database and it is
 	// never logged.
 	Subject string
+	// UserID is the account the challenge belongs to, when one exists. Verify
+	// needs it: the row stores only a keyed digest of the subject, which is
+	// irreversible by design and so can identify nothing on its own.
+	UserID *uuid.UUID
 }
 
 // Purpose is re-exported so a caller in another layer names the purpose without
@@ -202,6 +206,7 @@ func (s *ChallengeService) issue(ctx context.Context, repo Repository, request I
 		CodeHash:    s.keys.CodeHash(challengeID, code.Reveal()),
 		MaxAttempts: s.config.MaxAttempts,
 		ExpiresAt:   now.Add(s.config.TTL),
+		UserID:      request.UserID,
 		Now:         now,
 	})
 	if err != nil {
@@ -320,9 +325,21 @@ func (s *ChallengeService) explainLostRace(ctx context.Context, challengeID uuid
 // does not un-burn a challenge — BR-AUTH-12 says a spent one must be replaced,
 // so resend is not a way around the attempt cap.
 func (s *ChallengeService) Resend(ctx context.Context, challengeID uuid.UUID) (Issued, error) {
+	return s.resend(ctx, s.repo, challengeID)
+}
+
+// ResendIn replaces the code inside tx, so the row that delivers the new code
+// commits with the row that changed it. Without that, a resend whose outbox
+// write failed would have invalidated the learner's old code and sent them no
+// new one — the challenge alive but unusable by anybody.
+func (s *ChallengeService) ResendIn(ctx context.Context, tx pgx.Tx, challengeID uuid.UUID) (Issued, error) {
+	return s.resend(ctx, s.repo.WithTx(tx), challengeID)
+}
+
+func (s *ChallengeService) resend(ctx context.Context, repo Repository, challengeID uuid.UUID) (Issued, error) {
 	now := s.clock.Now()
 
-	challenge, err := s.repo.GetChallenge(ctx, challengeID)
+	challenge, err := repo.GetChallenge(ctx, challengeID)
 	if err != nil {
 		return Issued{}, err
 	}
@@ -343,7 +360,7 @@ func (s *ChallengeService) Resend(ctx context.Context, challengeID uuid.UUID) (I
 		return Issued{}, fmt.Errorf("resend challenge: %w", err)
 	}
 
-	resent, ok, err := s.repo.ResendChallenge(
+	resent, ok, err := repo.ResendChallenge(
 		ctx, challengeID, s.keys.CodeHash(challengeID, code.Reveal()), now.Add(-s.config.ResendCooldown), now)
 	if err != nil {
 		return Issued{}, err

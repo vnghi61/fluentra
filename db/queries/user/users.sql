@@ -43,3 +43,15 @@ UPDATE core.users
 SET email_verified_at = COALESCE(email_verified_at, now()), updated_at = now()
 WHERE id = $1
 RETURNING id, email, status, email_verified_at, created_at, updated_at;
+
+-- name: PurgeUnverifiedUsersBefore :execrows
+-- Removes accounts that claimed an address and never proved it. The profile,
+-- preference and credential rows go with them through ON DELETE CASCADE.
+--
+-- `status = 'active'` is part of the predicate on purpose: a suspended or
+-- pending-deletion account is somebody's problem to resolve deliberately, and
+-- sweeping it here would hide that.
+DELETE FROM core.users
+WHERE email_verified_at IS NULL
+  AND status = 'active'
+  AND created_at < @cutoff;

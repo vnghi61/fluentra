@@ -7,6 +7,7 @@ package sqlc
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -140,6 +141,27 @@ func (q *Queries) MarkUserEmailVerified(ctx context.Context, id uuid.UUID) (Core
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const purgeUnverifiedUsersBefore = `-- name: PurgeUnverifiedUsersBefore :execrows
+DELETE FROM core.users
+WHERE email_verified_at IS NULL
+  AND status = 'active'
+  AND created_at < $1
+`
+
+// Removes accounts that claimed an address and never proved it. The profile,
+// preference and credential rows go with them through ON DELETE CASCADE.
+//
+// `status = 'active'` is part of the predicate on purpose: a suspended or
+// pending-deletion account is somebody's problem to resolve deliberately, and
+// sweeping it here would hide that.
+func (q *Queries) PurgeUnverifiedUsersBefore(ctx context.Context, cutoff time.Time) (int64, error) {
+	result, err := q.db.Exec(ctx, purgeUnverifiedUsersBefore, cutoff)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const updateUserStatus = `-- name: UpdateUserStatus :one

@@ -245,6 +245,7 @@ type CoreAuthChallenge struct {
 	LastSentAt  time.Time
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+	UserID      *uuid.UUID
 }
 
 type CoreCredential struct {

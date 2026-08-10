@@ -84,6 +84,80 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Open an account and start email verification.
+         * @description Creates the account and issues a `verify_email` challenge. The six-digit code goes to the address by email; the response carries only the challenge handle.
+         *
+         *     This operation never reveals whether an address is already registered. An address that is already verified gets the same response shape as a fresh registration, and its owner receives a "someone tried to register with your address" email instead of a code -- so a caller probing for accounts learns nothing from either the status or the body.
+         *
+         *     An address registered but **not yet** verified is treated as a fresh registration: the submitted password replaces the stored one and a new challenge is issued. Reissuing the pending challenge instead would be an account-takeover path -- somebody registers an address they do not own, its real owner registers it too, receives the code, verifies, and ends up with an account whose password the first party chose.
+         */
+        post: operations["authRegister"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/challenges/{id}/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The challenge handle returned when it was issued. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit the code for a challenge.
+         * @description Accepts the six digits and consumes the challenge. For a `verify_email` challenge this marks the address verified.
+         *
+         *     The code is single-use and expires ten minutes after issuance. Five wrong codes burn the challenge permanently -- a new one must be requested rather than retried. A wrong code returns 401 with the number of attempts left in `meta`.
+         */
+        post: operations["authVerifyChallenge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/challenges/{id}/resend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The challenge to send a new code for. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send a new code for a challenge.
+         * @description Replaces the code and clears the attempt count. It does **not** extend `expires_at`: resending gives the learner a fresh code, not an indefinitely valid challenge.
+         *
+         *     There is a 60-second cooldown per challenge and a cap on issuances per address per hour. A challenge that is already burned cannot be resent -- request a new one.
+         */
+        post: operations["authResendChallenge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/me": {
         parameters: {
             query?: never;
@@ -405,6 +479,91 @@ export interface components {
              * @example 0.1.0
              */
             version: string;
+        };
+        /** @description Everything needed to open an account. There is deliberately no `locale` or `timezone` beyond what is here: the rest of the profile is filled in after the learner is signed in, so that the registration form stays short. */
+        RegisterRequest: {
+            /**
+             * Format: email
+             * @description Normalised to lower case and matched case-insensitively. Whether the address is already registered is never revealed by this operation.
+             * @example learner@example.com
+             */
+            email: string;
+            /**
+             * Format: password
+             * @description At least 12 characters, not equal to the local part of the email, and not present in a public breach corpus. The corpus check fails open, so an outage at the breach service does not block registration.
+             * @example a perfectly fine passphrase
+             */
+            password: string;
+            /**
+             * @description Shown to other learners. Names that impersonate Fluentra staff are rejected.
+             * @example Nghi
+             */
+            display_name: string;
+            /**
+             * @description Chooses the language the verification email is written in.
+             * @default en
+             * @example vi
+             */
+            locale: string;
+            /**
+             * @description IANA timezone name.
+             * @default UTC
+             * @example Asia/Ho_Chi_Minh
+             */
+            timezone: string;
+        };
+        /**
+         * @description A pending one-time code. The code itself is never in this object, or in any response body: it goes to the email channel and nowhere else, which is what makes it prove control of the address.
+         *
+         *     The `id` is the handle. A code is worthless without it, so an attacker who guesses six digits with no challenge id has guessed nothing.
+         */
+        Challenge: {
+            /**
+             * Format: uuid
+             * @description Identifies the challenge in the verify and resend operations.
+             */
+            challenge_id: string;
+            purpose: components["schemas"]["ChallengePurpose"];
+            /**
+             * Format: date-time
+             * @description Absolute expiry, ten minutes from issuance. A resend replaces the code but never moves this.
+             */
+            expires_at: string;
+            /**
+             * Format: date-time
+             * @description The earliest time a resend will be accepted.
+             */
+            resend_after: string;
+            /**
+             * @description Verification attempts left before the challenge is burned permanently.
+             * @example 5
+             */
+            attempts_remaining: number;
+        };
+        /**
+         * @description What a challenge proves. One subsystem serves all four; only `verify_email` is reachable in this version of the API.
+         * @enum {string}
+         */
+        ChallengePurpose: "verify_email" | "login_otp" | "password_reset" | "link_oauth";
+        VerifyChallengeRequest: {
+            /**
+             * @description The six digits from the email.
+             * @example 482913
+             */
+            code: string;
+        };
+        /**
+         * @description The outcome of a successful verification.
+         *
+         *     It carries no tokens yet. Issuing an access token and a refresh cookie here -- so the learner is signed in without a second step -- is P2.4, which adds them to this schema. Clients written against this version must send the learner to sign in after verifying.
+         */
+        VerifiedChallenge: {
+            purpose: components["schemas"]["ChallengePurpose"];
+            /**
+             * Format: date-time
+             * @description When the code was accepted.
+             */
+            verified_at: string;
         };
         /** @description The authenticated caller's own account. There is no operation that returns this shape for anybody else: the server reads the actor from the access token and the path carries no user id. */
         Me: {
@@ -1064,6 +1223,134 @@ export interface operations {
                     "application/json": components["schemas"]["Version"];
                 };
             };
+        };
+    };
+    authRegister: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "email": "learner@example.com",
+                 *       "password": "a perfectly fine passphrase",
+                 *       "display_name": "Nghi",
+                 *       "locale": "vi",
+                 *       "timezone": "Asia/Ho_Chi_Minh"
+                 *     }
+                 */
+                "application/json": components["schemas"]["RegisterRequest"];
+            };
+        };
+        responses: {
+            /** @description A challenge was issued. This is also the response when the address was already registered -- deliberately indistinguishable. */
+            201: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "challenge_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "purpose": "verify_email",
+                     *       "expires_at": "2026-08-10T09:10:00Z",
+                     *       "resend_after": "2026-08-10T09:01:00Z",
+                     *       "attempts_remaining": 5
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Challenge"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            422: components["responses"]["ValidationFailed"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    authVerifyChallenge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The challenge handle returned when it was issued. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "code": "482913"
+                 *     }
+                 */
+                "application/json": components["schemas"]["VerifyChallengeRequest"];
+            };
+        };
+        responses: {
+            /** @description The code was accepted and the challenge consumed. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "purpose": "verify_email",
+                     *       "verified_at": "2026-08-10T09:03:12Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["VerifiedChallenge"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    authResendChallenge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The challenge to send a new code for. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A new code was sent. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "challenge_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "purpose": "verify_email",
+                     *       "expires_at": "2026-08-10T09:10:00Z",
+                     *       "resend_after": "2026-08-10T09:01:00Z",
+                     *       "attempts_remaining": 5
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Challenge"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            429: components["responses"]["TooManyRequests"];
         };
     };
     userGetMe: {

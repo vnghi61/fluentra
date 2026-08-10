@@ -3,7 +3,9 @@ package service_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -240,6 +242,64 @@ func (f *fakeRepo) ListSummaries(_ context.Context, ids []uuid.UUID) ([]domain.S
 // tests here check is which methods a use case calls and in what order, and a
 // fake that pretended to roll back would be testing itself.
 func (f *fakeRepo) WithTx(pgx.Tx) service.Repository { return f }
+
+// GetUserByEmail matches case-insensitively, because the real column is citext
+// and a fake that matched exactly would let a case bug through.
+func (f *fakeRepo) GetUserByEmail(_ context.Context, email string) (domain.User, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	f.calls["GetUserByEmail"]++
+	if err := f.failOn["GetUserByEmail"]; err != nil {
+		return domain.User{}, err
+	}
+	for _, user := range f.users {
+		if strings.EqualFold(user.Email, email) {
+			return user, nil
+		}
+	}
+	return domain.User{}, domain.ErrUserNotFound
+}
+
+func (f *fakeRepo) MarkEmailVerified(_ context.Context, userID uuid.UUID) (domain.User, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	f.calls["MarkEmailVerified"]++
+	if err := f.failOn["MarkEmailVerified"]; err != nil {
+		return domain.User{}, err
+	}
+	user, ok := f.users[userID]
+	if !ok {
+		return domain.User{}, domain.ErrUserNotFound
+	}
+	// Idempotent, like the query's COALESCE: the first timestamp is the one the
+	// audit trail already recorded.
+	if user.EmailVerifiedAt == nil {
+		verifiedAt := time.Now().UTC()
+		user.EmailVerifiedAt = &verifiedAt
+		f.users[userID] = user
+	}
+	return user, nil
+}
+
+func (f *fakeRepo) PurgeUnverifiedBefore(_ context.Context, cutoff time.Time) (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	f.calls["PurgeUnverifiedBefore"]++
+	if err := f.failOn["PurgeUnverifiedBefore"]; err != nil {
+		return 0, err
+	}
+	removed := 0
+	for id, user := range f.users {
+		if user.EmailVerifiedAt == nil && user.Status == domain.StatusActive && user.CreatedAt.Before(cutoff) {
+			delete(f.users, id)
+			removed++
+		}
+	}
+	return removed, nil
+}
 
 // fakeBeginner satisfies dbx.Beginner with a transaction that records nothing
 // and always commits.

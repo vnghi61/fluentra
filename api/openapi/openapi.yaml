@@ -14,6 +14,10 @@ servers:
 tags:
   - name: system
     description: Platform health and diagnostics.
+  - name: auth
+    description: >-
+      Proving who a caller is. Every operation here is public: they are how a
+      caller acquires an identity, so requiring one would be circular.
   - name: user
     description: >-
       The caller's own account: profile and preferences. Every operation here
@@ -108,6 +112,165 @@ paths:
                 $ref: '#/components/schemas/Version'
               example:
                 version: 0.1.0
+  /auth/register:
+    post:
+      tags: [auth]
+      operationId: authRegister
+      summary: Open an account and start email verification.
+      description: >-
+        Creates the account and issues a `verify_email` challenge. The
+        six-digit code goes to the address by email; the response carries only
+        the challenge handle.
+
+
+        This operation never reveals whether an address is already registered.
+        An address that is already verified gets the same response shape as a
+        fresh registration, and its owner receives a "someone tried to register
+        with your address" email instead of a code -- so a caller probing for
+        accounts learns nothing from either the status or the body.
+
+
+        An address registered but **not yet** verified is treated as a fresh
+        registration: the submitted password replaces the stored one and a new
+        challenge is issued. Reissuing the pending challenge instead would be an
+        account-takeover path -- somebody registers an address they do not own,
+        its real owner registers it too, receives the code, verifies, and ends
+        up with an account whose password the first party chose.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            example:
+              email: learner@example.com
+              password: a perfectly fine passphrase
+              display_name: Nghi
+              locale: vi
+              timezone: Asia/Ho_Chi_Minh
+      responses:
+        '201':
+          description: >-
+            A challenge was issued. This is also the response when the address
+            was already registered -- deliberately indistinguishable.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Challenge'
+              example: &challengeExample
+                challenge_id: 0199a1c2-3d4e-7f80-9abc-def012345678
+                purpose: verify_email
+                expires_at: '2026-08-10T09:10:00Z'
+                resend_after: '2026-08-10T09:01:00Z'
+                attempts_remaining: 5
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /auth/challenges/{id}/verify:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: The challenge handle returned when it was issued.
+        schema:
+          type: string
+          format: uuid
+    post:
+      tags: [auth]
+      operationId: authVerifyChallenge
+      summary: Submit the code for a challenge.
+      description: >-
+        Accepts the six digits and consumes the challenge. For a `verify_email`
+        challenge this marks the address verified.
+
+
+        The code is single-use and expires ten minutes after issuance. Five
+        wrong codes burn the challenge permanently -- a new one must be
+        requested rather than retried. A wrong code returns 401 with the number
+        of attempts left in `meta`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyChallengeRequest'
+            example:
+              code: '482913'
+      responses:
+        '200':
+          description: The code was accepted and the challenge consumed.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifiedChallenge'
+              example:
+                purpose: verify_email
+                verified_at: '2026-08-10T09:03:12Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /auth/challenges/{id}/resend:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: The challenge to send a new code for.
+        schema:
+          type: string
+          format: uuid
+    post:
+      tags: [auth]
+      operationId: authResendChallenge
+      summary: Send a new code for a challenge.
+      description: >-
+        Replaces the code and clears the attempt count. It does **not** extend
+        `expires_at`: resending gives the learner a fresh code, not an
+        indefinitely valid challenge.
+
+
+        There is a 60-second cooldown per challenge and a cap on issuances per
+        address per hour. A challenge that is already burned cannot be resent --
+        request a new one.
+      security: []
+      responses:
+        '200':
+          description: A new code was sent.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Challenge'
+              example: *challengeExample
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
   /me:
     get:
       tags: [user]
@@ -707,6 +870,16 @@ components:
       $ref: ./components/system.yaml#/Ready
     Version:
       $ref: ./components/system.yaml#/Version
+    RegisterRequest:
+      $ref: ./components/auth.yaml#/RegisterRequest
+    Challenge:
+      $ref: ./components/auth.yaml#/Challenge
+    ChallengePurpose:
+      $ref: ./components/auth.yaml#/ChallengePurpose
+    VerifyChallengeRequest:
+      $ref: ./components/auth.yaml#/VerifyChallengeRequest
+    VerifiedChallenge:
+      $ref: ./components/auth.yaml#/VerifiedChallenge
     Me:
       $ref: ./components/user.yaml#/Me
     MeProfile:

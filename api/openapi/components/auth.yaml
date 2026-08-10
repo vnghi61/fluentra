@@ -1,0 +1,122 @@
+RegisterRequest:
+  type: object
+  description: >-
+    Everything needed to open an account. There is deliberately no `locale` or
+    `timezone` beyond what is here: the rest of the profile is filled in after
+    the learner is signed in, so that the registration form stays short.
+  required: [email, password, display_name]
+  additionalProperties: false
+  properties:
+    email:
+      type: string
+      format: email
+      maxLength: 254
+      description: >-
+        Normalised to lower case and matched case-insensitively. Whether the
+        address is already registered is never revealed by this operation.
+      example: learner@example.com
+    password:
+      type: string
+      minLength: 12
+      maxLength: 128
+      format: password
+      description: >-
+        At least 12 characters, not equal to the local part of the email, and
+        not present in a public breach corpus. The corpus check fails open, so
+        an outage at the breach service does not block registration.
+      example: a perfectly fine passphrase
+    display_name:
+      type: string
+      minLength: 1
+      maxLength: 50
+      description: >-
+        Shown to other learners. Names that impersonate Fluentra staff are
+        rejected.
+      example: Nghi
+    locale:
+      type: string
+      pattern: '^[a-z]{2}(-[A-Z]{2})?$'
+      default: en
+      description: Chooses the language the verification email is written in.
+      example: vi
+    timezone:
+      type: string
+      maxLength: 64
+      default: UTC
+      description: IANA timezone name.
+      example: Asia/Ho_Chi_Minh
+
+Challenge:
+  type: object
+  description: >-
+    A pending one-time code. The code itself is never in this object, or in any
+    response body: it goes to the email channel and nowhere else, which is what
+    makes it prove control of the address.
+
+
+    The `id` is the handle. A code is worthless without it, so an attacker who
+    guesses six digits with no challenge id has guessed nothing.
+  required: [challenge_id, purpose, expires_at, resend_after, attempts_remaining]
+  additionalProperties: false
+  properties:
+    challenge_id:
+      type: string
+      format: uuid
+      description: Identifies the challenge in the verify and resend operations.
+    purpose:
+      $ref: '#/ChallengePurpose'
+    expires_at:
+      type: string
+      format: date-time
+      description: >-
+        Absolute expiry, ten minutes from issuance. A resend replaces the code
+        but never moves this.
+    resend_after:
+      type: string
+      format: date-time
+      description: The earliest time a resend will be accepted.
+    attempts_remaining:
+      type: integer
+      minimum: 0
+      maximum: 10
+      description: >-
+        Verification attempts left before the challenge is burned permanently.
+      example: 5
+
+ChallengePurpose:
+  type: string
+  enum: [verify_email, login_otp, password_reset, link_oauth]
+  description: >-
+    What a challenge proves. One subsystem serves all four; only
+    `verify_email` is reachable in this version of the API.
+
+VerifyChallengeRequest:
+  type: object
+  required: [code]
+  additionalProperties: false
+  properties:
+    code:
+      type: string
+      pattern: '^[0-9]{6}$'
+      description: The six digits from the email.
+      example: '482913'
+
+VerifiedChallenge:
+  type: object
+  description: >-
+    The outcome of a successful verification.
+
+
+    It carries no tokens yet. Issuing an access token and a refresh cookie here
+    -- so the learner is signed in without a second step -- is P2.4, which adds
+    them to this schema. Clients written against this version must send the
+    learner to sign in after verifying.
+  required: [purpose, verified_at]
+  additionalProperties: false
+  properties:
+    purpose:
+      $ref: '#/ChallengePurpose'
+    verified_at:
+      type: string
+      format: date-time
+      description: When the code was accepted.

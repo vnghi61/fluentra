@@ -21,7 +21,7 @@ WHERE id = $2
   AND attempts < max_attempts
   AND expires_at > $1
 RETURNING id, purpose, subject_hash, code_hash, attempts, max_attempts,
-          expires_at, consumed_at, last_sent_at, created_at, updated_at
+          expires_at, consumed_at, last_sent_at, created_at, updated_at, user_id
 `
 
 type ConsumeChallengeParams struct {
@@ -56,17 +56,18 @@ func (q *Queries) ConsumeChallenge(ctx context.Context, arg ConsumeChallengePara
 		&i.LastSentAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.UserID,
 	)
 	return i, err
 }
 
 const createChallenge = `-- name: CreateChallenge :one
 INSERT INTO core.auth_challenges (
-    id, purpose, subject_hash, code_hash, max_attempts, expires_at, last_sent_at, created_at, updated_at
+    id, purpose, subject_hash, code_hash, max_attempts, expires_at, user_id, last_sent_at, created_at, updated_at
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $7, $7)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8, $8)
 RETURNING id, purpose, subject_hash, code_hash, attempts, max_attempts,
-          expires_at, consumed_at, last_sent_at, created_at, updated_at
+          expires_at, consumed_at, last_sent_at, created_at, updated_at, user_id
 `
 
 type CreateChallengeParams struct {
@@ -76,6 +77,7 @@ type CreateChallengeParams struct {
 	CodeHash    []byte
 	MaxAttempts int32
 	ExpiresAt   time.Time
+	UserID      *uuid.UUID
 	Now         time.Time
 }
 
@@ -89,6 +91,7 @@ func (q *Queries) CreateChallenge(ctx context.Context, arg CreateChallengeParams
 		arg.CodeHash,
 		arg.MaxAttempts,
 		arg.ExpiresAt,
+		arg.UserID,
 		arg.Now,
 	)
 	var i CoreAuthChallenge
@@ -104,13 +107,14 @@ func (q *Queries) CreateChallenge(ctx context.Context, arg CreateChallengeParams
 		&i.LastSentAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.UserID,
 	)
 	return i, err
 }
 
 const getChallengeByID = `-- name: GetChallengeByID :one
 SELECT id, purpose, subject_hash, code_hash, attempts, max_attempts,
-       expires_at, consumed_at, last_sent_at, created_at, updated_at
+       expires_at, consumed_at, last_sent_at, created_at, updated_at, user_id
 FROM core.auth_challenges
 WHERE id = $1
 `
@@ -130,6 +134,7 @@ func (q *Queries) GetChallengeByID(ctx context.Context, id uuid.UUID) (CoreAuthC
 		&i.LastSentAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.UserID,
 	)
 	return i, err
 }
@@ -142,7 +147,7 @@ WHERE id = $2
   AND attempts < max_attempts
   AND expires_at > $1
 RETURNING id, purpose, subject_hash, code_hash, attempts, max_attempts,
-          expires_at, consumed_at, last_sent_at, created_at, updated_at
+          expires_at, consumed_at, last_sent_at, created_at, updated_at, user_id
 `
 
 type RecordFailedAttemptParams struct {
@@ -169,6 +174,7 @@ func (q *Queries) RecordFailedAttempt(ctx context.Context, arg RecordFailedAttem
 		&i.LastSentAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.UserID,
 	)
 	return i, err
 }
@@ -182,7 +188,7 @@ WHERE id = $3
   AND expires_at > $2
   AND last_sent_at <= $4
 RETURNING id, purpose, subject_hash, code_hash, attempts, max_attempts,
-          expires_at, consumed_at, last_sent_at, created_at, updated_at
+          expires_at, consumed_at, last_sent_at, created_at, updated_at, user_id
 `
 
 type ResendChallengeParams struct {
@@ -221,6 +227,7 @@ func (q *Queries) ResendChallenge(ctx context.Context, arg ResendChallengeParams
 		&i.LastSentAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.UserID,
 	)
 	return i, err
 }

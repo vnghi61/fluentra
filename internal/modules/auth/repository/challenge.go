@@ -24,6 +24,7 @@ func (r *Repository) CreateChallenge(ctx context.Context, challenge domain.NewCh
 		CodeHash:    challenge.CodeHash,
 		MaxAttempts: int32(challenge.MaxAttempts), //nolint:gosec // bounded 1..10 by ck_auth_challenges_max_attempts
 		ExpiresAt:   challenge.ExpiresAt,
+		UserID:      challenge.UserID,
 		Now:         challenge.Now,
 	})
 	if err != nil {
@@ -113,6 +114,7 @@ func toDomainChallenge(row sqlcauth.CoreAuthChallenge) domain.Challenge {
 		MaxAttempts: int(row.MaxAttempts),
 		ExpiresAt:   row.ExpiresAt,
 		ConsumedAt:  row.ConsumedAt,
+		UserID:      row.UserID,
 		LastSentAt:  row.LastSentAt,
 		CreatedAt:   row.CreatedAt,
 		UpdatedAt:   row.UpdatedAt,

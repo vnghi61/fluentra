@@ -28,6 +28,13 @@ var (
 	ErrCredentialAlreadyExists = apperr.New(
 		apperr.Conflict, "CREDENTIAL_ALREADY_EXISTS", "This account already has a password.")
 
+	// ErrEmailAlreadyRegistered is the citext unique constraint on core.users,
+	// translated. Registration normally never returns it — an address that is
+	// already taken goes down an enumeration-safe path instead — so reaching it
+	// means two requests raced and the loser's account vanished in between.
+	ErrEmailAlreadyRegistered = apperr.New(
+		apperr.Conflict, "EMAIL_ALREADY_REGISTERED", "That email address is already registered.")
+
 	// ErrChallengeNotFound is an unknown challenge id. It is also what a caller
 	// gets for an id that never existed, which is the same 404 — the id is the
 	// secret gating the whole flow (BR-AUTH-11), so distinguishing "wrong id"

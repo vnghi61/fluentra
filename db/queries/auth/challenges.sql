@@ -2,15 +2,15 @@
 -- The id is supplied by the caller (UUIDv7 from shared/id) because the code
 -- hash is bound to it: the id has to exist before the digest can be computed.
 INSERT INTO core.auth_challenges (
-    id, purpose, subject_hash, code_hash, max_attempts, expires_at, last_sent_at, created_at, updated_at
+    id, purpose, subject_hash, code_hash, max_attempts, expires_at, user_id, last_sent_at, created_at, updated_at
 )
-VALUES (@id, @purpose, @subject_hash, @code_hash, @max_attempts, @expires_at, @now, @now, @now)
+VALUES (@id, @purpose, @subject_hash, @code_hash, @max_attempts, @expires_at, @user_id, @now, @now, @now)
 RETURNING id, purpose, subject_hash, code_hash, attempts, max_attempts,
-          expires_at, consumed_at, last_sent_at, created_at, updated_at;
+          expires_at, consumed_at, last_sent_at, created_at, updated_at, user_id;
 
 -- name: GetChallengeByID :one
 SELECT id, purpose, subject_hash, code_hash, attempts, max_attempts,
-       expires_at, consumed_at, last_sent_at, created_at, updated_at
+       expires_at, consumed_at, last_sent_at, created_at, updated_at, user_id
 FROM core.auth_challenges
 WHERE id = @id;
 
@@ -34,7 +34,7 @@ WHERE id = @id
   AND attempts < max_attempts
   AND expires_at > @now
 RETURNING id, purpose, subject_hash, code_hash, attempts, max_attempts,
-          expires_at, consumed_at, last_sent_at, created_at, updated_at;
+          expires_at, consumed_at, last_sent_at, created_at, updated_at, user_id;
 
 -- name: RecordFailedAttempt :one
 -- `attempts + 1` is evaluated against the row as the statement finds it, not
@@ -48,7 +48,7 @@ WHERE id = @id
   AND attempts < max_attempts
   AND expires_at > @now
 RETURNING id, purpose, subject_hash, code_hash, attempts, max_attempts,
-          expires_at, consumed_at, last_sent_at, created_at, updated_at;
+          expires_at, consumed_at, last_sent_at, created_at, updated_at, user_id;
 
 -- name: ResendChallenge :one
 -- Replaces the code and clears the attempts, and deliberately does not touch
@@ -68,4 +68,4 @@ WHERE id = @id
   AND expires_at > @now
   AND last_sent_at <= @resend_allowed_from
 RETURNING id, purpose, subject_hash, code_hash, attempts, max_attempts,
-          expires_at, consumed_at, last_sent_at, created_at, updated_at;
+          expires_at, consumed_at, last_sent_at, created_at, updated_at, user_id;
