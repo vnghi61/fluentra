@@ -220,6 +220,71 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/audit-logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search the audit trail.
+         * @description Returns audit entries newest first, within a bounded time window.
+         *
+         *     The window is mandatory in effect: `to` defaults to now and `from` to 90 days before `to`. The table is partitioned by month on `created_at`, and a query with no bound on it reads every partition ever created — so the default is a bounded scan rather than an unbounded one that happens to be fast while the table is young.
+         */
+        get: operations["auditSearchLogs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/security-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read the security event feed.
+         * @description Returns security events newest first, within the same bounded window as the audit trail and for the same reason. `resolved=false` is the triage queue.
+         */
+        get: operations["auditSearchSecurityEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/security-events/{id}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The security event being triaged. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark a security event triaged.
+         * @description Records who closed the event and why. Resolving an already-resolved event is a conflict rather than a silent overwrite: the first explanation is the one that describes what was investigated.
+         */
+        post: operations["auditResolveSecurityEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -524,6 +589,151 @@ export interface components {
              *     ]
              */
             roles: components["schemas"]["RoleName"][];
+        };
+        /**
+         * @description One recorded action: who did it, to what, and which fields moved.
+         *     It deliberately does not carry the values that changed (BR-AUDIT-04). An audit trail that stored the old and new display name would be a second copy of personal data with a longer retention period than the first, which is the opposite of what an audit trail is for.
+         */
+        AuditLog: {
+            /**
+             * Format: uuid
+             * @description Stable identifier for this entry.
+             */
+            id: string;
+            /**
+             * Format: date-time
+             * @description When the action happened, taken from the emitting module's event rather than from when this row was written. It is also the partition key, so every search is bounded by it.
+             * @example 2026-08-10T09:15:00Z
+             */
+            created_at: string;
+            /**
+             * Format: uuid
+             * @description The account that performed the action, or null when the system did it or when the actor's account has since been erased. Entries outlive the people in them (BR-AUDIT-06).
+             */
+            actor_id?: string | null;
+            actor_role?: components["schemas"]["ActorRole"];
+            action: components["schemas"]["AuditAction"];
+            /**
+             * @description The kind of thing acted on, such as `user` or `role_assignment`.
+             * @example user
+             */
+            target_type?: string | null;
+            /**
+             * @description Identifier of the thing acted on. It is a string rather than a uuid because not every auditable target is keyed by one.
+             * @example 0199a1c2-3d4e-7f80-9abc-def012345678
+             */
+            target_id?: string | null;
+            /**
+             * @description Names of the fields the action moved, sorted. Empty when the action changed no fields — a read, a grant, a revocation.
+             * @example [
+             *       "display_name",
+             *       "timezone"
+             *     ]
+             */
+            changed_fields: string[];
+            /** @description Prior values for the changed fields, with anything on the PII deny-list replaced by `[redacted]`. Null when the emitting module sent field names only, which is the Phase 1 default. */
+            before?: {
+                [key: string]: unknown;
+            } | null;
+            /** @description New values, redacted on the same terms as `before`. */
+            after?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * @description Context that is not a field of the target — the reason an administrator gave, the outbox event that produced the entry. Redacted on the same deny-list as the diff.
+             * @example {
+             *       "source": "outbox"
+             *     }
+             */
+            meta: {
+                [key: string]: unknown;
+            };
+            /**
+             * @description The W3C trace this action belongs to (BR-AUDIT-07), so an entry links straight through to the distributed trace that produced it.
+             * @example 4bf92f3577b34da6a3ce929d0e0e4736
+             */
+            trace_id?: string | null;
+        };
+        /**
+         * @description What happened, named `<module>.<verb>_<object>`. The catalogue lives in `internal/modules/audit/AGENT.md`; unknown names are stored rather than rejected, because refusing an entry loses the record of the very thing that was unexpected.
+         * @example user.profile_updated
+         */
+        AuditAction: string;
+        /**
+         * @description The role the actor held at the time, recorded rather than resolved: a revoked admin must still show as an admin in the entries they left behind.
+         * @enum {string|null}
+         */
+        ActorRole: "admin" | "user" | "system" | null;
+        /** @description One page of audit entries, newest first. */
+        AuditLogPage: {
+            items: components["schemas"]["AuditLog"][];
+            page: components["schemas"]["Page"];
+        };
+        /** @description A security-relevant occurrence: a failed permission check, a lockout, a token reuse. Separate from the audit trail because these are triaged rather than merely recorded, and because they are not always attributable to a known actor. */
+        SecurityEvent: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * Format: date-time
+             * @description When the event occurred. Also the partition key.
+             * @example 2026-08-10T09:15:00Z
+             */
+            created_at: string;
+            /**
+             * @description What happened, named `<module>.<event>`.
+             * @example rbac.access_denied
+             */
+            kind: string;
+            severity: components["schemas"]["SecurityEventSeverity"];
+            /**
+             * Format: uuid
+             * @description The account involved, when one is known. Null for events observed before authentication succeeded.
+             */
+            user_id?: string | null;
+            /**
+             * @description Structured context for triage, redacted on the same terms as an audit diff. It never carries the request body: an event raised by an attacker would otherwise store whatever they chose to send.
+             * @example {
+             *       "permission": "user.suspend"
+             *     }
+             */
+            detail: {
+                [key: string]: unknown;
+            };
+            /**
+             * @description The trace the event was raised in.
+             * @example 4bf92f3577b34da6a3ce929d0e0e4736
+             */
+            trace_id?: string | null;
+            /**
+             * Format: date-time
+             * @description When an administrator marked the event triaged, or null while it is open.
+             */
+            resolved_at?: string | null;
+            /**
+             * Format: uuid
+             * @description The administrator who triaged it.
+             */
+            resolved_by?: string | null;
+            /**
+             * @description Why it was closed. Required when resolving, so a closed event explains itself.
+             * @example Known load test, permission denial expected.
+             */
+            resolution_note?: string | null;
+        };
+        /**
+         * @description How much attention the event deserves. `critical` is reserved for events that indicate a compromise in progress, such as refresh-token reuse.
+         * @enum {string}
+         */
+        SecurityEventSeverity: "low" | "medium" | "high" | "critical";
+        /** @description One page of security events, newest first. */
+        SecurityEventPage: {
+            items: components["schemas"]["SecurityEvent"][];
+            page: components["schemas"]["Page"];
+        };
+        /** @description Mark a security event triaged. The note is required: an event closed with no reason is indistinguishable from one closed by accident. */
+        ResolveSecurityEventRequest: {
+            /** @example Known load test, permission denial expected. */
+            note: string;
         };
     };
     responses: {
@@ -1207,6 +1417,198 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    auditSearchLogs: {
+        parameters: {
+            query?: {
+                /** @description Only entries recorded against this actor. */
+                actor_id?: string;
+                /** @description Exact action name, such as `user.profile_updated`. */
+                action?: components["schemas"]["AuditAction"];
+                /** @description Only entries whose target is of this kind. */
+                target_type?: string;
+                /** @description Only entries against this target. Combined with `target_type` it is the "who touched this record" query. */
+                target_id?: string;
+                /** @description Inclusive lower bound on `created_at`. Defaults to 90 days before `to`. */
+                from?: string;
+                /** @description Exclusive upper bound on `created_at`. Defaults to now. */
+                to?: string;
+                /** @description Opaque cursor from the previous page's `next_cursor`. */
+                cursor?: components["schemas"]["Cursor"];
+                /** @description Maximum entries to return. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of audit entries. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *           "created_at": "2026-08-10T09:15:00Z",
+                     *           "actor_id": "0199a1c2-3d4e-7f80-9abc-def012345679",
+                     *           "actor_role": "user",
+                     *           "action": "user.profile_updated",
+                     *           "target_type": "user",
+                     *           "target_id": "0199a1c2-3d4e-7f80-9abc-def012345679",
+                     *           "changed_fields": [
+                     *             "display_name",
+                     *             "timezone"
+                     *           ],
+                     *           "before": null,
+                     *           "after": null,
+                     *           "meta": {
+                     *             "source": "outbox"
+                     *           },
+                     *           "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736"
+                     *         }
+                     *       ],
+                     *       "page": {
+                     *         "has_more": false,
+                     *         "limit": 20
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["AuditLogPage"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    auditSearchSecurityEvents: {
+        parameters: {
+            query?: {
+                /** @description Exact event kind, such as `rbac.access_denied`. */
+                kind?: string;
+                /** @description Only events at this severity. */
+                severity?: components["schemas"]["SecurityEventSeverity"];
+                /** @description `false` returns only open events, `true` only triaged ones. Omitted returns both. */
+                resolved?: boolean;
+                /** @description Only events involving this account. */
+                user_id?: string;
+                /** @description Inclusive lower bound on `created_at`. Defaults to 90 days before `to`. */
+                from?: string;
+                /** @description Exclusive upper bound on `created_at`. Defaults to now. */
+                to?: string;
+                /** @description Opaque cursor from the previous page's `next_cursor`. */
+                cursor?: components["schemas"]["Cursor"];
+                /** @description Maximum events to return. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of security events. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def01234567a",
+                     *           "created_at": "2026-08-10T09:15:00Z",
+                     *           "kind": "rbac.access_denied",
+                     *           "severity": "medium",
+                     *           "user_id": "0199a1c2-3d4e-7f80-9abc-def012345679",
+                     *           "detail": {
+                     *             "permission": "user.suspend"
+                     *           },
+                     *           "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+                     *           "resolved_at": null,
+                     *           "resolved_by": null,
+                     *           "resolution_note": null
+                     *         }
+                     *       ],
+                     *       "page": {
+                     *         "has_more": false,
+                     *         "limit": 20
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SecurityEventPage"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    auditResolveSecurityEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The security event being triaged. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "note": "Known load test, permission denial expected."
+                 *     }
+                 */
+                "application/json": components["schemas"]["ResolveSecurityEventRequest"];
+            };
+        };
+        responses: {
+            /** @description The resolved event. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def01234567a",
+                     *       "created_at": "2026-08-10T09:15:00Z",
+                     *       "kind": "rbac.access_denied",
+                     *       "severity": "medium",
+                     *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345679",
+                     *       "detail": {
+                     *         "permission": "user.suspend"
+                     *       },
+                     *       "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+                     *       "resolved_at": "2026-08-10T10:02:00Z",
+                     *       "resolved_by": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "resolution_note": "Known load test, permission denial expected."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SecurityEvent"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
         };
     };
 }

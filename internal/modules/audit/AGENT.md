@@ -10,7 +10,7 @@ tables: [audit_logs, security_events]
 depends_on: [job]
 depended_on_by: [auth, user, rbac, admin, content, questionbank, exam, payment]
 spec_version: 1.0.0
-last_verified: 2026-08-06
+last_verified: 2026-08-10
 ---
 
 # audit — AGENT.md
@@ -72,16 +72,50 @@ Other modules may import **only** `internal/modules/audit/contract`.
 <!-- BEGIN GENERATED: contract -->
 | Kind | Name | Purpose |
 |---|---|---|
-| interface | `audit.Recorder` | `Record(ctx, Entry)` — fire-and-forget from any module; never fails the caller |
-| struct | `audit.Entry` | `{Action, TargetType, TargetID, Before, After, Meta}` — actor and trace context come from `ctx` |
+| interface | `audit.Recorder` | `Record(ctx, Entry)` — best effort from any module; it returns nothing, so it cannot fail the caller |
+| interface | `audit.SecurityRecorder` | `RecordSecurityEvent(ctx, SecurityEvent)` — the same, for the security stream |
+| struct | `audit.Entry` | `{Action, TargetType, TargetID, Before, After, ChangedFields, Meta}` — actor, client address and trace context come from `ctx` |
+| struct | `audit.SecurityEvent` | `{Kind, Severity, UserID, Detail}` |
+| const | `audit.PermissionRead / PermissionExport / PermissionManage` | The permission names the admin operations require, as plain strings — `audit` does not depend on `rbac` |
 
 ### Events
 
 | Event | Direction | Payload summary |
 |---|---|---|
-| `auth.security_event` | consumes | Persist to `security_events` |
-| `*.published / *.suspended / *.deleted` | consumes | Persist significant state changes |
+| `user.* and rbac.*` | consumes | Persisted to `audit_logs`; `service.SubscribedTopics()` is the exact list |
+| `auth.security_event, rbac.access_denied` | consumes | Persisted to `security_events` instead |
 <!-- END GENERATED: contract -->
+
+### How this module reads other modules' events without importing them
+
+Every arrow in [`MODULE_INDEX.md`](../../../MODULE_INDEX.md) §3 points **into** `audit`. It may
+not import `user/contract` or `rbac/contract` to unmarshal what they published, so the consumer
+reads the payload **structurally**, by field name:
+
+```go
+type envelope struct {
+    OccurredAt    time.Time      `json:"occurred_at"`
+    ActorID       *uuid.UUID     `json:"actor_id"`
+    UserID        *uuid.UUID     `json:"user_id"`
+    ChangedFields []string       `json:"changed_fields"`
+    Before, After map[string]any `json:"before" / "after"`
+    Severity      string         `json:"severity"`
+}
+```
+
+That is the convention every emitting module follows, and it is why they write those field
+names. A field a payload does not carry stays nil and is simply not recorded; a module `audit`
+has never heard of still produces a usable entry.
+
+The cost is that renaming an event in `user` does not break this at compile time. What catches
+it is `TestOutboxEventBecomesAnAuditEntry`, which drives a real outbox row through the real
+publisher and asserts a row appears.
+
+**A module wiring `audit` in needs to know two things.** `Deps.Guard` is a
+`Require(ctx, permission string) error` declared by this module — the composition root adapts
+`rbac.Authorizer` to it, because `audit` cannot import `rbac`. And `Deps.IPHashKey` keys the
+HMAC over the client address; leave it empty and no address is recorded at all, which is the
+safe default rather than a broken one.
 
 ## 5. Database schema
 
@@ -91,15 +125,55 @@ Migrations: `db/migrations/audit/` · Queries: `db/queries/audit/`
 
 | Table | Purpose | Key columns / notes |
 |---|---|---|
-| `audit.audit_logs` | Administrative and user action trail | Partitioned monthly. `actor_id`, `actor_role`, `action`, `target_type`, `target_id`, `before`/`after` jsonb, `ip_hash`, `trace_id`. No UPDATE or DELETE grant on this table. |
-| `audit.security_events` | Security-relevant occurrences | `kind`, `severity`, `user_id`, `detail` jsonb, `resolved_at`. Feeds the security dashboard. |
+| `audit.audit_logs` | Administrative and user action trail | Partitioned monthly on `created_at`, which the consumer takes from the emitting module's event so a redelivery lands in the same partition. `event_id` (the idempotency key, UNIQUE with `created_at`), `actor_id`, `actor_role`, `action`, `target_type`, `target_id`, `changed_fields` text[], `before`/`after`/`meta` jsonb, `ip_hash`, `trace_id`. No UPDATE or DELETE grant on this table, and none on its partitions. |
+| `audit.security_events` | Security-relevant occurrences | Partitioned monthly on `created_at` like the trail. `event_id`, `kind`, `severity`, `user_id`, `detail` jsonb, `ip_hash`, `trace_id`, `resolved_at`/`resolved_by`/`resolution_note`. Takes UPDATE so an event can be triaged, and still no DELETE. |
 
 **Indexes of note**
 
 - `idx_audit_logs_target` — the "who touched this record" query
 - `idx_audit_logs_actor_time` — the "what did this admin do" query
+- `idx_audit_logs_action_time` — search by exact action name
 - `idx_security_events_kind_time` — dashboard aggregation
+- `idx_security_events_open` — partial, the open triage queue
+- `idx_security_events_id` — resolving addresses an event by id alone, and the primary key leads with the partition key
+- All are declared on the parent, so every partition inherits them.
 <!-- END GENERATED: schema -->
+
+### Append-only is a grant, not a habit
+
+The bootstrap migration runs
+`ALTER DEFAULT PRIVILEGES … IN SCHEMA audit GRANT SELECT, INSERT, UPDATE, DELETE`, so **every
+table created in this schema starts out fully writable by `fluentra_app`**. BR-AUDIT-01 is
+therefore a `REVOKE` in `db/migrations/audit/1700000030_*.sql`, not an omission:
+
+```sql
+REVOKE ALL ON audit.audit_logs FROM fluentra_app;
+GRANT SELECT, INSERT ON audit.audit_logs TO fluentra_app;
+```
+
+If you add a table here, do the same, or it is writable by default.
+
+### Partitions, and why a function creates them
+
+Postgres checks privileges on the relation named in the statement, so the parent's grant does
+not cover a partition somebody addresses directly. And a partition made next month is a _new_
+table, which the default privileges above would hand `UPDATE` and `DELETE` — append-only would
+have lasted exactly until the month rolled over.
+
+Both are handled by `audit.ensure_partitions(months_ahead)`: `SECURITY DEFINER`, owned by
+`fluentra_migrator`, `EXECUTE` granted only to `fluentra_app`, `REVOKE`d from `PUBLIC`. It
+creates the partition and immediately re-applies the restricted grants to it. The application
+role runs it without holding any DDL privilege of its own — which is the point, because a role
+that can `CREATE TABLE` in this schema can also create one that shadows the trail.
+
+`audit.detach_expired_partitions(retain)` is its counterpart, and it **detaches rather than
+drops**: detaching is instant and reversible, dropping is neither, and archiving the detached
+table to object storage needs `storage`. A detached partition keeps its rows and loses its
+grants, so nothing can write to a table no search will read.
+
+Partitions are created through dynamic SQL, which also keeps literal
+`CREATE TABLE audit_logs_y2026m08` statements out of the migration file — `tools/docgen/check-drift.mjs`
+regex-matches those and would demand every partition name in the `tables:` front-matter.
 
 ## 6. HTTP endpoints
 
@@ -114,6 +188,24 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | `GET` | `/api/v1/admin/security-events` | `audit.read` | Security event feed |
 | `POST` | `/api/v1/admin/security-events/{id}/resolve` | `audit.manage` | Mark an event triaged |
 <!-- END GENERATED: endpoints -->
+
+**As of P1.4, three of those four are implemented.** `GET /admin/audit-logs/export` is
+specified above and is deliberately absent from `openapi.yaml` and from the router: an
+asynchronous export has to put the artefact somewhere and hand back a signed URL, which needs
+`platform/storage`, and this module depends only on `job`. Adding that arrow is a boundary
+change, so it is a card of its own — see [`TODO.md`](TODO.md).
+
+Two things about the three that do exist:
+
+- **The search window is not optional.** Both list operations default `to` to now and `from` to
+  90 days before it, and cap the span at 400 days. Both tables are partitioned monthly on
+  `created_at`, so a query without a bound on it reads every partition that has ever been
+  created. The default is a bounded scan rather than an unbounded one that happens to be fast
+  while the table is young.
+- **This module mounts no `/admin` group.** `rbac` already mounts one and chi allows a single
+  handler per mount point, so `Routes` registers the three full paths and the composition root
+  wraps them in `rbac`'s `AdminOnly`. Each handler still calls `Require` with its own
+  permission: the middleware fences the route, the guard locks the operation.
 
 ## 7. Folder map
 
@@ -178,6 +270,9 @@ and fails `go-arch-lint` in CI.
 <!-- BEGIN GENERATED: limitations -->
 - There is no cryptographic chaining of entries; tamper-evidence relies on database grants and backups. Hash chaining is a candidate if a compliance requirement appears.
 - Diffs are field-level, not semantic — a reordered array shows as a full change.
+- `GET /admin/audit-logs/export` is specified but not implemented: an async export needs `storage` for the signed URL, and `audit` does not depend on it. See TODO.md.
+- Retention detaches an expired partition rather than archiving and dropping it, for the same reason. A detached partition keeps its rows and loses its grants.
+- Search is bounded to a 400-day window and defaults to 90 days, so a query can always be pruned to a fixed number of partitions. There is no way to ask for the whole table.
 <!-- END GENERATED: limitations -->
 
 ## 12. Coding conventions (module-specific)
@@ -209,11 +304,12 @@ go test -tags=integration ./internal/modules/audit/...  # integration (testconta
 
 **Focus areas**
 
-- The application role genuinely cannot UPDATE or DELETE audit rows
+- The application role genuinely cannot UPDATE or DELETE audit rows — on the parent and on each partition
+- A partition created by the rotation job inherits the restricted grants rather than the schema defaults
 - Audit failure does not roll back the business operation
-- Duplicate event delivery produces exactly one row
-- PII redaction in diffs
-- Partition rotation and retention job correctness
+- Duplicate event delivery produces exactly one row, including when the payload carries no occurred_at
+- PII redaction in diffs, asserted against the stored columns and not only the function
+- Partition rotation is idempotent, and retention detaches only fully expired months
 <!-- END GENERATED: testing -->
 
 ## 14. Do NOT

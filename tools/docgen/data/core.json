@@ -690,34 +690,112 @@
       "Alerting — Prometheus and Alertmanager do that"
     ],
     "tables": [
-      { "name": "audit_logs", "purpose": "Administrative and user action trail", "notes": "Partitioned monthly. `actor_id`, `actor_role`, `action`, `target_type`, `target_id`, `before`/`after` jsonb, `ip_hash`, `trace_id`. No UPDATE or DELETE grant on this table." },
-      { "name": "security_events", "purpose": "Security-relevant occurrences", "notes": "`kind`, `severity`, `user_id`, `detail` jsonb, `resolved_at`. Feeds the security dashboard." }
+      {
+        "name": "audit_logs",
+        "purpose": "Administrative and user action trail",
+        "notes": "Partitioned monthly on `created_at`, which the consumer takes from the emitting module's event so a redelivery lands in the same partition. `event_id` (the idempotency key, UNIQUE with `created_at`), `actor_id`, `actor_role`, `action`, `target_type`, `target_id`, `changed_fields` text[], `before`/`after`/`meta` jsonb, `ip_hash`, `trace_id`. No UPDATE or DELETE grant on this table, and none on its partitions."
+      },
+      {
+        "name": "security_events",
+        "purpose": "Security-relevant occurrences",
+        "notes": "Partitioned monthly on `created_at` like the trail. `event_id`, `kind`, `severity`, `user_id`, `detail` jsonb, `ip_hash`, `trace_id`, `resolved_at`/`resolved_by`/`resolution_note`. Takes UPDATE so an event can be triaged, and still no DELETE."
+      }
     ],
     "indexes": [
       "`idx_audit_logs_target` — the \"who touched this record\" query",
       "`idx_audit_logs_actor_time` — the \"what did this admin do\" query",
-      "`idx_security_events_kind_time` — dashboard aggregation"
+      "`idx_audit_logs_action_time` — search by exact action name",
+      "`idx_security_events_kind_time` — dashboard aggregation",
+      "`idx_security_events_open` — partial, the open triage queue",
+      "`idx_security_events_id` — resolving addresses an event by id alone, and the primary key leads with the partition key",
+      "All are declared on the parent, so every partition inherits them."
     ],
     "endpoints": [
-      { "method": "GET", "path": "/api/v1/admin/audit-logs", "permission": "audit.read", "purpose": "Search the audit trail", "success": "200" },
-      { "method": "GET", "path": "/api/v1/admin/audit-logs/export", "permission": "audit.export", "purpose": "Async CSV export", "success": "202" },
-      { "method": "GET", "path": "/api/v1/admin/security-events", "permission": "audit.read", "purpose": "Security event feed", "success": "200" },
-      { "method": "POST", "path": "/api/v1/admin/security-events/{id}/resolve", "permission": "audit.manage", "purpose": "Mark an event triaged", "success": "200" }
+      {
+        "method": "GET",
+        "path": "/api/v1/admin/audit-logs",
+        "permission": "audit.read",
+        "purpose": "Search the audit trail",
+        "success": "200"
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/admin/audit-logs/export",
+        "permission": "audit.export",
+        "purpose": "Async CSV export",
+        "success": "202"
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/admin/security-events",
+        "permission": "audit.read",
+        "purpose": "Security event feed",
+        "success": "200"
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/admin/security-events/{id}/resolve",
+        "permission": "audit.manage",
+        "purpose": "Mark an event triaged",
+        "success": "200"
+      }
     ],
     "contract": [
-      { "kind": "interface", "name": "audit.Recorder", "purpose": "`Record(ctx, Entry)` — fire-and-forget from any module; never fails the caller" },
-      { "kind": "struct", "name": "audit.Entry", "purpose": "`{Action, TargetType, TargetID, Before, After, Meta}` — actor and trace context come from `ctx`" }
+      {
+        "kind": "interface",
+        "name": "audit.Recorder",
+        "purpose": "`Record(ctx, Entry)` — best effort from any module; it returns nothing, so it cannot fail the caller"
+      },
+      {
+        "kind": "interface",
+        "name": "audit.SecurityRecorder",
+        "purpose": "`RecordSecurityEvent(ctx, SecurityEvent)` — the same, for the security stream"
+      },
+      {
+        "kind": "struct",
+        "name": "audit.Entry",
+        "purpose": "`{Action, TargetType, TargetID, Before, After, ChangedFields, Meta}` — actor, client address and trace context come from `ctx`"
+      },
+      {
+        "kind": "struct",
+        "name": "audit.SecurityEvent",
+        "purpose": "`{Kind, Severity, UserID, Detail}`"
+      },
+      {
+        "kind": "const",
+        "name": "audit.PermissionRead / PermissionExport / PermissionManage",
+        "purpose": "The permission names the admin operations require, as plain strings — `audit` does not depend on `rbac`"
+      }
     ],
     "events": {
       "publishes": [],
       "consumes": [
-        { "name": "auth.security_event", "reason": "Persist to `security_events`" },
-        { "name": "*.published / *.suspended / *.deleted", "reason": "Persist significant state changes" }
+        {
+          "name": "user.* and rbac.*",
+          "reason": "Persisted to `audit_logs`; `service.SubscribedTopics()` is the exact list"
+        },
+        {
+          "name": "auth.security_event, rbac.access_denied",
+          "reason": "Persisted to `security_events` instead"
+        }
       ]
     },
-    "dependsOn": ["job"],
-    "dependsWhy": { "job": "Retention, partition rotation, and export run as scheduled jobs" },
-    "dependedOnBy": ["auth", "user", "rbac", "admin", "content", "questionbank", "exam", "payment"],
+    "dependsOn": [
+      "job"
+    ],
+    "dependsWhy": {
+      "job": "Retention, partition rotation, and export run as scheduled jobs"
+    },
+    "dependedOnBy": [
+      "auth",
+      "user",
+      "rbac",
+      "admin",
+      "content",
+      "questionbank",
+      "exam",
+      "payment"
+    ],
     "rules": [
       "Audit entries are append-only. The application role holds no UPDATE or DELETE grant on `audit_logs`.",
       "Recording an audit entry must never fail the business operation: it is written through the outbox in the same transaction where correctness matters, and best-effort otherwise.",
@@ -730,7 +808,8 @@
     "security": [
       "Reading the audit trail is itself audited.",
       "Exports are generated asynchronously and delivered by short-lived signed URL.",
-      "IP addresses are stored hashed with a rotating salt; the raw value is never persisted."
+      "IP addresses are stored as a keyed HMAC-SHA256; the raw value is never persisted, and with no key configured nothing is stored at all.",
+      "`ip_hash` is never exposed on an API response."
     ],
     "flows": [
       {
@@ -739,40 +818,62 @@
       }
     ],
     "tasks": [
-      { "title": "Make a new action auditable", "steps": [
-        "Decide whether it must be transactional (money, permissions, publishing) or best-effort (a read).",
-        "Transactional: write an outbox event in the same transaction. Best-effort: call `audit.Recorder` directly.",
-        "Name the action `<module>.<verb>_<object>` and add it to the action catalogue in this file.",
-        "Ensure the diff excludes PII-deny-listed fields.",
-        "Add a test asserting the entry exists with the right actor and target."
-      ]}
+      {
+        "title": "Make a new action auditable",
+        "steps": [
+          "Decide whether it must be transactional (money, permissions, publishing) or best-effort (a read).",
+          "Transactional: write an outbox event in the same transaction. Best-effort: call `audit.Recorder` directly.",
+          "Name the action `<module>.<verb>_<object>` and add it to the action catalogue in this file.",
+          "Ensure the diff excludes PII-deny-listed fields.",
+          "Add a test asserting the entry exists with the right actor and target."
+        ]
+      }
     ],
     "limitations": [
       "There is no cryptographic chaining of entries; tamper-evidence relies on database grants and backups. Hash chaining is a candidate if a compliance requirement appears.",
-      "Diffs are field-level, not semantic — a reordered array shows as a full change."
+      "Diffs are field-level, not semantic — a reordered array shows as a full change.",
+      "`GET /admin/audit-logs/export` is specified but not implemented: an async export needs `storage` for the signed URL, and `audit` does not depend on it. See TODO.md.",
+      "Retention detaches an expired partition rather than archiving and dropping it, for the same reason. A detached partition keeps its rows and loses its grants.",
+      "Search is bounded to a 400-day window and defaults to 90 days, so a query can always be pruned to a fixed number of partitions. There is no way to ask for the whole table."
     ],
     "testFocus": [
-      "The application role genuinely cannot UPDATE or DELETE audit rows",
+      "The application role genuinely cannot UPDATE or DELETE audit rows — on the parent and on each partition",
+      "A partition created by the rotation job inherits the restricted grants rather than the schema defaults",
       "Audit failure does not roll back the business operation",
-      "Duplicate event delivery produces exactly one row",
-      "PII redaction in diffs",
-      "Partition rotation and retention job correctness"
+      "Duplicate event delivery produces exactly one row, including when the payload carries no occurred_at",
+      "PII redaction in diffs, asserted against the stored columns and not only the function",
+      "Partition rotation is idempotent, and retention detaches only fully expired months"
     ],
     "decisions": [
-      { "question": "Postgres or a log stream for audit?", "choice": "Postgres", "why": "Audit is queryable business record with retention and access-control requirements; Loki is optimised for cheap, short-lived telemetry and is not a system of record" },
-      { "question": "Synchronous or asynchronous recording?", "choice": "Both, by criticality", "why": "Permission and money changes go through the outbox so they cannot be lost; reads are best-effort so an audit outage cannot break browsing" }
+      {
+        "question": "Postgres or a log stream for audit?",
+        "choice": "Postgres",
+        "why": "Audit is queryable business record with retention and access-control requirements; Loki is optimised for cheap, short-lived telemetry and is not a system of record"
+      },
+      {
+        "question": "Synchronous or asynchronous recording?",
+        "choice": "Both, by criticality",
+        "why": "Permission and money changes go through the outbox so they cannot be lost; reads are best-effort so an audit outage cannot break browsing"
+      }
     ],
     "todo": [
-      { "title": "Phase 1", "items": [
-        "`audit_logs` and `security_events` with monthly partitions",
-        "`audit.Recorder` contract and outbox consumer",
-        "Append-only enforcement via database grants, proven by a test",
-        "Admin search UI endpoints with filters",
-        "Retention and partition-rotation jobs",
-        "PII redaction in diffs"
-      ]}
+      {
+        "title": "Phase 1",
+        "items": [
+          "`audit_logs` and `security_events` with monthly partitions",
+          "`audit.Recorder` contract and outbox consumer",
+          "Append-only enforcement via database grants, proven by a test",
+          "Admin search UI endpoints with filters",
+          "Retention and partition-rotation jobs",
+          "PII redaction in diffs"
+        ]
+      }
     ],
-    "future": ["Hash-chained entries for tamper evidence", "Anomaly detection over the security event stream", "Per-record access history shown to the user"],
+    "future": [
+      "Hash-chained entries for tamper evidence",
+      "Anomaly detection over the security event stream",
+      "Per-record access history shown to the user"
+    ],
     "doNot": [
       "Do not use audit as application logging — that is Loki.",
       "Do not let an audit failure abort a business operation.",

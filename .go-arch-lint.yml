@@ -99,6 +99,7 @@ components:
   g_ops:         { in: generated/ops/sqlc }
   g_user:        { in: generated/user/sqlc }
   g_rbac:        { in: generated/rbac/sqlc }
+  g_audit:       { in: generated/audit/sqlc }
 
   # platform capabilities
   p_telemetry:   { in: platform/telemetry/** }
@@ -158,7 +159,11 @@ components:
   m_rbac_repository: { in: modules/rbac/repository }
   m_rbac_service:  { in: modules/rbac/service }
   m_rbac_http:     { in: modules/rbac/transport/http }
-  m_audit:         { in: modules/audit/** }
+  m_audit:         { in: modules/audit }
+  m_audit_domain:  { in: modules/audit/domain }
+  m_audit_repository: { in: modules/audit/repository }
+  m_audit_service: { in: modules/audit/service }
+  m_audit_http:    { in: modules/audit/transport/http }
   m_admin:         { in: modules/admin/** }
   m_notification:  { in: modules/notification/** }
   m_content:       { in: modules/content/** }
@@ -211,6 +216,7 @@ deps:
   g_ops:       { anyVendorDeps: true }
   g_user:      { anyVendorDeps: true }
   g_rbac:      { anyVendorDeps: true }
+  g_audit:     { anyVendorDeps: true }
 
   # A platform capability exists to wrap a vendor SDK, so each may import one.
   # Business modules deliberately may not: they reach external systems through
@@ -247,7 +253,17 @@ deps:
   m_rbac_service:    { mayDependOn: [m_rbac_domain, c_rbac, p_cache, p_telemetry, c_audit] }
   m_rbac_http:       { mayDependOn: [m_rbac_domain, m_rbac_service, c_rbac] }
   m_rbac:            { mayDependOn: [m_rbac_domain, m_rbac_repository, m_rbac_service, m_rbac_http, c_rbac] }
-  m_audit:        { mayDependOn: [p_job, p_telemetry] }
+  # audit, by layer. The list is short in a way that is worth noticing: this
+  # module names no other module's contract at all. Every arrow in
+  # MODULE_INDEX.md §3 points into `audit`, so it consumes other modules'
+  # events by convention over the payload rather than by importing their types
+  # — see service/consumer.go. Its own guard and its own recorder interfaces
+  # are what the composition root adapts.
+  m_audit_domain:     { mayDependOn: [c_audit] }
+  m_audit_repository: { mayDependOn: [m_audit_domain, c_audit, g_audit] }
+  m_audit_service:    { mayDependOn: [m_audit_domain, c_audit] }
+  m_audit_http:       { mayDependOn: [m_audit_domain, c_audit] }
+  m_audit:            { mayDependOn: [m_audit_domain, m_audit_repository, m_audit_service, m_audit_http, c_audit, p_job, p_telemetry] }
   m_admin:        { mayDependOn: [p_cache, p_telemetry, c_user, c_rbac, c_audit, c_auth, c_content, c_analytics, c_subscription] }
   m_notification: { mayDependOn: [p_mailer, p_job, p_cache, p_telemetry, c_user] }
 

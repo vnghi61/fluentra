@@ -29,11 +29,12 @@ Global policy: [`/TESTING_GUIDELINE.md`](../../../TESTING_GUIDELINE.md).
 ## What to test
 
 <!-- BEGIN GENERATED: test-focus -->
-- The application role genuinely cannot UPDATE or DELETE audit rows
+- The application role genuinely cannot UPDATE or DELETE audit rows — on the parent and on each partition
+- A partition created by the rotation job inherits the restricted grants rather than the schema defaults
 - Audit failure does not roll back the business operation
-- Duplicate event delivery produces exactly one row
-- PII redaction in diffs
-- Partition rotation and retention job correctness
+- Duplicate event delivery produces exactly one row, including when the payload carries no occurred_at
+- PII redaction in diffs, asserted against the stored columns and not only the function
+- Partition rotation is idempotent, and retention detaches only fully expired months
 <!-- END GENERATED: test-focus -->
 
 ## Edge cases that have bitten similar modules

@@ -22,6 +22,11 @@ tags:
     description: >-
       Roles and permissions. What the caller may do, and the administrative
       operations that change it.
+  - name: audit
+    description: >-
+      The record of what happened. Append-only: there is no operation here that
+      edits or removes an audit entry, and the application database role holds
+      no grant that would let one exist.
 security:
   - BearerAuth: []
 paths:
@@ -399,6 +404,278 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+  /admin/audit-logs:
+    get:
+      tags: [audit]
+      operationId: auditSearchLogs
+      summary: Search the audit trail.
+      description: >-
+        Returns audit entries newest first, within a bounded time window.
+
+
+        The window is mandatory in effect: `to` defaults to now and `from` to 90
+        days before `to`. The table is partitioned by month on `created_at`, and
+        a query with no bound on it reads every partition ever created — so the
+        default is a bounded scan rather than an unbounded one that happens to
+        be fast while the table is young.
+      x-permission: audit.read
+      parameters:
+        - name: actor_id
+          in: query
+          required: false
+          description: Only entries recorded against this actor.
+          schema:
+            type: string
+            format: uuid
+        - name: action
+          in: query
+          required: false
+          description: Exact action name, such as `user.profile_updated`.
+          schema:
+            $ref: '#/components/schemas/AuditAction'
+        - name: target_type
+          in: query
+          required: false
+          description: Only entries whose target is of this kind.
+          schema:
+            type: string
+            maxLength: 64
+        - name: target_id
+          in: query
+          required: false
+          description: >-
+            Only entries against this target. Combined with `target_type` it is
+            the "who touched this record" query.
+          schema:
+            type: string
+            maxLength: 128
+        - name: from
+          in: query
+          required: false
+          description: Inclusive lower bound on `created_at`. Defaults to 90 days before `to`.
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: false
+          description: Exclusive upper bound on `created_at`. Defaults to now.
+          schema:
+            type: string
+            format: date-time
+        - name: cursor
+          in: query
+          required: false
+          description: Opaque cursor from the previous page's `next_cursor`.
+          schema:
+            $ref: '#/components/schemas/Cursor'
+        - name: limit
+          in: query
+          required: false
+          description: Maximum entries to return.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: One page of audit entries.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditLogPage'
+              example:
+                items:
+                  - id: 0199a1c2-3d4e-7f80-9abc-def012345678
+                    created_at: '2026-08-10T09:15:00Z'
+                    actor_id: 0199a1c2-3d4e-7f80-9abc-def012345679
+                    actor_role: user
+                    action: user.profile_updated
+                    target_type: user
+                    target_id: 0199a1c2-3d4e-7f80-9abc-def012345679
+                    changed_fields: [display_name, timezone]
+                    before: null
+                    after: null
+                    meta:
+                      source: outbox
+                    trace_id: 4bf92f3577b34da6a3ce929d0e0e4736
+                page:
+                  has_more: false
+                  limit: 20
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /admin/security-events:
+    get:
+      tags: [audit]
+      operationId: auditSearchSecurityEvents
+      summary: Read the security event feed.
+      description: >-
+        Returns security events newest first, within the same bounded window as
+        the audit trail and for the same reason. `resolved=false` is the triage
+        queue.
+      x-permission: audit.read
+      parameters:
+        - name: kind
+          in: query
+          required: false
+          description: Exact event kind, such as `rbac.access_denied`.
+          schema:
+            type: string
+            pattern: '^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$'
+        - name: severity
+          in: query
+          required: false
+          description: Only events at this severity.
+          schema:
+            $ref: '#/components/schemas/SecurityEventSeverity'
+        - name: resolved
+          in: query
+          required: false
+          description: >-
+            `false` returns only open events, `true` only triaged ones. Omitted
+            returns both.
+          schema:
+            type: boolean
+        - name: user_id
+          in: query
+          required: false
+          description: Only events involving this account.
+          schema:
+            type: string
+            format: uuid
+        - name: from
+          in: query
+          required: false
+          description: Inclusive lower bound on `created_at`. Defaults to 90 days before `to`.
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: false
+          description: Exclusive upper bound on `created_at`. Defaults to now.
+          schema:
+            type: string
+            format: date-time
+        - name: cursor
+          in: query
+          required: false
+          description: Opaque cursor from the previous page's `next_cursor`.
+          schema:
+            $ref: '#/components/schemas/Cursor'
+        - name: limit
+          in: query
+          required: false
+          description: Maximum events to return.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: One page of security events.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecurityEventPage'
+              example:
+                items:
+                  - id: 0199a1c2-3d4e-7f80-9abc-def01234567a
+                    created_at: '2026-08-10T09:15:00Z'
+                    kind: rbac.access_denied
+                    severity: medium
+                    user_id: 0199a1c2-3d4e-7f80-9abc-def012345679
+                    detail:
+                      permission: user.suspend
+                    trace_id: 4bf92f3577b34da6a3ce929d0e0e4736
+                    resolved_at: null
+                    resolved_by: null
+                    resolution_note: null
+                page:
+                  has_more: false
+                  limit: 20
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /admin/security-events/{id}/resolve:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: The security event being triaged.
+        schema:
+          type: string
+          format: uuid
+    post:
+      tags: [audit]
+      operationId: auditResolveSecurityEvent
+      summary: Mark a security event triaged.
+      description: >-
+        Records who closed the event and why. Resolving an already-resolved
+        event is a conflict rather than a silent overwrite: the first
+        explanation is the one that describes what was investigated.
+      x-permission: audit.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResolveSecurityEventRequest'
+            example:
+              note: Known load test, permission denial expected.
+      responses:
+        '200':
+          description: The resolved event.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecurityEvent'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def01234567a
+                created_at: '2026-08-10T09:15:00Z'
+                kind: rbac.access_denied
+                severity: medium
+                user_id: 0199a1c2-3d4e-7f80-9abc-def012345679
+                detail:
+                  permission: user.suspend
+                trace_id: 4bf92f3577b34da6a3ce929d0e0e4736
+                resolved_at: '2026-08-10T10:02:00Z'
+                resolved_by: 0199a1c2-3d4e-7f80-9abc-def012345678
+                resolution_note: Known load test, permission denial expected.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
 components:
   securitySchemes:
     BearerAuth:
@@ -456,6 +733,22 @@ components:
       $ref: ./components/rbac.yaml#/AssignRoleRequest
     UserRoles:
       $ref: ./components/rbac.yaml#/UserRoles
+    AuditLog:
+      $ref: ./components/audit.yaml#/AuditLog
+    AuditAction:
+      $ref: ./components/audit.yaml#/AuditAction
+    ActorRole:
+      $ref: ./components/audit.yaml#/ActorRole
+    AuditLogPage:
+      $ref: ./components/audit.yaml#/AuditLogPage
+    SecurityEvent:
+      $ref: ./components/audit.yaml#/SecurityEvent
+    SecurityEventSeverity:
+      $ref: ./components/audit.yaml#/SecurityEventSeverity
+    SecurityEventPage:
+      $ref: ./components/audit.yaml#/SecurityEventPage
+    ResolveSecurityEventRequest:
+      $ref: ./components/audit.yaml#/ResolveSecurityEventRequest
   headers:
     X-Request-Id:
       $ref: ./components/headers.yaml#/X-Request-Id

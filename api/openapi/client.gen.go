@@ -91,12 +91,46 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 // The interface specification for the client above.
 type ClientInterface interface {
 
+	// AuditSearchLogs Search the audit trail.
+	//
+	// Returns audit entries newest first, within a bounded time window.
+	//
+	// The window is mandatory in effect: `to` defaults to now and `from` to 90 days before `to`. The table is partitioned by month on `created_at`, and a query with no bound on it reads every partition ever created — so the default is a bounded scan rather than an unbounded one that happens to be fast while the table is young.
+	//
+	// Corresponds with GET /admin/audit-logs (the `AuditSearchLogs` operationId).
+	AuditSearchLogs(ctx context.Context, params *AuditSearchLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// RbacListRoles List roles and the permissions they grant.
 	//
 	// The catalogue is small and fixed, so it is returned whole rather than paginated.
 	//
 	// Corresponds with GET /admin/roles (the `RbacListRoles` operationId).
 	RbacListRoles(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AuditSearchSecurityEvents Read the security event feed.
+	//
+	// Returns security events newest first, within the same bounded window as the audit trail and for the same reason. `resolved=false` is the triage queue.
+	//
+	// Corresponds with GET /admin/security-events (the `AuditSearchSecurityEvents` operationId).
+	AuditSearchSecurityEvents(ctx context.Context, params *AuditSearchSecurityEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AuditResolveSecurityEventWithBody Mark a security event triaged.
+	//
+	// Records who closed the event and why. Resolving an already-resolved event is a conflict rather than a silent overwrite: the first explanation is the one that describes what was investigated.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /admin/security-events/{id}/resolve (the `AuditResolveSecurityEvent` operationId).
+	AuditResolveSecurityEventWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AuditResolveSecurityEvent Mark a security event triaged.
+	//
+	// Records who closed the event and why. Resolving an already-resolved event is a conflict rather than a silent overwrite: the first explanation is the one that describes what was investigated.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /admin/security-events/{id}/resolve (the `AuditResolveSecurityEvent` operationId).
+	AuditResolveSecurityEvent(ctx context.Context, id openapi_types.UUID, body AuditResolveSecurityEventJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RbacAssignRoleWithBody Grant a role to a user.
 	//
@@ -209,6 +243,25 @@ type ClientInterface interface {
 	SystemVersion(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
+// AuditSearchLogs Search the audit trail.
+//
+// Returns audit entries newest first, within a bounded time window.
+//
+// The window is mandatory in effect: `to` defaults to now and `from` to 90 days before `to`. The table is partitioned by month on `created_at`, and a query with no bound on it reads every partition ever created — so the default is a bounded scan rather than an unbounded one that happens to be fast while the table is young.
+//
+// Corresponds with GET /admin/audit-logs (the `AuditSearchLogs` operationId).
+func (c *Client) AuditSearchLogs(ctx context.Context, params *AuditSearchLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuditSearchLogsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // RbacListRoles List roles and the permissions they grant.
 //
 // The catalogue is small and fixed, so it is returned whole rather than paginated.
@@ -216,6 +269,61 @@ type ClientInterface interface {
 // Corresponds with GET /admin/roles (the `RbacListRoles` operationId).
 func (c *Client) RbacListRoles(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRbacListRolesRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AuditSearchSecurityEvents Read the security event feed.
+//
+// Returns security events newest first, within the same bounded window as the audit trail and for the same reason. `resolved=false` is the triage queue.
+//
+// Corresponds with GET /admin/security-events (the `AuditSearchSecurityEvents` operationId).
+func (c *Client) AuditSearchSecurityEvents(ctx context.Context, params *AuditSearchSecurityEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuditSearchSecurityEventsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AuditResolveSecurityEventWithBody Mark a security event triaged.
+//
+// Records who closed the event and why. Resolving an already-resolved event is a conflict rather than a silent overwrite: the first explanation is the one that describes what was investigated.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /admin/security-events/{id}/resolve (the `AuditResolveSecurityEvent` operationId).
+func (c *Client) AuditResolveSecurityEventWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuditResolveSecurityEventRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AuditResolveSecurityEvent Mark a security event triaged.
+//
+// Records who closed the event and why. Resolving an already-resolved event is a conflict rather than a silent overwrite: the first explanation is the one that describes what was investigated.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /admin/security-events/{id}/resolve (the `AuditResolveSecurityEvent` operationId).
+func (c *Client) AuditResolveSecurityEvent(ctx context.Context, id openapi_types.UUID, body AuditResolveSecurityEventJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuditResolveSecurityEventRequest(c.Server, id, body)
 	if err != nil {
 		return nil, err
 	}
@@ -476,6 +584,144 @@ func (c *Client) SystemVersion(ctx context.Context, reqEditors ...RequestEditorF
 	return c.Client.Do(req)
 }
 
+// NewAuditSearchLogsRequest constructs an http.Request for the AuditSearchLogs method
+func NewAuditSearchLogsRequest(server string, params *AuditSearchLogsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/audit-logs")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.ActorId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "actor_id", *params.ActorId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Action != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "action", *params.Action, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.TargetType != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "target_type", *params.TargetType, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.TargetId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "target_id", *params.TargetId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.From != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "from", *params.From, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date-time"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.To != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "to", *params.To, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date-time"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewRbacListRolesRequest constructs an http.Request for the RbacListRoles method
 func NewRbacListRolesRequest(server string) (*http.Request, error) {
 	var err error
@@ -499,6 +745,191 @@ func NewRbacListRolesRequest(server string) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewAuditSearchSecurityEventsRequest constructs an http.Request for the AuditSearchSecurityEvents method
+func NewAuditSearchSecurityEventsRequest(server string, params *AuditSearchSecurityEventsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/security-events")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Kind != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "kind", *params.Kind, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Severity != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "severity", *params.Severity, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Resolved != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "resolved", *params.Resolved, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.UserId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "user_id", *params.UserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.From != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "from", *params.From, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date-time"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.To != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "to", *params.To, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date-time"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAuditResolveSecurityEventRequest calls the generic AuditResolveSecurityEvent builder with application/json body
+func NewAuditResolveSecurityEventRequest(server string, id openapi_types.UUID, body AuditResolveSecurityEventJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAuditResolveSecurityEventRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewAuditResolveSecurityEventRequestWithBody constructs an http.Request for the AuditResolveSecurityEvent method, with any body, and a specified content type
+func NewAuditResolveSecurityEventRequestWithBody(server string, id openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/security-events/%s/resolve", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -904,6 +1335,17 @@ func WithBaseURL(baseURL string) ClientOption {
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
 
+	// AuditSearchLogsWithResponse Search the audit trail.
+	//
+	// Returns audit entries newest first, within a bounded time window.
+	//
+	// The window is mandatory in effect: `to` defaults to now and `from` to 90 days before `to`. The table is partitioned by month on `created_at`, and a query with no bound on it reads every partition ever created — so the default is a bounded scan rather than an unbounded one that happens to be fast while the table is young.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/audit-logs (the `AuditSearchLogs` operationId).
+	AuditSearchLogsWithResponse(ctx context.Context, params *AuditSearchLogsParams, reqEditors ...RequestEditorFn) (*AuditSearchLogsResponse, error)
+
 	// RbacListRolesWithResponse List roles and the permissions they grant.
 	//
 	// The catalogue is small and fixed, so it is returned whole rather than paginated.
@@ -912,6 +1354,33 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /admin/roles (the `RbacListRoles` operationId).
 	RbacListRolesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*RbacListRolesResponse, error)
+
+	// AuditSearchSecurityEventsWithResponse Read the security event feed.
+	//
+	// Returns security events newest first, within the same bounded window as the audit trail and for the same reason. `resolved=false` is the triage queue.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/security-events (the `AuditSearchSecurityEvents` operationId).
+	AuditSearchSecurityEventsWithResponse(ctx context.Context, params *AuditSearchSecurityEventsParams, reqEditors ...RequestEditorFn) (*AuditSearchSecurityEventsResponse, error)
+
+	// AuditResolveSecurityEventWithBodyWithResponse Mark a security event triaged.
+	//
+	// Records who closed the event and why. Resolving an already-resolved event is a conflict rather than a silent overwrite: the first explanation is the one that describes what was investigated.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/security-events/{id}/resolve (the `AuditResolveSecurityEvent` operationId).
+	AuditResolveSecurityEventWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AuditResolveSecurityEventResponse, error)
+
+	// AuditResolveSecurityEventWithResponse Mark a security event triaged.
+	//
+	// Records who closed the event and why. Resolving an already-resolved event is a conflict rather than a silent overwrite: the first explanation is the one that describes what was investigated.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/security-events/{id}/resolve (the `AuditResolveSecurityEvent` operationId).
+	AuditResolveSecurityEventWithResponse(ctx context.Context, id openapi_types.UUID, body AuditResolveSecurityEventJSONRequestBody, reqEditors ...RequestEditorFn) (*AuditResolveSecurityEventResponse, error)
 
 	// RbacAssignRoleWithBodyWithResponse Grant a role to a user.
 	//
@@ -1040,6 +1509,82 @@ type ClientWithResponsesInterface interface {
 	SystemVersionWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*SystemVersionResponse, error)
 }
 
+// AuditSearchLogsResponse200Headers the declared response headers of an HTTP 200 response for AuditSearchLogs
+type AuditSearchLogsResponse200Headers struct {
+	XRequestId *string
+}
+
+type AuditSearchLogsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AuditLogPage
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AuditSearchLogsResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AuditSearchLogsResponse) GetJSON200() *AuditLogPage {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r AuditSearchLogsResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AuditSearchLogsResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AuditSearchLogsResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AuditSearchLogsResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r AuditSearchLogsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AuditSearchLogsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AuditSearchLogsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AuditSearchLogsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // RbacListRolesResponse200Headers the declared response headers of an HTTP 200 response for RbacListRoles
 type RbacListRolesResponse200Headers struct {
 	XRequestId *string
@@ -1096,6 +1641,172 @@ func (r RbacListRolesResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r RbacListRolesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AuditSearchSecurityEventsResponse200Headers the declared response headers of an HTTP 200 response for AuditSearchSecurityEvents
+type AuditSearchSecurityEventsResponse200Headers struct {
+	XRequestId *string
+}
+
+type AuditSearchSecurityEventsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SecurityEventPage
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AuditSearchSecurityEventsResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AuditSearchSecurityEventsResponse) GetJSON200() *SecurityEventPage {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r AuditSearchSecurityEventsResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AuditSearchSecurityEventsResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AuditSearchSecurityEventsResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AuditSearchSecurityEventsResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r AuditSearchSecurityEventsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AuditSearchSecurityEventsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AuditSearchSecurityEventsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AuditSearchSecurityEventsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AuditResolveSecurityEventResponse200Headers the declared response headers of an HTTP 200 response for AuditResolveSecurityEvent
+type AuditResolveSecurityEventResponse200Headers struct {
+	XRequestId *string
+}
+
+type AuditResolveSecurityEventResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SecurityEvent
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AuditResolveSecurityEventResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AuditResolveSecurityEventResponse) GetJSON200() *SecurityEvent {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r AuditResolveSecurityEventResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AuditResolveSecurityEventResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AuditResolveSecurityEventResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AuditResolveSecurityEventResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AuditResolveSecurityEventResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AuditResolveSecurityEventResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r AuditResolveSecurityEventResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AuditResolveSecurityEventResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AuditResolveSecurityEventResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AuditResolveSecurityEventResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -1798,6 +2509,23 @@ func (r SystemVersionResponse) ContentType() string {
 	return ""
 }
 
+// AuditSearchLogsWithResponse Search the audit trail.
+//
+// Returns audit entries newest first, within a bounded time window.
+//
+// The window is mandatory in effect: `to` defaults to now and `from` to 90 days before `to`. The table is partitioned by month on `created_at`, and a query with no bound on it reads every partition ever created — so the default is a bounded scan rather than an unbounded one that happens to be fast while the table is young.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/audit-logs (the `AuditSearchLogs` operationId).
+func (c *ClientWithResponses) AuditSearchLogsWithResponse(ctx context.Context, params *AuditSearchLogsParams, reqEditors ...RequestEditorFn) (*AuditSearchLogsResponse, error) {
+	rsp, err := c.AuditSearchLogs(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuditSearchLogsResponse(rsp)
+}
+
 // RbacListRolesWithResponse List roles and the permissions they grant.
 //
 // The catalogue is small and fixed, so it is returned whole rather than paginated.
@@ -1811,6 +2539,51 @@ func (c *ClientWithResponses) RbacListRolesWithResponse(ctx context.Context, req
 		return nil, err
 	}
 	return ParseRbacListRolesResponse(rsp)
+}
+
+// AuditSearchSecurityEventsWithResponse Read the security event feed.
+//
+// Returns security events newest first, within the same bounded window as the audit trail and for the same reason. `resolved=false` is the triage queue.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/security-events (the `AuditSearchSecurityEvents` operationId).
+func (c *ClientWithResponses) AuditSearchSecurityEventsWithResponse(ctx context.Context, params *AuditSearchSecurityEventsParams, reqEditors ...RequestEditorFn) (*AuditSearchSecurityEventsResponse, error) {
+	rsp, err := c.AuditSearchSecurityEvents(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuditSearchSecurityEventsResponse(rsp)
+}
+
+// AuditResolveSecurityEventWithBodyWithResponse Mark a security event triaged.
+//
+// Records who closed the event and why. Resolving an already-resolved event is a conflict rather than a silent overwrite: the first explanation is the one that describes what was investigated.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/security-events/{id}/resolve (the `AuditResolveSecurityEvent` operationId).
+func (c *ClientWithResponses) AuditResolveSecurityEventWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AuditResolveSecurityEventResponse, error) {
+	rsp, err := c.AuditResolveSecurityEventWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuditResolveSecurityEventResponse(rsp)
+}
+
+// AuditResolveSecurityEventWithResponse Mark a security event triaged.
+//
+// Records who closed the event and why. Resolving an already-resolved event is a conflict rather than a silent overwrite: the first explanation is the one that describes what was investigated.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/security-events/{id}/resolve (the `AuditResolveSecurityEvent` operationId).
+func (c *ClientWithResponses) AuditResolveSecurityEventWithResponse(ctx context.Context, id openapi_types.UUID, body AuditResolveSecurityEventJSONRequestBody, reqEditors ...RequestEditorFn) (*AuditResolveSecurityEventResponse, error) {
+	rsp, err := c.AuditResolveSecurityEvent(ctx, id, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuditResolveSecurityEventResponse(rsp)
 }
 
 // RbacAssignRoleWithBodyWithResponse Grant a role to a user.
@@ -2023,6 +2796,73 @@ func (c *ClientWithResponses) SystemVersionWithResponse(ctx context.Context, req
 	return ParseSystemVersionResponse(rsp)
 }
 
+// ParseAuditSearchLogsResponse parses an HTTP response from a AuditSearchLogsWithResponse call
+func ParseAuditSearchLogsResponse(rsp *http.Response) (*AuditSearchLogsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AuditSearchLogsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AuditLogPage
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AuditSearchLogsResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseRbacListRolesResponse parses an HTTP response from a RbacListRolesWithResponse call
 func ParseRbacListRolesResponse(rsp *http.Response) (*RbacListRolesResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -2063,6 +2903,154 @@ func ParseRbacListRolesResponse(rsp *http.Response) (*RbacListRolesResponse, err
 	switch {
 	case rsp.StatusCode == 200:
 		var headers RbacListRolesResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAuditSearchSecurityEventsResponse parses an HTTP response from a AuditSearchSecurityEventsWithResponse call
+func ParseAuditSearchSecurityEventsResponse(rsp *http.Response) (*AuditSearchSecurityEventsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AuditSearchSecurityEventsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SecurityEventPage
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AuditSearchSecurityEventsResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAuditResolveSecurityEventResponse parses an HTTP response from a AuditResolveSecurityEventWithResponse call
+func ParseAuditResolveSecurityEventResponse(rsp *http.Response) (*AuditResolveSecurityEventResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AuditResolveSecurityEventResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SecurityEvent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AuditResolveSecurityEventResponse200Headers
 		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
 			var value string
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
