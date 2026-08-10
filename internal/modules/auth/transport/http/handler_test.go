@@ -20,6 +20,8 @@ import (
 	"github.com/fluentra/fluentra/internal/shared/secret"
 )
 
+const testChallengeID = "00000000-0000-0000-0000-000000000001"
+
 type fakeRegistrationService struct {
 	registerFn    func(ctx context.Context, req service.Registration) (service.Issued, error)
 	verifyEmailFn func(ctx context.Context, challengeID uuid.UUID, code string) (service.Verification, error)
@@ -33,7 +35,7 @@ func (f *fakeRegistrationService) Register(ctx context.Context, request service.
 	code, _ := domain.NewCode(6)
 	return service.Issued{
 		Challenge: domain.Challenge{
-			ID:          uuid.MustParse("00000000-0000-0000-0000-000000000001"),
+			ID:          uuid.MustParse(testChallengeID),
 			Purpose:     domain.PurposeVerifyEmail,
 			MaxAttempts: 5,
 			ExpiresAt:   time.Now().Add(10 * time.Minute),
@@ -43,7 +45,9 @@ func (f *fakeRegistrationService) Register(ctx context.Context, request service.
 	}, nil
 }
 
-func (f *fakeRegistrationService) VerifyEmail(ctx context.Context, challengeID uuid.UUID, code string) (service.Verification, error) {
+func (f *fakeRegistrationService) VerifyEmail(
+	ctx context.Context, challengeID uuid.UUID, code string,
+) (service.Verification, error) {
 	if f.verifyEmailFn != nil {
 		return f.verifyEmailFn(ctx, challengeID, code)
 	}
@@ -103,8 +107,8 @@ func TestHandler_Register_Success(t *testing.T) {
 		t.Fatal("code field MUST NOT be in registration HTTP response body")
 	}
 
-	if resp["challenge_id"] != "00000000-0000-0000-0000-000000000001" {
-		t.Fatalf("challenge_id = %v, want 00000000-0000-0000-0000-000000000001", resp["challenge_id"])
+	if resp["challenge_id"] != testChallengeID {
+		t.Fatalf("challenge_id = %v, want %s", resp["challenge_id"], testChallengeID)
 	}
 }
 
@@ -148,7 +152,7 @@ func TestHandler_Verify_Success(t *testing.T) {
 	serviceFake := &fakeRegistrationService{}
 	router := newTestRouter(serviceFake)
 
-	challengeID := "00000000-0000-0000-0000-000000000001"
+	challengeID := testChallengeID
 	body := `{"code":"123456"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/challenges/"+challengeID+"/verify", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -190,7 +194,7 @@ func TestHandler_Resend_Success(t *testing.T) {
 	serviceFake := &fakeRegistrationService{}
 	router := newTestRouter(serviceFake)
 
-	challengeID := "00000000-0000-0000-0000-000000000001"
+	challengeID := testChallengeID
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/challenges/"+challengeID+"/resend", bytes.NewBuffer(nil))
 	rec := httptest.NewRecorder()
 
