@@ -21,14 +21,14 @@ import (
 )
 
 type fakeAccounts struct {
-	mu           sync.Mutex
-	accounts     map[string]service.Account
-	byID         map[uuid.UUID]service.Contact
-	purgeCount   int
-	purgeErr     error
-	createErr    error
-	createCalls  int
-	markCalls    int
+	mu          sync.Mutex
+	accounts    map[string]service.Account
+	byID        map[uuid.UUID]service.Contact
+	purgeCount  int
+	purgeErr    error
+	createErr   error
+	createCalls int
+	markCalls   int
 }
 
 func newFakeAccounts() *fakeAccounts {

@@ -22,7 +22,10 @@ func newWiredRouter(t *testing.T) http.Handler {
 
 	// A nil pool is safe here and only here: construction touches nothing, and
 	// no request in this file gets past the guard.
-	modules := newIdentity(identityDeps{Env: "test"})
+	modules := newIdentity(identityDeps{
+		Env:        "test",
+		OTPHMACKey: []byte("test-otp-hmac-key-at-least-32-bytes-long"),
+	})
 	return httpx.NewRouter(httpx.RouterDependencies{Modules: modules.Routes})
 }
 
