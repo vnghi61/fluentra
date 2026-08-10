@@ -27,6 +27,13 @@ vendors:
   v_pgx:  { in: [github.com/jackc/pgx/v5, github.com/jackc/pgx/v5/**] }
   v_chi:  { in: [github.com/go-chi/chi/v5, github.com/go-chi/chi/v5/**] }
 
+  # Not common: granted to one component, m_auth_domain, and to nothing else.
+  # It is a KDF, not a provider SDK — there is no external system behind it to
+  # swap — so the reason depOnAnyVendor exists does not apply. It stays narrow
+  # anyway, because the set of packages allowed to hash a password should be
+  # exactly the set that does.
+  v_argon2id: { in: github.com/alexedwards/argon2id }
+
 commonVendors:
   - v_uuid
   - v_pgx
@@ -97,6 +104,7 @@ components:
   # would not catch it — granting a module its own queries would grant it
   # everybody's.
   g_ops:         { in: generated/ops/sqlc }
+  g_auth:        { in: generated/auth/sqlc }
   g_user:        { in: generated/user/sqlc }
   g_rbac:        { in: generated/rbac/sqlc }
   g_audit:       { in: generated/audit/sqlc }
@@ -148,7 +156,9 @@ components:
   # Modules without code keep the `**` form until they get some; it is correct
   # for a module that is one package, and it is what the next module changes
   # when it grows a second.
-  m_auth:          { in: modules/auth/** }
+  m_auth:            { in: modules/auth }
+  m_auth_domain:     { in: modules/auth/domain }
+  m_auth_repository: { in: modules/auth/repository }
   m_user:          { in: modules/user }
   m_user_domain:   { in: modules/user/domain }
   m_user_repository: { in: modules/user/repository }
@@ -214,6 +224,7 @@ deps:
   # sqlc emits pgx types, so it needs the vendor allowance. It depends on nothing
   # of ours, which is what makes it safe for its owner to import.
   g_ops:       { anyVendorDeps: true }
+  g_auth:      { anyVendorDeps: true }
   g_user:      { anyVendorDeps: true }
   g_rbac:      { anyVendorDeps: true }
   g_audit:     { anyVendorDeps: true }
@@ -230,8 +241,18 @@ deps:
   p_media:     { mayDependOn: [p_telemetry, p_storage, p_job, p_ai], anyVendorDeps: true }
   p_search:    { mayDependOn: [p_telemetry, p_cache, p_job], anyVendorDeps: true }
 
-  # core
-  m_auth:         { mayDependOn: [p_cache, p_telemetry, p_mailer, c_user, c_rbac, c_audit] }
+  # auth, by layer. Only two layers exist so far (P2.1 builds credentials and
+  # the password policy; the service and transport arrive with registration in
+  # P2.2), so only two are declared — a component for a package that does not
+  # exist yet would be a rule nothing is checked against.
+  #
+  # m_auth_domain is the one place in the repository allowed to hash a password.
+  # It has no mayDependOn because it imports nothing of ours beyond the shared
+  # kernel, which is what keeps the policy and the verifier testable with no
+  # setup at all.
+  m_auth_domain:     { canUse: [v_argon2id] }
+  m_auth_repository: { mayDependOn: [m_auth_domain, g_auth] }
+  m_auth:            { mayDependOn: [m_auth_domain, m_auth_repository, c_auth, p_cache, p_telemetry, p_mailer, c_user, c_rbac, c_audit] }
 
   # user, by layer. Reading down this block is reading the dependency direction:
   # domain depends on nothing of ours, and each layer above it may reach only

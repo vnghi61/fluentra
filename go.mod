@@ -9,6 +9,7 @@ go 1.25.0
 toolchain go1.26.5
 
 require (
+	github.com/alexedwards/argon2id v1.0.0
 	github.com/exaring/otelpgx v0.11.1
 	github.com/getkin/kin-openapi v0.146.0
 	github.com/go-chi/chi/v5 v5.3.1
