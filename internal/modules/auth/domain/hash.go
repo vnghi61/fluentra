@@ -115,6 +115,19 @@ func (h Hasher) Verify(password, encoded string) (Verification, error) {
 	}, nil
 }
 
+// DummyHash is a valid PHC-encoded Argon2id hash with default parameters (m=64MB, t=3, p=2).
+// It is used by DummyVerify to consume constant CPU time when an email does not exist,
+// ensuring login response timing for an unknown email is indistinguishable from a wrong password (BR-AUTH-02).
+const DummyHash = "$argon2id$v=19$m=65536,t=3,p=2$c29tZXNhbHQxMjM0NTY3OA$q1W2e3R4t5Y6U7i8O9p0Q1W2e3R4t5Y6U7i8O9p0Q1W"
+
+// DummyVerify performs a full Argon2id verification against a static dummy hash.
+// This consumes constant work and returns Matches = false without throwing errors,
+// satisfying timing equalisation (BR-AUTH-02).
+func (h Hasher) DummyVerify(password string) (Verification, error) {
+	_, _, _ = argon2id.CheckHash(password, DummyHash)
+	return Verification{Matches: false, NeedsRehash: false}, nil
+}
+
 // isMalformedHash separates "this string is not a hash we can read" from any
 // other failure, so only the former is translated into a domain error.
 func isMalformedHash(err error) bool {

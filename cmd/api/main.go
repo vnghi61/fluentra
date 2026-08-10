@@ -153,6 +153,7 @@ func run(ctx context.Context) error {
 	modules := newIdentity(identityDeps{
 		Pool:       pool,
 		Cache:      cache.NewRedisCache[[]string](redisClient),
+		Limiter:    cache.NewRedisLimiter(redisClient),
 		Env:        cfg.App.Environment,
 		OTPHMACKey: []byte(cfg.OTP.HMACKey),
 		SMTP: mailer.SMTPConfig{

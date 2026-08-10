@@ -30,7 +30,7 @@ Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR
 | `POST` | `/api/v1/auth/register` | `public` | Create an account and issue a `verify_email` OTP challenge |
 | `POST` | `/api/v1/auth/challenges/{id}/verify` | `public` | Submit the OTP code for a challenge |
 | `POST` | `/api/v1/auth/challenges/{id}/resend` | `public` | Resend the code for a challenge |
-| `POST` | `/api/v1/auth/login` | `public` | Exchange credentials for an access token plus a refresh cookie |
+| `POST` | `/api/v1/auth/login` | `public` | Validate credentials and enforce lockout |
 | `GET` | `/api/v1/auth/oauth/google/start` | `public` | Begin Google sign-in; returns the authorization URL |
 | `POST` | `/api/v1/auth/mfa/verify` | `public` | Complete a login that required a second factor |
 | `POST` | `/api/v1/auth/refresh` | `public` | Rotate the refresh token and issue a new access token |
@@ -87,14 +87,14 @@ Resend the code for a challenge
 
 ### `POST /api/v1/auth/login`
 
-Exchange credentials for an access token plus a refresh cookie
+Validate credentials and enforce lockout
 
 | | |
 |---|---|
 | Permission | `public` |
 | Success | 200 |
 | Errors | `INVALID_CREDENTIALS`, `ACCOUNT_LOCKED`, `MFA_REQUIRED`, `EMAIL_NOT_VERIFIED` |
-| Notes | Accepts `remember_device` and an optional client `device_id`. Response timing is equalised between 'unknown email' and 'wrong password'. |
+| Notes | Accepts `remember_device` and an optional client `device_id`. Response timing is equalised between 'unknown email' and 'wrong password'; token issuance arrives in P2.4. |
 
 ### `GET /api/v1/auth/oauth/google/start`
 

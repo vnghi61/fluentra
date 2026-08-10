@@ -17,6 +17,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/auth/service"
 	authhttp "github.com/fluentra/fluentra/internal/modules/auth/transport/http"
 	"github.com/fluentra/fluentra/internal/shared/apperr"
+	"github.com/fluentra/fluentra/internal/shared/httpx"
 	"github.com/fluentra/fluentra/internal/shared/secret"
 )
 
@@ -74,10 +75,25 @@ func (f *fakeRegistrationService) Resend(ctx context.Context, challengeID uuid.U
 	}, nil
 }
 
+type fakeAuthenticator struct {
+	loginFn func(ctx context.Context, input service.LoginInput) (service.LoginResult, error)
+}
+
+func (f *fakeAuthenticator) Login(ctx context.Context, input service.LoginInput) (service.LoginResult, error) {
+	if f.loginFn != nil {
+		return f.loginFn(ctx, input)
+	}
+	return service.LoginResult{UserID: uuid.MustParse(testChallengeID), Verified: true}, nil
+}
+
 func newTestRouter(reg authhttp.Registration) chi.Router {
+	return newTestRouterWithAuth(reg, &fakeAuthenticator{})
+}
+
+func newTestRouterWithAuth(reg authhttp.Registration, auth authhttp.Authenticator) chi.Router {
 	r := chi.NewRouter()
 	r.Route("/api/v1", func(api chi.Router) {
-		handler := authhttp.NewHandler(reg)
+		handler := authhttp.NewHandler(reg, auth)
 		handler.Routes(api)
 	})
 	return r
@@ -239,5 +255,52 @@ func TestHandler_CodeNeverInResponseJSON(t *testing.T) {
 
 	if strings.Contains(rec.Body.String(), "654321") {
 		t.Fatalf("plaintext code 654321 was leaked in HTTP response body: %s", rec.Body.String())
+	}
+}
+
+func TestHandler_Login_Success(t *testing.T) {
+	serviceFake := &fakeRegistrationService{}
+	router := newTestRouter(serviceFake)
+
+	body := `{"email":"learner@example.com","password":"password12345"}` // gitleaks:allow
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestHandler_Login_UsesOnlyTrustedResolvedClientIP(t *testing.T) {
+	var got service.LoginInput
+	auth := &fakeAuthenticator{
+		loginFn: func(_ context.Context, input service.LoginInput) (service.LoginResult, error) {
+			got = input
+			return service.LoginResult{UserID: uuid.New(), Verified: true}, nil
+		},
+	}
+	resolver, err := httpx.NewClientIPResolver(nil)
+	if err != nil {
+		t.Fatalf("NewClientIPResolver: %v", err)
+	}
+	router := resolver.Middleware(newTestRouterWithAuth(&fakeRegistrationService{}, auth))
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login",
+		strings.NewReader(`{"email":"learner@example.com","password":"password12345"}`)) // gitleaks:allow
+	req.RemoteAddr = "198.51.100.42:4242"
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Forwarded-For", "203.0.113.9")
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body: %s", rec.Code, rec.Body.String())
+	}
+	if got.ClientIP != "198.51.100.42" {
+		t.Fatalf("ClientIP = %q, want unspoofable peer address", got.ClientIP)
 	}
 }

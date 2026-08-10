@@ -41,7 +41,8 @@ generated text describes commits; release notes should describe change.
   entries, exactly once per event
 - Scheduled partition rotation and two-year retention
 
-- Registration with OTP email verification: `POST /api/v1/auth/register`, `POST /api/v1/auth/challenges/{id}/verify`, `POST /api/v1/auth/challenges/{id}/resend`, enumeration-safe registration attempt warning, 7-day unverified account purge sweep
+- `POST /api/v1/auth/register`, `/verify`, `/resend` — user registration & email verification flow
+- `POST /api/v1/auth/login` — authentication with Argon2id timing equalisation and per-account/IP lockout protection
 - The identity modules wired into the running API and worker: every operation above is now
   mounted, and every audited write reaches `audit_logs` through the worker
 

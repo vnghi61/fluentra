@@ -52,6 +52,7 @@ type Accounts interface {
 // Credentials is the password half of registration.
 type Credentials interface {
 	Create(ctx context.Context, id, userID uuid.UUID, passwordHash string) (domain.Credential, error)
+	GetByUserID(ctx context.Context, userID uuid.UUID) (domain.Credential, error)
 	ReplaceHash(ctx context.Context, userID uuid.UUID, passwordHash string) (domain.Credential, error)
 
 	WithTx(tx pgx.Tx) Credentials

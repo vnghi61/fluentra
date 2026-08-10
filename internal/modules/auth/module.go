@@ -19,6 +19,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/auth/service"
 	authhttp "github.com/fluentra/fluentra/internal/modules/auth/transport/http"
 	usercontract "github.com/fluentra/fluentra/internal/modules/user/contract"
+	"github.com/fluentra/fluentra/internal/platform/cache"
 	"github.com/fluentra/fluentra/internal/platform/job"
 	"github.com/fluentra/fluentra/internal/platform/mailer"
 	"github.com/fluentra/fluentra/internal/shared/clock"
@@ -54,11 +55,13 @@ type Deps struct {
 	OTPHMACKey []byte
 	Mailer     mailer.Sender
 	Registrar  usercontract.Registrar
+	Limiter    cache.Limiter
 }
 
 // Module is the auth module, assembled.
 type Module struct {
 	register *service.RegisterService
+	login    *service.LoginService
 	mailer   mailer.Sender
 	handler  *authhttp.Handler
 }
@@ -120,10 +123,27 @@ func New(deps Deps) *Module {
 		NewID:       id.NewUUIDv7,
 	})
 
+	limiter := deps.Limiter
+	if limiter == nil {
+		limiter = cache.NewRedisLimiter(nil)
+	}
+
+	loginSvc := service.NewLoginService(service.LoginDeps{
+		Accounts:    accountsAdapter{Registrar: deps.Registrar},
+		Credentials: credentialRepo,
+		Repo:        repo,
+		Limiter:     limiter,
+		Keys:        keys,
+		Hasher:      domain.NewHasher(domain.DefaultHashParams()),
+		Clock:       timekeeper,
+		NewID:       id.NewUUIDv7,
+	})
+
 	return &Module{
 		register: reg,
+		login:    loginSvc,
 		mailer:   deps.Mailer,
-		handler:  authhttp.NewHandler(reg),
+		handler:  authhttp.NewHandler(reg, loginSvc),
 	}
 }
 

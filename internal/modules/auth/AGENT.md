@@ -6,7 +6,7 @@ status: PLANNED
 phase: 1
 owner: "@backend-team"
 schema: core
-tables: [credentials, sessions, refresh_tokens, mfa_secrets, auth_challenges, trusted_devices, login_attempts, oauth_identities, oauth_states]
+tables: [credentials, sessions, refresh_tokens, mfa_secrets, auth_challenges, trusted_devices, login_attempts, login_lockouts, oauth_identities, oauth_states]
 depends_on: [user, rbac, audit, mailer, cache]
 depended_on_by: [admin]
 spec_version: 1.0.0
@@ -113,7 +113,8 @@ Migrations: `db/migrations/auth/` · Queries: `db/queries/auth/`
 | `core.mfa_secrets` | TOTP seeds and recovery codes | Seed encrypted with a KEK; recovery codes stored hashed and single-use |
 | `core.auth_challenges` | Short-lived one-time codes for every purpose | `id` (the challenge handle returned to the client), `purpose` enum (`verify_email`, `login_otp`, `password_reset`, `link_oauth`), `subject_hash`, `code_hash` (HMAC-SHA256 with a server key), `attempts`, `max_attempts`, `expires_at`, `consumed_at`. 10-minute TTL, single use. |
 | `core.trusted_devices` | Devices the learner chose to stay signed in on | `user_id`, `device_id` (client-generated, stored hashed), `label`, `idle_window`, `absolute_expires_at`, `last_seen_at`, `revoked_at` |
-| `core.login_attempts` | Brute-force accounting and forensics | Partitioned monthly; `email_hash`, `ip_hash`, `result`, `created_at` |
+| `core.login_attempts` | Brute-force accounting and forensics | `email_hash`, `ip_hash`, `success`, `failure_reason`, `created_at`; indexed for lockout-window lookups |
+| `core.login_lockouts` | Persistent exponential lockout state | One row per `account` or `ip` HMAC; guarded upsert advances `lockout_level` and `locked_until` atomically |
 | `core.oauth_identities` | Linked external identities | `provider`, `subject`, `email_hash`, `linked_at`, UNIQUE(provider, subject) |
 | `core.oauth_states` | In-flight OAuth authorization requests | `state` UNIQUE, `nonce`, `pkce_verifier_hash`, `redirect_to`, `expires_at`. 10-minute TTL, single use — this is the CSRF defence for the OAuth flow. |
 
@@ -123,6 +124,7 @@ Migrations: `db/migrations/auth/` · Queries: `db/queries/auth/`
 - `idx_refresh_tokens_family` — used to revoke a whole family in one statement
 - `idx_sessions_user_active` — partial index `WHERE revoked_at IS NULL`
 - `idx_login_attempts_email_time` — the lockout query
+- `login_lockouts_pkey` — one lockout state per scope and subject hash
 <!-- END GENERATED: schema -->
 
 ### What exists today
@@ -172,7 +174,7 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | `POST` | `/api/v1/auth/register` | `public` | Create an account and issue a `verify_email` OTP challenge |
 | `POST` | `/api/v1/auth/challenges/{id}/verify` | `public` | Submit the OTP code for a challenge |
 | `POST` | `/api/v1/auth/challenges/{id}/resend` | `public` | Resend the code for a challenge |
-| `POST` | `/api/v1/auth/login` | `public` | Exchange credentials for an access token plus a refresh cookie |
+| `POST` | `/api/v1/auth/login` | `public` | Validate credentials and enforce lockout |
 | `GET` | `/api/v1/auth/oauth/google/start` | `public` | Begin Google sign-in; returns the authorization URL |
 | `POST` | `/api/v1/auth/mfa/verify` | `public` | Complete a login that required a second factor |
 | `POST` | `/api/v1/auth/refresh` | `public` | Rotate the refresh token and issue a new access token |

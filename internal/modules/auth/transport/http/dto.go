@@ -158,3 +158,50 @@ func sortViolations(violations []apperr.FieldViolation) []apperr.FieldViolation 
 // domain produces. The schema's enum and this constant are the same four
 // strings, and this is the cheapest place to notice if one of them moves.
 var _ = domain.PurposeVerifyEmail
+
+type loginPayload struct {
+	Email          *string `json:"email"`
+	Password       *string `json:"password"`
+	RememberDevice *bool   `json:"remember_device"`
+	DeviceID       *string `json:"device_id"`
+}
+
+func decodeLoginRequest(request *http.Request) (service.LoginInput, error) {
+	var payload loginPayload
+	if err := decodeStrict(request, &payload); err != nil {
+		return service.LoginInput{}, err
+	}
+
+	missing := make([]apperr.FieldViolation, 0, 2)
+	if payload.Email == nil {
+		missing = append(missing, apperr.FieldViolation{
+			Field: "email", Code: "REQUIRED", Message: "email is required.",
+		})
+	}
+	if payload.Password == nil {
+		missing = append(missing, apperr.FieldViolation{
+			Field: "password", Code: "REQUIRED", Message: "password is required.",
+		})
+	}
+	if len(missing) > 0 {
+		return service.LoginInput{}, validationFailed().WithFields(sortViolations(missing)...)
+	}
+
+	clientIP := ""
+	if address := httpx.ClientIP(request.Context()); address.IsValid() {
+		clientIP = address.String()
+	}
+
+	remember := false
+	if payload.RememberDevice != nil {
+		remember = *payload.RememberDevice
+	}
+
+	return service.LoginInput{
+		Email:          strings.TrimSpace(*payload.Email),
+		Password:       *payload.Password,
+		RememberDevice: remember,
+		DeviceID:       valueOr(payload.DeviceID, ""),
+		ClientIP:       clientIP,
+	}, nil
+}
