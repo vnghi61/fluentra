@@ -161,7 +161,11 @@ func newStack(t *testing.T) *stack {
 	// No cache, so every permission check resolves from the database. The
 	// cached path has its own tests in rbac; what this file is about is that
 	// the three modules reach each other at all.
-	modules := newIdentity(identityDeps{Pool: pool, Env: "test"})
+	modules := newIdentity(identityDeps{
+		Pool:       pool,
+		Env:        "test",
+		OTPHMACKey: []byte("test-otp-hmac-key-at-least-32-bytes-long"),
+	})
 
 	// The worker half. Subscribing before anything publishes is the order
 	// cmd/worker uses, and for the reason stated there.

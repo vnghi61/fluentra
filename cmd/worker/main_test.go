@@ -83,6 +83,26 @@ func TestLoadConfig_ResolvesEveryKeyFromEnvExample(t *testing.T) {
 	if cfg.Telemetry.Endpoint != "localhost:4317" {
 		t.Errorf("Telemetry.Endpoint = %q, want the scheme stripped for gRPC", cfg.Telemetry.Endpoint)
 	}
+	if cfg.Mail.From != "Fluentra <no-reply@fluentra.dev>" {
+		t.Errorf("Mail.From = %q, want the documented MAIL_FROM value", cfg.Mail.From)
+	}
+}
+
+func TestSMTPConfig_PreservesWorkerCredentials(t *testing.T) {
+	cfg := workerConfig{}
+	cfg.SMTP.Host = "smtp.example.test"
+	cfg.SMTP.Port = 587
+	cfg.SMTP.Username = "mailer-user"
+	cfg.SMTP.Password = "mailer-password"
+	cfg.Mail.From = "no-reply@example.test"
+
+	got := smtpConfig(cfg)
+	if got.Username != cfg.SMTP.Username || got.Password != cfg.SMTP.Password {
+		t.Fatalf("SMTP credentials = %q / %q, want worker config values", got.Username, got.Password)
+	}
+	if got.Host != cfg.SMTP.Host || got.Port != cfg.SMTP.Port || got.From != cfg.Mail.From {
+		t.Errorf("SMTP transport config = %#v, want values from worker config", got)
+	}
 }
 
 // TestLoadConfig_RejectsUnusableJobSettings keeps a malformed value from booting
