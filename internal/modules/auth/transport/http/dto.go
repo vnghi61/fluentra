@@ -18,6 +18,8 @@ import (
 // for, so the body is capped well below the default.
 const maxRegisterBody = 8 << 10
 
+const codeRequired = "REQUIRED"
+
 // challengeResponse matches components/auth.yaml#/Challenge.
 //
 // There is no `code` member and there never will be. The code goes to the email
@@ -77,7 +79,7 @@ func decodeRegisterRequest(request *http.Request) (service.Registration, error) 
 	} {
 		if value == nil {
 			missing = append(missing, apperr.FieldViolation{
-				Field: name, Code: "REQUIRED", Message: name + " is required.",
+				Field: name, Code: codeRequired, Message: name + " is required.",
 			})
 		}
 	}
@@ -107,7 +109,7 @@ func decodeVerifyRequest(request *http.Request) (string, error) {
 	}
 	if payload.Code == nil {
 		return "", validationFailed().WithFields(apperr.FieldViolation{
-			Field: "code", Code: "REQUIRED", Message: "code is required.",
+			Field: "code", Code: codeRequired, Message: "code is required.",
 		})
 	}
 	// The shape is not validated here. A wrong-shaped code still costs an
@@ -175,12 +177,12 @@ func decodeLoginRequest(request *http.Request) (service.LoginInput, error) {
 	missing := make([]apperr.FieldViolation, 0, 2)
 	if payload.Email == nil {
 		missing = append(missing, apperr.FieldViolation{
-			Field: "email", Code: "REQUIRED", Message: "email is required.",
+			Field: "email", Code: codeRequired, Message: "email is required.",
 		})
 	}
 	if payload.Password == nil {
 		missing = append(missing, apperr.FieldViolation{
-			Field: "password", Code: "REQUIRED", Message: "password is required.",
+			Field: "password", Code: codeRequired, Message: "password is required.",
 		})
 	}
 	if len(missing) > 0 {

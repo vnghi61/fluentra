@@ -179,7 +179,9 @@ func TestLogin_SuccessfulAuthentication(t *testing.T) {
 
 	h.accounts.accounts[email] = service.Account{ID: userID, Verified: true, Status: loginActiveStatus}
 	h.credentials.credentials[userID] = domain.Credential{
-		ID: uuid.New(), UserID: userID, PasswordHash: h.credentials.credentials[userID].PasswordHash,
+		ID:           uuid.New(),
+		UserID:       userID,
+		PasswordHash: h.credentials.credentials[userID].PasswordHash,
 	}
 	_, _ = h.credentials.Create(context.Background(), uuid.New(), userID, hash)
 

@@ -12,7 +12,8 @@ import (
 
 // RecordLoginAttempt stores a login attempt record for audit forensics.
 func (r *Repository) RecordLoginAttempt(
-	ctx context.Context, id uuid.UUID, userID *uuid.UUID, emailHash, ipHash []byte, success bool, failureReason *string, createdAt time.Time,
+	ctx context.Context, id uuid.UUID, userID *uuid.UUID,
+	emailHash, ipHash []byte, success bool, failureReason *string, createdAt time.Time,
 ) error {
 	_, err := r.queries.RecordLoginAttempt(ctx, sqlcauth.RecordLoginAttemptParams{
 		ID:            id,

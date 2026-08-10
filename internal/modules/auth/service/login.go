@@ -230,7 +230,8 @@ func lockedError() error {
 }
 
 func (s *LoginService) recordFailed(
-	ctx context.Context, userID *uuid.UUID, emailHash, ipHash []byte, reason string, now time.Time,
+	ctx context.Context, userID *uuid.UUID, emailHash, ipHash []byte,
+	reason string, now time.Time,
 ) {
 	id, err := s.newID(ctx)
 	if err != nil {

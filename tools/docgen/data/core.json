@@ -39,7 +39,8 @@
       { "name": "mfa_secrets", "purpose": "TOTP seeds and recovery codes", "notes": "Seed encrypted with a KEK; recovery codes stored hashed and single-use" },
       { "name": "auth_challenges", "purpose": "Short-lived one-time codes for every purpose", "notes": "`id` (the challenge handle returned to the client), `purpose` enum (`verify_email`, `login_otp`, `password_reset`, `link_oauth`), `subject_hash`, `code_hash` (HMAC-SHA256 with a server key), `attempts`, `max_attempts`, `expires_at`, `consumed_at`. 10-minute TTL, single use." },
       { "name": "trusted_devices", "purpose": "Devices the learner chose to stay signed in on", "notes": "`user_id`, `device_id` (client-generated, stored hashed), `label`, `idle_window`, `absolute_expires_at`, `last_seen_at`, `revoked_at`" },
-      { "name": "login_attempts", "purpose": "Brute-force accounting and forensics", "notes": "Partitioned monthly; `email_hash`, `ip_hash`, `result`, `created_at`" },
+      { "name": "login_attempts", "purpose": "Brute-force accounting and forensics", "notes": "`email_hash`, `ip_hash`, `success`, `failure_reason`, `created_at`; indexed for lockout-window lookups" },
+      { "name": "login_lockouts", "purpose": "Persistent exponential lockout state", "notes": "One row per `account` or `ip` HMAC; guarded upsert advances `lockout_level` and `locked_until` atomically" },
       { "name": "oauth_identities", "purpose": "Linked external identities", "notes": "`provider`, `subject`, `email_hash`, `linked_at`, UNIQUE(provider, subject)" },
       { "name": "oauth_states", "purpose": "In-flight OAuth authorization requests", "notes": "`state` UNIQUE, `nonce`, `pkce_verifier_hash`, `redirect_to`, `expires_at`. 10-minute TTL, single use — this is the CSRF defence for the OAuth flow." }
     ],
@@ -47,13 +48,14 @@
       "`uq_refresh_tokens_hash` — unique on `token_hash`, the lookup path on every refresh",
       "`idx_refresh_tokens_family` — used to revoke a whole family in one statement",
       "`idx_sessions_user_active` — partial index `WHERE revoked_at IS NULL`",
-      "`idx_login_attempts_email_time` — the lockout query"
+      "`idx_login_attempts_email_time` — the lockout query",
+      "`login_lockouts_pkey` — one lockout state per scope and subject hash"
     ],
     "endpoints": [
       { "method": "POST", "path": "/api/v1/auth/register", "permission": "public", "purpose": "Create an account and issue a `verify_email` OTP challenge", "success": "201", "errors": ["EMAIL_ALREADY_REGISTERED", "PASSWORD_TOO_WEAK", "VALIDATION_FAILED", "RATE_LIMITED"], "notes": "Returns a `challenge_id`; the 6-digit code goes to the email. The account cannot sign in until verified." },
       { "method": "POST", "path": "/api/v1/auth/challenges/{id}/verify", "permission": "public", "purpose": "Submit the OTP code for a challenge", "success": "200", "errors": ["OTP_INVALID", "OTP_EXPIRED", "OTP_ATTEMPTS_EXCEEDED", "CHALLENGE_NOT_FOUND"], "notes": "Generic across every purpose. Consumes the challenge on success; burns it after `max_attempts`." },
       { "method": "POST", "path": "/api/v1/auth/challenges/{id}/resend", "permission": "public", "purpose": "Resend the code for a challenge", "success": "202", "errors": ["OTP_RESEND_TOO_SOON", "RATE_LIMITED", "CHALLENGE_NOT_FOUND"], "notes": "60-second cooldown, 3 issuances per subject per hour. Issues a new code and resets attempts; the challenge id is unchanged." },
-      { "method": "POST", "path": "/api/v1/auth/login", "permission": "public", "purpose": "Exchange credentials for an access token plus a refresh cookie", "success": "200", "errors": ["INVALID_CREDENTIALS", "ACCOUNT_LOCKED", "MFA_REQUIRED", "EMAIL_NOT_VERIFIED"], "notes": "Accepts `remember_device` and an optional client `device_id`. Response timing is equalised between 'unknown email' and 'wrong password'." },
+      { "method": "POST", "path": "/api/v1/auth/login", "permission": "public", "purpose": "Validate credentials and enforce lockout", "success": "200", "errors": ["INVALID_CREDENTIALS", "ACCOUNT_LOCKED", "MFA_REQUIRED", "EMAIL_NOT_VERIFIED"], "notes": "Accepts `remember_device` and an optional client `device_id`. Response timing is equalised between 'unknown email' and 'wrong password'; token issuance arrives in P2.4." },
       { "method": "GET", "path": "/api/v1/auth/oauth/google/start", "permission": "public", "purpose": "Begin Google sign-in; returns the authorization URL", "success": "200", "notes": "Generates `state`, `nonce` and a PKCE challenge, stored server-side with a 10-minute TTL" },
       { "method": "POST", "path": "/api/v1/auth/mfa/verify", "permission": "public", "purpose": "Complete a login that required a second factor", "success": "200", "errors": ["MFA_INVALID", "TOKEN_EXPIRED"] },
       { "method": "POST", "path": "/api/v1/auth/refresh", "permission": "public", "purpose": "Rotate the refresh token and issue a new access token", "success": "200", "errors": ["TOKEN_INVALID", "SESSION_REVOKED"], "notes": "Reuse of an already-used token revokes the entire family and raises a security event" },
