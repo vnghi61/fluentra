@@ -1332,6 +1332,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "user_id": "018f96a3-91e8-7b9a-aee5-8d8e96f90d31",
+                     *       "verified": true
+                     *     }
+                     */
                     "application/json": {
                         /** Format: uuid */
                         user_id: string;
