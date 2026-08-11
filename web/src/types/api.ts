@@ -123,7 +123,7 @@ export interface paths {
          *
          *     An unknown email and a wrong password return the same body and take comparable time (BR-AUTH-02) -- the server performs a dummy password verification for an address it has never seen, so response time cannot be used to enumerate accounts. Per-account and per-IP lockout counters are independent (BR-AUTH-08): locking one does not lock the other.
          *
-         *     An account that has not completed email verification is refused with `EMAIL_NOT_VERIFIED`, and a suspended one with `ACCOUNT_LOCKED`.
+         *     Three refusals are distinguishable on purpose, because the learner's next move differs for each: `EMAIL_NOT_VERIFIED` (403) for an address never proved, `ACCOUNT_SUSPENDED` (403) for an account an administrator disabled, and `ACCOUNT_LOCKED` (429) for too many failed attempts -- which, unlike the other two, clears itself.
          */
         post: operations["authLogin"];
         delete?: never;
@@ -598,7 +598,7 @@ export interface components {
         AuthSession: {
             /**
              * @description A short-lived signed token, presented as `Authorization: Bearer <token>`. It carries the account id, the session id, the role and its own id -- and no personal data at all, so a leaked token reveals nothing about the learner beyond an opaque identifier.
-             * @example eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMTk5YTFjMiJ9.7mMxLmA
+             * @example eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJleGFtcGxlIn0.example-signature
              */
             access_token: string;
             /**
@@ -1371,7 +1371,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMTk5YTFjMiJ9.7mMxLmA",
+                     *       "access_token": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJleGFtcGxlIn0.example-signature",
                      *       "token_type": "Bearer",
                      *       "expires_in": 900,
                      *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
@@ -1421,7 +1421,7 @@ export interface operations {
                      *       "purpose": "verify_email",
                      *       "verified_at": "2026-08-10T09:03:12Z",
                      *       "session": {
-                     *         "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMTk5YTFjMiJ9.7mMxLmA",
+                     *         "access_token": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJleGFtcGxlIn0.example-signature",
                      *         "token_type": "Bearer",
                      *         "expires_in": 900,
                      *         "user_id": "0199a1c2-3d4e-7f80-9abc-def012345678",

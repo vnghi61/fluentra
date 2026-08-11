@@ -15,6 +15,7 @@ import (
 
 	"github.com/fluentra/fluentra/internal/modules/audit"
 	"github.com/fluentra/fluentra/internal/modules/auth"
+	authservice "github.com/fluentra/fluentra/internal/modules/auth/service"
 	"github.com/fluentra/fluentra/internal/modules/user"
 	"github.com/fluentra/fluentra/internal/platform/job"
 	"github.com/fluentra/fluentra/internal/platform/mailer"
@@ -69,6 +70,12 @@ type workerConfig struct {
 	OTP struct {
 		HMACKey string `koanf:"hmac_key"`
 	} `koanf:"otp"`
+	JWT struct {
+		SigningKey  string `koanf:"signing_key"`
+		PreviousKey string `koanf:"previous_key"`
+		Issuer      string `koanf:"issuer"`
+		Audience    string `koanf:"audience"`
+	} `koanf:"jwt"`
 	Mail struct {
 		From string `koanf:"from"`
 	} `koanf:"mail"`
@@ -98,6 +105,9 @@ func configOptions() config.Options {
 			"job.timeout":                 "5m",
 			"otel.exporter_otlp_endpoint": "localhost:4317",
 			"otel.service_name":           "fluentra-worker",
+			"jwt.issuer":                  "fluentra",
+			"jwt.audience":                "fluentra-api",
+			"jwt.previous_key":            "",
 			"smtp.host":                   "localhost",
 			"smtp.port":                   1025,
 			"smtp.dev_mode":               true,
@@ -107,6 +117,7 @@ func configOptions() config.Options {
 			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},
 			{Name: "redis.url", DocSection: "docs/deployment/configuration.md#redis"},
 			{Name: "otp.hmac_key", DocSection: "docs/deployment/configuration.md#auth"},
+			{Name: "jwt.signing_key", DocSection: "docs/deployment/configuration.md#auth"},
 		},
 	}
 }
@@ -338,11 +349,25 @@ func startModules(
 	}
 	sender := mailer.NewSMTPSender(smtpConfig(cfg), renderer, nil, nil)
 
+	// The worker neither issues nor verifies a token — it runs the mailer
+	// consumer and the purge sweep. It is handed the signing material anyway
+	// because auth.New builds the whole module and refuses to start without a
+	// usable key, which is the right refusal for the API and an inherited cost
+	// here. The alternative is a token service that silently cannot sign, and a
+	// process that boots and then fails every login is worse than one that does
+	// not boot. Both binaries deploy from one environment, so this distributes
+	// no secret that was not already present. Tracked in auth/TODO.md.
 	authModule := auth.New(auth.Deps{
 		Pool:       pool,
 		OTPHMACKey: []byte(cfg.OTP.HMACKey),
 		Mailer:     sender,
 		Registrar:  userModule.Registrar(),
+		Tokens: authservice.TokenConfig{
+			SigningKey:  []byte(cfg.JWT.SigningKey),
+			PreviousKey: []byte(cfg.JWT.PreviousKey),
+			Issuer:      cfg.JWT.Issuer,
+			Audience:    cfg.JWT.Audience,
+		},
 	})
 
 	if err := authModule.Subscribe(bus); err != nil {

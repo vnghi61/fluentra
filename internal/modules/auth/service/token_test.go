@@ -19,9 +19,9 @@ import (
 
 // The two keys a rotation involves, plus one that was never ours.
 const (
-	currentKey  = "current-jwt-signing-key-at-least-32-bytes"
-	previousKey = "previous-jwt-signing-key-at-least-32-byt"
-	foreignKey  = "somebody-elses-signing-key-32-bytes-long"
+	currentKey  = "current-jwt-signing-key-at-least-32-bytes" // gitleaks:allow
+	previousKey = "previous-jwt-signing-key-at-least-32-byt"  // gitleaks:allow
+	foreignKey  = "somebody-elses-signing-key-32-bytes-long"  // gitleaks:allow
 )
 
 // Named around gosec: a constant whose name contains "token" trips G101's
