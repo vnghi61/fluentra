@@ -18,6 +18,8 @@ import (
 
 	"github.com/fluentra/fluentra/internal/modules/auth/domain"
 	"github.com/fluentra/fluentra/internal/modules/auth/service"
+	authhttp "github.com/fluentra/fluentra/internal/modules/auth/transport/http"
+	"github.com/fluentra/fluentra/internal/shared/httpx"
 	"github.com/fluentra/fluentra/internal/shared/secret"
 )
 
@@ -237,4 +239,58 @@ func TestContract_RefreshMatchesTheSpec(t *testing.T) {
 	}
 
 	assertMatchesSchema(t, responseSchema(t, spec, "/auth/refresh", http.MethodPost, http.StatusOK), rec.Body.Bytes())
+}
+
+// fakeContractSessions returns a fully populated row, because the schema marks
+// four of the five members required and forbids anything it does not name.
+type fakeContractSessions struct{}
+
+func (fakeContractSessions) List(context.Context, httpx.Actor) ([]service.SessionView, error) {
+	label := "Chrome on macOS"
+	return []service.SessionView{
+		{
+			ID:          uuid.MustParse("018f3a5b-7c8d-7123-8123-456789abcdef"),
+			Current:     true,
+			DeviceLabel: &label,
+			CreatedAt:   time.Now().UTC().Add(-48 * time.Hour),
+			LastSeenAt:  time.Now().UTC(),
+		},
+		{
+			// The nullable label, because `null` and "absent" are different to a
+			// schema with additionalProperties false and a nullable type.
+			ID:         uuid.MustParse("018f3a5b-7c8d-7123-8123-456789abcdee"),
+			Current:    false,
+			CreatedAt:  time.Now().UTC().Add(-72 * time.Hour),
+			LastSeenAt: time.Now().UTC().Add(-time.Hour),
+		},
+	}, nil
+}
+
+func (fakeContractSessions) Revoke(context.Context, httpx.Actor, uuid.UUID) error { return nil }
+func (fakeContractSessions) Logout(context.Context, httpx.Actor) error            { return nil }
+
+// TestContract_SessionListMatchesTheSpec is the operation this card added with a
+// body of its own. The other two answer 204 and have nothing to validate.
+func TestContract_SessionListMatchesTheSpec(t *testing.T) {
+	spec := loadSpec(t)
+	router := newTestRouterWithSessions(
+		&fakeContractRegistration{}, fakeContractAuthenticator{}, &fakeRotator{},
+		fakeContractSessions{}, authhttp.CookieOptions{Secure: true})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/sessions", nil)
+	req = req.WithContext(httpx.WithActor(req.Context(), httpx.Actor{
+		UserID:    uuid.MustParse("018f3a5b-7c8d-7123-8123-456789abcdef"),
+		SessionID: uuid.MustParse("018f3a5b-7c8d-7123-8123-456789abcdef"),
+		Role:      "user",
+		TokenID:   testJTI,
+	}))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body: %s", rec.Code, rec.Body.String())
+	}
+
+	assertMatchesSchema(t, responseSchema(t, spec, "/auth/sessions", http.MethodGet, http.StatusOK), rec.Body.Bytes())
 }

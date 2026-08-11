@@ -1,11 +1,14 @@
-// Package http serves the auth module's public operations: opening an account
-// and completing the email challenge that proves the address.
+// Package http serves the auth module's operations: acquiring an identity, and
+// managing one already held.
 //
-// Every operation here is unauthenticated, which is the one thing that makes
-// this package different from the others. There is no actor in the context and
-// no permission to check — these are how a caller acquires an identity, so
-// requiring one would be circular. What replaces the guard is the rate limiting
-// and the enumeration-safety in the service below.
+// The acquiring half — register, verify, login, refresh — is unauthenticated,
+// which is what makes this package different from the others: there is no actor
+// in the context and no permission to check, because these are how a caller gets
+// one and requiring it would be circular. What replaces the guard there is the
+// rate limiting and the enumeration-safety in the service below.
+//
+// The managing half — logout, and listing and revoking sessions — needs the
+// actor like any other protected operation, and starts by demanding one.
 package http
 
 import (
@@ -39,23 +42,33 @@ type Rotator interface {
 	Rotate(ctx context.Context, presented string) (service.SignedIn, error)
 }
 
+// Sessions is the session surface required by Handler.
+type Sessions interface {
+	List(ctx context.Context, actor httpx.Actor) ([]service.SessionView, error)
+	Revoke(ctx context.Context, actor httpx.Actor, sessionID uuid.UUID) error
+	Logout(ctx context.Context, actor httpx.Actor) error
+}
+
 // Handler serves the auth module's HTTP operations.
 type Handler struct {
 	registration  Registration
 	authenticator Authenticator
 	rotator       Rotator
+	sessions      Sessions
 	cookies       CookieOptions
 	clock         clock.Clock
 }
 
 // NewHandler creates the handler.
 func NewHandler(
-	registration Registration, authenticator Authenticator, rotator Rotator, cookies CookieOptions,
+	registration Registration, authenticator Authenticator,
+	rotator Rotator, sessions Sessions, cookies CookieOptions,
 ) *Handler {
 	return &Handler{
 		registration:  registration,
 		authenticator: authenticator,
 		rotator:       rotator,
+		sessions:      sessions,
 		cookies:       cookies,
 		clock:         clock.Real{},
 	}
@@ -67,6 +80,9 @@ func (h *Handler) Routes(router chi.Router) {
 		auth.Post("/register", h.register)
 		auth.Post("/login", h.login)
 		auth.Post("/refresh", h.refresh)
+		auth.Post("/logout", h.logout)
+		auth.Get("/sessions", h.listSessions)
+		auth.Delete("/sessions/{id}", h.revokeSession)
 		auth.Route("/challenges/{id}", func(challenge chi.Router) {
 			challenge.Post("/verify", h.verify)
 			challenge.Post("/resend", h.resend)
@@ -153,6 +169,89 @@ func (h *Handler) resend(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 	httpx.WriteJSON(writer, request, http.StatusOK, toChallengeResponse(issued))
+}
+
+// logout signs the caller out of the device they are holding.
+func (h *Handler) logout(writer http.ResponseWriter, request *http.Request) {
+	actor, err := requireActor(request)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	if err := h.sessions.Logout(request.Context(), actor); err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	h.clearRefreshCookie(writer)
+	writer.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) listSessions(writer http.ResponseWriter, request *http.Request) {
+	actor, err := requireActor(request)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	sessions, err := h.sessions.List(request.Context(), actor)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	httpx.WriteJSON(writer, request, http.StatusOK, toSessionListResponse(sessions))
+}
+
+// revokeSession signs one device out.
+//
+// The cookie is cleared only when the caller revoked the session they are
+// holding. Clearing it unconditionally would sign somebody out of the device in
+// their hand for tidying up a different one.
+func (h *Handler) revokeSession(writer http.ResponseWriter, request *http.Request) {
+	actor, err := requireActor(request)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	sessionID, err := sessionIDFrom(request)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	if err := h.sessions.Revoke(request.Context(), actor, sessionID); err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	if sessionID == actor.SessionID {
+		h.clearRefreshCookie(writer)
+	}
+	writer.WriteHeader(http.StatusNoContent)
+}
+
+// requireActor is the guard the authenticated operations start with.
+//
+// The middleware lets a request with no Authorization header through
+// unauthenticated so the public operations still work, which means the handler
+// is where "this one needs a caller" is decided.
+func requireActor(request *http.Request) (httpx.Actor, error) {
+	actor, ok := httpx.ActorFrom(request.Context())
+	if !ok || actor.UserID == uuid.Nil {
+		return httpx.Actor{}, apperr.New(
+			apperr.Unauthenticated, "TOKEN_INVALID", "This operation requires a signed-in caller.")
+	}
+	return actor, nil
+}
+
+// sessionIDFrom parses the path segment.
+//
+// A malformed uuid is the same 404 an unknown id gets, for the reason the
+// operation exists to observe: "that is not a uuid" and "you have no such
+// session" must not be distinguishable, or the shape of the id becomes something
+// to probe for.
+func sessionIDFrom(request *http.Request) (uuid.UUID, error) {
+	sessionID, err := uuid.Parse(chi.URLParam(request, "id"))
+	if err != nil {
+		return uuid.Nil, apperr.New(apperr.NotFound, "RESOURCE_NOT_FOUND", "That session was not found.")
+	}
+	return sessionID, nil
 }
 
 // challengeIDFrom parses the path segment.

@@ -55,6 +55,25 @@ by hand. Completed work is recorded here instead.
 | P2.3 | 2026-08-10 | `core.login_attempts` migration & table; `LoginService` handling Argon2id constant-time timing equalisation (`DummyVerify` for unknown emails), per-account and per-IP lockouts backed by persisted failures with 15-minute-to-24-hour exponential backoff, account status checks (suspended/unverified), transparent Argon2id parameter rehash on login, and `POST /auth/login` HTTP endpoint |
 | P2.4 | 2026-08-11 | `TokenService` — HS256 access tokens carrying `sub`/`sid`/`role`/`jti`/`iat`/`exp`/`aud`/`iss` and no PII, two-key rotation, 60-second leeway, the signing method pinned so an `alg: none` token cannot verify, and the parser driven by the injected clock; `TokenDenylist` over Redis for explicit logout, failing open per ADR-0007; `Authenticate` middleware placing `httpx.Actor` in the request context; login and email verification both return an `AuthSession`; `EMAIL_NOT_VERIFIED` corrected to 403 and account suspension split out of `ACCOUNT_LOCKED` into `ACCOUNT_SUSPENDED` |
 
+## Open after P2.6
+
+- [ ] **The session list shows no country.** P2.6's card specifies "IP country from a local
+      database", which cannot coexist with storing only `ip_hash` — a country has to be resolved at
+      sign-in, while the address is still in hand, and stored in a column of its own. Doing it needs
+      a migration, `oschwald/geoip2-golang` in `DEPENDENCIES.md`, a `GEOIP_DATABASE_PATH` key in
+      `.env.example`, and a MaxMind licence key wired into CI and Compose. Deferred deliberately,
+      with the human's agreement; the schema description in `components/auth.yaml` says so, so a
+      client reading the spec is not surprised when the field appears.
+- [ ] **`POST /admin/users/{id}/sessions/revoke` does not exist.** `SessionRevoker.RevokeAll` is
+      built and tested and nothing calls it. The endpoint belongs to `admin`, which arrives in P4.1.
+- [ ] **Sessions are never swept.** A revoked row is kept for forensics and an idle one simply stops
+      being listed once its refresh token expires, so `core.sessions` grows without bound. The same
+      argument as the refresh-token sweep, and probably the same card.
+- [ ] **`device_label` is null for sessions opened by email verification.** `VerifyEmail` has a
+      context but not a request, so there is no user agent to read. Threading the header through
+      three signatures was not worth it for a column nothing read at the time; now that the session
+      list renders it, it is worth revisiting.
+
 ## Open after P2.5
 
 - [ ] **`core.sessions.device_label` is never written.** The column exists and the session list
@@ -81,10 +100,10 @@ by hand. Completed work is recorded here instead.
 
 ## Open after P2.4
 
-- [ ] **Logout has no endpoint yet.** `TokenService.Revoke` and the denylist behind it are built
-      and tested, but nothing calls them: `POST /auth/logout` is P2.6. The session row arrived in
-      P2.5, so logout now has something to revoke as well as something to denylist. Until then a
-      learner signs out by discarding the token client-side and waiting fifteen minutes.
+- [x] **Logout has no endpoint yet.** Closed by P2.6: `POST /auth/logout` revokes the session and
+      its refresh family in Postgres and denylists the access token id in Redis. The denylist write
+      fails open — an unreachable Redis leaves one access token alive for at most its remaining
+      fifteen minutes, while the durable half of the sign-out has already committed.
 - [x] **`sid` identifies nothing yet.** Closed by P2.5: `core.sessions` exists, `sid` is its
       primary key, and revoking the row stops the refresh family immediately. The access token it
       names still survives to its own expiry — that is ADR-0007's accepted trade, and `POST

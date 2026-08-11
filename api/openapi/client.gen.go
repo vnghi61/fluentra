@@ -214,6 +214,17 @@ type ClientInterface interface {
 	// Corresponds with POST /auth/login (the `AuthLogin` operationId).
 	AuthLogin(ctx context.Context, body AuthLoginJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AuthLogout Sign out of this device.
+	//
+	// Revokes the session the access token names, revokes its refresh family, and clears the refresh cookie.
+	//
+	// The access token itself is added to a denylist so it stops working immediately rather than at its own expiry. That denylist is the one thing on the authentication path that reads a datastore, and it fails open (ADR-0007): if it cannot be reached, the token keeps working until it expires, which is at most fifteen minutes. Failing closed would turn a cache outage into a total authentication outage for every signed-in learner, which is the larger harm.
+	//
+	// Logging out twice is not an error. The second call finds nothing left to revoke and answers 204 all the same -- a client retrying after a dropped connection should not be told something went wrong.
+	//
+	// Corresponds with POST /auth/logout (the `AuthLogout` operationId).
+	AuthLogout(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AuthRefresh Rotate the refresh token and issue a new access token.
 	//
 	// Exchanges the `refresh_token` cookie for a fresh access token and a fresh refresh cookie. There is no request body: the credential is the cookie, which the browser attaches on its own and no script can read.
@@ -254,6 +265,28 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /auth/register (the `AuthRegister` operationId).
 	AuthRegister(ctx context.Context, body AuthRegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AuthListSessions List the devices this account is signed in on.
+	//
+	// Returns the caller's own live sessions, most recently active first. There is no path parameter and no filter by account: the actor comes from the token, so one learner cannot read another's list by changing a segment.
+	//
+	// No IP address appears here and none is stored -- see `SessionSummary`.
+	//
+	// Corresponds with GET /auth/sessions (the `AuthListSessions` operationId).
+	AuthListSessions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AuthRevokeSession Sign out of one device.
+	//
+	// Revokes the session and its refresh family, so the device it belongs to cannot renew and is signed out within one access-token lifetime.
+	//
+	// **A session belonging to another account is 404, not 403.** The two are not interchangeable: 403 confirms the id names a real session and turns this operation into an oracle for enumerating them, while 404 says only that the caller has no such session -- which is all they are entitled to know, and is equally true of an id that never existed.
+	//
+	// Revoking the current session is allowed and signs the caller out here: the response clears the refresh cookie in that case, and in that case only. `current` in the list operation is what lets an interface warn first.
+	//
+	// Revoking an already-revoked session answers 204, for the same reason logout is idempotent.
+	//
+	// Corresponds with DELETE /auth/sessions/{id} (the `AuthRevokeSession` operationId).
+	AuthRevokeSession(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SystemHealth Check process liveness.
 	//
@@ -594,6 +627,27 @@ func (c *Client) AuthLogin(ctx context.Context, body AuthLoginJSONRequestBody, r
 	return c.Client.Do(req)
 }
 
+// AuthLogout Sign out of this device.
+//
+// Revokes the session the access token names, revokes its refresh family, and clears the refresh cookie.
+//
+// The access token itself is added to a denylist so it stops working immediately rather than at its own expiry. That denylist is the one thing on the authentication path that reads a datastore, and it fails open (ADR-0007): if it cannot be reached, the token keeps working until it expires, which is at most fifteen minutes. Failing closed would turn a cache outage into a total authentication outage for every signed-in learner, which is the larger harm.
+//
+// Logging out twice is not an error. The second call finds nothing left to revoke and answers 204 all the same -- a client retrying after a dropped connection should not be told something went wrong.
+//
+// Corresponds with POST /auth/logout (the `AuthLogout` operationId).
+func (c *Client) AuthLogout(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthLogoutRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // AuthRefresh Rotate the refresh token and issue a new access token.
 //
 // Exchanges the `refresh_token` cookie for a fresh access token and a fresh refresh cookie. There is no request body: the credential is the cookie, which the browser attaches on its own and no script can read.
@@ -655,6 +709,48 @@ func (c *Client) AuthRegisterWithBody(ctx context.Context, contentType string, b
 // Corresponds with POST /auth/register (the `AuthRegister` operationId).
 func (c *Client) AuthRegister(ctx context.Context, body AuthRegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAuthRegisterRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AuthListSessions List the devices this account is signed in on.
+//
+// Returns the caller's own live sessions, most recently active first. There is no path parameter and no filter by account: the actor comes from the token, so one learner cannot read another's list by changing a segment.
+//
+// No IP address appears here and none is stored -- see `SessionSummary`.
+//
+// Corresponds with GET /auth/sessions (the `AuthListSessions` operationId).
+func (c *Client) AuthListSessions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthListSessionsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AuthRevokeSession Sign out of one device.
+//
+// Revokes the session and its refresh family, so the device it belongs to cannot renew and is signed out within one access-token lifetime.
+//
+// **A session belonging to another account is 404, not 403.** The two are not interchangeable: 403 confirms the id names a real session and turns this operation into an oracle for enumerating them, while 404 says only that the caller has no such session -- which is all they are entitled to know, and is equally true of an id that never existed.
+//
+// Revoking the current session is allowed and signs the caller out here: the response clears the refresh cookie in that case, and in that case only. `current` in the list operation is what lets an interface warn first.
+//
+// Revoking an already-revoked session answers 204, for the same reason logout is idempotent.
+//
+// Corresponds with DELETE /auth/sessions/{id} (the `AuthRevokeSession` operationId).
+func (c *Client) AuthRevokeSession(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthRevokeSessionRequest(c.Server, id)
 	if err != nil {
 		return nil, err
 	}
@@ -1419,6 +1515,33 @@ func NewAuthLoginRequestWithBody(server string, contentType string, body io.Read
 	return req, nil
 }
 
+// NewAuthLogoutRequest constructs an http.Request for the AuthLogout method
+func NewAuthLogoutRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/logout")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewAuthRefreshRequest constructs an http.Request for the AuthRefresh method
 func NewAuthRefreshRequest(server string) (*http.Request, error) {
 	var err error
@@ -1482,6 +1605,67 @@ func NewAuthRegisterRequestWithBody(server string, contentType string, body io.R
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewAuthListSessionsRequest constructs an http.Request for the AuthListSessions method
+func NewAuthListSessionsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/sessions")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAuthRevokeSessionRequest constructs an http.Request for the AuthRevokeSession method
+func NewAuthRevokeSessionRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/sessions/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -1932,6 +2116,19 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /auth/login (the `AuthLogin` operationId).
 	AuthLoginWithResponse(ctx context.Context, body AuthLoginJSONRequestBody, reqEditors ...RequestEditorFn) (*AuthLoginResponse, error)
 
+	// AuthLogoutWithResponse Sign out of this device.
+	//
+	// Revokes the session the access token names, revokes its refresh family, and clears the refresh cookie.
+	//
+	// The access token itself is added to a denylist so it stops working immediately rather than at its own expiry. That denylist is the one thing on the authentication path that reads a datastore, and it fails open (ADR-0007): if it cannot be reached, the token keeps working until it expires, which is at most fifteen minutes. Failing closed would turn a cache outage into a total authentication outage for every signed-in learner, which is the larger harm.
+	//
+	// Logging out twice is not an error. The second call finds nothing left to revoke and answers 204 all the same -- a client retrying after a dropped connection should not be told something went wrong.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /auth/logout (the `AuthLogout` operationId).
+	AuthLogoutWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AuthLogoutResponse, error)
+
 	// AuthRefreshWithResponse Rotate the refresh token and issue a new access token.
 	//
 	// Exchanges the `refresh_token` cookie for a fresh access token and a fresh refresh cookie. There is no request body: the credential is the cookie, which the browser attaches on its own and no script can read.
@@ -1974,6 +2171,32 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /auth/register (the `AuthRegister` operationId).
 	AuthRegisterWithResponse(ctx context.Context, body AuthRegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*AuthRegisterResponse, error)
+
+	// AuthListSessionsWithResponse List the devices this account is signed in on.
+	//
+	// Returns the caller's own live sessions, most recently active first. There is no path parameter and no filter by account: the actor comes from the token, so one learner cannot read another's list by changing a segment.
+	//
+	// No IP address appears here and none is stored -- see `SessionSummary`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /auth/sessions (the `AuthListSessions` operationId).
+	AuthListSessionsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AuthListSessionsResponse, error)
+
+	// AuthRevokeSessionWithResponse Sign out of one device.
+	//
+	// Revokes the session and its refresh family, so the device it belongs to cannot renew and is signed out within one access-token lifetime.
+	//
+	// **A session belonging to another account is 404, not 403.** The two are not interchangeable: 403 confirms the id names a real session and turns this operation into an oracle for enumerating them, while 404 says only that the caller has no such session -- which is all they are entitled to know, and is equally true of an id that never existed.
+	//
+	// Revoking the current session is allowed and signs the caller out here: the response clears the refresh cookie in that case, and in that case only. `current` in the list operation is what lets an interface warn first.
+	//
+	// Revoking an already-revoked session answers 204, for the same reason logout is idempotent.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /auth/sessions/{id} (the `AuthRevokeSession` operationId).
+	AuthRevokeSessionWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*AuthRevokeSessionResponse, error)
 
 	// SystemHealthWithResponse Check process liveness.
 	//
@@ -2810,6 +3033,55 @@ func (r AuthLoginResponse) ContentType() string {
 	return ""
 }
 
+// AuthLogoutResponse204Headers the declared response headers of an HTTP 204 response for AuthLogout
+type AuthLogoutResponse204Headers struct {
+	SetCookie  *string
+	XRequestId *string
+}
+
+type AuthLogoutResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// Headers204 the parsed response headers for an HTTP 204 response
+	Headers204 *AuthLogoutResponse204Headers
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AuthLogoutResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetBody returns the raw response body bytes
+func (r AuthLogoutResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AuthLogoutResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AuthLogoutResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AuthLogoutResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // AuthRefreshResponse200Headers the declared response headers of an HTTP 200 response for AuthRefresh
 type AuthRefreshResponse200Headers struct {
 	SetCookie  *string
@@ -2950,6 +3222,117 @@ func (r AuthRegisterResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r AuthRegisterResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AuthListSessionsResponse200Headers the declared response headers of an HTTP 200 response for AuthListSessions
+type AuthListSessionsResponse200Headers struct {
+	XRequestId *string
+}
+
+type AuthListSessionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SessionList
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AuthListSessionsResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AuthListSessionsResponse) GetJSON200() *SessionList {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AuthListSessionsResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetBody returns the raw response body bytes
+func (r AuthListSessionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AuthListSessionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AuthListSessionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AuthListSessionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AuthRevokeSessionResponse204Headers the declared response headers of an HTTP 204 response for AuthRevokeSession
+type AuthRevokeSessionResponse204Headers struct {
+	SetCookie  *string
+	XRequestId *string
+}
+
+type AuthRevokeSessionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// Headers204 the parsed response headers for an HTTP 204 response
+	Headers204 *AuthRevokeSessionResponse204Headers
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AuthRevokeSessionResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AuthRevokeSessionResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r AuthRevokeSessionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AuthRevokeSessionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AuthRevokeSessionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AuthRevokeSessionResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -3704,6 +4087,25 @@ func (c *ClientWithResponses) AuthLoginWithResponse(ctx context.Context, body Au
 	return ParseAuthLoginResponse(rsp)
 }
 
+// AuthLogoutWithResponse Sign out of this device.
+//
+// Revokes the session the access token names, revokes its refresh family, and clears the refresh cookie.
+//
+// The access token itself is added to a denylist so it stops working immediately rather than at its own expiry. That denylist is the one thing on the authentication path that reads a datastore, and it fails open (ADR-0007): if it cannot be reached, the token keeps working until it expires, which is at most fifteen minutes. Failing closed would turn a cache outage into a total authentication outage for every signed-in learner, which is the larger harm.
+//
+// Logging out twice is not an error. The second call finds nothing left to revoke and answers 204 all the same -- a client retrying after a dropped connection should not be told something went wrong.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /auth/logout (the `AuthLogout` operationId).
+func (c *ClientWithResponses) AuthLogoutWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AuthLogoutResponse, error) {
+	rsp, err := c.AuthLogout(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthLogoutResponse(rsp)
+}
+
 // AuthRefreshWithResponse Rotate the refresh token and issue a new access token.
 //
 // Exchanges the `refresh_token` cookie for a fresh access token and a fresh refresh cookie. There is no request body: the credential is the cookie, which the browser attaches on its own and no script can read.
@@ -3763,6 +4165,44 @@ func (c *ClientWithResponses) AuthRegisterWithResponse(ctx context.Context, body
 		return nil, err
 	}
 	return ParseAuthRegisterResponse(rsp)
+}
+
+// AuthListSessionsWithResponse List the devices this account is signed in on.
+//
+// Returns the caller's own live sessions, most recently active first. There is no path parameter and no filter by account: the actor comes from the token, so one learner cannot read another's list by changing a segment.
+//
+// No IP address appears here and none is stored -- see `SessionSummary`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /auth/sessions (the `AuthListSessions` operationId).
+func (c *ClientWithResponses) AuthListSessionsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AuthListSessionsResponse, error) {
+	rsp, err := c.AuthListSessions(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthListSessionsResponse(rsp)
+}
+
+// AuthRevokeSessionWithResponse Sign out of one device.
+//
+// Revokes the session and its refresh family, so the device it belongs to cannot renew and is signed out within one access-token lifetime.
+//
+// **A session belonging to another account is 404, not 403.** The two are not interchangeable: 403 confirms the id names a real session and turns this operation into an oracle for enumerating them, while 404 says only that the caller has no such session -- which is all they are entitled to know, and is equally true of an id that never existed.
+//
+// Revoking the current session is allowed and signs the caller out here: the response clears the refresh cookie in that case, and in that case only. `current` in the list operation is what lets an interface warn first.
+//
+// Revoking an already-revoked session answers 204, for the same reason logout is idempotent.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /auth/sessions/{id} (the `AuthRevokeSession` operationId).
+func (c *ClientWithResponses) AuthRevokeSessionWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*AuthRevokeSessionResponse, error) {
+	rsp, err := c.AuthRevokeSession(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthRevokeSessionResponse(rsp)
 }
 
 // SystemHealthWithResponse Check process liveness.
@@ -4605,6 +5045,55 @@ func ParseAuthLoginResponse(rsp *http.Response) (*AuthLoginResponse, error) {
 	return response, nil
 }
 
+// ParseAuthLogoutResponse parses an HTTP response from a AuthLogoutWithResponse call
+func ParseAuthLogoutResponse(rsp *http.Response) (*AuthLogoutResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AuthLogoutResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		var headers AuthLogoutResponse204Headers
+		if values := rsp.Header.Values("Set-Cookie"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "Set-Cookie", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.SetCookie = &value
+		}
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers204 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseAuthRefreshResponse parses an HTTP response from a AuthRefreshWithResponse call
 func ParseAuthRefreshResponse(rsp *http.Response) (*AuthRefreshResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -4740,6 +5229,108 @@ func ParseAuthRegisterResponse(rsp *http.Response) (*AuthRegisterResponse, error
 			headers.RetryAfter = &value
 		}
 		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAuthListSessionsResponse parses an HTTP response from a AuthListSessionsWithResponse call
+func ParseAuthListSessionsResponse(rsp *http.Response) (*AuthListSessionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AuthListSessionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SessionList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AuthListSessionsResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAuthRevokeSessionResponse parses an HTTP response from a AuthRevokeSessionWithResponse call
+func ParseAuthRevokeSessionResponse(rsp *http.Response) (*AuthRevokeSessionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AuthRevokeSessionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		var headers AuthRevokeSessionResponse204Headers
+		if values := rsp.Header.Values("Set-Cookie"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "Set-Cookie", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.SetCookie = &value
+		}
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers204 = &headers
 	}
 
 	return response, nil

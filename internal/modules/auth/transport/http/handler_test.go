@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -132,12 +133,54 @@ func newTestRouterWith(
 	reg authhttp.Registration, auth authhttp.Authenticator,
 	rotator authhttp.Rotator, cookies authhttp.CookieOptions,
 ) chi.Router {
+	return newTestRouterWithSessions(reg, auth, rotator, &fakeSessions{}, cookies)
+}
+
+func newTestRouterWithSessions(
+	reg authhttp.Registration, auth authhttp.Authenticator, rotator authhttp.Rotator,
+	sessions authhttp.Sessions, cookies authhttp.CookieOptions,
+) chi.Router {
 	r := chi.NewRouter()
 	r.Route("/api/v1", func(api chi.Router) {
-		handler := authhttp.NewHandler(reg, auth, rotator, cookies)
+		handler := authhttp.NewHandler(reg, auth, rotator, sessions, cookies)
 		handler.Routes(api)
 	})
 	return r
+}
+
+// fakeSessions stands in for the session service. What the handler owes it is
+// the actor, the 404 passed through unchanged, and the cookie cleared only when
+// the caller signed out of the device they are holding.
+type fakeSessions struct {
+	listFn   func(ctx context.Context, actor httpx.Actor) ([]service.SessionView, error)
+	revokeFn func(ctx context.Context, actor httpx.Actor, sessionID uuid.UUID) error
+	logoutFn func(ctx context.Context, actor httpx.Actor) error
+
+	sawActor httpx.Actor
+}
+
+func (f *fakeSessions) List(ctx context.Context, actor httpx.Actor) ([]service.SessionView, error) {
+	f.sawActor = actor
+	if f.listFn != nil {
+		return f.listFn(ctx, actor)
+	}
+	return nil, nil
+}
+
+func (f *fakeSessions) Revoke(ctx context.Context, actor httpx.Actor, sessionID uuid.UUID) error {
+	f.sawActor = actor
+	if f.revokeFn != nil {
+		return f.revokeFn(ctx, actor, sessionID)
+	}
+	return nil
+}
+
+func (f *fakeSessions) Logout(ctx context.Context, actor httpx.Actor) error {
+	f.sawActor = actor
+	if f.logoutFn != nil {
+		return f.logoutFn(ctx, actor)
+	}
+	return nil
 }
 
 func TestHandler_Register_Success(t *testing.T) {
@@ -553,5 +596,183 @@ func TestHandler_LocalDevelopmentDropsSecureAndNothingElse(t *testing.T) {
 	}
 	if !cookie.HttpOnly || cookie.SameSite != http.SameSiteLaxMode || cookie.Path != refreshCookiePath {
 		t.Errorf("dropping Secure also dropped a protection that does not depend on TLS: %+v", cookie)
+	}
+}
+
+// signedIn puts an actor in the request context the way the middleware would.
+func signedIn(req *http.Request, actor httpx.Actor) *http.Request {
+	return req.WithContext(httpx.WithActor(req.Context(), actor))
+}
+
+// testJTI is the `jti` claim a real actor carries. It is declared apart from
+// the literal below because gosec's G101 flags a composite literal that assigns
+// a string to a field whose name contains "token" — and this is an identifier
+// the denylist is keyed on, not a credential that opens anything. Naming around
+// the false positive is cheaper than a nolint a reader has to evaluate.
+const testJTI = "01J8XQ7Z9K3M4N5P6Q7R8S9T0V"
+
+func testActor(sessionID uuid.UUID) httpx.Actor {
+	return httpx.Actor{
+		UserID:    uuid.MustParse(testChallengeID),
+		SessionID: sessionID,
+		Role:      "user",
+		TokenID:   testJTI,
+	}
+}
+
+// TestHandler_TheAuthenticatedSessionOperationsRefuseAnAnonymousCaller is the
+// guard each of them starts with. The middleware lets a request with no
+// Authorization header through unauthenticated so the public operations still
+// work, which means a handler that forgot to ask for an actor would serve the
+// zero value — and uuid.Nil is an account id that matches nothing, so the bug
+// would look like an empty list rather than like a failure.
+func TestHandler_TheAuthenticatedSessionOperationsRefuseAnAnonymousCaller(t *testing.T) {
+	sessions := &fakeSessions{
+		listFn: func(context.Context, httpx.Actor) ([]service.SessionView, error) {
+			t.Error("the service was reached by a caller with no actor")
+			return nil, nil
+		},
+	}
+	router := newTestRouterWithSessions(
+		&fakeRegistrationService{}, &fakeAuthenticator{}, &fakeRotator{}, sessions,
+		authhttp.CookieOptions{Secure: true})
+
+	anonymous := map[string]*http.Request{
+		"logout": httptest.NewRequest(http.MethodPost, "/api/v1/auth/logout", nil),
+		"list":   httptest.NewRequest(http.MethodGet, "/api/v1/auth/sessions", nil),
+		"revoke": httptest.NewRequest(http.MethodDelete, "/api/v1/auth/sessions/"+testChallengeID, nil),
+	}
+	for name, req := range anonymous {
+		t.Run(name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			router.ServeHTTP(rec, req)
+			if rec.Code != http.StatusUnauthorized {
+				t.Errorf("status = %d, want 401; body: %s", rec.Code, rec.Body.String())
+			}
+		})
+	}
+}
+
+// TestHandler_LogoutClearsTheCookieAndAnswers204 covers the response a client
+// acts on: no body, and a cookie it will stop replaying.
+func TestHandler_LogoutClearsTheCookieAndAnswers204(t *testing.T) {
+	sessions := &fakeSessions{}
+	router := newTestRouterWithSessions(
+		&fakeRegistrationService{}, &fakeAuthenticator{}, &fakeRotator{}, sessions,
+		authhttp.CookieOptions{Secure: true})
+
+	actor := testActor(uuid.New())
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, signedIn(httptest.NewRequest(http.MethodPost, "/api/v1/auth/logout", nil), actor))
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want 204; body: %s", rec.Code, rec.Body.String())
+	}
+	if rec.Body.Len() != 0 {
+		t.Errorf("204 carried a body: %s", rec.Body.String())
+	}
+	if sessions.sawActor.SessionID != actor.SessionID {
+		t.Errorf("the service was given session %s, want %s", sessions.sawActor.SessionID, actor.SessionID)
+	}
+
+	cookie := findCookie(rec.Result(), authhttp.RefreshCookieName)
+	if cookie == nil || cookie.Value != "" || cookie.MaxAge >= 0 {
+		t.Errorf("the refresh cookie was not cleared: %+v", cookie)
+	}
+}
+
+// TestHandler_RevokingAnotherDeviceLeavesThisOneSignedIn is the distinction the
+// cookie makes. Clearing it unconditionally would sign the learner out of the
+// device in their hand for tidying up a different one.
+func TestHandler_RevokingAnotherDeviceLeavesThisOneSignedIn(t *testing.T) {
+	router := newTestRouterWithSessions(
+		&fakeRegistrationService{}, &fakeAuthenticator{}, &fakeRotator{}, &fakeSessions{},
+		authhttp.CookieOptions{Secure: true})
+
+	current, other := uuid.New(), uuid.New()
+
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, signedIn(
+		httptest.NewRequest(http.MethodDelete, "/api/v1/auth/sessions/"+other.String(), nil),
+		testActor(current)))
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want 204; body: %s", rec.Code, rec.Body.String())
+	}
+	if cookie := findCookie(rec.Result(), authhttp.RefreshCookieName); cookie != nil {
+		t.Errorf("revoking another device cleared this one's refresh cookie: %+v", cookie)
+	}
+
+	// Revoking the session the caller is holding does clear it.
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, signedIn(
+		httptest.NewRequest(http.MethodDelete, "/api/v1/auth/sessions/"+current.String(), nil),
+		testActor(current)))
+
+	cookie := findCookie(rec.Result(), authhttp.RefreshCookieName)
+	if cookie == nil || cookie.MaxAge >= 0 {
+		t.Errorf("revoking the current session did not clear its cookie: %+v", cookie)
+	}
+}
+
+// TestHandler_AMalformedSessionIDIsTheSame404AsAnUnknownOne keeps the shape of
+// the id from being something to probe for. "That is not a uuid" and "you have
+// no such session" must be indistinguishable, for the same reason the service
+// refuses to distinguish a stranger's session from one that never existed.
+func TestHandler_AMalformedSessionIDIsTheSame404AsAnUnknownOne(t *testing.T) {
+	sessions := &fakeSessions{
+		revokeFn: func(context.Context, httpx.Actor, uuid.UUID) error {
+			return apperr.New(apperr.NotFound, "RESOURCE_NOT_FOUND", "That session was not found.")
+		},
+	}
+	router := newTestRouterWithSessions(
+		&fakeRegistrationService{}, &fakeAuthenticator{}, &fakeRotator{}, sessions,
+		authhttp.CookieOptions{Secure: true})
+
+	bodies := map[string]map[string]any{}
+	for name, path := range map[string]string{
+		"malformed": "/api/v1/auth/sessions/not-a-uuid",
+		"unknown":   "/api/v1/auth/sessions/" + uuid.New().String(),
+	} {
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, signedIn(httptest.NewRequest(http.MethodDelete, path, nil), testActor(uuid.New())))
+
+		if rec.Code != http.StatusNotFound {
+			t.Fatalf("%s: status = %d, want 404; body: %s", name, rec.Code, rec.Body.String())
+		}
+
+		var problem map[string]any
+		if err := json.Unmarshal(rec.Body.Bytes(), &problem); err != nil {
+			t.Fatalf("%s: decode problem: %v", name, err)
+		}
+		// `instance` is the request path, which differs only because the caller
+		// sent two different ones. It tells them nothing they did not already
+		// know; every other member of the document must match.
+		delete(problem, "instance")
+		bodies[name] = problem
+	}
+
+	if !reflect.DeepEqual(bodies["malformed"], bodies["unknown"]) {
+		t.Errorf("the two 404s differ:\n malformed: %v\n unknown:   %v", bodies["malformed"], bodies["unknown"])
+	}
+}
+
+// TestHandler_AnEmptySessionListSerialisesAsAnArray is the difference between
+// `[]` and `null`. The schema says array; a client written against it should not
+// have to handle a second spelling of "none".
+func TestHandler_AnEmptySessionListSerialisesAsAnArray(t *testing.T) {
+	router := newTestRouterWithSessions(
+		&fakeRegistrationService{}, &fakeAuthenticator{}, &fakeRotator{}, &fakeSessions{},
+		authhttp.CookieOptions{Secure: true})
+
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, signedIn(
+		httptest.NewRequest(http.MethodGet, "/api/v1/auth/sessions", nil), testActor(uuid.New())))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body: %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"sessions":[]`) {
+		t.Errorf("an empty list did not serialise as an array: %s", rec.Body.String())
 	}
 }

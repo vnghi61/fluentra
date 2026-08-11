@@ -51,6 +51,7 @@ type fakeRefreshRepo struct {
 	// digested rather than stored.
 	lastIPHash        []byte
 	lastUserAgentHash []byte
+	lastDeviceLabel   *string
 }
 
 func newFakeRefreshRepo() *fakeRefreshRepo {
@@ -63,13 +64,13 @@ func newFakeRefreshRepo() *fakeRefreshRepo {
 func (f *fakeRefreshRepo) WithTx(pgx.Tx) service.RefreshRepo { return f }
 
 func (f *fakeRefreshRepo) CreateSession(
-	_ context.Context, id, _ uuid.UUID, ipHash, userAgentHash []byte, _ time.Time,
+	_ context.Context, id, _ uuid.UUID, deviceLabel *string, ipHash, userAgentHash []byte, _ time.Time,
 ) error {
 	if f.createSessionErr != nil {
 		return f.createSessionErr
 	}
 	f.sessions[id] = false
-	f.lastIPHash, f.lastUserAgentHash = ipHash, userAgentHash
+	f.lastIPHash, f.lastUserAgentHash, f.lastDeviceLabel = ipHash, userAgentHash, deviceLabel
 	return nil
 }
 
@@ -251,6 +252,12 @@ func TestStart_DigestsTheClientAddressAndNeverStoresIt(t *testing.T) {
 		if strings.Contains(string(pair.stored), pair.plain) {
 			t.Errorf("%s contains the value it is supposed to hide", name)
 		}
+	}
+
+	// The label is stored in the clear beside the digest, because it is the one
+	// thing about the device the learner has to be able to read.
+	if h.repo.lastDeviceLabel != nil {
+		t.Errorf("device label = %q, want none for a user agent nothing recognises", *h.repo.lastDeviceLabel)
 	}
 
 	// An absent address is a null column, not a digest of the empty string —

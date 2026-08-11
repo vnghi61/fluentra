@@ -1,6 +1,7 @@
 package contract
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -85,6 +86,22 @@ type VerificationRequested struct {
 	Code        string    `json:"code"`
 	ExpiresAt   time.Time `json:"expires_at"`
 	OccurredAt  time.Time `json:"occurred_at"`
+}
+
+// SessionRevoker ends every session an account has.
+//
+// It is the surface `user` calls when an account is deleted and `admin` calls
+// when one is suspended: both need every device signed out, and neither may
+// reach into this module to do it. The count is returned because a caller
+// recording the action wants to say how many devices were affected.
+//
+// Access tokens already issued are not revoked by this. The caller is not the
+// account's owner and holds none of them; they stop working within one
+// access-token lifetime, which is the window ADR-0007 accepted in exchange for
+// keeping a datastore read off every request. A suspension that must bite
+// sooner needs the denylist, not this method.
+type SessionRevoker interface {
+	RevokeAll(ctx context.Context, userID uuid.UUID) (int, error)
 }
 
 // SecurityEvent is one occurrence worth investigating.

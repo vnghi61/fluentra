@@ -49,6 +49,19 @@ Set-Cookie-Refresh:
   example: >-
     refresh_token=opaque-value; Path=/api/v1/auth; Max-Age=2592000; HttpOnly;
     Secure; SameSite=Lax
+Set-Cookie-RefreshCleared:
+  description: >-
+    An expired `refresh_token` cookie, sent when the session it belonged to has
+    been signed out.
+
+
+    The attributes match the ones the cookie was set with, because a browser
+    treats a deletion whose `Path` or `Secure` differs as a *different* cookie
+    and keeps the original -- so a mismatch here would leave the client
+    replaying a dead token on every launch.
+  schema:
+    type: string
+  example: refresh_token=; Path=/api/v1/auth; Max-Age=0; HttpOnly; Secure; SameSite=Lax
 Retry-After:
   description: Number of seconds before the request may be retried.
   schema:
