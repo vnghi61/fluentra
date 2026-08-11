@@ -209,6 +209,9 @@ paths:
                     format: uuid
                   verified:
                     type: boolean
+              example:
+                user_id: 018f96a3-91e8-7b9a-aee5-8d8e96f90d31
+                verified: true
         '401':
           $ref: '#/components/responses/Unauthorized'
         '429':
