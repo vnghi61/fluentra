@@ -1,4 +1,7 @@
-# Handoff — finish P2.2, then the rest of WP2
+# Handoff — P2.5 through P2.10
+
+> **Revision 2, 2026-08-11.** P2.2, P2.3 and P2.4 are done. §1 below is current; the rest of the
+> file is still accurate and is where the traps and patterns live. Read all of it.
 
 This file is the single source of truth for the handoff. It is written to be read cold, by an
 agent with no memory of the sessions that produced the current state.
@@ -10,56 +13,58 @@ Read `/AGENT.md` first. Then this. Then the card you are working on in
 
 ## 1. Exact state right now
 
+**P2.1, P2.1b, P2.2 and P2.3 are merged into `main`. P2.4 is done but unpushed.** The next card is
+**P2.5 — refresh rotation with reuse detection**, branch `feat/auth-refresh-rotation`.
+
 | | |
 |---|---|
-| Branch | `feat/auth-register-otp` |
-| Head | `db08f6c` — `wip(auth): registration and email verification, spec and service layers` |
-| Pushed | **No.** One commit ahead of `origin/main`, local only |
-| Worktree | Clean |
-| `origin/main` head | `43aaef3` (P2.1b merged) |
-| Highest migration timestamp | `1700000070`. The next new migration is `1700000080` |
+| `origin/main` head | `aff70f2` (P2.3 merged) |
+| Highest migration timestamp | `1700000090`. The next new migration is `1700000100` |
 
-`main` already has P2.1 (`core.credentials`, Argon2id, password policy, HIBP) and P2.1b
-(`core.auth_challenges`, the generic OTP subsystem). P2.2 is half done on the branch above.
+### Two local branches that are not pushed
 
-### What is done on the branch
+The environment lost its git credentials part-way through: the remote is HTTPS and the cached
+credential expired, `gh` is configured for SSH and the key is not available here. **A human has to
+push both.** They stack, so they merge in this order:
 
-- **OpenAPI.** `POST /auth/register`, `POST /auth/challenges/{id}/verify`,
-  `POST /auth/challenges/{id}/resend`, plus `api/openapi/components/auth.yaml`. Spectral clean,
-  `make gen` regenerates cleanly on both the Go and TypeScript sides. **The spec was reviewed and
-  approved by the human. Do not change it without asking.**
-- **`user/contract.Registrar`** — `FindByEmail`, `Recipient`, `MarkEmailVerified`,
-  `PurgeUnverifiedBefore`, with repository and service behind each, plus a query
-  `PurgeUnverifiedUsersBefore`. `go test ./internal/modules/user/...` passes.
-- **`db/migrations/auth/1700000070`** — adds `user_id` to `core.auth_challenges`.
-- **`internal/modules/auth/contract/contract.go`** — the two delivery events.
-- **`internal/modules/auth/service/register.go`** — the three registration paths, `VerifyEmail`,
-  `Resend`, `PurgeUnverified`.
-- **`internal/modules/auth/transport/http/`** — `handler.go`, `dto.go`.
+| Branch | Head | What it is |
+|---|---|---|
+| `fix/openapi-login-example` | `656fb34` | **`main` is red without this.** `POST /auth/login`'s 200 shipped with no `example` and the spectral job fails on every push. Also adds `scripts/ci-local.sh`. |
+| `feat/auth-jwt-middleware` | `a5fd195` | P2.4, branched from the fix because it rewrites the same response |
 
-Verified only by `go build`, `gofmt -l`, and the pre-existing test suites still passing. **None of
-the new auth code has a single test.**
+PR bodies for both were written to a scratchpad that will not survive; rewrite them from the commit
+messages, which carry the full reasoning.
 
-### What is missing for P2.2
+### What P2.4 landed
 
-1. `internal/modules/auth/module.go` — `New(Deps)`, `Routes`, `Subscribe(bus)`, `CronJobs()`, and
-   the adapters. Copy the shape from `internal/modules/audit/module.go` and
-   `internal/modules/user/module.go`.
-2. The **mailer consumer**: subscribe to `auth.verification_requested` and
-   `auth.registration_attempted`, render through `platform/mailer`, send.
-3. `internal/platform/mailer/templates/{en,vi}/registration_attempt.{subject,txt,html}` — the
-   "someone tried to register with your address" message. `verify_email.*` already exists in both
-   locales and already uses `{{.Code}}`; check it renders what the consumer passes.
-4. Cron registration for the seven-day sweep of unverified accounts
-   (`RegisterService.PurgeUnverified`), following `audit`'s `CronJobs()` pattern.
-5. Wiring: `cmd/api/modules.go` (construct auth after user, mount routes) and
-   `cmd/worker/main.go` (`startModules` — subscribe the consumer, register the cron job).
-6. `.go-arch-lint.yml`: add `m_auth_http`, and extend `m_auth_service` with `c_user`, `p_mailer`,
-   `s_outbox`. **See trap 3 below — `m_auth_http` must list `m_auth_service` even though the
-   handler imports nothing from it.**
-7. Tests. See §4 for what must be covered.
-8. Docs: `internal/modules/auth/AGENT.md` §5/§6/§12, `TODO.md` Progress row, `API.md`,
-   `CHANGELOG.md` under `Unreleased` (P2.2 **is** user-visible — first public endpoints).
+`service/token.go` (HS256, `sub`/`sid`/`role`/`jti`/`iat`/`exp`/`aud`/`iss`, no PII, two-key
+rotation, 60 s leeway, signing method pinned so `alg: none` cannot verify) · `repository/denylist.go`
+over Redis, failing open per ADR-0007 · `transport/http/middleware.go` placing `httpx.Actor` in the
+request context · login and email verification both returning an `AuthSession`.
+
+Three things it also corrected, which a reviewer should know were deliberate:
+
+- **`EMAIL_NOT_VERIFIED` is now 403, not 401**, and account suspension is `ACCOUNT_SUSPENDED` 403
+  rather than reusing `ACCOUNT_LOCKED` (which means "too many attempts" and clears itself). P2.3
+  had both contradicting this module's own `AGENT.md` §12.
+- **`cache.ErrMiss`** was added to `platform/cache`, which had been leaking `redis.Nil` as its miss
+  sentinel — forcing callers to import a vendor they are not allowed to import. It wraps rather
+  than replaces. This touched a module outside P2.4's file list, knowingly.
+- The JWT parser was validating `exp` against `time.Now()` while the service issued against the
+  injected clock. `jwt.WithTimeFunc` fixes it.
+
+### What is deferred into the cards below
+
+- **No refresh token and no cookie** — P2.5. `AuthSession`'s description in
+  `api/openapi/components/auth.yaml` says so.
+- **No `/auth/logout`** — P2.6. `TokenService.Revoke` and the denylist are built and tested;
+  nothing calls them yet.
+- **`sid` identifies nothing** — it is a fresh identifier per login, in the token from the start so
+  that P2.6 adding `core.sessions` does not change the token format and invalidate everything
+  issued before the deploy.
+
+`internal/modules/auth/TODO.md` has all of this under "Open after P2.4", with the older cards'
+open items above it.
 
 ---
 
@@ -70,7 +75,7 @@ The human answered these explicitly. They are settled.
 | # | Decision |
 |---|---|
 | 1 | **Two transactions, not one.** The card says user + credential + challenge + outbox in one transaction. `user.Registrar` opens its own and rule L4 forbids a transaction spanning two modules. So: `user` creates the account in its transaction; `auth` writes the credential, the challenge and the outbox row in a second one. A failure in the second leaves an unverified account, which the seven-day sweep removes and which a retry completes. `registerNew`'s doc comment explains this — keep it. |
-| 2 | **Verification returns no tokens.** JWT issuance is P2.4. `VerifiedChallenge` in the spec says so explicitly so clients are not surprised when P2.4 adds them. |
+| 2 | ~~Verification returns no tokens.~~ **Superseded by P2.4**, which added them as planned. Kept here because the pattern is the one to reuse: when a card's acceptance criteria depend on something a later card builds, say so **in the schema description** so a client reading the spec is not surprised when the field appears. |
 | 3 | **`user/contract` gained `FindByEmail`** so registration can be enumeration-safe. Approved. |
 | 4 | **The seven-day sweep is in P2.2**, not split out. It is an acceptance criterion of this card. |
 
@@ -103,7 +108,7 @@ Two further design corrections were made mid-implementation and are already in t
    `web/src/types/api.ts` has its own gate, `make gen-check-web`. Both report "stale" when the file
    is correct but uncommitted — commit, then re-run.
 5. **Migration timestamps are global and goose has out-of-order disabled.** Take a number larger
-   than every existing one. Current max is `1700000070`.
+   than every existing one. Current max is `1700000090`.
 6. **`gh` has read-only access.** Login is `vppos`, read-only on `vnghi61/fluentra`. `git push`
    works over SSH. You **cannot** create a PR. Write the PR body to a file and give the human the
    `https://github.com/vnghi61/fluentra/pull/new/<branch>` URL plus a `gh pr create --body-file …`
