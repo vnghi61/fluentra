@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -18,6 +19,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/auth/repository"
 	"github.com/fluentra/fluentra/internal/modules/auth/service"
 	authhttp "github.com/fluentra/fluentra/internal/modules/auth/transport/http"
+	rbaccontract "github.com/fluentra/fluentra/internal/modules/rbac/contract"
 	usercontract "github.com/fluentra/fluentra/internal/modules/user/contract"
 	"github.com/fluentra/fluentra/internal/platform/cache"
 	"github.com/fluentra/fluentra/internal/platform/job"
@@ -56,12 +58,33 @@ type Deps struct {
 	Mailer     mailer.Sender
 	Registrar  usercontract.Registrar
 	Limiter    cache.Limiter
+
+	// Tokens is the JWT signing material. SigningKey is required; PreviousKey
+	// is set only during a rotation and accepted-but-never-used-to-sign, which
+	// is what stops a rotation signing everybody out.
+	Tokens service.TokenConfig
+
+	// Roles resolves the role a new token carries. `auth` asks `rbac` rather
+	// than deciding: the arrow in MODULE_INDEX.md §3 points this way, and a
+	// role the token layer invented would be a second source of truth for
+	// authorisation.
+	Roles rbaccontract.RoleReader
+
+	// Denylist is the cache the logout revocation list lives in. Nil disables
+	// revocation entirely — every token then works until it expires — so it is
+	// nil only in tests that do not exercise logout.
+	Denylist cache.Cache[bool]
+
+	// Env namespaces the denylist keys, so a staging deploy pointed at a shared
+	// Redis cannot sign somebody out of production, or fail to.
+	Env string
 }
 
 // Module is the auth module, assembled.
 type Module struct {
 	register *service.RegisterService
 	login    *service.LoginService
+	tokens   *service.TokenService
 	mailer   mailer.Sender
 	handler  *authhttp.Handler
 }
@@ -111,6 +134,20 @@ func New(deps Deps) *Module {
 	// disable it silently.
 	breachChecker := repository.NewBreachChecker(repository.BreachCheckerOptions{})
 
+	// The token service is built before the two that need it, and its failure
+	// is fatal. A process that cannot sign tokens can register learners it can
+	// never sign in, which is worse than not starting.
+	tokens, err := service.NewTokenService(service.TokenDeps{
+		Config:   deps.Tokens,
+		Roles:    rolesAdapter{Reader: deps.Roles},
+		Denylist: repository.NewTokenDenylist(deps.Denylist, deps.Env),
+		Clock:    timekeeper,
+		NewID:    id.NewUUIDv7,
+	})
+	if err != nil {
+		panic("auth.New: " + err.Error())
+	}
+
 	reg := service.NewRegisterService(service.RegisterDeps{
 		Pool:        deps.Pool,
 		Accounts:    accountsAdapter{Registrar: deps.Registrar},
@@ -121,6 +158,7 @@ func New(deps Deps) *Module {
 		Events:      events,
 		Clock:       timekeeper,
 		NewID:       id.NewUUIDv7,
+		Tokens:      tokens,
 	})
 
 	limiter := deps.Limiter
@@ -137,11 +175,13 @@ func New(deps Deps) *Module {
 		Hasher:      domain.NewHasher(domain.DefaultHashParams()),
 		Clock:       timekeeper,
 		NewID:       id.NewUUIDv7,
+		Tokens:      tokens,
 	})
 
 	return &Module{
 		register: reg,
 		login:    loginSvc,
+		tokens:   tokens,
 		mailer:   deps.Mailer,
 		handler:  authhttp.NewHandler(reg, loginSvc),
 	}
@@ -149,6 +189,42 @@ func New(deps Deps) *Module {
 
 // Routes mounts this module's HTTP operations on router, relative to /api/v1.
 func (m *Module) Routes(router chi.Router) { m.handler.Routes(router) }
+
+// TokenVerifier is this module's contract for validating an access token.
+func (m *Module) TokenVerifier() contract.TokenVerifier { return m.tokens }
+
+// Authenticate is the middleware that turns a bearer token into an actor in the
+// request context.
+//
+// It is safe to mount over the whole API: a request with no Authorization
+// header passes through unauthenticated, so `/auth/register` and `/auth/login`
+// still work, and handlers that need a caller already refuse without one.
+func (m *Module) Authenticate() func(http.Handler) http.Handler {
+	return authhttp.Authenticate(m.tokens)
+}
+
+// rolesAdapter narrows rbac's RoleReader to the single question the token
+// service asks. Doing the "which of these is highest" reduction here rather
+// than in the service keeps `auth/service` free of rbac's types, and keeps the
+// answer in the module that knows there are exactly two roles.
+type rolesAdapter struct {
+	Reader rbaccontract.RoleReader
+}
+
+func (a rolesAdapter) RoleOf(ctx context.Context, userID uuid.UUID) (string, error) {
+	if a.Reader == nil {
+		return domain.RoleUser, nil
+	}
+	roles, err := a.Reader.RolesOf(ctx, userID)
+	if err != nil {
+		return "", err
+	}
+	names := make([]string, 0, len(roles))
+	for _, role := range roles {
+		names = append(names, string(role))
+	}
+	return domain.HighestRole(names), nil
+}
 
 // Subscribe registers the event consumers this module runs in the worker.
 //

@@ -34,6 +34,12 @@ vendors:
   # exactly the set that does.
   v_argon2id: { in: github.com/alexedwards/argon2id }
 
+  # Also not common, and granted to one component. A JWT library is not a
+  # provider SDK — there is no external system behind it to swap — so the reason
+  # depOnAnyVendor exists does not apply. It stays narrow anyway: the set of
+  # packages allowed to mint a credential should be exactly the set that does.
+  v_jwt: { in: [github.com/golang-jwt/jwt/v5, github.com/golang-jwt/jwt/v5/**] }
+
 commonVendors:
   - v_uuid
   - v_pgx
@@ -252,8 +258,13 @@ deps:
   # kernel, which is what keeps the policy, the verifier and the OTP primitives
   # testable with no setup at all.
   m_auth_domain:     { canUse: [v_argon2id] }
-  m_auth_repository: { mayDependOn: [m_auth_domain, g_auth] }
-  m_auth_service:    { mayDependOn: [m_auth_domain, c_auth, p_cache] }
+  # p_cache is here for the token denylist, which is a cache-backed store rather
+  # than a table. ADR-0007 rejected server-side sessions specifically to keep a
+  # datastore read off the authentication path, so putting the denylist in
+  # Postgres would put that read straight back — which is why this one
+  # repository speaks to Redis.
+  m_auth_repository: { mayDependOn: [m_auth_domain, g_auth, p_cache] }
+  m_auth_service:    { mayDependOn: [m_auth_domain, c_auth, p_cache], canUse: [v_jwt] }
   # m_auth_service is here for the same reason it is on m_audit_http and
   # m_rbac_http: module.go passes the concrete *service.RegisterService into
   # authhttp.NewHandler, and go-arch-lint's deepScan reads that injection as an

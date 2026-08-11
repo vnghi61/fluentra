@@ -35,6 +35,45 @@ var (
 	ErrEmailAlreadyRegistered = apperr.New(
 		apperr.Conflict, "EMAIL_ALREADY_REGISTERED", "That email address is already registered.")
 
+	// ErrTokenExpired is an access token past its expiry. It is separate from
+	// ErrTokenInvalid because the client's next move differs: refresh and
+	// retry, rather than send the learner back to the sign-in form.
+	ErrTokenExpired = apperr.New(
+		apperr.Unauthenticated, "TOKEN_EXPIRED", "Your session has expired. Refresh and try again.")
+
+	// ErrTokenInvalid covers everything else a token can be: malformed, signed
+	// with a key we do not hold, for another audience, or missing a claim we
+	// require. One code for all of them, because which validation a probe
+	// tripped is information about our validation.
+	ErrTokenInvalid = apperr.New(
+		apperr.Unauthenticated, "TOKEN_INVALID", "That access token is not valid.")
+
+	// ErrSessionRevoked is a token whose id has been denylisted by an explicit
+	// logout. The signature is fine and it has not expired — it has been taken
+	// away, and the learner has to sign in again.
+	ErrSessionRevoked = apperr.New(
+		apperr.Unauthenticated, "SESSION_REVOKED", "That session has been signed out.")
+
+	// ErrEmailNotVerified is a correct password on an account that never proved
+	// its address.
+	//
+	// It is 403, not 401, and the module's own AGENT.md §12 has always said so.
+	// The credential presented was right; what is missing is permission to use
+	// the account at all. Returning 401 — which P2.3 did — tells the client to
+	// re-prompt for a password that was never wrong.
+	ErrEmailNotVerified = apperr.New(
+		apperr.Forbidden, "EMAIL_NOT_VERIFIED", "Verify your email address before signing in.")
+
+	// ErrAccountSuspended is an account an administrator has disabled.
+	//
+	// It is a distinct code from ACCOUNT_LOCKED, which means "too many failed
+	// attempts" and clears itself. These need to be distinguishable by the
+	// client: one resolves by waiting, the other only by contacting support,
+	// and telling a suspended learner to try again in fifteen minutes is
+	// advice that will never come true.
+	ErrAccountSuspended = apperr.New(
+		apperr.Forbidden, "ACCOUNT_SUSPENDED", "This account has been suspended.")
+
 	// ErrChallengeNotFound is an unknown challenge id. It is also what a caller
 	// gets for an id that never existed, which is the same 404 — the id is the
 	// secret gating the whole flow (BR-AUTH-11), so distinguishing "wrong id"

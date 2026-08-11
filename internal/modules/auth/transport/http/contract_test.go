@@ -89,7 +89,24 @@ func (f *fakeContractRegistration) VerifyEmail(_ context.Context, _ uuid.UUID, _
 	return service.Verification{
 		Purpose:    domain.PurposeVerifyEmail,
 		VerifiedAt: time.Now().UTC(),
+		Session:    contractSession(),
 	}, nil
+}
+
+// contractSession is a fully populated session, because the schema requires
+// every member and bounds expires_in below. A zero Session serialises to
+// `expires_in: 0`, which the spec rejects — and that is the contract test
+// earning its place: the shape compiled fine and would have shipped a response
+// no client written against the spec could accept.
+func contractSession() service.Session {
+	return service.Session{
+		AccessToken: secret.New("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.contract.test"),
+		TokenType:   service.TokenTypeBearer,
+		ExpiresIn:   900,
+		UserID:      uuid.MustParse("018f3a5b-7c8d-7123-8123-456789abcdef"),
+		SessionID:   uuid.MustParse("018f3a5b-7c8d-7123-8123-456789abcde0"),
+		Role:        "user",
+	}
 }
 
 func (f *fakeContractRegistration) Resend(_ context.Context, challengeID uuid.UUID) (service.Issued, error) {
@@ -157,4 +174,39 @@ func TestContract_ResendMatchesTheSpec(t *testing.T) {
 	}
 
 	assertMatchesSchema(t, responseSchema(t, spec, "/auth/challenges/{id}/resend", http.MethodPost, http.StatusOK), rec.Body.Bytes())
+}
+
+// fakeContractAuthenticator returns a session shaped like a real one, for the
+// same reason contractSession exists: the schema requires every member and
+// bounds expires_in, so a zero value would fail validation rather than the
+// rendering.
+type fakeContractAuthenticator struct{}
+
+func (fakeContractAuthenticator) Login(context.Context, service.LoginInput) (service.LoginResult, error) {
+	return service.LoginResult{
+		UserID:  uuid.MustParse("018f3a5b-7c8d-7123-8123-456789abcdef"),
+		Session: contractSession(),
+	}, nil
+}
+
+// TestContract_LoginMatchesTheSpec is the one endpoint in this module whose
+// response shape changed twice — P2.3 invented it inline, P2.4 replaced it with
+// AuthSession. Both times the Go compiled and the spec was the only thing that
+// would have noticed a mismatch, so this is the check that keeps them together.
+func TestContract_LoginMatchesTheSpec(t *testing.T) {
+	spec := loadSpec(t)
+	router := newTestRouterWithAuth(&fakeContractRegistration{}, fakeContractAuthenticator{})
+
+	body := `{"email":"learner@example.com","password":"password12345"}` // gitleaks:allow
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body: %s", rec.Code, rec.Body.String())
+	}
+
+	assertMatchesSchema(t, responseSchema(t, spec, "/auth/login", http.MethodPost, http.StatusOK), rec.Body.Bytes())
 }

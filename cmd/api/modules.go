@@ -8,6 +8,7 @@ import (
 
 	"github.com/fluentra/fluentra/internal/modules/audit"
 	"github.com/fluentra/fluentra/internal/modules/auth"
+	authservice "github.com/fluentra/fluentra/internal/modules/auth/service"
 	"github.com/fluentra/fluentra/internal/modules/rbac"
 	rbaccontract "github.com/fluentra/fluentra/internal/modules/rbac/contract"
 	"github.com/fluentra/fluentra/internal/modules/user"
@@ -32,6 +33,15 @@ type identityDeps struct {
 	Env        string
 	OTPHMACKey []byte
 	SMTP       mailer.SMTPConfig
+
+	// Tokens is the JWT signing material from the JWT_* configuration keys.
+	Tokens authservice.TokenConfig
+
+	// Denylist backs the logout revocation list. It is a cache rather than a
+	// table because ADR-0007 rejected server-side sessions specifically to keep
+	// a datastore read off the authentication path — putting the denylist in
+	// Postgres would put that read straight back.
+	Denylist cache.Cache[bool]
 }
 
 // newIdentity constructs the modules in dependency order — audit, then rbac,
@@ -93,6 +103,10 @@ func newIdentity(deps identityDeps) *identity {
 		Mailer:     sender,
 		Registrar:  assembled.user.Registrar(),
 		Limiter:    deps.Limiter,
+		Tokens:     deps.Tokens,
+		Roles:      assembled.rbac.RoleReader(),
+		Denylist:   deps.Denylist,
+		Env:        deps.Env,
 	})
 
 	return assembled
@@ -105,14 +119,30 @@ func newIdentity(deps identityDeps) *identity {
 // on this router and they are wrapped here in the same guard. Both layers stay
 // in force: the route group says "you are staff", and each handler still calls
 // Require with the permission its own operation needs.
+//
+// The auth middleware wraps everything, including `/auth/*`. It has to: a
+// request with no Authorization header passes through unauthenticated, so the
+// public operations still work, while a request that presents a **bad** token
+// anywhere is rejected with the reason rather than silently downgraded to
+// anonymous. Mounting it selectively would mean every future route has to
+// remember to opt in, and the one that forgets is the one that leaks.
+// It is a Group rather than api.Use, and chi enforces the difference: a mux
+// refuses middleware once it has routes, and this router already carries
+// /ping, /health and /ready by the time it gets here. Those are the
+// infrastructure endpoints, which must answer whether or not a caller has a
+// token, so leaving them outside is correct as well as necessary.
 func (i *identity) Routes(api chi.Router) {
-	i.user.Routes(api)
-	i.rbac.Routes(api)
-	i.auth.Routes(api)
+	api.Group(func(authenticated chi.Router) {
+		authenticated.Use(i.auth.Authenticate())
 
-	api.Group(func(admin chi.Router) {
-		admin.Use(i.rbac.AdminOnly())
-		i.audit.Routes(admin)
+		i.user.Routes(authenticated)
+		i.rbac.Routes(authenticated)
+		i.auth.Routes(authenticated)
+
+		authenticated.Group(func(admin chi.Router) {
+			admin.Use(i.rbac.AdminOnly())
+			i.audit.Routes(admin)
+		})
 	})
 }
 

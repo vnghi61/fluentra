@@ -10,7 +10,7 @@ tables: [credentials, sessions, refresh_tokens, mfa_secrets, auth_challenges, tr
 depends_on: [user, rbac, audit, mailer, cache]
 depended_on_by: [admin]
 spec_version: 1.0.0
-last_verified: 2026-08-10
+last_verified: 2026-08-11
 ---
 
 # auth — TODO
@@ -43,9 +43,6 @@ agent knows what is already handled and what is deliberately deferred.
 <!-- END GENERATED: todo -->
 
 ## Progress
-<!-- END GENERATED: todo -->
-
-## Progress
 
 The list above is generated from `tools/docgen/data/core.json`, so its checkboxes cannot be ticked
 by hand. Completed work is recorded here instead.
@@ -56,6 +53,21 @@ by hand. Completed work is recorded here instead.
 | P2.1b | 2026-08-10 | `core.auth_challenges` with the `purpose` enum, the attempt cap as a CHECK and no `burned_at`; `domain.Keyring` — subject and code HMACs, the code hash bound to the challenge id; uniform code draw from `crypto/rand`; `ChallengeService.Issue`/`Verify`/`Resend` with the two issuance limiters and the resend cooldown; every state transition a guarded single-statement UPDATE, proven single-use under ten concurrent consumers |
 | P2.2 | 2026-08-10 | `module.go` — `New(Deps)`, `Routes`, `Subscribe`, `CronJobs`, adapters for all service surfaces; `RegisterService.Register/VerifyEmail/Resend/PurgeUnverified`; three HTTP endpoints (`POST /auth/register`, `POST /auth/challenges/{id}/verify`, `POST /auth/challenges/{id}/resend`); `registration_attempt` email template (en + vi); outbox consumer for `auth.verification_requested` and `auth.registration_attempted`; `purge_unverified` cron job; OTP_HMAC_KEY plus MAIL_FROM and SMTP transport config wired in both `cmd/api` and `cmd/worker` |
 | P2.3 | 2026-08-10 | `core.login_attempts` migration & table; `LoginService` handling Argon2id constant-time timing equalisation (`DummyVerify` for unknown emails), per-account and per-IP lockouts backed by persisted failures with 15-minute-to-24-hour exponential backoff, account status checks (suspended/unverified), transparent Argon2id parameter rehash on login, and `POST /auth/login` HTTP endpoint |
+| P2.4 | 2026-08-11 | `TokenService` — HS256 access tokens carrying `sub`/`sid`/`role`/`jti`/`iat`/`exp`/`aud`/`iss` and no PII, two-key rotation, 60-second leeway, the signing method pinned so an `alg: none` token cannot verify, and the parser driven by the injected clock; `TokenDenylist` over Redis for explicit logout, failing open per ADR-0007; `Authenticate` middleware placing `httpx.Actor` in the request context; login and email verification both return an `AuthSession`; `EMAIL_NOT_VERIFIED` corrected to 403 and account suspension split out of `ACCOUNT_LOCKED` into `ACCOUNT_SUSPENDED` |
+
+## Open after P2.4
+
+- [ ] **Logout has no endpoint yet.** `TokenService.Revoke` and the denylist behind it are built
+      and tested, but nothing calls them: `POST /auth/logout` is P2.6, which is also where the
+      session row that makes `sid` mean something arrives. Until then a learner signs out by
+      discarding the token client-side and waiting fifteen minutes.
+- [ ] **`sid` identifies nothing yet.** It is a fresh identifier per login, minted so that the
+      token format does not change when P2.6 adds `core.sessions`. Done when the claim matches a
+      row and revoking that row invalidates the token.
+- [ ] **The `/auth/login` 200 schema is declared inline** in `openapi.yaml` rather than in
+      `components/auth.yaml` where every other module's schemas live. P2.4 replaced it with a
+      `$ref` to `AuthSession`, so this is closed — but check the same has not happened again the
+      next time an endpoint is added in a hurry.
 
 ## Open after P2.1
 

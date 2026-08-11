@@ -143,6 +143,22 @@ func newLoginHarness(t *testing.T) *loginHarness {
 	limiter := newFakeLimiter()
 	hasher := domain.NewHasher(domain.DefaultHashParams())
 
+	// A real token service rather than a stub. Signing is cheap, and a login
+	// test that faked it could not notice a login path that returned a session
+	// nobody could actually present.
+	tokens, err := service.NewTokenService(service.TokenDeps{
+		Config: service.TokenConfig{
+			SigningKey: []byte("login-test-signing-key-at-least-32-bytes"),
+			Issuer:     "fluentra-test",
+			Audience:   "fluentra-api-test",
+		},
+		Clock: fakeClock,
+		NewID: func(context.Context) (uuid.UUID, error) { return uuid.New(), nil },
+	})
+	if err != nil {
+		t.Fatalf("NewTokenService: %v", err)
+	}
+
 	loginService := service.NewLoginService(service.LoginDeps{
 		Accounts:    accounts,
 		Credentials: credentials,
@@ -152,6 +168,7 @@ func newLoginHarness(t *testing.T) *loginHarness {
 		Hasher:      hasher,
 		Clock:       fakeClock,
 		NewID:       func(context.Context) (uuid.UUID, error) { return uuid.New(), nil },
+		Tokens:      tokens,
 	})
 
 	return &loginHarness{
@@ -197,8 +214,17 @@ func TestLogin_SuccessfulAuthentication(t *testing.T) {
 	if res.UserID != userID {
 		t.Fatalf("userID = %s, want %s", res.UserID, userID)
 	}
-	if !res.Verified {
-		t.Fatal("expected Verified = true")
+	// Login now signs the caller in, so the result carries a usable session.
+	// There is no Verified member any more: login refuses an unverified account
+	// before it can reach here, so the field could only ever be true.
+	if res.Session.AccessToken.Reveal() == "" {
+		t.Fatal("a successful login returned no access token")
+	}
+	if res.Session.TokenType != service.TokenTypeBearer {
+		t.Fatalf("token type = %q, want %q", res.Session.TokenType, service.TokenTypeBearer)
+	}
+	if res.Session.SessionID == uuid.Nil {
+		t.Fatal("a successful login returned no session id")
 	}
 	if calls := h.limiter.keys(); len(calls) != 0 {
 		t.Fatalf("successful login charged lockout counters: %v", calls)
@@ -302,8 +328,8 @@ func TestLogin_SuspendedAccount(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected login to fail for suspended account")
 	}
-	if !strings.Contains(err.Error(), "ACCOUNT_LOCKED") {
-		t.Fatalf("expected ACCOUNT_LOCKED error, got %v", err)
+	if !strings.Contains(err.Error(), "ACCOUNT_SUSPENDED") {
+		t.Fatalf("expected ACCOUNT_SUSPENDED error, got %v", err)
 	}
 }
 

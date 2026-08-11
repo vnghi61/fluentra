@@ -24,6 +24,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/fluentra/fluentra/db/migrations"
+	authservice "github.com/fluentra/fluentra/internal/modules/auth/service"
 	usercontract "github.com/fluentra/fluentra/internal/modules/user/contract"
 	"github.com/fluentra/fluentra/internal/shared/eventbus"
 	"github.com/fluentra/fluentra/internal/shared/httpx"
@@ -165,6 +166,15 @@ func newStack(t *testing.T) *stack {
 		Pool:       pool,
 		Env:        "test",
 		OTPHMACKey: []byte("test-otp-hmac-key-at-least-32-bytes-long"),
+		// auth.New refuses to build without a usable signing key, which is
+		// deliberate: a process that cannot sign tokens can register learners it
+		// can never sign in. Nil Denylist and Roles are fine — this stack
+		// exercises the outbox path, not authentication.
+		Tokens: authservice.TokenConfig{
+			SigningKey: []byte("test-jwt-signing-key-at-least-32-bytes-long"),
+			Issuer:     "fluentra-test",
+			Audience:   testServiceName,
+		},
 	})
 
 	// The worker half. Subscribing before anything publishes is the order

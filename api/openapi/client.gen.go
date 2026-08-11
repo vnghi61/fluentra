@@ -188,18 +188,26 @@ type ClientInterface interface {
 	// Corresponds with POST /auth/challenges/{id}/verify (the `AuthVerifyChallenge` operationId).
 	AuthVerifyChallenge(ctx context.Context, id openapi_types.UUID, body AuthVerifyChallengeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// AuthLoginWithBody Authenticate a user with email and password.
+	// AuthLoginWithBody Exchange a password for an access token.
 	//
-	// Authenticates a user account. Enforces constant-time verification even for unknown emails (BR-AUTH-02) and applies independent per-account and per-IP lockout rate limits (BR-AUTH-08).
+	// Authenticates an account and signs it in.
+	//
+	// An unknown email and a wrong password return the same body and take comparable time (BR-AUTH-02) -- the server performs a dummy password verification for an address it has never seen, so response time cannot be used to enumerate accounts. Per-account and per-IP lockout counters are independent (BR-AUTH-08): locking one does not lock the other.
+	//
+	// An account that has not completed email verification is refused with `EMAIL_NOT_VERIFIED`, and a suspended one with `ACCOUNT_LOCKED`.
 	//
 	// Takes any type of body and a specified content type.
 	//
 	// Corresponds with POST /auth/login (the `AuthLogin` operationId).
 	AuthLoginWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// AuthLogin Authenticate a user with email and password.
+	// AuthLogin Exchange a password for an access token.
 	//
-	// Authenticates a user account. Enforces constant-time verification even for unknown emails (BR-AUTH-02) and applies independent per-account and per-IP lockout rate limits (BR-AUTH-08).
+	// Authenticates an account and signs it in.
+	//
+	// An unknown email and a wrong password return the same body and take comparable time (BR-AUTH-02) -- the server performs a dummy password verification for an address it has never seen, so response time cannot be used to enumerate accounts. Per-account and per-IP lockout counters are independent (BR-AUTH-08): locking one does not lock the other.
+	//
+	// An account that has not completed email verification is refused with `EMAIL_NOT_VERIFIED`, and a suspended one with `ACCOUNT_LOCKED`.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -525,9 +533,13 @@ func (c *Client) AuthVerifyChallenge(ctx context.Context, id openapi_types.UUID,
 	return c.Client.Do(req)
 }
 
-// AuthLoginWithBody Authenticate a user with email and password.
+// AuthLoginWithBody Exchange a password for an access token.
 //
-// Authenticates a user account. Enforces constant-time verification even for unknown emails (BR-AUTH-02) and applies independent per-account and per-IP lockout rate limits (BR-AUTH-08).
+// Authenticates an account and signs it in.
+//
+// An unknown email and a wrong password return the same body and take comparable time (BR-AUTH-02) -- the server performs a dummy password verification for an address it has never seen, so response time cannot be used to enumerate accounts. Per-account and per-IP lockout counters are independent (BR-AUTH-08): locking one does not lock the other.
+//
+// An account that has not completed email verification is refused with `EMAIL_NOT_VERIFIED`, and a suspended one with `ACCOUNT_LOCKED`.
 //
 // Takes any type of body and a specified content type.
 //
@@ -544,9 +556,13 @@ func (c *Client) AuthLoginWithBody(ctx context.Context, contentType string, body
 	return c.Client.Do(req)
 }
 
-// AuthLogin Authenticate a user with email and password.
+// AuthLogin Exchange a password for an access token.
 //
-// Authenticates a user account. Enforces constant-time verification even for unknown emails (BR-AUTH-02) and applies independent per-account and per-IP lockout rate limits (BR-AUTH-08).
+// Authenticates an account and signs it in.
+//
+// An unknown email and a wrong password return the same body and take comparable time (BR-AUTH-02) -- the server performs a dummy password verification for an address it has never seen, so response time cannot be used to enumerate accounts. Per-account and per-IP lockout counters are independent (BR-AUTH-08): locking one does not lock the other.
+//
+// An account that has not completed email verification is refused with `EMAIL_NOT_VERIFIED`, and a suspended one with `ACCOUNT_LOCKED`.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -1823,18 +1839,26 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /auth/challenges/{id}/verify (the `AuthVerifyChallenge` operationId).
 	AuthVerifyChallengeWithResponse(ctx context.Context, id openapi_types.UUID, body AuthVerifyChallengeJSONRequestBody, reqEditors ...RequestEditorFn) (*AuthVerifyChallengeResponse, error)
 
-	// AuthLoginWithBodyWithResponse Authenticate a user with email and password.
+	// AuthLoginWithBodyWithResponse Exchange a password for an access token.
 	//
-	// Authenticates a user account. Enforces constant-time verification even for unknown emails (BR-AUTH-02) and applies independent per-account and per-IP lockout rate limits (BR-AUTH-08).
+	// Authenticates an account and signs it in.
+	//
+	// An unknown email and a wrong password return the same body and take comparable time (BR-AUTH-02) -- the server performs a dummy password verification for an address it has never seen, so response time cannot be used to enumerate accounts. Per-account and per-IP lockout counters are independent (BR-AUTH-08): locking one does not lock the other.
+	//
+	// An account that has not completed email verification is refused with `EMAIL_NOT_VERIFIED`, and a suspended one with `ACCOUNT_LOCKED`.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with POST /auth/login (the `AuthLogin` operationId).
 	AuthLoginWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AuthLoginResponse, error)
 
-	// AuthLoginWithResponse Authenticate a user with email and password.
+	// AuthLoginWithResponse Exchange a password for an access token.
 	//
-	// Authenticates a user account. Enforces constant-time verification even for unknown emails (BR-AUTH-02) and applies independent per-account and per-IP lockout rate limits (BR-AUTH-08).
+	// Authenticates an account and signs it in.
+	//
+	// An unknown email and a wrong password return the same body and take comparable time (BR-AUTH-02) -- the server performs a dummy password verification for an address it has never seen, so response time cannot be used to enumerate accounts. Per-account and per-IP lockout counters are independent (BR-AUTH-08): locking one does not lock the other.
+	//
+	// An account that has not completed email verification is refused with `EMAIL_NOT_VERIFIED`, and a suspended one with `ACCOUNT_LOCKED`.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -2624,12 +2648,15 @@ type AuthLoginResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
-	JSON200 *struct {
-		UserId   openapi_types.UUID `json:"user_id"`
-		Verified bool               `json:"verified"`
-	}
+	JSON200 *AuthSession
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
 	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
 	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
 	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
 	ApplicationproblemJSON429 *TooManyRequests
 	// Headers200 the parsed response headers for an HTTP 200 response
@@ -2639,16 +2666,28 @@ type AuthLoginResponse struct {
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r AuthLoginResponse) GetJSON200() *struct {
-	UserId   openapi_types.UUID `json:"user_id"`
-	Verified bool               `json:"verified"`
-} {
+func (r AuthLoginResponse) GetJSON200() *AuthSession {
 	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r AuthLoginResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
 }
 
 // GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
 func (r AuthLoginResponse) GetApplicationproblemJSON401() *Unauthorized {
 	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AuthLoginResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AuthLoginResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
 }
 
 // GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
@@ -3471,9 +3510,13 @@ func (c *ClientWithResponses) AuthVerifyChallengeWithResponse(ctx context.Contex
 	return ParseAuthVerifyChallengeResponse(rsp)
 }
 
-// AuthLoginWithBodyWithResponse Authenticate a user with email and password.
+// AuthLoginWithBodyWithResponse Exchange a password for an access token.
 //
-// Authenticates a user account. Enforces constant-time verification even for unknown emails (BR-AUTH-02) and applies independent per-account and per-IP lockout rate limits (BR-AUTH-08).
+// Authenticates an account and signs it in.
+//
+// An unknown email and a wrong password return the same body and take comparable time (BR-AUTH-02) -- the server performs a dummy password verification for an address it has never seen, so response time cannot be used to enumerate accounts. Per-account and per-IP lockout counters are independent (BR-AUTH-08): locking one does not lock the other.
+//
+// An account that has not completed email verification is refused with `EMAIL_NOT_VERIFIED`, and a suspended one with `ACCOUNT_LOCKED`.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -3486,9 +3529,13 @@ func (c *ClientWithResponses) AuthLoginWithBodyWithResponse(ctx context.Context,
 	return ParseAuthLoginResponse(rsp)
 }
 
-// AuthLoginWithResponse Authenticate a user with email and password.
+// AuthLoginWithResponse Exchange a password for an access token.
 //
-// Authenticates a user account. Enforces constant-time verification even for unknown emails (BR-AUTH-02) and applies independent per-account and per-IP lockout rate limits (BR-AUTH-08).
+// Authenticates an account and signs it in.
+//
+// An unknown email and a wrong password return the same body and take comparable time (BR-AUTH-02) -- the server performs a dummy password verification for an address it has never seen, so response time cannot be used to enumerate accounts. Per-account and per-IP lockout counters are independent (BR-AUTH-08): locking one does not lock the other.
+//
+// An account that has not completed email verification is refused with `EMAIL_NOT_VERIFIED`, and a suspended one with `ACCOUNT_LOCKED`.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -4296,14 +4343,18 @@ func ParseAuthLoginResponse(rsp *http.Response) (*AuthLoginResponse, error) {
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest struct {
-			UserId   openapi_types.UUID `json:"user_id"`
-			Verified bool               `json:"verified"`
-		}
+		var dest AuthSession
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest Unauthorized
@@ -4311,6 +4362,20 @@ func ParseAuthLoginResponse(rsp *http.Response) (*AuthLoginResponse, error) {
 			return nil, err
 		}
 		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest TooManyRequests

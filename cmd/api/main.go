@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/exaring/otelpgx"
+	authservice "github.com/fluentra/fluentra/internal/modules/auth/service"
 	"github.com/fluentra/fluentra/internal/platform/cache"
 	"github.com/fluentra/fluentra/internal/platform/mailer"
 	"github.com/fluentra/fluentra/internal/platform/telemetry"
@@ -67,6 +68,19 @@ type applicationConfig struct {
 	OTP struct {
 		HMACKey string `koanf:"hmac_key"`
 	} `koanf:"otp"`
+	JWT struct {
+		SigningKey  string `koanf:"signing_key"`
+		PreviousKey string `koanf:"previous_key"`
+		Issuer      string `koanf:"issuer"`
+		Audience    string `koanf:"audience"`
+	} `koanf:"jwt"`
+	// ACCESS_TOKEN_TTL maps to `access.token_ttl`, not `access_token.ttl`: the
+	// convention replaces the FIRST underscore with a dot and leaves the rest
+	// alone (see shared/config). Getting this wrong produces a key that is read
+	// but can never be set from the environment.
+	Access struct {
+		TokenTTL time.Duration `koanf:"token_ttl"`
+	} `koanf:"access"`
 	Mail struct {
 		From string `koanf:"from"`
 	} `koanf:"mail"`
@@ -156,6 +170,16 @@ func run(ctx context.Context) error {
 		Limiter:    cache.NewRedisLimiter(redisClient),
 		Env:        cfg.App.Environment,
 		OTPHMACKey: []byte(cfg.OTP.HMACKey),
+		Tokens: authservice.TokenConfig{
+			SigningKey:  []byte(cfg.JWT.SigningKey),
+			PreviousKey: []byte(cfg.JWT.PreviousKey),
+			Issuer:      cfg.JWT.Issuer,
+			Audience:    cfg.JWT.Audience,
+			AccessTTL:   cfg.Access.TokenTTL,
+		},
+		// A separate typed cache from the permission one. They share the Redis
+		// client but not the value type, and Cache[T] is generic per type.
+		Denylist: cache.NewRedisCache[bool](redisClient),
 		SMTP: mailer.SMTPConfig{
 			Host:     cfg.SMTP.Host,
 			Port:     cfg.SMTP.Port,
@@ -246,6 +270,10 @@ func configOptions() config.Options {
 			"smtp.port":                   1025,
 			"smtp.dev_mode":               true,
 			"mail.from":                   "no-reply@fluentra.local",
+			"jwt.issuer":                  "fluentra",
+			"jwt.audience":                "fluentra-api",
+			"jwt.previous_key":            "",
+			"access.token_ttl":            "15m",
 		},
 		Required: []config.RequiredKey{
 			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},
@@ -254,6 +282,7 @@ func configOptions() config.Options {
 			{Name: "s3.access_key", DocSection: docSectionStorage},
 			{Name: "s3.secret_key", DocSection: docSectionStorage},
 			{Name: "otp.hmac_key", DocSection: "docs/deployment/configuration.md#auth"},
+			{Name: "jwt.signing_key", DocSection: "docs/deployment/configuration.md#auth"},
 		},
 	}
 }

@@ -67,10 +67,7 @@ func (h *Handler) login(writer http.ResponseWriter, request *http.Request) {
 		httpx.WriteProblem(writer, request, err)
 		return
 	}
-	httpx.WriteJSON(writer, request, http.StatusOK, map[string]any{
-		"user_id":  result.UserID.String(),
-		"verified": result.Verified,
-	})
+	httpx.WriteJSON(writer, request, http.StatusOK, toSessionResponse(result.Session))
 }
 
 func (h *Handler) register(writer http.ResponseWriter, request *http.Request) {

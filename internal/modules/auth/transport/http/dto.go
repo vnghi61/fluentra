@@ -35,8 +35,32 @@ type challengeResponse struct {
 
 // verifiedResponse matches components/auth.yaml#/VerifiedChallenge.
 type verifiedResponse struct {
-	Purpose    string `json:"purpose"`
-	VerifiedAt string `json:"verified_at"`
+	Purpose    string          `json:"purpose"`
+	VerifiedAt string          `json:"verified_at"`
+	Session    sessionResponse `json:"session"`
+}
+
+// sessionResponse matches components/auth.yaml#/AuthSession.
+//
+// This is the one place the access token is revealed. Everywhere else it is
+// wrapped in secret.Redacted so that a struct reaching a log line or a test
+// failure prints `[redacted]` rather than a working bearer credential.
+type sessionResponse struct {
+	AccessToken string `json:"access_token"`
+	TokenType   string `json:"token_type"`
+	ExpiresIn   int    `json:"expires_in"`
+	UserID      string `json:"user_id"`
+	Role        string `json:"role"`
+}
+
+func toSessionResponse(session service.Session) sessionResponse {
+	return sessionResponse{
+		AccessToken: session.AccessToken.Reveal(),
+		TokenType:   session.TokenType,
+		ExpiresIn:   session.ExpiresIn,
+		UserID:      session.UserID.String(),
+		Role:        session.Role,
+	}
 }
 
 func toChallengeResponse(issued service.Issued) challengeResponse {
@@ -53,6 +77,7 @@ func toVerifiedResponse(verified service.Verification) verifiedResponse {
 	return verifiedResponse{
 		Purpose:    verified.Purpose.String(),
 		VerifiedAt: verified.VerifiedAt.UTC().Format(time.RFC3339),
+		Session:    toSessionResponse(verified.Session),
 	}
 }
 

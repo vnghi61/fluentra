@@ -86,6 +86,7 @@ type RegisterService struct {
 	events      EventWriter
 	clock       clock.Clock
 	ids         IDGenerator
+	tokens      Tokens
 }
 
 // RegisterDeps are the service's collaborators.
@@ -99,6 +100,7 @@ type RegisterDeps struct {
 	Events      EventWriter
 	Clock       clock.Clock
 	NewID       IDGenerator
+	Tokens      Tokens
 }
 
 // NewRegisterService creates the registration service.
@@ -106,7 +108,7 @@ func NewRegisterService(deps RegisterDeps) *RegisterService {
 	return &RegisterService{
 		pool: deps.Pool, accounts: deps.Accounts, credentials: deps.Credentials,
 		challenges: deps.Challenges, hasher: deps.Hasher, policy: deps.Policy,
-		events: deps.Events, clock: deps.Clock, ids: deps.NewID,
+		events: deps.Events, clock: deps.Clock, ids: deps.NewID, tokens: deps.Tokens,
 	}
 }
 
@@ -345,9 +347,15 @@ func (s *RegisterService) writeCredential(
 }
 
 // Verification is what a successful verify returns.
+//
+// It carries a Session because proving the address is the last step of
+// registration, not the second to last: making a learner who has just typed a
+// code from their inbox then type their password again is a step that teaches
+// them nothing and loses some of them.
 type Verification struct {
 	Purpose    domain.Purpose
 	VerifiedAt time.Time
+	Session    Session
 }
 
 // VerifyEmail consumes a challenge and, for a verify_email challenge, marks the
@@ -392,7 +400,17 @@ func (s *RegisterService) VerifyEmail(ctx context.Context, challengeID uuid.UUID
 	if consumed.ConsumedAt != nil {
 		verifiedAt = *consumed.ConsumedAt
 	}
-	return Verification{Purpose: consumed.Purpose, VerifiedAt: verifiedAt}, nil
+
+	sessionID, err := s.ids(ctx)
+	if err != nil {
+		return Verification{}, fmt.Errorf("generate session id: %w", err)
+	}
+	session, err := s.tokens.Issue(ctx, *consumed.UserID, sessionID)
+	if err != nil {
+		return Verification{}, err
+	}
+
+	return Verification{Purpose: consumed.Purpose, VerifiedAt: verifiedAt, Session: session}, nil
 }
 
 // PurgeUnverified removes accounts that claimed an address and never proved it.
