@@ -144,7 +144,9 @@ AuthSession:
         It carries the account id, the session id, the role and its own id --
         and no personal data at all, so a leaked token reveals nothing about
         the learner beyond an opaque identifier.
-      example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMTk5YTFjMiJ9.7mMxLmA
+      # An obvious placeholder, not a realistic token. A high-entropy example
+      # trips secret scanners on every repository that vendors this spec.
+      example: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJleGFtcGxlIn0.example-signature # gitleaks:allow
     token_type:
       type: string
       enum: [Bearer]

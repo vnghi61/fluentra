@@ -222,6 +222,7 @@ jobs:
           HTTP_PORT: '8099'
         run: |
           export OTP_HMAC_KEY="$(openssl rand -hex 32)"
+          export JWT_SIGNING_KEY="$(openssl rand -hex 32)"
           go run ./cmd/migrate up
           go build -o /tmp/worker ./cmd/worker
           /tmp/worker & worker_pid=$!

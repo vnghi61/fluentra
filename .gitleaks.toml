@@ -1,0 +1,30 @@
+# gitleaks configuration.
+#
+# The default ruleset is kept in full and extended, never replaced: a config that
+# starts from scratch is a config that stops catching the rules nobody thought to
+# copy across.
+#
+# The allowlist below is deliberately narrow. Every entry has to answer one
+# question — "could a real secret originate here?" — and only paths where the
+# answer is structurally no are listed. Broad allowlists are how a scanner turns
+# into a green tick that means nothing.
+#
+# For everything else, mark the individual line with `gitleaks:allow` and say why
+# in the surrounding comment. A per-line exemption is reviewable; a per-directory
+# one is not.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Generated artefacts, whose contents are derived from sources that are themselves scanned"
+paths = [
+  # openapi-typescript output. Every string in it comes from api/openapi/, which
+  # this scan also covers, so a secret cannot enter the repository through this
+  # file — it can only be copied into it from a file that was already checked.
+  '''web/src/types/api\.ts''',
+  # oapi-codegen and sqlc output, for the same reason. The OpenAPI spec is
+  # embedded in server.gen.go as base64, which additionally means any example in
+  # it is re-detected here at a different entropy than in the source.
+  '''.*\.gen\.go''',
+]

@@ -194,7 +194,7 @@ type ClientInterface interface {
 	//
 	// An unknown email and a wrong password return the same body and take comparable time (BR-AUTH-02) -- the server performs a dummy password verification for an address it has never seen, so response time cannot be used to enumerate accounts. Per-account and per-IP lockout counters are independent (BR-AUTH-08): locking one does not lock the other.
 	//
-	// An account that has not completed email verification is refused with `EMAIL_NOT_VERIFIED`, and a suspended one with `ACCOUNT_LOCKED`.
+	// Three refusals are distinguishable on purpose, because the learner's next move differs for each: `EMAIL_NOT_VERIFIED` (403) for an address never proved, `ACCOUNT_SUSPENDED` (403) for an account an administrator disabled, and `ACCOUNT_LOCKED` (429) for too many failed attempts -- which, unlike the other two, clears itself.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -207,7 +207,7 @@ type ClientInterface interface {
 	//
 	// An unknown email and a wrong password return the same body and take comparable time (BR-AUTH-02) -- the server performs a dummy password verification for an address it has never seen, so response time cannot be used to enumerate accounts. Per-account and per-IP lockout counters are independent (BR-AUTH-08): locking one does not lock the other.
 	//
-	// An account that has not completed email verification is refused with `EMAIL_NOT_VERIFIED`, and a suspended one with `ACCOUNT_LOCKED`.
+	// Three refusals are distinguishable on purpose, because the learner's next move differs for each: `EMAIL_NOT_VERIFIED` (403) for an address never proved, `ACCOUNT_SUSPENDED` (403) for an account an administrator disabled, and `ACCOUNT_LOCKED` (429) for too many failed attempts -- which, unlike the other two, clears itself.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -539,7 +539,7 @@ func (c *Client) AuthVerifyChallenge(ctx context.Context, id openapi_types.UUID,
 //
 // An unknown email and a wrong password return the same body and take comparable time (BR-AUTH-02) -- the server performs a dummy password verification for an address it has never seen, so response time cannot be used to enumerate accounts. Per-account and per-IP lockout counters are independent (BR-AUTH-08): locking one does not lock the other.
 //
-// An account that has not completed email verification is refused with `EMAIL_NOT_VERIFIED`, and a suspended one with `ACCOUNT_LOCKED`.
+// Three refusals are distinguishable on purpose, because the learner's next move differs for each: `EMAIL_NOT_VERIFIED` (403) for an address never proved, `ACCOUNT_SUSPENDED` (403) for an account an administrator disabled, and `ACCOUNT_LOCKED` (429) for too many failed attempts -- which, unlike the other two, clears itself.
 //
 // Takes any type of body and a specified content type.
 //
@@ -562,7 +562,7 @@ func (c *Client) AuthLoginWithBody(ctx context.Context, contentType string, body
 //
 // An unknown email and a wrong password return the same body and take comparable time (BR-AUTH-02) -- the server performs a dummy password verification for an address it has never seen, so response time cannot be used to enumerate accounts. Per-account and per-IP lockout counters are independent (BR-AUTH-08): locking one does not lock the other.
 //
-// An account that has not completed email verification is refused with `EMAIL_NOT_VERIFIED`, and a suspended one with `ACCOUNT_LOCKED`.
+// Three refusals are distinguishable on purpose, because the learner's next move differs for each: `EMAIL_NOT_VERIFIED` (403) for an address never proved, `ACCOUNT_SUSPENDED` (403) for an account an administrator disabled, and `ACCOUNT_LOCKED` (429) for too many failed attempts -- which, unlike the other two, clears itself.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -1845,7 +1845,7 @@ type ClientWithResponsesInterface interface {
 	//
 	// An unknown email and a wrong password return the same body and take comparable time (BR-AUTH-02) -- the server performs a dummy password verification for an address it has never seen, so response time cannot be used to enumerate accounts. Per-account and per-IP lockout counters are independent (BR-AUTH-08): locking one does not lock the other.
 	//
-	// An account that has not completed email verification is refused with `EMAIL_NOT_VERIFIED`, and a suspended one with `ACCOUNT_LOCKED`.
+	// Three refusals are distinguishable on purpose, because the learner's next move differs for each: `EMAIL_NOT_VERIFIED` (403) for an address never proved, `ACCOUNT_SUSPENDED` (403) for an account an administrator disabled, and `ACCOUNT_LOCKED` (429) for too many failed attempts -- which, unlike the other two, clears itself.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -1858,7 +1858,7 @@ type ClientWithResponsesInterface interface {
 	//
 	// An unknown email and a wrong password return the same body and take comparable time (BR-AUTH-02) -- the server performs a dummy password verification for an address it has never seen, so response time cannot be used to enumerate accounts. Per-account and per-IP lockout counters are independent (BR-AUTH-08): locking one does not lock the other.
 	//
-	// An account that has not completed email verification is refused with `EMAIL_NOT_VERIFIED`, and a suspended one with `ACCOUNT_LOCKED`.
+	// Three refusals are distinguishable on purpose, because the learner's next move differs for each: `EMAIL_NOT_VERIFIED` (403) for an address never proved, `ACCOUNT_SUSPENDED` (403) for an account an administrator disabled, and `ACCOUNT_LOCKED` (429) for too many failed attempts -- which, unlike the other two, clears itself.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -3516,7 +3516,7 @@ func (c *ClientWithResponses) AuthVerifyChallengeWithResponse(ctx context.Contex
 //
 // An unknown email and a wrong password return the same body and take comparable time (BR-AUTH-02) -- the server performs a dummy password verification for an address it has never seen, so response time cannot be used to enumerate accounts. Per-account and per-IP lockout counters are independent (BR-AUTH-08): locking one does not lock the other.
 //
-// An account that has not completed email verification is refused with `EMAIL_NOT_VERIFIED`, and a suspended one with `ACCOUNT_LOCKED`.
+// Three refusals are distinguishable on purpose, because the learner's next move differs for each: `EMAIL_NOT_VERIFIED` (403) for an address never proved, `ACCOUNT_SUSPENDED` (403) for an account an administrator disabled, and `ACCOUNT_LOCKED` (429) for too many failed attempts -- which, unlike the other two, clears itself.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -3535,7 +3535,7 @@ func (c *ClientWithResponses) AuthLoginWithBodyWithResponse(ctx context.Context,
 //
 // An unknown email and a wrong password return the same body and take comparable time (BR-AUTH-02) -- the server performs a dummy password verification for an address it has never seen, so response time cannot be used to enumerate accounts. Per-account and per-IP lockout counters are independent (BR-AUTH-08): locking one does not lock the other.
 //
-// An account that has not completed email verification is refused with `EMAIL_NOT_VERIFIED`, and a suspended one with `ACCOUNT_LOCKED`.
+// Three refusals are distinguishable on purpose, because the learner's next move differs for each: `EMAIL_NOT_VERIFIED` (403) for an address never proved, `ACCOUNT_SUSPENDED` (403) for an account an administrator disabled, and `ACCOUNT_LOCKED` (429) for too many failed attempts -- which, unlike the other two, clears itself.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //

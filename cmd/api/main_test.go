@@ -96,7 +96,7 @@ func TestLoadConfigReadsDocumentedEnvironmentKeys(t *testing.T) {
 	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", testOTLPEndpoint)
 	t.Setenv("OTEL_SERVICE_NAME", testServiceName)
 	t.Setenv("OTP_HMAC_KEY", "test-otp-hmac-key-at-least-32-bytes-long")
-	t.Setenv("JWT_SIGNING_KEY", "test-jwt-signing-key-at-least-32-bytes-long")
+	t.Setenv("JWT_SIGNING_KEY", "test-jwt-signing-key-at-least-32-bytes-long") // gitleaks:allow
 	t.Setenv("MAIL_FROM", "Fluentra Test <no-reply@test.example>")
 
 	cfg, err := loadConfig(context.Background())

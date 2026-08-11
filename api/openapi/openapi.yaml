@@ -189,8 +189,11 @@ paths:
         are independent (BR-AUTH-08): locking one does not lock the other.
 
 
-        An account that has not completed email verification is refused with
-        `EMAIL_NOT_VERIFIED`, and a suspended one with `ACCOUNT_LOCKED`.
+        Three refusals are distinguishable on purpose, because the learner's
+        next move differs for each: `EMAIL_NOT_VERIFIED` (403) for an address
+        never proved, `ACCOUNT_SUSPENDED` (403) for an account an administrator
+        disabled, and `ACCOUNT_LOCKED` (429) for too many failed attempts --
+        which, unlike the other two, clears itself.
       security: []
       requestBody:
         required: true
@@ -212,7 +215,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/AuthSession'
               example: &authSessionExample
-                access_token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMTk5YTFjMiJ9.7mMxLmA
+                access_token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJleGFtcGxlIn0.example-signature # gitleaks:allow
                 token_type: Bearer
                 expires_in: 900
                 user_id: 0199a1c2-3d4e-7f80-9abc-def012345678
