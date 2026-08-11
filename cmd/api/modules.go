@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -36,6 +37,9 @@ type identityDeps struct {
 
 	// Tokens is the JWT signing material from the JWT_* configuration keys.
 	Tokens authservice.TokenConfig
+
+	// RefreshTTL is REFRESH_TOKEN_TTL: the idle window a refresh token gets.
+	RefreshTTL time.Duration
 
 	// Denylist backs the logout revocation list. It is a cache rather than a
 	// table because ADR-0007 rejected server-side sessions specifically to keep
@@ -107,6 +111,7 @@ func newIdentity(deps identityDeps) *identity {
 		Roles:      assembled.rbac.RoleReader(),
 		Denylist:   deps.Denylist,
 		Env:        deps.Env,
+		RefreshTTL: deps.RefreshTTL,
 	})
 
 	return assembled

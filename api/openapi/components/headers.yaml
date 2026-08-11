@@ -28,6 +28,27 @@ RateLimit-Reset:
   schema:
     type: integer
   example: 1786033260
+Set-Cookie-Refresh:
+  description: >-
+    The rotating refresh token, sent as `HttpOnly; Secure; SameSite=Lax;
+    Path=/api/v1/auth`.
+
+
+    It is deliberately unreadable by script. An access token held in memory
+    dies with the tab; a refresh token any injected script could read would be
+    a standing takeover of the account, renewable long after the script is
+    gone. `Path` narrows it further, so it is not attached to the hundreds of
+    ordinary API calls that have no use for it.
+
+
+    `Secure` is dropped only when `APP_ENV=local`, where the SPA is served over
+    plain HTTP and a `Secure` cookie would be discarded by the browser rather
+    than merely unprotected.
+  schema:
+    type: string
+  example: >-
+    refresh_token=opaque-value; Path=/api/v1/auth; Max-Age=2592000; HttpOnly;
+    Secure; SameSite=Lax
 Retry-After:
   description: Number of seconds before the request may be retried.
   schema:

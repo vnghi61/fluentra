@@ -20,6 +20,18 @@ const maxRegisterBody = 8 << 10
 
 const codeRequired = "REQUIRED"
 
+// maxUserAgent bounds the header before it is hashed. Nothing downstream reads
+// the value, so the cap costs nothing and removes a caller's ability to make
+// this path allocate as much as they like.
+const maxUserAgent = 512
+
+func truncate(value string, limit int) string {
+	if len(value) <= limit {
+		return value
+	}
+	return value[:limit]
+}
+
 // challengeResponse matches components/auth.yaml#/Challenge.
 //
 // There is no `code` member and there never will be. The code goes to the email
@@ -230,5 +242,9 @@ func decodeLoginRequest(request *http.Request) (service.LoginInput, error) {
 		RememberDevice: remember,
 		DeviceID:       valueOr(payload.DeviceID, ""),
 		ClientIP:       clientIP,
+		// Stored as a digest on the session row, never in the clear, and
+		// truncated first: a user agent is attacker-controlled and unbounded,
+		// and the digest is fixed-width either way.
+		UserAgent: truncate(request.UserAgent(), maxUserAgent),
 	}, nil
 }

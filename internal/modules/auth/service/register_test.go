@@ -315,8 +315,8 @@ func newRegisterHarness(t *testing.T) *registerHarness {
 	tokens, err := service.NewTokenService(service.TokenDeps{
 		Config: service.TokenConfig{
 			SigningKey: []byte("register-test-signing-key-32-bytes-min"),
-			Issuer:     "fluentra-test",
-			Audience:   "fluentra-api-test",
+			Issuer:     claimIssuer,
+			Audience:   claimAudience,
 		},
 		Clock: fakeClock,
 		NewID: func(context.Context) (uuid.UUID, error) { return uuid.New(), nil },
@@ -335,7 +335,11 @@ func newRegisterHarness(t *testing.T) *registerHarness {
 		Events:      events,
 		Clock:       fakeClock,
 		NewID:       func(context.Context) (uuid.UUID, error) { return uuid.New(), nil },
-		Tokens:      tokens,
+		Sessions: fakeSessions{
+			tokens: tokens,
+			clock:  fakeClock,
+			newID:  func(context.Context) (uuid.UUID, error) { return uuid.New(), nil },
+		},
 	})
 
 	return &registerHarness{

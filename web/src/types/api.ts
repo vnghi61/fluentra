@@ -182,6 +182,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rotate the refresh token and issue a new access token.
+         * @description Exchanges the `refresh_token` cookie for a fresh access token and a fresh refresh cookie. There is no request body: the credential is the cookie, which the browser attaches on its own and no script can read.
+         *
+         *     A refresh token is single-use (BR-AUTH-04). The exchange spends the one presented and the response always replaces it, so a client that ignores the `Set-Cookie` has signed itself out.
+         *
+         *     **Single use is what makes theft detectable.** A stolen token works exactly once. Whichever party presents the token second -- the thief or the real client -- is presenting one that has already been spent, and at that moment the server has no way to tell which of the two is genuine. So it stops trusting both: every token in the family is revoked, the session is revoked, a `refresh_reuse` security event is raised, and this operation answers 401 `SESSION_REVOKED`. The learner signs in again. That is the intended cost, and it is far smaller than an attacker holding a credential they can renew indefinitely.
+         *
+         *     A consequence worth designing around: two requests racing with the same valid token have exactly one winner, and the loser is indistinguishable from a replay, so it is treated as one. A client refreshing from several tabs must serialise them.
+         *
+         *     An unknown, expired or already-revoked token is 401 `TOKEN_INVALID`. That is a different code from the reuse case on purpose -- reuse means the session was taken away because a token was replayed, which is worth telling the learner and worth finding in a log, while `TOKEN_INVALID` means only that this credential buys nothing. Both end at the login form.
+         */
+        post: operations["authRefresh"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/me": {
         parameters: {
             query?: never;
@@ -579,7 +607,7 @@ export interface components {
         /**
          * @description The outcome of a successful verification. It signs the learner in: proving the address is the last step of registration, not the second to last.
          *
-         *     The refresh token is not here yet. Rotating refresh tokens and the cookie that carries them arrive with P2.5, after which a client keeps its session alive without re-entering a password. Until then the access token expires and the learner signs in again.
+         *     The response also carries the first refresh cookie, so a learner who has just verified an address stays signed in without ever seeing the login form they would otherwise be sent to fifteen minutes later.
          */
         VerifiedChallenge: {
             purpose: components["schemas"]["ChallengePurpose"];
@@ -594,6 +622,8 @@ export interface components {
          * @description A signed-in session. Returned by every operation that authenticates a caller, so a client has one shape to handle.
          *
          *     **The access token belongs in memory only.** Never `localStorage`, never a cookie a script can read: it is a bearer credential, and anything that can read it can act as the learner until it expires.
+         *
+         *     Every response carrying this object is also accompanied by a `Set-Cookie` holding the refresh token. There is no field for it here, and that is the point: a refresh token the page can read is a refresh token an injected script can steal, so it exists only as an `HttpOnly` cookie the browser replays to `POST /auth/refresh` and to nothing else.
          */
         AuthSession: {
             /**
@@ -1187,6 +1217,15 @@ export interface components {
          * @example 30
          */
         "Retry-After": number;
+        /**
+         * @description The rotating refresh token, sent as `HttpOnly; Secure; SameSite=Lax; Path=/api/v1/auth`.
+         *
+         *     It is deliberately unreadable by script. An access token held in memory dies with the tab; a refresh token any injected script could read would be a standing takeover of the account, renewable long after the script is gone. `Path` narrows it further, so it is not attached to the hundreds of ordinary API calls that have no use for it.
+         *
+         *     `Secure` is dropped only when `APP_ENV=local`, where the SPA is served over plain HTTP and a `Secure` cookie would be discarded by the browser rather than merely unprotected.
+         * @example refresh_token=opaque-value; Path=/api/v1/auth; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax
+         */
+        "Set-Cookie-Refresh": string;
     };
     pathItems: never;
 }
@@ -1366,6 +1405,7 @@ export interface operations {
             200: {
                 headers: {
                     "X-Request-Id": components["headers"]["X-Request-Id"];
+                    "Set-Cookie": components["headers"]["Set-Cookie-Refresh"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -1413,6 +1453,7 @@ export interface operations {
             200: {
                 headers: {
                     "X-Request-Id": components["headers"]["X-Request-Id"];
+                    "Set-Cookie": components["headers"]["Set-Cookie-Refresh"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -1474,6 +1515,39 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    authRefresh: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Rotated. The old token is now spent and the cookie has been replaced. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    "Set-Cookie": components["headers"]["Set-Cookie-Refresh"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "access_token": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJleGFtcGxlIn0.example-signature",
+                     *       "token_type": "Bearer",
+                     *       "expires_in": 900,
+                     *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "role": "user"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["AuthSession"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
             429: components["responses"]["TooManyRequests"];
         };
     };

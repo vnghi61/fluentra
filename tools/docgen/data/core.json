@@ -77,7 +77,8 @@
       { "kind": "interface", "name": "auth.TokenVerifier", "purpose": "Validate an access token and return the actor — used by the HTTP middleware" },
       { "kind": "interface", "name": "auth.SessionRevoker", "purpose": "Revoke sessions for a user — used by `admin` and by `user` on account deletion" },
       { "kind": "struct", "name": "auth.Actor", "purpose": "`{UserID, SessionID, Role, TokenID}` — placed in the request context" },
-      { "kind": "event", "name": "auth.UserRegistered", "purpose": "Published after a successful registration" }
+      { "kind": "event", "name": "auth.UserRegistered", "purpose": "Published after a successful registration" },
+      { "kind": "event", "name": "auth.SecurityEvent", "purpose": "Published when something needs investigating — `refresh_reuse` is the first kind" }
     ],
     "events": {
       "publishes": [

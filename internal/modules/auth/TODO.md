@@ -55,15 +55,40 @@ by hand. Completed work is recorded here instead.
 | P2.3 | 2026-08-10 | `core.login_attempts` migration & table; `LoginService` handling Argon2id constant-time timing equalisation (`DummyVerify` for unknown emails), per-account and per-IP lockouts backed by persisted failures with 15-minute-to-24-hour exponential backoff, account status checks (suspended/unverified), transparent Argon2id parameter rehash on login, and `POST /auth/login` HTTP endpoint |
 | P2.4 | 2026-08-11 | `TokenService` — HS256 access tokens carrying `sub`/`sid`/`role`/`jti`/`iat`/`exp`/`aud`/`iss` and no PII, two-key rotation, 60-second leeway, the signing method pinned so an `alg: none` token cannot verify, and the parser driven by the injected clock; `TokenDenylist` over Redis for explicit logout, failing open per ADR-0007; `Authenticate` middleware placing `httpx.Actor` in the request context; login and email verification both return an `AuthSession`; `EMAIL_NOT_VERIFIED` corrected to 403 and account suspension split out of `ACCOUNT_LOCKED` into `ACCOUNT_SUSPENDED` |
 
+## Open after P2.5
+
+- [ ] **`core.sessions.device_label` is never written.** The column exists and the session list
+      P2.6 builds is what fills it, from the user agent digest recorded at sign-in. Until then a
+      learner's session list would have nothing to call each device.
+- [ ] **Verification opens a session with no user agent.** `RegisterService.VerifyEmail` has a
+      context but not a request, so `user_agent_hash` is null on sessions started by proving an
+      address — unlike sessions started by login. Threading the header through would touch three
+      signatures for a column nothing reads yet; done when P2.6 needs the label there too.
+- [ ] **`RefreshService` opens its transactions READ COMMITTED through a private helper** rather
+      than `dbx.InTx`, which is SERIALIZABLE-only with three retries. The reason is in the comment
+      on `inTx`: the claim's correctness is a row predicate, not a snapshot, and SERIALIZABLE would
+      spend retries colliding on exactly the rows a replay storm hammers. The tidy fix is an
+      isolation option on `dbx.InTx` — a shared-package change, so it is a card of its own.
+- [ ] **Nothing prunes spent refresh tokens.** Rows are kept deliberately (a deleted row cannot be
+      told from one that never existed, which is what detection needs), but a family that has
+      rotated daily for six months is 180 rows nobody will ever read again. A sweep bounded by
+      `expires_at` plus a margin is safe; sizing it wants real data.
+- [ ] **The `RefreshCookie` security scheme in `openapi.yaml` is still referenced by nothing.**
+      `POST /auth/refresh` declares `security: []` like every other auth operation, because the
+      `fluentra-operation-permission` spectral rule demands an `x-permission` for anything with a
+      non-empty `security` and there is no RBAC permission that fits a cookie-authenticated
+      operation. Done when the rule exempts cookie-only schemes and the operation declares one.
+
 ## Open after P2.4
 
 - [ ] **Logout has no endpoint yet.** `TokenService.Revoke` and the denylist behind it are built
-      and tested, but nothing calls them: `POST /auth/logout` is P2.6, which is also where the
-      session row that makes `sid` mean something arrives. Until then a learner signs out by
-      discarding the token client-side and waiting fifteen minutes.
-- [ ] **`sid` identifies nothing yet.** It is a fresh identifier per login, minted so that the
-      token format does not change when P2.6 adds `core.sessions`. Done when the claim matches a
-      row and revoking that row invalidates the token.
+      and tested, but nothing calls them: `POST /auth/logout` is P2.6. The session row arrived in
+      P2.5, so logout now has something to revoke as well as something to denylist. Until then a
+      learner signs out by discarding the token client-side and waiting fifteen minutes.
+- [x] **`sid` identifies nothing yet.** Closed by P2.5: `core.sessions` exists, `sid` is its
+      primary key, and revoking the row stops the refresh family immediately. The access token it
+      names still survives to its own expiry — that is ADR-0007's accepted trade, and `POST
+      /auth/logout` in P2.6 is what denylists it sooner.
 - [ ] **The `/auth/login` 200 schema is declared inline** in `openapi.yaml` rather than in
       `components/auth.yaml` where every other module's schemas live. P2.4 replaced it with a
       `$ref` to `AuthSession`, so this is closed — but check the same has not happened again the

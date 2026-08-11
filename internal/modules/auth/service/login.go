@@ -25,6 +25,7 @@ type LoginInput struct {
 	RememberDevice bool
 	DeviceID       string
 	ClientIP       string
+	UserAgent      string
 }
 
 // LoginResult is returned on successful authentication.
@@ -33,16 +34,29 @@ type LoginInput struct {
 // EMAIL_NOT_VERIFIED before it can reach the success path, so the field could
 // only ever hold true — a value a caller cannot act on is worse than no field,
 // because it invites code that branches on it.
+//
+// SignedIn is embedded rather than named so that `result.Session` still reads
+// the way it did before P2.5 added a refresh token beside it.
 type LoginResult struct {
 	UserID   uuid.UUID
 	Rehashed bool
-	Session  Session
+	SignedIn
 }
 
 // Tokens mints an access token for a caller who has just proved who they are.
 // Declared by the consumer so login can be exercised without a signing key.
 type Tokens interface {
 	Issue(ctx context.Context, userID, sessionID uuid.UUID) (Session, error)
+}
+
+// Sessions opens a signed-in session: the row, its first refresh token, and the
+// access token that names it.
+//
+// Login and verification both go through this rather than minting an access
+// token directly, so that there is exactly one place a session begins and
+// exactly one place the refresh family is rooted.
+type Sessions interface {
+	Start(ctx context.Context, input StartInput) (SignedIn, error)
 }
 
 // LoginRepo is the repository interface required by LoginService.
@@ -67,7 +81,7 @@ type LoginDeps struct {
 	Hasher      domain.Hasher
 	Clock       clock.Clock
 	NewID       func(ctx context.Context) (uuid.UUID, error)
-	Tokens      Tokens
+	Sessions    Sessions
 }
 
 // LoginService handles authentication, lockout enforcement, and timing equalisation.
@@ -80,7 +94,7 @@ type LoginService struct {
 	hasher      domain.Hasher
 	clock       clock.Clock
 	newID       func(ctx context.Context) (uuid.UUID, error)
-	tokens      Tokens
+	sessions    Sessions
 }
 
 // NewLoginService constructs a LoginService.
@@ -94,7 +108,7 @@ func NewLoginService(deps LoginDeps) *LoginService {
 		hasher:      deps.Hasher,
 		clock:       deps.Clock,
 		newID:       deps.NewID,
-		tokens:      deps.Tokens,
+		sessions:    deps.Sessions,
 	}
 }
 
@@ -175,7 +189,11 @@ func (s *LoginService) Login(ctx context.Context, input LoginInput) (LoginResult
 	// 7. Successful login record
 	s.recordSuccess(ctx, acc.ID, emailHash, ipHash, now)
 
-	session, err := s.startSession(ctx, acc.ID)
+	signedIn, err := s.sessions.Start(ctx, StartInput{
+		UserID:    acc.ID,
+		ClientIP:  input.ClientIP,
+		UserAgent: input.UserAgent,
+	})
 	if err != nil {
 		return LoginResult{}, err
 	}
@@ -183,7 +201,7 @@ func (s *LoginService) Login(ctx context.Context, input LoginInput) (LoginResult
 	return LoginResult{
 		UserID:   acc.ID,
 		Rehashed: rehashed,
-		Session:  session,
+		SignedIn: signedIn,
 	}, nil
 }
 
@@ -265,24 +283,4 @@ func (s *LoginService) recordSuccess(ctx context.Context, userID uuid.UUID, emai
 		id = uuid.New()
 	}
 	_ = s.repo.RecordLoginAttempt(ctx, id, &userID, emailHash, ipHash, true, nil, now)
-}
-
-// startSession mints the session id and the access token for a caller who has
-// just proved who they are.
-//
-// The session id is generated here rather than read from a table because
-// sessions do not have one until P2.6. The claim is in the token from the start
-// so that adding the row later does not change the token format and invalidate
-// everything issued before that deploy.
-//
-// It is a separate function because Login is at the complexity limit the linter
-// enforces, and of everything in that function this is the part that reads
-// cleanly on its own: every step above it decides whether the caller may sign
-// in, and this is what happens once they may.
-func (s *LoginService) startSession(ctx context.Context, userID uuid.UUID) (Session, error) {
-	sessionID, err := s.newID(ctx)
-	if err != nil {
-		return Session{}, fmt.Errorf("generate session id: %w", err)
-	}
-	return s.tokens.Issue(ctx, userID, sessionID)
 }

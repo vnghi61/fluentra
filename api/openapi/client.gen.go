@@ -214,6 +214,21 @@ type ClientInterface interface {
 	// Corresponds with POST /auth/login (the `AuthLogin` operationId).
 	AuthLogin(ctx context.Context, body AuthLoginJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AuthRefresh Rotate the refresh token and issue a new access token.
+	//
+	// Exchanges the `refresh_token` cookie for a fresh access token and a fresh refresh cookie. There is no request body: the credential is the cookie, which the browser attaches on its own and no script can read.
+	//
+	// A refresh token is single-use (BR-AUTH-04). The exchange spends the one presented and the response always replaces it, so a client that ignores the `Set-Cookie` has signed itself out.
+	//
+	// **Single use is what makes theft detectable.** A stolen token works exactly once. Whichever party presents the token second -- the thief or the real client -- is presenting one that has already been spent, and at that moment the server has no way to tell which of the two is genuine. So it stops trusting both: every token in the family is revoked, the session is revoked, a `refresh_reuse` security event is raised, and this operation answers 401 `SESSION_REVOKED`. The learner signs in again. That is the intended cost, and it is far smaller than an attacker holding a credential they can renew indefinitely.
+	//
+	// A consequence worth designing around: two requests racing with the same valid token have exactly one winner, and the loser is indistinguishable from a replay, so it is treated as one. A client refreshing from several tabs must serialise them.
+	//
+	// An unknown, expired or already-revoked token is 401 `TOKEN_INVALID`. That is a different code from the reuse case on purpose -- reuse means the session was taken away because a token was replayed, which is worth telling the learner and worth finding in a log, while `TOKEN_INVALID` means only that this credential buys nothing. Both end at the login form.
+	//
+	// Corresponds with POST /auth/refresh (the `AuthRefresh` operationId).
+	AuthRefresh(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AuthRegisterWithBody Open an account and start email verification.
 	//
 	// Creates the account and issues a `verify_email` challenge. The six-digit code goes to the address by email; the response carries only the challenge handle.
@@ -569,6 +584,31 @@ func (c *Client) AuthLoginWithBody(ctx context.Context, contentType string, body
 // Corresponds with POST /auth/login (the `AuthLogin` operationId).
 func (c *Client) AuthLogin(ctx context.Context, body AuthLoginJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAuthLoginRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AuthRefresh Rotate the refresh token and issue a new access token.
+//
+// Exchanges the `refresh_token` cookie for a fresh access token and a fresh refresh cookie. There is no request body: the credential is the cookie, which the browser attaches on its own and no script can read.
+//
+// A refresh token is single-use (BR-AUTH-04). The exchange spends the one presented and the response always replaces it, so a client that ignores the `Set-Cookie` has signed itself out.
+//
+// **Single use is what makes theft detectable.** A stolen token works exactly once. Whichever party presents the token second -- the thief or the real client -- is presenting one that has already been spent, and at that moment the server has no way to tell which of the two is genuine. So it stops trusting both: every token in the family is revoked, the session is revoked, a `refresh_reuse` security event is raised, and this operation answers 401 `SESSION_REVOKED`. The learner signs in again. That is the intended cost, and it is far smaller than an attacker holding a credential they can renew indefinitely.
+//
+// A consequence worth designing around: two requests racing with the same valid token have exactly one winner, and the loser is indistinguishable from a replay, so it is treated as one. A client refreshing from several tabs must serialise them.
+//
+// An unknown, expired or already-revoked token is 401 `TOKEN_INVALID`. That is a different code from the reuse case on purpose -- reuse means the session was taken away because a token was replayed, which is worth telling the learner and worth finding in a log, while `TOKEN_INVALID` means only that this credential buys nothing. Both end at the login form.
+//
+// Corresponds with POST /auth/refresh (the `AuthRefresh` operationId).
+func (c *Client) AuthRefresh(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthRefreshRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -1379,6 +1419,33 @@ func NewAuthLoginRequestWithBody(server string, contentType string, body io.Read
 	return req, nil
 }
 
+// NewAuthRefreshRequest constructs an http.Request for the AuthRefresh method
+func NewAuthRefreshRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/refresh")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewAuthRegisterRequest calls the generic AuthRegister builder with application/json body
 func NewAuthRegisterRequest(server string, body AuthRegisterJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -1864,6 +1931,23 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /auth/login (the `AuthLogin` operationId).
 	AuthLoginWithResponse(ctx context.Context, body AuthLoginJSONRequestBody, reqEditors ...RequestEditorFn) (*AuthLoginResponse, error)
+
+	// AuthRefreshWithResponse Rotate the refresh token and issue a new access token.
+	//
+	// Exchanges the `refresh_token` cookie for a fresh access token and a fresh refresh cookie. There is no request body: the credential is the cookie, which the browser attaches on its own and no script can read.
+	//
+	// A refresh token is single-use (BR-AUTH-04). The exchange spends the one presented and the response always replaces it, so a client that ignores the `Set-Cookie` has signed itself out.
+	//
+	// **Single use is what makes theft detectable.** A stolen token works exactly once. Whichever party presents the token second -- the thief or the real client -- is presenting one that has already been spent, and at that moment the server has no way to tell which of the two is genuine. So it stops trusting both: every token in the family is revoked, the session is revoked, a `refresh_reuse` security event is raised, and this operation answers 401 `SESSION_REVOKED`. The learner signs in again. That is the intended cost, and it is far smaller than an attacker holding a credential they can renew indefinitely.
+	//
+	// A consequence worth designing around: two requests racing with the same valid token have exactly one winner, and the loser is indistinguishable from a replay, so it is treated as one. A client refreshing from several tabs must serialise them.
+	//
+	// An unknown, expired or already-revoked token is 401 `TOKEN_INVALID`. That is a different code from the reuse case on purpose -- reuse means the session was taken away because a token was replayed, which is worth telling the learner and worth finding in a log, while `TOKEN_INVALID` means only that this credential buys nothing. Both end at the login form.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /auth/refresh (the `AuthRefresh` operationId).
+	AuthRefreshWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AuthRefreshResponse, error)
 
 	// AuthRegisterWithBodyWithResponse Open an account and start email verification.
 	//
@@ -2539,6 +2623,7 @@ func (r AuthResendChallengeResponse) ContentType() string {
 
 // AuthVerifyChallengeResponse200Headers the declared response headers of an HTTP 200 response for AuthVerifyChallenge
 type AuthVerifyChallengeResponse200Headers struct {
+	SetCookie  *string
 	XRequestId *string
 }
 
@@ -2636,6 +2721,7 @@ func (r AuthVerifyChallengeResponse) ContentType() string {
 
 // AuthLoginResponse200Headers the declared response headers of an HTTP 200 response for AuthLogin
 type AuthLoginResponse200Headers struct {
+	SetCookie  *string
 	XRequestId *string
 }
 
@@ -2718,6 +2804,76 @@ func (r AuthLoginResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r AuthLoginResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AuthRefreshResponse200Headers the declared response headers of an HTTP 200 response for AuthRefresh
+type AuthRefreshResponse200Headers struct {
+	SetCookie  *string
+	XRequestId *string
+}
+
+// AuthRefreshResponse429Headers the declared response headers of an HTTP 429 response for AuthRefresh
+type AuthRefreshResponse429Headers struct {
+	RetryAfter *int
+}
+
+type AuthRefreshResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AuthSession
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AuthRefreshResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AuthRefreshResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AuthRefreshResponse) GetJSON200() *AuthSession {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AuthRefreshResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AuthRefreshResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetBody returns the raw response body bytes
+func (r AuthRefreshResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AuthRefreshResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AuthRefreshResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AuthRefreshResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -3548,6 +3704,29 @@ func (c *ClientWithResponses) AuthLoginWithResponse(ctx context.Context, body Au
 	return ParseAuthLoginResponse(rsp)
 }
 
+// AuthRefreshWithResponse Rotate the refresh token and issue a new access token.
+//
+// Exchanges the `refresh_token` cookie for a fresh access token and a fresh refresh cookie. There is no request body: the credential is the cookie, which the browser attaches on its own and no script can read.
+//
+// A refresh token is single-use (BR-AUTH-04). The exchange spends the one presented and the response always replaces it, so a client that ignores the `Set-Cookie` has signed itself out.
+//
+// **Single use is what makes theft detectable.** A stolen token works exactly once. Whichever party presents the token second -- the thief or the real client -- is presenting one that has already been spent, and at that moment the server has no way to tell which of the two is genuine. So it stops trusting both: every token in the family is revoked, the session is revoked, a `refresh_reuse` security event is raised, and this operation answers 401 `SESSION_REVOKED`. The learner signs in again. That is the intended cost, and it is far smaller than an attacker holding a credential they can renew indefinitely.
+//
+// A consequence worth designing around: two requests racing with the same valid token have exactly one winner, and the loser is indistinguishable from a replay, so it is treated as one. A client refreshing from several tabs must serialise them.
+//
+// An unknown, expired or already-revoked token is 401 `TOKEN_INVALID`. That is a different code from the reuse case on purpose -- reuse means the session was taken away because a token was replayed, which is worth telling the learner and worth finding in a log, while `TOKEN_INVALID` means only that this credential buys nothing. Both end at the login form.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /auth/refresh (the `AuthRefresh` operationId).
+func (c *ClientWithResponses) AuthRefreshWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AuthRefreshResponse, error) {
+	rsp, err := c.AuthRefresh(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthRefreshResponse(rsp)
+}
+
 // AuthRegisterWithBodyWithResponse Open an account and start email verification.
 //
 // Creates the account and issues a `verify_email` challenge. The six-digit code goes to the address by email; the response carries only the challenge handle.
@@ -4305,6 +4484,13 @@ func ParseAuthVerifyChallengeResponse(rsp *http.Response) (*AuthVerifyChallengeR
 	switch {
 	case rsp.StatusCode == 200:
 		var headers AuthVerifyChallengeResponse200Headers
+		if values := rsp.Header.Values("Set-Cookie"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "Set-Cookie", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.SetCookie = &value
+		}
 		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
 			var value string
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
@@ -4389,6 +4575,13 @@ func ParseAuthLoginResponse(rsp *http.Response) (*AuthLoginResponse, error) {
 	switch {
 	case rsp.StatusCode == 200:
 		var headers AuthLoginResponse200Headers
+		if values := rsp.Header.Values("Set-Cookie"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "Set-Cookie", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.SetCookie = &value
+		}
 		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
 			var value string
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
@@ -4399,6 +4592,76 @@ func ParseAuthLoginResponse(rsp *http.Response) (*AuthLoginResponse, error) {
 		response.Headers200 = &headers
 	case rsp.StatusCode == 429:
 		var headers AuthLoginResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAuthRefreshResponse parses an HTTP response from a AuthRefreshWithResponse call
+func ParseAuthRefreshResponse(rsp *http.Response) (*AuthRefreshResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AuthRefreshResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AuthSession
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AuthRefreshResponse200Headers
+		if values := rsp.Header.Values("Set-Cookie"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "Set-Cookie", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.SetCookie = &value
+		}
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AuthRefreshResponse429Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

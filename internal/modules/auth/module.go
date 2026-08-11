@@ -77,7 +77,17 @@ type Deps struct {
 
 	// Env namespaces the denylist keys, so a staging deploy pointed at a shared
 	// Redis cannot sign somebody out of production, or fail to.
+	//
+	// It also decides whether the refresh cookie carries `Secure`. Only "local"
+	// drops it, and only because the SPA is served over plain HTTP there and a
+	// Secure cookie would be discarded rather than merely unprotected. Every
+	// other value — including an empty one — gets the flag, so a deployment that
+	// forgot to set APP_ENV fails safe.
 	Env string
+
+	// RefreshTTL is the idle window a refresh token gets (REFRESH_TOKEN_TTL).
+	// Zero means service.DefaultRefreshTTL.
+	RefreshTTL time.Duration
 }
 
 // Module is the auth module, assembled.
@@ -85,6 +95,7 @@ type Module struct {
 	register *service.RegisterService
 	login    *service.LoginService
 	tokens   *service.TokenService
+	sessions *service.RefreshService
 	mailer   mailer.Sender
 	handler  *authhttp.Handler
 }
@@ -148,6 +159,20 @@ func New(deps Deps) *Module {
 		panic("auth.New: " + err.Error())
 	}
 
+	// Sessions are opened here and nowhere else. Login and verification both
+	// route through it so there is one place a refresh family is rooted, which
+	// is what makes "revoke the family" a complete statement.
+	sessions := service.NewRefreshService(service.RefreshDeps{
+		Pool:   deps.Pool,
+		Repo:   refreshAdapter{Repository: repo},
+		Tokens: tokens,
+		Events: events,
+		Keys:   keys,
+		Clock:  timekeeper,
+		NewID:  id.NewUUIDv7,
+		TTL:    deps.RefreshTTL,
+	})
+
 	reg := service.NewRegisterService(service.RegisterDeps{
 		Pool:        deps.Pool,
 		Accounts:    accountsAdapter{Registrar: deps.Registrar},
@@ -158,7 +183,7 @@ func New(deps Deps) *Module {
 		Events:      events,
 		Clock:       timekeeper,
 		NewID:       id.NewUUIDv7,
-		Tokens:      tokens,
+		Sessions:    sessions,
 	})
 
 	limiter := deps.Limiter
@@ -175,15 +200,16 @@ func New(deps Deps) *Module {
 		Hasher:      domain.NewHasher(domain.DefaultHashParams()),
 		Clock:       timekeeper,
 		NewID:       id.NewUUIDv7,
-		Tokens:      tokens,
+		Sessions:    sessions,
 	})
 
 	return &Module{
 		register: reg,
 		login:    loginSvc,
 		tokens:   tokens,
+		sessions: sessions,
 		mailer:   deps.Mailer,
-		handler:  authhttp.NewHandler(reg, loginSvc),
+		handler:  authhttp.NewHandler(reg, loginSvc, sessions, authhttp.CookieOptions{Secure: deps.Env != "local"}),
 	}
 }
 
@@ -326,6 +352,16 @@ func (m *Module) CronJobs() []job.CronJob {
 			Task:     m.register.PurgeUnverified,
 		},
 	}
+}
+
+// refreshAdapter narrows *repository.Repository to service.RefreshRepo, for the
+// same covariance reason as the two adapters below it.
+type refreshAdapter struct {
+	*repository.Repository
+}
+
+func (a refreshAdapter) WithTx(tx pgx.Tx) service.RefreshRepo {
+	return refreshAdapter{Repository: a.Repository.WithTx(tx)}
 }
 
 // repositoryAdapter narrows *repository.Repository to service.Repository (the

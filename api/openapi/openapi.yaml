@@ -210,6 +210,8 @@ paths:
           headers:
             X-Request-Id:
               $ref: '#/components/headers/X-Request-Id'
+            Set-Cookie:
+              $ref: '#/components/headers/Set-Cookie-Refresh'
           content:
             application/json:
               schema:
@@ -267,6 +269,8 @@ paths:
           headers:
             X-Request-Id:
               $ref: '#/components/headers/X-Request-Id'
+            Set-Cookie:
+              $ref: '#/components/headers/Set-Cookie-Refresh'
           content:
             application/json:
               schema:
@@ -327,6 +331,65 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /auth/refresh:
+    post:
+      tags: [auth]
+      operationId: authRefresh
+      summary: Rotate the refresh token and issue a new access token.
+      description: >-
+        Exchanges the `refresh_token` cookie for a fresh access token and a
+        fresh refresh cookie. There is no request body: the credential is the
+        cookie, which the browser attaches on its own and no script can read.
+
+
+        A refresh token is single-use (BR-AUTH-04). The exchange spends the one
+        presented and the response always replaces it, so a client that ignores
+        the `Set-Cookie` has signed itself out.
+
+
+        **Single use is what makes theft detectable.** A stolen token works
+        exactly once. Whichever party presents the token second -- the thief or
+        the real client -- is presenting one that has already been spent, and at
+        that moment the server has no way to tell which of the two is genuine.
+        So it stops trusting both: every token in the family is revoked, the
+        session is revoked, a `refresh_reuse` security event is raised, and this
+        operation answers 401 `SESSION_REVOKED`. The learner signs in again.
+        That is the intended cost, and it is far smaller than an attacker
+        holding a credential they can renew indefinitely.
+
+
+        A consequence worth designing around: two requests racing with the same
+        valid token have exactly one winner, and the loser is indistinguishable
+        from a replay, so it is treated as one. A client refreshing from several
+        tabs must serialise them.
+
+
+        An unknown, expired or already-revoked token is 401 `TOKEN_INVALID`.
+        That is a different code from the reuse case on purpose -- reuse means
+        the session was taken away because a token was replayed, which is worth
+        telling the learner and worth finding in a log, while `TOKEN_INVALID`
+        means only that this credential buys nothing. Both end at the login
+        form.
+      security: []
+      responses:
+        '200':
+          description: >-
+            Rotated. The old token is now spent and the cookie has been
+            replaced.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+            Set-Cookie:
+              $ref: '#/components/headers/Set-Cookie-Refresh'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSession'
+              example: *authSessionExample
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '429':
           $ref: '#/components/responses/TooManyRequests'
   /me:
@@ -999,6 +1062,8 @@ components:
       $ref: ./components/headers.yaml#/RateLimit-Reset
     Retry-After:
       $ref: ./components/headers.yaml#/Retry-After
+    Set-Cookie-Refresh:
+      $ref: ./components/headers.yaml#/Set-Cookie-Refresh
   responses:
     BadRequest:
       $ref: ./components/responses.yaml#/BadRequest

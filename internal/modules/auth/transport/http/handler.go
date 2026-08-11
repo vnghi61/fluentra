@@ -17,6 +17,7 @@ import (
 
 	"github.com/fluentra/fluentra/internal/modules/auth/service"
 	"github.com/fluentra/fluentra/internal/shared/apperr"
+	"github.com/fluentra/fluentra/internal/shared/clock"
 	"github.com/fluentra/fluentra/internal/shared/httpx"
 )
 
@@ -33,15 +34,31 @@ type Authenticator interface {
 	Login(ctx context.Context, input service.LoginInput) (service.LoginResult, error)
 }
 
+// Rotator is the refresh surface required by Handler.
+type Rotator interface {
+	Rotate(ctx context.Context, presented string) (service.SignedIn, error)
+}
+
 // Handler serves the auth module's HTTP operations.
 type Handler struct {
 	registration  Registration
 	authenticator Authenticator
+	rotator       Rotator
+	cookies       CookieOptions
+	clock         clock.Clock
 }
 
 // NewHandler creates the handler.
-func NewHandler(registration Registration, authenticator Authenticator) *Handler {
-	return &Handler{registration: registration, authenticator: authenticator}
+func NewHandler(
+	registration Registration, authenticator Authenticator, rotator Rotator, cookies CookieOptions,
+) *Handler {
+	return &Handler{
+		registration:  registration,
+		authenticator: authenticator,
+		rotator:       rotator,
+		cookies:       cookies,
+		clock:         clock.Real{},
+	}
 }
 
 // Routes mounts this module's operations on router, relative to /api/v1.
@@ -49,6 +66,7 @@ func (h *Handler) Routes(router chi.Router) {
 	router.Route("/auth", func(auth chi.Router) {
 		auth.Post("/register", h.register)
 		auth.Post("/login", h.login)
+		auth.Post("/refresh", h.refresh)
 		auth.Route("/challenges/{id}", func(challenge chi.Router) {
 			challenge.Post("/verify", h.verify)
 			challenge.Post("/resend", h.resend)
@@ -67,7 +85,26 @@ func (h *Handler) login(writer http.ResponseWriter, request *http.Request) {
 		httpx.WriteProblem(writer, request, err)
 		return
 	}
+	h.setRefreshCookie(writer, result.SignedIn, h.clock.Now())
 	httpx.WriteJSON(writer, request, http.StatusOK, toSessionResponse(result.Session))
+}
+
+// refresh rotates the token in the cookie.
+//
+// There is no request body and no Authorization header: the credential is the
+// cookie, which is why this operation is reachable without an actor in the
+// context. A failure clears the cookie, so a browser holding a revoked token
+// stops replaying it on every launch — and, after a reuse detection, stops
+// re-reporting an incident that has already been filed.
+func (h *Handler) refresh(writer http.ResponseWriter, request *http.Request) {
+	signedIn, err := h.rotator.Rotate(request.Context(), presentedRefreshToken(request))
+	if err != nil {
+		h.clearRefreshCookie(writer)
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	h.setRefreshCookie(writer, signedIn, h.clock.Now())
+	httpx.WriteJSON(writer, request, http.StatusOK, toSessionResponse(signedIn.Session))
 }
 
 func (h *Handler) register(writer http.ResponseWriter, request *http.Request) {
@@ -100,6 +137,7 @@ func (h *Handler) verify(writer http.ResponseWriter, request *http.Request) {
 		httpx.WriteProblem(writer, request, err)
 		return
 	}
+	h.setRefreshCookie(writer, verified.SignedIn, h.clock.Now())
 	httpx.WriteJSON(writer, request, http.StatusOK, toVerifiedResponse(verified))
 }
 

@@ -86,7 +86,7 @@ type RegisterService struct {
 	events      EventWriter
 	clock       clock.Clock
 	ids         IDGenerator
-	tokens      Tokens
+	sessions    Sessions
 }
 
 // RegisterDeps are the service's collaborators.
@@ -100,7 +100,7 @@ type RegisterDeps struct {
 	Events      EventWriter
 	Clock       clock.Clock
 	NewID       IDGenerator
-	Tokens      Tokens
+	Sessions    Sessions
 }
 
 // NewRegisterService creates the registration service.
@@ -108,7 +108,7 @@ func NewRegisterService(deps RegisterDeps) *RegisterService {
 	return &RegisterService{
 		pool: deps.Pool, accounts: deps.Accounts, credentials: deps.Credentials,
 		challenges: deps.Challenges, hasher: deps.Hasher, policy: deps.Policy,
-		events: deps.Events, clock: deps.Clock, ids: deps.NewID, tokens: deps.Tokens,
+		events: deps.Events, clock: deps.Clock, ids: deps.NewID, sessions: deps.Sessions,
 	}
 }
 
@@ -352,19 +352,16 @@ func (s *RegisterService) writeCredential(
 // registration, not the second to last: making a learner who has just typed a
 // code from their inbox then type their password again is a step that teaches
 // them nothing and loses some of them.
+// SignedIn is embedded so that `verification.Session` reads as it did before
+// P2.5 put a refresh token beside it.
 type Verification struct {
 	Purpose    domain.Purpose
 	VerifiedAt time.Time
-	Session    Session
+	SignedIn
 }
 
 // VerifyEmail consumes a challenge and, for a verify_email challenge, marks the
-// address proved.
-//
-// It returns no tokens. Signing the learner in here — so verification is the
-// last step rather than the second to last — is P2.4, which has the token
-// service; the OpenAPI schema says so, so a client written against this version
-// is not surprised by the field appearing.
+// address proved and signs the learner in.
 func (s *RegisterService) VerifyEmail(ctx context.Context, challengeID uuid.UUID, code string) (
 	Verification, error,
 ) {
@@ -401,16 +398,16 @@ func (s *RegisterService) VerifyEmail(ctx context.Context, challengeID uuid.UUID
 		verifiedAt = *consumed.ConsumedAt
 	}
 
-	sessionID, err := s.ids(ctx)
-	if err != nil {
-		return Verification{}, fmt.Errorf("generate session id: %w", err)
-	}
-	session, err := s.tokens.Issue(ctx, *consumed.UserID, sessionID)
+	// No UserAgent: this path has a context but not a request, and the header
+	// would have to be threaded through three signatures to reach here. The
+	// column is nullable and the session list P2.6 builds is where a label for
+	// it first matters.
+	signedIn, err := s.sessions.Start(ctx, StartInput{UserID: *consumed.UserID})
 	if err != nil {
 		return Verification{}, err
 	}
 
-	return Verification{Purpose: consumed.Purpose, VerifiedAt: verifiedAt, Session: session}, nil
+	return Verification{Purpose: consumed.Purpose, VerifiedAt: verifiedAt, SignedIn: signedIn}, nil
 }
 
 // PurgeUnverified removes accounts that claimed an address and never proved it.

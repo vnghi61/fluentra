@@ -25,6 +25,41 @@ const (
 	// instead of a code, and it is why registration cannot be used to discover
 	// whether an address is registered.
 	EventRegistrationAttempted = "auth.registration_attempted"
+
+	// EventSecurityEvent reports something worth investigating. `audit` already
+	// subscribes to this topic and files it in the security stream rather than
+	// the action log.
+	EventSecurityEvent = "auth.security_event"
+)
+
+// The security event kinds this module raises.
+//
+// The kind is a payload field rather than a topic of its own because `audit`
+// keys its stream on the topic: a kind per topic would mean editing another
+// module's subscription list every time this one learns to notice something new.
+const (
+	// SecurityKindRefreshReuse is a refresh token presented after it was already
+	// spent (BR-AUTH-04). It is the strongest signal this module produces: a
+	// single-use credential presented twice means two parties hold it.
+	SecurityKindRefreshReuse = "refresh_reuse"
+)
+
+// Severity is how loudly an event asks to be looked at.
+//
+// The values are duplicated from `audit`'s own rather than imported, which is
+// the same trade `audit` makes in the other direction: the wire format is the
+// contract between the two modules, and a shared Go type would make one of them
+// depend on the other's release cycle for a four-value string.
+type Severity string
+
+// The four levels, lowest first. `high` is where a dashboard starts drawing
+// attention to something and `critical` is where it pages somebody, so the
+// choice between them is the choice of whether to wake a human.
+const (
+	SeverityLow      Severity = "low"
+	SeverityMedium   Severity = "medium"
+	SeverityHigh     Severity = "high"
+	SeverityCritical Severity = "critical"
 )
 
 // VerificationRequested carries what the mailer needs to send a code.
@@ -50,6 +85,25 @@ type VerificationRequested struct {
 	Code        string    `json:"code"`
 	ExpiresAt   time.Time `json:"expires_at"`
 	OccurredAt  time.Time `json:"occurred_at"`
+}
+
+// SecurityEvent is one occurrence worth investigating.
+//
+// The member names are the convention `audit` reads structurally without
+// importing anything from here: `occurred_at`, `user_id` and `severity` are its
+// envelope, and everything else — `kind`, `session_id` — falls through into the
+// event's detail. Sending a field it does not know about is safe; renaming one
+// it does is not.
+//
+// There is deliberately nothing here that came from the request. An attacker
+// who can raise this event would otherwise choose what gets stored in a table
+// nobody can UPDATE.
+type SecurityEvent struct {
+	Kind       string    `json:"kind"`
+	Severity   Severity  `json:"severity"`
+	UserID     uuid.UUID `json:"user_id"`
+	SessionID  uuid.UUID `json:"session_id"`
+	OccurredAt time.Time `json:"occurred_at"`
 }
 
 // RegistrationAttempted is the warning sent to somebody whose address is

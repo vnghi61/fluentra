@@ -108,10 +108,9 @@ VerifiedChallenge:
     the address is the last step of registration, not the second to last.
 
 
-    The refresh token is not here yet. Rotating refresh tokens and the cookie
-    that carries them arrive with P2.5, after which a client keeps its session
-    alive without re-entering a password. Until then the access token expires
-    and the learner signs in again.
+    The response also carries the first refresh cookie, so a learner who has
+    just verified an address stays signed in without ever seeing the login
+    form they would otherwise be sent to fifteen minutes later.
   required: [purpose, verified_at, session]
   additionalProperties: false
   properties:
@@ -134,6 +133,13 @@ AuthSession:
     **The access token belongs in memory only.** Never `localStorage`, never a
     cookie a script can read: it is a bearer credential, and anything that can
     read it can act as the learner until it expires.
+
+
+    Every response carrying this object is also accompanied by a `Set-Cookie`
+    holding the refresh token. There is no field for it here, and that is the
+    point: a refresh token the page can read is a refresh token an injected
+    script can steal, so it exists only as an `HttpOnly` cookie the browser
+    replays to `POST /auth/refresh` and to nothing else.
   required: [access_token, token_type, expires_in, user_id, role]
   additionalProperties: false
   properties:

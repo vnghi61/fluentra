@@ -222,13 +222,13 @@ func TestVerify_AcceptsThePreviousKeyButNotAForeignOne(t *testing.T) {
 		t.Fatalf("Issue with the foreign key: %v", err)
 	}
 	_, err = rotated.service.Verify(context.Background(), forged.AccessToken.Reveal())
-	assertAuthCode(t, err, "TOKEN_INVALID")
+	assertAuthCode(t, err, codeTokenInvalid)
 
 	// And without a previous key configured, the old token stops working — which
 	// is what makes dropping JWT_PREVIOUS_KEY the end of a rotation.
 	current := newTokenHarness(t, nil)
 	_, err = current.service.Verify(context.Background(), session.AccessToken.Reveal())
-	assertAuthCode(t, err, "TOKEN_INVALID")
+	assertAuthCode(t, err, codeTokenInvalid)
 }
 
 // TestVerify_TellsExpiredApartFromInvalid is the criterion the client acts on:
@@ -262,7 +262,7 @@ func TestVerify_TellsExpiredApartFromInvalid(t *testing.T) {
 	for name, raw := range malformed {
 		t.Run(name, func(t *testing.T) {
 			_, err := h.service.Verify(context.Background(), raw)
-			assertAuthCode(t, err, "TOKEN_INVALID")
+			assertAuthCode(t, err, codeTokenInvalid)
 		})
 	}
 }
@@ -281,7 +281,7 @@ func TestVerify_RefusesATokenForAnotherAudienceOrIssuer(t *testing.T) {
 	}
 
 	_, err = newTokenHarness(t, nil).service.Verify(context.Background(), session.AccessToken.Reveal())
-	assertAuthCode(t, err, "TOKEN_INVALID")
+	assertAuthCode(t, err, codeTokenInvalid)
 }
 
 // TestVerify_RejectsADenylistedToken is explicit logout: the signature is fine
@@ -303,7 +303,7 @@ func TestVerify_RejectsADenylistedToken(t *testing.T) {
 	}
 
 	_, err = h.service.Verify(context.Background(), session.AccessToken.Reveal())
-	assertAuthCode(t, err, "SESSION_REVOKED")
+	assertAuthCode(t, err, codeSessionRevoked)
 }
 
 // TestVerify_AcceptsTheTokenWhenTheDenylistIsUnreachable is the one fail-open
