@@ -56,7 +56,7 @@ func newHarness(t *testing.T) *harness {
 			Keys:    keys,
 			Clock:   fakeClock,
 			NewID:   func(context.Context) (uuid.UUID, error) { return uuid.New(), nil },
-			Env:     "test",
+			Env:     testEnv,
 		}),
 		repo:    repo,
 		limiter: limiter,
