@@ -87,6 +87,7 @@ Other modules may import **only** `internal/modules/auth/contract`.
 | interface | `auth.SessionRevoker` | Revoke sessions for a user — used by `admin` and by `user` on account deletion |
 | struct | `auth.Actor` | `{UserID, SessionID, Role, TokenID}` — placed in the request context |
 | event | `auth.UserRegistered` | Published after a successful registration |
+| event | `auth.SecurityEvent` | Published when something needs investigating — `refresh_reuse` is the first kind |
 
 ### Events
 
@@ -129,8 +130,26 @@ Migrations: `db/migrations/auth/` · Queries: `db/queries/auth/`
 
 ### What exists today
 
-`core.credentials` (P2.1, `1700000050`) and `core.auth_challenges` (P2.1b, `1700000060`). The rest
-of the table above is specification, not schema — each arrives with the card that needs it.
+`core.credentials` (P2.1, `1700000050`), `core.auth_challenges` (P2.1b, `1700000060`),
+`core.login_attempts` (P2.3, `1700000080`), `core.login_lockouts` (P2.3, `1700000090`), and
+`core.sessions` + `core.refresh_tokens` (P2.5, `1700000100`). The rest of the table above is
+specification, not schema — each arrives with the card that needs it.
+
+Four things about the refresh pair beyond the summary:
+
+- **Spent rows are kept, not deleted.** A deleted row and a token that never existed are
+  indistinguishable, and that difference is the entire detection: a token presented after it was
+  already spent proves two parties hold it. `used_at` is what makes reuse visible.
+- **`used_at` and `revoked_at` are separate columns** because a spent token was exchanged
+  legitimately and a revoked one was taken away. Collapsing them would make the audit trail unable
+  to say which happened to each row in a burnt family.
+- **`token_hash` is a plain SHA-256, not an HMAC and not a password hash.** The token is 256 bits
+  from `crypto/rand`, so there is no dictionary to attack and nothing a keyed digest or a work
+  factor would buy. The argument that makes an unkeyed digest wrong for an email address does not
+  apply to a value with full entropy.
+- **`core.sessions.device_label` is written by nothing yet.** P2.6 derives it when it builds the
+  session list; `ip_hash` and `user_agent_hash` are populated at sign-in, because creation is the
+  only moment they can be observed.
 
 Two things about the credential row that the summary does not carry:
 

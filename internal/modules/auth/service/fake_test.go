@@ -11,6 +11,8 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/auth/domain"
 	"github.com/fluentra/fluentra/internal/modules/auth/service"
 	"github.com/fluentra/fluentra/internal/platform/cache"
+	"github.com/fluentra/fluentra/internal/shared/clock"
+	"github.com/fluentra/fluentra/internal/shared/secret"
 )
 
 // fakeRepository is an in-memory stand-in for the challenge table.
@@ -207,4 +209,37 @@ func (f *fakeLimiter) keys() []string {
 		names = append(names, call.key)
 	}
 	return names
+}
+
+// fakeSessions opens a session without a database.
+//
+// It mints a real access token — the two suites that use it say why a stub
+// would be worse — and a real refresh token, and it stores neither. Rotation is
+// the part that needs Postgres to mean anything, and it has its own integration
+// suite; what login and verification need from a session here is that the
+// caller is handed one they could actually present.
+type fakeSessions struct {
+	tokens *service.TokenService
+	clock  clock.Clock
+	newID  func(context.Context) (uuid.UUID, error)
+}
+
+func (f fakeSessions) Start(ctx context.Context, input service.StartInput) (service.SignedIn, error) {
+	sessionID, err := f.newID(ctx)
+	if err != nil {
+		return service.SignedIn{}, err
+	}
+	session, err := f.tokens.Issue(ctx, input.UserID, sessionID)
+	if err != nil {
+		return service.SignedIn{}, err
+	}
+	raw, _, err := domain.NewRefreshToken(nil)
+	if err != nil {
+		return service.SignedIn{}, err
+	}
+	return service.SignedIn{
+		Session:          session,
+		RefreshToken:     secret.New(raw),
+		RefreshExpiresAt: f.clock.Now().Add(service.DefaultRefreshTTL),
+	}, nil
 }

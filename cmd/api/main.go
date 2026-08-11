@@ -81,6 +81,10 @@ type applicationConfig struct {
 	Access struct {
 		TokenTTL time.Duration `koanf:"token_ttl"`
 	} `koanf:"access"`
+	// REFRESH_TOKEN_TTL, under the same first-underscore-becomes-a-dot rule.
+	Refresh struct {
+		TokenTTL time.Duration `koanf:"token_ttl"`
+	} `koanf:"refresh"`
 	Mail struct {
 		From string `koanf:"from"`
 	} `koanf:"mail"`
@@ -177,6 +181,7 @@ func run(ctx context.Context) error {
 			Audience:    cfg.JWT.Audience,
 			AccessTTL:   cfg.Access.TokenTTL,
 		},
+		RefreshTTL: cfg.Refresh.TokenTTL,
 		// A separate typed cache from the permission one. They share the Redis
 		// client but not the value type, and Cache[T] is generic per type.
 		Denylist: cache.NewRedisCache[bool](redisClient),
@@ -274,6 +279,7 @@ func configOptions() config.Options {
 			"jwt.audience":                "fluentra-api",
 			"jwt.previous_key":            "",
 			"access.token_ttl":            "15m",
+			"refresh.token_ttl":           "720h",
 		},
 		Required: []config.RequiredKey{
 			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},

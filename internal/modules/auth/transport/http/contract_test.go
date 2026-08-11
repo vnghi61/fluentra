@@ -89,7 +89,11 @@ func (f *fakeContractRegistration) VerifyEmail(_ context.Context, _ uuid.UUID, _
 	return service.Verification{
 		Purpose:    domain.PurposeVerifyEmail,
 		VerifiedAt: time.Now().UTC(),
-		Session:    contractSession(),
+		SignedIn: service.SignedIn{
+			Session:          contractSession(),
+			RefreshToken:     secret.New(testCookieValue),
+			RefreshExpiresAt: time.Now().UTC().Add(service.DefaultRefreshTTL),
+		},
 	}, nil
 }
 
@@ -184,8 +188,12 @@ type fakeContractAuthenticator struct{}
 
 func (fakeContractAuthenticator) Login(context.Context, service.LoginInput) (service.LoginResult, error) {
 	return service.LoginResult{
-		UserID:  uuid.MustParse("018f3a5b-7c8d-7123-8123-456789abcdef"),
-		Session: contractSession(),
+		UserID: uuid.MustParse("018f3a5b-7c8d-7123-8123-456789abcdef"),
+		SignedIn: service.SignedIn{
+			Session:          contractSession(),
+			RefreshToken:     secret.New(testCookieValue),
+			RefreshExpiresAt: time.Now().UTC().Add(service.DefaultRefreshTTL),
+		},
 	}, nil
 }
 
@@ -209,4 +217,24 @@ func TestContract_LoginMatchesTheSpec(t *testing.T) {
 	}
 
 	assertMatchesSchema(t, responseSchema(t, spec, "/auth/login", http.MethodPost, http.StatusOK), rec.Body.Bytes())
+}
+
+// TestContract_RefreshMatchesTheSpec covers the operation this card added. It
+// returns the same AuthSession every other sign-in returns, which is the whole
+// reason the schema was reused rather than a RefreshResponse invented beside it
+// -- and this is what would notice if the two drifted apart.
+func TestContract_RefreshMatchesTheSpec(t *testing.T) {
+	spec := loadSpec(t)
+	router := newTestRouterWithAuth(&fakeContractRegistration{}, fakeContractAuthenticator{})
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/refresh", bytes.NewBuffer(nil))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body: %s", rec.Code, rec.Body.String())
+	}
+
+	assertMatchesSchema(t, responseSchema(t, spec, "/auth/refresh", http.MethodPost, http.StatusOK), rec.Body.Bytes())
 }

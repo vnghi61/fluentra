@@ -300,6 +300,28 @@ type CoreProfile struct {
 	UpdatedAt     time.Time
 }
 
+type CoreRefreshToken struct {
+	ID        uuid.UUID
+	TokenHash []byte
+	FamilyID  uuid.UUID
+	SessionID uuid.UUID
+	IssuedAt  time.Time
+	ExpiresAt time.Time
+	UsedAt    *time.Time
+	RevokedAt *time.Time
+}
+
+type CoreSession struct {
+	ID            uuid.UUID
+	UserID        uuid.UUID
+	DeviceLabel   *string
+	IpHash        []byte
+	UserAgentHash []byte
+	CreatedAt     time.Time
+	LastSeenAt    time.Time
+	RevokedAt     *time.Time
+}
+
 type CoreUser struct {
 	ID              uuid.UUID
 	Email           string

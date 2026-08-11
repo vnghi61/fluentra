@@ -45,6 +45,15 @@ generated text describes commits; release notes should describe change.
 - `POST /api/v1/auth/login` — authentication with Argon2id timing equalisation and per-account/IP lockout protection
 - The identity modules wired into the running API and worker: every operation above is now
   mounted, and every audited write reaches `audit_logs` through the worker
+- `POST /api/v1/auth/refresh` — exchange the refresh cookie for a new access token. Signing in
+  and verifying an address now also set that cookie, so a session outlives the fifteen-minute
+  access token without the learner re-entering a password
+- Refresh tokens rotate on every use and are single-use. Presenting one that has already been
+  spent revokes every token in its family, revokes the session, and raises a `refresh_reuse`
+  security event — so a stolen token is detected the moment either party uses it twice, at the
+  cost of signing the legitimate learner out alongside the thief
+- `core.sessions` and `core.refresh_tokens`. Sessions record a keyed digest of the client
+  address, never the address
 
 ### Fixed
 
@@ -59,9 +68,13 @@ generated text describes commits; release notes should describe change.
 
 ### Notes
 
-The operations above are mounted but still not usable by a real client: there is no
-authentication yet, so nothing puts a caller in the request context and every one of them
-answers 401. That arrives with P2.4. See [ROADMAP.md](ROADMAP.md).
+Authentication is live: P2.4 added the bearer middleware and P2.5 the refresh cookie behind it,
+so the operations above are usable by a real client. What is still missing is `POST
+/auth/logout` and the session list — P2.6. See [ROADMAP.md](ROADMAP.md).
+
+A refresh token is deliberately **not** in any response body. It exists only as an `HttpOnly`
+cookie scoped to `/api/v1/auth`: a value the page can read is a value an injected script can
+steal, and unlike an access token it is renewable indefinitely.
 
 Audit entries record **which fields changed, not what they changed to**, and redact anything on
 the PII deny-list if a value is supplied. An audit log holding a copy of every old display name
