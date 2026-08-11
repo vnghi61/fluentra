@@ -118,8 +118,12 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Authenticate a user with email and password.
-         * @description Authenticates a user account. Enforces constant-time verification even for unknown emails (BR-AUTH-02) and applies independent per-account and per-IP lockout rate limits (BR-AUTH-08).
+         * Exchange a password for an access token.
+         * @description Authenticates an account and signs it in.
+         *
+         *     An unknown email and a wrong password return the same body and take comparable time (BR-AUTH-02) -- the server performs a dummy password verification for an address it has never seen, so response time cannot be used to enumerate accounts. Per-account and per-IP lockout counters are independent (BR-AUTH-08): locking one does not lock the other.
+         *
+         *     An account that has not completed email verification is refused with `EMAIL_NOT_VERIFIED`, and a suspended one with `ACCOUNT_LOCKED`.
          */
         post: operations["authLogin"];
         delete?: never;
@@ -573,9 +577,9 @@ export interface components {
             code: string;
         };
         /**
-         * @description The outcome of a successful verification.
+         * @description The outcome of a successful verification. It signs the learner in: proving the address is the last step of registration, not the second to last.
          *
-         *     It carries no tokens yet. Issuing an access token and a refresh cookie here -- so the learner is signed in without a second step -- is P2.4, which adds them to this schema. Clients written against this version must send the learner to sign in after verifying.
+         *     The refresh token is not here yet. Rotating refresh tokens and the cookie that carries them arrive with P2.5, after which a client keeps its session alive without re-entering a password. Until then the access token expires and the learner signs in again.
          */
         VerifiedChallenge: {
             purpose: components["schemas"]["ChallengePurpose"];
@@ -584,6 +588,39 @@ export interface components {
              * @description The timestamp at which the address was marked verified.
              */
             verified_at: string;
+            session: components["schemas"]["AuthSession"];
+        };
+        /**
+         * @description A signed-in session. Returned by every operation that authenticates a caller, so a client has one shape to handle.
+         *
+         *     **The access token belongs in memory only.** Never `localStorage`, never a cookie a script can read: it is a bearer credential, and anything that can read it can act as the learner until it expires.
+         */
+        AuthSession: {
+            /**
+             * @description A short-lived signed token, presented as `Authorization: Bearer <token>`. It carries the account id, the session id, the role and its own id -- and no personal data at all, so a leaked token reveals nothing about the learner beyond an opaque identifier.
+             * @example eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMTk5YTFjMiJ9.7mMxLmA
+             */
+            access_token: string;
+            /**
+             * @description Always `Bearer`. Present so a client can build the header generically.
+             * @enum {string}
+             */
+            token_type: "Bearer";
+            /**
+             * @description Seconds until the access token expires. A client should refresh well before this, not after a rejected request.
+             * @example 900
+             */
+            expires_in: number;
+            /**
+             * Format: uuid
+             * @description The account that was signed in.
+             */
+            user_id: string;
+            /**
+             * @description Advisory only, so the interface can hide actions that would fail. Every server operation re-checks regardless of what the client believes.
+             * @enum {string}
+             */
+            role: "admin" | "user";
         };
         LoginRequest: {
             /**
@@ -1325,7 +1362,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description User authenticated successfully. */
+            /** @description The caller is signed in. */
             200: {
                 headers: {
                     "X-Request-Id": components["headers"]["X-Request-Id"];
@@ -1334,18 +1371,20 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "user_id": "018f96a3-91e8-7b9a-aee5-8d8e96f90d31",
-                     *       "verified": true
+                     *       "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMTk5YTFjMiJ9.7mMxLmA",
+                     *       "token_type": "Bearer",
+                     *       "expires_in": 900,
+                     *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "role": "user"
                      *     }
                      */
-                    "application/json": {
-                        /** Format: uuid */
-                        user_id: string;
-                        verified: boolean;
-                    };
+                    "application/json": components["schemas"]["AuthSession"];
                 };
             };
+            400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationFailed"];
             429: components["responses"]["TooManyRequests"];
         };
     };
@@ -1380,7 +1419,14 @@ export interface operations {
                     /**
                      * @example {
                      *       "purpose": "verify_email",
-                     *       "verified_at": "2026-08-10T09:03:12Z"
+                     *       "verified_at": "2026-08-10T09:03:12Z",
+                     *       "session": {
+                     *         "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMTk5YTFjMiJ9.7mMxLmA",
+                     *         "token_type": "Bearer",
+                     *         "expires_in": 900,
+                     *         "user_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *         "role": "user"
+                     *       }
                      *     }
                      */
                     "application/json": components["schemas"]["VerifiedChallenge"];

@@ -310,6 +310,21 @@ func newRegisterHarness(t *testing.T) *registerHarness {
 	hasher := domain.NewHasher(domain.DefaultHashParams())
 	policy := domain.Policy{}
 
+	// A real token service. Verification signs the learner in, and a fake here
+	// could not notice a path that returned a session nobody could present.
+	tokens, err := service.NewTokenService(service.TokenDeps{
+		Config: service.TokenConfig{
+			SigningKey: []byte("register-test-signing-key-32-bytes-min"),
+			Issuer:     "fluentra-test",
+			Audience:   "fluentra-api-test",
+		},
+		Clock: fakeClock,
+		NewID: func(context.Context) (uuid.UUID, error) { return uuid.New(), nil },
+	})
+	if err != nil {
+		t.Fatalf("NewTokenService: %v", err)
+	}
+
 	regService := service.NewRegisterService(service.RegisterDeps{
 		Pool:        pool,
 		Accounts:    accounts,
@@ -320,6 +335,7 @@ func newRegisterHarness(t *testing.T) *registerHarness {
 		Events:      events,
 		Clock:       fakeClock,
 		NewID:       func(context.Context) (uuid.UUID, error) { return uuid.New(), nil },
+		Tokens:      tokens,
 	})
 
 	return &registerHarness{

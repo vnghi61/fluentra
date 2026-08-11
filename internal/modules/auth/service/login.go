@@ -28,10 +28,21 @@ type LoginInput struct {
 }
 
 // LoginResult is returned on successful authentication.
+//
+// There is no Verified member. Login refuses an unverified account with
+// EMAIL_NOT_VERIFIED before it can reach the success path, so the field could
+// only ever hold true — a value a caller cannot act on is worse than no field,
+// because it invites code that branches on it.
 type LoginResult struct {
 	UserID   uuid.UUID
-	Verified bool
 	Rehashed bool
+	Session  Session
+}
+
+// Tokens mints an access token for a caller who has just proved who they are.
+// Declared by the consumer so login can be exercised without a signing key.
+type Tokens interface {
+	Issue(ctx context.Context, userID, sessionID uuid.UUID) (Session, error)
 }
 
 // LoginRepo is the repository interface required by LoginService.
@@ -56,6 +67,7 @@ type LoginDeps struct {
 	Hasher      domain.Hasher
 	Clock       clock.Clock
 	NewID       func(ctx context.Context) (uuid.UUID, error)
+	Tokens      Tokens
 }
 
 // LoginService handles authentication, lockout enforcement, and timing equalisation.
@@ -68,6 +80,7 @@ type LoginService struct {
 	hasher      domain.Hasher
 	clock       clock.Clock
 	newID       func(ctx context.Context) (uuid.UUID, error)
+	tokens      Tokens
 }
 
 // NewLoginService constructs a LoginService.
@@ -81,6 +94,7 @@ func NewLoginService(deps LoginDeps) *LoginService {
 		hasher:      deps.Hasher,
 		clock:       deps.Clock,
 		newID:       deps.NewID,
+		tokens:      deps.Tokens,
 	}
 }
 
@@ -139,12 +153,12 @@ func (s *LoginService) Login(ctx context.Context, input LoginInput) (LoginResult
 	// 5. Check account status (suspended / unverified)
 	if acc.Status == "suspended" {
 		s.recordFailed(ctx, &acc.ID, emailHash, ipHash, "account_suspended", now)
-		return LoginResult{}, apperr.New(apperr.Unauthenticated, "ACCOUNT_LOCKED", "Account is suspended")
+		return LoginResult{}, domain.ErrAccountSuspended
 	}
 
 	if !acc.Verified {
 		s.recordFailed(ctx, &acc.ID, emailHash, ipHash, "email_not_verified", now)
-		return LoginResult{}, apperr.New(apperr.Unauthenticated, "EMAIL_NOT_VERIFIED", "Email is not verified")
+		return LoginResult{}, domain.ErrEmailNotVerified
 	}
 
 	// 6. Transparent Argon2id parameter upgrade if hash parameters changed
@@ -161,10 +175,15 @@ func (s *LoginService) Login(ctx context.Context, input LoginInput) (LoginResult
 	// 7. Successful login record
 	s.recordSuccess(ctx, acc.ID, emailHash, ipHash, now)
 
+	session, err := s.startSession(ctx, acc.ID)
+	if err != nil {
+		return LoginResult{}, err
+	}
+
 	return LoginResult{
 		UserID:   acc.ID,
-		Verified: acc.Verified,
 		Rehashed: rehashed,
+		Session:  session,
 	}, nil
 }
 
@@ -246,4 +265,24 @@ func (s *LoginService) recordSuccess(ctx context.Context, userID uuid.UUID, emai
 		id = uuid.New()
 	}
 	_ = s.repo.RecordLoginAttempt(ctx, id, &userID, emailHash, ipHash, true, nil, now)
+}
+
+// startSession mints the session id and the access token for a caller who has
+// just proved who they are.
+//
+// The session id is generated here rather than read from a table because
+// sessions do not have one until P2.6. The claim is in the token from the start
+// so that adding the row later does not change the token format and invalidate
+// everything issued before that deploy.
+//
+// It is a separate function because Login is at the complexity limit the linter
+// enforces, and of everything in that function this is the part that reads
+// cleanly on its own: every step above it decides whether the caller may sign
+// in, and this is what happens once they may.
+func (s *LoginService) startSession(ctx context.Context, userID uuid.UUID) (Session, error) {
+	sessionID, err := s.newID(ctx)
+	if err != nil {
+		return Session{}, fmt.Errorf("generate session id: %w", err)
+	}
+	return s.tokens.Issue(ctx, userID, sessionID)
 }

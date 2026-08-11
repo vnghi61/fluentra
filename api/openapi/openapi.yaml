@@ -177,11 +177,20 @@ paths:
     post:
       tags: [auth]
       operationId: authLogin
-      summary: Authenticate a user with email and password.
+      summary: Exchange a password for an access token.
       description: >-
-        Authenticates a user account. Enforces constant-time verification even
-        for unknown emails (BR-AUTH-02) and applies independent per-account and
-        per-IP lockout rate limits (BR-AUTH-08).
+        Authenticates an account and signs it in.
+
+
+        An unknown email and a wrong password return the same body and take
+        comparable time (BR-AUTH-02) -- the server performs a dummy password
+        verification for an address it has never seen, so response time cannot
+        be used to enumerate accounts. Per-account and per-IP lockout counters
+        are independent (BR-AUTH-08): locking one does not lock the other.
+
+
+        An account that has not completed email verification is refused with
+        `EMAIL_NOT_VERIFIED`, and a suspended one with `ACCOUNT_LOCKED`.
       security: []
       requestBody:
         required: true
@@ -194,26 +203,28 @@ paths:
               password: a-secret-password
       responses:
         '200':
-          description: User authenticated successfully.
+          description: The caller is signed in.
           headers:
             X-Request-Id:
               $ref: '#/components/headers/X-Request-Id'
           content:
             application/json:
               schema:
-                type: object
-                required: [user_id, verified]
-                properties:
-                  user_id:
-                    type: string
-                    format: uuid
-                  verified:
-                    type: boolean
-              example:
-                user_id: 018f96a3-91e8-7b9a-aee5-8d8e96f90d31
-                verified: true
+                $ref: '#/components/schemas/AuthSession'
+              example: &authSessionExample
+                access_token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMTk5YTFjMiJ9.7mMxLmA
+                token_type: Bearer
+                expires_in: 900
+                user_id: 0199a1c2-3d4e-7f80-9abc-def012345678
+                role: user
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/TooManyRequests'
   /auth/challenges/{id}/verify:
@@ -260,6 +271,7 @@ paths:
               example:
                 purpose: verify_email
                 verified_at: '2026-08-10T09:03:12Z'
+                session: *authSessionExample
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -923,6 +935,8 @@ components:
       $ref: ./components/auth.yaml#/VerifyChallengeRequest
     VerifiedChallenge:
       $ref: ./components/auth.yaml#/VerifiedChallenge
+    AuthSession:
+      $ref: ./components/auth.yaml#/AuthSession
     LoginRequest:
       $ref: ./components/auth.yaml#/LoginRequest
     Me:

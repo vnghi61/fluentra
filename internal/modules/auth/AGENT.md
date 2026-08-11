@@ -10,7 +10,7 @@ tables: [credentials, sessions, refresh_tokens, mfa_secrets, auth_challenges, tr
 depends_on: [user, rbac, audit, mailer, cache]
 depended_on_by: [admin]
 spec_version: 1.0.0
-last_verified: 2026-08-10
+last_verified: 2026-08-11
 ---
 
 # auth — AGENT.md
@@ -330,9 +330,11 @@ for this module:
 | Code | Status | Meaning |
 |---|---|---|
 | `INVALID_CREDENTIALS` | 401 | Wrong email or password — never says which |
-| `ACCOUNT_LOCKED` | 429 | Too many failed attempts |
-| `EMAIL_NOT_VERIFIED` | 403 | Verification required for this action |
+| `ACCOUNT_LOCKED` | 429 | Too many failed attempts. Clears itself — the client may retry after the lockout window |
+| `ACCOUNT_SUSPENDED` | 403 | An administrator disabled the account. Distinct from `ACCOUNT_LOCKED` because it never clears itself, and telling a suspended learner to try again in fifteen minutes is advice that will never come true |
+| `EMAIL_NOT_VERIFIED` | 403 | Verification required for this action. 403 and not 401: the credential presented was correct, what is missing is permission to use the account |
 | `TOKEN_EXPIRED` | 401 | Access token expired; refresh |
+| `SESSION_REVOKED` | 401 | Explicit logout denylisted this token id. The signature is valid and it has not expired — it was taken away |
 | `TOKEN_INVALID` | 401 | Malformed, unknown, or bad signature |
 | `SESSION_REVOKED` | 401 | Session revoked, including refresh-reuse detection |
 | `MFA_REQUIRED` | 401 | Second factor needed to complete login |

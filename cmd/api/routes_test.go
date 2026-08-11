@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	auditcontract "github.com/fluentra/fluentra/internal/modules/audit/contract"
+	authservice "github.com/fluentra/fluentra/internal/modules/auth/service"
 	rbaccontract "github.com/fluentra/fluentra/internal/modules/rbac/contract"
 	"github.com/fluentra/fluentra/internal/shared/httpx"
 )
@@ -25,6 +26,11 @@ func newWiredRouter(t *testing.T) http.Handler {
 	modules := newIdentity(identityDeps{
 		Env:        "test",
 		OTPHMACKey: []byte("test-otp-hmac-key-at-least-32-bytes-long"),
+		Tokens: authservice.TokenConfig{
+			SigningKey: []byte("test-jwt-signing-key-at-least-32-bytes-long"),
+			Issuer:     "fluentra-test",
+			Audience:   testServiceName,
+		},
 	})
 	return httpx.NewRouter(httpx.RouterDependencies{Modules: modules.Routes})
 }

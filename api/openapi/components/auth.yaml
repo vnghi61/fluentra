@@ -104,14 +104,15 @@ VerifyChallengeRequest:
 VerifiedChallenge:
   type: object
   description: >-
-    The outcome of a successful verification.
+    The outcome of a successful verification. It signs the learner in: proving
+    the address is the last step of registration, not the second to last.
 
 
-    It carries no tokens yet. Issuing an access token and a refresh cookie here
-    -- so the learner is signed in without a second step -- is P2.4, which adds
-    them to this schema. Clients written against this version must send the
-    learner to sign in after verifying.
-  required: [purpose, verified_at]
+    The refresh token is not here yet. Rotating refresh tokens and the cookie
+    that carries them arrive with P2.5, after which a client keeps its session
+    alive without re-entering a password. Until then the access token expires
+    and the learner signs in again.
+  required: [purpose, verified_at, session]
   additionalProperties: false
   properties:
     purpose:
@@ -120,6 +121,51 @@ VerifiedChallenge:
       type: string
       format: date-time
       description: The timestamp at which the address was marked verified.
+    session:
+      $ref: '#/AuthSession'
+
+AuthSession:
+  type: object
+  description: >-
+    A signed-in session. Returned by every operation that authenticates a
+    caller, so a client has one shape to handle.
+
+
+    **The access token belongs in memory only.** Never `localStorage`, never a
+    cookie a script can read: it is a bearer credential, and anything that can
+    read it can act as the learner until it expires.
+  required: [access_token, token_type, expires_in, user_id, role]
+  additionalProperties: false
+  properties:
+    access_token:
+      type: string
+      description: >-
+        A short-lived signed token, presented as `Authorization: Bearer <token>`.
+        It carries the account id, the session id, the role and its own id --
+        and no personal data at all, so a leaked token reveals nothing about
+        the learner beyond an opaque identifier.
+      example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMTk5YTFjMiJ9.7mMxLmA
+    token_type:
+      type: string
+      enum: [Bearer]
+      description: Always `Bearer`. Present so a client can build the header generically.
+    expires_in:
+      type: integer
+      minimum: 1
+      description: >-
+        Seconds until the access token expires. A client should refresh well
+        before this, not after a rejected request.
+      example: 900
+    user_id:
+      type: string
+      format: uuid
+      description: The account that was signed in.
+    role:
+      type: string
+      enum: [admin, user]
+      description: >-
+        Advisory only, so the interface can hide actions that would fail. Every
+        server operation re-checks regardless of what the client believes.
 
 LoginRequest:
   type: object

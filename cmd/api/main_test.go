@@ -94,8 +94,9 @@ func TestLoadConfigReadsDocumentedEnvironmentKeys(t *testing.T) {
 	t.Setenv("HTTP_IDLE_TIMEOUT", "9s")
 	t.Setenv("HTTP_REQUEST_TIMEOUT", "10s")
 	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", testOTLPEndpoint)
-	t.Setenv("OTEL_SERVICE_NAME", "fluentra-api-test")
+	t.Setenv("OTEL_SERVICE_NAME", testServiceName)
 	t.Setenv("OTP_HMAC_KEY", "test-otp-hmac-key-at-least-32-bytes-long")
+	t.Setenv("JWT_SIGNING_KEY", "test-jwt-signing-key-at-least-32-bytes-long")
 	t.Setenv("MAIL_FROM", "Fluentra Test <no-reply@test.example>")
 
 	cfg, err := loadConfig(context.Background())
@@ -108,7 +109,7 @@ func TestLoadConfigReadsDocumentedEnvironmentKeys(t *testing.T) {
 	if cfg.Storage.AccessKey != "access" || cfg.Storage.SecretKey != "secret" || !cfg.Storage.UseSSL {
 		t.Fatalf("storage environment was not decoded: %#v", cfg.Storage)
 	}
-	if cfg.Telemetry.Endpoint != testOTLPEndpoint || cfg.Telemetry.ServiceName != "fluentra-api-test" {
+	if cfg.Telemetry.Endpoint != testOTLPEndpoint || cfg.Telemetry.ServiceName != testServiceName {
 		t.Fatalf("telemetry environment was not decoded: %#v", cfg.Telemetry)
 	}
 	if cfg.Mail.From != "Fluentra Test <no-reply@test.example>" {
@@ -140,3 +141,8 @@ func TestGRPCEndpointStripsScheme(t *testing.T) {
 		}
 	}
 }
+
+// testServiceName doubles as the OTel service name and the JWT audience across
+// this package's tests. One constant rather than three literals, which is what
+// goconst asks for and what stops the two drifting apart in the wiring test.
+const testServiceName = "fluentra-api-test"

@@ -55,6 +55,7 @@ func (f *fakeRegistrationService) VerifyEmail(
 	return service.Verification{
 		Purpose:    domain.PurposeVerifyEmail,
 		VerifiedAt: time.Now().UTC(),
+		Session:    testSession(),
 	}, nil
 }
 
@@ -83,7 +84,7 @@ func (f *fakeAuthenticator) Login(ctx context.Context, input service.LoginInput)
 	if f.loginFn != nil {
 		return f.loginFn(ctx, input)
 	}
-	return service.LoginResult{UserID: uuid.MustParse(testChallengeID), Verified: true}, nil
+	return service.LoginResult{UserID: uuid.MustParse(testChallengeID), Session: testSession()}, nil
 }
 
 func newTestRouter(reg authhttp.Registration) chi.Router {
@@ -279,7 +280,7 @@ func TestHandler_Login_UsesOnlyTrustedResolvedClientIP(t *testing.T) {
 	auth := &fakeAuthenticator{
 		loginFn: func(_ context.Context, input service.LoginInput) (service.LoginResult, error) {
 			got = input
-			return service.LoginResult{UserID: uuid.New(), Verified: true}, nil
+			return service.LoginResult{UserID: uuid.New(), Session: testSession()}, nil
 		},
 	}
 	resolver, err := httpx.NewClientIPResolver(nil)
@@ -302,5 +303,19 @@ func TestHandler_Login_UsesOnlyTrustedResolvedClientIP(t *testing.T) {
 	}
 	if got.ClientIP != "198.51.100.42" {
 		t.Fatalf("ClientIP = %q, want unspoofable peer address", got.ClientIP)
+	}
+}
+
+// testSession is the signed-in session the fakes hand back. The token is a
+// placeholder string rather than a real JWT: these tests exercise the handler's
+// rendering, and what a valid token looks like is the token service's own test.
+func testSession() service.Session {
+	return service.Session{
+		AccessToken: secret.New("test.access.token"),
+		TokenType:   service.TokenTypeBearer,
+		ExpiresIn:   900,
+		UserID:      uuid.MustParse(testChallengeID),
+		SessionID:   uuid.New(),
+		Role:        "user",
 	}
 }

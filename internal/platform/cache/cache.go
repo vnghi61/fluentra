@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"math/rand/v2"
 	"time"
@@ -30,6 +31,18 @@ func init() {
 		slog.Error("failed to create cache_unavailable_total metric", "error", err)
 	}
 }
+
+// ErrMiss reports that a key is absent. It is distinct from a failure to reach
+// the store, and callers need the difference: a miss is the ordinary case, a
+// failure is an outage worth logging.
+//
+// It exists because this package is a facade. Returning the driver's own
+// `redis.Nil` forced every caller to import `github.com/redis/go-redis` to
+// recognise the commonest outcome — which business modules may not do
+// (`depOnAnyVendor: false`), so they collapsed miss and outage into "treat any
+// error as absent" and lost the distinction. A facade whose sentinel is the
+// vendor's is not a facade.
+var ErrMiss = errors.New("cache: key not found")
 
 // Cache defines typed operations over Redis with singleflight stampede prevention and fallback.
 type Cache[T any] interface {
@@ -62,7 +75,9 @@ func (c *RedisCache[T]) Get(ctx context.Context, key string) (T, error) {
 	valBytes, err := c.client.Get(ctx, key).Bytes()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
-			return zero, redis.Nil
+			// Wrapped, not replaced: a caller already matching on redis.Nil
+			// keeps working while new callers match on ErrMiss.
+			return zero, fmt.Errorf("%w: %w", ErrMiss, err)
 		}
 		c.recordUnavailable(ctx, "get", err)
 		return zero, err
