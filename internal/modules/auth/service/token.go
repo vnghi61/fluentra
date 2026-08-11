@@ -285,6 +285,17 @@ func (s *TokenService) Revoke(ctx context.Context, actor httpx.Actor, expiresAt 
 	return s.denylist.Deny(ctx, actor.TokenID, ttl+ClockLeeway)
 }
 
+// RevokeNow denylists a token for the longest it could still be valid.
+//
+// It exists so a caller holding an actor does not have to know the access TTL
+// in order to revoke: the actor carries a token id but not an expiry, and a
+// caller that guessed the lifetime would either under-deny (leaving a window)
+// or over-deny (wasting memory on a token no verifier would accept). The
+// service that issued the token is the one that knows how long it lives.
+func (s *TokenService) RevokeNow(ctx context.Context, actor httpx.Actor) error {
+	return s.Revoke(ctx, actor, s.clock.Now().Add(s.config.AccessTTL))
+}
+
 // parse verifies the signature against the current key and then, only if the
 // signature is what failed, against the previous one.
 //

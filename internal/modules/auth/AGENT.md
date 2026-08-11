@@ -84,7 +84,7 @@ Other modules may import **only** `internal/modules/auth/contract`.
 | Kind | Name | Purpose |
 |---|---|---|
 | interface | `auth.TokenVerifier` | Validate an access token and return the actor — used by the HTTP middleware |
-| interface | `auth.SessionRevoker` | Revoke sessions for a user — used by `admin` and by `user` on account deletion |
+| interface | `auth.SessionRevoker` | `RevokeAll(ctx, userID) (int, error)` — used by `admin` on suspension and by `user` on account deletion. Published and unconsumed until those modules exist |
 | struct | `auth.Actor` | `{UserID, SessionID, Role, TokenID}` — placed in the request context |
 | event | `auth.UserRegistered` | Published after a successful registration |
 | event | `auth.SecurityEvent` | Published when something needs investigating — `refresh_reuse` is the first kind |
@@ -147,9 +147,14 @@ Four things about the refresh pair beyond the summary:
   from `crypto/rand`, so there is no dictionary to attack and nothing a keyed digest or a work
   factor would buy. The argument that makes an unkeyed digest wrong for an email address does not
   apply to a value with full entropy.
-- **`core.sessions.device_label` is written by nothing yet.** P2.6 derives it when it builds the
-  session list; `ip_hash` and `user_agent_hash` are populated at sign-in, because creation is the
-  only moment they can be observed.
+- **`core.sessions.device_label`, `ip_hash` and `user_agent_hash` are all written at sign-in**, and
+  they have to be: the raw address and user agent exist for the duration of one request and are
+  never stored, so nothing can be derived from the digests afterwards. The label is coarse by
+  design — "Chrome on macOS", never a version — and is null for a sign-in with no readable user
+  agent, including email verification, which has a context but no request.
+- **There is no `ip_country` column.** The session list is specified to show one, and it cannot be
+  worked out from `ip_hash`; resolving it needs a local GeoIP database, a licence key and a CI
+  secret, which is an infrastructure change with its own card. `TODO.md` carries it.
 
 Two things about the credential row that the summary does not carry:
 

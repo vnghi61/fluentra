@@ -16,11 +16,12 @@ import (
 // CreateSession opens a sign-in. The id is supplied by the caller because it is
 // already in the access token's `sid` claim by the time this runs.
 func (r *Repository) CreateSession(
-	ctx context.Context, id, userID uuid.UUID, ipHash, userAgentHash []byte, now time.Time,
+	ctx context.Context, id, userID uuid.UUID, deviceLabel *string, ipHash, userAgentHash []byte, now time.Time,
 ) error {
 	_, err := r.queries.CreateSession(ctx, sqlcauth.CreateSessionParams{
 		ID:            id,
 		UserID:        userID,
+		DeviceLabel:   deviceLabel,
 		IpHash:        ipHash,
 		UserAgentHash: userAgentHash,
 		Now:           now,

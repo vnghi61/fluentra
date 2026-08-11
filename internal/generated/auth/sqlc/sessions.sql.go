@@ -13,14 +13,15 @@ import (
 )
 
 const createSession = `-- name: CreateSession :one
-INSERT INTO core.sessions (id, user_id, ip_hash, user_agent_hash, created_at, last_seen_at)
-VALUES ($1, $2, $3, $4, $5::timestamptz, $5::timestamptz)
+INSERT INTO core.sessions (id, user_id, device_label, ip_hash, user_agent_hash, created_at, last_seen_at)
+VALUES ($1, $2, $3, $4, $5, $6::timestamptz, $6::timestamptz)
 RETURNING id, user_id, device_label, ip_hash, user_agent_hash, created_at, last_seen_at, revoked_at
 `
 
 type CreateSessionParams struct {
 	ID            uuid.UUID
 	UserID        uuid.UUID
+	DeviceLabel   *string
 	IpHash        []byte
 	UserAgentHash []byte
 	Now           time.Time
@@ -30,10 +31,45 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (C
 	row := q.db.QueryRow(ctx, createSession,
 		arg.ID,
 		arg.UserID,
+		arg.DeviceLabel,
 		arg.IpHash,
 		arg.UserAgentHash,
 		arg.Now,
 	)
+	var i CoreSession
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.DeviceLabel,
+		&i.IpHash,
+		&i.UserAgentHash,
+		&i.CreatedAt,
+		&i.LastSeenAt,
+		&i.RevokedAt,
+	)
+	return i, err
+}
+
+const getOwnedSession = `-- name: GetOwnedSession :one
+SELECT id, user_id, device_label, ip_hash, user_agent_hash, created_at, last_seen_at, revoked_at
+FROM core.sessions
+WHERE id = $1 AND user_id = $2
+`
+
+type GetOwnedSessionParams struct {
+	ID     uuid.UUID
+	UserID uuid.UUID
+}
+
+// GetOwnedSession is the ownership check behind the 404.
+//
+// Both the id and the owner are in the WHERE clause, so "no such session" and
+// "somebody else's session" produce the identical empty result and the caller
+// cannot tell them apart. Filtering in Go after a lookup by id alone would leave
+// a branch where the two differ, which is the enumeration oracle this operation
+// exists to not be.
+func (q *Queries) GetOwnedSession(ctx context.Context, arg GetOwnedSessionParams) (CoreSession, error) {
+	row := q.db.QueryRow(ctx, getOwnedSession, arg.ID, arg.UserID)
 	var i CoreSession
 	err := row.Scan(
 		&i.ID,
@@ -68,6 +104,109 @@ func (q *Queries) GetSession(ctx context.Context, id uuid.UUID) (CoreSession, er
 		&i.RevokedAt,
 	)
 	return i, err
+}
+
+const listLiveSessions = `-- name: ListLiveSessions :many
+SELECT id, user_id, device_label, ip_hash, user_agent_hash, created_at, last_seen_at, revoked_at
+FROM core.sessions
+WHERE user_id = $1 AND revoked_at IS NULL
+ORDER BY last_seen_at DESC
+`
+
+// ListLiveSessions answers "where am I signed in now".
+//
+// Scoped by user_id in the WHERE clause rather than filtered after the read, so
+// there is no version of this that returns another account's row for a caller to
+// accidentally render.
+func (q *Queries) ListLiveSessions(ctx context.Context, userID uuid.UUID) ([]CoreSession, error) {
+	rows, err := q.db.Query(ctx, listLiveSessions, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CoreSession
+	for rows.Next() {
+		var i CoreSession
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.DeviceLabel,
+			&i.IpHash,
+			&i.UserAgentHash,
+			&i.CreatedAt,
+			&i.LastSeenAt,
+			&i.RevokedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const revokeAllSessionsForUser = `-- name: RevokeAllSessionsForUser :execrows
+UPDATE core.sessions
+SET revoked_at = $2::timestamptz
+WHERE user_id = $1 AND revoked_at IS NULL
+`
+
+type RevokeAllSessionsForUserParams struct {
+	UserID uuid.UUID
+	Now    time.Time
+}
+
+func (q *Queries) RevokeAllSessionsForUser(ctx context.Context, arg RevokeAllSessionsForUserParams) (int64, error) {
+	result, err := q.db.Exec(ctx, revokeAllSessionsForUser, arg.UserID, arg.Now)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const revokeRefreshTokensBySession = `-- name: RevokeRefreshTokensBySession :execrows
+UPDATE core.refresh_tokens
+SET revoked_at = $2::timestamptz
+WHERE session_id = $1 AND revoked_at IS NULL
+`
+
+type RevokeRefreshTokensBySessionParams struct {
+	SessionID uuid.UUID
+	Now       time.Time
+}
+
+func (q *Queries) RevokeRefreshTokensBySession(ctx context.Context, arg RevokeRefreshTokensBySessionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, revokeRefreshTokensBySession, arg.SessionID, arg.Now)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const revokeRefreshTokensForUser = `-- name: RevokeRefreshTokensForUser :execrows
+UPDATE core.refresh_tokens rt
+SET revoked_at = $2::timestamptz
+FROM core.sessions s
+WHERE s.id = rt.session_id AND s.user_id = $1 AND rt.revoked_at IS NULL
+`
+
+type RevokeRefreshTokensForUserParams struct {
+	UserID uuid.UUID
+	Now    time.Time
+}
+
+// RevokeRefreshTokensForUser reaches the tokens through their session, because
+// core.refresh_tokens has no user_id of its own -- the session is what an
+// account owns, and duplicating the owner onto every token row would be a second
+// copy of a fact that could disagree with the first.
+func (q *Queries) RevokeRefreshTokensForUser(ctx context.Context, arg RevokeRefreshTokensForUserParams) (int64, error) {
+	result, err := q.db.Exec(ctx, revokeRefreshTokensForUser, arg.UserID, arg.Now)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const revokeSession = `-- name: RevokeSession :execrows

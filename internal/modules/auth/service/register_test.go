@@ -304,7 +304,7 @@ func newRegisterHarness(t *testing.T) *registerHarness {
 		Keys:    keys,
 		Clock:   fakeClock,
 		NewID:   func(context.Context) (uuid.UUID, error) { return uuid.New(), nil },
-		Env:     "test",
+		Env:     testEnv,
 	})
 
 	hasher := domain.NewHasher(domain.DefaultHashParams())

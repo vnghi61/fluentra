@@ -210,6 +210,81 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sign out of this device.
+         * @description Revokes the session the access token names, revokes its refresh family, and clears the refresh cookie.
+         *
+         *     The access token itself is added to a denylist so it stops working immediately rather than at its own expiry. That denylist is the one thing on the authentication path that reads a datastore, and it fails open (ADR-0007): if it cannot be reached, the token keeps working until it expires, which is at most fifteen minutes. Failing closed would turn a cache outage into a total authentication outage for every signed-in learner, which is the larger harm.
+         *
+         *     Logging out twice is not an error. The second call finds nothing left to revoke and answers 204 all the same -- a client retrying after a dropped connection should not be told something went wrong.
+         */
+        post: operations["authLogout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the devices this account is signed in on.
+         * @description Returns the caller's own live sessions, most recently active first. There is no path parameter and no filter by account: the actor comes from the token, so one learner cannot read another's list by changing a segment.
+         *
+         *     No IP address appears here and none is stored -- see `SessionSummary`.
+         */
+        get: operations["authListSessions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/sessions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The session to revoke, from the list operation. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Sign out of one device.
+         * @description Revokes the session and its refresh family, so the device it belongs to cannot renew and is signed out within one access-token lifetime.
+         *
+         *     **A session belonging to another account is 404, not 403.** The two are not interchangeable: 403 confirms the id names a real session and turns this operation into an oracle for enumerating them, while 404 says only that the caller has no such session -- which is all they are entitled to know, and is equally true of an id that never existed.
+         *
+         *     Revoking the current session is allowed and signs the caller out here: the response clears the refresh cookie in that case, and in that case only. `current` in the list operation is what lets an interface warn first.
+         *
+         *     Revoking an already-revoked session answers 204, for the same reason logout is idempotent.
+         */
+        delete: operations["authRevokeSession"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/me": {
         parameters: {
             query?: never;
@@ -666,6 +741,39 @@ export interface components {
             /** @default false */
             remember_device: boolean;
             device_id?: string;
+        };
+        /**
+         * @description One signed-in device, as its owner sees it in the "where am I signed in" list.
+         *
+         *     There is no IP address here and none is stored. The session row keeps a keyed digest of the address, which answers "is this the same origin as last time" without the table becoming a movement log for every learner. The country the address resolves to is a separate matter and is not here yet: it has to be worked out at sign-in, while the address is still in hand, and the local database that does that arrives with its own change.
+         */
+        SessionSummary: {
+            /**
+             * Format: uuid
+             * @description Identifies the session in the revoke operation.
+             */
+            id: string;
+            /** @description Whether this is the session making the request. Revoking it signs the caller out here and now, which is worth warning about before it happens rather than explaining afterwards. */
+            current: boolean;
+            /**
+             * @description A coarse description derived from the user agent -- "Chrome on macOS", not a fingerprint. Null when the session was opened by a path that had no user agent to read, and for sessions that predate labelling.
+             * @example Chrome on macOS
+             */
+            device_label?: string | null;
+            /**
+             * Format: date-time
+             * @description When the learner signed in on this device.
+             */
+            created_at: string;
+            /**
+             * Format: date-time
+             * @description The last time this session refreshed a token. It moves on refresh, not on every request, so it is accurate to within one access-token lifetime.
+             */
+            last_seen_at: string;
+        };
+        /** @description Every session that is still live, newest activity first. Revoked and expired sessions are not listed: the question this answers is "where am I signed in now", and a list that also showed places the learner is no longer signed in would make the answer harder to read, not more complete. */
+        SessionList: {
+            sessions: components["schemas"]["SessionSummary"][];
         };
         /** @description The authenticated caller's own account. There is no operation that returns this shape for anybody else: the server reads the actor from the access token and the path carries no user id. */
         Me: {
@@ -1226,6 +1334,13 @@ export interface components {
          * @example refresh_token=opaque-value; Path=/api/v1/auth; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax
          */
         "Set-Cookie-Refresh": string;
+        /**
+         * @description An expired `refresh_token` cookie, sent when the session it belonged to has been signed out.
+         *
+         *     The attributes match the ones the cookie was set with, because a browser treats a deletion whose `Path` or `Secure` differs as a *different* cookie and keeps the original -- so a mismatch here would leave the client replaying a dead token on every launch.
+         * @example refresh_token=; Path=/api/v1/auth; Max-Age=0; HttpOnly; Secure; SameSite=Lax
+         */
+        "Set-Cookie-RefreshCleared": string;
     };
     pathItems: never;
 }
@@ -1549,6 +1664,94 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             429: components["responses"]["TooManyRequests"];
+        };
+    };
+    authLogout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Signed out. */
+            204: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    "Set-Cookie": components["headers"]["Set-Cookie-RefreshCleared"];
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    authListSessions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The caller's live sessions. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "sessions": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *           "current": true,
+                     *           "device_label": "Chrome on macOS",
+                     *           "created_at": "2026-08-09T04:21:07Z",
+                     *           "last_seen_at": "2026-08-11T08:55:13Z"
+                     *         },
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def0123456ab",
+                     *           "current": false,
+                     *           "device_label": null,
+                     *           "created_at": "2026-07-28T19:02:44Z",
+                     *           "last_seen_at": "2026-08-10T21:14:02Z"
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    authRevokeSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The session to revoke, from the list operation. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Revoked. Carries a cleared refresh cookie when the session revoked was the caller's own. */
+            204: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    "Set-Cookie": components["headers"]["Set-Cookie-RefreshCleared"];
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
         };
     };
     userGetMe: {

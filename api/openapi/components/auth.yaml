@@ -195,3 +195,64 @@ LoginRequest:
     device_id:
       type: string
       maxLength: 128
+
+SessionSummary:
+  type: object
+  description: >-
+    One signed-in device, as its owner sees it in the "where am I signed in"
+    list.
+
+
+    There is no IP address here and none is stored. The session row keeps a
+    keyed digest of the address, which answers "is this the same origin as last
+    time" without the table becoming a movement log for every learner. The
+    country the address resolves to is a separate matter and is not here yet:
+    it has to be worked out at sign-in, while the address is still in hand, and
+    the local database that does that arrives with its own change.
+  required: [id, current, created_at, last_seen_at]
+  additionalProperties: false
+  properties:
+    id:
+      type: string
+      format: uuid
+      description: Identifies the session in the revoke operation.
+    current:
+      type: boolean
+      description: >-
+        Whether this is the session making the request. Revoking it signs the
+        caller out here and now, which is worth warning about before it happens
+        rather than explaining afterwards.
+    device_label:
+      type: [string, 'null']
+      maxLength: 80
+      description: >-
+        A coarse description derived from the user agent -- "Chrome on macOS",
+        not a fingerprint. Null when the session was opened by a path that had
+        no user agent to read, and for sessions that predate labelling.
+      example: Chrome on macOS
+    created_at:
+      type: string
+      format: date-time
+      description: When the learner signed in on this device.
+    last_seen_at:
+      type: string
+      format: date-time
+      description: >-
+        The last time this session refreshed a token. It moves on refresh, not
+        on every request, so it is accurate to within one access-token lifetime.
+
+SessionList:
+  type: object
+  description: >-
+    Every session that is still live, newest activity first. Revoked and expired
+    sessions are not listed: the question this answers is "where am I signed in
+    now", and a list that also showed places the learner is no longer signed in
+    would make the answer harder to read, not more complete.
+  required: [sessions]
+  additionalProperties: false
+  properties:
+    sessions:
+      type: array
+      maxItems: 200
+      items:
+        $ref: '#/SessionSummary'

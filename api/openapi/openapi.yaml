@@ -16,8 +16,13 @@ tags:
     description: Platform health and diagnostics.
   - name: auth
     description: >-
-      Proving who a caller is. Every operation here is public: they are how a
-      caller acquires an identity, so requiring one would be circular.
+      Proving who a caller is, and managing the identity once proved.
+
+
+      The operations that acquire an identity are public -- requiring one to get
+      one would be circular. The operations that act on an identity the caller
+      already holds, such as listing and revoking sessions, require it like any
+      other.
   - name: user
     description: >-
       The caller's own account: profile and preferences. Every operation here
@@ -392,6 +397,125 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+  /auth/logout:
+    post:
+      tags: [auth]
+      operationId: authLogout
+      summary: Sign out of this device.
+      description: >-
+        Revokes the session the access token names, revokes its refresh family,
+        and clears the refresh cookie.
+
+
+        The access token itself is added to a denylist so it stops working
+        immediately rather than at its own expiry. That denylist is the one
+        thing on the authentication path that reads a datastore, and it fails
+        open (ADR-0007): if it cannot be reached, the token keeps working until
+        it expires, which is at most fifteen minutes. Failing closed would turn
+        a cache outage into a total authentication outage for every signed-in
+        learner, which is the larger harm.
+
+
+        Logging out twice is not an error. The second call finds nothing left to
+        revoke and answers 204 all the same -- a client retrying after a dropped
+        connection should not be told something went wrong.
+      x-permission: self
+      responses:
+        '204':
+          description: Signed out.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+            Set-Cookie:
+              $ref: '#/components/headers/Set-Cookie-RefreshCleared'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /auth/sessions:
+    get:
+      tags: [auth]
+      operationId: authListSessions
+      summary: List the devices this account is signed in on.
+      description: >-
+        Returns the caller's own live sessions, most recently active first.
+        There is no path parameter and no filter by account: the actor comes
+        from the token, so one learner cannot read another's list by changing a
+        segment.
+
+
+        No IP address appears here and none is stored -- see `SessionSummary`.
+      x-permission: self
+      responses:
+        '200':
+          description: The caller's live sessions.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionList'
+              example:
+                sessions:
+                  - id: 0199a1c2-3d4e-7f80-9abc-def012345678
+                    current: true
+                    device_label: Chrome on macOS
+                    created_at: '2026-08-09T04:21:07Z'
+                    last_seen_at: '2026-08-11T08:55:13Z'
+                  - id: 0199a1c2-3d4e-7f80-9abc-def0123456ab
+                    current: false
+                    device_label: null
+                    created_at: '2026-07-28T19:02:44Z'
+                    last_seen_at: '2026-08-10T21:14:02Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /auth/sessions/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: The session to revoke, from the list operation.
+        schema:
+          type: string
+          format: uuid
+    delete:
+      tags: [auth]
+      operationId: authRevokeSession
+      summary: Sign out of one device.
+      description: >-
+        Revokes the session and its refresh family, so the device it belongs to
+        cannot renew and is signed out within one access-token lifetime.
+
+
+        **A session belonging to another account is 404, not 403.** The two are
+        not interchangeable: 403 confirms the id names a real session and turns
+        this operation into an oracle for enumerating them, while 404 says only
+        that the caller has no such session -- which is all they are entitled to
+        know, and is equally true of an id that never existed.
+
+
+        Revoking the current session is allowed and signs the caller out here:
+        the response clears the refresh cookie in that case, and in that case
+        only. `current` in the list operation is what lets an interface warn
+        first.
+
+
+        Revoking an already-revoked session answers 204, for the same reason
+        logout is idempotent.
+      x-permission: self
+      responses:
+        '204':
+          description: >-
+            Revoked. Carries a cleared refresh cookie when the session revoked
+            was the caller's own.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+            Set-Cookie:
+              $ref: '#/components/headers/Set-Cookie-RefreshCleared'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /me:
     get:
       tags: [user]
@@ -1005,6 +1129,10 @@ components:
       $ref: ./components/auth.yaml#/AuthSession
     LoginRequest:
       $ref: ./components/auth.yaml#/LoginRequest
+    SessionSummary:
+      $ref: ./components/auth.yaml#/SessionSummary
+    SessionList:
+      $ref: ./components/auth.yaml#/SessionList
     Me:
       $ref: ./components/user.yaml#/Me
     MeProfile:
@@ -1064,6 +1192,8 @@ components:
       $ref: ./components/headers.yaml#/Retry-After
     Set-Cookie-Refresh:
       $ref: ./components/headers.yaml#/Set-Cookie-Refresh
+    Set-Cookie-RefreshCleared:
+      $ref: ./components/headers.yaml#/Set-Cookie-RefreshCleared
   responses:
     BadRequest:
       $ref: ./components/responses.yaml#/BadRequest

@@ -209,7 +209,7 @@ func TestVerify_MalformedStoredHashIsAnErrorNotAMismatch(t *testing.T) {
 	hasher := domain.NewHasher(testParams)
 
 	malformed := map[string]string{
-		"empty":              "",
+		caseEmpty:            "",
 		"not a hash at all":  "hunter2",
 		"a bcrypt hash":      "$2y$10$abcdefghijklmnopqrstuv",
 		"the wrong variant":  "$argon2i$v=19$m=8,t=1,p=1$c29tZXNhbHQ$c29tZWtleQ",

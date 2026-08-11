@@ -88,6 +88,12 @@ type Deps struct {
 	// RefreshTTL is the idle window a refresh token gets (REFRESH_TOKEN_TTL).
 	// Zero means service.DefaultRefreshTTL.
 	RefreshTTL time.Duration
+
+	// SessionCache remembers which account owns a session, for the five minutes
+	// AGENT.md §12 documents. Nil disables the cache and every ownership check
+	// reads Postgres, which is correct but chattier — it is nil in tests that do
+	// not exercise it.
+	SessionCache cache.Cache[uuid.UUID]
 }
 
 // Module is the auth module, assembled.
@@ -96,6 +102,7 @@ type Module struct {
 	login    *service.LoginService
 	tokens   *service.TokenService
 	sessions *service.RefreshService
+	revoker  *service.SessionService
 	mailer   mailer.Sender
 	handler  *authhttp.Handler
 }
@@ -203,13 +210,28 @@ func New(deps Deps) *Module {
 		Sessions:    sessions,
 	})
 
+	// The session service shares the repository and the token service with the
+	// two above it: revoking a session has to reach the same refresh rows the
+	// refresh service writes, and denylisting an access token has to reach the
+	// same token service that issued it.
+	sessionSvc := service.NewSessionService(service.SessionDeps{
+		Pool:   deps.Pool,
+		Repo:   sessionAdapter{Repository: repo},
+		Tokens: tokens,
+		Cache:  repository.NewSessionOwnerCache(deps.SessionCache, deps.Env),
+		Clock:  timekeeper,
+		Env:    deps.Env,
+	})
+
 	return &Module{
 		register: reg,
 		login:    loginSvc,
 		tokens:   tokens,
 		sessions: sessions,
+		revoker:  sessionSvc,
 		mailer:   deps.Mailer,
-		handler:  authhttp.NewHandler(reg, loginSvc, sessions, authhttp.CookieOptions{Secure: deps.Env != "local"}),
+		handler: authhttp.NewHandler(reg, loginSvc, sessions, sessionSvc,
+			authhttp.CookieOptions{Secure: deps.Env != "local"}),
 	}
 }
 
@@ -218,6 +240,11 @@ func (m *Module) Routes(router chi.Router) { m.handler.Routes(router) }
 
 // TokenVerifier is this module's contract for validating an access token.
 func (m *Module) TokenVerifier() contract.TokenVerifier { return m.tokens }
+
+// SessionRevoker is this module's contract for ending every session an account
+// has. `user` calls it on account deletion and `admin` on suspension; neither
+// module exists yet, so today it is published and unconsumed.
+func (m *Module) SessionRevoker() contract.SessionRevoker { return m.revoker }
 
 // Authenticate is the middleware that turns a bearer token into an actor in the
 // request context.
@@ -362,6 +389,15 @@ type refreshAdapter struct {
 
 func (a refreshAdapter) WithTx(tx pgx.Tx) service.RefreshRepo {
 	return refreshAdapter{Repository: a.Repository.WithTx(tx)}
+}
+
+// sessionAdapter narrows *repository.Repository to service.SessionRepo.
+type sessionAdapter struct {
+	*repository.Repository
+}
+
+func (a sessionAdapter) WithTx(tx pgx.Tx) service.SessionRepo {
+	return sessionAdapter{Repository: a.Repository.WithTx(tx)}
 }
 
 // repositoryAdapter narrows *repository.Repository to service.Repository (the

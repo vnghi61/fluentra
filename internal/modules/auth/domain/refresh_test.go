@@ -87,7 +87,7 @@ func TestRefreshTokenDigest_RejectsAnythingThatIsNotOneOfOurs(t *testing.T) {
 	}
 
 	rejected := map[string]string{
-		"empty":               "",
+		caseEmpty:             "",
 		"not base64":          "!!!!not-base64!!!!",
 		"standard padding":    base64.StdEncoding.EncodeToString(make([]byte, domain.RefreshTokenBytes)),
 		"too few bytes":       base64.RawURLEncoding.EncodeToString(make([]byte, 16)),

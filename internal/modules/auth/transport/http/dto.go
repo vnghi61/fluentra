@@ -75,6 +75,41 @@ func toSessionResponse(session service.Session) sessionResponse {
 	}
 }
 
+// sessionSummaryResponse matches components/auth.yaml#/SessionSummary.
+//
+// There is no ip member and there never will be one: the row stores a keyed
+// digest, and a response that carried the address would undo the reason for
+// storing a digest at all.
+type sessionSummaryResponse struct {
+	ID          string  `json:"id"`
+	Current     bool    `json:"current"`
+	DeviceLabel *string `json:"device_label"`
+	CreatedAt   string  `json:"created_at"`
+	LastSeenAt  string  `json:"last_seen_at"`
+}
+
+// sessionListResponse matches components/auth.yaml#/SessionList.
+type sessionListResponse struct {
+	Sessions []sessionSummaryResponse `json:"sessions"`
+}
+
+func toSessionListResponse(sessions []service.SessionView) sessionListResponse {
+	// Non-nil even when empty, so the field serialises as `[]` and not `null`.
+	// The schema says array; a client written against it should not have to
+	// handle a second spelling of "none".
+	out := make([]sessionSummaryResponse, 0, len(sessions))
+	for _, session := range sessions {
+		out = append(out, sessionSummaryResponse{
+			ID:          session.ID.String(),
+			Current:     session.Current,
+			DeviceLabel: session.DeviceLabel,
+			CreatedAt:   session.CreatedAt.UTC().Format(time.RFC3339),
+			LastSeenAt:  session.LastSeenAt.UTC().Format(time.RFC3339),
+		})
+	}
+	return sessionListResponse{Sessions: out}
+}
+
 func toChallengeResponse(issued service.Issued) challengeResponse {
 	return challengeResponse{
 		ChallengeID:       issued.Challenge.ID.String(),

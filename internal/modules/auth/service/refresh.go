@@ -47,7 +47,9 @@ type StartInput struct {
 // RefreshRepo is the persistence this service needs, declared here so the
 // service is defined by what it uses rather than by what the repository offers.
 type RefreshRepo interface {
-	CreateSession(ctx context.Context, id, userID uuid.UUID, ipHash, userAgentHash []byte, now time.Time) error
+	CreateSession(
+		ctx context.Context, id, userID uuid.UUID, deviceLabel *string, ipHash, userAgentHash []byte, now time.Time,
+	) error
 	TouchSession(ctx context.Context, sessionID uuid.UUID, now time.Time) error
 	RevokeSession(ctx context.Context, sessionID uuid.UUID, now time.Time) (bool, error)
 	CreateRefreshToken(
@@ -131,11 +133,18 @@ func (s *RefreshService) Start(ctx context.Context, input StartInput) (SignedIn,
 		userAgentHash = s.keys.SubjectHash(input.UserAgent)
 	}
 
+	// The label is derived here and stored, because this is the only moment the
+	// raw user agent exists: the column beside it holds a digest, and no label
+	// can be recovered from that afterwards. It is nil for a sign-in that had no
+	// user agent to read, which the session list renders as an unnamed device.
+	deviceLabel := domain.DeviceLabel(input.UserAgent)
+
 	// A new sign-in is its own family: the family id is the first token's id, so
 	// there is no separate identifier to keep in step with anything.
 	var issued SignedIn
 	err = s.inTx(ctx, func(ctx context.Context, _ pgx.Tx, repo RefreshRepo) error {
-		if err := repo.CreateSession(ctx, sessionID, input.UserID, ipHash, userAgentHash, now); err != nil {
+		if err := repo.CreateSession(
+			ctx, sessionID, input.UserID, deviceLabel, ipHash, userAgentHash, now); err != nil {
 			return err
 		}
 		token, err := s.mint(ctx, repo, uuid.Nil, sessionID, now)

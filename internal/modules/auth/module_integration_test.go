@@ -176,6 +176,7 @@ func (w eventWriter) Write(
 
 type refreshHarness struct {
 	service *service.RefreshService
+	tokens  *service.TokenService
 	clock   *clock.Fake
 	userID  uuid.UUID
 }
@@ -186,7 +187,10 @@ const refreshTTL = 30 * 24 * time.Hour
 
 var harnessNow = time.Date(2026, time.August, 11, 9, 0, 0, 0, time.UTC)
 
-func newRefreshHarness(t *testing.T, email string) *refreshHarness {
+// newRefreshHarness builds the refresh service over the real pool. denylist may
+// be nil, which disables access-token revocation entirely — that is the right
+// shape for the rotation tests, which never revoke one.
+func newRefreshHarness(t *testing.T, email string, denylist service.Denylist) *refreshHarness {
 	t.Helper()
 	if pool == nil {
 		t.Skip("TEST_DATABASE_URL is not set")
@@ -201,8 +205,9 @@ func newRefreshHarness(t *testing.T, email string) *refreshHarness {
 			Audience:   "fluentra-api-test",
 			AccessTTL:  service.DefaultAccessTTL,
 		},
-		Clock: fake,
-		NewID: id.NewUUIDv7,
+		Denylist: denylist,
+		Clock:    fake,
+		NewID:    id.NewUUIDv7,
 	})
 	if err != nil {
 		t.Fatalf("NewTokenService: %v", err)
@@ -224,7 +229,7 @@ func newRefreshHarness(t *testing.T, email string) *refreshHarness {
 		TTL:    refreshTTL,
 	})
 
-	return &refreshHarness{service: refresh, clock: fake, userID: seedUser(t, email)}
+	return &refreshHarness{service: refresh, tokens: tokens, clock: fake, userID: seedUser(t, email)}
 }
 
 func (h *refreshHarness) start(t *testing.T) service.SignedIn {
@@ -362,7 +367,7 @@ func securityEvents(t *testing.T, userID uuid.UUID) []contract.SecurityEvent {
 // happily keeps rotating the real client's token has told the attacker to try
 // again and told nobody else anything.
 func TestPresentingASpentRefreshTokenRevokesTheWholeFamilyAndTheSession(t *testing.T) {
-	h := newRefreshHarness(t, "reuse@fluentra.test")
+	h := newRefreshHarness(t, "reuse@fluentra.test", nil)
 	ctx := context.Background()
 
 	first := h.start(t)
@@ -419,7 +424,7 @@ func TestPresentingASpentRefreshTokenRevokesTheWholeFamilyAndTheSession(t *testi
 // which is precisely the state reuse detection is supposed to make impossible.
 // Exactly one caller must be served.
 func TestTwoConcurrentRefreshesWithOneTokenProduceExactlyOneWinner(t *testing.T) {
-	h := newRefreshHarness(t, "concurrent@fluentra.test")
+	h := newRefreshHarness(t, "concurrent@fluentra.test", nil)
 
 	const callers = 8
 	first := h.start(t)
@@ -481,7 +486,7 @@ func TestTwoConcurrentRefreshesWithOneTokenProduceExactlyOneWinner(t *testing.T)
 // month is not an attacker, and raising a security event for every one of them
 // would bury the events that matter.
 func TestARefreshTokenOneMillisecondPastExpiryIsRefused(t *testing.T) {
-	h := newRefreshHarness(t, "expired@fluentra.test")
+	h := newRefreshHarness(t, "expired@fluentra.test", nil)
 	ctx := context.Background()
 
 	signedIn := h.start(t)
@@ -510,7 +515,7 @@ func TestARefreshTokenOneMillisecondPastExpiryIsRefused(t *testing.T) {
 // it would hand any caller a denial-of-service against a user they can name --
 // except they cannot name one, which is exactly why there is nothing to revoke.
 func TestAnUnknownRefreshTokenRevokesNothing(t *testing.T) {
-	h := newRefreshHarness(t, "unknown@fluentra.test")
+	h := newRefreshHarness(t, "unknown@fluentra.test", nil)
 	ctx := context.Background()
 
 	live := h.start(t)
@@ -530,7 +535,7 @@ func TestAnUnknownRefreshTokenRevokesNothing(t *testing.T) {
 // three tests above are all deviations from: the same session, a new token, and
 // evidence the learner was here.
 func TestRotationKeepsTheSessionAndMovesItsLastSeen(t *testing.T) {
-	h := newRefreshHarness(t, "rotation@fluentra.test")
+	h := newRefreshHarness(t, "rotation@fluentra.test", nil)
 	ctx := context.Background()
 
 	first := h.start(t)
@@ -577,7 +582,7 @@ func sessionLastSeen(t *testing.T, sessionID uuid.UUID) time.Time {
 // must hold a digest and not the token, and the struct that carries it must not
 // render it into a log line on the way to the transport layer.
 func TestTheRefreshTokenIsNotStoredAndIsNotPrintedByAccident(t *testing.T) {
-	h := newRefreshHarness(t, "redaction@fluentra.test")
+	h := newRefreshHarness(t, "redaction@fluentra.test", nil)
 
 	signedIn := h.start(t)
 	raw := signedIn.RefreshToken.Reveal()

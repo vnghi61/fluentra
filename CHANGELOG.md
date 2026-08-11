@@ -54,6 +54,15 @@ generated text describes commits; release notes should describe change.
   cost of signing the legitimate learner out alongside the thief
 - `core.sessions` and `core.refresh_tokens`. Sessions record a keyed digest of the client
   address, never the address
+- `GET /api/v1/auth/sessions` — the devices this account is signed in on, with a coarse label
+  ("Chrome on macOS"), when the session started and when it was last used. No IP address appears
+  and none is stored
+- `DELETE /api/v1/auth/sessions/{id}` — sign one device out. A session belonging to another
+  account answers 404 and not 403, so the operation cannot be used to discover which session ids
+  exist
+- `POST /api/v1/auth/logout` — sign out of this device: the session and its refresh family are
+  revoked, and the access token is denylisted so it stops working immediately rather than at its
+  expiry
 
 ### Fixed
 
