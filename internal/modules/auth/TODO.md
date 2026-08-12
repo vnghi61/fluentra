@@ -10,7 +10,7 @@ tables: [credentials, sessions, refresh_tokens, mfa_secrets, auth_challenges, tr
 depends_on: [user, rbac, audit, mailer, cache]
 depended_on_by: [admin]
 spec_version: 1.0.0
-last_verified: 2026-08-11
+last_verified: 2026-08-12
 ---
 
 # auth — TODO
@@ -54,6 +54,31 @@ by hand. Completed work is recorded here instead.
 | P2.2 | 2026-08-10 | `module.go` — `New(Deps)`, `Routes`, `Subscribe`, `CronJobs`, adapters for all service surfaces; `RegisterService.Register/VerifyEmail/Resend/PurgeUnverified`; three HTTP endpoints (`POST /auth/register`, `POST /auth/challenges/{id}/verify`, `POST /auth/challenges/{id}/resend`); `registration_attempt` email template (en + vi); outbox consumer for `auth.verification_requested` and `auth.registration_attempted`; `purge_unverified` cron job; OTP_HMAC_KEY plus MAIL_FROM and SMTP transport config wired in both `cmd/api` and `cmd/worker` |
 | P2.3 | 2026-08-10 | `core.login_attempts` migration & table; `LoginService` handling Argon2id constant-time timing equalisation (`DummyVerify` for unknown emails), per-account and per-IP lockouts backed by persisted failures with 15-minute-to-24-hour exponential backoff, account status checks (suspended/unverified), transparent Argon2id parameter rehash on login, and `POST /auth/login` HTTP endpoint |
 | P2.4 | 2026-08-11 | `TokenService` — HS256 access tokens carrying `sub`/`sid`/`role`/`jti`/`iat`/`exp`/`aud`/`iss` and no PII, two-key rotation, 60-second leeway, the signing method pinned so an `alg: none` token cannot verify, and the parser driven by the injected clock; `TokenDenylist` over Redis for explicit logout, failing open per ADR-0007; `Authenticate` middleware placing `httpx.Actor` in the request context; login and email verification both return an `AuthSession`; `EMAIL_NOT_VERIFIED` corrected to 403 and account suspension split out of `ACCOUNT_LOCKED` into `ACCOUNT_SUSPENDED` |
+| P2.10 | 2026-08-12 | `core.oauth_states` + `core.oauth_identities`; `domain.DecideLink` — ADR-0023's five branches as a pure function, ordered so an unverified provider email is refused before anything is matched; `Keyring.PKCEFor` deriving the verifier from the state so the exchange needs nothing stored; `service/oauth/google` — JWKS cache with a refresh floor, ID token verification against signature/`iss`/`aud`/`exp`/`nonce`, and the PKCE token exchange; `OAuthService.Start/Callback/Link/Unlink`; the `oauth_state_invalid` security event on a forged, reused or expired state; four HTTP operations; `sweep_oauth_states` cron job; the `OAUTH_*` config keys wired in `cmd/api` |
+
+## Open after P2.10
+
+- [ ] **`user.Registrar` cannot open an account that is already verified.** Google sign-in for a new
+      learner is three writes and they are not one transaction, because rule L4 forbids one spanning
+      two modules: `CreateAccount`, then `MarkEmailVerified`, then the identity row. If the second
+      fails, the retry finds an unverified local account and takes the conflict branch — so a
+      transient failure locks that learner out of Google sign-in for the seven days the sweep takes
+      to remove the account. The window is narrow (two consecutive calls on one pool) and the fix is
+      a `Verified` field on `user/contract.NewUser`, which is another module's contract and another
+      card.
+- [ ] **A suspended account is caught by address, not by id.** `OAuthService.checkUsable` resolves
+      the account from the address Google asserted, so a learner suspended *after* changing their
+      Google address cannot be matched and their status is not read. `service.Accounts` has no lookup
+      by id and adding one is a change to the `user` contract. Nothing can suspend an account today —
+      `admin` does not exist — and BR-AUTH-09's session revocation still applies to every session
+      they already hold.
+- [ ] **Nothing prunes consumed `core.oauth_states`.** The hourly sweep deletes rows an hour past
+      expiry, consumed or not, which is the whole table's lifecycle — but a row that was spent
+      successfully sits there until then. Harmless (it is already refused) and worth folding into
+      the same card as the refresh-token, session and trusted-device sweeps.
+- [ ] **`redirect_to` is stored and never read.** The column, the query parameter and the same-site
+      guard are all in place, and the callback returns JSON rather than a redirect — so nothing
+      consumes it yet. The SPA route that will is P3's.
 
 ## Open after P2.9
 

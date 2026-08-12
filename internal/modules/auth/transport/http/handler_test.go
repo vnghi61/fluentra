@@ -155,12 +155,70 @@ func newTestRouterWithDevices(
 	sessions authhttp.Sessions, passwords authhttp.Passwords, devices authhttp.Devices,
 	cookies authhttp.CookieOptions,
 ) chi.Router {
+	return newTestRouterWithOAuth(reg, auth, rotator, sessions, passwords, devices, &fakeOAuth{}, cookies)
+}
+
+func newTestRouterWithOAuth(
+	reg authhttp.Registration, auth authhttp.Authenticator, rotator authhttp.Rotator,
+	sessions authhttp.Sessions, passwords authhttp.Passwords, devices authhttp.Devices,
+	oauth authhttp.OAuth, cookies authhttp.CookieOptions,
+) chi.Router {
 	r := chi.NewRouter()
 	r.Route("/api/v1", func(api chi.Router) {
-		handler := authhttp.NewHandler(reg, auth, rotator, sessions, passwords, devices, cookies)
+		handler := authhttp.NewHandler(reg, auth, rotator, sessions, passwords, devices, oauth, cookies)
 		handler.Routes(api)
 	})
 	return r
+}
+
+// fakeOAuth stands in for the Google sign-in service. The five linking branches
+// are proved in the service and integration suites; what the handler owes them
+// is the actor, the status, the cookie, and the refusal passed through unchanged.
+type fakeOAuth struct {
+	startFn    func(ctx context.Context, redirectTo string) (service.Started, error)
+	callbackFn func(ctx context.Context, input service.CallbackInput) (service.SignedIn, error)
+	linkFn     func(ctx context.Context, actor httpx.Actor, input service.CallbackInput) (service.LinkedIdentity, error)
+	unlinkFn   func(ctx context.Context, actor httpx.Actor) error
+
+	sawActor    httpx.Actor
+	sawRedirect string
+	sawInput    service.CallbackInput
+}
+
+func (f *fakeOAuth) Start(ctx context.Context, redirectTo string) (service.Started, error) {
+	f.sawRedirect = redirectTo
+	if f.startFn != nil {
+		return f.startFn(ctx, redirectTo)
+	}
+	return service.Started{AuthorizationURL: "https://accounts.google.test/authorize?state=example"}, nil
+}
+
+func (f *fakeOAuth) Callback(ctx context.Context, input service.CallbackInput) (service.SignedIn, error) {
+	f.sawInput = input
+	if f.callbackFn != nil {
+		return f.callbackFn(ctx, input)
+	}
+	return testSignedIn(), nil
+}
+
+func (f *fakeOAuth) Link(ctx context.Context, actor httpx.Actor, input service.CallbackInput) (
+	service.LinkedIdentity, error,
+) {
+	f.sawActor, f.sawInput = actor, input
+	if f.linkFn != nil {
+		return f.linkFn(ctx, actor, input)
+	}
+	return service.LinkedIdentity{
+		Provider: "google", Email: "learner@example.com", LinkedAt: time.Now().UTC(),
+	}, nil
+}
+
+func (f *fakeOAuth) Unlink(ctx context.Context, actor httpx.Actor) error {
+	f.sawActor = actor
+	if f.unlinkFn != nil {
+		return f.unlinkFn(ctx, actor)
+	}
+	return nil
 }
 
 // fakeDevices stands in for the trusted-device service. The windows and the

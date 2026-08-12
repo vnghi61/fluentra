@@ -11,6 +11,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/auth"
 	authdomain "github.com/fluentra/fluentra/internal/modules/auth/domain"
 	authservice "github.com/fluentra/fluentra/internal/modules/auth/service"
+	"github.com/fluentra/fluentra/internal/modules/auth/service/oauth/google"
 	"github.com/fluentra/fluentra/internal/modules/rbac"
 	rbaccontract "github.com/fluentra/fluentra/internal/modules/rbac/contract"
 	"github.com/fluentra/fluentra/internal/modules/user"
@@ -61,6 +62,16 @@ type identityDeps struct {
 	// a datastore read off the authentication path — putting the denylist in
 	// Postgres would put that read straight back.
 	Denylist cache.Cache[bool]
+
+	// Google is the OAuth provider configuration, from the OAUTH_GOOGLE_* keys.
+	// A zero value is a provider with no credentials, which refuses every
+	// exchange — the correct behaviour for a deployment that has not configured
+	// Google sign-in.
+	Google google.Options
+
+	// OAuthStateTTL is OAUTH_STATE_TTL: how long an authorization request stays
+	// completable.
+	OAuthStateTTL time.Duration
 }
 
 // newIdentity constructs the modules in dependency order — audit, then rbac,
@@ -129,6 +140,8 @@ func newIdentity(deps identityDeps) *identity {
 		RefreshTTL:       deps.RefreshTTL,
 		PasswordResetTTL: deps.PasswordResetTTL,
 		Windows:          deps.Windows,
+		Google:           deps.Google,
+		OAuthStateTTL:    deps.OAuthStateTTL,
 	})
 
 	return assembled

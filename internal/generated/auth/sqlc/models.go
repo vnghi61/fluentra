@@ -288,6 +288,27 @@ type CoreLoginLockout struct {
 	UpdatedAt    time.Time
 }
 
+type CoreOauthIdentity struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	Provider  string
+	Subject   string
+	EmailHash []byte
+	LinkedAt  time.Time
+}
+
+type CoreOauthState struct {
+	ID               uuid.UUID
+	State            string
+	Provider         string
+	Nonce            string
+	PkceVerifierHash []byte
+	RedirectTo       *string
+	CreatedAt        time.Time
+	ExpiresAt        time.Time
+	ConsumedAt       *time.Time
+}
+
 type CoreProfile struct {
 	ID            uuid.UUID
 	UserID        uuid.UUID

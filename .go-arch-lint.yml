@@ -166,6 +166,10 @@ components:
   m_auth_domain:     { in: modules/auth/domain }
   m_auth_repository: { in: modules/auth/repository }
   m_auth_service:    { in: modules/auth/service }
+  # The Google adapter. It is its own component because it is the one package in
+  # this module that speaks to an external provider: it needs net/http and the
+  # JWT vendor, and neither belongs to `service` at large.
+  m_auth_oauth:      { in: modules/auth/service/oauth/google }
   m_auth_http:       { in: modules/auth/transport/http }
   m_user:          { in: modules/user }
   m_user_domain:   { in: modules/user/domain }
@@ -264,7 +268,14 @@ deps:
   # Postgres would put that read straight back — which is why this one
   # repository speaks to Redis.
   m_auth_repository: { mayDependOn: [m_auth_domain, g_auth, p_cache] }
-  m_auth_service:    { mayDependOn: [m_auth_domain, c_auth, p_cache], canUse: [v_jwt] }
+  # m_auth_oauth verifies Google's ID tokens, so it needs the JWT vendor for the
+  # same reason m_auth_service does — and it is the only component here allowed
+  # to hold an HTTP client pointed at a third party. It depends on nothing of
+  # ours: it returns its own Identity and its own error sentinels, which is what
+  # lets the five linking branches be tested against a fake rather than against
+  # Google.
+  m_auth_oauth:      { canUse: [v_jwt] }
+  m_auth_service:    { mayDependOn: [m_auth_domain, m_auth_oauth, c_auth, p_cache], canUse: [v_jwt] }
   # m_auth_service is here for the same reason it is on m_audit_http and
   # m_rbac_http: module.go passes the concrete *service.RegisterService into
   # authhttp.NewHandler, and go-arch-lint's deepScan reads that injection as an
@@ -272,7 +283,7 @@ deps:
   # fails on Linux. It is not a widening: transport -> service is the direction
   # /AGENT.md §6 prescribes.
   m_auth_http:       { mayDependOn: [m_auth_domain, m_auth_service] }
-  m_auth:            { mayDependOn: [m_auth_domain, m_auth_repository, m_auth_service, m_auth_http, c_auth, p_cache, p_telemetry, p_mailer, p_job, c_user, c_rbac, c_audit] }
+  m_auth:            { mayDependOn: [m_auth_domain, m_auth_repository, m_auth_service, m_auth_oauth, m_auth_http, c_auth, p_cache, p_telemetry, p_mailer, p_job, c_user, c_rbac, c_audit] }
 
   # user, by layer. Reading down this block is reading the dependency direction:
   # domain depends on nothing of ours, and each layer above it may reach only

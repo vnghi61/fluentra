@@ -422,3 +422,74 @@ TrustedDeviceList:
       maxItems: 50
       items:
         $ref: '#/TrustedDevice'
+
+OAuthStart:
+  type: object
+  description: >-
+    Where to send the browser, and nothing else.
+
+
+    The `state`, the `nonce` and the PKCE verifier are generated here and stored
+    server-side for ten minutes, single use. None of the three is returned: a
+    `state` the client could read is a `state` an attacker who can read the same
+    response could replay, and the whole point of it is that only this server
+    knows what it issued (BR-AUTH-17).
+  required: [authorization_url]
+  additionalProperties: false
+  properties:
+    authorization_url:
+      type: string
+      format: uri
+      maxLength: 2048
+      description: >-
+        Google's consent screen, carrying the client id, the scopes, the
+        `state`, the `nonce` and the PKCE challenge. PKCE is included even
+        though Fluentra holds a client secret: it costs nothing and it closes
+        code interception on mobile browsers, which a confidential client is not
+        immune to (BR-AUTH-17).
+      example: https://accounts.google.com/o/oauth2/v2/auth?client_id=...&state=...&code_challenge=...
+
+OAuthCallbackRequest:
+  type: object
+  description: >-
+    What Google handed back to the browser, passed straight through.
+
+
+    Both are required and both are checked. The `code` is worthless without the
+    `state`, and the `state` is worthless unless this server issued it and has
+    not already consumed it.
+  required: [code, state]
+  additionalProperties: false
+  properties:
+    code:
+      type: string
+      maxLength: 2048
+      description: The authorization code, exchanged server-side with the PKCE verifier.
+    state:
+      type: string
+      maxLength: 128
+      description: >-
+        The value this server issued at `start`. Missing, unknown, expired or
+        already used is `OAUTH_STATE_INVALID` and raises a security event --
+        those four are the shapes a CSRF attempt takes, and they are not worth
+        telling apart in a response.
+
+OAuthIdentity:
+  type: object
+  description: A linked external identity, as its owner sees it.
+  required: [provider, email, linked_at]
+  additionalProperties: false
+  properties:
+    provider:
+      type: string
+      enum: [google]
+      description: Only Google in this version. Apple waits for an iOS app to require it.
+    email:
+      type: string
+      format: email
+      description: >-
+        The address Google asserted. It is shown so a learner can tell which
+        Google account is linked when they hold more than one.
+    linked_at:
+      type: string
+      format: date-time

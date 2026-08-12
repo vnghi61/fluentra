@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
 	"github.com/fluentra/fluentra/internal/modules/auth/domain"
@@ -439,4 +440,138 @@ func TestContract_DeviceListMatchesTheSpec(t *testing.T) {
 		t.Fatalf("status = %d, want 200; body: %s", rec.Code, rec.Body.String())
 	}
 	assertMatchesSchema(t, responseSchema(t, spec, "/auth/devices", http.MethodGet, http.StatusOK), rec.Body.Bytes())
+}
+
+// fakeContractOAuth answers with fully populated values, because the schemas
+// mark every member required and `additionalProperties: false` — the two ways a
+// response can compile and still be unacceptable to a client written against the
+// published spec.
+type fakeContractOAuth struct{}
+
+func (fakeContractOAuth) Start(context.Context, string) (service.Started, error) {
+	return service.Started{
+		AuthorizationURL: "https://accounts.google.com/o/oauth2/v2/auth?client_id=example&state=example",
+	}, nil
+}
+
+func (fakeContractOAuth) Callback(context.Context, service.CallbackInput) (service.SignedIn, error) {
+	return service.SignedIn{
+		Session:          contractSession(),
+		RefreshToken:     secret.New(testCookieValue),
+		RefreshExpiresAt: time.Now().UTC().Add(service.DefaultRefreshTTL),
+	}, nil
+}
+
+func (fakeContractOAuth) Link(context.Context, httpx.Actor, service.CallbackInput) (
+	service.LinkedIdentity, error,
+) {
+	return service.LinkedIdentity{
+		Provider: "google", Email: "learner@example.com", LinkedAt: time.Now().UTC(),
+	}, nil
+}
+
+func (fakeContractOAuth) Unlink(context.Context, httpx.Actor) error { return nil }
+
+func newContractOAuthRouter() chi.Router {
+	return newTestRouterWithOAuth(
+		&fakeContractRegistration{}, fakeContractAuthenticator{}, &fakeRotator{},
+		fakeContractSessions{}, fakeContractPasswords{}, fakeContractDevices{},
+		fakeContractOAuth{}, authhttp.CookieOptions{Secure: true})
+}
+
+// TestContract_GoogleSignInMatchesTheSpec covers the three operations that
+// return a body. The unlink answers 204 and has nothing to validate.
+//
+// The `start` case is the one worth having twice over: its schema is
+// `additionalProperties: false` around a single member, so a handler that leaked
+// the state or the nonce into the response would fail here as a schema
+// violation, not merely as a security review finding.
+func TestContract_GoogleSignInMatchesTheSpec(t *testing.T) {
+	spec := loadSpec(t)
+	router := newContractOAuthRouter()
+
+	actor := httpx.Actor{
+		UserID:    uuid.MustParse("018f3a5b-7c8d-7123-8123-456789abcdef"),
+		SessionID: uuid.MustParse("018f3a5b-7c8d-7123-8123-456789abcdef"),
+		Role:      "user",
+		TokenID:   testJTI,
+	}
+	callbackBody := `{"code":"4/0AeanS0by-example","state":"9f2c1a7e4b3d4c119d217f0a5c8e2b44"}`
+
+	for name, testCase := range map[string]struct {
+		method       string
+		path         string
+		specPath     string
+		body         string
+		authenticate bool
+	}{
+		"start": {
+			method: http.MethodGet, path: "/api/v1/auth/oauth/google/start",
+			specPath: "/auth/oauth/google/start",
+		},
+		"callback": {
+			method: http.MethodPost, path: "/api/v1/auth/oauth/google/callback",
+			specPath: "/auth/oauth/google/callback", body: callbackBody,
+		},
+		"link": {
+			method: http.MethodPost, path: "/api/v1/auth/oauth/google/link",
+			specPath: "/auth/oauth/google/link", body: callbackBody, authenticate: true,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			var req *http.Request
+			if testCase.body == "" {
+				req = httptest.NewRequest(testCase.method, testCase.path, nil)
+			} else {
+				req = httptest.NewRequest(testCase.method, testCase.path, strings.NewReader(testCase.body))
+				req.Header.Set("Content-Type", "application/json")
+			}
+			if testCase.authenticate {
+				req = req.WithContext(httpx.WithActor(req.Context(), actor))
+			}
+
+			rec := httptest.NewRecorder()
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status = %d, want 200; body: %s", rec.Code, rec.Body.String())
+			}
+			assertMatchesSchema(t,
+				responseSchema(t, spec, testCase.specPath, testCase.method, http.StatusOK), rec.Body.Bytes())
+		})
+	}
+}
+
+// TestContract_UnlinkAnswers204WithNoBody. The spec declares no content for it,
+// and a handler that wrote one would be sending something no client will read
+// and no schema describes.
+func TestContract_UnlinkAnswers204WithNoBody(t *testing.T) {
+	spec := loadSpec(t)
+	router := newContractOAuthRouter()
+
+	item := spec.Paths.Find("/auth/oauth/google")
+	if item == nil || item.Delete == nil {
+		t.Fatal("the spec has no DELETE /auth/oauth/google")
+	}
+	if response := item.Delete.Responses.Status(http.StatusNoContent); response == nil {
+		t.Fatal("DELETE /auth/oauth/google declares no 204")
+	}
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/auth/oauth/google", nil)
+	req = req.WithContext(httpx.WithActor(req.Context(), httpx.Actor{
+		UserID:    uuid.MustParse("018f3a5b-7c8d-7123-8123-456789abcdef"),
+		SessionID: uuid.MustParse("018f3a5b-7c8d-7123-8123-456789abcdef"),
+		Role:      "user",
+		TokenID:   testJTI,
+	}))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want 204; body: %s", rec.Code, rec.Body.String())
+	}
+	if rec.Body.Len() != 0 {
+		t.Errorf("204 carried a body: %s", rec.Body.String())
+	}
 }

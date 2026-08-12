@@ -78,7 +78,7 @@
       { "kind": "interface", "name": "auth.SessionRevoker", "purpose": "`RevokeAll(ctx, userID) (int, error)` — used by `admin` on suspension and by `user` on account deletion. Published and unconsumed until those modules exist" },
       { "kind": "struct", "name": "auth.Actor", "purpose": "`{UserID, SessionID, Role, TokenID}` — placed in the request context" },
       { "kind": "event", "name": "auth.UserRegistered", "purpose": "Published after a successful registration" },
-      { "kind": "event", "name": "auth.SecurityEvent", "purpose": "Published when something needs investigating — `refresh_reuse` is the first kind" }
+      { "kind": "event", "name": "auth.SecurityEvent", "purpose": "Published when something needs investigating — `refresh_reuse` (a single-use credential presented twice) and `oauth_state_invalid` (a Google callback carrying a state this server did not issue, or already spent)" }
     ],
     "events": {
       "publishes": [
