@@ -97,6 +97,10 @@ type Deps struct {
 	// Zero leaves the purpose on the shared OTP window.
 	PasswordResetTTL time.Duration
 
+	// Windows are the session lifetimes, from the SESSION_* keys. A zero field
+	// falls back to the documented default rather than to immediate expiry.
+	Windows domain.WindowConfig
+
 	// SessionCache remembers which account owns a session, for the five minutes
 	// AGENT.md §12 documents. Nil disables the cache and every ownership check
 	// reads Postgres, which is correct but chattier — it is nil in tests that do
@@ -203,14 +207,16 @@ func New(deps Deps) *Module {
 	// route through it so there is one place a refresh family is rooted, which
 	// is what makes "revoke the family" a complete statement.
 	sessions := service.NewRefreshService(service.RefreshDeps{
-		Pool:   deps.Pool,
-		Repo:   refreshAdapter{Repository: repo},
-		Tokens: tokens,
-		Events: events,
-		Keys:   keys,
-		Clock:  timekeeper,
-		NewID:  id.NewUUIDv7,
-		TTL:    deps.RefreshTTL,
+		Pool:    deps.Pool,
+		Repo:    refreshAdapter{Repository: repo},
+		Tokens:  tokens,
+		Events:  events,
+		Keys:    keys,
+		Clock:   timekeeper,
+		NewID:   id.NewUUIDv7,
+		Roles:   rolesAdapter{Reader: deps.Roles},
+		Windows: deps.Windows,
+		TTL:     deps.RefreshTTL,
 	})
 
 	reg := service.NewRegisterService(service.RegisterDeps{
@@ -264,6 +270,12 @@ func New(deps Deps) *Module {
 		NewID:       id.NewUUIDv7,
 	})
 
+	deviceSvc := service.NewDeviceService(service.DeviceDeps{
+		Pool:  deps.Pool,
+		Repo:  deviceAdapter{Repository: repo},
+		Clock: timekeeper,
+	})
+
 	return &Module{
 		register: reg,
 		login:    loginSvc,
@@ -271,7 +283,7 @@ func New(deps Deps) *Module {
 		sessions: sessions,
 		revoker:  sessionSvc,
 		mailer:   deps.Mailer,
-		handler: authhttp.NewHandler(reg, loginSvc, sessions, sessionSvc, passwordSvc,
+		handler: authhttp.NewHandler(reg, loginSvc, sessions, sessionSvc, passwordSvc, deviceSvc,
 			authhttp.CookieOptions{Secure: deps.Env != "local"}),
 	}
 }
@@ -454,6 +466,15 @@ type refreshAdapter struct {
 
 func (a refreshAdapter) WithTx(tx pgx.Tx) service.RefreshRepo {
 	return refreshAdapter{Repository: a.Repository.WithTx(tx)}
+}
+
+// deviceAdapter narrows *repository.Repository to service.DeviceRepo.
+type deviceAdapter struct {
+	*repository.Repository
+}
+
+func (a deviceAdapter) WithTx(tx pgx.Tx) service.DeviceRepo {
+	return deviceAdapter{Repository: a.Repository.WithTx(tx)}
 }
 
 // sessionAdapter narrows *repository.Repository to service.SessionRepo.

@@ -393,6 +393,16 @@ paths:
         telling the learner and worth finding in a log, while `TOKEN_INVALID`
         means only that this credential buys nothing. Both end at the login
         form.
+
+
+        A session that has reached its **absolute** expiry answers 401
+        `SESSION_ABSOLUTE_EXPIRED`, and it is worth a code of its own because
+        nothing is wrong: the learner did nothing, the token was not stolen, and
+        the session simply reached the age at which possession has to be proven
+        again. A client can say so rather than implying something went missing.
+        Rotation moves the idle window forward on every use and never moves
+        this, which is the entire security argument for the idle window being as
+        long as it is (BR-AUTH-22).
       security: []
       responses:
         '200':
@@ -582,6 +592,88 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /auth/devices:
+    get:
+      tags: [auth]
+      operationId: authListDevices
+      summary: List the devices this account has chosen to trust.
+      description: >-
+        Returns the caller's trusted devices, most recently active first, with
+        both expiries: the idle one that every use moves forward, and the
+        absolute one that nothing does.
+
+
+        Showing both is the point. "Stay signed in" is only defensible because
+        it ends -- a learner who can see that this laptop stops being trusted on
+        a fixed date can reason about the risk, and one who cannot is being
+        asked to take it on faith.
+      x-permission: self
+      responses:
+        '200':
+          description: The caller's trusted devices.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrustedDeviceList'
+              example:
+                devices:
+                  - id: 0199a1c2-3d4e-7f80-9abc-def012345678
+                    label: Chrome on macOS
+                    trusted_at: '2026-06-14T08:02:11Z'
+                    last_seen_at: '2026-08-11T08:55:13Z'
+                    idle_expires_at: '2026-11-09T08:55:13Z'
+                    absolute_expires_at: '2026-12-11T08:02:11Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /auth/devices/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: The device to untrust, from the list operation.
+        schema:
+          type: string
+          format: uuid
+    delete:
+      tags: [auth]
+      operationId: authUntrustDevice
+      summary: Stop trusting a device.
+      description: >-
+        Removes the trust and **revokes the refresh family belonging to it
+        immediately**, so the device is signed out rather than merely demoted to
+        the shorter window. Untrusting is what a learner reaches for when a
+        laptop is lost, and a laptop that stays signed in for thirty more days
+        is not what they asked for.
+
+
+        A device belonging to another account is 404, not 403, for the reason
+        `DELETE /auth/sessions/{id}` gives: 403 confirms the id names a real
+        device and turns the operation into a way to enumerate them.
+
+
+        Untrusting a device that is already untrusted answers 204.
+      x-permission: self
+      responses:
+        '204':
+          description: >-
+            No longer trusted, and its refresh family revoked. Carries a cleared
+            refresh cookie when the device untrusted was the caller's own.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+            Set-Cookie:
+              $ref: '#/components/headers/Set-Cookie-RefreshCleared'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '429':
           $ref: '#/components/responses/TooManyRequests'
   /auth/logout:
@@ -1324,6 +1416,10 @@ components:
       $ref: ./components/auth.yaml#/ChangePasswordRequest
     PasswordChanged:
       $ref: ./components/auth.yaml#/PasswordChanged
+    TrustedDevice:
+      $ref: ./components/auth.yaml#/TrustedDevice
+    TrustedDeviceList:
+      $ref: ./components/auth.yaml#/TrustedDeviceList
     SessionSummary:
       $ref: ./components/auth.yaml#/SessionSummary
     SessionList:

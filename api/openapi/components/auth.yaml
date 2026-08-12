@@ -192,9 +192,26 @@ LoginRequest:
     remember_device:
       type: boolean
       default: false
+      description: >-
+        Asks for the longer idle window on this device: 90 days of inactivity
+        instead of 30. It does **not** extend the absolute expiry, and an
+        `admin` account gets neither extension -- 12 hours idle and 7 days
+        absolute, whatever this says.
+
+
+        Requires `device_id`. Without one there is nothing to trust, and the
+        request is treated as an ordinary sign-in rather than refused, because
+        the learner asked to be signed in and that part still works.
+      example: true
     device_id:
       type: string
       maxLength: 128
+      description: >-
+        A client-generated identifier for this browser or app install, stored
+        only as a keyed digest. It is not a fingerprint and not evidence: the
+        learner can clear it, which looks like a new device and costs them one
+        sign-in -- the correct failure direction.
+      example: 9f2c1a7e-4b3d-4c11-9d21-7f0a5c8e2b44
 
 SessionSummary:
   type: object
@@ -344,3 +361,64 @@ PasswordChanged:
         out the rest, so a learner tidying up after a scare is not made to sign
         in again on the machine in front of them.
       example: 3
+
+TrustedDevice:
+  type: object
+  description: >-
+    A device the learner explicitly chose to stay signed in on.
+
+
+    Trusting is opt-in and it buys a longer idle window -- 90 days instead of 30
+    -- and nothing else. It does not extend the absolute expiry, which is the
+    only thing bounding a theft, and it does not skip any check. A device the
+    learner does not recognise here is one they should untrust, which is why the
+    label and the last-seen time matter more than the identifier.
+  required: [id, trusted_at, last_seen_at, idle_expires_at, absolute_expires_at]
+  additionalProperties: false
+  properties:
+    id:
+      type: string
+      format: uuid
+      description: Identifies the device in the untrust operation.
+    label:
+      type: [string, 'null']
+      maxLength: 80
+      description: >-
+        The same coarse description the session list carries -- "Chrome on
+        macOS", never a version and never a fingerprint.
+      example: Chrome on macOS
+    trusted_at:
+      type: string
+      format: date-time
+      description: When the learner chose to trust it.
+    last_seen_at:
+      type: string
+      format: date-time
+      description: The last time this device renewed a token.
+    idle_expires_at:
+      type: string
+      format: date-time
+      description: >-
+        When inactivity alone would end it. Every renewal moves this forward,
+        which is what "stay signed in" means for somebody who keeps using the
+        app.
+    absolute_expires_at:
+      type: string
+      format: date-time
+      description: >-
+        When it ends regardless of activity, and **this one never moves**
+        (BR-AUTH-22). It is the whole security argument for the long idle
+        window: without it, a stolen token that is used regularly renews itself
+        forever and the theft becomes permanent and invisible. Reaching it means
+        signing in again, on a device that has been trusted the entire time.
+
+TrustedDeviceList:
+  type: object
+  required: [devices]
+  additionalProperties: false
+  properties:
+    devices:
+      type: array
+      maxItems: 50
+      items:
+        $ref: '#/TrustedDevice'

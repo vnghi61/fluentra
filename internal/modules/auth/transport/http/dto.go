@@ -399,3 +399,38 @@ func decodeChangePasswordRequest(request *http.Request) (service.ChangeInput, er
 		NewPassword:     *payload.NewPassword,
 	}, nil
 }
+
+// deviceResponse matches components/auth.yaml#/TrustedDevice.
+//
+// Both expiries are here because "stay signed in" is only defensible if it
+// ends: a learner who can see the fixed date can reason about the risk, and one
+// who cannot is being asked to take it on faith.
+type deviceResponse struct {
+	ID                string  `json:"id"`
+	Label             *string `json:"label"`
+	TrustedAt         string  `json:"trusted_at"`
+	LastSeenAt        string  `json:"last_seen_at"`
+	IdleExpiresAt     string  `json:"idle_expires_at"`
+	AbsoluteExpiresAt string  `json:"absolute_expires_at"`
+}
+
+// deviceListResponse matches components/auth.yaml#/TrustedDeviceList.
+type deviceListResponse struct {
+	Devices []deviceResponse `json:"devices"`
+}
+
+func toDeviceListResponse(devices []service.DeviceView) deviceListResponse {
+	// Non-nil even when empty, so the field serialises as `[]` and not `null`.
+	out := make([]deviceResponse, 0, len(devices))
+	for _, device := range devices {
+		out = append(out, deviceResponse{
+			ID:                device.ID.String(),
+			Label:             device.Label,
+			TrustedAt:         device.TrustedAt.UTC().Format(time.RFC3339),
+			LastSeenAt:        device.LastSeenAt.UTC().Format(time.RFC3339),
+			IdleExpiresAt:     device.IdleExpiresAt.UTC().Format(time.RFC3339),
+			AbsoluteExpiresAt: device.AbsoluteExpiresAt.UTC().Format(time.RFC3339),
+		})
+	}
+	return deviceListResponse{Devices: out}
+}

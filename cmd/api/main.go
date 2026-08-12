@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/exaring/otelpgx"
+	authdomain "github.com/fluentra/fluentra/internal/modules/auth/domain"
 	authservice "github.com/fluentra/fluentra/internal/modules/auth/service"
 	"github.com/fluentra/fluentra/internal/platform/cache"
 	"github.com/fluentra/fluentra/internal/platform/mailer"
@@ -73,6 +74,14 @@ type applicationConfig struct {
 	Password struct {
 		ResetTTL time.Duration `koanf:"reset_ttl"`
 	} `koanf:"password"`
+	// SESSION_* becomes `session.*`, under the same first-underscore rule.
+	Session struct {
+		IdleWindow        time.Duration `koanf:"idle_window"`
+		IdleWindowTrusted time.Duration `koanf:"idle_window_trusted"`
+		AbsoluteTTL       time.Duration `koanf:"absolute_ttl"`
+		IdleWindowAdmin   time.Duration `koanf:"idle_window_admin"`
+		AbsoluteTTLAdmin  time.Duration `koanf:"absolute_ttl_admin"`
+	} `koanf:"session"`
 	// RATE_LIMIT_* becomes `rate.limit_*`: the convention replaces the FIRST
 	// underscore with a dot and leaves the rest alone.
 	Rate struct {
@@ -209,6 +218,13 @@ func run(ctx context.Context) error {
 		RefreshTTL:       cfg.Refresh.TokenTTL,
 		PasswordResetTTL: cfg.Password.ResetTTL,
 		RateLimit:        rateLimiter,
+		Windows: authdomain.WindowConfig{
+			Idle:          cfg.Session.IdleWindow,
+			IdleTrusted:   cfg.Session.IdleWindowTrusted,
+			Absolute:      cfg.Session.AbsoluteTTL,
+			IdleAdmin:     cfg.Session.IdleWindowAdmin,
+			AbsoluteAdmin: cfg.Session.AbsoluteTTLAdmin,
+		},
 		// A separate typed cache from the permission one. They share the Redis
 		// client but not the value type, and Cache[T] is generic per type.
 		Denylist: cache.NewRedisCache[bool](redisClient),
@@ -308,6 +324,11 @@ func configOptions() config.Options {
 			"access.token_ttl":            "15m",
 			"refresh.token_ttl":           "720h",
 			"password.reset_ttl":          "30m",
+			"session.idle_window":         "720h",
+			"session.idle_window_trusted": "2160h",
+			"session.absolute_ttl":        "4320h",
+			"session.idle_window_admin":   "12h",
+			"session.absolute_ttl_admin":  "168h",
 			"rate.limit_anon_per_min":     60,
 			"rate.limit_user_per_min":     600,
 			"rate.limit_auth_per_min":     5,

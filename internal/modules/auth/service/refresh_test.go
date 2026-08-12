@@ -52,6 +52,13 @@ type fakeRefreshRepo struct {
 	lastIPHash        []byte
 	lastUserAgentHash []byte
 	lastDeviceLabel   *string
+
+	lastAbsoluteExpiry time.Time
+	lastIdleWindow     time.Duration
+	lastTrustedDevice  *uuid.UUID
+	trusted            int
+	deviceTouches      int
+	trustErr           error
 }
 
 func newFakeRefreshRepo() *fakeRefreshRepo {
@@ -64,13 +71,34 @@ func newFakeRefreshRepo() *fakeRefreshRepo {
 func (f *fakeRefreshRepo) WithTx(pgx.Tx) service.RefreshRepo { return f }
 
 func (f *fakeRefreshRepo) CreateSession(
-	_ context.Context, id, _ uuid.UUID, deviceLabel *string, ipHash, userAgentHash []byte, _ time.Time,
+	_ context.Context, id, _ uuid.UUID, deviceLabel *string, ipHash, userAgentHash []byte,
+	_, absoluteExpiresAt time.Time, trustedDeviceID *uuid.UUID, idleWindow time.Duration,
 ) error {
 	if f.createSessionErr != nil {
 		return f.createSessionErr
 	}
 	f.sessions[id] = false
 	f.lastIPHash, f.lastUserAgentHash, f.lastDeviceLabel = ipHash, userAgentHash, deviceLabel
+	f.lastAbsoluteExpiry, f.lastIdleWindow, f.lastTrustedDevice = absoluteExpiresAt, idleWindow, trustedDeviceID
+	return nil
+}
+
+func (f *fakeRefreshRepo) TrustDevice(
+	_ context.Context, id, userID uuid.UUID, deviceIDHash []byte, label *string,
+	idleWindow time.Duration, absoluteExpiry, now time.Time,
+) (domain.TrustedDevice, error) {
+	if f.trustErr != nil {
+		return domain.TrustedDevice{}, f.trustErr
+	}
+	f.trusted++
+	return domain.TrustedDevice{
+		ID: id, UserID: userID, DeviceIDHash: deviceIDHash, Label: label,
+		IdleWindow: idleWindow, AbsoluteExpiry: absoluteExpiry, TrustedAt: now, LastSeenAt: now,
+	}, nil
+}
+
+func (f *fakeRefreshRepo) TouchTrustedDevice(_ context.Context, _ uuid.UUID, _ time.Time) error {
+	f.deviceTouches++
 	return nil
 }
 
@@ -290,7 +318,9 @@ func TestRotate_FailsWhenTheSessionCannotBeTouched(t *testing.T) {
 				TokenHash: digest, FamilyID: uuid.New(), SessionID: uuid.New(),
 				ExpiresAt: refreshNow.Add(time.Hour),
 			},
-			UserID: uuid.New(),
+			UserID:            uuid.New(),
+			AbsoluteExpiresAt: refreshNow.Add(24 * time.Hour),
+			IdleWindow:        time.Hour,
 		}, true, nil
 	}
 
@@ -400,7 +430,8 @@ func TestRotate_TellsTheFourReasonsAClaimCanMissApart(t *testing.T) {
 					FamilyID: uuid.New(), SessionID: uuid.New(),
 					ExpiresAt: refreshNow.Add(time.Hour), UsedAt: &spent,
 				},
-				UserID: uuid.New(),
+				UserID:            uuid.New(),
+				AbsoluteExpiresAt: refreshNow.Add(24 * time.Hour),
 			},
 			wantCode: codeSessionRevoked, wantRevoke: true, wantEvents: 1,
 		},
@@ -410,6 +441,7 @@ func TestRotate_TellsTheFourReasonsAClaimCanMissApart(t *testing.T) {
 					FamilyID: uuid.New(), SessionID: uuid.New(),
 					ExpiresAt: refreshNow.Add(time.Hour), RevokedAt: &spent,
 				},
+				AbsoluteExpiresAt: refreshNow.Add(24 * time.Hour),
 			},
 			wantCode: codeSessionRevoked, wantRevoke: false, wantEvents: 0,
 		},
@@ -419,6 +451,7 @@ func TestRotate_TellsTheFourReasonsAClaimCanMissApart(t *testing.T) {
 					FamilyID: uuid.New(), SessionID: uuid.New(),
 					ExpiresAt: refreshNow.Add(-time.Second),
 				},
+				AbsoluteExpiresAt: refreshNow.Add(24 * time.Hour),
 			},
 			wantCode: codeTokenInvalid, wantRevoke: false, wantEvents: 0,
 		},
@@ -511,6 +544,7 @@ func TestRotate_ReportsAFailedRevocationRatherThanRefusingQuietly(t *testing.T) 
 					TokenHash: digest, FamilyID: uuid.New(), SessionID: uuid.New(),
 					ExpiresAt: refreshNow.Add(time.Hour), UsedAt: &spent,
 				},
+				AbsoluteExpiresAt: refreshNow.Add(24 * time.Hour),
 			}
 
 			_, err = h.service.Rotate(context.Background(), presented)
@@ -564,7 +598,9 @@ func TestRotate_ASuccessfulClaimRotatesAndTouchesTheSession(t *testing.T) {
 				TokenHash: digest, FamilyID: familyID, SessionID: sessionID,
 				ExpiresAt: refreshNow.Add(time.Hour),
 			},
-			UserID: userID,
+			UserID:            userID,
+			AbsoluteExpiresAt: refreshNow.Add(24 * time.Hour),
+			IdleWindow:        time.Hour,
 		}, true, nil
 	}
 
@@ -591,4 +627,31 @@ func TestRotate_ASuccessfulClaimRotatesAndTouchesTheSession(t *testing.T) {
 	if len(h.repo.revokedFamilies) != 0 {
 		t.Error("an ordinary rotation revoked a family")
 	}
+}
+
+// TestRotate_ASessionWithNoAbsoluteCapIsRefused pins the direction a missing cap
+// fails in.
+//
+// The column is NOT NULL, so the database cannot hand one back — but a session
+// with no cap is precisely the immortal-token state ADR-0022 rejected, so if one
+// ever reaches this code it is refused rather than renewed. Fail-closed here
+// costs one sign-in; fail-open costs the whole argument for the long window.
+func TestRotate_ASessionWithNoAbsoluteCapIsRefused(t *testing.T) {
+	h := newRefreshServiceHarness(t, nil)
+
+	presented, digest, err := domain.NewRefreshToken(nil)
+	if err != nil {
+		t.Fatalf("NewRefreshToken: %v", err)
+	}
+	h.repo.tokens[string(digest)] = domain.SessionToken{
+		RefreshToken: domain.RefreshToken{
+			TokenHash: digest, FamilyID: uuid.New(), SessionID: uuid.New(),
+			ExpiresAt: refreshNow.Add(time.Hour),
+		},
+		UserID: uuid.New(),
+		// AbsoluteExpiresAt deliberately left zero.
+	}
+
+	_, err = h.service.Rotate(context.Background(), presented)
+	assertAuthCode(t, err, "SESSION_ABSOLUTE_EXPIRED")
 }

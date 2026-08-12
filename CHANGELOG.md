@@ -60,6 +60,19 @@ generated text describes commits; release notes should describe change.
 - `DELETE /api/v1/auth/sessions/{id}` — sign one device out. A session belonging to another
   account answers 404 and not 403, so the operation cannot be used to discover which session ids
   exist
+- Persistent sign-in. Refresh rotation is now **sliding**: each renewal starts a fresh idle window,
+  so a learner who keeps using the app never sees the login form. Every session also carries an
+  **absolute** expiry that activity never moves — reaching it answers `SESSION_ABSOLUTE_EXPIRED` and
+  requires signing in again. Without that cap, a stolen token used regularly would renew itself
+  forever
+- `remember_device` on login trusts the browser and lengthens the idle window from 30 days to 90. It
+  does not touch the absolute cap, and an administrator gets neither extension — 12 hours idle,
+  7 days absolute
+- `GET /api/v1/auth/devices` and `DELETE /api/v1/auth/devices/{id}` — see the devices you have
+  trusted, with both expiries, and untrust one. Untrusting revokes its refresh family immediately
+  rather than demoting it to a shorter window
+- A password change or reset untrusts every device as well as revoking every session
+
 - Rate limiting at the HTTP boundary, in the classes `API_GUIDELINE.md` §11 sets out: 60/min per
   address for anonymous callers, 600/min per account once signed in, 5/min per address **and** per
   account on the operations that hand out or reset a credential, and a per-address hourly cap on

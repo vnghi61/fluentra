@@ -42,14 +42,30 @@ type StartInput struct {
 	UserID    uuid.UUID
 	ClientIP  string
 	UserAgent string
+
+	// DeviceID is the client-generated identifier for this browser or app
+	// install, stored only as a keyed digest. Empty means the caller did not
+	// send one, which is the ordinary case.
+	DeviceID string
+
+	// RememberDevice asks for the longer idle window. It requires a DeviceID —
+	// without one there is nothing to trust — and it is ignored for an `admin`
+	// account, which gets neither extension (BR-AUTH-23).
+	RememberDevice bool
 }
 
 // RefreshRepo is the persistence this service needs, declared here so the
 // service is defined by what it uses rather than by what the repository offers.
 type RefreshRepo interface {
 	CreateSession(
-		ctx context.Context, id, userID uuid.UUID, deviceLabel *string, ipHash, userAgentHash []byte, now time.Time,
+		ctx context.Context, id, userID uuid.UUID, deviceLabel *string, ipHash, userAgentHash []byte,
+		now, absoluteExpiresAt time.Time, trustedDeviceID *uuid.UUID, idleWindow time.Duration,
 	) error
+	TrustDevice(
+		ctx context.Context, id, userID uuid.UUID, deviceIDHash []byte, label *string,
+		idleWindow time.Duration, absoluteExpiry, now time.Time,
+	) (domain.TrustedDevice, error)
+	TouchTrustedDevice(ctx context.Context, deviceID uuid.UUID, now time.Time) error
 	TouchSession(ctx context.Context, sessionID uuid.UUID, now time.Time) error
 	RevokeSession(ctx context.Context, sessionID uuid.UUID, now time.Time) (bool, error)
 	CreateRefreshToken(
@@ -71,9 +87,16 @@ type RefreshDeps struct {
 	Clock  clock.Clock
 	NewID  IDGenerator
 
-	// TTL is the idle window a new or rotated token gets. Zero means
-	// DefaultRefreshTTL; a literal duration anywhere else in this module is a
-	// review failure (this module's AGENT.md §12).
+	// Roles resolves the role a session's windows depend on. An administrator
+	// gets neither the default nor the trusted extension, and that decision has
+	// to be made before the row is written.
+	Roles Roles
+
+	// Windows are the idle and absolute lifetimes, from the SESSION_* keys.
+	Windows domain.WindowConfig
+
+	// TTL is the fallback idle window, kept for callers that predate Windows.
+	// Zero means the configured default.
 	TTL time.Duration
 
 	// Entropy draws the token bytes. Nil means crypto/rand.
@@ -89,15 +112,16 @@ type RefreshService struct {
 	keys    domain.Keyring
 	clock   clock.Clock
 	ids     IDGenerator
-	ttl     time.Duration
+	roles   Roles
+	windows domain.WindowConfig
 	entropy io.Reader
 }
 
 // NewRefreshService creates the service.
 func NewRefreshService(deps RefreshDeps) *RefreshService {
-	ttl := deps.TTL
-	if ttl <= 0 {
-		ttl = DefaultRefreshTTL
+	windows := deps.Windows.WithDefaults()
+	if deps.TTL > 0 {
+		windows.Idle = deps.TTL
 	}
 	return &RefreshService{
 		pool:    deps.Pool,
@@ -107,7 +131,8 @@ func NewRefreshService(deps RefreshDeps) *RefreshService {
 		keys:    deps.Keys,
 		clock:   deps.Clock,
 		ids:     deps.NewID,
-		ttl:     ttl,
+		roles:   deps.Roles,
+		windows: windows,
 		entropy: deps.Entropy,
 	}
 }
@@ -139,15 +164,40 @@ func (s *RefreshService) Start(ctx context.Context, input StartInput) (SignedIn,
 	// user agent to read, which the session list renders as an unnamed device.
 	deviceLabel := domain.DeviceLabel(input.UserAgent)
 
+	// The role is resolved before the row is written, because the windows depend
+	// on it and an administrator must not receive the learner ones.
+	// domain.WindowsFor returns for an admin before it ever reads `trusted`,
+	// which is the shape that stops the two cases interleaving.
+	role, err := s.roleOf(ctx, input.UserID)
+	if err != nil {
+		return SignedIn{}, err
+	}
+
+	// Trusting needs an identifier to trust. A request that asks to be
+	// remembered without one is signed in normally rather than refused: the
+	// learner asked to be signed in, and that part still works.
+	trusting := input.RememberDevice && input.DeviceID != "" && role != domain.RoleAdmin
+	windows := domain.WindowsFor(role, trusting, s.windows)
+	absoluteExpiry := now.Add(windows.Absolute)
+
 	// A new sign-in is its own family: the family id is the first token's id, so
 	// there is no separate identifier to keep in step with anything.
 	var issued SignedIn
 	err = s.inTx(ctx, func(ctx context.Context, _ pgx.Tx, repo RefreshRepo) error {
-		if err := repo.CreateSession(
-			ctx, sessionID, input.UserID, deviceLabel, ipHash, userAgentHash, now); err != nil {
+		var deviceID *uuid.UUID
+		if trusting {
+			trusted, trustErr := s.trust(ctx, repo, input, deviceLabel, windows, absoluteExpiry, now)
+			if trustErr != nil {
+				return trustErr
+			}
+			deviceID = &trusted.ID
+		}
+
+		if err := repo.CreateSession(ctx, sessionID, input.UserID, deviceLabel, ipHash, userAgentHash,
+			now, absoluteExpiry, deviceID, windows.Idle); err != nil {
 			return err
 		}
-		token, err := s.mint(ctx, repo, uuid.Nil, sessionID, now)
+		token, err := s.mint(ctx, repo, uuid.Nil, sessionID, now, windows.Idle, absoluteExpiry)
 		if err != nil {
 			return err
 		}
@@ -211,14 +261,27 @@ func (s *RefreshService) Rotate(ctx context.Context, presented string) (SignedIn
 		}
 		spent, claimed = true, token
 
-		next, err := s.mint(ctx, repo, token.FamilyID, token.SessionID, now)
+		// Sliding: the replacement starts a fresh idle window from now rather
+		// than inheriting what is left of the old one, so an active learner
+		// never signs in again -- up to the cap, which mint clamps to.
+		next, err := s.mint(ctx, repo, token.FamilyID, token.SessionID, now,
+			token.IdleWindow, token.AbsoluteExpiresAt)
 		if err != nil {
 			return err
 		}
 		issued = next
 
 		// Evidence the learner was here, for the session list P2.6 builds.
-		return repo.TouchSession(ctx, token.SessionID, now)
+		if err := repo.TouchSession(ctx, token.SessionID, now); err != nil {
+			return err
+		}
+		if token.TrustedDeviceID != nil {
+			// The device's own idle clock slides too, or a laptop in daily use
+			// would stop being trusted ninety days after it was trusted rather
+			// than ninety days after it was last used.
+			return repo.TouchTrustedDevice(ctx, *token.TrustedDeviceID, now)
+		}
+		return nil
 	})
 	if err != nil {
 		return SignedIn{}, err
@@ -271,12 +334,52 @@ func (s *RefreshService) inTx(ctx context.Context, fn func(context.Context, pgx.
 	return nil
 }
 
+// trust records or refreshes the device, and returns it.
+func (s *RefreshService) trust(
+	ctx context.Context, repo RefreshRepo, input StartInput, label *string,
+	windows domain.Windows, absoluteExpiry, now time.Time,
+) (domain.TrustedDevice, error) {
+	deviceID, err := s.ids(ctx)
+	if err != nil {
+		return domain.TrustedDevice{}, fmt.Errorf("generate device id: %w", err)
+	}
+	return repo.TrustDevice(ctx, deviceID, input.UserID, s.keys.SubjectHash(input.DeviceID),
+		label, windows.Idle, absoluteExpiry, now)
+}
+
+// roleOf resolves the role the windows depend on.
+//
+// No resolver means every account is a learner. That is the direction a wiring
+// failure should fail in only because it is loud: an administrator silently
+// receiving the ninety-day window is exactly the bug this card warns about, so
+// the composition root always supplies one and the integration suite asserts
+// the admin windows end to end.
+func (s *RefreshService) roleOf(ctx context.Context, userID uuid.UUID) (string, error) {
+	if s.roles == nil {
+		return domain.RoleUser, nil
+	}
+	role, err := s.roles.RoleOf(ctx, userID)
+	if err != nil {
+		return "", fmt.Errorf("resolve role for session windows: %w", err)
+	}
+	if role == "" {
+		return domain.RoleUser, nil
+	}
+	return role, nil
+}
+
 // mint writes one refresh token row and returns the value to hand out.
 //
 // familyID of uuid.Nil starts a new family rooted at this token, which is what
 // a fresh sign-in wants; any other value continues an existing chain.
+//
+// **The expiry is clamped to the session's absolute cap.** That one line is the
+// difference between the design ADR-0022 chose and the one it rejected: without
+// it the idle window slides forever, a stolen token used regularly renews itself
+// indefinitely, and the theft becomes permanent and invisible.
 func (s *RefreshService) mint(
-	ctx context.Context, repo RefreshRepo, familyID, sessionID uuid.UUID, now time.Time,
+	ctx context.Context, repo RefreshRepo, familyID, sessionID uuid.UUID,
+	now time.Time, idleWindow time.Duration, absoluteExpiry time.Time,
 ) (SignedIn, error) {
 	tokenID, err := s.ids(ctx)
 	if err != nil {
@@ -291,7 +394,7 @@ func (s *RefreshService) mint(
 		return SignedIn{}, err
 	}
 
-	expiresAt := now.Add(s.ttl)
+	expiresAt := domain.ClampToAbsolute(now.Add(idleWindow), absoluteExpiry)
 	if _, err := repo.CreateRefreshToken(ctx, tokenID, digest, familyID, sessionID, now, expiresAt); err != nil {
 		return SignedIn{}, err
 	}
@@ -330,12 +433,25 @@ func (s *RefreshService) refuse(ctx context.Context, digest []byte, now time.Tim
 		return s.handleReuse(ctx, token, now)
 	case token.Revoked():
 		return domain.ErrSessionRevoked
+	case token.AbsoluteExpiresAt.IsZero() || !now.Before(token.AbsoluteExpiresAt):
+		// **Checked before expiry, not after.** The clamp in mint means the last
+		// token of a session expires at exactly the cap, so at that instant both
+		// conditions are true and whichever is tested first is what the learner
+		// is told. "Your token is invalid" is the wrong answer: nothing is wrong
+		// with the token, the session reached the age at which possession has to
+		// be proven again. The integration test caught this ordering.
+		//
+		// The session reached the cap that activity cannot move (BR-AUTH-22).
+		// Nothing is wrong -- the learner did nothing and the token was not
+		// stolen -- so it gets a code of its own rather than being reported as a
+		// revocation, which would tell them something was taken away.
+		return domain.ErrSessionAbsoluteExpired
 	case token.ExpiredAt(now):
 		return domain.ErrTokenInvalid
 	default:
-		// The row is live and unspent, yet the claim did not match it. The one
-		// way to reach here is a session revoked between the two statements,
-		// which the claim's join checks and this read does not.
+		// The row is live and unspent, yet the claim did not match it. What is
+		// left is a session revoked between the two statements, which the
+		// claim's join checks and this read does not.
 		return domain.ErrSessionRevoked
 	}
 }

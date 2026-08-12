@@ -26,7 +26,39 @@ type Session struct {
 	CreatedAt     time.Time
 	LastSeenAt    time.Time
 	RevokedAt     *time.Time
+
+	// AbsoluteExpiresAt is set once at sign-in and never moved. Rotation may
+	// slide the idle window right up to it and no further (BR-AUTH-22).
+	AbsoluteExpiresAt time.Time
+
+	// TrustedDeviceID is set only for a session opened on a device the learner
+	// chose to trust. Nil is the ordinary case.
+	TrustedDeviceID *uuid.UUID
 }
+
+// AbsolutelyExpiredAt reports whether the session has reached the cap activity
+// cannot move.
+func (s Session) AbsolutelyExpiredAt(now time.Time) bool {
+	return !s.AbsoluteExpiresAt.IsZero() && !now.Before(s.AbsoluteExpiresAt)
+}
+
+// TrustedDevice is a device the learner chose to stay signed in on.
+type TrustedDevice struct {
+	ID             uuid.UUID
+	UserID         uuid.UUID
+	DeviceIDHash   []byte
+	Label          *string
+	IdleWindow     time.Duration
+	AbsoluteExpiry time.Time
+	TrustedAt      time.Time
+	LastSeenAt     time.Time
+	RevokedAt      *time.Time
+}
+
+// IdleExpiresAt is when inactivity alone would end the trust. It is derived
+// rather than stored, because it moves on every use and a stored copy would be
+// a second record of the same fact that could disagree with last_seen_at.
+func (d TrustedDevice) IdleExpiresAt() time.Time { return d.LastSeenAt.Add(d.IdleWindow) }
 
 // Revoked reports whether the session has been signed out.
 func (s Session) Revoked() bool { return s.RevokedAt != nil }

@@ -386,3 +386,57 @@ func TestContract_PasswordOperationsMatchTheSpec(t *testing.T) {
 		})
 	}
 }
+
+type fakeContractDevices struct{}
+
+func (fakeContractDevices) List(context.Context, httpx.Actor) ([]service.DeviceView, error) {
+	label := "Chrome on macOS"
+	return []service.DeviceView{
+		{
+			ID:                uuid.MustParse("018f3a5b-7c8d-7123-8123-456789abcdef"),
+			Label:             &label,
+			TrustedAt:         time.Now().UTC().Add(-48 * time.Hour),
+			LastSeenAt:        time.Now().UTC(),
+			IdleExpiresAt:     time.Now().UTC().Add(90 * 24 * time.Hour),
+			AbsoluteExpiresAt: time.Now().UTC().Add(180 * 24 * time.Hour),
+		},
+		{
+			// The nullable label, because `null` and "absent" are different to a
+			// schema with additionalProperties false and a nullable type.
+			ID:                uuid.MustParse("018f3a5b-7c8d-7123-8123-456789abcdee"),
+			TrustedAt:         time.Now().UTC().Add(-72 * time.Hour),
+			LastSeenAt:        time.Now().UTC().Add(-time.Hour),
+			IdleExpiresAt:     time.Now().UTC().Add(30 * 24 * time.Hour),
+			AbsoluteExpiresAt: time.Now().UTC().Add(180 * 24 * time.Hour),
+		},
+	}, nil
+}
+
+func (fakeContractDevices) Untrust(context.Context, httpx.Actor, uuid.UUID) error { return nil }
+
+// TestContract_DeviceListMatchesTheSpec covers the operation this card added
+// with a body of its own. The untrust operation answers 204 and has nothing to
+// validate.
+func TestContract_DeviceListMatchesTheSpec(t *testing.T) {
+	spec := loadSpec(t)
+	router := newTestRouterWithDevices(
+		&fakeContractRegistration{}, fakeContractAuthenticator{}, &fakeRotator{},
+		fakeContractSessions{}, fakeContractPasswords{}, fakeContractDevices{},
+		authhttp.CookieOptions{Secure: true})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/devices", nil)
+	req = req.WithContext(httpx.WithActor(req.Context(), httpx.Actor{
+		UserID:    uuid.MustParse("018f3a5b-7c8d-7123-8123-456789abcdef"),
+		SessionID: uuid.MustParse("018f3a5b-7c8d-7123-8123-456789abcdef"),
+		Role:      "user",
+		TokenID:   testJTI,
+	}))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body: %s", rec.Code, rec.Body.String())
+	}
+	assertMatchesSchema(t, responseSchema(t, spec, "/auth/devices", http.MethodGet, http.StatusOK), rec.Body.Bytes())
+}

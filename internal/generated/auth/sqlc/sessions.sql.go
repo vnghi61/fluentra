@@ -10,21 +10,33 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createSession = `-- name: CreateSession :one
-INSERT INTO core.sessions (id, user_id, device_label, ip_hash, user_agent_hash, created_at, last_seen_at)
-VALUES ($1, $2, $3, $4, $5, $6::timestamptz, $6::timestamptz)
-RETURNING id, user_id, device_label, ip_hash, user_agent_hash, created_at, last_seen_at, revoked_at
+INSERT INTO core.sessions (
+    id, user_id, device_label, ip_hash, user_agent_hash, created_at, last_seen_at,
+    absolute_expires_at, idle_window, trusted_device_id
+)
+VALUES (
+    $1, $2, $3, $4, $5, $6::timestamptz, $6::timestamptz,
+    $7::timestamptz, $8::interval,
+    $9
+)
+RETURNING id, user_id, device_label, ip_hash, user_agent_hash, created_at, last_seen_at, revoked_at,
+          absolute_expires_at, idle_window, trusted_device_id
 `
 
 type CreateSessionParams struct {
-	ID            uuid.UUID
-	UserID        uuid.UUID
-	DeviceLabel   *string
-	IpHash        []byte
-	UserAgentHash []byte
-	Now           time.Time
+	ID                uuid.UUID
+	UserID            uuid.UUID
+	DeviceLabel       *string
+	IpHash            []byte
+	UserAgentHash     []byte
+	Now               time.Time
+	AbsoluteExpiresAt time.Time
+	IdleWindow        pgtype.Interval
+	TrustedDeviceID   *uuid.UUID
 }
 
 func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (CoreSession, error) {
@@ -35,6 +47,9 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (C
 		arg.IpHash,
 		arg.UserAgentHash,
 		arg.Now,
+		arg.AbsoluteExpiresAt,
+		arg.IdleWindow,
+		arg.TrustedDeviceID,
 	)
 	var i CoreSession
 	err := row.Scan(
@@ -46,12 +61,16 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (C
 		&i.CreatedAt,
 		&i.LastSeenAt,
 		&i.RevokedAt,
+		&i.AbsoluteExpiresAt,
+		&i.IdleWindow,
+		&i.TrustedDeviceID,
 	)
 	return i, err
 }
 
 const getOwnedSession = `-- name: GetOwnedSession :one
-SELECT id, user_id, device_label, ip_hash, user_agent_hash, created_at, last_seen_at, revoked_at
+SELECT id, user_id, device_label, ip_hash, user_agent_hash, created_at, last_seen_at, revoked_at,
+       absolute_expires_at, idle_window, trusted_device_id
 FROM core.sessions
 WHERE id = $1 AND user_id = $2
 `
@@ -80,12 +99,16 @@ func (q *Queries) GetOwnedSession(ctx context.Context, arg GetOwnedSessionParams
 		&i.CreatedAt,
 		&i.LastSeenAt,
 		&i.RevokedAt,
+		&i.AbsoluteExpiresAt,
+		&i.IdleWindow,
+		&i.TrustedDeviceID,
 	)
 	return i, err
 }
 
 const getSession = `-- name: GetSession :one
-SELECT id, user_id, device_label, ip_hash, user_agent_hash, created_at, last_seen_at, revoked_at
+SELECT id, user_id, device_label, ip_hash, user_agent_hash, created_at, last_seen_at, revoked_at,
+       absolute_expires_at, idle_window, trusted_device_id
 FROM core.sessions
 WHERE id = $1
 `
@@ -102,12 +125,16 @@ func (q *Queries) GetSession(ctx context.Context, id uuid.UUID) (CoreSession, er
 		&i.CreatedAt,
 		&i.LastSeenAt,
 		&i.RevokedAt,
+		&i.AbsoluteExpiresAt,
+		&i.IdleWindow,
+		&i.TrustedDeviceID,
 	)
 	return i, err
 }
 
 const listLiveSessions = `-- name: ListLiveSessions :many
-SELECT id, user_id, device_label, ip_hash, user_agent_hash, created_at, last_seen_at, revoked_at
+SELECT id, user_id, device_label, ip_hash, user_agent_hash, created_at, last_seen_at, revoked_at,
+       absolute_expires_at, idle_window, trusted_device_id
 FROM core.sessions
 WHERE user_id = $1 AND revoked_at IS NULL
 ORDER BY last_seen_at DESC
@@ -136,6 +163,9 @@ func (q *Queries) ListLiveSessions(ctx context.Context, userID uuid.UUID) ([]Cor
 			&i.CreatedAt,
 			&i.LastSeenAt,
 			&i.RevokedAt,
+			&i.AbsoluteExpiresAt,
+			&i.IdleWindow,
+			&i.TrustedDeviceID,
 		); err != nil {
 			return nil, err
 		}
@@ -207,6 +237,26 @@ func (q *Queries) RevokeRefreshTokensBySession(ctx context.Context, arg RevokeRe
 	return result.RowsAffected(), nil
 }
 
+const revokeRefreshTokensForDevice = `-- name: RevokeRefreshTokensForDevice :execrows
+UPDATE core.refresh_tokens rt
+SET revoked_at = $2::timestamptz
+FROM core.sessions s
+WHERE s.id = rt.session_id AND s.trusted_device_id = $1 AND rt.revoked_at IS NULL
+`
+
+type RevokeRefreshTokensForDeviceParams struct {
+	TrustedDeviceID *uuid.UUID
+	Now             time.Time
+}
+
+func (q *Queries) RevokeRefreshTokensForDevice(ctx context.Context, arg RevokeRefreshTokensForDeviceParams) (int64, error) {
+	result, err := q.db.Exec(ctx, revokeRefreshTokensForDevice, arg.TrustedDeviceID, arg.Now)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const revokeRefreshTokensForOtherSessions = `-- name: RevokeRefreshTokensForOtherSessions :execrows
 UPDATE core.refresh_tokens rt
 SET revoked_at = $2::timestamptz
@@ -268,6 +318,25 @@ type RevokeSessionParams struct {
 
 func (q *Queries) RevokeSession(ctx context.Context, arg RevokeSessionParams) (int64, error) {
 	result, err := q.db.Exec(ctx, revokeSession, arg.ID, arg.Now)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const revokeSessionsForDevice = `-- name: RevokeSessionsForDevice :execrows
+UPDATE core.sessions
+SET revoked_at = $2::timestamptz
+WHERE trusted_device_id = $1 AND revoked_at IS NULL
+`
+
+type RevokeSessionsForDeviceParams struct {
+	TrustedDeviceID *uuid.UUID
+	Now             time.Time
+}
+
+func (q *Queries) RevokeSessionsForDevice(ctx context.Context, arg RevokeSessionsForDeviceParams) (int64, error) {
+	result, err := q.db.Exec(ctx, revokeSessionsForDevice, arg.TrustedDeviceID, arg.Now)
 	if err != nil {
 		return 0, err
 	}

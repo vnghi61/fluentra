@@ -132,7 +132,8 @@ Migrations: `db/migrations/auth/` · Queries: `db/queries/auth/`
 
 `core.credentials` (P2.1, `1700000050`), `core.auth_challenges` (P2.1b, `1700000060`),
 `core.login_attempts` (P2.3, `1700000080`), `core.login_lockouts` (P2.3, `1700000090`), and
-`core.sessions` + `core.refresh_tokens` (P2.5, `1700000100`). The rest of the table above is
+`core.sessions` + `core.refresh_tokens` (P2.5, `1700000100`), and `core.trusted_devices` plus the
+session columns that make sign-in persistent (P2.9, `1700000110`). The rest of the table above is
 specification, not schema — each arrives with the card that needs it.
 
 Four things about the refresh pair beyond the summary:
@@ -152,6 +153,15 @@ Four things about the refresh pair beyond the summary:
   never stored, so nothing can be derived from the digests afterwards. The label is coarse by
   design — "Chrome on macOS", never a version — and is null for a sign-in with no readable user
   agent, including email verification, which has a context but no request.
+- **`core.sessions` carries its own `absolute_expires_at` and `idle_window`.** Rotation slides the
+  idle window from now on every use and clamps the result to the cap, which is never moved by
+  anything. The cap is enforced in the claim's own WHERE clause, so a session past it never spends a
+  token, and `refuse` reports it **before** checking idle expiry — the clamp makes the last token
+  expire at exactly the cap, and whichever is tested first is what the learner is told.
+- **`core.trusted_devices` keys on a keyed digest of a client-generated id**, one live row per device
+  per account. Trusting buys the longer idle window and nothing else: it does not move the cap, and
+  an `admin` account gets neither extension. `domain.WindowsFor` returns for an admin before it reads
+  the trusted flag, which is what stops the two cases interleaving.
 - **There is no `ip_country` column.** The session list is specified to show one, and it cannot be
   worked out from `ip_hash`; resolving it needs a local GeoIP database, a licence key and a CI
   secret, which is an infrastructure change with its own card. `TODO.md` carries it.

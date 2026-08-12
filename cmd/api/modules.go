@@ -9,6 +9,7 @@ import (
 
 	"github.com/fluentra/fluentra/internal/modules/audit"
 	"github.com/fluentra/fluentra/internal/modules/auth"
+	authdomain "github.com/fluentra/fluentra/internal/modules/auth/domain"
 	authservice "github.com/fluentra/fluentra/internal/modules/auth/service"
 	"github.com/fluentra/fluentra/internal/modules/rbac"
 	rbaccontract "github.com/fluentra/fluentra/internal/modules/rbac/contract"
@@ -46,6 +47,9 @@ type identityDeps struct {
 
 	// PasswordResetTTL is PASSWORD_RESET_TTL: how long a reset code lives.
 	PasswordResetTTL time.Duration
+
+	// Windows are the session lifetimes, from the SESSION_* keys.
+	Windows authdomain.WindowConfig
 
 	// RateLimit applies the classes in API_GUIDELINE.md §11. Nil disables it,
 	// which is the same direction the middleware takes when its store is
@@ -124,6 +128,7 @@ func newIdentity(deps identityDeps) *identity {
 		Env:              deps.Env,
 		RefreshTTL:       deps.RefreshTTL,
 		PasswordResetTTL: deps.PasswordResetTTL,
+		Windows:          deps.Windows,
 	})
 
 	return assembled

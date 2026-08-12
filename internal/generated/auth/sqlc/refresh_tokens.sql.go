@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const claimRefreshToken = `-- name: ClaimRefreshToken :one
@@ -22,8 +23,14 @@ WHERE rt.token_hash = $2
   AND rt.expires_at > $1::timestamptz
   AND s.id = rt.session_id
   AND s.revoked_at IS NULL
+  -- The absolute cap, enforced in the same statement that spends the token.
+  -- Checked here rather than after the claim so a session past its cap never
+  -- spends one: the caller is going to be refused either way, and a token burnt
+  -- on a refusal is a token the legitimate client no longer has if the cap turns
+  -- out to have been misread.
+  AND s.absolute_expires_at > $1::timestamptz
 RETURNING rt.id, rt.token_hash, rt.family_id, rt.session_id, rt.issued_at, rt.expires_at, rt.used_at,
-          rt.revoked_at, s.user_id
+          rt.revoked_at, s.user_id, s.absolute_expires_at, s.idle_window
 `
 
 type ClaimRefreshTokenParams struct {
@@ -32,15 +39,17 @@ type ClaimRefreshTokenParams struct {
 }
 
 type ClaimRefreshTokenRow struct {
-	ID        uuid.UUID
-	TokenHash []byte
-	FamilyID  uuid.UUID
-	SessionID uuid.UUID
-	IssuedAt  time.Time
-	ExpiresAt time.Time
-	UsedAt    *time.Time
-	RevokedAt *time.Time
-	UserID    uuid.UUID
+	ID                uuid.UUID
+	TokenHash         []byte
+	FamilyID          uuid.UUID
+	SessionID         uuid.UUID
+	IssuedAt          time.Time
+	ExpiresAt         time.Time
+	UsedAt            *time.Time
+	RevokedAt         *time.Time
+	UserID            uuid.UUID
+	AbsoluteExpiresAt time.Time
+	IdleWindow        pgtype.Interval
 }
 
 // ClaimRefreshToken spends a token and returns it, in one statement.
@@ -70,6 +79,8 @@ func (q *Queries) ClaimRefreshToken(ctx context.Context, arg ClaimRefreshTokenPa
 		&i.UsedAt,
 		&i.RevokedAt,
 		&i.UserID,
+		&i.AbsoluteExpiresAt,
+		&i.IdleWindow,
 	)
 	return i, err
 }
@@ -127,22 +138,24 @@ func (q *Queries) CreateRefreshToken(ctx context.Context, arg CreateRefreshToken
 
 const getRefreshTokenByHash = `-- name: GetRefreshTokenByHash :one
 SELECT rt.id, rt.token_hash, rt.family_id, rt.session_id, rt.issued_at, rt.expires_at, rt.used_at,
-       rt.revoked_at, s.user_id
+       rt.revoked_at, s.user_id, s.absolute_expires_at, s.idle_window
 FROM core.refresh_tokens rt
 JOIN core.sessions s ON s.id = rt.session_id
 WHERE rt.token_hash = $1
 `
 
 type GetRefreshTokenByHashRow struct {
-	ID        uuid.UUID
-	TokenHash []byte
-	FamilyID  uuid.UUID
-	SessionID uuid.UUID
-	IssuedAt  time.Time
-	ExpiresAt time.Time
-	UsedAt    *time.Time
-	RevokedAt *time.Time
-	UserID    uuid.UUID
+	ID                uuid.UUID
+	TokenHash         []byte
+	FamilyID          uuid.UUID
+	SessionID         uuid.UUID
+	IssuedAt          time.Time
+	ExpiresAt         time.Time
+	UsedAt            *time.Time
+	RevokedAt         *time.Time
+	UserID            uuid.UUID
+	AbsoluteExpiresAt time.Time
+	IdleWindow        pgtype.Interval
 }
 
 // GetRefreshTokenByHash reads a row without changing it.
@@ -167,6 +180,8 @@ func (q *Queries) GetRefreshTokenByHash(ctx context.Context, tokenHash []byte) (
 		&i.UsedAt,
 		&i.RevokedAt,
 		&i.UserID,
+		&i.AbsoluteExpiresAt,
+		&i.IdleWindow,
 	)
 	return i, err
 }

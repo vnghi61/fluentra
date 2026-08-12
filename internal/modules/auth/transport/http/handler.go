@@ -42,6 +42,12 @@ type Rotator interface {
 	Rotate(ctx context.Context, presented string) (service.SignedIn, error)
 }
 
+// Devices is the trusted-device surface required by Handler.
+type Devices interface {
+	List(ctx context.Context, actor httpx.Actor) ([]service.DeviceView, error)
+	Untrust(ctx context.Context, actor httpx.Actor, deviceID uuid.UUID) error
+}
+
 // Passwords is the reset and change surface required by Handler.
 type Passwords interface {
 	Forgot(ctx context.Context, email string) (service.Issued, error)
@@ -63,6 +69,7 @@ type Handler struct {
 	rotator       Rotator
 	sessions      Sessions
 	passwords     Passwords
+	devices       Devices
 	cookies       CookieOptions
 	clock         clock.Clock
 }
@@ -70,7 +77,8 @@ type Handler struct {
 // NewHandler creates the handler.
 func NewHandler(
 	registration Registration, authenticator Authenticator,
-	rotator Rotator, sessions Sessions, passwords Passwords, cookies CookieOptions,
+	rotator Rotator, sessions Sessions, passwords Passwords, devices Devices,
+	cookies CookieOptions,
 ) *Handler {
 	return &Handler{
 		registration:  registration,
@@ -78,6 +86,7 @@ func NewHandler(
 		rotator:       rotator,
 		sessions:      sessions,
 		passwords:     passwords,
+		devices:       devices,
 		cookies:       cookies,
 		clock:         clock.Real{},
 	}
@@ -93,6 +102,8 @@ func (h *Handler) Routes(router chi.Router) {
 		auth.Post("/forgot-password", h.forgotPassword)
 		auth.Post("/reset-password", h.resetPassword)
 		auth.Post("/change-password", h.changePassword)
+		auth.Get("/devices", h.listDevices)
+		auth.Delete("/devices/{id}", h.untrustDevice)
 		auth.Get("/sessions", h.listSessions)
 		auth.Delete("/sessions/{id}", h.revokeSession)
 		auth.Route("/challenges/{id}", func(challenge chi.Router) {
@@ -293,6 +304,53 @@ func (h *Handler) changePassword(writer http.ResponseWriter, request *http.Reque
 		return
 	}
 	httpx.WriteJSON(writer, request, http.StatusOK, toPasswordChangedResponse(changed))
+}
+
+func (h *Handler) listDevices(writer http.ResponseWriter, request *http.Request) {
+	actor, err := requireActor(request)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	devices, err := h.devices.List(request.Context(), actor)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	httpx.WriteJSON(writer, request, http.StatusOK, toDeviceListResponse(devices))
+}
+
+// untrustDevice stops trusting a device and signs it out.
+//
+// The cookie is cleared only when the caller untrusted the device they are
+// using. Clearing it unconditionally would sign somebody out of the browser in
+// front of them for tidying up a laptop they left at the office.
+func (h *Handler) untrustDevice(writer http.ResponseWriter, request *http.Request) {
+	actor, err := requireActor(request)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	deviceID, err := deviceIDFrom(request)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	if err := h.devices.Untrust(request.Context(), actor, deviceID); err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	writer.WriteHeader(http.StatusNoContent)
+}
+
+// deviceIDFrom parses the path segment. A malformed uuid is the same 404 an
+// unknown id gets, for the reason sessionIDFrom gives.
+func deviceIDFrom(request *http.Request) (uuid.UUID, error) {
+	deviceID, err := uuid.Parse(chi.URLParam(request, "id"))
+	if err != nil {
+		return uuid.Nil, apperr.New(apperr.NotFound, "RESOURCE_NOT_FOUND", "That device was not found.")
+	}
+	return deviceID, nil
 }
 
 // requireActor is the guard the authenticated operations start with.

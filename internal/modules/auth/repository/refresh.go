@@ -16,15 +16,19 @@ import (
 // CreateSession opens a sign-in. The id is supplied by the caller because it is
 // already in the access token's `sid` claim by the time this runs.
 func (r *Repository) CreateSession(
-	ctx context.Context, id, userID uuid.UUID, deviceLabel *string, ipHash, userAgentHash []byte, now time.Time,
+	ctx context.Context, id, userID uuid.UUID, deviceLabel *string, ipHash, userAgentHash []byte,
+	now, absoluteExpiresAt time.Time, trustedDeviceID *uuid.UUID, idleWindow time.Duration,
 ) error {
 	_, err := r.queries.CreateSession(ctx, sqlcauth.CreateSessionParams{
-		ID:            id,
-		UserID:        userID,
-		DeviceLabel:   deviceLabel,
-		IpHash:        ipHash,
-		UserAgentHash: userAgentHash,
-		Now:           now,
+		ID:                id,
+		UserID:            userID,
+		DeviceLabel:       deviceLabel,
+		IpHash:            ipHash,
+		UserAgentHash:     userAgentHash,
+		Now:               now,
+		AbsoluteExpiresAt: absoluteExpiresAt,
+		IdleWindow:        intervalOf(idleWindow),
+		TrustedDeviceID:   trustedDeviceID,
 	})
 	if err != nil {
 		return fmt.Errorf("create session: %w", err)
@@ -104,7 +108,9 @@ func (r *Repository) ClaimRefreshToken(ctx context.Context, tokenHash []byte, no
 			UsedAt:    row.UsedAt,
 			RevokedAt: row.RevokedAt,
 		},
-		UserID: row.UserID,
+		UserID:            row.UserID,
+		AbsoluteExpiresAt: row.AbsoluteExpiresAt,
+		IdleWindow:        durationOf(row.IdleWindow),
 	}, true, nil
 }
 
@@ -128,7 +134,9 @@ func (r *Repository) FindRefreshToken(ctx context.Context, tokenHash []byte) (do
 			UsedAt:    row.UsedAt,
 			RevokedAt: row.RevokedAt,
 		},
-		UserID: row.UserID,
+		UserID:            row.UserID,
+		AbsoluteExpiresAt: row.AbsoluteExpiresAt,
+		IdleWindow:        durationOf(row.IdleWindow),
 	}, true, nil
 }
 

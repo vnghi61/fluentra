@@ -202,6 +202,8 @@ export interface paths {
          *     A consequence worth designing around: two requests racing with the same valid token have exactly one winner, and the loser is indistinguishable from a replay, so it is treated as one. A client refreshing from several tabs must serialise them.
          *
          *     An unknown, expired or already-revoked token is 401 `TOKEN_INVALID`. That is a different code from the reuse case on purpose -- reuse means the session was taken away because a token was replayed, which is worth telling the learner and worth finding in a log, while `TOKEN_INVALID` means only that this credential buys nothing. Both end at the login form.
+         *
+         *     A session that has reached its **absolute** expiry answers 401 `SESSION_ABSOLUTE_EXPIRED`, and it is worth a code of its own because nothing is wrong: the learner did nothing, the token was not stolen, and the session simply reached the age at which possession has to be proven again. A client can say so rather than implying something went missing. Rotation moves the idle window forward on every use and never moves this, which is the entire security argument for the idle window being as long as it is (BR-AUTH-22).
          */
         post: operations["authRefresh"];
         delete?: never;
@@ -281,6 +283,55 @@ export interface paths {
          */
         post: operations["authChangePassword"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/devices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the devices this account has chosen to trust.
+         * @description Returns the caller's trusted devices, most recently active first, with both expiries: the idle one that every use moves forward, and the absolute one that nothing does.
+         *
+         *     Showing both is the point. "Stay signed in" is only defensible because it ends -- a learner who can see that this laptop stops being trusted on a fixed date can reason about the risk, and one who cannot is being asked to take it on faith.
+         */
+        get: operations["authListDevices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/devices/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The device to untrust, from the list operation. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Stop trusting a device.
+         * @description Removes the trust and **revokes the refresh family belonging to it immediately**, so the device is signed out rather than merely demoted to the shorter window. Untrusting is what a learner reaches for when a laptop is lost, and a laptop that stays signed in for thirty more days is not what they asked for.
+         *
+         *     A device belonging to another account is 404, not 403, for the reason `DELETE /auth/sessions/{id}` gives: 403 confirms the id names a real device and turns the operation into a way to enumerate them.
+         *
+         *     Untrusting a device that is already untrusted answers 204.
+         */
+        delete: operations["authUntrustDevice"];
         options?: never;
         head?: never;
         patch?: never;
@@ -814,8 +865,18 @@ export interface components {
              * @example a-secret-password
              */
             password: string;
-            /** @default false */
+            /**
+             * @description Asks for the longer idle window on this device: 90 days of inactivity instead of 30. It does **not** extend the absolute expiry, and an `admin` account gets neither extension -- 12 hours idle and 7 days absolute, whatever this says.
+             *
+             *     Requires `device_id`. Without one there is nothing to trust, and the request is treated as an ordinary sign-in rather than refused, because the learner asked to be signed in and that part still works.
+             * @default false
+             * @example true
+             */
             remember_device: boolean;
+            /**
+             * @description A client-generated identifier for this browser or app install, stored only as a keyed digest. It is not a fingerprint and not evidence: the learner can clear it, which looks like a new device and costs them one sign-in -- the correct failure direction.
+             * @example 9f2c1a7e-4b3d-4c11-9d21-7f0a5c8e2b44
+             */
             device_id?: string;
         };
         ForgotPasswordRequest: {
@@ -873,6 +934,46 @@ export interface components {
              * @example 3
              */
             sessions_revoked: number;
+        };
+        /**
+         * @description A device the learner explicitly chose to stay signed in on.
+         *
+         *     Trusting is opt-in and it buys a longer idle window -- 90 days instead of 30 -- and nothing else. It does not extend the absolute expiry, which is the only thing bounding a theft, and it does not skip any check. A device the learner does not recognise here is one they should untrust, which is why the label and the last-seen time matter more than the identifier.
+         */
+        TrustedDevice: {
+            /**
+             * Format: uuid
+             * @description Identifies the device in the untrust operation.
+             */
+            id: string;
+            /**
+             * @description The same coarse description the session list carries -- "Chrome on macOS", never a version and never a fingerprint.
+             * @example Chrome on macOS
+             */
+            label?: string | null;
+            /**
+             * Format: date-time
+             * @description When the learner chose to trust it.
+             */
+            trusted_at: string;
+            /**
+             * Format: date-time
+             * @description The last time this device renewed a token.
+             */
+            last_seen_at: string;
+            /**
+             * Format: date-time
+             * @description When inactivity alone would end it. Every renewal moves this forward, which is what "stay signed in" means for somebody who keeps using the app.
+             */
+            idle_expires_at: string;
+            /**
+             * Format: date-time
+             * @description When it ends regardless of activity, and **this one never moves** (BR-AUTH-22). It is the whole security argument for the long idle window: without it, a stolen token that is used regularly renews itself forever and the theft becomes permanent and invisible. Reaching it means signing in again, on a device that has been trusted the entire time.
+             */
+            absolute_expires_at: string;
+        };
+        TrustedDeviceList: {
+            devices: components["schemas"]["TrustedDevice"][];
         };
         /**
          * @description One signed-in device, as its owner sees it in the "where am I signed in" list.
@@ -1929,6 +2030,69 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             422: components["responses"]["ValidationFailed"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    authListDevices: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The caller's trusted devices. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "devices": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *           "label": "Chrome on macOS",
+                     *           "trusted_at": "2026-06-14T08:02:11Z",
+                     *           "last_seen_at": "2026-08-11T08:55:13Z",
+                     *           "idle_expires_at": "2026-11-09T08:55:13Z",
+                     *           "absolute_expires_at": "2026-12-11T08:02:11Z"
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["TrustedDeviceList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    authUntrustDevice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The device to untrust, from the list operation. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No longer trusted, and its refresh family revoked. Carries a cleared refresh cookie when the device untrusted was the caller's own. */
+            204: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    "Set-Cookie": components["headers"]["Set-Cookie-RefreshCleared"];
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
             429: components["responses"]["TooManyRequests"];
         };
     };

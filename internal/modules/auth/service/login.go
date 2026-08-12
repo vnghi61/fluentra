@@ -193,6 +193,12 @@ func (s *LoginService) Login(ctx context.Context, input LoginInput) (LoginResult
 		UserID:    acc.ID,
 		ClientIP:  input.ClientIP,
 		UserAgent: input.UserAgent,
+		// Both fields have been on LoginInput since P2.3 and reached nothing.
+		// The session service decides what they are worth: an admin gets the
+		// short windows whatever they say, and asking to be remembered with no
+		// device id is an ordinary sign-in rather than a refusal.
+		DeviceID:       input.DeviceID,
+		RememberDevice: input.RememberDevice,
 	})
 	if err != nil {
 		return LoginResult{}, err
