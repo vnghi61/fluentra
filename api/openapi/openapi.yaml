@@ -5,6 +5,22 @@ info:
   description: >-
     The versioned HTTP contract for Fluentra. Public operations explicitly set
     `security: []`; every other operation must declare its required permission.
+
+
+    **Every response carries the `RateLimit-Limit`, `RateLimit-Remaining` and
+    `RateLimit-Reset` headers**, describing the tightest budget the request was
+    charged against. They are documented once here rather than repeated on each
+    operation: the middleware sets them on the way out for all of them, and
+    OpenAPI has no way to say that in one place. Where they appear explicitly --
+    on the 429 response -- it is because that is where a client's behaviour
+    depends on reading them.
+
+
+    The classes are in `API_GUIDELINE.md` §11: 60/min per IP for anonymous
+    callers, 600/min per user once signed in, and 5/min per IP **and** per
+    account on the operations that hand out or reset a credential. A caller can
+    be inside one budget and outside another; the response describes whichever
+    one refused it.
   contact:
     name: Fluentra backend team
     url: https://github.com/fluentra/fluentra

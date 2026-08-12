@@ -55,6 +55,22 @@ by hand. Completed work is recorded here instead.
 | P2.3 | 2026-08-10 | `core.login_attempts` migration & table; `LoginService` handling Argon2id constant-time timing equalisation (`DummyVerify` for unknown emails), per-account and per-IP lockouts backed by persisted failures with 15-minute-to-24-hour exponential backoff, account status checks (suspended/unverified), transparent Argon2id parameter rehash on login, and `POST /auth/login` HTTP endpoint |
 | P2.4 | 2026-08-11 | `TokenService` — HS256 access tokens carrying `sub`/`sid`/`role`/`jti`/`iat`/`exp`/`aud`/`iss` and no PII, two-key rotation, 60-second leeway, the signing method pinned so an `alg: none` token cannot verify, and the parser driven by the injected clock; `TokenDenylist` over Redis for explicit logout, failing open per ADR-0007; `Authenticate` middleware placing `httpx.Actor` in the request context; login and email verification both return an `AuthSession`; `EMAIL_NOT_VERIFIED` corrected to 403 and account suspension split out of `ACCOUNT_LOCKED` into `ACCOUNT_SUSPENDED` |
 
+## Open after P2.8
+
+- [ ] **`/api/v1/ping` is not rate limited.** The middleware is mounted inside the group the modules
+      register into, which is where the auth middleware runs and therefore the only place the actor
+      is known. `/ping` is registered outside that group, beside `/health` and `/ready`, and it does
+      real work — a `SELECT 1` and a Redis `PING` per call. Limiting it needs either a second
+      middleware instance for the anonymous class alone or moving the probe endpoints, and neither
+      is worth doing blind.
+- [ ] **The upload class has nothing to guard.** `RATE_LIMIT_UPLOAD_PER_HOUR` is read and the class
+      matches `/uploads` and `/avatar`, neither of which exists until P3.1. The path matcher is
+      written and untested against a real route.
+- [ ] **The limiter is a fixed window, not a sliding one.** `cache.RedisLimiter` counts per key with
+      an EXPIRE, so a caller can spend a full budget at the end of one window and another at the
+      start of the next — twice the nominal rate across the boundary. Acceptable for these classes
+      and worth knowing before somebody sizes an alert off the numbers.
+
 ## Open after P2.7
 
 - [ ] **Two topics now put a live code in an outbox payload.** `auth.verification_requested` was the

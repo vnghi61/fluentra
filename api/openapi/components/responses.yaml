@@ -81,10 +81,24 @@ ValidationFailed:
             code: EMAIL
             message: Enter a valid email address.
 TooManyRequests:
-  description: The applicable rate limit has been exceeded.
+  description: >-
+    The applicable rate limit has been exceeded.
+
+
+    `Retry-After` says how long to wait. The `RateLimit-*` trio says which limit
+    was hit and when the window resets, which is what lets a client back off
+    against the right budget instead of guessing -- a caller that has exhausted
+    the 5/min `/auth` class and one that has exhausted the 60/min anonymous
+    class both see 429, and they should not wait the same amount of time.
   headers:
     Retry-After:
       $ref: ./headers.yaml#/Retry-After
+    RateLimit-Limit:
+      $ref: ./headers.yaml#/RateLimit-Limit
+    RateLimit-Remaining:
+      $ref: ./headers.yaml#/RateLimit-Remaining
+    RateLimit-Reset:
+      $ref: ./headers.yaml#/RateLimit-Reset
   content:
     application/problem+json:
       schema:

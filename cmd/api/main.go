@@ -66,12 +66,21 @@ type applicationConfig struct {
 		ServiceName string `koanf:"service_name"`
 	} `koanf:"otel"`
 	OTP struct {
-		HMACKey string `koanf:"hmac_key"`
+		HMACKey           string `koanf:"hmac_key"`
+		IssuePerIPPerHour int    `koanf:"issue_per_ip_per_hour"`
 	} `koanf:"otp"`
 	// PASSWORD_RESET_TTL, under the first-underscore-becomes-a-dot rule.
 	Password struct {
 		ResetTTL time.Duration `koanf:"reset_ttl"`
 	} `koanf:"password"`
+	// RATE_LIMIT_* becomes `rate.limit_*`: the convention replaces the FIRST
+	// underscore with a dot and leaves the rest alone.
+	Rate struct {
+		LimitAnonPerMin    int `koanf:"limit_anon_per_min"`
+		LimitUserPerMin    int `koanf:"limit_user_per_min"`
+		LimitAuthPerMin    int `koanf:"limit_auth_per_min"`
+		LimitUploadPerHour int `koanf:"limit_upload_per_hour"`
+	} `koanf:"rate"`
 	JWT struct {
 		SigningKey  string `koanf:"signing_key"`
 		PreviousKey string `koanf:"previous_key"`
@@ -172,6 +181,18 @@ func run(ctx context.Context) error {
 	// The cache is passed as rbac's own narrow interface rather than the Redis
 	// client: a permission check falls through to the database when the cache
 	// is unavailable, and the module is what decides that, not this file.
+	// One limiter shared by every class. The classes differ in their keys and
+	// their budgets, not in their counting.
+	rateLimiter := httpx.RateLimit(httpx.RateLimitConfig{
+		Limiter:             rateLimiterAdapter{inner: cache.NewRedisLimiter(redisClient)},
+		AnonymousPerMinute:  cfg.Rate.LimitAnonPerMin,
+		UserPerMinute:       cfg.Rate.LimitUserPerMin,
+		CredentialPerMinute: cfg.Rate.LimitAuthPerMin,
+		UploadPerHour:       cfg.Rate.LimitUploadPerHour,
+		ChallengeIPPerHour:  cfg.OTP.IssuePerIPPerHour,
+		Env:                 cfg.App.Environment,
+	})
+
 	modules := newIdentity(identityDeps{
 		Pool:       pool,
 		Cache:      cache.NewRedisCache[[]string](redisClient),
@@ -187,6 +208,7 @@ func run(ctx context.Context) error {
 		},
 		RefreshTTL:       cfg.Refresh.TokenTTL,
 		PasswordResetTTL: cfg.Password.ResetTTL,
+		RateLimit:        rateLimiter,
 		// A separate typed cache from the permission one. They share the Redis
 		// client but not the value type, and Cache[T] is generic per type.
 		Denylist: cache.NewRedisCache[bool](redisClient),
@@ -286,6 +308,11 @@ func configOptions() config.Options {
 			"access.token_ttl":            "15m",
 			"refresh.token_ttl":           "720h",
 			"password.reset_ttl":          "30m",
+			"rate.limit_anon_per_min":     60,
+			"rate.limit_user_per_min":     600,
+			"rate.limit_auth_per_min":     5,
+			"rate.limit_upload_per_hour":  30,
+			"otp.issue_per_ip_per_hour":   20,
 		},
 		Required: []config.RequiredKey{
 			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},

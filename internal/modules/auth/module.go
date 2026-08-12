@@ -141,9 +141,24 @@ func New(deps Deps) *Module {
 	challengeRepo := repositoryAdapter{Repository: repo}
 	credentialRepo := credentialAdapter{Repository: repo}
 
+	// A nil limiter becomes one over a nil client, which allows every request
+	// and warns — the same direction cache.RedisLimiter takes when its store is
+	// unreachable. A composition root with no Redis serves traffic rather than
+	// refusing all of it.
+	limiter := deps.Limiter
+	if limiter == nil {
+		limiter = cache.NewRedisLimiter(nil)
+	}
+
 	challenges := service.NewChallengeService(service.ChallengeDeps{
-		Repo:    challengeRepo,
-		Limiter: nil, // rate limiter arrives in P2.8; nil degrades to allow-all
+		Repo: challengeRepo,
+
+		// The per-subject issuance caps (BR-AUTH-13) have been coded against
+		// this since P2.1b and doing nothing, because it was nil. It is the
+		// same limiter the login lockout uses; sharing it is right, because
+		// the two count different keys and neither should have its own
+		// connection to the same Redis.
+		Limiter: limiter,
 		Keys:    keys,
 		Clock:   timekeeper,
 		NewID:   id.NewUUIDv7,
@@ -155,7 +170,9 @@ func New(deps Deps) *Module {
 				domain.PurposePasswordReset: deps.PasswordResetTTL,
 			},
 		},
-		Env: "", // namespacing arrives with config in P2.8
+		// Namespaced, so a staging deploy pointed at a shared Redis cannot
+		// spend a production learner's issuance budget — or, worse, fail to.
+		Env: deps.Env,
 	})
 
 	events := outboxWriter{Writer: outbox.NewWriter()}
@@ -208,11 +225,6 @@ func New(deps Deps) *Module {
 		NewID:       id.NewUUIDv7,
 		Sessions:    sessions,
 	})
-
-	limiter := deps.Limiter
-	if limiter == nil {
-		limiter = cache.NewRedisLimiter(nil)
-	}
 
 	loginSvc := service.NewLoginService(service.LoginDeps{
 		Accounts:    accountsAdapter{Registrar: deps.Registrar},
