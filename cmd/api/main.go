@@ -68,6 +68,10 @@ type applicationConfig struct {
 	OTP struct {
 		HMACKey string `koanf:"hmac_key"`
 	} `koanf:"otp"`
+	// PASSWORD_RESET_TTL, under the first-underscore-becomes-a-dot rule.
+	Password struct {
+		ResetTTL time.Duration `koanf:"reset_ttl"`
+	} `koanf:"password"`
 	JWT struct {
 		SigningKey  string `koanf:"signing_key"`
 		PreviousKey string `koanf:"previous_key"`
@@ -181,7 +185,8 @@ func run(ctx context.Context) error {
 			Audience:    cfg.JWT.Audience,
 			AccessTTL:   cfg.Access.TokenTTL,
 		},
-		RefreshTTL: cfg.Refresh.TokenTTL,
+		RefreshTTL:       cfg.Refresh.TokenTTL,
+		PasswordResetTTL: cfg.Password.ResetTTL,
 		// A separate typed cache from the permission one. They share the Redis
 		// client but not the value type, and Cache[T] is generic per type.
 		Denylist: cache.NewRedisCache[bool](redisClient),
@@ -280,6 +285,7 @@ func configOptions() config.Options {
 			"jwt.previous_key":            "",
 			"access.token_ttl":            "15m",
 			"refresh.token_ttl":           "720h",
+			"password.reset_ttl":          "30m",
 		},
 		Required: []config.RequiredKey{
 			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},

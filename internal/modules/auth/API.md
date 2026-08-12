@@ -35,7 +35,7 @@ Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR
 | `POST` | `/api/v1/auth/mfa/verify` | `public` | Complete a login that required a second factor |
 | `POST` | `/api/v1/auth/refresh` | `public` | Rotate the refresh token and issue a new access token |
 | `POST` | `/api/v1/auth/logout` | `self` | Revoke the current session and refresh family |
-| `POST` | `/api/v1/auth/forgot-password` | `public` | Send a reset link |
+| `POST` | `/api/v1/auth/forgot-password` | `public` | Send a reset code |
 | `POST` | `/api/v1/auth/reset-password` | `public` | Consume a reset token and set a new password |
 | `POST` | `/api/v1/auth/change-password` | `self` | Change the password while signed in |
 | `GET` | `/api/v1/auth/sessions` | `self` | List the caller's active sessions |
@@ -140,7 +140,7 @@ Revoke the current session and refresh family
 
 ### `POST /api/v1/auth/forgot-password`
 
-Send a reset link
+Send a reset code
 
 | | |
 |---|---|

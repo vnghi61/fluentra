@@ -294,3 +294,95 @@ func TestContract_SessionListMatchesTheSpec(t *testing.T) {
 
 	assertMatchesSchema(t, responseSchema(t, spec, "/auth/sessions", http.MethodGet, http.StatusOK), rec.Body.Bytes())
 }
+
+type fakeContractPasswords struct{}
+
+func (fakeContractPasswords) Forgot(context.Context, string) (service.Issued, error) {
+	return service.Issued{Challenge: domain.Challenge{
+		ID:          uuid.MustParse("018f3a5b-7c8d-7123-8123-456789abcdef"),
+		Purpose:     domain.PurposePasswordReset,
+		MaxAttempts: 5,
+		ExpiresAt:   time.Now().Add(30 * time.Minute),
+		LastSentAt:  time.Now(),
+	}}, nil
+}
+
+func (fakeContractPasswords) Reset(context.Context, service.ResetInput) (service.PasswordChanged, error) {
+	return service.PasswordChanged{ChangedAt: time.Now().UTC(), SessionsRevoked: 3}, nil
+}
+
+func (fakeContractPasswords) Change(
+	context.Context, httpx.Actor, service.ChangeInput,
+) (service.PasswordChanged, error) {
+	return service.PasswordChanged{ChangedAt: time.Now().UTC(), SessionsRevoked: 1}, nil
+}
+
+// TestContract_PasswordOperationsMatchTheSpec covers the three this card added.
+// forgot-password reuses the Challenge schema and the other two share
+// PasswordChanged, so a drift in either shape shows up here rather than in a
+// client.
+func TestContract_PasswordOperationsMatchTheSpec(t *testing.T) {
+	spec := loadSpec(t)
+	router := newTestRouterWithPasswords(
+		&fakeContractRegistration{}, fakeContractAuthenticator{}, &fakeRotator{},
+		fakeContractSessions{}, fakeContractPasswords{}, authhttp.CookieOptions{Secure: true})
+
+	actor := httpx.Actor{
+		UserID:    uuid.MustParse("018f3a5b-7c8d-7123-8123-456789abcdef"),
+		SessionID: uuid.MustParse("018f3a5b-7c8d-7123-8123-456789abcdef"),
+		Role:      "user",
+		TokenID:   testJTI,
+	}
+
+	cases := map[string]struct {
+		path     string
+		body     string
+		status   int
+		signedIn bool
+		specPath string
+		specCode int
+	}{
+		"forgot": {
+			path:     "/api/v1/auth/forgot-password",
+			body:     `{"email":"learner@example.com"}`,
+			status:   http.StatusAccepted,
+			specPath: "/auth/forgot-password",
+			specCode: http.StatusAccepted,
+		},
+		"reset": {
+			path: "/api/v1/auth/reset-password",
+			body: `{"challenge_id":"018f3a5b-7c8d-7123-8123-456789abcdef","code":"482913",` +
+				`"password":"a perfectly fine passphrase"}`,
+			status:   http.StatusOK,
+			specPath: "/auth/reset-password",
+			specCode: http.StatusOK,
+		},
+		"change": {
+			path:     "/api/v1/auth/change-password",
+			body:     `{"current_password":"a-secret-password","new_password":"a perfectly fine passphrase"}`,
+			status:   http.StatusOK,
+			signedIn: true,
+			specPath: "/auth/change-password",
+			specCode: http.StatusOK,
+		},
+	}
+
+	for name, testCase := range cases {
+		t.Run(name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, testCase.path, strings.NewReader(testCase.body))
+			req.Header.Set("Content-Type", "application/json")
+			if testCase.signedIn {
+				req = req.WithContext(httpx.WithActor(req.Context(), actor))
+			}
+			rec := httptest.NewRecorder()
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != testCase.status {
+				t.Fatalf("status = %d, want %d; body: %s", rec.Code, testCase.status, rec.Body.String())
+			}
+			assertMatchesSchema(t,
+				responseSchema(t, spec, testCase.specPath, http.MethodPost, testCase.specCode),
+				rec.Body.Bytes())
+		})
+	}
+}

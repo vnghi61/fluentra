@@ -188,6 +188,62 @@ type ClientInterface interface {
 	// Corresponds with POST /auth/challenges/{id}/verify (the `AuthVerifyChallenge` operationId).
 	AuthVerifyChallenge(ctx context.Context, id openapi_types.UUID, body AuthVerifyChallengeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AuthChangePasswordWithBody Change the password while signed in.
+	//
+	// Replaces the password for the signed-in caller, who must present the current one as well as the new one.
+	//
+	// Requiring the current password is not redundant with the access token. The token proves the session was opened by somebody who knew the password; it does not prove the person holding it now does. Without the check, a token taken from an unlocked laptop is enough to lock its owner out of their own account.
+	//
+	// **Every other session is revoked and this one is kept** (BR-AUTH-05). Signing the learner out of the device they are standing at, immediately after they did the responsible thing, teaches them not to do it again. The response says how many other devices went.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /auth/change-password (the `AuthChangePassword` operationId).
+	AuthChangePasswordWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AuthChangePassword Change the password while signed in.
+	//
+	// Replaces the password for the signed-in caller, who must present the current one as well as the new one.
+	//
+	// Requiring the current password is not redundant with the access token. The token proves the session was opened by somebody who knew the password; it does not prove the person holding it now does. Without the check, a token taken from an unlocked laptop is enough to lock its owner out of their own account.
+	//
+	// **Every other session is revoked and this one is kept** (BR-AUTH-05). Signing the learner out of the device they are standing at, immediately after they did the responsible thing, teaches them not to do it again. The response says how many other devices went.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /auth/change-password (the `AuthChangePassword` operationId).
+	AuthChangePassword(ctx context.Context, body AuthChangePasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AuthForgotPasswordWithBody Start a password reset.
+	//
+	// Issues a `password_reset` challenge and emails the six-digit code to the address, if there is an account on it.
+	//
+	// **This operation always answers 202** (BR-AUTH-26), with the same body shape, whether or not the address is registered -- and it takes comparable time either way, because an unknown address still has a real challenge issued against it that nobody will ever receive a code for. Anything else here is an account-enumeration oracle: "we sent you an email" versus "no such account" is exactly the question an attacker with a list of addresses is asking.
+	//
+	// The response carries the challenge handle and not the code. The handle goes to the browser that asked and the code goes to the inbox, so neither party alone can complete the reset (BR-AUTH-11).
+	//
+	// Asking again invalidates the previous code. A learner who requests twice because the first email was slow must use the second code, which is what stops an old message in an inbox staying usable.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /auth/forgot-password (the `AuthForgotPassword` operationId).
+	AuthForgotPasswordWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AuthForgotPassword Start a password reset.
+	//
+	// Issues a `password_reset` challenge and emails the six-digit code to the address, if there is an account on it.
+	//
+	// **This operation always answers 202** (BR-AUTH-26), with the same body shape, whether or not the address is registered -- and it takes comparable time either way, because an unknown address still has a real challenge issued against it that nobody will ever receive a code for. Anything else here is an account-enumeration oracle: "we sent you an email" versus "no such account" is exactly the question an attacker with a list of addresses is asking.
+	//
+	// The response carries the challenge handle and not the code. The handle goes to the browser that asked and the code goes to the inbox, so neither party alone can complete the reset (BR-AUTH-11).
+	//
+	// Asking again invalidates the previous code. A learner who requests twice because the first email was slow must use the second code, which is what stops an old message in an inbox staying usable.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /auth/forgot-password (the `AuthForgotPassword` operationId).
+	AuthForgotPassword(ctx context.Context, body AuthForgotPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AuthLoginWithBody Exchange a password for an access token.
 	//
 	// Authenticates an account and signs it in.
@@ -265,6 +321,36 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /auth/register (the `AuthRegister` operationId).
 	AuthRegister(ctx context.Context, body AuthRegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AuthResetPasswordWithBody Set a new password with a reset code.
+	//
+	// Consumes the challenge and replaces the password.
+	//
+	// **Every session is revoked**, on every device (BR-AUTH-05). A reset is what a learner reaches for when they think somebody else is in their account, so leaving that somebody signed in would defeat the operation they just performed. The response says how many devices went.
+	//
+	// The code is single-use and the challenge is burned after five wrong attempts. The reset window is thirty minutes rather than the ten a signup code gets: a reset email can sit unread through a meeting in a way a code typed on the next screen does not.
+	//
+	// This does not sign the caller in. They have just chosen a password and are asked to use it once, which costs a learner one screen and costs somebody who reset an account they do not own the same password they would need anyway.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /auth/reset-password (the `AuthResetPassword` operationId).
+	AuthResetPasswordWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AuthResetPassword Set a new password with a reset code.
+	//
+	// Consumes the challenge and replaces the password.
+	//
+	// **Every session is revoked**, on every device (BR-AUTH-05). A reset is what a learner reaches for when they think somebody else is in their account, so leaving that somebody signed in would defeat the operation they just performed. The response says how many devices went.
+	//
+	// The code is single-use and the challenge is burned after five wrong attempts. The reset window is thirty minutes rather than the ten a signup code gets: a reset email can sit unread through a meeting in a way a code typed on the next screen does not.
+	//
+	// This does not sign the caller in. They have just chosen a password and are asked to use it once, which costs a learner one screen and costs somebody who reset an account they do not own the same password they would need anyway.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /auth/reset-password (the `AuthResetPassword` operationId).
+	AuthResetPassword(ctx context.Context, body AuthResetPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// AuthListSessions List the devices this account is signed in on.
 	//
@@ -581,6 +667,102 @@ func (c *Client) AuthVerifyChallenge(ctx context.Context, id openapi_types.UUID,
 	return c.Client.Do(req)
 }
 
+// AuthChangePasswordWithBody Change the password while signed in.
+//
+// Replaces the password for the signed-in caller, who must present the current one as well as the new one.
+//
+// Requiring the current password is not redundant with the access token. The token proves the session was opened by somebody who knew the password; it does not prove the person holding it now does. Without the check, a token taken from an unlocked laptop is enough to lock its owner out of their own account.
+//
+// **Every other session is revoked and this one is kept** (BR-AUTH-05). Signing the learner out of the device they are standing at, immediately after they did the responsible thing, teaches them not to do it again. The response says how many other devices went.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /auth/change-password (the `AuthChangePassword` operationId).
+func (c *Client) AuthChangePasswordWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthChangePasswordRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AuthChangePassword Change the password while signed in.
+//
+// Replaces the password for the signed-in caller, who must present the current one as well as the new one.
+//
+// Requiring the current password is not redundant with the access token. The token proves the session was opened by somebody who knew the password; it does not prove the person holding it now does. Without the check, a token taken from an unlocked laptop is enough to lock its owner out of their own account.
+//
+// **Every other session is revoked and this one is kept** (BR-AUTH-05). Signing the learner out of the device they are standing at, immediately after they did the responsible thing, teaches them not to do it again. The response says how many other devices went.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /auth/change-password (the `AuthChangePassword` operationId).
+func (c *Client) AuthChangePassword(ctx context.Context, body AuthChangePasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthChangePasswordRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AuthForgotPasswordWithBody Start a password reset.
+//
+// Issues a `password_reset` challenge and emails the six-digit code to the address, if there is an account on it.
+//
+// **This operation always answers 202** (BR-AUTH-26), with the same body shape, whether or not the address is registered -- and it takes comparable time either way, because an unknown address still has a real challenge issued against it that nobody will ever receive a code for. Anything else here is an account-enumeration oracle: "we sent you an email" versus "no such account" is exactly the question an attacker with a list of addresses is asking.
+//
+// The response carries the challenge handle and not the code. The handle goes to the browser that asked and the code goes to the inbox, so neither party alone can complete the reset (BR-AUTH-11).
+//
+// Asking again invalidates the previous code. A learner who requests twice because the first email was slow must use the second code, which is what stops an old message in an inbox staying usable.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /auth/forgot-password (the `AuthForgotPassword` operationId).
+func (c *Client) AuthForgotPasswordWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthForgotPasswordRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AuthForgotPassword Start a password reset.
+//
+// Issues a `password_reset` challenge and emails the six-digit code to the address, if there is an account on it.
+//
+// **This operation always answers 202** (BR-AUTH-26), with the same body shape, whether or not the address is registered -- and it takes comparable time either way, because an unknown address still has a real challenge issued against it that nobody will ever receive a code for. Anything else here is an account-enumeration oracle: "we sent you an email" versus "no such account" is exactly the question an attacker with a list of addresses is asking.
+//
+// The response carries the challenge handle and not the code. The handle goes to the browser that asked and the code goes to the inbox, so neither party alone can complete the reset (BR-AUTH-11).
+//
+// Asking again invalidates the previous code. A learner who requests twice because the first email was slow must use the second code, which is what stops an old message in an inbox staying usable.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /auth/forgot-password (the `AuthForgotPassword` operationId).
+func (c *Client) AuthForgotPassword(ctx context.Context, body AuthForgotPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthForgotPasswordRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // AuthLoginWithBody Exchange a password for an access token.
 //
 // Authenticates an account and signs it in.
@@ -709,6 +891,56 @@ func (c *Client) AuthRegisterWithBody(ctx context.Context, contentType string, b
 // Corresponds with POST /auth/register (the `AuthRegister` operationId).
 func (c *Client) AuthRegister(ctx context.Context, body AuthRegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAuthRegisterRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AuthResetPasswordWithBody Set a new password with a reset code.
+//
+// Consumes the challenge and replaces the password.
+//
+// **Every session is revoked**, on every device (BR-AUTH-05). A reset is what a learner reaches for when they think somebody else is in their account, so leaving that somebody signed in would defeat the operation they just performed. The response says how many devices went.
+//
+// The code is single-use and the challenge is burned after five wrong attempts. The reset window is thirty minutes rather than the ten a signup code gets: a reset email can sit unread through a meeting in a way a code typed on the next screen does not.
+//
+// This does not sign the caller in. They have just chosen a password and are asked to use it once, which costs a learner one screen and costs somebody who reset an account they do not own the same password they would need anyway.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /auth/reset-password (the `AuthResetPassword` operationId).
+func (c *Client) AuthResetPasswordWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthResetPasswordRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AuthResetPassword Set a new password with a reset code.
+//
+// Consumes the challenge and replaces the password.
+//
+// **Every session is revoked**, on every device (BR-AUTH-05). A reset is what a learner reaches for when they think somebody else is in their account, so leaving that somebody signed in would defeat the operation they just performed. The response says how many devices went.
+//
+// The code is single-use and the challenge is burned after five wrong attempts. The reset window is thirty minutes rather than the ten a signup code gets: a reset email can sit unread through a meeting in a way a code typed on the next screen does not.
+//
+// This does not sign the caller in. They have just chosen a password and are asked to use it once, which costs a learner one screen and costs somebody who reset an account they do not own the same password they would need anyway.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /auth/reset-password (the `AuthResetPassword` operationId).
+func (c *Client) AuthResetPassword(ctx context.Context, body AuthResetPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthResetPasswordRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1475,6 +1707,86 @@ func NewAuthVerifyChallengeRequestWithBody(server string, id openapi_types.UUID,
 	return req, nil
 }
 
+// NewAuthChangePasswordRequest calls the generic AuthChangePassword builder with application/json body
+func NewAuthChangePasswordRequest(server string, body AuthChangePasswordJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAuthChangePasswordRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewAuthChangePasswordRequestWithBody constructs an http.Request for the AuthChangePassword method, with any body, and a specified content type
+func NewAuthChangePasswordRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/change-password")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewAuthForgotPasswordRequest calls the generic AuthForgotPassword builder with application/json body
+func NewAuthForgotPasswordRequest(server string, body AuthForgotPasswordJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAuthForgotPasswordRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewAuthForgotPasswordRequestWithBody constructs an http.Request for the AuthForgotPassword method, with any body, and a specified content type
+func NewAuthForgotPasswordRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/forgot-password")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewAuthLoginRequest calls the generic AuthLogin builder with application/json body
 func NewAuthLoginRequest(server string, body AuthLoginJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -1590,6 +1902,46 @@ func NewAuthRegisterRequestWithBody(server string, contentType string, body io.R
 	}
 
 	operationPath := fmt.Sprintf("/auth/register")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewAuthResetPasswordRequest calls the generic AuthResetPassword builder with application/json body
+func NewAuthResetPasswordRequest(server string, body AuthResetPasswordJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAuthResetPasswordRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewAuthResetPasswordRequestWithBody constructs an http.Request for the AuthResetPassword method, with any body, and a specified content type
+func NewAuthResetPasswordRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/reset-password")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -2090,6 +2442,62 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /auth/challenges/{id}/verify (the `AuthVerifyChallenge` operationId).
 	AuthVerifyChallengeWithResponse(ctx context.Context, id openapi_types.UUID, body AuthVerifyChallengeJSONRequestBody, reqEditors ...RequestEditorFn) (*AuthVerifyChallengeResponse, error)
 
+	// AuthChangePasswordWithBodyWithResponse Change the password while signed in.
+	//
+	// Replaces the password for the signed-in caller, who must present the current one as well as the new one.
+	//
+	// Requiring the current password is not redundant with the access token. The token proves the session was opened by somebody who knew the password; it does not prove the person holding it now does. Without the check, a token taken from an unlocked laptop is enough to lock its owner out of their own account.
+	//
+	// **Every other session is revoked and this one is kept** (BR-AUTH-05). Signing the learner out of the device they are standing at, immediately after they did the responsible thing, teaches them not to do it again. The response says how many other devices went.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /auth/change-password (the `AuthChangePassword` operationId).
+	AuthChangePasswordWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AuthChangePasswordResponse, error)
+
+	// AuthChangePasswordWithResponse Change the password while signed in.
+	//
+	// Replaces the password for the signed-in caller, who must present the current one as well as the new one.
+	//
+	// Requiring the current password is not redundant with the access token. The token proves the session was opened by somebody who knew the password; it does not prove the person holding it now does. Without the check, a token taken from an unlocked laptop is enough to lock its owner out of their own account.
+	//
+	// **Every other session is revoked and this one is kept** (BR-AUTH-05). Signing the learner out of the device they are standing at, immediately after they did the responsible thing, teaches them not to do it again. The response says how many other devices went.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /auth/change-password (the `AuthChangePassword` operationId).
+	AuthChangePasswordWithResponse(ctx context.Context, body AuthChangePasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*AuthChangePasswordResponse, error)
+
+	// AuthForgotPasswordWithBodyWithResponse Start a password reset.
+	//
+	// Issues a `password_reset` challenge and emails the six-digit code to the address, if there is an account on it.
+	//
+	// **This operation always answers 202** (BR-AUTH-26), with the same body shape, whether or not the address is registered -- and it takes comparable time either way, because an unknown address still has a real challenge issued against it that nobody will ever receive a code for. Anything else here is an account-enumeration oracle: "we sent you an email" versus "no such account" is exactly the question an attacker with a list of addresses is asking.
+	//
+	// The response carries the challenge handle and not the code. The handle goes to the browser that asked and the code goes to the inbox, so neither party alone can complete the reset (BR-AUTH-11).
+	//
+	// Asking again invalidates the previous code. A learner who requests twice because the first email was slow must use the second code, which is what stops an old message in an inbox staying usable.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /auth/forgot-password (the `AuthForgotPassword` operationId).
+	AuthForgotPasswordWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AuthForgotPasswordResponse, error)
+
+	// AuthForgotPasswordWithResponse Start a password reset.
+	//
+	// Issues a `password_reset` challenge and emails the six-digit code to the address, if there is an account on it.
+	//
+	// **This operation always answers 202** (BR-AUTH-26), with the same body shape, whether or not the address is registered -- and it takes comparable time either way, because an unknown address still has a real challenge issued against it that nobody will ever receive a code for. Anything else here is an account-enumeration oracle: "we sent you an email" versus "no such account" is exactly the question an attacker with a list of addresses is asking.
+	//
+	// The response carries the challenge handle and not the code. The handle goes to the browser that asked and the code goes to the inbox, so neither party alone can complete the reset (BR-AUTH-11).
+	//
+	// Asking again invalidates the previous code. A learner who requests twice because the first email was slow must use the second code, which is what stops an old message in an inbox staying usable.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /auth/forgot-password (the `AuthForgotPassword` operationId).
+	AuthForgotPasswordWithResponse(ctx context.Context, body AuthForgotPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*AuthForgotPasswordResponse, error)
+
 	// AuthLoginWithBodyWithResponse Exchange a password for an access token.
 	//
 	// Authenticates an account and signs it in.
@@ -2171,6 +2579,36 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /auth/register (the `AuthRegister` operationId).
 	AuthRegisterWithResponse(ctx context.Context, body AuthRegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*AuthRegisterResponse, error)
+
+	// AuthResetPasswordWithBodyWithResponse Set a new password with a reset code.
+	//
+	// Consumes the challenge and replaces the password.
+	//
+	// **Every session is revoked**, on every device (BR-AUTH-05). A reset is what a learner reaches for when they think somebody else is in their account, so leaving that somebody signed in would defeat the operation they just performed. The response says how many devices went.
+	//
+	// The code is single-use and the challenge is burned after five wrong attempts. The reset window is thirty minutes rather than the ten a signup code gets: a reset email can sit unread through a meeting in a way a code typed on the next screen does not.
+	//
+	// This does not sign the caller in. They have just chosen a password and are asked to use it once, which costs a learner one screen and costs somebody who reset an account they do not own the same password they would need anyway.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /auth/reset-password (the `AuthResetPassword` operationId).
+	AuthResetPasswordWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AuthResetPasswordResponse, error)
+
+	// AuthResetPasswordWithResponse Set a new password with a reset code.
+	//
+	// Consumes the challenge and replaces the password.
+	//
+	// **Every session is revoked**, on every device (BR-AUTH-05). A reset is what a learner reaches for when they think somebody else is in their account, so leaving that somebody signed in would defeat the operation they just performed. The response says how many devices went.
+	//
+	// The code is single-use and the challenge is burned after five wrong attempts. The reset window is thirty minutes rather than the ten a signup code gets: a reset email can sit unread through a meeting in a way a code typed on the next screen does not.
+	//
+	// This does not sign the caller in. They have just chosen a password and are asked to use it once, which costs a learner one screen and costs somebody who reset an account they do not own the same password they would need anyway.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /auth/reset-password (the `AuthResetPassword` operationId).
+	AuthResetPasswordWithResponse(ctx context.Context, body AuthResetPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*AuthResetPasswordResponse, error)
 
 	// AuthListSessionsWithResponse List the devices this account is signed in on.
 	//
@@ -2942,6 +3380,165 @@ func (r AuthVerifyChallengeResponse) ContentType() string {
 	return ""
 }
 
+// AuthChangePasswordResponse200Headers the declared response headers of an HTTP 200 response for AuthChangePassword
+type AuthChangePasswordResponse200Headers struct {
+	XRequestId *string
+}
+
+// AuthChangePasswordResponse429Headers the declared response headers of an HTTP 429 response for AuthChangePassword
+type AuthChangePasswordResponse429Headers struct {
+	RetryAfter *int
+}
+
+type AuthChangePasswordResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PasswordChanged
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AuthChangePasswordResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AuthChangePasswordResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AuthChangePasswordResponse) GetJSON200() *PasswordChanged {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r AuthChangePasswordResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AuthChangePasswordResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AuthChangePasswordResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AuthChangePasswordResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetBody returns the raw response body bytes
+func (r AuthChangePasswordResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AuthChangePasswordResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AuthChangePasswordResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AuthChangePasswordResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AuthForgotPasswordResponse202Headers the declared response headers of an HTTP 202 response for AuthForgotPassword
+type AuthForgotPasswordResponse202Headers struct {
+	XRequestId *string
+}
+
+// AuthForgotPasswordResponse429Headers the declared response headers of an HTTP 429 response for AuthForgotPassword
+type AuthForgotPasswordResponse429Headers struct {
+	RetryAfter *int
+}
+
+type AuthForgotPasswordResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON202 the response for an HTTP 202 `application/json` response
+	JSON202 *Challenge
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// Headers202 the parsed response headers for an HTTP 202 response
+	Headers202 *AuthForgotPasswordResponse202Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AuthForgotPasswordResponse429Headers
+}
+
+// GetJSON202 returns the response for an HTTP 202 `application/json` response
+func (r AuthForgotPasswordResponse) GetJSON202() *Challenge {
+	return r.JSON202
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r AuthForgotPasswordResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AuthForgotPasswordResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AuthForgotPasswordResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetBody returns the raw response body bytes
+func (r AuthForgotPasswordResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AuthForgotPasswordResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AuthForgotPasswordResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AuthForgotPasswordResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // AuthLoginResponse200Headers the declared response headers of an HTTP 200 response for AuthLogin
 type AuthLoginResponse200Headers struct {
 	SetCookie  *string
@@ -3222,6 +3819,103 @@ func (r AuthRegisterResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r AuthRegisterResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AuthResetPasswordResponse200Headers the declared response headers of an HTTP 200 response for AuthResetPassword
+type AuthResetPasswordResponse200Headers struct {
+	XRequestId *string
+}
+
+// AuthResetPasswordResponse429Headers the declared response headers of an HTTP 429 response for AuthResetPassword
+type AuthResetPasswordResponse429Headers struct {
+	RetryAfter *int
+}
+
+type AuthResetPasswordResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PasswordChanged
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AuthResetPasswordResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AuthResetPasswordResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AuthResetPasswordResponse) GetJSON200() *PasswordChanged {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r AuthResetPasswordResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AuthResetPasswordResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AuthResetPasswordResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AuthResetPasswordResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AuthResetPasswordResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AuthResetPasswordResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetBody returns the raw response body bytes
+func (r AuthResetPasswordResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AuthResetPasswordResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AuthResetPasswordResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AuthResetPasswordResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -4049,6 +4743,86 @@ func (c *ClientWithResponses) AuthVerifyChallengeWithResponse(ctx context.Contex
 	return ParseAuthVerifyChallengeResponse(rsp)
 }
 
+// AuthChangePasswordWithBodyWithResponse Change the password while signed in.
+//
+// Replaces the password for the signed-in caller, who must present the current one as well as the new one.
+//
+// Requiring the current password is not redundant with the access token. The token proves the session was opened by somebody who knew the password; it does not prove the person holding it now does. Without the check, a token taken from an unlocked laptop is enough to lock its owner out of their own account.
+//
+// **Every other session is revoked and this one is kept** (BR-AUTH-05). Signing the learner out of the device they are standing at, immediately after they did the responsible thing, teaches them not to do it again. The response says how many other devices went.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /auth/change-password (the `AuthChangePassword` operationId).
+func (c *ClientWithResponses) AuthChangePasswordWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AuthChangePasswordResponse, error) {
+	rsp, err := c.AuthChangePasswordWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthChangePasswordResponse(rsp)
+}
+
+// AuthChangePasswordWithResponse Change the password while signed in.
+//
+// Replaces the password for the signed-in caller, who must present the current one as well as the new one.
+//
+// Requiring the current password is not redundant with the access token. The token proves the session was opened by somebody who knew the password; it does not prove the person holding it now does. Without the check, a token taken from an unlocked laptop is enough to lock its owner out of their own account.
+//
+// **Every other session is revoked and this one is kept** (BR-AUTH-05). Signing the learner out of the device they are standing at, immediately after they did the responsible thing, teaches them not to do it again. The response says how many other devices went.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /auth/change-password (the `AuthChangePassword` operationId).
+func (c *ClientWithResponses) AuthChangePasswordWithResponse(ctx context.Context, body AuthChangePasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*AuthChangePasswordResponse, error) {
+	rsp, err := c.AuthChangePassword(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthChangePasswordResponse(rsp)
+}
+
+// AuthForgotPasswordWithBodyWithResponse Start a password reset.
+//
+// Issues a `password_reset` challenge and emails the six-digit code to the address, if there is an account on it.
+//
+// **This operation always answers 202** (BR-AUTH-26), with the same body shape, whether or not the address is registered -- and it takes comparable time either way, because an unknown address still has a real challenge issued against it that nobody will ever receive a code for. Anything else here is an account-enumeration oracle: "we sent you an email" versus "no such account" is exactly the question an attacker with a list of addresses is asking.
+//
+// The response carries the challenge handle and not the code. The handle goes to the browser that asked and the code goes to the inbox, so neither party alone can complete the reset (BR-AUTH-11).
+//
+// Asking again invalidates the previous code. A learner who requests twice because the first email was slow must use the second code, which is what stops an old message in an inbox staying usable.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /auth/forgot-password (the `AuthForgotPassword` operationId).
+func (c *ClientWithResponses) AuthForgotPasswordWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AuthForgotPasswordResponse, error) {
+	rsp, err := c.AuthForgotPasswordWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthForgotPasswordResponse(rsp)
+}
+
+// AuthForgotPasswordWithResponse Start a password reset.
+//
+// Issues a `password_reset` challenge and emails the six-digit code to the address, if there is an account on it.
+//
+// **This operation always answers 202** (BR-AUTH-26), with the same body shape, whether or not the address is registered -- and it takes comparable time either way, because an unknown address still has a real challenge issued against it that nobody will ever receive a code for. Anything else here is an account-enumeration oracle: "we sent you an email" versus "no such account" is exactly the question an attacker with a list of addresses is asking.
+//
+// The response carries the challenge handle and not the code. The handle goes to the browser that asked and the code goes to the inbox, so neither party alone can complete the reset (BR-AUTH-11).
+//
+// Asking again invalidates the previous code. A learner who requests twice because the first email was slow must use the second code, which is what stops an old message in an inbox staying usable.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /auth/forgot-password (the `AuthForgotPassword` operationId).
+func (c *ClientWithResponses) AuthForgotPasswordWithResponse(ctx context.Context, body AuthForgotPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*AuthForgotPasswordResponse, error) {
+	rsp, err := c.AuthForgotPassword(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthForgotPasswordResponse(rsp)
+}
+
 // AuthLoginWithBodyWithResponse Exchange a password for an access token.
 //
 // Authenticates an account and signs it in.
@@ -4165,6 +4939,48 @@ func (c *ClientWithResponses) AuthRegisterWithResponse(ctx context.Context, body
 		return nil, err
 	}
 	return ParseAuthRegisterResponse(rsp)
+}
+
+// AuthResetPasswordWithBodyWithResponse Set a new password with a reset code.
+//
+// Consumes the challenge and replaces the password.
+//
+// **Every session is revoked**, on every device (BR-AUTH-05). A reset is what a learner reaches for when they think somebody else is in their account, so leaving that somebody signed in would defeat the operation they just performed. The response says how many devices went.
+//
+// The code is single-use and the challenge is burned after five wrong attempts. The reset window is thirty minutes rather than the ten a signup code gets: a reset email can sit unread through a meeting in a way a code typed on the next screen does not.
+//
+// This does not sign the caller in. They have just chosen a password and are asked to use it once, which costs a learner one screen and costs somebody who reset an account they do not own the same password they would need anyway.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /auth/reset-password (the `AuthResetPassword` operationId).
+func (c *ClientWithResponses) AuthResetPasswordWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AuthResetPasswordResponse, error) {
+	rsp, err := c.AuthResetPasswordWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthResetPasswordResponse(rsp)
+}
+
+// AuthResetPasswordWithResponse Set a new password with a reset code.
+//
+// Consumes the challenge and replaces the password.
+//
+// **Every session is revoked**, on every device (BR-AUTH-05). A reset is what a learner reaches for when they think somebody else is in their account, so leaving that somebody signed in would defeat the operation they just performed. The response says how many devices went.
+//
+// The code is single-use and the challenge is burned after five wrong attempts. The reset window is thirty minutes rather than the ten a signup code gets: a reset email can sit unread through a meeting in a way a code typed on the next screen does not.
+//
+// This does not sign the caller in. They have just chosen a password and are asked to use it once, which costs a learner one screen and costs somebody who reset an account they do not own the same password they would need anyway.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /auth/reset-password (the `AuthResetPassword` operationId).
+func (c *ClientWithResponses) AuthResetPasswordWithResponse(ctx context.Context, body AuthResetPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*AuthResetPasswordResponse, error) {
+	rsp, err := c.AuthResetPassword(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthResetPasswordResponse(rsp)
 }
 
 // AuthListSessionsWithResponse List the devices this account is signed in on.
@@ -4954,6 +5770,153 @@ func ParseAuthVerifyChallengeResponse(rsp *http.Response) (*AuthVerifyChallengeR
 	return response, nil
 }
 
+// ParseAuthChangePasswordResponse parses an HTTP response from a AuthChangePasswordWithResponse call
+func ParseAuthChangePasswordResponse(rsp *http.Response) (*AuthChangePasswordResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AuthChangePasswordResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PasswordChanged
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AuthChangePasswordResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AuthChangePasswordResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAuthForgotPasswordResponse parses an HTTP response from a AuthForgotPasswordWithResponse call
+func ParseAuthForgotPasswordResponse(rsp *http.Response) (*AuthForgotPasswordResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AuthForgotPasswordResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest Challenge
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 202:
+		var headers AuthForgotPasswordResponse202Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers202 = &headers
+	case rsp.StatusCode == 429:
+		var headers AuthForgotPasswordResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseAuthLoginResponse parses an HTTP response from a AuthLoginWithResponse call
 func ParseAuthLoginResponse(rsp *http.Response) (*AuthLoginResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -5221,6 +6184,97 @@ func ParseAuthRegisterResponse(rsp *http.Response) (*AuthRegisterResponse, error
 		response.Headers201 = &headers
 	case rsp.StatusCode == 429:
 		var headers AuthRegisterResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAuthResetPasswordResponse parses an HTTP response from a AuthResetPasswordWithResponse call
+func ParseAuthResetPasswordResponse(rsp *http.Response) (*AuthResetPasswordResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AuthResetPasswordResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PasswordChanged
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AuthResetPasswordResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AuthResetPasswordResponse429Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

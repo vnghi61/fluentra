@@ -31,6 +31,17 @@ const (
 	// subscribes to this topic and files it in the security stream rather than
 	// the action log.
 	EventSecurityEvent = "auth.security_event"
+
+	// EventPasswordResetRequested asks for a reset code to be delivered. Like
+	// verification, it carries the code because the challenge row stores only an
+	// HMAC and there is nowhere else to recover it from.
+	EventPasswordResetRequested = "auth.password_reset_requested"
+
+	// EventPasswordChanged announces that a password was replaced, by either
+	// route. It exists so the account's owner is told — a change they did not
+	// make is the first sign of a takeover, and the notification is often the
+	// only way they find out.
+	EventPasswordChanged = "auth.password_changed"
 )
 
 // The security event kinds this module raises.
@@ -120,6 +131,33 @@ type SecurityEvent struct {
 	Severity   Severity  `json:"severity"`
 	UserID     uuid.UUID `json:"user_id"`
 	SessionID  uuid.UUID `json:"session_id"`
+	OccurredAt time.Time `json:"occurred_at"`
+}
+
+// PasswordResetRequested carries what the mailer needs to send a reset code.
+//
+// It carries the code in plaintext for the reason VerificationRequested does,
+// and inherits the same open issue: `ops.outbox_events` keeps published rows, so
+// the payload outlives the thirty minutes the code is worth anything for. The
+// fix belongs in `shared/outbox` and is filed in this module's TODO.
+type PasswordResetRequested struct {
+	ChallengeID uuid.UUID `json:"challenge_id"`
+	UserID      uuid.UUID `json:"user_id"`
+	Email       string    `json:"email"`
+	DisplayName string    `json:"display_name"`
+	Locale      string    `json:"locale"`
+	Code        string    `json:"code"`
+	ExpiresAt   time.Time `json:"expires_at"`
+	OccurredAt  time.Time `json:"occurred_at"`
+}
+
+// PasswordChanged announces a completed reset or change.
+//
+// It carries no password, no hash and no indication of which route was taken.
+// The recipient's question is "was this me?", and the answer does not depend on
+// whether it came through a reset code or a signed-in change.
+type PasswordChanged struct {
+	UserID     uuid.UUID `json:"user_id"`
 	OccurredAt time.Time `json:"occurred_at"`
 }
 

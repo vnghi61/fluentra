@@ -166,6 +166,28 @@ func (q *Queries) RevokeAllSessionsForUser(ctx context.Context, arg RevokeAllSes
 	return result.RowsAffected(), nil
 }
 
+const revokeOtherSessionsForUser = `-- name: RevokeOtherSessionsForUser :execrows
+UPDATE core.sessions
+SET revoked_at = $2::timestamptz
+WHERE user_id = $1 AND id <> $3 AND revoked_at IS NULL
+`
+
+type RevokeOtherSessionsForUserParams struct {
+	UserID        uuid.UUID
+	Now           time.Time
+	KeepSessionID uuid.UUID
+}
+
+// RevokeOtherSessionsForUser is what a password change uses: every device but
+// the one the change was made from.
+func (q *Queries) RevokeOtherSessionsForUser(ctx context.Context, arg RevokeOtherSessionsForUserParams) (int64, error) {
+	result, err := q.db.Exec(ctx, revokeOtherSessionsForUser, arg.UserID, arg.Now, arg.KeepSessionID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const revokeRefreshTokensBySession = `-- name: RevokeRefreshTokensBySession :execrows
 UPDATE core.refresh_tokens
 SET revoked_at = $2::timestamptz
@@ -179,6 +201,30 @@ type RevokeRefreshTokensBySessionParams struct {
 
 func (q *Queries) RevokeRefreshTokensBySession(ctx context.Context, arg RevokeRefreshTokensBySessionParams) (int64, error) {
 	result, err := q.db.Exec(ctx, revokeRefreshTokensBySession, arg.SessionID, arg.Now)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const revokeRefreshTokensForOtherSessions = `-- name: RevokeRefreshTokensForOtherSessions :execrows
+UPDATE core.refresh_tokens rt
+SET revoked_at = $2::timestamptz
+FROM core.sessions s
+WHERE s.id = rt.session_id
+  AND s.user_id = $1
+  AND s.id <> $3
+  AND rt.revoked_at IS NULL
+`
+
+type RevokeRefreshTokensForOtherSessionsParams struct {
+	UserID        uuid.UUID
+	Now           time.Time
+	KeepSessionID uuid.UUID
+}
+
+func (q *Queries) RevokeRefreshTokensForOtherSessions(ctx context.Context, arg RevokeRefreshTokensForOtherSessionsParams) (int64, error) {
+	result, err := q.db.Exec(ctx, revokeRefreshTokensForOtherSessions, arg.UserID, arg.Now, arg.KeepSessionID)
 	if err != nil {
 		return 0, err
 	}

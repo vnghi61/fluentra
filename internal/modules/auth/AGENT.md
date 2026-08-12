@@ -169,7 +169,14 @@ Two things about the credential row that the summary does not carry:
 An account may legitimately have no row here: Google sign-in (P2.10) creates no credential, which
 is why this is a separate table rather than columns on `core.users`.
 
-Three things about `core.auth_challenges` beyond the summary:
+Four things about `core.auth_challenges` beyond the summary:
+
+- **The window is per purpose.** `verify_email` gets ten minutes and `password_reset` thirty
+  (`PASSWORD_RESET_TTL`), because a reset email can sit unread through a meeting while a signup code
+  is typed on the screen that asked for it. A purpose that names no override keeps the shared
+  `OTP_TTL`. Issuing a `password_reset` challenge also burns every outstanding one for the same
+  address, so an older email in an inbox stops being a way in — burned by spending the attempt
+  budget, which is the derived state this table already uses rather than a new column.
 
 - `code_hash` is `HMAC-SHA256(challenge_id ‖ 0x00 ‖ code, server_key)`, **not** the code alone.
   Binding the id in is what makes "a code from challenge A does not verify challenge B" a property
@@ -203,7 +210,7 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | `POST` | `/api/v1/auth/mfa/verify` | `public` | Complete a login that required a second factor |
 | `POST` | `/api/v1/auth/refresh` | `public` | Rotate the refresh token and issue a new access token |
 | `POST` | `/api/v1/auth/logout` | `self` | Revoke the current session and refresh family |
-| `POST` | `/api/v1/auth/forgot-password` | `public` | Send a reset link |
+| `POST` | `/api/v1/auth/forgot-password` | `public` | Send a reset code |
 | `POST` | `/api/v1/auth/reset-password` | `public` | Consume a reset token and set a new password |
 | `POST` | `/api/v1/auth/change-password` | `self` | Change the password while signed in |
 | `GET` | `/api/v1/auth/sessions` | `self` | List the caller's active sessions |
@@ -260,7 +267,7 @@ and fails `go-arch-lint` in CI.
 7. **BR-AUTH-07** — MFA is mandatory for accounts holding the `admin` role; a promotion to admin forces enrolment on next login.
 8. **BR-AUTH-08** — Five failed attempts within 15 minutes lock the account for an exponentially increasing period, tracked per account and per IP independently.
 9. **BR-AUTH-09** — A suspended user's tokens stop working within one access-token lifetime (15 min); their sessions are revoked immediately on suspension.
-10. **BR-AUTH-10** — Every one-time code is 6 digits, single-use, expires in 10 minutes, allows at most 5 verification attempts, and is stored only as an HMAC — never in plaintext, never in a log.
+10. **BR-AUTH-10** — Every one-time code is 6 digits, single-use, allows at most 5 verification attempts, and is stored only as an HMAC — never in plaintext, never in a log. It expires in 10 minutes unless its purpose sets otherwise; `password_reset` gets 30, because a reset email can sit unread in a way a signup code typed on the next screen cannot.
 11. **BR-AUTH-11** — A code is worthless without its `challenge_id`. The client receives the id; the code goes to the email. Guessing a code alone gets an attacker nothing.
 12. **BR-AUTH-12** — Exceeding `max_attempts` burns the challenge permanently. A new one must be requested — the code is not simply retried.
 13. **BR-AUTH-13** — Resend has a 60-second cooldown and a cap of 3 issuances per subject per hour. Resending replaces the code and resets attempts; it does not extend the absolute expiry.

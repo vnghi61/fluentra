@@ -1,6 +1,7 @@
 package service_test
 
 import (
+	"bytes"
 	"context"
 	"sync"
 	"time"
@@ -151,6 +152,34 @@ func (f *fakeRepository) ResendChallenge(
 // the integration suite proves is that a rollback removes the row, and that
 // needs a real one.
 func (f *fakeRepository) WithTx(pgx.Tx) service.Repository { return f }
+
+// BurnLiveChallengesForSubject mirrors the SQL clause for clause: only
+// challenges of the same purpose and subject that are neither consumed, already
+// burned, nor expired. A fake more permissive than the query would let a test
+// pass that the real system fails.
+func (f *fakeRepository) BurnLiveChallengesForSubject(
+	_ context.Context, purpose domain.Purpose, subjectHash []byte, now time.Time,
+) (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	burned := 0
+	for id, challenge := range f.challenges {
+		if challenge.Purpose != purpose || !bytes.Equal(challenge.SubjectHash, subjectHash) {
+			continue
+		}
+		if challenge.ConsumedAt != nil || challenge.Attempts >= challenge.MaxAttempts {
+			continue
+		}
+		if !challenge.ExpiresAt.After(now) {
+			continue
+		}
+		challenge.Attempts = challenge.MaxAttempts
+		f.challenges[id] = challenge
+		burned++
+	}
+	return burned, nil
+}
 
 // fakeLimiter records what it was asked and answers from a scripted verdict.
 type fakeLimiter struct {

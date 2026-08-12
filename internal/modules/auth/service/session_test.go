@@ -97,6 +97,30 @@ func (f *fakeSessionRepo) RevokeAllSessionsForUser(_ context.Context, userID uui
 	return count, nil
 }
 
+func (f *fakeSessionRepo) RevokeOtherSessionsForUser(
+	_ context.Context, userID, keepSessionID uuid.UUID, now time.Time,
+) (int, error) {
+	count := 0
+	for id, session := range f.sessions {
+		if session.UserID == userID && id != keepSessionID && !session.Revoked() {
+			session.RevokedAt = &now
+			f.sessions[id] = session
+			count++
+		}
+	}
+	return count, nil
+}
+
+func (f *fakeSessionRepo) RevokeRefreshTokensForOtherSessions(
+	_ context.Context, _, _ uuid.UUID, _ time.Time,
+) (int, error) {
+	if f.familyErr != nil {
+		return 0, f.familyErr
+	}
+	f.familyCall++
+	return 1, nil
+}
+
 func (f *fakeSessionRepo) RevokeRefreshTokensBySession(_ context.Context, _ uuid.UUID, _ time.Time) (int, error) {
 	if f.familyErr != nil {
 		return 0, f.familyErr
@@ -452,6 +476,37 @@ func TestRevokeAll_DropsEveryCachedOwnerItRevoked(t *testing.T) {
 	for _, key := range h.cache.deletes {
 		if !strings.HasPrefix(key, sessionKeyPrefix) {
 			t.Errorf("dropped an unexpected key: %s", key)
+		}
+	}
+}
+
+// TestRevokeAllExcept_KeepsTheDeviceTheChangeWasMadeFrom is what a password
+// change relies on. Signing a learner out of the machine in front of them,
+// immediately after they did the responsible thing, teaches them not to do it
+// again — and the cache entry for the kept session must survive too, because
+// the session has not died.
+func TestRevokeAllExcept_KeepsTheDeviceTheChangeWasMadeFrom(t *testing.T) {
+	h := newSessionServiceHarness(t)
+
+	revoked, err := h.service.RevokeAllExcept(context.Background(), h.userID, h.current)
+	if err != nil {
+		t.Fatalf("RevokeAllExcept: %v", err)
+	}
+	if revoked != 1 {
+		t.Errorf("%d sessions revoked, want 1 — the other device only", revoked)
+	}
+
+	if h.repo.sessions[h.current].Revoked() {
+		t.Error("the kept session was revoked")
+	}
+	if !h.repo.sessions[h.otherOne].Revoked() {
+		t.Error("the other session survived")
+	}
+
+	keptKey := sessionKeyPrefix + h.current.String() + ":v1"
+	for _, dropped := range h.cache.deletes {
+		if dropped == keptKey {
+			t.Error("the kept session's cache entry was dropped, for a session that is still live")
 		}
 	}
 }
