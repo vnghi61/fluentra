@@ -312,14 +312,29 @@ type CoreRefreshToken struct {
 }
 
 type CoreSession struct {
-	ID            uuid.UUID
-	UserID        uuid.UUID
-	DeviceLabel   *string
-	IpHash        []byte
-	UserAgentHash []byte
-	CreatedAt     time.Time
-	LastSeenAt    time.Time
-	RevokedAt     *time.Time
+	ID                uuid.UUID
+	UserID            uuid.UUID
+	DeviceLabel       *string
+	IpHash            []byte
+	UserAgentHash     []byte
+	CreatedAt         time.Time
+	LastSeenAt        time.Time
+	RevokedAt         *time.Time
+	AbsoluteExpiresAt time.Time
+	IdleWindow        pgtype.Interval
+	TrustedDeviceID   *uuid.UUID
+}
+
+type CoreTrustedDevice struct {
+	ID                uuid.UUID
+	UserID            uuid.UUID
+	DeviceIDHash      []byte
+	Label             *string
+	IdleWindow        pgtype.Interval
+	AbsoluteExpiresAt time.Time
+	TrustedAt         time.Time
+	LastSeenAt        time.Time
+	RevokedAt         *time.Time
 }
 
 type CoreUser struct {

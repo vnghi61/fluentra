@@ -43,6 +43,7 @@ type SessionRepo interface {
 	) (int, error)
 	RevokeRefreshTokensBySession(ctx context.Context, sessionID uuid.UUID, now time.Time) (int, error)
 	RevokeRefreshTokensForUser(ctx context.Context, userID uuid.UUID, now time.Time) (int, error)
+	UntrustAllDevicesForUser(ctx context.Context, userID uuid.UUID, now time.Time) (int, error)
 	WithTx(tx pgx.Tx) SessionRepo
 }
 
@@ -210,6 +211,12 @@ func (s *SessionService) RevokeAll(ctx context.Context, userID uuid.UUID) (int, 
 		if _, err := repo.RevokeRefreshTokensForUser(ctx, userID, now); err != nil {
 			return err
 		}
+		// Every trusted device goes too (BR-AUTH-25). A device that stayed
+		// trusted through a password reset would be a ninety-day window the
+		// attacker keeps, which is the opposite of what the learner asked for.
+		if _, err := repo.UntrustAllDevicesForUser(ctx, userID, now); err != nil {
+			return err
+		}
 		revoked, err = repo.RevokeAllSessionsForUser(ctx, userID, now)
 		return err
 	})
@@ -249,6 +256,12 @@ func (s *SessionService) RevokeAllExcept(ctx context.Context, userID, keep uuid.
 		sessions = live
 
 		if _, err := repo.RevokeRefreshTokensForOtherSessions(ctx, userID, keep, now); err != nil {
+			return err
+		}
+		// A password change untrusts every device as well, including the one it
+		// was made from: the learner keeps this session, not the standing
+		// ninety-day permission attached to the browser it runs in.
+		if _, err := repo.UntrustAllDevicesForUser(ctx, userID, now); err != nil {
 			return err
 		}
 		revoked, err = repo.RevokeOtherSessionsForUser(ctx, userID, keep, now)

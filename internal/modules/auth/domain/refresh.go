@@ -48,6 +48,13 @@ type SessionToken struct {
 	RefreshToken
 
 	UserID uuid.UUID
+
+	// AbsoluteExpiresAt and IdleWindow come from the session the token belongs
+	// to, through the same join that carries the user id. Rotation needs both:
+	// the window to slide, and the cap to stop sliding at.
+	AbsoluteExpiresAt time.Time
+	IdleWindow        time.Duration
+	TrustedDeviceID   *uuid.UUID
 }
 
 // Spent reports whether the token has already been exchanged. Presenting a

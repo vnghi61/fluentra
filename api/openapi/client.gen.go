@@ -214,6 +214,26 @@ type ClientInterface interface {
 	// Corresponds with POST /auth/change-password (the `AuthChangePassword` operationId).
 	AuthChangePassword(ctx context.Context, body AuthChangePasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AuthListDevices List the devices this account has chosen to trust.
+	//
+	// Returns the caller's trusted devices, most recently active first, with both expiries: the idle one that every use moves forward, and the absolute one that nothing does.
+	//
+	// Showing both is the point. "Stay signed in" is only defensible because it ends -- a learner who can see that this laptop stops being trusted on a fixed date can reason about the risk, and one who cannot is being asked to take it on faith.
+	//
+	// Corresponds with GET /auth/devices (the `AuthListDevices` operationId).
+	AuthListDevices(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AuthUntrustDevice Stop trusting a device.
+	//
+	// Removes the trust and **revokes the refresh family belonging to it immediately**, so the device is signed out rather than merely demoted to the shorter window. Untrusting is what a learner reaches for when a laptop is lost, and a laptop that stays signed in for thirty more days is not what they asked for.
+	//
+	// A device belonging to another account is 404, not 403, for the reason `DELETE /auth/sessions/{id}` gives: 403 confirms the id names a real device and turns the operation into a way to enumerate them.
+	//
+	// Untrusting a device that is already untrusted answers 204.
+	//
+	// Corresponds with DELETE /auth/devices/{id} (the `AuthUntrustDevice` operationId).
+	AuthUntrustDevice(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AuthForgotPasswordWithBody Start a password reset.
 	//
 	// Issues a `password_reset` challenge and emails the six-digit code to the address, if there is an account on it.
@@ -292,6 +312,8 @@ type ClientInterface interface {
 	// A consequence worth designing around: two requests racing with the same valid token have exactly one winner, and the loser is indistinguishable from a replay, so it is treated as one. A client refreshing from several tabs must serialise them.
 	//
 	// An unknown, expired or already-revoked token is 401 `TOKEN_INVALID`. That is a different code from the reuse case on purpose -- reuse means the session was taken away because a token was replayed, which is worth telling the learner and worth finding in a log, while `TOKEN_INVALID` means only that this credential buys nothing. Both end at the login form.
+	//
+	// A session that has reached its **absolute** expiry answers 401 `SESSION_ABSOLUTE_EXPIRED`, and it is worth a code of its own because nothing is wrong: the learner did nothing, the token was not stolen, and the session simply reached the age at which possession has to be proven again. A client can say so rather than implying something went missing. Rotation moves the idle window forward on every use and never moves this, which is the entire security argument for the idle window being as long as it is (BR-AUTH-22).
 	//
 	// Corresponds with POST /auth/refresh (the `AuthRefresh` operationId).
 	AuthRefresh(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -713,6 +735,46 @@ func (c *Client) AuthChangePassword(ctx context.Context, body AuthChangePassword
 	return c.Client.Do(req)
 }
 
+// AuthListDevices List the devices this account has chosen to trust.
+//
+// Returns the caller's trusted devices, most recently active first, with both expiries: the idle one that every use moves forward, and the absolute one that nothing does.
+//
+// Showing both is the point. "Stay signed in" is only defensible because it ends -- a learner who can see that this laptop stops being trusted on a fixed date can reason about the risk, and one who cannot is being asked to take it on faith.
+//
+// Corresponds with GET /auth/devices (the `AuthListDevices` operationId).
+func (c *Client) AuthListDevices(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthListDevicesRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AuthUntrustDevice Stop trusting a device.
+//
+// Removes the trust and **revokes the refresh family belonging to it immediately**, so the device is signed out rather than merely demoted to the shorter window. Untrusting is what a learner reaches for when a laptop is lost, and a laptop that stays signed in for thirty more days is not what they asked for.
+//
+// A device belonging to another account is 404, not 403, for the reason `DELETE /auth/sessions/{id}` gives: 403 confirms the id names a real device and turns the operation into a way to enumerate them.
+//
+// Untrusting a device that is already untrusted answers 204.
+//
+// Corresponds with DELETE /auth/devices/{id} (the `AuthUntrustDevice` operationId).
+func (c *Client) AuthUntrustDevice(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthUntrustDeviceRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // AuthForgotPasswordWithBody Start a password reset.
 //
 // Issues a `password_reset` challenge and emails the six-digit code to the address, if there is an account on it.
@@ -841,6 +903,8 @@ func (c *Client) AuthLogout(ctx context.Context, reqEditors ...RequestEditorFn) 
 // A consequence worth designing around: two requests racing with the same valid token have exactly one winner, and the loser is indistinguishable from a replay, so it is treated as one. A client refreshing from several tabs must serialise them.
 //
 // An unknown, expired or already-revoked token is 401 `TOKEN_INVALID`. That is a different code from the reuse case on purpose -- reuse means the session was taken away because a token was replayed, which is worth telling the learner and worth finding in a log, while `TOKEN_INVALID` means only that this credential buys nothing. Both end at the login form.
+//
+// A session that has reached its **absolute** expiry answers 401 `SESSION_ABSOLUTE_EXPIRED`, and it is worth a code of its own because nothing is wrong: the learner did nothing, the token was not stolen, and the session simply reached the age at which possession has to be proven again. A client can say so rather than implying something went missing. Rotation moves the idle window forward on every use and never moves this, which is the entire security argument for the idle window being as long as it is (BR-AUTH-22).
 //
 // Corresponds with POST /auth/refresh (the `AuthRefresh` operationId).
 func (c *Client) AuthRefresh(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -1747,6 +1811,67 @@ func NewAuthChangePasswordRequestWithBody(server string, contentType string, bod
 	return req, nil
 }
 
+// NewAuthListDevicesRequest constructs an http.Request for the AuthListDevices method
+func NewAuthListDevicesRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/devices")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAuthUntrustDeviceRequest constructs an http.Request for the AuthUntrustDevice method
+func NewAuthUntrustDeviceRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/devices/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewAuthForgotPasswordRequest calls the generic AuthForgotPassword builder with application/json body
 func NewAuthForgotPasswordRequest(server string, body AuthForgotPasswordJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -2468,6 +2593,30 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /auth/change-password (the `AuthChangePassword` operationId).
 	AuthChangePasswordWithResponse(ctx context.Context, body AuthChangePasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*AuthChangePasswordResponse, error)
 
+	// AuthListDevicesWithResponse List the devices this account has chosen to trust.
+	//
+	// Returns the caller's trusted devices, most recently active first, with both expiries: the idle one that every use moves forward, and the absolute one that nothing does.
+	//
+	// Showing both is the point. "Stay signed in" is only defensible because it ends -- a learner who can see that this laptop stops being trusted on a fixed date can reason about the risk, and one who cannot is being asked to take it on faith.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /auth/devices (the `AuthListDevices` operationId).
+	AuthListDevicesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AuthListDevicesResponse, error)
+
+	// AuthUntrustDeviceWithResponse Stop trusting a device.
+	//
+	// Removes the trust and **revokes the refresh family belonging to it immediately**, so the device is signed out rather than merely demoted to the shorter window. Untrusting is what a learner reaches for when a laptop is lost, and a laptop that stays signed in for thirty more days is not what they asked for.
+	//
+	// A device belonging to another account is 404, not 403, for the reason `DELETE /auth/sessions/{id}` gives: 403 confirms the id names a real device and turns the operation into a way to enumerate them.
+	//
+	// Untrusting a device that is already untrusted answers 204.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /auth/devices/{id} (the `AuthUntrustDevice` operationId).
+	AuthUntrustDeviceWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*AuthUntrustDeviceResponse, error)
+
 	// AuthForgotPasswordWithBodyWithResponse Start a password reset.
 	//
 	// Issues a `password_reset` challenge and emails the six-digit code to the address, if there is an account on it.
@@ -2548,6 +2697,8 @@ type ClientWithResponsesInterface interface {
 	// A consequence worth designing around: two requests racing with the same valid token have exactly one winner, and the loser is indistinguishable from a replay, so it is treated as one. A client refreshing from several tabs must serialise them.
 	//
 	// An unknown, expired or already-revoked token is 401 `TOKEN_INVALID`. That is a different code from the reuse case on purpose -- reuse means the session was taken away because a token was replayed, which is worth telling the learner and worth finding in a log, while `TOKEN_INVALID` means only that this credential buys nothing. Both end at the login form.
+	//
+	// A session that has reached its **absolute** expiry answers 401 `SESSION_ABSOLUTE_EXPIRED`, and it is worth a code of its own because nothing is wrong: the learner did nothing, the token was not stolen, and the session simply reached the age at which possession has to be proven again. A client can say so rather than implying something went missing. Rotation moves the idle window forward on every use and never moves this, which is the entire security argument for the idle window being as long as it is (BR-AUTH-22).
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -3466,6 +3617,151 @@ func (r AuthChangePasswordResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r AuthChangePasswordResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AuthListDevicesResponse200Headers the declared response headers of an HTTP 200 response for AuthListDevices
+type AuthListDevicesResponse200Headers struct {
+	XRequestId *string
+}
+
+// AuthListDevicesResponse429Headers the declared response headers of an HTTP 429 response for AuthListDevices
+type AuthListDevicesResponse429Headers struct {
+	RateLimitLimit     *int
+	RateLimitRemaining *int
+	RateLimitReset     *int
+	RetryAfter         *int
+}
+
+type AuthListDevicesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *TrustedDeviceList
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AuthListDevicesResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AuthListDevicesResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AuthListDevicesResponse) GetJSON200() *TrustedDeviceList {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AuthListDevicesResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AuthListDevicesResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetBody returns the raw response body bytes
+func (r AuthListDevicesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AuthListDevicesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AuthListDevicesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AuthListDevicesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AuthUntrustDeviceResponse204Headers the declared response headers of an HTTP 204 response for AuthUntrustDevice
+type AuthUntrustDeviceResponse204Headers struct {
+	SetCookie  *string
+	XRequestId *string
+}
+
+// AuthUntrustDeviceResponse429Headers the declared response headers of an HTTP 429 response for AuthUntrustDevice
+type AuthUntrustDeviceResponse429Headers struct {
+	RateLimitLimit     *int
+	RateLimitRemaining *int
+	RateLimitReset     *int
+	RetryAfter         *int
+}
+
+type AuthUntrustDeviceResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// Headers204 the parsed response headers for an HTTP 204 response
+	Headers204 *AuthUntrustDeviceResponse204Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AuthUntrustDeviceResponse429Headers
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AuthUntrustDeviceResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AuthUntrustDeviceResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AuthUntrustDeviceResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetBody returns the raw response body bytes
+func (r AuthUntrustDeviceResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AuthUntrustDeviceResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AuthUntrustDeviceResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AuthUntrustDeviceResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -4805,6 +5101,42 @@ func (c *ClientWithResponses) AuthChangePasswordWithResponse(ctx context.Context
 	return ParseAuthChangePasswordResponse(rsp)
 }
 
+// AuthListDevicesWithResponse List the devices this account has chosen to trust.
+//
+// Returns the caller's trusted devices, most recently active first, with both expiries: the idle one that every use moves forward, and the absolute one that nothing does.
+//
+// Showing both is the point. "Stay signed in" is only defensible because it ends -- a learner who can see that this laptop stops being trusted on a fixed date can reason about the risk, and one who cannot is being asked to take it on faith.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /auth/devices (the `AuthListDevices` operationId).
+func (c *ClientWithResponses) AuthListDevicesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AuthListDevicesResponse, error) {
+	rsp, err := c.AuthListDevices(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthListDevicesResponse(rsp)
+}
+
+// AuthUntrustDeviceWithResponse Stop trusting a device.
+//
+// Removes the trust and **revokes the refresh family belonging to it immediately**, so the device is signed out rather than merely demoted to the shorter window. Untrusting is what a learner reaches for when a laptop is lost, and a laptop that stays signed in for thirty more days is not what they asked for.
+//
+// A device belonging to another account is 404, not 403, for the reason `DELETE /auth/sessions/{id}` gives: 403 confirms the id names a real device and turns the operation into a way to enumerate them.
+//
+// Untrusting a device that is already untrusted answers 204.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /auth/devices/{id} (the `AuthUntrustDevice` operationId).
+func (c *ClientWithResponses) AuthUntrustDeviceWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*AuthUntrustDeviceResponse, error) {
+	rsp, err := c.AuthUntrustDevice(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthUntrustDeviceResponse(rsp)
+}
+
 // AuthForgotPasswordWithBodyWithResponse Start a password reset.
 //
 // Issues a `password_reset` challenge and emails the six-digit code to the address, if there is an account on it.
@@ -4915,6 +5247,8 @@ func (c *ClientWithResponses) AuthLogoutWithResponse(ctx context.Context, reqEdi
 // A consequence worth designing around: two requests racing with the same valid token have exactly one winner, and the loser is indistinguishable from a replay, so it is treated as one. A client refreshing from several tabs must serialise them.
 //
 // An unknown, expired or already-revoked token is 401 `TOKEN_INVALID`. That is a different code from the reuse case on purpose -- reuse means the session was taken away because a token was replayed, which is worth telling the learner and worth finding in a log, while `TOKEN_INVALID` means only that this credential buys nothing. Both end at the login form.
+//
+// A session that has reached its **absolute** expiry answers 401 `SESSION_ABSOLUTE_EXPIRED`, and it is worth a code of its own because nothing is wrong: the learner did nothing, the token was not stolen, and the session simply reached the age at which possession has to be proven again. A client can say so rather than implying something went missing. Rotation moves the idle window forward on every use and never moves this, which is the entire security argument for the idle window being as long as it is (BR-AUTH-22).
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -5900,6 +6234,184 @@ func ParseAuthChangePasswordResponse(rsp *http.Response) (*AuthChangePasswordRes
 		response.Headers200 = &headers
 	case rsp.StatusCode == 429:
 		var headers AuthChangePasswordResponse429Headers
+		if values := rsp.Header.Values("RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitReset = &value
+		}
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAuthListDevicesResponse parses an HTTP response from a AuthListDevicesWithResponse call
+func ParseAuthListDevicesResponse(rsp *http.Response) (*AuthListDevicesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AuthListDevicesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest TrustedDeviceList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AuthListDevicesResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AuthListDevicesResponse429Headers
+		if values := rsp.Header.Values("RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitReset = &value
+		}
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAuthUntrustDeviceResponse parses an HTTP response from a AuthUntrustDeviceWithResponse call
+func ParseAuthUntrustDeviceResponse(rsp *http.Response) (*AuthUntrustDeviceResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AuthUntrustDeviceResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		var headers AuthUntrustDeviceResponse204Headers
+		if values := rsp.Header.Values("Set-Cookie"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "Set-Cookie", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.SetCookie = &value
+		}
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers204 = &headers
+	case rsp.StatusCode == 429:
+		var headers AuthUntrustDeviceResponse429Headers
 		if values := rsp.Header.Values("RateLimit-Limit"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

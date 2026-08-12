@@ -147,12 +147,47 @@ func newTestRouterWithPasswords(
 	reg authhttp.Registration, auth authhttp.Authenticator, rotator authhttp.Rotator,
 	sessions authhttp.Sessions, passwords authhttp.Passwords, cookies authhttp.CookieOptions,
 ) chi.Router {
+	return newTestRouterWithDevices(reg, auth, rotator, sessions, passwords, &fakeDevices{}, cookies)
+}
+
+func newTestRouterWithDevices(
+	reg authhttp.Registration, auth authhttp.Authenticator, rotator authhttp.Rotator,
+	sessions authhttp.Sessions, passwords authhttp.Passwords, devices authhttp.Devices,
+	cookies authhttp.CookieOptions,
+) chi.Router {
 	r := chi.NewRouter()
 	r.Route("/api/v1", func(api chi.Router) {
-		handler := authhttp.NewHandler(reg, auth, rotator, sessions, passwords, cookies)
+		handler := authhttp.NewHandler(reg, auth, rotator, sessions, passwords, devices, cookies)
 		handler.Routes(api)
 	})
 	return r
+}
+
+// fakeDevices stands in for the trusted-device service. The windows and the
+// untrust cascade are proved against Postgres; what the handler owes them is the
+// actor, the shape, and the 404 passed through unchanged.
+type fakeDevices struct {
+	listFn    func(ctx context.Context, actor httpx.Actor) ([]service.DeviceView, error)
+	untrustFn func(ctx context.Context, actor httpx.Actor, deviceID uuid.UUID) error
+
+	sawActor  httpx.Actor
+	sawDevice uuid.UUID
+}
+
+func (f *fakeDevices) List(ctx context.Context, actor httpx.Actor) ([]service.DeviceView, error) {
+	f.sawActor = actor
+	if f.listFn != nil {
+		return f.listFn(ctx, actor)
+	}
+	return nil, nil
+}
+
+func (f *fakeDevices) Untrust(ctx context.Context, actor httpx.Actor, deviceID uuid.UUID) error {
+	f.sawActor, f.sawDevice = actor, deviceID
+	if f.untrustFn != nil {
+		return f.untrustFn(ctx, actor, deviceID)
+	}
+	return nil
 }
 
 // fakePasswords stands in for the reset and change service. The enumeration
@@ -964,5 +999,161 @@ func TestHandler_ChangePasswordRefusesAnAnonymousCaller(t *testing.T) {
 
 	if rec.Code != http.StatusUnauthorized {
 		t.Errorf("status = %d, want 401; body: %s", rec.Code, rec.Body.String())
+	}
+}
+
+// TestHandler_TheDeviceOperationsRefuseAnAnonymousCaller is the same guard the
+// session operations start with, for the same reason: the middleware lets a
+// request with no Authorization header through, so a handler that forgot to ask
+// would serve the zero actor and uuid.Nil matches no account — the bug would
+// look like an empty list rather than a failure.
+func TestHandler_TheDeviceOperationsRefuseAnAnonymousCaller(t *testing.T) {
+	devices := &fakeDevices{
+		listFn: func(context.Context, httpx.Actor) ([]service.DeviceView, error) {
+			t.Error("the service was reached by a caller with no actor")
+			return nil, nil
+		},
+	}
+	router := newTestRouterWithDevices(
+		&fakeRegistrationService{}, &fakeAuthenticator{}, &fakeRotator{}, &fakeSessions{},
+		&fakePasswords{}, devices, authhttp.CookieOptions{Secure: true})
+
+	for name, req := range map[string]*http.Request{
+		"list":    httptest.NewRequest(http.MethodGet, "/api/v1/auth/devices", nil),
+		"untrust": httptest.NewRequest(http.MethodDelete, "/api/v1/auth/devices/"+testChallengeID, nil),
+	} {
+		t.Run(name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			router.ServeHTTP(rec, req)
+			if rec.Code != http.StatusUnauthorized {
+				t.Errorf("status = %d, want 401; body: %s", rec.Code, rec.Body.String())
+			}
+		})
+	}
+}
+
+// TestHandler_TheDeviceListCarriesBothExpiries is what makes "stay signed in"
+// defensible to the person it applies to. A list showing only the idle date
+// implies the trust renews forever, which is the thing it deliberately does not
+// do.
+func TestHandler_TheDeviceListCarriesBothExpiries(t *testing.T) {
+	label := "Chrome on macOS"
+	devices := &fakeDevices{
+		listFn: func(context.Context, httpx.Actor) ([]service.DeviceView, error) {
+			return []service.DeviceView{{
+				ID:                uuid.MustParse(testChallengeID),
+				Label:             &label,
+				TrustedAt:         time.Now().UTC().Add(-48 * time.Hour),
+				LastSeenAt:        time.Now().UTC(),
+				IdleExpiresAt:     time.Now().UTC().Add(90 * 24 * time.Hour),
+				AbsoluteExpiresAt: time.Now().UTC().Add(180 * 24 * time.Hour),
+			}}, nil
+		},
+	}
+	router := newTestRouterWithDevices(
+		&fakeRegistrationService{}, &fakeAuthenticator{}, &fakeRotator{}, &fakeSessions{},
+		&fakePasswords{}, devices, authhttp.CookieOptions{Secure: true})
+
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, signedIn(
+		httptest.NewRequest(http.MethodGet, "/api/v1/auth/devices", nil), testActor(uuid.New())))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body: %s", rec.Code, rec.Body.String())
+	}
+
+	var response struct {
+		Devices []map[string]any `json:"devices"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(response.Devices) != 1 {
+		t.Fatalf("%d devices, want 1", len(response.Devices))
+	}
+	for _, field := range []string{"idle_expires_at", "absolute_expires_at", "trusted_at", "last_seen_at"} {
+		if value, ok := response.Devices[0][field]; !ok || value == "" {
+			t.Errorf("the device row is missing %s", field)
+		}
+	}
+}
+
+// TestHandler_AnEmptyDeviceListSerialisesAsAnArray is the `[]` versus `null`
+// distinction the session list draws, for the same reason.
+func TestHandler_AnEmptyDeviceListSerialisesAsAnArray(t *testing.T) {
+	router := newTestRouterWithDevices(
+		&fakeRegistrationService{}, &fakeAuthenticator{}, &fakeRotator{}, &fakeSessions{},
+		&fakePasswords{}, &fakeDevices{}, authhttp.CookieOptions{Secure: true})
+
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, signedIn(
+		httptest.NewRequest(http.MethodGet, "/api/v1/auth/devices", nil), testActor(uuid.New())))
+
+	if !strings.Contains(rec.Body.String(), `"devices":[]`) {
+		t.Errorf("an empty list did not serialise as an array: %s", rec.Body.String())
+	}
+}
+
+// TestHandler_AMalformedDeviceIDIsTheSame404AsAnUnknownOne keeps the shape of
+// the id from being something to probe for.
+func TestHandler_AMalformedDeviceIDIsTheSame404AsAnUnknownOne(t *testing.T) {
+	devices := &fakeDevices{
+		untrustFn: func(context.Context, httpx.Actor, uuid.UUID) error {
+			return apperr.New(apperr.NotFound, "RESOURCE_NOT_FOUND", "That device was not found.")
+		},
+	}
+	router := newTestRouterWithDevices(
+		&fakeRegistrationService{}, &fakeAuthenticator{}, &fakeRotator{}, &fakeSessions{},
+		&fakePasswords{}, devices, authhttp.CookieOptions{Secure: true})
+
+	bodies := map[string]map[string]any{}
+	for name, path := range map[string]string{
+		"malformed": "/api/v1/auth/devices/not-a-uuid",
+		"unknown":   "/api/v1/auth/devices/" + uuid.New().String(),
+	} {
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, signedIn(httptest.NewRequest(http.MethodDelete, path, nil), testActor(uuid.New())))
+
+		if rec.Code != http.StatusNotFound {
+			t.Fatalf("%s: status = %d, want 404; body: %s", name, rec.Code, rec.Body.String())
+		}
+		var problem map[string]any
+		if err := json.Unmarshal(rec.Body.Bytes(), &problem); err != nil {
+			t.Fatalf("%s: decode problem: %v", name, err)
+		}
+		delete(problem, "instance")
+		bodies[name] = problem
+	}
+
+	if !reflect.DeepEqual(bodies["malformed"], bodies["unknown"]) {
+		t.Errorf("the two 404s differ:\n malformed: %v\n unknown:   %v", bodies["malformed"], bodies["unknown"])
+	}
+}
+
+// TestHandler_UntrustingAnsWers204AndPassesTheActorThrough covers the ordinary
+// path: no body, and the account taken from the token rather than the request.
+func TestHandler_UntrustingAnsWers204AndPassesTheActorThrough(t *testing.T) {
+	devices := &fakeDevices{}
+	router := newTestRouterWithDevices(
+		&fakeRegistrationService{}, &fakeAuthenticator{}, &fakeRotator{}, &fakeSessions{},
+		&fakePasswords{}, devices, authhttp.CookieOptions{Secure: true})
+
+	deviceID := uuid.New()
+	actor := testActor(uuid.New())
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, signedIn(
+		httptest.NewRequest(http.MethodDelete, "/api/v1/auth/devices/"+deviceID.String(), nil), actor))
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want 204; body: %s", rec.Code, rec.Body.String())
+	}
+	if rec.Body.Len() != 0 {
+		t.Errorf("204 carried a body: %s", rec.Body.String())
+	}
+	if devices.sawDevice != deviceID {
+		t.Errorf("the service was given device %s, want %s", devices.sawDevice, deviceID)
+	}
+	if devices.sawActor.UserID != actor.UserID {
+		t.Errorf("the service was given account %s, want %s", devices.sawActor.UserID, actor.UserID)
 	}
 }

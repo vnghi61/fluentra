@@ -54,6 +54,18 @@ var (
 	ErrSessionRevoked = apperr.New(
 		apperr.Unauthenticated, "SESSION_REVOKED", "That session has been signed out.")
 
+	// ErrSessionAbsoluteExpired is a session that reached the cap activity
+	// cannot move (BR-AUTH-22).
+	//
+	// It is a separate code from SESSION_REVOKED because nothing is wrong. The
+	// learner did nothing, the token was not stolen, and the session simply
+	// reached the age at which possession has to be proven again — so a client
+	// can say that rather than implying something went missing. It is also the
+	// one refusal here that is expected to happen to everybody eventually.
+	ErrSessionAbsoluteExpired = apperr.New(
+		apperr.Unauthenticated, "SESSION_ABSOLUTE_EXPIRED",
+		"This session has reached its maximum age. Sign in again.")
+
 	// ErrEmailNotVerified is a correct password on an account that never proved
 	// its address.
 	//

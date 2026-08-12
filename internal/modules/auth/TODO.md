@@ -55,6 +55,20 @@ by hand. Completed work is recorded here instead.
 | P2.3 | 2026-08-10 | `core.login_attempts` migration & table; `LoginService` handling Argon2id constant-time timing equalisation (`DummyVerify` for unknown emails), per-account and per-IP lockouts backed by persisted failures with 15-minute-to-24-hour exponential backoff, account status checks (suspended/unverified), transparent Argon2id parameter rehash on login, and `POST /auth/login` HTTP endpoint |
 | P2.4 | 2026-08-11 | `TokenService` — HS256 access tokens carrying `sub`/`sid`/`role`/`jti`/`iat`/`exp`/`aud`/`iss` and no PII, two-key rotation, 60-second leeway, the signing method pinned so an `alg: none` token cannot verify, and the parser driven by the injected clock; `TokenDenylist` over Redis for explicit logout, failing open per ADR-0007; `Authenticate` middleware placing `httpx.Actor` in the request context; login and email verification both return an `AuthSession`; `EMAIL_NOT_VERIFIED` corrected to 403 and account suspension split out of `ACCOUNT_LOCKED` into `ACCOUNT_SUSPENDED` |
 
+## Open after P2.9
+
+- [ ] **Nothing sweeps expired trusted devices.** A device past its absolute expiry stops being
+      listed and stops lengthening anything, because `ListTrustedDevices` filters on it — but the row
+      stays. Same shape as the refresh-token and session sweeps already filed; probably one card for
+      all three.
+- [ ] **`TRUSTED_DEVICE_LIMIT` is in `.env.example` and enforced nowhere.** A learner can trust an
+      unbounded number of browsers. The unique index keeps one row per device id, so this is a
+      nuisance rather than a hole, and capping it needs a decision about what happens at the limit —
+      refuse, or evict the least recently used.
+- [ ] **`cmd/worker` gets the default windows.** It builds an auth module for the mailer consumer and
+      the sweep, and reads no `SESSION_*` key. Nothing in the worker opens a session, so it does not
+      matter today.
+
 ## Open after P2.8
 
 - [ ] **`/api/v1/ping` is not rate limited.** The middleware is mounted inside the group the modules

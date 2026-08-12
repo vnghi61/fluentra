@@ -28,8 +28,14 @@ WHERE rt.token_hash = sqlc.arg(token_hash)
   AND rt.expires_at > sqlc.arg(now)::timestamptz
   AND s.id = rt.session_id
   AND s.revoked_at IS NULL
+  -- The absolute cap, enforced in the same statement that spends the token.
+  -- Checked here rather than after the claim so a session past its cap never
+  -- spends one: the caller is going to be refused either way, and a token burnt
+  -- on a refusal is a token the legitimate client no longer has if the cap turns
+  -- out to have been misread.
+  AND s.absolute_expires_at > sqlc.arg(now)::timestamptz
 RETURNING rt.id, rt.token_hash, rt.family_id, rt.session_id, rt.issued_at, rt.expires_at, rt.used_at,
-          rt.revoked_at, s.user_id;
+          rt.revoked_at, s.user_id, s.absolute_expires_at, s.idle_window;
 
 -- GetRefreshTokenByHash reads a row without changing it.
 --
@@ -43,7 +49,7 @@ RETURNING rt.id, rt.token_hash, rt.family_id, rt.session_id, rt.issued_at, rt.ex
 --
 -- name: GetRefreshTokenByHash :one
 SELECT rt.id, rt.token_hash, rt.family_id, rt.session_id, rt.issued_at, rt.expires_at, rt.used_at,
-       rt.revoked_at, s.user_id
+       rt.revoked_at, s.user_id, s.absolute_expires_at, s.idle_window
 FROM core.refresh_tokens rt
 JOIN core.sessions s ON s.id = rt.session_id
 WHERE rt.token_hash = $1;

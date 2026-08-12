@@ -25,13 +25,14 @@ import (
 type fakeSessionRepo struct {
 	sessions map[uuid.UUID]domain.Session
 
-	listErr    error
-	getErr     error
-	revokeErr  error
-	familyErr  error
-	getCalls   int
-	familyCall int
-	revoked    []uuid.UUID
+	listErr      error
+	getErr       error
+	revokeErr    error
+	familyErr    error
+	getCalls     int
+	familyCall   int
+	revoked      []uuid.UUID
+	untrustedAll int
 }
 
 func newFakeSessionRepo() *fakeSessionRepo {
@@ -126,6 +127,13 @@ func (f *fakeSessionRepo) RevokeRefreshTokensBySession(_ context.Context, _ uuid
 		return 0, f.familyErr
 	}
 	f.familyCall++
+	return 1, nil
+}
+
+func (f *fakeSessionRepo) UntrustAllDevicesForUser(
+	_ context.Context, _ uuid.UUID, _ time.Time,
+) (int, error) {
+	f.untrustedAll++
 	return 1, nil
 }
 
@@ -508,5 +516,29 @@ func TestRevokeAllExcept_KeepsTheDeviceTheChangeWasMadeFrom(t *testing.T) {
 		if dropped == keptKey {
 			t.Error("the kept session's cache entry was dropped, for a session that is still live")
 		}
+	}
+}
+
+// TestRevokeAll_AlsoUntrustsEveryDevice is BR-AUTH-25. A device that stayed
+// trusted through a password reset would be a ninety-day window the attacker
+// keeps, which is the opposite of what the learner asked for.
+func TestRevokeAll_AlsoUntrustsEveryDevice(t *testing.T) {
+	h := newSessionServiceHarness(t)
+
+	if _, err := h.service.RevokeAll(context.Background(), h.userID); err != nil {
+		t.Fatalf("RevokeAll: %v", err)
+	}
+	if h.repo.untrustedAll == 0 {
+		t.Error("a full revocation left every trusted device in place")
+	}
+
+	// A change keeps this session and still untrusts the browser it runs in:
+	// the learner keeps the session, not the standing ninety-day permission.
+	other := newSessionServiceHarness(t)
+	if _, err := other.service.RevokeAllExcept(context.Background(), other.userID, other.current); err != nil {
+		t.Fatalf("RevokeAllExcept: %v", err)
+	}
+	if other.repo.untrustedAll == 0 {
+		t.Error("a password change left every trusted device in place")
 	}
 }

@@ -1,10 +1,19 @@
 -- name: CreateSession :one
-INSERT INTO core.sessions (id, user_id, device_label, ip_hash, user_agent_hash, created_at, last_seen_at)
-VALUES ($1, $2, $3, $4, $5, sqlc.arg(now)::timestamptz, sqlc.arg(now)::timestamptz)
-RETURNING id, user_id, device_label, ip_hash, user_agent_hash, created_at, last_seen_at, revoked_at;
+INSERT INTO core.sessions (
+    id, user_id, device_label, ip_hash, user_agent_hash, created_at, last_seen_at,
+    absolute_expires_at, idle_window, trusted_device_id
+)
+VALUES (
+    $1, $2, $3, $4, $5, sqlc.arg(now)::timestamptz, sqlc.arg(now)::timestamptz,
+    sqlc.arg(absolute_expires_at)::timestamptz, sqlc.arg(idle_window)::interval,
+    sqlc.narg(trusted_device_id)
+)
+RETURNING id, user_id, device_label, ip_hash, user_agent_hash, created_at, last_seen_at, revoked_at,
+          absolute_expires_at, idle_window, trusted_device_id;
 
 -- name: GetSession :one
-SELECT id, user_id, device_label, ip_hash, user_agent_hash, created_at, last_seen_at, revoked_at
+SELECT id, user_id, device_label, ip_hash, user_agent_hash, created_at, last_seen_at, revoked_at,
+       absolute_expires_at, idle_window, trusted_device_id
 FROM core.sessions
 WHERE id = $1;
 
@@ -25,7 +34,8 @@ WHERE id = $1 AND revoked_at IS NULL;
 -- accidentally render.
 --
 -- name: ListLiveSessions :many
-SELECT id, user_id, device_label, ip_hash, user_agent_hash, created_at, last_seen_at, revoked_at
+SELECT id, user_id, device_label, ip_hash, user_agent_hash, created_at, last_seen_at, revoked_at,
+       absolute_expires_at, idle_window, trusted_device_id
 FROM core.sessions
 WHERE user_id = $1 AND revoked_at IS NULL
 ORDER BY last_seen_at DESC;
@@ -39,7 +49,8 @@ ORDER BY last_seen_at DESC;
 -- exists to not be.
 --
 -- name: GetOwnedSession :one
-SELECT id, user_id, device_label, ip_hash, user_agent_hash, created_at, last_seen_at, revoked_at
+SELECT id, user_id, device_label, ip_hash, user_agent_hash, created_at, last_seen_at, revoked_at,
+       absolute_expires_at, idle_window, trusted_device_id
 FROM core.sessions
 WHERE id = $1 AND user_id = $2;
 
@@ -80,3 +91,14 @@ WHERE s.id = rt.session_id
   AND s.user_id = $1
   AND s.id <> sqlc.arg(keep_session_id)
   AND rt.revoked_at IS NULL;
+
+-- name: RevokeSessionsForDevice :execrows
+UPDATE core.sessions
+SET revoked_at = sqlc.arg(now)::timestamptz
+WHERE trusted_device_id = $1 AND revoked_at IS NULL;
+
+-- name: RevokeRefreshTokensForDevice :execrows
+UPDATE core.refresh_tokens rt
+SET revoked_at = sqlc.arg(now)::timestamptz
+FROM core.sessions s
+WHERE s.id = rt.session_id AND s.trusted_device_id = $1 AND rt.revoked_at IS NULL;
