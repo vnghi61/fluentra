@@ -37,6 +37,10 @@ type SessionRepo interface {
 	GetOwnedSession(ctx context.Context, sessionID, userID uuid.UUID) (domain.Session, bool, error)
 	RevokeSession(ctx context.Context, sessionID uuid.UUID, now time.Time) (bool, error)
 	RevokeAllSessionsForUser(ctx context.Context, userID uuid.UUID, now time.Time) (int, error)
+	RevokeOtherSessionsForUser(ctx context.Context, userID, keepSessionID uuid.UUID, now time.Time) (int, error)
+	RevokeRefreshTokensForOtherSessions(
+		ctx context.Context, userID, keepSessionID uuid.UUID, now time.Time,
+	) (int, error)
 	RevokeRefreshTokensBySession(ctx context.Context, sessionID uuid.UUID, now time.Time) (int, error)
 	RevokeRefreshTokensForUser(ctx context.Context, userID uuid.UUID, now time.Time) (int, error)
 	WithTx(tx pgx.Tx) SessionRepo
@@ -215,6 +219,49 @@ func (s *SessionService) RevokeAll(ctx context.Context, userID uuid.UUID) (int, 
 
 	for _, session := range sessions {
 		s.forget(ctx, session.ID)
+	}
+	return revoked, nil
+}
+
+// RevokeAllExcept ends every session an account has except one, and returns how
+// many it ended.
+//
+// It is what a password change calls (BR-AUTH-05's "except, optionally, the
+// current one"). A reset calls RevokeAll instead, because a reset is performed
+// by somebody who is not signed in and there is no session worth keeping.
+//
+// The kept session's access token is not denylisted and does not need to be:
+// the caller is still holding it and still entitled to it. The revoked ones are
+// not denylisted either, for the reason RevokeAll gives — nobody here holds
+// them, and they stop working within one access-token lifetime.
+func (s *SessionService) RevokeAllExcept(ctx context.Context, userID, keep uuid.UUID) (int, error) {
+	now := s.clock.Now().UTC()
+
+	var (
+		revoked  int
+		sessions []domain.Session
+	)
+	err := s.inTx(ctx, func(ctx context.Context, repo SessionRepo) error {
+		live, err := repo.ListLiveSessions(ctx, userID)
+		if err != nil {
+			return err
+		}
+		sessions = live
+
+		if _, err := repo.RevokeRefreshTokensForOtherSessions(ctx, userID, keep, now); err != nil {
+			return err
+		}
+		revoked, err = repo.RevokeOtherSessionsForUser(ctx, userID, keep, now)
+		return err
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	for _, session := range sessions {
+		if session.ID != keep {
+			s.forget(ctx, session.ID)
+		}
 	}
 	return revoked, nil
 }

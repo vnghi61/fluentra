@@ -1,7 +1,7 @@
 # Handoff — P2.5 through P2.10
 
-> **Revision 2, 2026-08-11.** P2.2, P2.3 and P2.4 are done. §1 below is current; the rest of the
-> file is still accurate and is where the traps and patterns live. Read all of it.
+> **Revision 3, 2026-08-12.** Everything through P2.7 is merged. §1 below is current; the rest of
+> the file is still accurate and is where the traps and patterns live. Read all of it.
 
 This file is the single source of truth for the handoff. It is written to be read cold, by an
 agent with no memory of the sessions that produced the current state.
@@ -13,27 +13,43 @@ Read `/AGENT.md` first. Then this. Then the card you are working on in
 
 ## 1. Exact state right now
 
-**P2.1, P2.1b, P2.2 and P2.3 are merged into `main`. P2.4 is done but unpushed.** The next card is
-**P2.5 — refresh rotation with reuse detection**, branch `feat/auth-refresh-rotation`.
+**Everything through P2.7 is merged into `main`.** The next card is **P2.8 — rate limiting**, branch
+`feat/auth-rate-limiting`.
 
 | | |
 |---|---|
-| `origin/main` head | `aff70f2` (P2.3 merged) |
-| Highest migration timestamp | `1700000090`. The next new migration is `1700000100` |
+| `origin/main` head | see `git log origin/main`; P2.7 was PR #26 |
+| Highest migration timestamp | `1700000100`. The next new migration is `1700000110` |
 
-### Two local branches that are not pushed
+Nothing is unpushed. The credential problem described in earlier revisions is over: branches push
+normally over HTTPS, and the only thing an agent still cannot do is open the pull request — `gh` is
+read-only on `vnghi61/fluentra`, so write the PR body to a file under `docs/development/` and give
+the human the `gh pr create --body-file …` command. There are worked examples in
+`pr-p2.5-refresh-rotation.md`, `pr-p2.6-sessions.md` and `pr-p2.7-password-reset.md`.
 
-The environment lost its git credentials part-way through: the remote is HTTPS and the cached
-credential expired, `gh` is configured for SSH and the key is not available here. **A human has to
-push both.** They stack, so they merge in this order:
+### What P2.5, P2.6 and P2.7 landed
 
-| Branch | Head | What it is |
-|---|---|---|
-| `fix/openapi-login-example` | `656fb34` | **`main` is red without this.** `POST /auth/login`'s 200 shipped with no `example` and the spectral job fails on every push. Also adds `scripts/ci-local.sh`. |
-| `feat/auth-jwt-middleware` | `a5fd195` | P2.4, branched from the fix because it rewrites the same response |
+- **P2.5** — `core.sessions` and `core.refresh_tokens`, rotation, and reuse detection. The claim is
+  one guarded `UPDATE … WHERE used_at IS NULL` inside the transaction that writes the replacement;
+  a read-then-write passes every sequential test and issues two live tokens under concurrency.
+  Presenting a spent token burns the family, revokes the session and raises `refresh_reuse`.
+- **P2.6** — the session list, `DELETE /auth/sessions/{id}`, `POST /auth/logout`, and
+  `contract.SessionRevoker.RevokeAll`. Another account's session is 404 and not 403, structurally:
+  the ownership lookup puts the id and the owner in one `WHERE` clause.
+- **P2.7** — `forgot-password` / `reset-password` / `change-password`, on the challenge subsystem
+  with `purpose = password_reset`. The challenge TTL is now per purpose.
 
-PR bodies for both were written to a scratchpad that will not survive; rewrite them from the commit
-messages, which carry the full reasoning.
+Three things a reviewer should know were deliberate:
+
+- **`RefreshService` and `SessionService` open READ COMMITTED transactions** through private
+  helpers rather than `dbx.InTx`, which is SERIALIZABLE with three retries. Their correctness is a
+  row predicate, not a snapshot, and SERIALIZABLE would burn retries colliding on exactly the rows
+  a replay storm hammers. An isolation option on `dbx.InTx` is the tidy fix and is filed.
+- **No IP country on the session list.** It cannot be derived from `ip_hash` and needs a GeoIP
+  database, a config key and a MaxMind licence key in CI. Deferred with the human's agreement; the
+  schema description says so.
+- **BR-AUTH-10 was amended**: ten minutes unless the purpose sets otherwise, and `password_reset`
+  sets thirty.
 
 ### What P2.4 landed
 
@@ -108,9 +124,9 @@ Two further design corrections were made mid-implementation and are already in t
    `web/src/types/api.ts` has its own gate, `make gen-check-web`. Both report "stale" when the file
    is correct but uncommitted — commit, then re-run.
 5. **Migration timestamps are global and goose has out-of-order disabled.** Take a number larger
-   than every existing one. Current max is `1700000090`.
-6. **`gh` has read-only access.** Login is `vppos`, read-only on `vnghi61/fluentra`. `git push`
-   works over SSH. You **cannot** create a PR. Write the PR body to a file and give the human the
+   than every existing one. Current max is `1700000100`.
+6. **`gh` has read-only access.** Login is `vppos`, read-only on `vnghi61/fluentra`. You **cannot**
+   create a PR. Write the PR body to a file and give the human the
    `https://github.com/vnghi61/fluentra/pull/new/<branch>` URL plus a `gh pr create --body-file …`
    command to run themselves.
 7. **Coverage gate** ignores `internal/generated/` and `*.gen.go`. `COVERAGE_MIN = 60.0`, currently
@@ -121,7 +137,12 @@ Two further design corrections were made mid-implementation and are already in t
    so never write those words in a migration comment. markdownlint MD049 wants `_italic_`, not
    `*italic*`. Display names have an anti-impersonation deny-list (`admin`, `support`, `staff`,
    `fluentra`, …) — a fixture using one gets a 422 from `CreateUser`.
-9. **`generate.mjs --check` does not compare front-matter.** It reports "0 files written" while the
+9. **The tables in a module's `AGENT.md` are generated.** §4 (contract) and §9 (business rules) sit
+   inside `<!-- BEGIN GENERATED -->` markers and are written from `tools/docgen/data/core.json`.
+   Hand-editing them passes every test and then `make docs-check` fails with "would change". Edit
+   the JSON and run `make docs`. This cost a round trip in both P2.5 and P2.6.
+
+10. **`generate.mjs --check` does not compare front-matter.** It reports "0 files written" while the
    `tables:` list it owns has drifted from `tools/docgen/data/core.json`. `check-drift.mjs` catches
    it only when a migration creates a table the front-matter does not list. If you add a table,
    check both.

@@ -38,6 +38,10 @@ const (
 	purgeUnverifiedLockID int64 = 1_700_000_040
 )
 
+// mailCategoryTransactional is what every message this module sends is: a
+// direct consequence of something the recipient just did, never marketing.
+const mailCategoryTransactional = "transactional"
+
 // How often the sweep runs. Once per day is enough: unverified accounts age
 // for seven days before they are eligible, so sub-day precision adds nothing.
 const purgeUnverifiedInterval = 24 * time.Hour
@@ -89,6 +93,10 @@ type Deps struct {
 	// Zero means service.DefaultRefreshTTL.
 	RefreshTTL time.Duration
 
+	// PasswordResetTTL is how long a reset code lives (PASSWORD_RESET_TTL).
+	// Zero leaves the purpose on the shared OTP window.
+	PasswordResetTTL time.Duration
+
 	// SessionCache remembers which account owns a session, for the five minutes
 	// AGENT.md §12 documents. Nil disables the cache and every ownership check
 	// reads Postgres, which is correct but chattier — it is nil in tests that do
@@ -139,7 +147,15 @@ func New(deps Deps) *Module {
 		Keys:    keys,
 		Clock:   timekeeper,
 		NewID:   id.NewUUIDv7,
-		Env:     "", // namespacing arrives with config in P2.8
+		Config: service.Config{
+			// Only the purposes that differ from the ten-minute default are
+			// named. A reset email can sit unread through a meeting in a way a
+			// signup code typed on the next screen cannot (BR-AUTH-10).
+			TTLByPurpose: map[service.Purpose]time.Duration{
+				domain.PurposePasswordReset: deps.PasswordResetTTL,
+			},
+		},
+		Env: "", // namespacing arrives with config in P2.8
 	})
 
 	events := outboxWriter{Writer: outbox.NewWriter()}
@@ -223,6 +239,19 @@ func New(deps Deps) *Module {
 		Env:    deps.Env,
 	})
 
+	passwordSvc := service.NewPasswordService(service.PasswordDeps{
+		Pool:        deps.Pool,
+		Accounts:    accountsAdapter{Registrar: deps.Registrar},
+		Credentials: credentialRepo,
+		Challenges:  challenges,
+		Sessions:    sessionSvc,
+		Hasher:      domain.NewHasher(domain.DefaultHashParams()),
+		Policy:      domain.Policy{Breaches: breachChecker},
+		Events:      events,
+		Clock:       timekeeper,
+		NewID:       id.NewUUIDv7,
+	})
+
 	return &Module{
 		register: reg,
 		login:    loginSvc,
@@ -230,7 +259,7 @@ func New(deps Deps) *Module {
 		sessions: sessions,
 		revoker:  sessionSvc,
 		mailer:   deps.Mailer,
-		handler: authhttp.NewHandler(reg, loginSvc, sessions, sessionSvc,
+		handler: authhttp.NewHandler(reg, loginSvc, sessions, sessionSvc, passwordSvc,
 			authhttp.CookieOptions{Secure: deps.Env != "local"}),
 	}
 }
@@ -293,6 +322,7 @@ func (m *Module) Subscribe(bus eventbus.EventBus) error {
 	for _, topic := range []string{
 		contract.EventVerificationRequested,
 		contract.EventRegistrationAttempted,
+		contract.EventPasswordResetRequested,
 	} {
 		if err := bus.Subscribe(topic, m.handleMailEvent); err != nil {
 			return fmt.Errorf("subscribe auth consumer to %s: %w", topic, err)
@@ -310,6 +340,8 @@ func (m *Module) handleMailEvent(ctx context.Context, msg eventbus.Message) erro
 		return m.sendVerificationEmail(ctx, msg.Payload)
 	case contract.EventRegistrationAttempted:
 		return m.sendRegistrationAttemptEmail(ctx, msg.Payload)
+	case contract.EventPasswordResetRequested:
+		return m.sendPasswordResetEmail(ctx, msg.Payload)
 	default:
 		// A topic we were subscribed to but do not recognise. Log and return nil
 		// rather than blocking redelivery — an unknown topic today is most likely
@@ -339,7 +371,7 @@ func (m *Module) sendVerificationEmail(ctx context.Context, payload []byte) erro
 			"DisplayName": event.DisplayName,
 			"Code":        event.Code,
 		},
-		Category: "transactional",
+		Category: mailCategoryTransactional,
 	})
 }
 
@@ -362,7 +394,28 @@ func (m *Module) sendRegistrationAttemptEmail(ctx context.Context, payload []byt
 		Data: map[string]any{
 			"Email": event.Email,
 		},
-		Category: "transactional",
+		Category: mailCategoryTransactional,
+	})
+}
+
+// sendPasswordResetEmail delivers the reset code. The code is in the payload
+// for the reason the verification one is: the challenge row stores only an HMAC,
+// so by the time this consumer runs it cannot be recovered from anywhere else.
+func (m *Module) sendPasswordResetEmail(ctx context.Context, payload []byte) error {
+	var event contract.PasswordResetRequested
+	if err := json.Unmarshal(payload, &event); err != nil {
+		return fmt.Errorf("decode auth.password_reset_requested payload: %w", err)
+	}
+
+	return m.mailer.Send(ctx, mailer.Message{
+		To:       event.Email,
+		Template: "password_reset",
+		Locale:   event.Locale,
+		Data: map[string]any{
+			"DisplayName": event.DisplayName,
+			"Code":        event.Code,
+		},
+		Category: mailCategoryTransactional,
 	})
 }
 

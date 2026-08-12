@@ -210,6 +210,82 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/forgot-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start a password reset.
+         * @description Issues a `password_reset` challenge and emails the six-digit code to the address, if there is an account on it.
+         *
+         *     **This operation always answers 202** (BR-AUTH-26), with the same body shape, whether or not the address is registered -- and it takes comparable time either way, because an unknown address still has a real challenge issued against it that nobody will ever receive a code for. Anything else here is an account-enumeration oracle: "we sent you an email" versus "no such account" is exactly the question an attacker with a list of addresses is asking.
+         *
+         *     The response carries the challenge handle and not the code. The handle goes to the browser that asked and the code goes to the inbox, so neither party alone can complete the reset (BR-AUTH-11).
+         *
+         *     Asking again invalidates the previous code. A learner who requests twice because the first email was slow must use the second code, which is what stops an old message in an inbox staying usable.
+         */
+        post: operations["authForgotPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set a new password with a reset code.
+         * @description Consumes the challenge and replaces the password.
+         *
+         *     **Every session is revoked**, on every device (BR-AUTH-05). A reset is what a learner reaches for when they think somebody else is in their account, so leaving that somebody signed in would defeat the operation they just performed. The response says how many devices went.
+         *
+         *     The code is single-use and the challenge is burned after five wrong attempts. The reset window is thirty minutes rather than the ten a signup code gets: a reset email can sit unread through a meeting in a way a code typed on the next screen does not.
+         *
+         *     This does not sign the caller in. They have just chosen a password and are asked to use it once, which costs a learner one screen and costs somebody who reset an account they do not own the same password they would need anyway.
+         */
+        post: operations["authResetPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/change-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change the password while signed in.
+         * @description Replaces the password for the signed-in caller, who must present the current one as well as the new one.
+         *
+         *     Requiring the current password is not redundant with the access token. The token proves the session was opened by somebody who knew the password; it does not prove the person holding it now does. Without the check, a token taken from an unlocked laptop is enough to lock its owner out of their own account.
+         *
+         *     **Every other session is revoked and this one is kept** (BR-AUTH-05). Signing the learner out of the device they are standing at, immediately after they did the responsible thing, teaches them not to do it again. The response says how many other devices went.
+         */
+        post: operations["authChangePassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/logout": {
         parameters: {
             query?: never;
@@ -741,6 +817,62 @@ export interface components {
             /** @default false */
             remember_device: boolean;
             device_id?: string;
+        };
+        ForgotPasswordRequest: {
+            /**
+             * Format: email
+             * @example learner@example.com
+             */
+            email: string;
+        };
+        /**
+         * @description The challenge handle, the code from the email, and the password to set.
+         *
+         *     All three are needed, and that is the point: the handle is held by the browser that asked for the reset and the code is held by whoever can read the inbox. Neither alone resets anything (BR-AUTH-11).
+         */
+        ResetPasswordRequest: {
+            /**
+             * Format: uuid
+             * @description The handle returned by `forgot-password`.
+             */
+            challenge_id: string;
+            /**
+             * @description The six digits from the email.
+             * @example 482913
+             */
+            code: string;
+            /**
+             * Format: password
+             * @description The new password. It faces the same policy as registration -- at least 12 characters and not present in a public breach corpus.
+             * @example a perfectly fine passphrase
+             */
+            password: string;
+        };
+        /** @description The current password is required even though the caller is already signed in. An access token proves the session was opened by someone who knew the password; it does not prove the person holding it now does. Without the check, a token stolen from an unlocked laptop is enough to lock its owner out of their own account. */
+        ChangePasswordRequest: {
+            /**
+             * Format: password
+             * @example a-secret-password
+             */
+            current_password: string;
+            /**
+             * Format: password
+             * @example a perfectly fine passphrase
+             */
+            new_password: string;
+        };
+        /** @description The outcome of a reset or a change, and what it cost the learner in still-signed-in devices. */
+        PasswordChanged: {
+            /**
+             * Format: date-time
+             * @description When the new password took effect.
+             */
+            changed_at: string;
+            /**
+             * @description How many devices were signed out. A reset signs out every one of them, because whoever asked for it may be recovering an account somebody else is signed in to. A change keeps the device it was made from and signs out the rest, so a learner tidying up after a scare is not made to sign in again on the machine in front of them.
+             * @example 3
+             */
+            sessions_revoked: number;
         };
         /**
          * @description One signed-in device, as its owner sees it in the "where am I signed in" list.
@@ -1663,6 +1795,133 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    authForgotPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "email": "learner@example.com"
+                 *     }
+                 */
+                "application/json": components["schemas"]["ForgotPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description A challenge was issued. This is also the response for an address with no account -- deliberately indistinguishable. */
+            202: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "challenge_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "purpose": "password_reset",
+                     *       "expires_at": "2026-08-10T09:30:00Z",
+                     *       "resend_after": "2026-08-10T09:01:00Z",
+                     *       "attempts_remaining": 5
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Challenge"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            422: components["responses"]["ValidationFailed"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    authResetPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "challenge_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                 *       "code": "482913",
+                 *       "password": "a perfectly fine passphrase"
+                 *     }
+                 */
+                "application/json": components["schemas"]["ResetPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description The password was replaced and every session revoked. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "changed_at": "2026-08-10T09:12:44Z",
+                     *       "sessions_revoked": 3
+                     *     }
+                     */
+                    "application/json": components["schemas"]["PasswordChanged"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    authChangePassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "current_password": "a-secret-password",
+                 *       "new_password": "a perfectly fine passphrase"
+                 *     }
+                 */
+                "application/json": components["schemas"]["ChangePasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description The password was replaced and every other session revoked. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "changed_at": "2026-08-10T09:12:44Z",
+                     *       "sessions_revoked": 3
+                     *     }
+                     */
+                    "application/json": components["schemas"]["PasswordChanged"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            422: components["responses"]["ValidationFailed"];
             429: components["responses"]["TooManyRequests"];
         };
     };

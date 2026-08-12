@@ -86,6 +86,22 @@ func (r *Repository) RecordFailedAttempt(ctx context.Context, id uuid.UUID, now 
 	return toDomainChallenge(row), true, nil
 }
 
+// BurnLiveChallengesForSubject spends the attempt budget of every outstanding
+// challenge of one purpose for one subject, and reports how many it burned.
+func (r *Repository) BurnLiveChallengesForSubject(
+	ctx context.Context, purpose domain.Purpose, subjectHash []byte, now time.Time,
+) (int, error) {
+	affected, err := r.queries.BurnLiveChallengesForSubject(ctx, sqlcauth.BurnLiveChallengesForSubjectParams{
+		Purpose:     sqlcauth.CoreChallengePurpose(purpose),
+		SubjectHash: subjectHash,
+		Now:         now,
+	})
+	if err != nil {
+		return 0, fmt.Errorf("burn live challenges: %w", err)
+	}
+	return int(affected), nil
+}
+
 // ResendChallenge replaces the code and clears the attempts, leaving expires_at
 // alone. resendAllowedFrom is the cooldown boundary: a row whose last_sent_at is
 // later than it does not match, and false comes back.

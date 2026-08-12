@@ -59,6 +59,41 @@ func (r *Repository) RevokeAllSessionsForUser(ctx context.Context, userID uuid.U
 	return int(affected), nil
 }
 
+// RevokeOtherSessionsForUser ends every live session an account has except one,
+// and returns how many it ended.
+//
+// The exception is passed in rather than derived here because the repository has
+// no idea which session the caller is using; the service does, from the actor.
+func (r *Repository) RevokeOtherSessionsForUser(
+	ctx context.Context, userID, keepSessionID uuid.UUID, now time.Time,
+) (int, error) {
+	affected, err := r.queries.RevokeOtherSessionsForUser(ctx, sqlcauth.RevokeOtherSessionsForUserParams{
+		UserID:        userID,
+		KeepSessionID: keepSessionID,
+		Now:           now,
+	})
+	if err != nil {
+		return 0, fmt.Errorf("revoke other sessions: %w", err)
+	}
+	return int(affected), nil
+}
+
+// RevokeRefreshTokensForOtherSessions is the renewal half of the same change.
+func (r *Repository) RevokeRefreshTokensForOtherSessions(
+	ctx context.Context, userID, keepSessionID uuid.UUID, now time.Time,
+) (int, error) {
+	affected, err := r.queries.RevokeRefreshTokensForOtherSessions(
+		ctx, sqlcauth.RevokeRefreshTokensForOtherSessionsParams{
+			UserID:        userID,
+			KeepSessionID: keepSessionID,
+			Now:           now,
+		})
+	if err != nil {
+		return 0, fmt.Errorf("revoke refresh tokens for other sessions: %w", err)
+	}
+	return int(affected), nil
+}
+
 // RevokeRefreshTokensBySession takes away everything a session could still
 // renew with. It is the half of revocation that acts immediately — the access
 // token the session issued survives to its own expiry (ADR-0007).

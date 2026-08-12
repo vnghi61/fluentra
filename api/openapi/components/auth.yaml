@@ -256,3 +256,91 @@ SessionList:
       maxItems: 200
       items:
         $ref: '#/SessionSummary'
+
+ForgotPasswordRequest:
+  type: object
+  required: [email]
+  additionalProperties: false
+  properties:
+    email:
+      type: string
+      format: email
+      maxLength: 254
+      example: learner@example.com
+
+ResetPasswordRequest:
+  type: object
+  description: >-
+    The challenge handle, the code from the email, and the password to set.
+
+
+    All three are needed, and that is the point: the handle is held by the
+    browser that asked for the reset and the code is held by whoever can read
+    the inbox. Neither alone resets anything (BR-AUTH-11).
+  required: [challenge_id, code, password]
+  additionalProperties: false
+  properties:
+    challenge_id:
+      type: string
+      format: uuid
+      description: The handle returned by `forgot-password`.
+    code:
+      type: string
+      pattern: '^[0-9]{6}$'
+      description: The six digits from the email.
+      example: '482913'
+    password:
+      type: string
+      minLength: 12
+      maxLength: 128
+      format: password
+      description: >-
+        The new password. It faces the same policy as registration -- at least
+        12 characters and not present in a public breach corpus.
+      example: a perfectly fine passphrase
+
+ChangePasswordRequest:
+  type: object
+  description: >-
+    The current password is required even though the caller is already signed
+    in. An access token proves the session was opened by someone who knew the
+    password; it does not prove the person holding it now does. Without the
+    check, a token stolen from an unlocked laptop is enough to lock its owner
+    out of their own account.
+  required: [current_password, new_password]
+  additionalProperties: false
+  properties:
+    current_password:
+      type: string
+      maxLength: 128
+      format: password
+      example: a-secret-password
+    new_password:
+      type: string
+      minLength: 12
+      maxLength: 128
+      format: password
+      example: a perfectly fine passphrase
+
+PasswordChanged:
+  type: object
+  description: >-
+    The outcome of a reset or a change, and what it cost the learner in
+    still-signed-in devices.
+  required: [changed_at, sessions_revoked]
+  additionalProperties: false
+  properties:
+    changed_at:
+      type: string
+      format: date-time
+      description: When the new password took effect.
+    sessions_revoked:
+      type: integer
+      minimum: 0
+      description: >-
+        How many devices were signed out. A reset signs out every one of them,
+        because whoever asked for it may be recovering an account somebody else
+        is signed in to. A change keeps the device it was made from and signs
+        out the rest, so a learner tidying up after a scare is not made to sign
+        in again on the machine in front of them.
+      example: 3

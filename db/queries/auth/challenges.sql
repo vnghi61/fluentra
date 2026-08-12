@@ -69,3 +69,24 @@ WHERE id = @id
   AND last_sent_at <= @resend_allowed_from
 RETURNING id, purpose, subject_hash, code_hash, attempts, max_attempts,
           expires_at, consumed_at, last_sent_at, created_at, updated_at, user_id;
+
+-- BurnLiveChallengesForSubject spends the attempt budget of every outstanding
+-- challenge of one purpose for one subject.
+--
+-- It runs when a new challenge of the same purpose is issued, so that an older
+-- email sitting in an inbox stops being a way in. Burning by attempts rather
+-- than by consumed_at is the convention this table already uses -- there is no
+-- burned_at column, and "burned" is derived from attempts >= max_attempts, so a
+-- second stored record of the same fact cannot disagree with the first. It also
+-- reads truthfully: the budget for presenting a code against this challenge is
+-- spent, which is exactly what happened. Marking it consumed would claim
+-- somebody used it, and nobody did.
+--
+-- name: BurnLiveChallengesForSubject :execrows
+UPDATE core.auth_challenges
+SET attempts = max_attempts, updated_at = sqlc.arg(now)::timestamptz
+WHERE purpose = $1
+  AND subject_hash = $2
+  AND consumed_at IS NULL
+  AND attempts < max_attempts
+  AND expires_at > sqlc.arg(now)::timestamptz;

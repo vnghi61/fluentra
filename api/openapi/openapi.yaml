@@ -397,6 +397,177 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+  /auth/forgot-password:
+    post:
+      tags: [auth]
+      operationId: authForgotPassword
+      summary: Start a password reset.
+      description: >-
+        Issues a `password_reset` challenge and emails the six-digit code to the
+        address, if there is an account on it.
+
+
+        **This operation always answers 202** (BR-AUTH-26), with the same body
+        shape, whether or not the address is registered -- and it takes
+        comparable time either way, because an unknown address still has a real
+        challenge issued against it that nobody will ever receive a code for.
+        Anything else here is an account-enumeration oracle: "we sent you an
+        email" versus "no such account" is exactly the question an attacker with
+        a list of addresses is asking.
+
+
+        The response carries the challenge handle and not the code. The handle
+        goes to the browser that asked and the code goes to the inbox, so
+        neither party alone can complete the reset (BR-AUTH-11).
+
+
+        Asking again invalidates the previous code. A learner who requests twice
+        because the first email was slow must use the second code, which is what
+        stops an old message in an inbox staying usable.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordRequest'
+            example:
+              email: learner@example.com
+      responses:
+        '202':
+          description: >-
+            A challenge was issued. This is also the response for an address
+            with no account -- deliberately indistinguishable.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Challenge'
+              example:
+                challenge_id: 0199a1c2-3d4e-7f80-9abc-def012345678
+                purpose: password_reset
+                expires_at: '2026-08-10T09:30:00Z'
+                resend_after: '2026-08-10T09:01:00Z'
+                attempts_remaining: 5
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /auth/reset-password:
+    post:
+      tags: [auth]
+      operationId: authResetPassword
+      summary: Set a new password with a reset code.
+      description: >-
+        Consumes the challenge and replaces the password.
+
+
+        **Every session is revoked**, on every device (BR-AUTH-05). A reset is
+        what a learner reaches for when they think somebody else is in their
+        account, so leaving that somebody signed in would defeat the operation
+        they just performed. The response says how many devices went.
+
+
+        The code is single-use and the challenge is burned after five wrong
+        attempts. The reset window is thirty minutes rather than the ten a
+        signup code gets: a reset email can sit unread through a meeting in a
+        way a code typed on the next screen does not.
+
+
+        This does not sign the caller in. They have just chosen a password and
+        are asked to use it once, which costs a learner one screen and costs
+        somebody who reset an account they do not own the same password they
+        would need anyway.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+            example:
+              challenge_id: 0199a1c2-3d4e-7f80-9abc-def012345678
+              code: '482913'
+              password: a perfectly fine passphrase
+      responses:
+        '200':
+          description: The password was replaced and every session revoked.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PasswordChanged'
+              example: &passwordChangedExample
+                changed_at: '2026-08-10T09:12:44Z'
+                sessions_revoked: 3
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /auth/change-password:
+    post:
+      tags: [auth]
+      operationId: authChangePassword
+      summary: Change the password while signed in.
+      description: >-
+        Replaces the password for the signed-in caller, who must present the
+        current one as well as the new one.
+
+
+        Requiring the current password is not redundant with the access token.
+        The token proves the session was opened by somebody who knew the
+        password; it does not prove the person holding it now does. Without the
+        check, a token taken from an unlocked laptop is enough to lock its owner
+        out of their own account.
+
+
+        **Every other session is revoked and this one is kept** (BR-AUTH-05).
+        Signing the learner out of the device they are standing at, immediately
+        after they did the responsible thing, teaches them not to do it again.
+        The response says how many other devices went.
+      x-permission: self
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+            example:
+              current_password: a-secret-password
+              new_password: a perfectly fine passphrase
+      responses:
+        '200':
+          description: The password was replaced and every other session revoked.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PasswordChanged'
+              example: *passwordChangedExample
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
   /auth/logout:
     post:
       tags: [auth]
@@ -1129,6 +1300,14 @@ components:
       $ref: ./components/auth.yaml#/AuthSession
     LoginRequest:
       $ref: ./components/auth.yaml#/LoginRequest
+    ForgotPasswordRequest:
+      $ref: ./components/auth.yaml#/ForgotPasswordRequest
+    ResetPasswordRequest:
+      $ref: ./components/auth.yaml#/ResetPasswordRequest
+    ChangePasswordRequest:
+      $ref: ./components/auth.yaml#/ChangePasswordRequest
+    PasswordChanged:
+      $ref: ./components/auth.yaml#/PasswordChanged
     SessionSummary:
       $ref: ./components/auth.yaml#/SessionSummary
     SessionList:

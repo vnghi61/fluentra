@@ -140,12 +140,62 @@ func newTestRouterWithSessions(
 	reg authhttp.Registration, auth authhttp.Authenticator, rotator authhttp.Rotator,
 	sessions authhttp.Sessions, cookies authhttp.CookieOptions,
 ) chi.Router {
+	return newTestRouterWithPasswords(reg, auth, rotator, sessions, &fakePasswords{}, cookies)
+}
+
+func newTestRouterWithPasswords(
+	reg authhttp.Registration, auth authhttp.Authenticator, rotator authhttp.Rotator,
+	sessions authhttp.Sessions, passwords authhttp.Passwords, cookies authhttp.CookieOptions,
+) chi.Router {
 	r := chi.NewRouter()
 	r.Route("/api/v1", func(api chi.Router) {
-		handler := authhttp.NewHandler(reg, auth, rotator, sessions, cookies)
+		handler := authhttp.NewHandler(reg, auth, rotator, sessions, passwords, cookies)
 		handler.Routes(api)
 	})
 	return r
+}
+
+// fakePasswords stands in for the reset and change service. The enumeration
+// safety and the revocation are proved against Postgres; what the handler owes
+// them is the status, the shape, and the cookie.
+type fakePasswords struct {
+	forgotFn func(ctx context.Context, email string) (service.Issued, error)
+	resetFn  func(ctx context.Context, input service.ResetInput) (service.PasswordChanged, error)
+	changeFn func(ctx context.Context, actor httpx.Actor, input service.ChangeInput) (service.PasswordChanged, error)
+
+	sawEmail string
+	sawActor httpx.Actor
+}
+
+func (f *fakePasswords) Forgot(ctx context.Context, email string) (service.Issued, error) {
+	f.sawEmail = email
+	if f.forgotFn != nil {
+		return f.forgotFn(ctx, email)
+	}
+	return service.Issued{Challenge: domain.Challenge{
+		ID:          uuid.MustParse(testChallengeID),
+		Purpose:     domain.PurposePasswordReset,
+		MaxAttempts: 5,
+		ExpiresAt:   time.Now().Add(30 * time.Minute),
+		LastSentAt:  time.Now(),
+	}}, nil
+}
+
+func (f *fakePasswords) Reset(ctx context.Context, input service.ResetInput) (service.PasswordChanged, error) {
+	if f.resetFn != nil {
+		return f.resetFn(ctx, input)
+	}
+	return service.PasswordChanged{ChangedAt: time.Now().UTC(), SessionsRevoked: 3}, nil
+}
+
+func (f *fakePasswords) Change(
+	ctx context.Context, actor httpx.Actor, input service.ChangeInput,
+) (service.PasswordChanged, error) {
+	f.sawActor = actor
+	if f.changeFn != nil {
+		return f.changeFn(ctx, actor, input)
+	}
+	return service.PasswordChanged{ChangedAt: time.Now().UTC(), SessionsRevoked: 1}, nil
 }
 
 // fakeSessions stands in for the session service. What the handler owes it is
@@ -774,5 +824,145 @@ func TestHandler_AnEmptySessionListSerialisesAsAnArray(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), `"sessions":[]`) {
 		t.Errorf("an empty list did not serialise as an array: %s", rec.Body.String())
+	}
+}
+
+// TestHandler_ForgotPasswordAnswers202WithAHandleAndNoCode is the transport half
+// of BR-AUTH-26. The status is unconditional and the body carries the handle,
+// never the code — a code in the response would verify nothing, because whoever
+// asked for it would already have it.
+func TestHandler_ForgotPasswordAnswers202WithAHandleAndNoCode(t *testing.T) {
+	passwords := &fakePasswords{}
+	router := newTestRouterWithPasswords(
+		&fakeRegistrationService{}, &fakeAuthenticator{}, &fakeRotator{}, &fakeSessions{},
+		passwords, authhttp.CookieOptions{Secure: true})
+
+	body := `{"email":"  Learner@Example.com  "}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/forgot-password", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("status = %d, want 202; body: %s", rec.Code, rec.Body.String())
+	}
+	if passwords.sawEmail != "Learner@Example.com" {
+		t.Errorf("the service was given %q, want the address trimmed", passwords.sawEmail)
+	}
+
+	var response map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if _, leaked := response["code"]; leaked {
+		t.Fatal("the response body carries the code")
+	}
+	if response["challenge_id"] != testChallengeID {
+		t.Errorf("challenge_id = %v, want the handle", response["challenge_id"])
+	}
+	if response["purpose"] != "password_reset" {
+		t.Errorf("purpose = %v, want password_reset", response["purpose"])
+	}
+}
+
+// TestHandler_AMalformedChallengeHandleIsTheSameRefusalAsAWrongCode keeps the
+// shape of the handle from being something to probe for.
+func TestHandler_AMalformedChallengeHandleIsTheSameRefusalAsAWrongCode(t *testing.T) {
+	passwords := &fakePasswords{
+		resetFn: func(context.Context, service.ResetInput) (service.PasswordChanged, error) {
+			return service.PasswordChanged{}, domain.ErrChallengeInvalidCode
+		},
+	}
+	router := newTestRouterWithPasswords(
+		&fakeRegistrationService{}, &fakeAuthenticator{}, &fakeRotator{}, &fakeSessions{},
+		passwords, authhttp.CookieOptions{Secure: true})
+
+	bodies := map[string]map[string]any{}
+	for name, payload := range map[string]string{
+		"malformed handle": `{"challenge_id":"not-a-uuid","code":"482913","password":"a perfectly fine passphrase"}`,
+		"wrong code": `{"challenge_id":"` + testChallengeID +
+			`","code":"000000","password":"a perfectly fine passphrase"}`,
+	} {
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/reset-password", strings.NewReader(payload))
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("%s: status = %d, want 401; body: %s", name, rec.Code, rec.Body.String())
+		}
+		var problem map[string]any
+		if err := json.Unmarshal(rec.Body.Bytes(), &problem); err != nil {
+			t.Fatalf("%s: decode problem: %v", name, err)
+		}
+		delete(problem, "instance")
+		bodies[name] = problem
+	}
+
+	if !reflect.DeepEqual(bodies["malformed handle"], bodies["wrong code"]) {
+		t.Errorf("the two refusals differ:\n malformed: %v\n wrong:     %v",
+			bodies["malformed handle"], bodies["wrong code"])
+	}
+}
+
+// TestHandler_ResetClearsTheCookieAndChangeDoesNot is the difference between the
+// two. A reset revoked every session, so a cookie left in place would be
+// replayed once and refused; a change kept this one, so taking its cookie away
+// would sign the learner out of the device they just used.
+func TestHandler_ResetClearsTheCookieAndChangeDoesNot(t *testing.T) {
+	router := newTestRouterWithPasswords(
+		&fakeRegistrationService{}, &fakeAuthenticator{}, &fakeRotator{}, &fakeSessions{},
+		&fakePasswords{}, authhttp.CookieOptions{Secure: true})
+
+	reset := httptest.NewRequest(http.MethodPost, "/api/v1/auth/reset-password", strings.NewReader(
+		`{"challenge_id":"`+testChallengeID+`","code":"482913","password":"a perfectly fine passphrase"}`))
+	reset.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, reset)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("reset status = %d, want 200; body: %s", rec.Code, rec.Body.String())
+	}
+	cookie := findCookie(rec.Result(), authhttp.RefreshCookieName)
+	if cookie == nil || cookie.MaxAge >= 0 {
+		t.Errorf("the reset did not clear the refresh cookie: %+v", cookie)
+	}
+
+	change := httptest.NewRequest(http.MethodPost, "/api/v1/auth/change-password", strings.NewReader(
+		`{"current_password":"a-secret-password","new_password":"a perfectly fine passphrase"}`))
+	change.Header.Set("Content-Type", "application/json")
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, signedIn(change, testActor(uuid.New())))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("change status = %d, want 200; body: %s", rec.Code, rec.Body.String())
+	}
+	if cookie := findCookie(rec.Result(), authhttp.RefreshCookieName); cookie != nil {
+		t.Errorf("the change touched the refresh cookie: %+v", cookie)
+	}
+}
+
+// TestHandler_ChangePasswordRefusesAnAnonymousCaller is the guard. Without it a
+// handler would serve the zero actor, and uuid.Nil is an account id that matches
+// nothing — the bug would look like a wrong password rather than a missing one.
+func TestHandler_ChangePasswordRefusesAnAnonymousCaller(t *testing.T) {
+	passwords := &fakePasswords{
+		changeFn: func(context.Context, httpx.Actor, service.ChangeInput) (service.PasswordChanged, error) {
+			t.Error("the service was reached by a caller with no actor")
+			return service.PasswordChanged{}, nil
+		},
+	}
+	router := newTestRouterWithPasswords(
+		&fakeRegistrationService{}, &fakeAuthenticator{}, &fakeRotator{}, &fakeSessions{},
+		passwords, authhttp.CookieOptions{Secure: true})
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/change-password", strings.NewReader(
+		`{"current_password":"a-secret-password","new_password":"a perfectly fine passphrase"}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want 401; body: %s", rec.Code, rec.Body.String())
 	}
 }

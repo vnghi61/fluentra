@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/fluentra/fluentra/internal/modules/auth/domain"
 	"github.com/fluentra/fluentra/internal/modules/auth/service"
 	"github.com/fluentra/fluentra/internal/shared/apperr"
@@ -18,7 +20,16 @@ import (
 // for, so the body is capped well below the default.
 const maxRegisterBody = 8 << 10
 
-const codeRequired = "REQUIRED"
+const (
+	codeRequired = "REQUIRED"
+
+	// The member names several decoders report violations against. They are
+	// constants because the string appears in the payload tag, in the violation
+	// and in the test that asserts the violation, and three spellings of one
+	// field name is two chances to disagree.
+	fieldEmail    = "email"
+	fieldPassword = "password" // #nosec G101 -- a field name, not a credential
+)
 
 // maxUserAgent bounds the header before it is hashed. Nothing downstream reads
 // the value, so the cap costs nothing and removes a caller's ability to make
@@ -147,7 +158,7 @@ func decodeRegisterRequest(request *http.Request) (service.Registration, error) 
 
 	missing := make([]apperr.FieldViolation, 0, 3)
 	for name, value := range map[string]*string{
-		"email": payload.Email, "password": payload.Password, "display_name": payload.DisplayName,
+		fieldEmail: payload.Email, fieldPassword: payload.Password, "display_name": payload.DisplayName,
 	} {
 		if value == nil {
 			missing = append(missing, apperr.FieldViolation{
@@ -249,12 +260,12 @@ func decodeLoginRequest(request *http.Request) (service.LoginInput, error) {
 	missing := make([]apperr.FieldViolation, 0, 2)
 	if payload.Email == nil {
 		missing = append(missing, apperr.FieldViolation{
-			Field: "email", Code: codeRequired, Message: "email is required.",
+			Field: fieldEmail, Code: codeRequired, Message: "email is required.",
 		})
 	}
 	if payload.Password == nil {
 		missing = append(missing, apperr.FieldViolation{
-			Field: "password", Code: codeRequired, Message: "password is required.",
+			Field: fieldPassword, Code: codeRequired, Message: fieldPassword + " is required.",
 		})
 	}
 	if len(missing) > 0 {
@@ -281,5 +292,110 @@ func decodeLoginRequest(request *http.Request) (service.LoginInput, error) {
 		// truncated first: a user agent is attacker-controlled and unbounded,
 		// and the digest is fixed-width either way.
 		UserAgent: truncate(request.UserAgent(), maxUserAgent),
+	}, nil
+}
+
+// passwordChangedResponse matches components/auth.yaml#/PasswordChanged.
+type passwordChangedResponse struct {
+	ChangedAt       string `json:"changed_at"`
+	SessionsRevoked int    `json:"sessions_revoked"`
+}
+
+func toPasswordChangedResponse(changed service.PasswordChanged) passwordChangedResponse {
+	return passwordChangedResponse{
+		ChangedAt:       changed.ChangedAt.UTC().Format(time.RFC3339),
+		SessionsRevoked: changed.SessionsRevoked,
+	}
+}
+
+type forgotPasswordPayload struct {
+	Email *string `json:"email"`
+}
+
+func decodeForgotPasswordRequest(request *http.Request) (string, error) {
+	var payload forgotPasswordPayload
+	if err := decodeStrict(request, &payload); err != nil {
+		return "", err
+	}
+	if payload.Email == nil {
+		return "", validationFailed().WithFields(apperr.FieldViolation{
+			Field: fieldEmail, Code: codeRequired, Message: "email is required.",
+		})
+	}
+	return strings.TrimSpace(*payload.Email), nil
+}
+
+type resetPasswordPayload struct {
+	ChallengeID *string `json:"challenge_id"`
+	Code        *string `json:"code"`
+	Password    *string `json:"password"`
+}
+
+func decodeResetPasswordRequest(request *http.Request) (service.ResetInput, error) {
+	var payload resetPasswordPayload
+	if err := decodeStrict(request, &payload); err != nil {
+		return service.ResetInput{}, err
+	}
+
+	missing := make([]apperr.FieldViolation, 0, 3)
+	for field, present := range map[string]bool{
+		"challenge_id": payload.ChallengeID != nil,
+		"code":         payload.Code != nil,
+		fieldPassword:  payload.Password != nil,
+	} {
+		if !present {
+			missing = append(missing, apperr.FieldViolation{
+				Field: field, Code: codeRequired, Message: field + " is required.",
+			})
+		}
+	}
+	if len(missing) > 0 {
+		return service.ResetInput{}, validationFailed().WithFields(sortViolations(missing)...)
+	}
+
+	// A malformed handle is the same refusal a wrong code gets. "That is not a
+	// uuid" and "that code is wrong" must not be distinguishable, or the shape
+	// of the handle becomes something to probe for (BR-AUTH-11).
+	challengeID, err := uuid.Parse(*payload.ChallengeID)
+	if err != nil {
+		return service.ResetInput{}, domain.ErrChallengeInvalidCode
+	}
+
+	return service.ResetInput{
+		ChallengeID: challengeID,
+		Code:        strings.TrimSpace(*payload.Code),
+		Password:    *payload.Password,
+	}, nil
+}
+
+type changePasswordPayload struct {
+	CurrentPassword *string `json:"current_password"`
+	NewPassword     *string `json:"new_password"`
+}
+
+func decodeChangePasswordRequest(request *http.Request) (service.ChangeInput, error) {
+	var payload changePasswordPayload
+	if err := decodeStrict(request, &payload); err != nil {
+		return service.ChangeInput{}, err
+	}
+
+	missing := make([]apperr.FieldViolation, 0, 2)
+	if payload.CurrentPassword == nil {
+		missing = append(missing, apperr.FieldViolation{
+			Field: "current_password", Code: codeRequired, Message: "current_password is required.",
+		})
+	}
+	if payload.NewPassword == nil {
+		missing = append(missing, apperr.FieldViolation{
+			Field: "new_password", Code: codeRequired, Message: "new_password is required.",
+		})
+	}
+	if len(missing) > 0 {
+		return service.ChangeInput{}, validationFailed().WithFields(sortViolations(missing)...)
+	}
+
+	return service.ChangeInput{
+		CurrentPassword: *payload.CurrentPassword,
+		NewPassword:     *payload.NewPassword,
 	}, nil
 }

@@ -31,6 +31,9 @@ type Repository interface {
 	GetChallenge(ctx context.Context, id uuid.UUID) (domain.Challenge, error)
 	ConsumeChallenge(ctx context.Context, id uuid.UUID, codeHash []byte, now time.Time) (domain.Challenge, bool, error)
 	RecordFailedAttempt(ctx context.Context, id uuid.UUID, now time.Time) (domain.Challenge, bool, error)
+	BurnLiveChallengesForSubject(
+		ctx context.Context, purpose domain.Purpose, subjectHash []byte, now time.Time,
+	) (int, error)
 	ResendChallenge(ctx context.Context, id uuid.UUID, codeHash []byte, resendAllowedFrom, now time.Time) (
 		domain.Challenge, bool, error)
 
@@ -46,10 +49,26 @@ type IDGenerator func(ctx context.Context) (uuid.UUID, error)
 // in `.env.example`; DefaultConfig carries the same values, so a service built
 // before the composition root reads configuration still behaves as documented.
 type Config struct {
-	CodeLength              int
-	TTL                     time.Duration
-	MaxAttempts             int
-	ResendCooldown          time.Duration
+	CodeLength     int
+	TTL            time.Duration
+	MaxAttempts    int
+	ResendCooldown time.Duration
+
+	// TTLByPurpose overrides TTL for the purposes that name one, and is empty
+	// for the rest.
+	//
+	// One window for every purpose was right while there was one purpose. It
+	// stops being right at password reset: a signup code is typed on the screen
+	// that asked for it and ten minutes is generous, while a reset email can sit
+	// unread through a meeting, and a learner who has just been told somebody
+	// might be in their account should not have to start over because of it.
+	// BR-AUTH-10 now reads "ten minutes unless the purpose sets otherwise".
+	//
+	// The override is per purpose rather than per call so that the window is a
+	// property of what the challenge is for, decided once in configuration,
+	// rather than something each caller passes and can get wrong.
+	TTLByPurpose map[Purpose]time.Duration
+
 	IssuesPerSubjectPerHour int
 	IssuesPerIPPerHour      int
 }
@@ -91,6 +110,18 @@ func (c Config) withDefaults() Config {
 	return c
 }
 
+// ttlFor is the window a challenge of this purpose gets.
+//
+// An override of zero or less is ignored rather than honoured: a misconfigured
+// key must not produce a challenge that has already expired when it is issued,
+// which would lock every learner out of the flow it belongs to.
+func (c Config) ttlFor(purpose Purpose) time.Duration {
+	if override, ok := c.TTLByPurpose[purpose]; ok && override > 0 {
+		return override
+	}
+	return c.TTL
+}
+
 // ChallengeService issues, verifies and resends one-time codes.
 type ChallengeService struct {
 	repo    Repository
@@ -126,6 +157,24 @@ func NewChallengeService(deps ChallengeDeps) *ChallengeService {
 		config:  deps.Config.withDefaults(),
 		env:     deps.Env,
 	}
+}
+
+// SupersedeIn burns every outstanding challenge of one purpose for one subject.
+//
+// It is separate from IssueIn rather than folded into it because the two
+// purposes that exist today want opposite things. A resent verification code
+// keeps its challenge and replaces the code on it (BR-AUTH-13), so burning on
+// issue would break the resend cooldown's whole model. A reset issues a new
+// challenge each time and the old one has to die, or an older email sitting in
+// an inbox stays a way in. The caller says which it wants.
+//
+// The subject is hashed here so no caller outside this package has to know how,
+// and so the keyring stays in one place.
+func (s *ChallengeService) SupersedeIn(
+	ctx context.Context, tx pgx.Tx, purpose Purpose, subject string,
+) (int, error) {
+	return s.repo.WithTx(tx).BurnLiveChallengesForSubject(
+		ctx, purpose, s.keys.SubjectHash(subject), s.clock.Now().UTC())
 }
 
 // IssueRequest names what a challenge is for and who it is for.
@@ -205,7 +254,7 @@ func (s *ChallengeService) issue(ctx context.Context, repo Repository, request I
 		// before the code could be hashed.
 		CodeHash:    s.keys.CodeHash(challengeID, code.Reveal()),
 		MaxAttempts: s.config.MaxAttempts,
-		ExpiresAt:   now.Add(s.config.TTL),
+		ExpiresAt:   now.Add(s.config.ttlFor(request.Purpose)),
 		UserID:      request.UserID,
 		Now:         now,
 	})

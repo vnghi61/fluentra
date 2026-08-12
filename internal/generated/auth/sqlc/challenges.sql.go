@@ -12,6 +12,41 @@ import (
 	"github.com/google/uuid"
 )
 
+const burnLiveChallengesForSubject = `-- name: BurnLiveChallengesForSubject :execrows
+UPDATE core.auth_challenges
+SET attempts = max_attempts, updated_at = $3::timestamptz
+WHERE purpose = $1
+  AND subject_hash = $2
+  AND consumed_at IS NULL
+  AND attempts < max_attempts
+  AND expires_at > $3::timestamptz
+`
+
+type BurnLiveChallengesForSubjectParams struct {
+	Purpose     CoreChallengePurpose
+	SubjectHash []byte
+	Now         time.Time
+}
+
+// BurnLiveChallengesForSubject spends the attempt budget of every outstanding
+// challenge of one purpose for one subject.
+//
+// It runs when a new challenge of the same purpose is issued, so that an older
+// email sitting in an inbox stops being a way in. Burning by attempts rather
+// than by consumed_at is the convention this table already uses -- there is no
+// burned_at column, and "burned" is derived from attempts >= max_attempts, so a
+// second stored record of the same fact cannot disagree with the first. It also
+// reads truthfully: the budget for presenting a code against this challenge is
+// spent, which is exactly what happened. Marking it consumed would claim
+// somebody used it, and nobody did.
+func (q *Queries) BurnLiveChallengesForSubject(ctx context.Context, arg BurnLiveChallengesForSubjectParams) (int64, error) {
+	result, err := q.db.Exec(ctx, burnLiveChallengesForSubject, arg.Purpose, arg.SubjectHash, arg.Now)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const consumeChallenge = `-- name: ConsumeChallenge :one
 UPDATE core.auth_challenges
 SET consumed_at = $1::timestamptz, updated_at = $1

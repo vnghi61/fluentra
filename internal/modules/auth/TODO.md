@@ -55,6 +55,23 @@ by hand. Completed work is recorded here instead.
 | P2.3 | 2026-08-10 | `core.login_attempts` migration & table; `LoginService` handling Argon2id constant-time timing equalisation (`DummyVerify` for unknown emails), per-account and per-IP lockouts backed by persisted failures with 15-minute-to-24-hour exponential backoff, account status checks (suspended/unverified), transparent Argon2id parameter rehash on login, and `POST /auth/login` HTTP endpoint |
 | P2.4 | 2026-08-11 | `TokenService` — HS256 access tokens carrying `sub`/`sid`/`role`/`jti`/`iat`/`exp`/`aud`/`iss` and no PII, two-key rotation, 60-second leeway, the signing method pinned so an `alg: none` token cannot verify, and the parser driven by the injected clock; `TokenDenylist` over Redis for explicit logout, failing open per ADR-0007; `Authenticate` middleware placing `httpx.Actor` in the request context; login and email verification both return an `AuthSession`; `EMAIL_NOT_VERIFIED` corrected to 403 and account suspension split out of `ACCOUNT_LOCKED` into `ACCOUNT_SUSPENDED` |
 
+## Open after P2.7
+
+- [ ] **Two topics now put a live code in an outbox payload.** `auth.verification_requested` was the
+      first and `auth.password_reset_requested` is the second, and the reset code is worth something
+      for thirty minutes rather than ten. `ops.outbox_events` still keeps published rows forever, so
+      both payloads outlive their usefulness. The fix is unchanged and still belongs in
+      `shared/outbox` — prune published rows, or null their payload — and it is now twice as worth
+      doing.
+- [ ] **A reset does not notify the address it was completed for.** `auth.password_changed` is
+      published and nothing consumes it; the mailer has no `password_changed` template. A change the
+      learner did not make is the first sign of a takeover, and the notification is often the only
+      way they find out. The event is in place so the consumer is a small card.
+- [ ] **`PASSWORD_RESET_TTL` is read by `cmd/api` and not by `cmd/worker`.** The worker builds an
+      auth module to run the mailer consumer and the sweep, and gets the ten-minute default. Nothing
+      in the worker issues a challenge, so it does not matter today; it will the moment something
+      does.
+
 ## Open after P2.6
 
 - [ ] **The session list shows no country.** P2.6's card specifies "IP country from a local

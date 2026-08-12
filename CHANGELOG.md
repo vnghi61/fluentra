@@ -60,6 +60,15 @@ generated text describes commits; release notes should describe change.
 - `DELETE /api/v1/auth/sessions/{id}` — sign one device out. A session belonging to another
   account answers 404 and not 403, so the operation cannot be used to discover which session ids
   exist
+- `POST /api/v1/auth/forgot-password`, `/reset-password` and `/change-password` — the reset flow.
+  `forgot-password` always answers 202, in comparable time, whether or not the address has an
+  account: an unknown address still has a real challenge issued that nobody is given a code for,
+  so neither the body nor the clock reveals who is registered
+- A reset revokes every session; a change revokes every session but the one it was made from, and
+  requires the current password even though the caller is already signed in
+- Reset codes live thirty minutes rather than the ten a signup code gets, and asking for a second
+  one kills the first
+
 - `POST /api/v1/auth/logout` — sign out of this device: the session and its refresh family are
   revoked, and the access token is denylisted so it stops working immediately rather than at its
   expiry

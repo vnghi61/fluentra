@@ -63,3 +63,20 @@ UPDATE core.refresh_tokens rt
 SET revoked_at = sqlc.arg(now)::timestamptz
 FROM core.sessions s
 WHERE s.id = rt.session_id AND s.user_id = $1 AND rt.revoked_at IS NULL;
+
+-- RevokeOtherSessionsForUser is what a password change uses: every device but
+-- the one the change was made from.
+--
+-- name: RevokeOtherSessionsForUser :execrows
+UPDATE core.sessions
+SET revoked_at = sqlc.arg(now)::timestamptz
+WHERE user_id = $1 AND id <> sqlc.arg(keep_session_id) AND revoked_at IS NULL;
+
+-- name: RevokeRefreshTokensForOtherSessions :execrows
+UPDATE core.refresh_tokens rt
+SET revoked_at = sqlc.arg(now)::timestamptz
+FROM core.sessions s
+WHERE s.id = rt.session_id
+  AND s.user_id = $1
+  AND s.id <> sqlc.arg(keep_session_id)
+  AND rt.revoked_at IS NULL;

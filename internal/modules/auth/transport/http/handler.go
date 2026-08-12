@@ -42,6 +42,13 @@ type Rotator interface {
 	Rotate(ctx context.Context, presented string) (service.SignedIn, error)
 }
 
+// Passwords is the reset and change surface required by Handler.
+type Passwords interface {
+	Forgot(ctx context.Context, email string) (service.Issued, error)
+	Reset(ctx context.Context, input service.ResetInput) (service.PasswordChanged, error)
+	Change(ctx context.Context, actor httpx.Actor, input service.ChangeInput) (service.PasswordChanged, error)
+}
+
 // Sessions is the session surface required by Handler.
 type Sessions interface {
 	List(ctx context.Context, actor httpx.Actor) ([]service.SessionView, error)
@@ -55,6 +62,7 @@ type Handler struct {
 	authenticator Authenticator
 	rotator       Rotator
 	sessions      Sessions
+	passwords     Passwords
 	cookies       CookieOptions
 	clock         clock.Clock
 }
@@ -62,13 +70,14 @@ type Handler struct {
 // NewHandler creates the handler.
 func NewHandler(
 	registration Registration, authenticator Authenticator,
-	rotator Rotator, sessions Sessions, cookies CookieOptions,
+	rotator Rotator, sessions Sessions, passwords Passwords, cookies CookieOptions,
 ) *Handler {
 	return &Handler{
 		registration:  registration,
 		authenticator: authenticator,
 		rotator:       rotator,
 		sessions:      sessions,
+		passwords:     passwords,
 		cookies:       cookies,
 		clock:         clock.Real{},
 	}
@@ -81,6 +90,9 @@ func (h *Handler) Routes(router chi.Router) {
 		auth.Post("/login", h.login)
 		auth.Post("/refresh", h.refresh)
 		auth.Post("/logout", h.logout)
+		auth.Post("/forgot-password", h.forgotPassword)
+		auth.Post("/reset-password", h.resetPassword)
+		auth.Post("/change-password", h.changePassword)
 		auth.Get("/sessions", h.listSessions)
 		auth.Delete("/sessions/{id}", h.revokeSession)
 		auth.Route("/challenges/{id}", func(challenge chi.Router) {
@@ -224,6 +236,63 @@ func (h *Handler) revokeSession(writer http.ResponseWriter, request *http.Reques
 		h.clearRefreshCookie(writer)
 	}
 	writer.WriteHeader(http.StatusNoContent)
+}
+
+// forgotPassword starts a reset. It answers 202 whether or not the address has
+// an account, which is the whole point of the operation (BR-AUTH-26).
+func (h *Handler) forgotPassword(writer http.ResponseWriter, request *http.Request) {
+	email, err := decodeForgotPasswordRequest(request)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	issued, err := h.passwords.Forgot(request.Context(), email)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	httpx.WriteJSON(writer, request, http.StatusAccepted, toChallengeResponse(issued))
+}
+
+// resetPassword consumes the code and replaces the password.
+//
+// It does not sign the caller in, and it clears any refresh cookie the browser
+// still holds. Every session was just revoked, so a cookie left in place would
+// only be replayed once and refused.
+func (h *Handler) resetPassword(writer http.ResponseWriter, request *http.Request) {
+	input, err := decodeResetPasswordRequest(request)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	changed, err := h.passwords.Reset(request.Context(), input)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	h.clearRefreshCookie(writer)
+	httpx.WriteJSON(writer, request, http.StatusOK, toPasswordChangedResponse(changed))
+}
+
+// changePassword replaces the password for a signed-in caller and keeps them
+// signed in on this device, cookie and all.
+func (h *Handler) changePassword(writer http.ResponseWriter, request *http.Request) {
+	actor, err := requireActor(request)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	input, err := decodeChangePasswordRequest(request)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	changed, err := h.passwords.Change(request.Context(), actor, input)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	httpx.WriteJSON(writer, request, http.StatusOK, toPasswordChangedResponse(changed))
 }
 
 // requireActor is the guard the authenticated operations start with.

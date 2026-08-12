@@ -41,6 +41,9 @@ type identityDeps struct {
 	// RefreshTTL is REFRESH_TOKEN_TTL: the idle window a refresh token gets.
 	RefreshTTL time.Duration
 
+	// PasswordResetTTL is PASSWORD_RESET_TTL: how long a reset code lives.
+	PasswordResetTTL time.Duration
+
 	// Denylist backs the logout revocation list. It is a cache rather than a
 	// table because ADR-0007 rejected server-side sessions specifically to keep
 	// a datastore read off the authentication path — putting the denylist in
@@ -102,16 +105,17 @@ func newIdentity(deps identityDeps) *identity {
 	sender := mailer.NewSMTPSender(deps.SMTP, renderer, nil, nil)
 
 	assembled.auth = auth.New(auth.Deps{
-		Pool:       deps.Pool,
-		OTPHMACKey: deps.OTPHMACKey,
-		Mailer:     sender,
-		Registrar:  assembled.user.Registrar(),
-		Limiter:    deps.Limiter,
-		Tokens:     deps.Tokens,
-		Roles:      assembled.rbac.RoleReader(),
-		Denylist:   deps.Denylist,
-		Env:        deps.Env,
-		RefreshTTL: deps.RefreshTTL,
+		Pool:             deps.Pool,
+		OTPHMACKey:       deps.OTPHMACKey,
+		Mailer:           sender,
+		Registrar:        assembled.user.Registrar(),
+		Limiter:          deps.Limiter,
+		Tokens:           deps.Tokens,
+		Roles:            assembled.rbac.RoleReader(),
+		Denylist:         deps.Denylist,
+		Env:              deps.Env,
+		RefreshTTL:       deps.RefreshTTL,
+		PasswordResetTTL: deps.PasswordResetTTL,
 	})
 
 	return assembled
