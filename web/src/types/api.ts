@@ -1359,10 +1359,17 @@ export interface components {
                 "application/problem+json": components["schemas"]["ValidationProblem"];
             };
         };
-        /** @description The applicable rate limit has been exceeded. */
+        /**
+         * @description The applicable rate limit has been exceeded.
+         *
+         *     `Retry-After` says how long to wait. The `RateLimit-*` trio says which limit was hit and when the window resets, which is what lets a client back off against the right budget instead of guessing -- a caller that has exhausted the 5/min `/auth` class and one that has exhausted the 60/min anonymous class both see 429, and they should not wait the same amount of time.
+         */
         TooManyRequests: {
             headers: {
                 "Retry-After": components["headers"]["Retry-After"];
+                "RateLimit-Limit": components["headers"]["RateLimit-Limit"];
+                "RateLimit-Remaining": components["headers"]["RateLimit-Remaining"];
+                "RateLimit-Reset": components["headers"]["RateLimit-Reset"];
                 [name: string]: unknown;
             };
             content: {

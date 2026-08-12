@@ -15,6 +15,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/user"
 	"github.com/fluentra/fluentra/internal/platform/cache"
 	"github.com/fluentra/fluentra/internal/platform/mailer"
+	"github.com/fluentra/fluentra/internal/shared/httpx"
 )
 
 // identity is WP1+WP2 assembled: the modules that know who a caller is and what
@@ -24,6 +25,8 @@ type identity struct {
 	rbac  *rbac.Module
 	user  *user.Module
 	auth  *auth.Module
+
+	rateLimit *httpx.RateLimiter
 }
 
 // identityDeps are the infrastructure the modules are built over.
@@ -43,6 +46,11 @@ type identityDeps struct {
 
 	// PasswordResetTTL is PASSWORD_RESET_TTL: how long a reset code lives.
 	PasswordResetTTL time.Duration
+
+	// RateLimit applies the classes in API_GUIDELINE.md §11. Nil disables it,
+	// which is the same direction the middleware takes when its store is
+	// unreachable: a missing limiter must not refuse everything.
+	RateLimit *httpx.RateLimiter
 
 	// Denylist backs the logout revocation list. It is a cache rather than a
 	// table because ADR-0007 rejected server-side sessions specifically to keep
@@ -64,7 +72,7 @@ type identityDeps struct {
 // resolves its authorizer at call time instead, which breaks the circle where
 // it actually is rather than where it currently is not.
 func newIdentity(deps identityDeps) *identity {
-	assembled := &identity{}
+	assembled := &identity{rateLimit: deps.RateLimit}
 
 	assembled.audit = audit.New(audit.Deps{
 		Pool: deps.Pool,
@@ -144,6 +152,20 @@ func (i *identity) Routes(api chi.Router) {
 	api.Group(func(authenticated chi.Router) {
 		authenticated.Use(i.auth.Authenticate())
 
+		// After Authenticate and not before it. The class a request belongs to
+		// depends on whether there is an actor in the context: a signed-in
+		// caller charged against the 60/min anonymous budget would be cut off
+		// ten times sooner than API_GUIDELINE.md §11 promises, and — worse —
+		// every learner behind one office NAT would share it.
+		//
+		// Inside this Group for the reason the Group exists at all: `/health`,
+		// `/ready` and `/ping` are registered outside it. Those are what the
+		// orchestrator polls, and an instance that answers 429 to a liveness
+		// probe is an instance that gets killed for being busy.
+		if i.rateLimit != nil {
+			authenticated.Use(i.rateLimit.Middleware)
+		}
+
 		i.user.Routes(authenticated)
 		i.rbac.Routes(authenticated)
 		i.auth.Routes(authenticated)
@@ -171,3 +193,26 @@ func (g lazyGuard) Require(ctx context.Context, permission string) error {
 }
 
 func (g lazyGuard) authorizer() rbaccontract.Authorizer { return g.of.rbac.Authorizer() }
+
+// rateLimiterAdapter bridges platform/cache's limiter to the one httpx declares.
+//
+// The two structs are identical field for field, and they are two structs
+// because the shared kernel may not import a platform package — go-arch-lint
+// enforces the direction, and caught the import when this card first tried it.
+// The composition root is exactly where the seam belongs: it is the only place
+// that is allowed to know about both.
+type rateLimiterAdapter struct {
+	inner cache.Limiter
+}
+
+func (a rateLimiterAdapter) Allow(
+	ctx context.Context, key string, limit int, window time.Duration,
+) (httpx.LimitResult, error) {
+	result, err := a.inner.Allow(ctx, key, limit, window)
+	return httpx.LimitResult{
+		Allowed:   result.Allowed,
+		Remaining: result.Remaining,
+		ResetIn:   result.ResetIn,
+		Degraded:  result.Degraded,
+	}, err
+}

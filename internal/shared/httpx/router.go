@@ -71,7 +71,6 @@ func NewRouter(deps RouterDependencies) http.Handler {
 	if deps.Middleware != nil {
 		router.Use(deps.Middleware)
 	}
-
 	if deps.Health != nil {
 		router.Get("/health", deps.Health)
 	}

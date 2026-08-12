@@ -60,6 +60,17 @@ generated text describes commits; release notes should describe change.
 - `DELETE /api/v1/auth/sessions/{id}` — sign one device out. A session belonging to another
   account answers 404 and not 403, so the operation cannot be used to discover which session ids
   exist
+- Rate limiting at the HTTP boundary, in the classes `API_GUIDELINE.md` §11 sets out: 60/min per
+  address for anonymous callers, 600/min per account once signed in, 5/min per address **and** per
+  account on the operations that hand out or reset a credential, and a per-address hourly cap on
+  challenge issuance that catches a script asking for one code each against many different
+  addresses. Responses carry `RateLimit-Limit`, `RateLimit-Remaining` and `RateLimit-Reset`; a 429
+  adds `Retry-After`
+- When the rate limiter's backing store is unreachable the request is **allowed**, not refused, and
+  no budget is advertised — a limiter that denies during a cache outage turns it into a total
+  outage, and a `RateLimit-Remaining` derived from a budget nobody checked is a number a client
+  would pace itself against
+
 - `POST /api/v1/auth/forgot-password`, `/reset-password` and `/change-password` — the reset flow.
   `forgot-password` always answers 202, in comparable time, whether or not the address has an
   account: an unknown address still has a real challenge issued that nobody is given a code for,
