@@ -54,16 +54,17 @@ func (a oauthAdapter) WithTx(tx pgx.Tx) service.OAuthRepo {
 	return oauthAdapter{Repository: a.Repository.WithTx(tx)}
 }
 
-// oauthAccounts is the full service.Accounts over `core.users` in plain SQL.
+// writableAccounts is the full service.Accounts over `core.users` in plain SQL,
+// shared by the Google sign-in and registration-journey suites.
 //
-// It is wider than the password suite's sqlAccounts because this card is the
-// first that creates an account and marks it verified, and it is written out
+// It is wider than the password suite's sqlAccounts because those two are the
+// flows that *create* an account and mark it verified, and it is written out
 // rather than borrowed from the `user` module for the reason seedUser is:
 // importing that module's repository from here is the boundary crossing rule L1
 // forbids, test or not.
-type oauthAccounts struct{ t *testing.T }
+type writableAccounts struct{ t *testing.T }
 
-func (a oauthAccounts) CreateAccount(ctx context.Context, account service.NewAccount) (uuid.UUID, error) {
+func (a writableAccounts) CreateAccount(ctx context.Context, account service.NewAccount) (uuid.UUID, error) {
 	userID, err := id.NewUUIDv7(ctx)
 	if err != nil {
 		return uuid.Nil, err
@@ -83,7 +84,7 @@ func (a oauthAccounts) CreateAccount(ctx context.Context, account service.NewAcc
 	return userID, nil
 }
 
-func (a oauthAccounts) FindByEmail(ctx context.Context, email string) (service.Account, bool, error) {
+func (a writableAccounts) FindByEmail(ctx context.Context, email string) (service.Account, bool, error) {
 	var account service.Account
 	err := pool.QueryRow(ctx, `
 		SELECT id, email_verified_at IS NOT NULL, status::text
@@ -97,19 +98,21 @@ func (a oauthAccounts) FindByEmail(ctx context.Context, email string) (service.A
 	return account, true, nil
 }
 
-func (a oauthAccounts) Recipient(ctx context.Context, userID uuid.UUID) (service.Contact, error) {
+func (a writableAccounts) Recipient(ctx context.Context, userID uuid.UUID) (service.Contact, error) {
 	var contact service.Contact
 	err := pool.QueryRow(ctx, `SELECT email::text FROM core.users WHERE id = $1`, userID).Scan(&contact.Email)
 	return contact, err
 }
 
-func (a oauthAccounts) MarkEmailVerified(ctx context.Context, userID uuid.UUID) error {
+func (a writableAccounts) MarkEmailVerified(ctx context.Context, userID uuid.UUID) error {
 	_, err := pool.Exec(ctx,
 		`UPDATE core.users SET email_verified_at = now() WHERE id = $1 AND email_verified_at IS NULL`, userID)
 	return err
 }
 
-func (a oauthAccounts) PurgeUnverifiedBefore(context.Context, time.Time) (int, error) { return 0, nil }
+func (a writableAccounts) PurgeUnverifiedBefore(context.Context, time.Time) (int, error) {
+	return 0, nil
+}
 
 // stubProvider stands in for Google. Everything it does is a decision Google
 // makes for us in production — what the subject is, what the address is, and
@@ -128,7 +131,7 @@ type stubProvider struct {
 func newStubProvider(email string) *stubProvider {
 	return &stubProvider{
 		identity: google.Identity{
-			Subject: oauthSubject, Email: email, EmailVerified: true, Name: "A Learner",
+			Subject: oauthSubject, Email: email, EmailVerified: true, Name: learnerDisplayName,
 		},
 	}
 }
@@ -228,7 +231,7 @@ func newOAuthHarness(t *testing.T, providerEmail string) *oauthHarness {
 			Pool:     pool,
 			Repo:     oauthAdapter{Repository: repo},
 			Provider: provider,
-			Accounts: oauthAccounts{t: t},
+			Accounts: writableAccounts{t: t},
 			Sessions: sessions,
 			Events:   events,
 			Keys:     keys,
