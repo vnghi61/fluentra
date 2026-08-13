@@ -60,6 +60,27 @@ generated text describes commits; release notes should describe change.
 - `DELETE /api/v1/auth/sessions/{id}` — sign one device out. A session belonging to another
   account answers 404 and not 403, so the operation cannot be used to discover which session ids
   exist
+- Sign in with Google. `GET /api/v1/auth/oauth/google/start` hands back a consent URL and nothing
+  else — the `state`, the `nonce` and the PKCE verifier stay server-side, because a value the page
+  can read is one an attacker reading the same page can replay.
+  `POST /api/v1/auth/oauth/google/callback` spends the state, redeems the code and verifies
+  Google's ID token against its published keys — signature, issuer, audience, expiry and the nonce
+  we issued — before writing anything at all
+- Google sign-in links to an existing account **only** when Google vouches for the address and a
+  local account has proved the same one. An address matching an account that has never completed
+  its own verification is refused with `OAUTH_ACCOUNT_CONFLICT` and no link is made: registering an
+  address does not prove you own it, so auto-linking there would hand the account to whoever
+  claimed the address first. A learner in that position verifies by email once and then links
+- A Google account with no local counterpart opens one that is **already verified** — Google has
+  performed exactly the check the emailed code would have — and it gets no password. That is why
+  `POST /api/v1/auth/oauth/google/link` and `DELETE /api/v1/auth/oauth/google` exist, and why
+  unlinking the only remaining way in is refused with `LAST_SIGN_IN_METHOD` rather than leaving an
+  account nobody can reach
+- A Google callback carrying a `state` this server did not issue, has already spent, or issued more
+  than ten minutes ago is refused — all three the same way, since telling them apart tells a prober
+  how the check works — and each one raises an `oauth_state_invalid` security event, because a
+  refused callback leaves no other trace and the rate is the whole signal
+
 - Persistent sign-in. Refresh rotation is now **sliding**: each renewal starts a fresh idle window,
   so a learner who keeps using the app never sees the login form. Every session also carries an
   **absolute** expiry that activity never moves — reaching it answers `SESSION_ABSOLUTE_EXPIRED` and

@@ -29,6 +29,7 @@ const (
 	// field name is two chances to disagree.
 	fieldEmail    = "email"
 	fieldPassword = "password" // #nosec G101 -- a field name, not a credential
+	fieldCode     = "code"
 )
 
 // maxUserAgent bounds the header before it is hashed. Nothing downstream reads
@@ -192,7 +193,7 @@ func decodeVerifyRequest(request *http.Request) (string, error) {
 	}
 	if payload.Code == nil {
 		return "", validationFailed().WithFields(apperr.FieldViolation{
-			Field: "code", Code: codeRequired, Message: "code is required.",
+			Field: fieldCode, Code: codeRequired, Message: "code is required.",
 		})
 	}
 	// The shape is not validated here. A wrong-shaped code still costs an
@@ -291,6 +292,83 @@ func decodeLoginRequest(request *http.Request) (service.LoginInput, error) {
 		// Stored as a digest on the session row, never in the clear, and
 		// truncated first: a user agent is attacker-controlled and unbounded,
 		// and the digest is fixed-width either way.
+		UserAgent: truncate(request.UserAgent(), maxUserAgent),
+	}, nil
+}
+
+// oauthStartResponse matches components/auth.yaml#/OAuthStart.
+//
+// One member, and that is the whole design. The `state`, the `nonce` and the
+// PKCE verifier are all generated for this flow and none of them appears here:
+// a value the page can read is a value an attacker who can read the same page
+// can replay, and the verifier in particular would defeat PKCE outright.
+type oauthStartResponse struct {
+	AuthorizationURL string `json:"authorization_url"`
+}
+
+// oauthIdentityResponse matches components/auth.yaml#/OAuthIdentity.
+//
+// The address is the one Google just asserted, not one read back from the row —
+// the row stores a keyed digest, and there is nothing there to render.
+type oauthIdentityResponse struct {
+	Provider string `json:"provider"`
+	Email    string `json:"email"`
+	LinkedAt string `json:"linked_at"`
+}
+
+func toOAuthIdentityResponse(linked service.LinkedIdentity) oauthIdentityResponse {
+	return oauthIdentityResponse{
+		Provider: linked.Provider,
+		Email:    linked.Email,
+		LinkedAt: linked.LinkedAt.UTC().Format(time.RFC3339),
+	}
+}
+
+// oauthCallbackPayload matches components/auth.yaml#/OAuthCallbackRequest.
+type oauthCallbackPayload struct {
+	Code  *string `json:"code"`
+	State *string `json:"state"`
+}
+
+// maxRedirectTo bounds the `redirect_to` query parameter, matching the schema.
+// The service drops anything that is not a same-site path; this stops an
+// oversized one reaching it at all.
+const maxRedirectTo = 512
+
+func decodeOAuthCallbackRequest(request *http.Request) (service.CallbackInput, error) {
+	var payload oauthCallbackPayload
+	if err := decodeStrict(request, &payload); err != nil {
+		return service.CallbackInput{}, err
+	}
+
+	missing := make([]apperr.FieldViolation, 0, 2)
+	if payload.Code == nil {
+		missing = append(missing, apperr.FieldViolation{
+			Field: fieldCode, Code: codeRequired, Message: "code is required.",
+		})
+	}
+	if payload.State == nil {
+		missing = append(missing, apperr.FieldViolation{
+			Field: "state", Code: codeRequired, Message: "state is required.",
+		})
+	}
+	if len(missing) > 0 {
+		return service.CallbackInput{}, validationFailed().WithFields(sortViolations(missing)...)
+	}
+
+	// Neither value's shape is checked here. A `state` this server did not issue
+	// is refused by the store — which is also what records it — and rejecting a
+	// malformed one at the boundary would mean the ones that never reach the
+	// store are the ones nobody ever counts.
+	clientIP := ""
+	if address := httpx.ClientIP(request.Context()); address.IsValid() {
+		clientIP = address.String()
+	}
+
+	return service.CallbackInput{
+		Code:      *payload.Code,
+		State:     *payload.State,
+		ClientIP:  clientIP,
 		UserAgent: truncate(request.UserAgent(), maxUserAgent),
 	}, nil
 }

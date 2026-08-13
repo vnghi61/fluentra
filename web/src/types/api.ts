@@ -212,6 +212,104 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/oauth/google/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Begin Google sign-in.
+         * @description Generates the `state`, the `nonce` and the PKCE challenge, stores them server-side for ten minutes as a single-use record, and returns the authorization URL to send the browser to.
+         *
+         *     The `state` is server-side and single use, and that is the CSRF defence for the whole flow (BR-AUTH-17): a callback carrying a `state` this server did not issue, or one it has already consumed, is not a callback from a flow this learner started. None of the three values is returned to the client, because a value the page can read is one an attacker who can read the same page can replay.
+         *
+         *     PKCE is mandatory even though Fluentra is a confidential client holding a secret. It costs nothing, and it closes code interception on mobile browsers, which holding a secret does not.
+         */
+        get: operations["authGoogleStart"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/oauth/google/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete Google sign-in.
+         * @description Consumes the `state`, exchanges the code with the PKCE verifier, and verifies Google's ID token against its JWKS -- signature, `iss`, `aud`, `exp`, and the `nonce` this server issued. A token failing any of those is rejected and **no account, identity or session is created**: there is no partial state to clean up, because nothing is written until every check has passed (BR-AUTH-18).
+         *
+         *     Then one of five branches, and the third is the one this operation exists to get right (ADR-0023):
+         *
+         *     1. **The identity is already linked** -- sign in.
+         *     2. **The email matches a verified local account** -- link, then sign in.
+         *     3. **The email matches an account that is not yet verified** -- refuse with 409 `OAUTH_ACCOUNT_CONFLICT`. **No link is created.** Anyone can register an address they do not own; the address is not proved until an OTP is completed on it. Auto-linking here would let whoever registered first be handed the account the real owner later signs into with Google, which is the account-takeover path this refusal exists to close (BR-AUTH-16). The learner completes the OTP challenge on that address and tries again.
+         *     4. **No local account** -- create one, already verified, because Google has performed the verification (BR-AUTH-19).
+         *     5. **Google did not assert `email_verified`** -- refuse with 403 `OAUTH_EMAIL_UNVERIFIED` before any of the above is considered. An unverified address from a provider is worth no more than an unverified address from a form.
+         */
+        post: operations["authGoogleCallback"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/oauth/google/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Link a Google identity to the signed-in account.
+         * @description The same exchange and the same ID token checks as the callback, for a learner who is already signed in and adding a second way in.
+         *
+         *     Two refusals are specific to this direction. `OAUTH_EMAIL_MISMATCH` (409) is a Google account whose address is not the one this account holds -- linking those would let somebody attach an identity the account owner cannot receive mail at. `OAUTH_ALREADY_LINKED` (409) is an identity already attached to a different account; one Google account is one Fluentra account, or "sign in with Google" stops identifying anybody.
+         */
+        post: operations["authGoogleLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/oauth/google": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Unlink Google.
+         * @description Removes the linked identity.
+         *
+         *     **Refused with 409 `LAST_SIGN_IN_METHOD` if it would leave the account with no way in** (BR-AUTH-20). An account created through Google has no password, so unlinking it would lock the learner out of their own account with no recovery path -- `forgot-password` cannot help somebody who has no password to reset. They set one first, then unlink.
+         *
+         *     Unlinking when nothing is linked answers 204, for the same reason the other idempotent operations do.
+         */
+        delete: operations["authGoogleUnlink"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/forgot-password": {
         parameters: {
             query?: never;
@@ -934,6 +1032,45 @@ export interface components {
              * @example 3
              */
             sessions_revoked: number;
+        };
+        /**
+         * @description Where to send the browser, and nothing else.
+         *
+         *     The `state`, the `nonce` and the PKCE verifier are generated here and stored server-side for ten minutes, single use. None of the three is returned: a `state` the client could read is a `state` an attacker who can read the same response could replay, and the whole point of it is that only this server knows what it issued (BR-AUTH-17).
+         */
+        OAuthStart: {
+            /**
+             * Format: uri
+             * @description Google's consent screen, carrying the client id, the scopes, the `state`, the `nonce` and the PKCE challenge. PKCE is included even though Fluentra holds a client secret: it costs nothing and it closes code interception on mobile browsers, which a confidential client is not immune to (BR-AUTH-17).
+             * @example https://accounts.google.com/o/oauth2/v2/auth?client_id=...&state=...&code_challenge=...
+             */
+            authorization_url: string;
+        };
+        /**
+         * @description What Google handed back to the browser, passed straight through.
+         *
+         *     Both are required and both are checked. The `code` is worthless without the `state`, and the `state` is worthless unless this server issued it and has not already consumed it.
+         */
+        OAuthCallbackRequest: {
+            /** @description The authorization code, exchanged server-side with the PKCE verifier. */
+            code: string;
+            /** @description The value this server issued at `start`. Missing, unknown, expired or already used is `OAUTH_STATE_INVALID` and raises a security event -- those four are the shapes a CSRF attempt takes, and they are not worth telling apart in a response. */
+            state: string;
+        };
+        /** @description A linked external identity, as its owner sees it. */
+        OAuthIdentity: {
+            /**
+             * @description Only Google in this version. Apple waits for an iOS app to require it.
+             * @enum {string}
+             */
+            provider: "google";
+            /**
+             * Format: email
+             * @description The address Google asserted. It is shown so a learner can tell which Google account is linked when they hold more than one.
+             */
+            email: string;
+            /** Format: date-time */
+            linked_at: string;
         };
         /**
          * @description A device the learner explicitly chose to stay signed in on.
@@ -1903,6 +2040,150 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    authGoogleStart: {
+        parameters: {
+            query?: {
+                /** @description Where to send the learner after signing in. Stored with the state rather than round-tripped through Google, so it cannot be rewritten in flight into an open redirect. */
+                redirect_to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The authorization URL to send the browser to. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "authorization_url": "https://accounts.google.com/o/oauth2/v2/auth?client_id=example&state=example"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["OAuthStart"];
+                };
+            };
+            429: components["responses"]["TooManyRequests"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    authGoogleCallback: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "code": "4/0AeanS0by-example-authorization-code",
+                 *       "state": "9f2c1a7e4b3d4c119d217f0a5c8e2b44"
+                 *     }
+                 */
+                "application/json": components["schemas"]["OAuthCallbackRequest"];
+            };
+        };
+        responses: {
+            /** @description The caller is signed in. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    "Set-Cookie": components["headers"]["Set-Cookie-Refresh"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "access_token": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJleGFtcGxlIn0.example-signature",
+                     *       "token_type": "Bearer",
+                     *       "expires_in": 900,
+                     *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "role": "user"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["AuthSession"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            429: components["responses"]["TooManyRequests"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    authGoogleLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "code": "4/0AeanS0by-example-authorization-code",
+                 *       "state": "9f2c1a7e4b3d4c119d217f0a5c8e2b44"
+                 *     }
+                 */
+                "application/json": components["schemas"]["OAuthCallbackRequest"];
+            };
+        };
+        responses: {
+            /** @description The identity is linked. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "provider": "google",
+                     *       "email": "learner@example.com",
+                     *       "linked_at": "2026-08-12T09:12:44Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["OAuthIdentity"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            429: components["responses"]["TooManyRequests"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    authGoogleUnlink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No longer linked. */
+            204: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            409: components["responses"]["Conflict"];
             429: components["responses"]["TooManyRequests"];
         };
     };

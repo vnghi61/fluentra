@@ -62,6 +62,14 @@ type Sessions interface {
 	Logout(ctx context.Context, actor httpx.Actor) error
 }
 
+// OAuth is the Google sign-in surface required by Handler.
+type OAuth interface {
+	Start(ctx context.Context, redirectTo string) (service.Started, error)
+	Callback(ctx context.Context, input service.CallbackInput) (service.SignedIn, error)
+	Link(ctx context.Context, actor httpx.Actor, input service.CallbackInput) (service.LinkedIdentity, error)
+	Unlink(ctx context.Context, actor httpx.Actor) error
+}
+
 // Handler serves the auth module's HTTP operations.
 type Handler struct {
 	registration  Registration
@@ -70,6 +78,7 @@ type Handler struct {
 	sessions      Sessions
 	passwords     Passwords
 	devices       Devices
+	oauth         OAuth
 	cookies       CookieOptions
 	clock         clock.Clock
 }
@@ -77,7 +86,7 @@ type Handler struct {
 // NewHandler creates the handler.
 func NewHandler(
 	registration Registration, authenticator Authenticator,
-	rotator Rotator, sessions Sessions, passwords Passwords, devices Devices,
+	rotator Rotator, sessions Sessions, passwords Passwords, devices Devices, oauth OAuth,
 	cookies CookieOptions,
 ) *Handler {
 	return &Handler{
@@ -87,6 +96,7 @@ func NewHandler(
 		sessions:      sessions,
 		passwords:     passwords,
 		devices:       devices,
+		oauth:         oauth,
 		cookies:       cookies,
 		clock:         clock.Real{},
 	}
@@ -106,6 +116,14 @@ func (h *Handler) Routes(router chi.Router) {
 		auth.Delete("/devices/{id}", h.untrustDevice)
 		auth.Get("/sessions", h.listSessions)
 		auth.Delete("/sessions/{id}", h.revokeSession)
+
+		// Registered flat rather than under a Route group, so each path is the
+		// one the spec names. A group would make the unlink `/oauth/google/`,
+		// which is a different path to every client that reads the spec.
+		auth.Get("/oauth/google/start", h.oauthStart)
+		auth.Post("/oauth/google/callback", h.oauthCallback)
+		auth.Post("/oauth/google/link", h.oauthLink)
+		auth.Delete("/oauth/google", h.oauthUnlink)
 		auth.Route("/challenges/{id}", func(challenge chi.Router) {
 			challenge.Post("/verify", h.verify)
 			challenge.Post("/resend", h.resend)
@@ -337,6 +355,79 @@ func (h *Handler) untrustDevice(writer http.ResponseWriter, request *http.Reques
 		return
 	}
 	if err := h.devices.Untrust(request.Context(), actor, deviceID); err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	writer.WriteHeader(http.StatusNoContent)
+}
+
+// oauthStart returns where to send the browser.
+//
+// It is unauthenticated and it writes a row, which is the combination the rate
+// limiter exists for: without one, anybody could fill `core.oauth_states` from a
+// loop. The limiter is mounted over the whole API in cmd/api and the sweep
+// removes what is abandoned, so nothing further is needed here.
+func (h *Handler) oauthStart(writer http.ResponseWriter, request *http.Request) {
+	started, err := h.oauth.Start(request.Context(), truncate(request.URL.Query().Get("redirect_to"), maxRedirectTo))
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	httpx.WriteJSON(writer, request, http.StatusOK, oauthStartResponse{AuthorizationURL: started.AuthorizationURL})
+}
+
+// oauthCallback completes a sign-in and issues the session.
+//
+// It sets the refresh cookie exactly as login does, because what it produced is
+// the same thing: a session, opened by a caller who has just proved who they
+// are. The proof was Google's rather than a password.
+func (h *Handler) oauthCallback(writer http.ResponseWriter, request *http.Request) {
+	input, err := decodeOAuthCallbackRequest(request)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	signedIn, err := h.oauth.Callback(request.Context(), input)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	h.setRefreshCookie(writer, signedIn, h.clock.Now())
+	httpx.WriteJSON(writer, request, http.StatusOK, toSessionResponse(signedIn.Session))
+}
+
+// oauthLink adds Google to the account already signed in.
+//
+// No cookie is set and no session is opened: the caller already holds one, and
+// rotating it for an operation that changed nothing about their sign-in would
+// sign them out of every other tab for adding a second way in.
+func (h *Handler) oauthLink(writer http.ResponseWriter, request *http.Request) {
+	actor, err := requireActor(request)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	input, err := decodeOAuthCallbackRequest(request)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	linked, err := h.oauth.Link(request.Context(), actor, input)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	httpx.WriteJSON(writer, request, http.StatusOK, toOAuthIdentityResponse(linked))
+}
+
+// oauthUnlink removes the link, unless it is the last way in.
+func (h *Handler) oauthUnlink(writer http.ResponseWriter, request *http.Request) {
+	actor, err := requireActor(request)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	if err := h.oauth.Unlink(request.Context(), actor); err != nil {
 		httpx.WriteProblem(writer, request, err)
 		return
 	}

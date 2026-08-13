@@ -301,6 +301,84 @@ type ClientInterface interface {
 	// Corresponds with POST /auth/logout (the `AuthLogout` operationId).
 	AuthLogout(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AuthGoogleUnlink Unlink Google.
+	//
+	// Removes the linked identity.
+	//
+	// **Refused with 409 `LAST_SIGN_IN_METHOD` if it would leave the account with no way in** (BR-AUTH-20). An account created through Google has no password, so unlinking it would lock the learner out of their own account with no recovery path -- `forgot-password` cannot help somebody who has no password to reset. They set one first, then unlink.
+	//
+	// Unlinking when nothing is linked answers 204, for the same reason the other idempotent operations do.
+	//
+	// Corresponds with DELETE /auth/oauth/google (the `AuthGoogleUnlink` operationId).
+	AuthGoogleUnlink(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AuthGoogleCallbackWithBody Complete Google sign-in.
+	//
+	// Consumes the `state`, exchanges the code with the PKCE verifier, and verifies Google's ID token against its JWKS -- signature, `iss`, `aud`, `exp`, and the `nonce` this server issued. A token failing any of those is rejected and **no account, identity or session is created**: there is no partial state to clean up, because nothing is written until every check has passed (BR-AUTH-18).
+	//
+	// Then one of five branches, and the third is the one this operation exists to get right (ADR-0023):
+	//
+	// 1. **The identity is already linked** -- sign in.
+	// 2. **The email matches a verified local account** -- link, then sign in.
+	// 3. **The email matches an account that is not yet verified** -- refuse with 409 `OAUTH_ACCOUNT_CONFLICT`. **No link is created.** Anyone can register an address they do not own; the address is not proved until an OTP is completed on it. Auto-linking here would let whoever registered first be handed the account the real owner later signs into with Google, which is the account-takeover path this refusal exists to close (BR-AUTH-16). The learner completes the OTP challenge on that address and tries again.
+	// 4. **No local account** -- create one, already verified, because Google has performed the verification (BR-AUTH-19).
+	// 5. **Google did not assert `email_verified`** -- refuse with 403 `OAUTH_EMAIL_UNVERIFIED` before any of the above is considered. An unverified address from a provider is worth no more than an unverified address from a form.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /auth/oauth/google/callback (the `AuthGoogleCallback` operationId).
+	AuthGoogleCallbackWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AuthGoogleCallback Complete Google sign-in.
+	//
+	// Consumes the `state`, exchanges the code with the PKCE verifier, and verifies Google's ID token against its JWKS -- signature, `iss`, `aud`, `exp`, and the `nonce` this server issued. A token failing any of those is rejected and **no account, identity or session is created**: there is no partial state to clean up, because nothing is written until every check has passed (BR-AUTH-18).
+	//
+	// Then one of five branches, and the third is the one this operation exists to get right (ADR-0023):
+	//
+	// 1. **The identity is already linked** -- sign in.
+	// 2. **The email matches a verified local account** -- link, then sign in.
+	// 3. **The email matches an account that is not yet verified** -- refuse with 409 `OAUTH_ACCOUNT_CONFLICT`. **No link is created.** Anyone can register an address they do not own; the address is not proved until an OTP is completed on it. Auto-linking here would let whoever registered first be handed the account the real owner later signs into with Google, which is the account-takeover path this refusal exists to close (BR-AUTH-16). The learner completes the OTP challenge on that address and tries again.
+	// 4. **No local account** -- create one, already verified, because Google has performed the verification (BR-AUTH-19).
+	// 5. **Google did not assert `email_verified`** -- refuse with 403 `OAUTH_EMAIL_UNVERIFIED` before any of the above is considered. An unverified address from a provider is worth no more than an unverified address from a form.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /auth/oauth/google/callback (the `AuthGoogleCallback` operationId).
+	AuthGoogleCallback(ctx context.Context, body AuthGoogleCallbackJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AuthGoogleLinkWithBody Link a Google identity to the signed-in account.
+	//
+	// The same exchange and the same ID token checks as the callback, for a learner who is already signed in and adding a second way in.
+	//
+	// Two refusals are specific to this direction. `OAUTH_EMAIL_MISMATCH` (409) is a Google account whose address is not the one this account holds -- linking those would let somebody attach an identity the account owner cannot receive mail at. `OAUTH_ALREADY_LINKED` (409) is an identity already attached to a different account; one Google account is one Fluentra account, or "sign in with Google" stops identifying anybody.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /auth/oauth/google/link (the `AuthGoogleLink` operationId).
+	AuthGoogleLinkWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AuthGoogleLink Link a Google identity to the signed-in account.
+	//
+	// The same exchange and the same ID token checks as the callback, for a learner who is already signed in and adding a second way in.
+	//
+	// Two refusals are specific to this direction. `OAUTH_EMAIL_MISMATCH` (409) is a Google account whose address is not the one this account holds -- linking those would let somebody attach an identity the account owner cannot receive mail at. `OAUTH_ALREADY_LINKED` (409) is an identity already attached to a different account; one Google account is one Fluentra account, or "sign in with Google" stops identifying anybody.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /auth/oauth/google/link (the `AuthGoogleLink` operationId).
+	AuthGoogleLink(ctx context.Context, body AuthGoogleLinkJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AuthGoogleStart Begin Google sign-in.
+	//
+	// Generates the `state`, the `nonce` and the PKCE challenge, stores them server-side for ten minutes as a single-use record, and returns the authorization URL to send the browser to.
+	//
+	// The `state` is server-side and single use, and that is the CSRF defence for the whole flow (BR-AUTH-17): a callback carrying a `state` this server did not issue, or one it has already consumed, is not a callback from a flow this learner started. None of the three values is returned to the client, because a value the page can read is one an attacker who can read the same page can replay.
+	//
+	// PKCE is mandatory even though Fluentra is a confidential client holding a secret. It costs nothing, and it closes code interception on mobile browsers, which holding a secret does not.
+	//
+	// Corresponds with GET /auth/oauth/google/start (the `AuthGoogleStart` operationId).
+	AuthGoogleStart(ctx context.Context, params *AuthGoogleStartParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AuthRefresh Rotate the refresh token and issue a new access token.
 	//
 	// Exchanges the `refresh_token` cookie for a fresh access token and a fresh refresh cookie. There is no request body: the credential is the cookie, which the browser attaches on its own and no script can read.
@@ -882,6 +960,144 @@ func (c *Client) AuthLogin(ctx context.Context, body AuthLoginJSONRequestBody, r
 // Corresponds with POST /auth/logout (the `AuthLogout` operationId).
 func (c *Client) AuthLogout(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAuthLogoutRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AuthGoogleUnlink Unlink Google.
+//
+// Removes the linked identity.
+//
+// **Refused with 409 `LAST_SIGN_IN_METHOD` if it would leave the account with no way in** (BR-AUTH-20). An account created through Google has no password, so unlinking it would lock the learner out of their own account with no recovery path -- `forgot-password` cannot help somebody who has no password to reset. They set one first, then unlink.
+//
+// Unlinking when nothing is linked answers 204, for the same reason the other idempotent operations do.
+//
+// Corresponds with DELETE /auth/oauth/google (the `AuthGoogleUnlink` operationId).
+func (c *Client) AuthGoogleUnlink(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthGoogleUnlinkRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AuthGoogleCallbackWithBody Complete Google sign-in.
+//
+// Consumes the `state`, exchanges the code with the PKCE verifier, and verifies Google's ID token against its JWKS -- signature, `iss`, `aud`, `exp`, and the `nonce` this server issued. A token failing any of those is rejected and **no account, identity or session is created**: there is no partial state to clean up, because nothing is written until every check has passed (BR-AUTH-18).
+//
+// Then one of five branches, and the third is the one this operation exists to get right (ADR-0023):
+//
+// 1. **The identity is already linked** -- sign in.
+// 2. **The email matches a verified local account** -- link, then sign in.
+// 3. **The email matches an account that is not yet verified** -- refuse with 409 `OAUTH_ACCOUNT_CONFLICT`. **No link is created.** Anyone can register an address they do not own; the address is not proved until an OTP is completed on it. Auto-linking here would let whoever registered first be handed the account the real owner later signs into with Google, which is the account-takeover path this refusal exists to close (BR-AUTH-16). The learner completes the OTP challenge on that address and tries again.
+// 4. **No local account** -- create one, already verified, because Google has performed the verification (BR-AUTH-19).
+// 5. **Google did not assert `email_verified`** -- refuse with 403 `OAUTH_EMAIL_UNVERIFIED` before any of the above is considered. An unverified address from a provider is worth no more than an unverified address from a form.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /auth/oauth/google/callback (the `AuthGoogleCallback` operationId).
+func (c *Client) AuthGoogleCallbackWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthGoogleCallbackRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AuthGoogleCallback Complete Google sign-in.
+//
+// Consumes the `state`, exchanges the code with the PKCE verifier, and verifies Google's ID token against its JWKS -- signature, `iss`, `aud`, `exp`, and the `nonce` this server issued. A token failing any of those is rejected and **no account, identity or session is created**: there is no partial state to clean up, because nothing is written until every check has passed (BR-AUTH-18).
+//
+// Then one of five branches, and the third is the one this operation exists to get right (ADR-0023):
+//
+// 1. **The identity is already linked** -- sign in.
+// 2. **The email matches a verified local account** -- link, then sign in.
+// 3. **The email matches an account that is not yet verified** -- refuse with 409 `OAUTH_ACCOUNT_CONFLICT`. **No link is created.** Anyone can register an address they do not own; the address is not proved until an OTP is completed on it. Auto-linking here would let whoever registered first be handed the account the real owner later signs into with Google, which is the account-takeover path this refusal exists to close (BR-AUTH-16). The learner completes the OTP challenge on that address and tries again.
+// 4. **No local account** -- create one, already verified, because Google has performed the verification (BR-AUTH-19).
+// 5. **Google did not assert `email_verified`** -- refuse with 403 `OAUTH_EMAIL_UNVERIFIED` before any of the above is considered. An unverified address from a provider is worth no more than an unverified address from a form.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /auth/oauth/google/callback (the `AuthGoogleCallback` operationId).
+func (c *Client) AuthGoogleCallback(ctx context.Context, body AuthGoogleCallbackJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthGoogleCallbackRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AuthGoogleLinkWithBody Link a Google identity to the signed-in account.
+//
+// The same exchange and the same ID token checks as the callback, for a learner who is already signed in and adding a second way in.
+//
+// Two refusals are specific to this direction. `OAUTH_EMAIL_MISMATCH` (409) is a Google account whose address is not the one this account holds -- linking those would let somebody attach an identity the account owner cannot receive mail at. `OAUTH_ALREADY_LINKED` (409) is an identity already attached to a different account; one Google account is one Fluentra account, or "sign in with Google" stops identifying anybody.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /auth/oauth/google/link (the `AuthGoogleLink` operationId).
+func (c *Client) AuthGoogleLinkWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthGoogleLinkRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AuthGoogleLink Link a Google identity to the signed-in account.
+//
+// The same exchange and the same ID token checks as the callback, for a learner who is already signed in and adding a second way in.
+//
+// Two refusals are specific to this direction. `OAUTH_EMAIL_MISMATCH` (409) is a Google account whose address is not the one this account holds -- linking those would let somebody attach an identity the account owner cannot receive mail at. `OAUTH_ALREADY_LINKED` (409) is an identity already attached to a different account; one Google account is one Fluentra account, or "sign in with Google" stops identifying anybody.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /auth/oauth/google/link (the `AuthGoogleLink` operationId).
+func (c *Client) AuthGoogleLink(ctx context.Context, body AuthGoogleLinkJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthGoogleLinkRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AuthGoogleStart Begin Google sign-in.
+//
+// Generates the `state`, the `nonce` and the PKCE challenge, stores them server-side for ten minutes as a single-use record, and returns the authorization URL to send the browser to.
+//
+// The `state` is server-side and single use, and that is the CSRF defence for the whole flow (BR-AUTH-17): a callback carrying a `state` this server did not issue, or one it has already consumed, is not a callback from a flow this learner started. None of the three values is returned to the client, because a value the page can read is one an attacker who can read the same page can replay.
+//
+// PKCE is mandatory even though Fluentra is a confidential client holding a secret. It costs nothing, and it closes code interception on mobile browsers, which holding a secret does not.
+//
+// Corresponds with GET /auth/oauth/google/start (the `AuthGoogleStart` operationId).
+func (c *Client) AuthGoogleStart(ctx context.Context, params *AuthGoogleStartParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthGoogleStartRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1979,6 +2195,167 @@ func NewAuthLogoutRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewAuthGoogleUnlinkRequest constructs an http.Request for the AuthGoogleUnlink method
+func NewAuthGoogleUnlinkRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/oauth/google")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAuthGoogleCallbackRequest calls the generic AuthGoogleCallback builder with application/json body
+func NewAuthGoogleCallbackRequest(server string, body AuthGoogleCallbackJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAuthGoogleCallbackRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewAuthGoogleCallbackRequestWithBody constructs an http.Request for the AuthGoogleCallback method, with any body, and a specified content type
+func NewAuthGoogleCallbackRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/oauth/google/callback")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewAuthGoogleLinkRequest calls the generic AuthGoogleLink builder with application/json body
+func NewAuthGoogleLinkRequest(server string, body AuthGoogleLinkJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAuthGoogleLinkRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewAuthGoogleLinkRequestWithBody constructs an http.Request for the AuthGoogleLink method, with any body, and a specified content type
+func NewAuthGoogleLinkRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/oauth/google/link")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewAuthGoogleStartRequest constructs an http.Request for the AuthGoogleStart method
+func NewAuthGoogleStartRequest(server string, params *AuthGoogleStartParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/oauth/google/start")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.RedirectTo != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "redirect_to", *params.RedirectTo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewAuthRefreshRequest constructs an http.Request for the AuthRefresh method
 func NewAuthRefreshRequest(server string) (*http.Request, error) {
 	var err error
@@ -2685,6 +3062,88 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /auth/logout (the `AuthLogout` operationId).
 	AuthLogoutWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AuthLogoutResponse, error)
+
+	// AuthGoogleUnlinkWithResponse Unlink Google.
+	//
+	// Removes the linked identity.
+	//
+	// **Refused with 409 `LAST_SIGN_IN_METHOD` if it would leave the account with no way in** (BR-AUTH-20). An account created through Google has no password, so unlinking it would lock the learner out of their own account with no recovery path -- `forgot-password` cannot help somebody who has no password to reset. They set one first, then unlink.
+	//
+	// Unlinking when nothing is linked answers 204, for the same reason the other idempotent operations do.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /auth/oauth/google (the `AuthGoogleUnlink` operationId).
+	AuthGoogleUnlinkWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AuthGoogleUnlinkResponse, error)
+
+	// AuthGoogleCallbackWithBodyWithResponse Complete Google sign-in.
+	//
+	// Consumes the `state`, exchanges the code with the PKCE verifier, and verifies Google's ID token against its JWKS -- signature, `iss`, `aud`, `exp`, and the `nonce` this server issued. A token failing any of those is rejected and **no account, identity or session is created**: there is no partial state to clean up, because nothing is written until every check has passed (BR-AUTH-18).
+	//
+	// Then one of five branches, and the third is the one this operation exists to get right (ADR-0023):
+	//
+	// 1. **The identity is already linked** -- sign in.
+	// 2. **The email matches a verified local account** -- link, then sign in.
+	// 3. **The email matches an account that is not yet verified** -- refuse with 409 `OAUTH_ACCOUNT_CONFLICT`. **No link is created.** Anyone can register an address they do not own; the address is not proved until an OTP is completed on it. Auto-linking here would let whoever registered first be handed the account the real owner later signs into with Google, which is the account-takeover path this refusal exists to close (BR-AUTH-16). The learner completes the OTP challenge on that address and tries again.
+	// 4. **No local account** -- create one, already verified, because Google has performed the verification (BR-AUTH-19).
+	// 5. **Google did not assert `email_verified`** -- refuse with 403 `OAUTH_EMAIL_UNVERIFIED` before any of the above is considered. An unverified address from a provider is worth no more than an unverified address from a form.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /auth/oauth/google/callback (the `AuthGoogleCallback` operationId).
+	AuthGoogleCallbackWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AuthGoogleCallbackResponse, error)
+
+	// AuthGoogleCallbackWithResponse Complete Google sign-in.
+	//
+	// Consumes the `state`, exchanges the code with the PKCE verifier, and verifies Google's ID token against its JWKS -- signature, `iss`, `aud`, `exp`, and the `nonce` this server issued. A token failing any of those is rejected and **no account, identity or session is created**: there is no partial state to clean up, because nothing is written until every check has passed (BR-AUTH-18).
+	//
+	// Then one of five branches, and the third is the one this operation exists to get right (ADR-0023):
+	//
+	// 1. **The identity is already linked** -- sign in.
+	// 2. **The email matches a verified local account** -- link, then sign in.
+	// 3. **The email matches an account that is not yet verified** -- refuse with 409 `OAUTH_ACCOUNT_CONFLICT`. **No link is created.** Anyone can register an address they do not own; the address is not proved until an OTP is completed on it. Auto-linking here would let whoever registered first be handed the account the real owner later signs into with Google, which is the account-takeover path this refusal exists to close (BR-AUTH-16). The learner completes the OTP challenge on that address and tries again.
+	// 4. **No local account** -- create one, already verified, because Google has performed the verification (BR-AUTH-19).
+	// 5. **Google did not assert `email_verified`** -- refuse with 403 `OAUTH_EMAIL_UNVERIFIED` before any of the above is considered. An unverified address from a provider is worth no more than an unverified address from a form.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /auth/oauth/google/callback (the `AuthGoogleCallback` operationId).
+	AuthGoogleCallbackWithResponse(ctx context.Context, body AuthGoogleCallbackJSONRequestBody, reqEditors ...RequestEditorFn) (*AuthGoogleCallbackResponse, error)
+
+	// AuthGoogleLinkWithBodyWithResponse Link a Google identity to the signed-in account.
+	//
+	// The same exchange and the same ID token checks as the callback, for a learner who is already signed in and adding a second way in.
+	//
+	// Two refusals are specific to this direction. `OAUTH_EMAIL_MISMATCH` (409) is a Google account whose address is not the one this account holds -- linking those would let somebody attach an identity the account owner cannot receive mail at. `OAUTH_ALREADY_LINKED` (409) is an identity already attached to a different account; one Google account is one Fluentra account, or "sign in with Google" stops identifying anybody.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /auth/oauth/google/link (the `AuthGoogleLink` operationId).
+	AuthGoogleLinkWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AuthGoogleLinkResponse, error)
+
+	// AuthGoogleLinkWithResponse Link a Google identity to the signed-in account.
+	//
+	// The same exchange and the same ID token checks as the callback, for a learner who is already signed in and adding a second way in.
+	//
+	// Two refusals are specific to this direction. `OAUTH_EMAIL_MISMATCH` (409) is a Google account whose address is not the one this account holds -- linking those would let somebody attach an identity the account owner cannot receive mail at. `OAUTH_ALREADY_LINKED` (409) is an identity already attached to a different account; one Google account is one Fluentra account, or "sign in with Google" stops identifying anybody.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /auth/oauth/google/link (the `AuthGoogleLink` operationId).
+	AuthGoogleLinkWithResponse(ctx context.Context, body AuthGoogleLinkJSONRequestBody, reqEditors ...RequestEditorFn) (*AuthGoogleLinkResponse, error)
+
+	// AuthGoogleStartWithResponse Begin Google sign-in.
+	//
+	// Generates the `state`, the `nonce` and the PKCE challenge, stores them server-side for ten minutes as a single-use record, and returns the authorization URL to send the browser to.
+	//
+	// The `state` is server-side and single use, and that is the CSRF defence for the whole flow (BR-AUTH-17): a callback carrying a `state` this server did not issue, or one it has already consumed, is not a callback from a flow this learner started. None of the three values is returned to the client, because a value the page can read is one an attacker who can read the same page can replay.
+	//
+	// PKCE is mandatory even though Fluentra is a confidential client holding a secret. It costs nothing, and it closes code interception on mobile browsers, which holding a secret does not.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /auth/oauth/google/start (the `AuthGoogleStart` operationId).
+	AuthGoogleStartWithResponse(ctx context.Context, params *AuthGoogleStartParams, reqEditors ...RequestEditorFn) (*AuthGoogleStartResponse, error)
 
 	// AuthRefreshWithResponse Rotate the refresh token and issue a new access token.
 	//
@@ -3990,6 +4449,372 @@ func (r AuthLogoutResponse) ContentType() string {
 	return ""
 }
 
+// AuthGoogleUnlinkResponse204Headers the declared response headers of an HTTP 204 response for AuthGoogleUnlink
+type AuthGoogleUnlinkResponse204Headers struct {
+	XRequestId *string
+}
+
+// AuthGoogleUnlinkResponse429Headers the declared response headers of an HTTP 429 response for AuthGoogleUnlink
+type AuthGoogleUnlinkResponse429Headers struct {
+	RateLimitLimit     *int
+	RateLimitRemaining *int
+	RateLimitReset     *int
+	RetryAfter         *int
+}
+
+type AuthGoogleUnlinkResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// Headers204 the parsed response headers for an HTTP 204 response
+	Headers204 *AuthGoogleUnlinkResponse204Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AuthGoogleUnlinkResponse429Headers
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AuthGoogleUnlinkResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AuthGoogleUnlinkResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AuthGoogleUnlinkResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetBody returns the raw response body bytes
+func (r AuthGoogleUnlinkResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AuthGoogleUnlinkResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AuthGoogleUnlinkResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AuthGoogleUnlinkResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AuthGoogleCallbackResponse200Headers the declared response headers of an HTTP 200 response for AuthGoogleCallback
+type AuthGoogleCallbackResponse200Headers struct {
+	SetCookie  *string
+	XRequestId *string
+}
+
+// AuthGoogleCallbackResponse429Headers the declared response headers of an HTTP 429 response for AuthGoogleCallback
+type AuthGoogleCallbackResponse429Headers struct {
+	RateLimitLimit     *int
+	RateLimitRemaining *int
+	RateLimitReset     *int
+	RetryAfter         *int
+}
+
+// AuthGoogleCallbackResponse503Headers the declared response headers of an HTTP 503 response for AuthGoogleCallback
+type AuthGoogleCallbackResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AuthGoogleCallbackResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AuthSession
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ServiceUnavailable
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AuthGoogleCallbackResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AuthGoogleCallbackResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AuthGoogleCallbackResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AuthGoogleCallbackResponse) GetJSON200() *AuthSession {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r AuthGoogleCallbackResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AuthGoogleCallbackResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AuthGoogleCallbackResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AuthGoogleCallbackResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AuthGoogleCallbackResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AuthGoogleCallbackResponse) GetApplicationproblemJSON503() *ServiceUnavailable {
+	return r.ApplicationproblemJSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r AuthGoogleCallbackResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AuthGoogleCallbackResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AuthGoogleCallbackResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AuthGoogleCallbackResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AuthGoogleLinkResponse200Headers the declared response headers of an HTTP 200 response for AuthGoogleLink
+type AuthGoogleLinkResponse200Headers struct {
+	XRequestId *string
+}
+
+// AuthGoogleLinkResponse429Headers the declared response headers of an HTTP 429 response for AuthGoogleLink
+type AuthGoogleLinkResponse429Headers struct {
+	RateLimitLimit     *int
+	RateLimitRemaining *int
+	RateLimitReset     *int
+	RetryAfter         *int
+}
+
+// AuthGoogleLinkResponse503Headers the declared response headers of an HTTP 503 response for AuthGoogleLink
+type AuthGoogleLinkResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AuthGoogleLinkResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OAuthIdentity
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ServiceUnavailable
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AuthGoogleLinkResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AuthGoogleLinkResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AuthGoogleLinkResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AuthGoogleLinkResponse) GetJSON200() *OAuthIdentity {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r AuthGoogleLinkResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AuthGoogleLinkResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AuthGoogleLinkResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AuthGoogleLinkResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AuthGoogleLinkResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AuthGoogleLinkResponse) GetApplicationproblemJSON503() *ServiceUnavailable {
+	return r.ApplicationproblemJSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r AuthGoogleLinkResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AuthGoogleLinkResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AuthGoogleLinkResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AuthGoogleLinkResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AuthGoogleStartResponse200Headers the declared response headers of an HTTP 200 response for AuthGoogleStart
+type AuthGoogleStartResponse200Headers struct {
+	XRequestId *string
+}
+
+// AuthGoogleStartResponse429Headers the declared response headers of an HTTP 429 response for AuthGoogleStart
+type AuthGoogleStartResponse429Headers struct {
+	RateLimitLimit     *int
+	RateLimitRemaining *int
+	RateLimitReset     *int
+	RetryAfter         *int
+}
+
+// AuthGoogleStartResponse503Headers the declared response headers of an HTTP 503 response for AuthGoogleStart
+type AuthGoogleStartResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AuthGoogleStartResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OAuthStart
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ServiceUnavailable
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AuthGoogleStartResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AuthGoogleStartResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AuthGoogleStartResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AuthGoogleStartResponse) GetJSON200() *OAuthStart {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AuthGoogleStartResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AuthGoogleStartResponse) GetApplicationproblemJSON503() *ServiceUnavailable {
+	return r.ApplicationproblemJSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r AuthGoogleStartResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AuthGoogleStartResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AuthGoogleStartResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AuthGoogleStartResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // AuthRefreshResponse200Headers the declared response headers of an HTTP 200 response for AuthRefresh
 type AuthRefreshResponse200Headers struct {
 	SetCookie  *string
@@ -5234,6 +6059,124 @@ func (c *ClientWithResponses) AuthLogoutWithResponse(ctx context.Context, reqEdi
 		return nil, err
 	}
 	return ParseAuthLogoutResponse(rsp)
+}
+
+// AuthGoogleUnlinkWithResponse Unlink Google.
+//
+// Removes the linked identity.
+//
+// **Refused with 409 `LAST_SIGN_IN_METHOD` if it would leave the account with no way in** (BR-AUTH-20). An account created through Google has no password, so unlinking it would lock the learner out of their own account with no recovery path -- `forgot-password` cannot help somebody who has no password to reset. They set one first, then unlink.
+//
+// Unlinking when nothing is linked answers 204, for the same reason the other idempotent operations do.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /auth/oauth/google (the `AuthGoogleUnlink` operationId).
+func (c *ClientWithResponses) AuthGoogleUnlinkWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AuthGoogleUnlinkResponse, error) {
+	rsp, err := c.AuthGoogleUnlink(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthGoogleUnlinkResponse(rsp)
+}
+
+// AuthGoogleCallbackWithBodyWithResponse Complete Google sign-in.
+//
+// Consumes the `state`, exchanges the code with the PKCE verifier, and verifies Google's ID token against its JWKS -- signature, `iss`, `aud`, `exp`, and the `nonce` this server issued. A token failing any of those is rejected and **no account, identity or session is created**: there is no partial state to clean up, because nothing is written until every check has passed (BR-AUTH-18).
+//
+// Then one of five branches, and the third is the one this operation exists to get right (ADR-0023):
+//
+// 1. **The identity is already linked** -- sign in.
+// 2. **The email matches a verified local account** -- link, then sign in.
+// 3. **The email matches an account that is not yet verified** -- refuse with 409 `OAUTH_ACCOUNT_CONFLICT`. **No link is created.** Anyone can register an address they do not own; the address is not proved until an OTP is completed on it. Auto-linking here would let whoever registered first be handed the account the real owner later signs into with Google, which is the account-takeover path this refusal exists to close (BR-AUTH-16). The learner completes the OTP challenge on that address and tries again.
+// 4. **No local account** -- create one, already verified, because Google has performed the verification (BR-AUTH-19).
+// 5. **Google did not assert `email_verified`** -- refuse with 403 `OAUTH_EMAIL_UNVERIFIED` before any of the above is considered. An unverified address from a provider is worth no more than an unverified address from a form.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /auth/oauth/google/callback (the `AuthGoogleCallback` operationId).
+func (c *ClientWithResponses) AuthGoogleCallbackWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AuthGoogleCallbackResponse, error) {
+	rsp, err := c.AuthGoogleCallbackWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthGoogleCallbackResponse(rsp)
+}
+
+// AuthGoogleCallbackWithResponse Complete Google sign-in.
+//
+// Consumes the `state`, exchanges the code with the PKCE verifier, and verifies Google's ID token against its JWKS -- signature, `iss`, `aud`, `exp`, and the `nonce` this server issued. A token failing any of those is rejected and **no account, identity or session is created**: there is no partial state to clean up, because nothing is written until every check has passed (BR-AUTH-18).
+//
+// Then one of five branches, and the third is the one this operation exists to get right (ADR-0023):
+//
+// 1. **The identity is already linked** -- sign in.
+// 2. **The email matches a verified local account** -- link, then sign in.
+// 3. **The email matches an account that is not yet verified** -- refuse with 409 `OAUTH_ACCOUNT_CONFLICT`. **No link is created.** Anyone can register an address they do not own; the address is not proved until an OTP is completed on it. Auto-linking here would let whoever registered first be handed the account the real owner later signs into with Google, which is the account-takeover path this refusal exists to close (BR-AUTH-16). The learner completes the OTP challenge on that address and tries again.
+// 4. **No local account** -- create one, already verified, because Google has performed the verification (BR-AUTH-19).
+// 5. **Google did not assert `email_verified`** -- refuse with 403 `OAUTH_EMAIL_UNVERIFIED` before any of the above is considered. An unverified address from a provider is worth no more than an unverified address from a form.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /auth/oauth/google/callback (the `AuthGoogleCallback` operationId).
+func (c *ClientWithResponses) AuthGoogleCallbackWithResponse(ctx context.Context, body AuthGoogleCallbackJSONRequestBody, reqEditors ...RequestEditorFn) (*AuthGoogleCallbackResponse, error) {
+	rsp, err := c.AuthGoogleCallback(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthGoogleCallbackResponse(rsp)
+}
+
+// AuthGoogleLinkWithBodyWithResponse Link a Google identity to the signed-in account.
+//
+// The same exchange and the same ID token checks as the callback, for a learner who is already signed in and adding a second way in.
+//
+// Two refusals are specific to this direction. `OAUTH_EMAIL_MISMATCH` (409) is a Google account whose address is not the one this account holds -- linking those would let somebody attach an identity the account owner cannot receive mail at. `OAUTH_ALREADY_LINKED` (409) is an identity already attached to a different account; one Google account is one Fluentra account, or "sign in with Google" stops identifying anybody.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /auth/oauth/google/link (the `AuthGoogleLink` operationId).
+func (c *ClientWithResponses) AuthGoogleLinkWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AuthGoogleLinkResponse, error) {
+	rsp, err := c.AuthGoogleLinkWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthGoogleLinkResponse(rsp)
+}
+
+// AuthGoogleLinkWithResponse Link a Google identity to the signed-in account.
+//
+// The same exchange and the same ID token checks as the callback, for a learner who is already signed in and adding a second way in.
+//
+// Two refusals are specific to this direction. `OAUTH_EMAIL_MISMATCH` (409) is a Google account whose address is not the one this account holds -- linking those would let somebody attach an identity the account owner cannot receive mail at. `OAUTH_ALREADY_LINKED` (409) is an identity already attached to a different account; one Google account is one Fluentra account, or "sign in with Google" stops identifying anybody.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /auth/oauth/google/link (the `AuthGoogleLink` operationId).
+func (c *ClientWithResponses) AuthGoogleLinkWithResponse(ctx context.Context, body AuthGoogleLinkJSONRequestBody, reqEditors ...RequestEditorFn) (*AuthGoogleLinkResponse, error) {
+	rsp, err := c.AuthGoogleLink(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthGoogleLinkResponse(rsp)
+}
+
+// AuthGoogleStartWithResponse Begin Google sign-in.
+//
+// Generates the `state`, the `nonce` and the PKCE challenge, stores them server-side for ten minutes as a single-use record, and returns the authorization URL to send the browser to.
+//
+// The `state` is server-side and single use, and that is the CSRF defence for the whole flow (BR-AUTH-17): a callback carrying a `state` this server did not issue, or one it has already consumed, is not a callback from a flow this learner started. None of the three values is returned to the client, because a value the page can read is one an attacker who can read the same page can replay.
+//
+// PKCE is mandatory even though Fluentra is a confidential client holding a secret. It costs nothing, and it closes code interception on mobile browsers, which holding a secret does not.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /auth/oauth/google/start (the `AuthGoogleStart` operationId).
+func (c *ClientWithResponses) AuthGoogleStartWithResponse(ctx context.Context, params *AuthGoogleStartParams, reqEditors ...RequestEditorFn) (*AuthGoogleStartResponse, error) {
+	rsp, err := c.AuthGoogleStart(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthGoogleStartResponse(rsp)
 }
 
 // AuthRefreshWithResponse Rotate the refresh token and issue a new access token.
@@ -6693,6 +7636,438 @@ func ParseAuthLogoutResponse(rsp *http.Response) (*AuthLogoutResponse, error) {
 			headers.XRequestId = &value
 		}
 		response.Headers204 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAuthGoogleUnlinkResponse parses an HTTP response from a AuthGoogleUnlinkWithResponse call
+func ParseAuthGoogleUnlinkResponse(rsp *http.Response) (*AuthGoogleUnlinkResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AuthGoogleUnlinkResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		var headers AuthGoogleUnlinkResponse204Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers204 = &headers
+	case rsp.StatusCode == 429:
+		var headers AuthGoogleUnlinkResponse429Headers
+		if values := rsp.Header.Values("RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitReset = &value
+		}
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAuthGoogleCallbackResponse parses an HTTP response from a AuthGoogleCallbackWithResponse call
+func ParseAuthGoogleCallbackResponse(rsp *http.Response) (*AuthGoogleCallbackResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AuthGoogleCallbackResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AuthSession
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ServiceUnavailable
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AuthGoogleCallbackResponse200Headers
+		if values := rsp.Header.Values("Set-Cookie"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "Set-Cookie", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.SetCookie = &value
+		}
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AuthGoogleCallbackResponse429Headers
+		if values := rsp.Header.Values("RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitReset = &value
+		}
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AuthGoogleCallbackResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAuthGoogleLinkResponse parses an HTTP response from a AuthGoogleLinkWithResponse call
+func ParseAuthGoogleLinkResponse(rsp *http.Response) (*AuthGoogleLinkResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AuthGoogleLinkResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OAuthIdentity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ServiceUnavailable
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AuthGoogleLinkResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AuthGoogleLinkResponse429Headers
+		if values := rsp.Header.Values("RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitReset = &value
+		}
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AuthGoogleLinkResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAuthGoogleStartResponse parses an HTTP response from a AuthGoogleStartWithResponse call
+func ParseAuthGoogleStartResponse(rsp *http.Response) (*AuthGoogleStartResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AuthGoogleStartResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OAuthStart
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ServiceUnavailable
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AuthGoogleStartResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AuthGoogleStartResponse429Headers
+		if values := rsp.Header.Values("RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitReset = &value
+		}
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AuthGoogleStartResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
 	}
 
 	return response, nil

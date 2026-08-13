@@ -15,6 +15,7 @@ import (
 	"github.com/exaring/otelpgx"
 	authdomain "github.com/fluentra/fluentra/internal/modules/auth/domain"
 	authservice "github.com/fluentra/fluentra/internal/modules/auth/service"
+	"github.com/fluentra/fluentra/internal/modules/auth/service/oauth/google"
 	"github.com/fluentra/fluentra/internal/platform/cache"
 	"github.com/fluentra/fluentra/internal/platform/mailer"
 	"github.com/fluentra/fluentra/internal/platform/telemetry"
@@ -107,6 +108,20 @@ type applicationConfig struct {
 	Refresh struct {
 		TokenTTL time.Duration `koanf:"token_ttl"`
 	} `koanf:"refresh"`
+	// OAUTH_* becomes `oauth.*`, under the same first-underscore rule — so
+	// OAUTH_GOOGLE_CLIENT_ID is `oauth.google_client_id` and not
+	// `oauth.google.client_id`. Getting this wrong produces a key that is read
+	// and can never be set from the environment.
+	OAuth struct {
+		GoogleEnabled      bool          `koanf:"google_enabled"`
+		GoogleClientID     string        `koanf:"google_client_id"`
+		GoogleClientSecret string        `koanf:"google_client_secret"`
+		GoogleRedirectURL  string        `koanf:"google_redirect_url"`
+		GoogleJWKSURL      string        `koanf:"google_jwks_url"`
+		GoogleIssuer       string        `koanf:"google_issuer"`
+		JWKSCacheTTL       time.Duration `koanf:"jwks_cache_ttl"`
+		StateTTL           time.Duration `koanf:"state_ttl"`
+	} `koanf:"oauth"`
 	Mail struct {
 		From string `koanf:"from"`
 	} `koanf:"mail"`
@@ -218,6 +233,13 @@ func run(ctx context.Context) error {
 		RefreshTTL:       cfg.Refresh.TokenTTL,
 		PasswordResetTTL: cfg.Password.ResetTTL,
 		RateLimit:        rateLimiter,
+		// OAUTH_GOOGLE_ENABLED gates the credentials rather than the routes. The
+		// operations stay mounted either way and answer the same refusal a bad
+		// code gets, because a deployment with the provider switched off should
+		// look to a client like one Google is not cooperating with — not like a
+		// different version of the API.
+		Google:        googleOptions(cfg),
+		OAuthStateTTL: cfg.OAuth.StateTTL,
 		Windows: authdomain.WindowConfig{
 			Idle:          cfg.Session.IdleWindow,
 			IdleTrusted:   cfg.Session.IdleWindowTrusted,
@@ -334,6 +356,11 @@ func configOptions() config.Options {
 			"rate.limit_auth_per_min":     5,
 			"rate.limit_upload_per_hour":  30,
 			"otp.issue_per_ip_per_hour":   20,
+			"oauth.google_enabled":        false,
+			"oauth.google_jwks_url":       "https://www.googleapis.com/oauth2/v3/certs",
+			"oauth.google_issuer":         "https://accounts.google.com",
+			"oauth.jwks_cache_ttl":        "6h",
+			"oauth.state_ttl":             "10m",
 		},
 		Required: []config.RequiredKey{
 			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},
@@ -344,6 +371,36 @@ func configOptions() config.Options {
 			{Name: "otp.hmac_key", DocSection: "docs/deployment/configuration.md#auth"},
 			{Name: "jwt.signing_key", DocSection: "docs/deployment/configuration.md#auth"},
 		},
+	}
+}
+
+// googleOptions turns the OAUTH_GOOGLE_* keys into the provider's options.
+//
+// A disabled provider gets no credentials rather than no routes. The operations
+// stay mounted and refuse, which is what a client should see from a deployment
+// Google is not configured for — the alternative, unmounting them, makes the API
+// surface depend on configuration and turns a missing key into a 404 that looks
+// like a version mismatch.
+//
+// The absence of credentials while enabled is a warning and not a fatal error.
+// It is a misconfiguration of one optional sign-in method, and refusing to start
+// the whole API over it would take down password sign-in as well — which is the
+// one every learner has.
+func googleOptions(cfg applicationConfig) google.Options {
+	if !cfg.OAuth.GoogleEnabled {
+		return google.Options{}
+	}
+	if cfg.OAuth.GoogleClientID == "" || cfg.OAuth.GoogleClientSecret == "" {
+		slog.Warn("google sign-in is enabled but has no client credentials; every attempt will be refused",
+			"key", "OAUTH_GOOGLE_CLIENT_ID")
+	}
+	return google.Options{
+		ClientID:     cfg.OAuth.GoogleClientID,
+		ClientSecret: cfg.OAuth.GoogleClientSecret,
+		RedirectURL:  cfg.OAuth.GoogleRedirectURL,
+		Issuer:       cfg.OAuth.GoogleIssuer,
+		JWKSURL:      cfg.OAuth.GoogleJWKSURL,
+		JWKSTTL:      cfg.OAuth.JWKSCacheTTL,
 	}
 }
 

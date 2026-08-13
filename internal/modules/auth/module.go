@@ -18,6 +18,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/auth/domain"
 	"github.com/fluentra/fluentra/internal/modules/auth/repository"
 	"github.com/fluentra/fluentra/internal/modules/auth/service"
+	"github.com/fluentra/fluentra/internal/modules/auth/service/oauth/google"
 	authhttp "github.com/fluentra/fluentra/internal/modules/auth/transport/http"
 	rbaccontract "github.com/fluentra/fluentra/internal/modules/rbac/contract"
 	usercontract "github.com/fluentra/fluentra/internal/modules/user/contract"
@@ -35,7 +36,8 @@ import (
 // silently never run together, and the symptom is a job that "sometimes fails
 // to happen". Audit occupies 1_700_000_030..031; the next block starts at 040.
 const (
-	purgeUnverifiedLockID int64 = 1_700_000_040
+	purgeUnverifiedLockID  int64 = 1_700_000_040
+	sweepOAuthStatesLockID int64 = 1_700_000_041
 )
 
 // mailCategoryTransactional is what every message this module sends is: a
@@ -101,6 +103,17 @@ type Deps struct {
 	// falls back to the documented default rather than to immediate expiry.
 	Windows domain.WindowConfig
 
+	// Google is the provider configuration, from the OAUTH_GOOGLE_* keys. A zero
+	// value builds a provider that cannot complete an exchange — every attempt
+	// is refused by Google — which is the right failure for a deployment that
+	// has not been given credentials, and is what tests that do not exercise
+	// Google sign-in leave it as.
+	Google google.Options
+
+	// OAuthStateTTL is how long an authorization request stays completable
+	// (OAUTH_STATE_TTL). Zero means service.DefaultOAuthStateTTL.
+	OAuthStateTTL time.Duration
+
 	// SessionCache remembers which account owns a session, for the five minutes
 	// AGENT.md §12 documents. Nil disables the cache and every ownership check
 	// reads Postgres, which is correct but chattier — it is nil in tests that do
@@ -115,6 +128,7 @@ type Module struct {
 	tokens   *service.TokenService
 	sessions *service.RefreshService
 	revoker  *service.SessionService
+	oauth    *service.OAuthService
 	mailer   mailer.Sender
 	handler  *authhttp.Handler
 }
@@ -276,6 +290,30 @@ func New(deps Deps) *Module {
 		Clock: timekeeper,
 	})
 
+	// The OAuth service shares `sessions` with login and verification, so a
+	// Google sign-in roots a refresh family exactly as the other two do — which
+	// is what makes "revoke every session" a complete statement regardless of
+	// how the learner got in.
+	//
+	// It shares the keyring too, and that is load-bearing rather than
+	// incidental: the same key derives the PKCE verifier from the state at both
+	// ends of the flow, so a deployment running two different OTP_HMAC_KEYs
+	// behind one load balancer would fail every Google sign-in that changed
+	// instance mid-flow. The key is already required to be identical across
+	// instances for the OTP challenges to work at all.
+	oauthSvc := service.NewOAuthService(service.OAuthDeps{
+		Pool:     deps.Pool,
+		Repo:     oauthAdapter{Repository: repo},
+		Provider: google.New(deps.Google),
+		Accounts: accountsAdapter{Registrar: deps.Registrar},
+		Sessions: sessions,
+		Events:   events,
+		Keys:     keys,
+		Clock:    timekeeper,
+		NewID:    id.NewUUIDv7,
+		StateTTL: deps.OAuthStateTTL,
+	})
+
 	return &Module{
 		register: reg,
 		login:    loginSvc,
@@ -283,7 +321,8 @@ func New(deps Deps) *Module {
 		sessions: sessions,
 		revoker:  sessionSvc,
 		mailer:   deps.Mailer,
-		handler: authhttp.NewHandler(reg, loginSvc, sessions, sessionSvc, passwordSvc, deviceSvc,
+		oauth:    oauthSvc,
+		handler: authhttp.NewHandler(reg, loginSvc, sessions, sessionSvc, passwordSvc, deviceSvc, oauthSvc,
 			authhttp.CookieOptions{Secure: deps.Env != "local"}),
 	}
 }
@@ -455,8 +494,22 @@ func (m *Module) CronJobs() []job.CronJob {
 			Interval: purgeUnverifiedInterval,
 			Task:     m.register.PurgeUnverified,
 		},
+		{
+			// Abandoned authorization requests. An expired state is already
+			// refused, so this reclaims space rather than enforcing anything —
+			// but most rows in that table are consent screens nobody finished,
+			// and without a sweep it only ever grows.
+			Name:     "auth.sweep_oauth_states",
+			LockID:   sweepOAuthStatesLockID,
+			Interval: sweepOAuthStatesInterval,
+			Task:     m.oauth.SweepOAuthStates,
+		},
 	}
 }
+
+// sweepOAuthStatesInterval is hourly, which is often enough that the table
+// tracks the last hour of abandoned flows rather than the last day.
+const sweepOAuthStatesInterval = time.Hour
 
 // refreshAdapter narrows *repository.Repository to service.RefreshRepo, for the
 // same covariance reason as the two adapters below it.
@@ -475,6 +528,15 @@ type deviceAdapter struct {
 
 func (a deviceAdapter) WithTx(tx pgx.Tx) service.DeviceRepo {
 	return deviceAdapter{Repository: a.Repository.WithTx(tx)}
+}
+
+// oauthAdapter narrows *repository.Repository to service.OAuthRepo.
+type oauthAdapter struct {
+	*repository.Repository
+}
+
+func (a oauthAdapter) WithTx(tx pgx.Tx) service.OAuthRepo {
+	return oauthAdapter{Repository: a.Repository.WithTx(tx)}
 }
 
 // sessionAdapter narrows *repository.Repository to service.SessionRepo.

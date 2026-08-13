@@ -54,6 +54,20 @@ const (
 	// spent (BR-AUTH-04). It is the strongest signal this module produces: a
 	// single-use credential presented twice means two parties hold it.
 	SecurityKindRefreshReuse = "refresh_reuse"
+
+	// SecurityKindOAuthStateInvalid is a Google callback carrying a `state` this
+	// server did not issue, or already spent, or issued more than ten minutes
+	// ago (BR-AUTH-17).
+	//
+	// It is `medium` where refresh reuse is `high`, and the difference is what
+	// each one proves. A replayed refresh token is evidence that a credential
+	// leaked. An invalid state is evidence of nothing on its own: a learner who
+	// left the consent screen open over lunch, or opened it twice and finished
+	// the first tab, produces one without anybody attacking anything. What makes
+	// it worth recording is the shape it takes in bulk — a run of them against
+	// one address is somebody trying to graft their own Google account onto
+	// another learner's session, and that is invisible unless each one is filed.
+	SecurityKindOAuthStateInvalid = "oauth_state_invalid"
 )
 
 // Severity is how loudly an event asks to be looked at.

@@ -423,6 +423,212 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+  /auth/oauth/google/start:
+    get:
+      tags: [auth]
+      operationId: authGoogleStart
+      summary: Begin Google sign-in.
+      description: >-
+        Generates the `state`, the `nonce` and the PKCE challenge, stores them
+        server-side for ten minutes as a single-use record, and returns the
+        authorization URL to send the browser to.
+
+
+        The `state` is server-side and single use, and that is the CSRF defence
+        for the whole flow (BR-AUTH-17): a callback carrying a `state` this
+        server did not issue, or one it has already consumed, is not a callback
+        from a flow this learner started. None of the three values is returned
+        to the client, because a value the page can read is one an attacker who
+        can read the same page can replay.
+
+
+        PKCE is mandatory even though Fluentra is a confidential client holding
+        a secret. It costs nothing, and it closes code interception on mobile
+        browsers, which holding a secret does not.
+      security: []
+      parameters:
+        - name: redirect_to
+          in: query
+          required: false
+          description: >-
+            Where to send the learner after signing in. Stored with the state
+            rather than round-tripped through Google, so it cannot be rewritten
+            in flight into an open redirect.
+          schema:
+            type: string
+            maxLength: 512
+      responses:
+        '200':
+          description: The authorization URL to send the browser to.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthStart'
+              example:
+                authorization_url: https://accounts.google.com/o/oauth2/v2/auth?client_id=example&state=example
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /auth/oauth/google/callback:
+    post:
+      tags: [auth]
+      operationId: authGoogleCallback
+      summary: Complete Google sign-in.
+      description: >-
+        Consumes the `state`, exchanges the code with the PKCE verifier, and
+        verifies Google's ID token against its JWKS -- signature, `iss`, `aud`,
+        `exp`, and the `nonce` this server issued. A token failing any of those
+        is rejected and **no account, identity or session is created**: there is
+        no partial state to clean up, because nothing is written until every
+        check has passed (BR-AUTH-18).
+
+
+        Then one of five branches, and the third is the one this operation
+        exists to get right (ADR-0023):
+
+
+        1. **The identity is already linked** -- sign in.
+
+        2. **The email matches a verified local account** -- link, then sign in.
+
+        3. **The email matches an account that is not yet verified** -- refuse
+        with 409 `OAUTH_ACCOUNT_CONFLICT`. **No link is created.** Anyone can
+        register an address they do not own; the address is not proved until an
+        OTP is completed on it. Auto-linking here would let whoever registered
+        first be handed the account the real owner later signs into with Google,
+        which is the account-takeover path this refusal exists to close
+        (BR-AUTH-16). The learner completes the OTP challenge on that address
+        and tries again.
+
+        4. **No local account** -- create one, already verified, because Google
+        has performed the verification (BR-AUTH-19).
+
+        5. **Google did not assert `email_verified`** -- refuse with 403
+        `OAUTH_EMAIL_UNVERIFIED` before any of the above is considered. An
+        unverified address from a provider is worth no more than an unverified
+        address from a form.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OAuthCallbackRequest'
+            example:
+              code: 4/0AeanS0by-example-authorization-code
+              state: 9f2c1a7e4b3d4c119d217f0a5c8e2b44
+      responses:
+        '200':
+          description: The caller is signed in.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+            Set-Cookie:
+              $ref: '#/components/headers/Set-Cookie-Refresh'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSession'
+              example: *authSessionExample
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /auth/oauth/google/link:
+    post:
+      tags: [auth]
+      operationId: authGoogleLink
+      summary: Link a Google identity to the signed-in account.
+      description: >-
+        The same exchange and the same ID token checks as the callback, for a
+        learner who is already signed in and adding a second way in.
+
+
+        Two refusals are specific to this direction. `OAUTH_EMAIL_MISMATCH` (409)
+        is a Google account whose address is not the one this account holds --
+        linking those would let somebody attach an identity the account owner
+        cannot receive mail at. `OAUTH_ALREADY_LINKED` (409) is an identity
+        already attached to a different account; one Google account is one
+        Fluentra account, or "sign in with Google" stops identifying anybody.
+      x-permission: self
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OAuthCallbackRequest'
+            example:
+              code: 4/0AeanS0by-example-authorization-code
+              state: 9f2c1a7e4b3d4c119d217f0a5c8e2b44
+      responses:
+        '200':
+          description: The identity is linked.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthIdentity'
+              example:
+                provider: google
+                email: learner@example.com
+                linked_at: '2026-08-12T09:12:44Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /auth/oauth/google:
+    delete:
+      tags: [auth]
+      operationId: authGoogleUnlink
+      summary: Unlink Google.
+      description: >-
+        Removes the linked identity.
+
+
+        **Refused with 409 `LAST_SIGN_IN_METHOD` if it would leave the account
+        with no way in** (BR-AUTH-20). An account created through Google has no
+        password, so unlinking it would lock the learner out of their own
+        account with no recovery path -- `forgot-password` cannot help somebody
+        who has no password to reset. They set one first, then unlink.
+
+
+        Unlinking when nothing is linked answers 204, for the same reason the
+        other idempotent operations do.
+      x-permission: self
+      responses:
+        '204':
+          description: No longer linked.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
   /auth/forgot-password:
     post:
       tags: [auth]
@@ -1416,6 +1622,12 @@ components:
       $ref: ./components/auth.yaml#/ChangePasswordRequest
     PasswordChanged:
       $ref: ./components/auth.yaml#/PasswordChanged
+    OAuthStart:
+      $ref: ./components/auth.yaml#/OAuthStart
+    OAuthCallbackRequest:
+      $ref: ./components/auth.yaml#/OAuthCallbackRequest
+    OAuthIdentity:
+      $ref: ./components/auth.yaml#/OAuthIdentity
     TrustedDevice:
       $ref: ./components/auth.yaml#/TrustedDevice
     TrustedDeviceList:

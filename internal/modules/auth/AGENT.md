@@ -10,7 +10,7 @@ tables: [credentials, sessions, refresh_tokens, mfa_secrets, auth_challenges, tr
 depends_on: [user, rbac, audit, mailer, cache]
 depended_on_by: [admin]
 spec_version: 1.0.0
-last_verified: 2026-08-11
+last_verified: 2026-08-12
 ---
 
 # auth — AGENT.md
@@ -87,7 +87,7 @@ Other modules may import **only** `internal/modules/auth/contract`.
 | interface | `auth.SessionRevoker` | `RevokeAll(ctx, userID) (int, error)` — used by `admin` on suspension and by `user` on account deletion. Published and unconsumed until those modules exist |
 | struct | `auth.Actor` | `{UserID, SessionID, Role, TokenID}` — placed in the request context |
 | event | `auth.UserRegistered` | Published after a successful registration |
-| event | `auth.SecurityEvent` | Published when something needs investigating — `refresh_reuse` is the first kind |
+| event | `auth.SecurityEvent` | Published when something needs investigating — `refresh_reuse` (a single-use credential presented twice) and `oauth_state_invalid` (a Google callback carrying a state this server did not issue, or already spent) |
 
 ### Events
 
@@ -133,8 +133,29 @@ Migrations: `db/migrations/auth/` · Queries: `db/queries/auth/`
 `core.credentials` (P2.1, `1700000050`), `core.auth_challenges` (P2.1b, `1700000060`),
 `core.login_attempts` (P2.3, `1700000080`), `core.login_lockouts` (P2.3, `1700000090`), and
 `core.sessions` + `core.refresh_tokens` (P2.5, `1700000100`), and `core.trusted_devices` plus the
-session columns that make sign-in persistent (P2.9, `1700000110`). The rest of the table above is
+session columns that make sign-in persistent (P2.9, `1700000110`), and `core.oauth_states` +
+`core.oauth_identities` (P2.10, `1700000120`). The rest of the table above is
 specification, not schema — each arrives with the card that needs it.
+
+Three things about the OAuth pair beyond the summary:
+
+- **`pkce_verifier_hash` is a check, not the source.** The verifier itself is derived, not drawn:
+  `Keyring.PKCEFor(state)` is an HMAC of the `state` under the server key. It has to be derivable,
+  because the exchange happens minutes and one redirect after the authorization request and may
+  land on a different instance, and there is nothing to carry it across that gap — the row keeps a
+  digest, and the client is never told it. The column is what the callback compares its
+  recomputation against, so a rotated key or a changed derivation is a refused sign-in here rather
+  than an opaque `invalid_grant` from Google. A dump of the table still completes no flow, because
+  the key is not in it.
+- **The `state` and the `nonce` are two values because they are checked in two places.** The state
+  comes back on the redirect and proves this server started the flow; the nonce comes back inside
+  the ID token and proves the token was minted for this flow. One value could not do both jobs —
+  they travel by different routes, and a value appearing in both would be checked twice against
+  the same evidence.
+- **A refused state is the only refusal in this module that names nobody.** A forged callback
+  identifies no account, which is what makes it forged, so `oauth_state_invalid` carries a nil
+  user id and nothing from the request. It is `medium` rather than `high` because one of them is
+  ordinary — a consent screen left open past its ten minutes — and the rate is the signal.
 
 Four things about the refresh pair beyond the summary:
 
