@@ -97,7 +97,7 @@ Other modules may import **only** `internal/modules/auth/contract`.
 | `auth.login_succeeded` | publishes | `{user_id, session_id, ip_country}` |
 | `auth.security_event` | publishes | `{user_id, kind, severity, detail}` — consumed by `audit` |
 | `auth.password_changed` | publishes | `{user_id}` — triggers a notification |
-| `user.deletion_requested` | consumes | Revoke all sessions and credentials immediately |
+| `user.deletion_requested` | consumes | Revoke all sessions and credentials immediately. **Not yet subscribed** — `contract.SessionRevoker.RevokeAll` is built and tested but nothing calls it. P3.3 adds the subscription |
 <!-- END GENERATED: contract -->
 
 ## 5. Database schema

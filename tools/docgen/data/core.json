@@ -88,7 +88,7 @@
         { "name": "auth.password_changed", "payload": "`{user_id}` — triggers a notification" }
       ],
       "consumes": [
-        { "name": "user.deletion_requested", "reason": "Revoke all sessions and credentials immediately" }
+        { "name": "user.deletion_requested", "reason": "Revoke all sessions and credentials immediately. **Not yet subscribed** — `contract.SessionRevoker.RevokeAll` is built and tested but nothing calls it. P3.3 adds the subscription" }
       ]
     },
     "dependsOn": ["user", "rbac", "audit", "mailer", "cache"],
