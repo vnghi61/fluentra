@@ -131,20 +131,25 @@ The Makefile target that does this is named `db-reset-DANGEROUS` and prompts for
 
 ## 9. Local development
 
-`compose.dev.yaml` adds:
+`compose.dev.yaml` provides the full application and development overlay:
 
 | Service | Purpose |
 |---|---|
-| `air` | Go hot reload for `api` and `worker` |
-| `vite` | Frontend dev server with HMR at :5173 |
+| `api` | Go API server running under `air` hot reload at :8080 |
+| `worker` | Background worker daemon running under `air` hot reload at :8081 |
+| `web` | React frontend running under `vite` dev server with HMR at :5173 |
 | `mailpit` | Catches all outbound email at :8025 |
-| `jaeger` | Convenient local trace UI at :16686 (dev only — production uses Tempo) |
-| `adminer` | DB browsing at :8081 |
-| `seed` | Loads the demo dataset on first run |
-| `river-ui` | Job queue inspection |
+| `postgres` | Port published at 127.0.0.1:5432 |
+| `redis` | Port published at 127.0.0.1:6379 |
+| `minio` | S3 API at :9000 and console at :9001 |
 
-Dev exposes Postgres (5432), Redis (6379) and MinIO (9000/9001) on localhost for tooling.
-Production does not.
+`compose.dev.yaml` overrides `backend` to `internal: false` so that published data ports are accessible from localhost for host tooling (`psql`, `redis-cli`, `make migrate-up`, tests).
+
+For running application binaries on the host directly (pointing at containerized data services on localhost):
+
+- `make api` — starts the API server on the host
+- `make worker` — starts the worker daemon on the host
+- `make web` — starts Vite dev server on the host
 
 ## 10. Troubleshooting
 

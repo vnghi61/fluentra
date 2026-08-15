@@ -1,4 +1,4 @@
-# Local port publishing for the data services only.
+# Local development overlay: applications, hot reload, and exposed ports.
 #
 # This file must stay valid when combined with compose.yaml *alone*. Overrides
 # for services that only exist in compose.observability.yaml belong in
@@ -7,6 +7,84 @@
 # "service X has neither an image nor a build context specified", because
 # compose sees a service whose entire definition is a ports list.
 services:
+  api:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.go.dev
+    command: air -c .air.toml
+    ports: ["127.0.0.1:8080:8080"]
+    volumes:
+      - ../..:/app
+      - /app/tmp
+    environment:
+      - APP_ENV=local
+      - HTTP_PORT=8080
+      - DB_DSN=postgres://fluentra:fluentra@postgres:5432/fluentra?sslmode=disable
+      - REDIS_URL=redis://redis:6379/0
+      - S3_ENDPOINT=http://minio:9000
+      - S3_ACCESS_KEY=minioadmin
+      - S3_SECRET_KEY=minioadmin
+      - SMTP_HOST=mailpit
+      - SMTP_PORT=1025
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - CORS_ALLOWED_ORIGINS=http://localhost:5173
+      - OTP_HMAC_KEY=change-me-32-bytes-minimum-for-otp-hmac
+      - JWT_SIGNING_KEY=change-me-at-least-32-bytes-long-secret
+    networks: [frontend, backend]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.go.dev
+    command: air -c .air.worker.toml
+    ports: ["127.0.0.1:8081:8081"]
+    volumes:
+      - ../..:/app
+      - /app/tmp
+    environment:
+      - APP_ENV=local
+      - HTTP_PORT=8081
+      - DB_DSN=postgres://fluentra:fluentra@postgres:5432/fluentra?sslmode=disable
+      - REDIS_URL=redis://redis:6379/0
+      - S3_ENDPOINT=http://minio:9000
+      - S3_ACCESS_KEY=minioadmin
+      - S3_SECRET_KEY=minioadmin
+      - SMTP_HOST=mailpit
+      - SMTP_PORT=1025
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - OTP_HMAC_KEY=change-me-32-bytes-minimum-for-otp-hmac
+      - JWT_SIGNING_KEY=change-me-at-least-32-bytes-long-secret
+    networks: [backend]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.node.dev
+    ports: ["127.0.0.1:5173:5173"]
+    volumes:
+      - ../../web:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_TARGET=http://api:8080
+    networks: [frontend]
+    depends_on:
+      api:
+        condition: service_started
+
   postgres:
     ports: ["127.0.0.1:5432:5432"]
   redis:
@@ -22,3 +100,11 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+
+# In compose.yaml backend is internal: true (data services stay off the host).
+# In dev we publish their ports so host tooling (psql, redis-cli, migrations,
+# tests) can connect. Compose ignores published ports on an internal network,
+# so we override it to internal: false here.
+networks:
+  backend:
+    internal: false
