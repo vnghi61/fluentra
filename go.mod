@@ -6,7 +6,7 @@ go 1.25.0
 // without this line actions/setup-go installs exactly 1.25.0, whose standard
 // library carries 31 known vulnerabilities (govulncheck fails the security job)
 // and which sqlc v1.31.1 refuses to build under — it needs >= 1.26.0.
-toolchain go1.26.5
+toolchain go1.26.6
 
 require (
 	github.com/alexedwards/argon2id v1.0.0
