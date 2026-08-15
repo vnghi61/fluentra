@@ -10,7 +10,7 @@ tables: [river_job, outbox_events, job_failures]
 depends_on: [telemetry]
 depended_on_by: [auth, user, audit, notification, mailer, content, writing, speaking, media, ai, srs, analytics, exam, payment]
 spec_version: 1.0.0
-last_verified: 2026-08-06
+last_verified: 2026-08-13
 ---
 
 # job — TODO
@@ -35,6 +35,12 @@ agent knows what is already handled and what is deliberately deferred.
 <!-- BEGIN GENERATED: todo-deferred -->
 _Nothing deferred._
 <!-- END GENERATED: todo-deferred -->
+
+## Progress
+
+| Task | Done | What landed |
+|---|---|---|
+| Outbox retention | 2026-08-13 | Daily, advisory-lock-protected pruning of published, non-dead-lettered `ops.outbox_events` rows after `OUTBOX_PUBLISHED_RETENTION_DAYS` (30 by default); the matching partial index keeps the time-bounded sweep off pending and dead-letter rows. |
 
 ### Carried over from P0.R6 — the two `[~]` items above are half done
 

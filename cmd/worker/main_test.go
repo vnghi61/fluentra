@@ -69,8 +69,9 @@ func assertWorkerConfig(t *testing.T, cfg workerConfig) {
 	if cfg.Worker.ShutdownGrace != 30*time.Second {
 		t.Errorf("Worker.ShutdownGrace = %s, want 30s", cfg.Worker.ShutdownGrace)
 	}
-	if cfg.Outbox.PollInterval != time.Second || cfg.Outbox.BatchSize != 100 {
-		t.Errorf("outbox settings = %s / %d", cfg.Outbox.PollInterval, cfg.Outbox.BatchSize)
+	if cfg.Outbox.PollInterval != time.Second || cfg.Outbox.BatchSize != 100 || cfg.Outbox.PublishedRetentionDays != 30 {
+		t.Errorf("outbox settings = %s / %d / %d",
+			cfg.Outbox.PollInterval, cfg.Outbox.BatchSize, cfg.Outbox.PublishedRetentionDays)
 	}
 	if cfg.Job.MaxAttempts != 5 {
 		t.Errorf("Job.MaxAttempts = %d, want 5", cfg.Job.MaxAttempts)
@@ -115,10 +116,11 @@ func TestSMTPConfig_PreservesWorkerCredentials(t *testing.T) {
 // a worker that silently runs on defaults nobody chose.
 func TestLoadConfig_RejectsUnusableJobSettings(t *testing.T) {
 	for name, override := range map[string]struct{ key, value string }{
-		"malformed queue spec": {envQueues, "default"},
-		"zero concurrency":     {envQueues, "default:0"},
-		"empty queue spec":     {envQueues, " "},
-		"non-positive timeout": {"JOB_TIMEOUT", "0s"},
+		"malformed queue spec":             {envQueues, "default"},
+		"zero concurrency":                 {envQueues, "default:0"},
+		"empty queue spec":                 {envQueues, " "},
+		"non-positive timeout":             {"JOB_TIMEOUT", "0s"},
+		"non-positive published retention": {"OUTBOX_PUBLISHED_RETENTION_DAYS", "0"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			for variable, value := range envExample(t) {

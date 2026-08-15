@@ -5,6 +5,8 @@ package job_test
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"net/url"
 	"os"
 	"strings"
 	"sync/atomic"
@@ -21,47 +23,175 @@ import (
 	"github.com/fluentra/fluentra/internal/platform/job"
 )
 
-// newTestPool applies the real goose migrations plus River's own, so the tables
-// under test are the ones the worker will meet in production.
-func newTestPool(t *testing.T) *pgxpool.Pool {
-	t.Helper()
-	dsn := os.Getenv("TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("TEST_DATABASE_URL is not set")
+const jobDatabase = "fluentra_platform_job_test"
+
+var sharedPool *pgxpool.Pool
+
+func TestMain(m *testing.M) {
+	base := os.Getenv("TEST_DATABASE_URL")
+	if base == "" {
+		os.Exit(m.Run())
 	}
 
+	dsn, dropDatabase, err := createDatabase(base, jobDatabase)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "prepare %s: %v\n", jobDatabase, err)
+		os.Exit(1)
+	}
+	if err := migrateUp(dsn); err != nil {
+		dropDatabase()
+		fmt.Fprintf(os.Stderr, "migrate %s: %v\n", jobDatabase, err)
+		os.Exit(1)
+	}
+
+	created, err := pgxpool.New(context.Background(), dsn)
+	if err != nil {
+		dropDatabase()
+		fmt.Fprintf(os.Stderr, "pool for %s: %v\n", jobDatabase, err)
+		os.Exit(1)
+	}
+	if err := job.MigrateUp(context.Background(), created); err != nil {
+		dropDatabase()
+		fmt.Fprintf(os.Stderr, "apply river migrations for %s: %v\n", jobDatabase, err)
+		os.Exit(1)
+	}
+	sharedPool = created
+
+	code := m.Run()
+
+	sharedPool.Close()
+	dropDatabase()
+	os.Exit(code)
+}
+
+func createDatabase(base, name string) (string, func(), error) {
+	maintenance, err := replaceDatabase(base, "postgres")
+	if err != nil {
+		return "", nil, err
+	}
+	admin, err := sql.Open("pgx", maintenance)
+	if err != nil {
+		return "", nil, fmt.Errorf("open maintenance database: %w", err)
+	}
+	defer func() { _ = admin.Close() }()
+
+	ctx := context.Background()
+	drop := fmt.Sprintf("DROP DATABASE IF EXISTS %q WITH (FORCE)", name)
+	if _, err := admin.ExecContext(ctx, drop); err != nil {
+		return "", nil, fmt.Errorf("drop stale %s: %w", name, err)
+	}
+	if _, err := admin.ExecContext(ctx, fmt.Sprintf("CREATE DATABASE %q", name)); err != nil {
+		return "", nil, fmt.Errorf("create %s: %w", name, err)
+	}
+
+	dsn, err := replaceDatabase(base, name)
+	if err != nil {
+		return "", nil, err
+	}
+	return dsn, func() {
+		cleanup, err := sql.Open("pgx", maintenance)
+		if err != nil {
+			return
+		}
+		defer func() { _ = cleanup.Close() }()
+		_, _ = cleanup.ExecContext(context.Background(), drop)
+	}, nil
+}
+
+func migrateUp(dsn string) error {
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
-		t.Fatalf("open database: %v", err)
+		return fmt.Errorf("open database: %w", err)
 	}
-	defer func() { _ = db.Close() }()
-
 	sources, err := migrations.Flattened()
 	if err != nil {
-		t.Fatalf("flatten migrations: %v", err)
+		_ = db.Close()
+		return fmt.Errorf("flatten migrations: %w", err)
 	}
 	provider, err := goose.NewProvider(goose.DialectPostgres, db, sources)
 	if err != nil {
-		t.Fatalf("create goose provider: %v", err)
+		_ = db.Close()
+		return fmt.Errorf("create goose provider: %w", err)
 	}
+	defer func() { _ = provider.Close() }()
 	if _, err := provider.Up(context.Background()); err != nil {
-		t.Fatalf("apply migrations: %v", err)
+		return fmt.Errorf("apply migrations: %w", err)
 	}
-	_ = provider.Close()
+	return nil
+}
 
-	pool, err := pgxpool.New(context.Background(), dsn)
+func replaceDatabase(dsn, database string) (string, error) {
+	parsed, err := url.Parse(dsn)
 	if err != nil {
-		t.Fatalf("create pool: %v", err)
+		return "", fmt.Errorf("parse TEST_DATABASE_URL: %w", err)
 	}
-	t.Cleanup(pool.Close)
+	parsed.Path = "/" + database
+	return parsed.String(), nil
+}
 
-	if err := job.MigrateUp(context.Background(), pool); err != nil {
-		t.Fatalf("apply river migrations: %v", err)
+// newTestPool returns the isolated package test pool and resets tables before each test.
+func newTestPool(t *testing.T) *pgxpool.Pool {
+	t.Helper()
+	if sharedPool == nil {
+		t.Skip("TEST_DATABASE_URL is not set")
 	}
-	if _, err := pool.Exec(context.Background(), "TRUNCATE ops.river_job, ops.job_failures"); err != nil {
+	const truncateQuery = "TRUNCATE ops.river_job, ops.outbox_events, ops.job_failures"
+	if _, err := sharedPool.Exec(context.Background(), truncateQuery); err != nil {
 		t.Fatalf("reset tables: %v", err)
 	}
-	return pool
+	return sharedPool
+}
+
+// TestOutboxRetention_PrunesOnlyPublishedRowsPastTheWindow proves the privacy
+// boundary against PostgreSQL itself. A pending event must remain deliverable and
+// a dead letter must remain available for triage even when both are as old as a
+// published payload that is safe to erase.
+func TestOutboxRetention_PrunesOnlyPublishedRowsPastTheWindow(t *testing.T) {
+	pool := newTestPool(t)
+	ctx := context.Background()
+	now := time.Now().UTC()
+
+	insert := func(t *testing.T, publishedAt, deadLetteredAt *time.Time) string {
+		t.Helper()
+		var eventID string
+		err := pool.QueryRow(ctx, `
+			INSERT INTO ops.outbox_events (aggregate, event, payload, published_at, dead_lettered_at)
+			VALUES ('auth', 'verification_requested', '{}'::jsonb, $1, $2)
+			RETURNING event_id`, publishedAt, deadLetteredAt).Scan(&eventID)
+		if err != nil {
+			t.Fatalf("insert outbox event: %v", err)
+		}
+		return eventID
+	}
+
+	old := now.AddDate(0, 0, -31)
+	publishedID := insert(t, &old, nil)
+	unpublishedID := insert(t, nil, nil)
+	deadLetteredID := insert(t, &old, &old)
+
+	pruner, err := job.NewOutboxPruner(pool, 30)
+	if err != nil {
+		t.Fatalf("new outbox pruner: %v", err)
+	}
+	if err := pruner.Prune(ctx); err != nil {
+		t.Fatalf("prune: %v", err)
+	}
+
+	for name, event := range map[string]struct {
+		id   string
+		want int
+	}{
+		"published row older than retention is removed":      {publishedID, 0},
+		"unpublished row of the same age stays deliverable":  {unpublishedID, 1},
+		"dead-lettered row of the same age stays for triage": {deadLetteredID, 1},
+	} {
+		t.Run(name, func(t *testing.T) {
+			got := countRows(t, pool, `SELECT count(*) FROM ops.outbox_events WHERE event_id = $1`, event.id)
+			if got != event.want {
+				t.Errorf("rows for %s = %d, want %d", event.id, got, event.want)
+			}
+		})
+	}
 }
 
 // --- test job kinds -------------------------------------------------------

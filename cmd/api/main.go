@@ -142,6 +142,7 @@ func main() {
 
 	if err := run(ctx); err != nil && !errors.Is(err, context.Canceled) {
 		slog.Error("API server stopped", "error", err)
+		fmt.Fprintf(os.Stderr, "API server error: %v\n", err)
 		os.Exit(1)
 	}
 }

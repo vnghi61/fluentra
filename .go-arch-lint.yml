@@ -114,6 +114,7 @@ components:
   # would not catch it — granting a module its own queries would grant it
   # everybody's.
   g_ops:         { in: generated/ops/sqlc }
+  g_job:         { in: generated/job/sqlc }
   g_auth:        { in: generated/auth/sqlc }
   g_user:        { in: generated/user/sqlc }
   g_rbac:        { in: generated/rbac/sqlc }
@@ -240,6 +241,7 @@ deps:
   # sqlc emits pgx types, so it needs the vendor allowance. It depends on nothing
   # of ours, which is what makes it safe for its owner to import.
   g_ops:       { anyVendorDeps: true }
+  g_job:       { anyVendorDeps: true }
   g_auth:      { anyVendorDeps: true }
   g_user:      { anyVendorDeps: true }
   g_rbac:      { anyVendorDeps: true }
@@ -251,7 +253,7 @@ deps:
   p_telemetry: { anyVendorDeps: true }
   p_cache:     { mayDependOn: [p_telemetry], anyVendorDeps: true }
   p_storage:   { mayDependOn: [p_telemetry, p_job], anyVendorDeps: true }
-  p_job:       { mayDependOn: [p_telemetry], anyVendorDeps: true }
+  p_job:       { mayDependOn: [p_telemetry, g_job], anyVendorDeps: true }
   p_mailer:    { mayDependOn: [p_telemetry, p_job, p_storage], anyVendorDeps: true }
   p_ai:        { mayDependOn: [p_telemetry, p_cache, p_job], anyVendorDeps: true }
   p_media:     { mayDependOn: [p_telemetry, p_storage, p_job, p_ai], anyVendorDeps: true }
