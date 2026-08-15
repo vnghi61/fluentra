@@ -11,13 +11,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fluentra/fluentra/db/migrations"
-	"github.com/fluentra/fluentra/internal/platform/job"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 	"github.com/riverqueue/river"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
+
+	"github.com/fluentra/fluentra/db/migrations"
+	"github.com/fluentra/fluentra/internal/platform/job"
 )
 
 // newTestPool applies the real goose migrations plus River's own, so the tables
