@@ -322,33 +322,55 @@ func TestConfirmAvatar_StripsEXIFGPSMetadata(t *testing.T) {
 		t.Fatal("AvatarAssetID is nil after confirmation")
 	}
 
-	// Locate the stored processed avatar in storage.
-	var outputKey string
-	var outputBytes []byte
-	for key, data := range store.objects {
-		if strings.Contains(key, account.Profile.AvatarAssetID.String()) {
-			outputKey = key
-			outputBytes = data
-			break
+	// Locate the stored processed avatar variants in storage.
+	variantKeys := map[string]image.Point{
+		"_sm.jpg": {X: 64, Y: 64},
+		"_md.jpg": {X: 128, Y: 128},
+		"_lg.jpg": {X: 256, Y: 256},
+	}
+
+	foundCount := 0
+	for suffix, expectedSize := range variantKeys {
+		expectedSubkey := account.Profile.AvatarAssetID.String() + suffix
+		var outputKey string
+		var outputBytes []byte
+		for key, data := range store.objects {
+			if strings.Contains(key, expectedSubkey) {
+				outputKey = key
+				outputBytes = data
+				break
+			}
+		}
+
+		if outputKey == "" || len(outputBytes) == 0 {
+			t.Fatalf("Processed avatar variant %q was not found in storage", expectedSubkey)
+		}
+		foundCount++
+
+		// Acceptance criterion: EXIF GPS data is ABSENT from the output object!
+		if hasEXIFGPSTag(outputBytes) {
+			t.Errorf("Output image %q still contains EXIF/GPS metadata tags!", outputKey)
+		}
+
+		// Confirm that the output object is a valid decodable JPEG image and has correct dimensions.
+		img, format, decodeErr := image.Decode(bytes.NewReader(outputBytes))
+		if decodeErr != nil {
+			t.Fatalf("Output image decode error for %q: %v", outputKey, decodeErr)
+		}
+		if format != "jpeg" {
+			t.Errorf("Output format for %q = %q, want jpeg", outputKey, format)
+		}
+		bounds := img.Bounds()
+		if bounds.Dx() != expectedSize.X || bounds.Dy() != expectedSize.Y {
+			t.Errorf(
+				"Variant %q dimensions = %dx%d, want %dx%d",
+				outputKey, bounds.Dx(), bounds.Dy(), expectedSize.X, expectedSize.Y,
+			)
 		}
 	}
 
-	if outputKey == "" || len(outputBytes) == 0 {
-		t.Fatal("Processed avatar was not found in storage")
-	}
-
-	// Acceptance criterion: EXIF GPS data is ABSENT from the output object!
-	if hasEXIFGPSTag(outputBytes) {
-		t.Errorf("Output image %q still contains EXIF/GPS metadata tags!", outputKey)
-	}
-
-	// Confirm that the output object is a valid decodable image.
-	_, format, decodeErr := image.Decode(bytes.NewReader(outputBytes))
-	if decodeErr != nil {
-		t.Fatalf("Output image decode error: %v", decodeErr)
-	}
-	if format != "jpeg" {
-		t.Errorf("Output format = %q, want jpeg", format)
+	if foundCount != len(variantKeys) {
+		t.Errorf("Found %d variants, want %d", foundCount, len(variantKeys))
 	}
 }
 
@@ -358,7 +380,7 @@ func TestConfirmAvatar_DeletesOldAvatarOnlyAfterNewIsVerifiedAndCommitted(t *tes
 
 	// Set an existing avatar on the user's profile.
 	oldAssetID := uuid.New()
-	oldKey := "users/" + h.actor.String() + "/2026/08/" + oldAssetID.String() + ".jpg"
+	oldKey := "users/" + h.actor.String() + "/2026/08/" + oldAssetID.String() + "_lg.jpg"
 	store.objects[oldKey] = createTestJPEG()
 	_, _ = h.repo.UpdateProfileAvatar(context.Background(), h.actor, &oldAssetID)
 
@@ -398,7 +420,7 @@ func TestConfirmAvatar_LeavesOldAvatarUntouchedWhenNewFails(t *testing.T) {
 
 	// Existing avatar.
 	oldAssetID := uuid.New()
-	oldKey := "users/" + h.actor.String() + "/2026/08/" + oldAssetID.String() + ".jpg"
+	oldKey := "users/" + h.actor.String() + "/2026/08/" + oldAssetID.String() + "_lg.jpg"
 	store.objects[oldKey] = createTestJPEG()
 	_, _ = h.repo.UpdateProfileAvatar(context.Background(), h.actor, &oldAssetID)
 

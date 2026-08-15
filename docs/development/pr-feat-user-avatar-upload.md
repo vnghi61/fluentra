@@ -8,11 +8,11 @@ Implements P3.1 Avatar Upload in the `user` module:
   1. Validates upload key belongs to actor (`users/{actor_id}/...`).
   2. Verifies raw upload existence, size limit (5 MB), and sniffed magic bytes via `storage.VerifyUpload` (rejecting renamed executables or non-image types).
   3. Decodes the image via Pure-Go library `github.com/disintegration/imaging` (with `golang.org/x/image/webp`), dropping all container EXIF metadata (GPS, camera tags).
-  4. Resizes / crops image into square avatar dimensions (`imaging.Fill(img, 256, 256, Center, Lanczos)`).
-  5. Re-encodes a fresh JPEG stream (quality 85) and stores it in `storage.BucketAvatars` (`fluentra-avatars`).
+  4. Resizes / crops image into three square avatar dimensions (`sm`: 64x64, `md`: 128x128, `lg`: 256x256) via `imaging.Fill(img, width, height, Center, Lanczos)`.
+  5. Re-encodes fresh pure-Go JPEG streams (quality 85) and stores the three size variants (`_sm.jpg`, `_md.jpg`, `_lg.jpg`) in `storage.BucketAvatars` (`fluentra-avatars`).
   6. In a single database transaction, updates `core.profiles.avatar_asset_id` and writes `user.profile_updated` outbox event with changed field `avatar_asset_id`.
   7. Cleans up temporary raw upload object.
-  8. Deletes previous avatar object from storage ONLY AFTER database commit succeeds.
+  8. Deletes previous avatar size variants from storage ONLY AFTER database commit succeeds.
 
 ## Architectural & Safety Considerations
 

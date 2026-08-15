@@ -22,6 +22,26 @@ import (
 
 const avatarImageMime = "image/jpeg"
 
+// AvatarSize defines a target dimension and key suffix for avatar variants.
+type AvatarSize struct {
+	Width  int
+	Height int
+	Suffix string
+}
+
+// AvatarSizes defines the three required avatar dimensions (P3.1).
+var AvatarSizes = []AvatarSize{
+	{Width: 64, Height: 64, Suffix: "sm"},
+	{Width: 128, Height: 128, Suffix: "md"},
+	{Width: 256, Height: 256, Suffix: "lg"},
+}
+
+// AvatarVariant holds the encoded buffer for a single size variant.
+type AvatarVariant struct {
+	Suffix string
+	Buffer *bytes.Buffer
+}
+
 // StorageStore defines the storage capabilities needed for avatar management.
 type StorageStore interface {
 	PresignPut(
@@ -85,7 +105,7 @@ func (s *Service) RequestAvatarUploadIntent(
 }
 
 // ConfirmAvatar verifies the uploaded raw image, strips EXIF metadata,
-// re-encodes it to thumbnail size, publishes to the avatars bucket, updates
+// re-encodes it to three pure-Go JPEG sizes, publishes to the avatars bucket, updates
 // the profile record in a transaction, and deletes the old avatar.
 func (s *Service) ConfirmAvatar(
 	ctx context.Context, actorID uuid.UUID, objectKey string,
@@ -104,23 +124,23 @@ func (s *Service) ConfirmAvatar(
 		return Account{}, err
 	}
 
-	buf, err := s.fetchAndProcessAvatar(ctx, objectKey)
+	variants, err := s.fetchAndProcessAvatar(ctx, objectKey)
 	if err != nil {
 		return Account{}, err
 	}
 
-	newAssetID, avatarKey, err := s.storeProcessedAvatar(ctx, actorID, buf)
+	newAssetID, avatarKeys, err := s.storeProcessedAvatar(ctx, actorID, variants)
 	if err != nil {
 		return Account{}, err
 	}
 
 	existingProfile, err := s.repo.GetProfile(ctx, actorID)
 	if err != nil {
-		_ = s.storage.Delete(ctx, storage.BucketAvatars, avatarKey)
+		s.cleanupKeys(ctx, avatarKeys)
 		return Account{}, err
 	}
 
-	updatedProfile, err := s.commitAvatarUpdate(ctx, actorID, newAssetID, avatarKey)
+	updatedProfile, err := s.commitAvatarUpdate(ctx, actorID, newAssetID, avatarKeys)
 	if err != nil {
 		return Account{}, err
 	}
@@ -161,7 +181,7 @@ func (s *Service) validateRawUpload(ctx context.Context, actorID uuid.UUID, obje
 	return nil
 }
 
-func (s *Service) fetchAndProcessAvatar(ctx context.Context, objectKey string) (*bytes.Buffer, error) {
+func (s *Service) fetchAndProcessAvatar(ctx context.Context, objectKey string) ([]AvatarVariant, error) {
 	stream, err := s.storage.Get(ctx, storage.BucketAvatars, objectKey)
 	if err != nil {
 		return nil, fmt.Errorf("read uploaded avatar: %w", err)
@@ -173,37 +193,58 @@ func (s *Service) fetchAndProcessAvatar(ctx context.Context, objectKey string) (
 		return nil, domain.ErrAvatarProcessingFailed.WithCause(err)
 	}
 
-	resized := imaging.Fill(img, 256, 256, imaging.Center, imaging.Lanczos)
-	var buf bytes.Buffer
-	if err := imaging.Encode(&buf, resized, imaging.JPEG, imaging.JPEGQuality(85)); err != nil {
-		return nil, domain.ErrAvatarProcessingFailed.WithCause(err)
+	variants := make([]AvatarVariant, 0, len(AvatarSizes))
+	for _, sz := range AvatarSizes {
+		resized := imaging.Fill(img, sz.Width, sz.Height, imaging.Center, imaging.Lanczos)
+		var buf bytes.Buffer
+		if err := imaging.Encode(&buf, resized, imaging.JPEG, imaging.JPEGQuality(85)); err != nil {
+			return nil, domain.ErrAvatarProcessingFailed.WithCause(err)
+		}
+		variants = append(variants, AvatarVariant{
+			Suffix: sz.Suffix,
+			Buffer: &buf,
+		})
 	}
-	return &buf, nil
+	return variants, nil
 }
 
 func (s *Service) storeProcessedAvatar(
-	ctx context.Context, actorID uuid.UUID, buf *bytes.Buffer,
-) (uuid.UUID, string, error) {
+	ctx context.Context, actorID uuid.UUID, variants []AvatarVariant,
+) (uuid.UUID, []string, error) {
 	newAssetID, err := s.newID(ctx)
 	if err != nil {
-		return uuid.Nil, "", err
+		return uuid.Nil, nil, err
 	}
 
-	avatarKey, err := storage.BuildKey("users", actorID.String(), s.clock.Now(), newAssetID.String(), "jpg")
-	if err != nil {
-		return uuid.Nil, "", fmt.Errorf("build avatar key: %w", err)
-	}
+	storedKeys := make([]string, 0, len(variants))
+	now := s.clock.Now()
+	for _, v := range variants {
+		keyAssetID := fmt.Sprintf("%s_%s", newAssetID.String(), v.Suffix)
+		avatarKey, err := storage.BuildKey("users", actorID.String(), now, keyAssetID, "jpg")
+		if err != nil {
+			s.cleanupKeys(ctx, storedKeys)
+			return uuid.Nil, nil, fmt.Errorf("build avatar key: %w", err)
+		}
 
-	if err := s.storage.Put(
-		ctx, storage.BucketAvatars, avatarKey, bytes.NewReader(buf.Bytes()), int64(buf.Len()), avatarImageMime,
-	); err != nil {
-		return uuid.Nil, "", fmt.Errorf("store processed avatar: %w", err)
+		if err := s.storage.Put(
+			ctx, storage.BucketAvatars, avatarKey, bytes.NewReader(v.Buffer.Bytes()), int64(v.Buffer.Len()), avatarImageMime,
+		); err != nil {
+			s.cleanupKeys(ctx, storedKeys)
+			return uuid.Nil, nil, fmt.Errorf("store processed avatar: %w", err)
+		}
+		storedKeys = append(storedKeys, avatarKey)
 	}
-	return newAssetID, avatarKey, nil
+	return newAssetID, storedKeys, nil
+}
+
+func (s *Service) cleanupKeys(ctx context.Context, keys []string) {
+	for _, key := range keys {
+		_ = s.storage.Delete(ctx, storage.BucketAvatars, key)
+	}
 }
 
 func (s *Service) commitAvatarUpdate(
-	ctx context.Context, actorID, newAssetID uuid.UUID, avatarKey string,
+	ctx context.Context, actorID, newAssetID uuid.UUID, avatarKeys []string,
 ) (domain.Profile, error) {
 	var updatedProfile domain.Profile
 	err := dbx.InTx(ctx, s.pool, func(ctx context.Context, tx pgx.Tx) error {
@@ -224,7 +265,7 @@ func (s *Service) commitAvatarUpdate(
 		return eventErr
 	})
 	if err != nil {
-		_ = s.storage.Delete(ctx, storage.BucketAvatars, avatarKey)
+		s.cleanupKeys(ctx, avatarKeys)
 		return domain.Profile{}, err
 	}
 	return updatedProfile, nil
@@ -237,8 +278,11 @@ func (s *Service) cleanupOldAvatar(
 	if oldAssetID == nil || *oldAssetID == newAssetID {
 		return
 	}
-	oldKey, buildErr := storage.BuildKey("users", actorID.String(), existingProfile.UpdatedAt, oldAssetID.String(), "jpg")
-	if buildErr == nil {
-		_ = s.storage.Delete(ctx, storage.BucketAvatars, oldKey)
+	for _, sz := range AvatarSizes {
+		keyAssetID := fmt.Sprintf("%s_%s", oldAssetID.String(), sz.Suffix)
+		oldKey, buildErr := storage.BuildKey("users", actorID.String(), existingProfile.UpdatedAt, keyAssetID, "jpg")
+		if buildErr == nil {
+			_ = s.storage.Delete(ctx, storage.BucketAvatars, oldKey)
+		}
 	}
 }

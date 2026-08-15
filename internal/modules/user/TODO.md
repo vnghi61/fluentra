@@ -39,7 +39,7 @@ ticked by hand — `make docs` would put them back. Completed work is recorded h
 |---|---|---|
 | P1.1 | 2026-08-09 | `core.users`, `core.profiles`, `core.user_preferences`, `core.learning_profiles`, the four `core` enums and the `citext` extension; the sqlc query set in `db/queries/user/`; schema and query integration tests |
 | P1.2 | 2026-08-09 | The vertical slice: `contract` (`Reader` with batched `GetManyByIDs`, `Creator`, `Summary`, events), `domain`, `repository`, `service`, `transport/http`. `GET`/`PATCH /me` and `GET`/`PUT /me/preferences` |
-| P3.1 | 2026-08-15 | Avatar upload lifecycle: `POST /api/v1/me/avatar/upload-intent` presigned upload, `PUT /api/v1/me/avatar` confirmation, magic bytes sniffing, pure-Go image resizing with EXIF GPS stripping, outbox event publishing, and safe old-avatar cleanup |
+| P3.1 | 2026-08-15 | Avatar upload lifecycle: `POST /api/v1/me/avatar/upload-intent` presigned upload, `PUT /api/v1/me/avatar` confirmation, magic bytes sniffing, pure-Go JPEG image resizing to 3 sizes (64x64, 128x128, 256x256) with EXIF GPS stripping, outbox event publishing, and safe old-avatar cleanup |
 
 That closes the first three generated items. Still open in Phase 1: the
 admin user group (P4.1), deletion (P3.3), export (P3.2) and the `user.deleted` fan-out.
