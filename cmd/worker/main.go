@@ -13,6 +13,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
+	"github.com/riverqueue/river"
+
 	"github.com/fluentra/fluentra/internal/modules/audit"
 	"github.com/fluentra/fluentra/internal/modules/auth"
 	authservice "github.com/fluentra/fluentra/internal/modules/auth/service"
@@ -23,9 +27,6 @@ import (
 	"github.com/fluentra/fluentra/internal/shared/config"
 	"github.com/fluentra/fluentra/internal/shared/eventbus"
 	"github.com/fluentra/fluentra/internal/shared/outbox"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/redis/go-redis/v9"
-	"github.com/riverqueue/river"
 )
 
 var (
@@ -56,8 +57,9 @@ type workerConfig struct {
 	} `koanf:"worker"`
 	Queues map[string]int `koanf:"-"`
 	Outbox struct {
-		PollInterval time.Duration `koanf:"poll_interval"`
-		BatchSize    int           `koanf:"batch_size"`
+		PollInterval           time.Duration `koanf:"poll_interval"`
+		BatchSize              int           `koanf:"batch_size"`
+		PublishedRetentionDays int           `koanf:"published_retention_days"`
 	} `koanf:"outbox"`
 	Job struct {
 		MaxAttempts int           `koanf:"max_attempts"`
@@ -93,25 +95,26 @@ type workerConfig struct {
 func configOptions() config.Options {
 	return config.Options{
 		Defaults: map[string]any{
-			"app.env":                     "local",
-			"app.name":                    "fluentra-worker",
-			"app.version":                 version,
-			"http.port":                   "8081",
-			"worker.queues":               "default:10,ai:4,media:2,notify:10,batch:2",
-			"worker.shutdown_grace":       "30s",
-			"outbox.poll_interval":        "1s",
-			"outbox.batch_size":           100,
-			"job.max_attempts":            5,
-			"job.timeout":                 "5m",
-			"otel.exporter_otlp_endpoint": "localhost:4317",
-			"otel.service_name":           "fluentra-worker",
-			"jwt.issuer":                  "fluentra",
-			"jwt.audience":                "fluentra-api",
-			"jwt.previous_key":            "",
-			"smtp.host":                   "localhost",
-			"smtp.port":                   1025,
-			"smtp.dev_mode":               true,
-			"mail.from":                   "no-reply@fluentra.local",
+			"app.env":                         "local",
+			"app.name":                        "fluentra-worker",
+			"app.version":                     version,
+			"http.port":                       "8081",
+			"worker.queues":                   "default:10,ai:4,media:2,notify:10,batch:2",
+			"worker.shutdown_grace":           "30s",
+			"outbox.poll_interval":            "1s",
+			"outbox.batch_size":               100,
+			"outbox.published_retention_days": 30,
+			"job.max_attempts":                5,
+			"job.timeout":                     "5m",
+			"otel.exporter_otlp_endpoint":     "localhost:4317",
+			"otel.service_name":               "fluentra-worker",
+			"jwt.issuer":                      "fluentra",
+			"jwt.audience":                    "fluentra-api",
+			"jwt.previous_key":                "",
+			"smtp.host":                       "localhost",
+			"smtp.port":                       1025,
+			"smtp.dev_mode":                   true,
+			"mail.from":                       "no-reply@fluentra.local",
 		},
 		Required: []config.RequiredKey{
 			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},
@@ -141,6 +144,10 @@ func loadConfig(ctx context.Context) (workerConfig, error) {
 	if target.Outbox.BatchSize <= 0 {
 		return target, fmt.Errorf(
 			"config key outbox.batch_size must be a positive integer; see %s", jobsDoc)
+	}
+	if target.Outbox.PublishedRetentionDays <= 0 {
+		return target, fmt.Errorf(
+			"config key outbox.published_retention_days must be a positive integer; see %s", jobsDoc)
 	}
 	if target.Job.Timeout <= 0 {
 		return target, fmt.Errorf(
@@ -210,6 +217,11 @@ func run(ctx context.Context) error {
 	// would be marked done without anybody recording it, and never redelivered.
 	bus := eventbus.NewInProcessBus(eventbus.NewRegistry())
 	cron := job.NewCronScheduler(pool)
+	outboxPruner, err := job.NewOutboxPruner(pool, cfg.Outbox.PublishedRetentionDays)
+	if err != nil {
+		return err
+	}
+	cron.Register(outboxPruner.CronJob())
 	if err := startModules(ctx, pool, bus, cron, cfg); err != nil {
 		return err
 	}

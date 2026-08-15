@@ -506,6 +506,31 @@ type ClientInterface interface {
 	// Corresponds with PATCH /me (the `UserUpdateMe` operationId).
 	UserUpdateMe(ctx context.Context, body UserUpdateMeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// UserConfirmAvatarWithBody Confirm and process an uploaded avatar.
+	//
+	// Verifies the uploaded raw image, strips EXIF metadata, generates optimised variants, updates the caller's profile, and deletes the previous avatar.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /me/avatar (the `UserConfirmAvatar` operationId).
+	UserConfirmAvatarWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UserConfirmAvatar Confirm and process an uploaded avatar.
+	//
+	// Verifies the uploaded raw image, strips EXIF metadata, generates optimised variants, updates the caller's profile, and deletes the previous avatar.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /me/avatar (the `UserConfirmAvatar` operationId).
+	UserConfirmAvatar(ctx context.Context, body UserConfirmAvatarJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UserRequestAvatarUploadIntent Request a presigned URL to upload a profile avatar.
+	//
+	// Issues a presigned upload policy for an avatar image (JPEG, PNG, or WebP; max 5 MB).
+	//
+	// Corresponds with POST /me/avatar/upload-intent (the `UserRequestAvatarUploadIntent` operationId).
+	UserRequestAvatarUploadIntent(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// RbacGetMyPermissions Read the caller's own effective permissions.
 	//
 	// Resolves the caller's roles to the flat set of named permissions they grant. Advisory only: it exists so the interface can hide actions that would fail, and every server call re-checks regardless of what the client believes.
@@ -1335,6 +1360,61 @@ func (c *Client) UserUpdateMeWithBody(ctx context.Context, contentType string, b
 // Corresponds with PATCH /me (the `UserUpdateMe` operationId).
 func (c *Client) UserUpdateMe(ctx context.Context, body UserUpdateMeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUserUpdateMeRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UserConfirmAvatarWithBody Confirm and process an uploaded avatar.
+//
+// Verifies the uploaded raw image, strips EXIF metadata, generates optimised variants, updates the caller's profile, and deletes the previous avatar.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /me/avatar (the `UserConfirmAvatar` operationId).
+func (c *Client) UserConfirmAvatarWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserConfirmAvatarRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UserConfirmAvatar Confirm and process an uploaded avatar.
+//
+// Verifies the uploaded raw image, strips EXIF metadata, generates optimised variants, updates the caller's profile, and deletes the previous avatar.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /me/avatar (the `UserConfirmAvatar` operationId).
+func (c *Client) UserConfirmAvatar(ctx context.Context, body UserConfirmAvatarJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserConfirmAvatarRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UserRequestAvatarUploadIntent Request a presigned URL to upload a profile avatar.
+//
+// Issues a presigned upload policy for an avatar image (JPEG, PNG, or WebP; max 5 MB).
+//
+// Corresponds with POST /me/avatar/upload-intent (the `UserRequestAvatarUploadIntent` operationId).
+func (c *Client) UserRequestAvatarUploadIntent(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserRequestAvatarUploadIntentRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -2618,6 +2698,73 @@ func NewUserUpdateMeRequestWithBody(server string, contentType string, body io.R
 	return req, nil
 }
 
+// NewUserConfirmAvatarRequest calls the generic UserConfirmAvatar builder with application/json body
+func NewUserConfirmAvatarRequest(server string, body UserConfirmAvatarJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUserConfirmAvatarRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewUserConfirmAvatarRequestWithBody constructs an http.Request for the UserConfirmAvatar method, with any body, and a specified content type
+func NewUserConfirmAvatarRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/avatar")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewUserRequestAvatarUploadIntentRequest constructs an http.Request for the UserRequestAvatarUploadIntent method
+func NewUserRequestAvatarUploadIntentRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/avatar/upload-intent")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewRbacGetMyPermissionsRequest constructs an http.Request for the RbacGetMyPermissions method
 func NewRbacGetMyPermissionsRequest(server string) (*http.Request, error) {
 	var err error
@@ -3281,6 +3428,33 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with PATCH /me (the `UserUpdateMe` operationId).
 	UserUpdateMeWithResponse(ctx context.Context, body UserUpdateMeJSONRequestBody, reqEditors ...RequestEditorFn) (*UserUpdateMeResponse, error)
+
+	// UserConfirmAvatarWithBodyWithResponse Confirm and process an uploaded avatar.
+	//
+	// Verifies the uploaded raw image, strips EXIF metadata, generates optimised variants, updates the caller's profile, and deletes the previous avatar.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /me/avatar (the `UserConfirmAvatar` operationId).
+	UserConfirmAvatarWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UserConfirmAvatarResponse, error)
+
+	// UserConfirmAvatarWithResponse Confirm and process an uploaded avatar.
+	//
+	// Verifies the uploaded raw image, strips EXIF metadata, generates optimised variants, updates the caller's profile, and deletes the previous avatar.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /me/avatar (the `UserConfirmAvatar` operationId).
+	UserConfirmAvatarWithResponse(ctx context.Context, body UserConfirmAvatarJSONRequestBody, reqEditors ...RequestEditorFn) (*UserConfirmAvatarResponse, error)
+
+	// UserRequestAvatarUploadIntentWithResponse Request a presigned URL to upload a profile avatar.
+	//
+	// Issues a presigned upload policy for an avatar image (JPEG, PNG, or WebP; max 5 MB).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /me/avatar/upload-intent (the `UserRequestAvatarUploadIntent` operationId).
+	UserRequestAvatarUploadIntentWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*UserRequestAvatarUploadIntentResponse, error)
 
 	// RbacGetMyPermissionsWithResponse Read the caller's own effective permissions.
 	//
@@ -5364,6 +5538,154 @@ func (r UserUpdateMeResponse) ContentType() string {
 	return ""
 }
 
+// UserConfirmAvatarResponse200Headers the declared response headers of an HTTP 200 response for UserConfirmAvatar
+type UserConfirmAvatarResponse200Headers struct {
+	XRequestId *string
+}
+
+type UserConfirmAvatarResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Me
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *UserConfirmAvatarResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UserConfirmAvatarResponse) GetJSON200() *Me {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r UserConfirmAvatarResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r UserConfirmAvatarResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r UserConfirmAvatarResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r UserConfirmAvatarResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r UserConfirmAvatarResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UserConfirmAvatarResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UserConfirmAvatarResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UserConfirmAvatarResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// UserRequestAvatarUploadIntentResponse200Headers the declared response headers of an HTTP 200 response for UserRequestAvatarUploadIntent
+type UserRequestAvatarUploadIntentResponse200Headers struct {
+	XRequestId *string
+}
+
+// UserRequestAvatarUploadIntentResponse429Headers the declared response headers of an HTTP 429 response for UserRequestAvatarUploadIntent
+type UserRequestAvatarUploadIntentResponse429Headers struct {
+	RateLimitLimit     *int
+	RateLimitRemaining *int
+	RateLimitReset     *int
+	RetryAfter         *int
+}
+
+type UserRequestAvatarUploadIntentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AvatarUploadIntent
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *UserRequestAvatarUploadIntentResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *UserRequestAvatarUploadIntentResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UserRequestAvatarUploadIntentResponse) GetJSON200() *AvatarUploadIntent {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r UserRequestAvatarUploadIntentResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r UserRequestAvatarUploadIntentResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetBody returns the raw response body bytes
+func (r UserRequestAvatarUploadIntentResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UserRequestAvatarUploadIntentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UserRequestAvatarUploadIntentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UserRequestAvatarUploadIntentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // RbacGetMyPermissionsResponse200Headers the declared response headers of an HTTP 200 response for RbacGetMyPermissions
 type RbacGetMyPermissionsResponse200Headers struct {
 	XRequestId *string
@@ -6380,6 +6702,51 @@ func (c *ClientWithResponses) UserUpdateMeWithResponse(ctx context.Context, body
 		return nil, err
 	}
 	return ParseUserUpdateMeResponse(rsp)
+}
+
+// UserConfirmAvatarWithBodyWithResponse Confirm and process an uploaded avatar.
+//
+// Verifies the uploaded raw image, strips EXIF metadata, generates optimised variants, updates the caller's profile, and deletes the previous avatar.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /me/avatar (the `UserConfirmAvatar` operationId).
+func (c *ClientWithResponses) UserConfirmAvatarWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UserConfirmAvatarResponse, error) {
+	rsp, err := c.UserConfirmAvatarWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserConfirmAvatarResponse(rsp)
+}
+
+// UserConfirmAvatarWithResponse Confirm and process an uploaded avatar.
+//
+// Verifies the uploaded raw image, strips EXIF metadata, generates optimised variants, updates the caller's profile, and deletes the previous avatar.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /me/avatar (the `UserConfirmAvatar` operationId).
+func (c *ClientWithResponses) UserConfirmAvatarWithResponse(ctx context.Context, body UserConfirmAvatarJSONRequestBody, reqEditors ...RequestEditorFn) (*UserConfirmAvatarResponse, error) {
+	rsp, err := c.UserConfirmAvatar(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserConfirmAvatarResponse(rsp)
+}
+
+// UserRequestAvatarUploadIntentWithResponse Request a presigned URL to upload a profile avatar.
+//
+// Issues a presigned upload policy for an avatar image (JPEG, PNG, or WebP; max 5 MB).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /me/avatar/upload-intent (the `UserRequestAvatarUploadIntent` operationId).
+func (c *ClientWithResponses) UserRequestAvatarUploadIntentWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*UserRequestAvatarUploadIntentResponse, error) {
+	rsp, err := c.UserRequestAvatarUploadIntent(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserRequestAvatarUploadIntentResponse(rsp)
 }
 
 // RbacGetMyPermissionsWithResponse Read the caller's own effective permissions.
@@ -8623,6 +8990,157 @@ func ParseUserUpdateMeResponse(rsp *http.Response) (*UserUpdateMeResponse, error
 			headers.XRequestId = &value
 		}
 		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseUserConfirmAvatarResponse parses an HTTP response from a UserConfirmAvatarWithResponse call
+func ParseUserConfirmAvatarResponse(rsp *http.Response) (*UserConfirmAvatarResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UserConfirmAvatarResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Me
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers UserConfirmAvatarResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseUserRequestAvatarUploadIntentResponse parses an HTTP response from a UserRequestAvatarUploadIntentWithResponse call
+func ParseUserRequestAvatarUploadIntentResponse(rsp *http.Response) (*UserRequestAvatarUploadIntentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UserRequestAvatarUploadIntentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AvatarUploadIntent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers UserRequestAvatarUploadIntentResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers UserRequestAvatarUploadIntentResponse429Headers
+		if values := rsp.Header.Values("RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitReset = &value
+		}
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers429 = &headers
 	}
 
 	return response, nil

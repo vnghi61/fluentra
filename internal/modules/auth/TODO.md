@@ -112,12 +112,6 @@ by hand. Completed work is recorded here instead.
 
 ## Open after P2.7
 
-- [ ] **Two topics now put a live code in an outbox payload.** `auth.verification_requested` was the
-      first and `auth.password_reset_requested` is the second, and the reset code is worth something
-      for thirty minutes rather than ten. `ops.outbox_events` still keeps published rows forever, so
-      both payloads outlive their usefulness. The fix is unchanged and still belongs in
-      `shared/outbox` — prune published rows, or null their payload — and it is now twice as worth
-      doing.
 - [ ] **A reset does not notify the address it was completed for.** `auth.password_changed` is
       published and nothing consumes it; the mailer has no `password_changed` template. A change the
       learner did not make is the first sign of a takeover, and the notification is often the only
@@ -229,12 +223,7 @@ by hand. Completed work is recorded here instead.
 
 ## Open after P2.2
 
-- [ ] **The code-in-plaintext outbox payload.** `ops.outbox_events` currently keeps published rows
-      indefinitely, so `auth.verification_requested` payloads carry the OTP code after the
-      challenge has expired and the code is worthless. The exposure is bounded by the ten-minute
-      TTL — nobody can complete the challenge with a stale code — but the record outlives its
-      usefulness. Done when the outbox pruner in `shared/outbox` deletes published rows older
-      than some configurable window (tracked in `shared/outbox/TODO.md`).
+- [x] **The code-in-plaintext outbox payload.** Published OTP payloads now have a bounded lifetime. `platform/job` owns `ops.outbox_events` and its daily, advisory-lock-protected retention task deletes only published, non-dead-lettered events after `OUTBOX_PUBLISHED_RETENTION_DAYS` (30 by default). Deletion was chosen over redaction so the OTP and email are actually removed; the bounded dispatch trail is the trade-off, while dead letters remain for operator triage.
 - [ ] **OTP tuning parameters wired to config.** `OTP_TTL`, `OTP_MAX_ATTEMPTS`, `OTP_CODE_LENGTH`,
       `OTP_RESEND_COOLDOWN`, `OTP_ISSUE_PER_SUBJECT_PER_HOUR`, and `OTP_ISSUE_PER_IP_PER_HOUR`
       are all in `.env.example` and all read from `service.DefaultConfig` today. Done when

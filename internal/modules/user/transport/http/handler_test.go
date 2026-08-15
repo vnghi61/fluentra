@@ -33,10 +33,12 @@ const testRequestID = "01KZGA1FXY6VAHQABK3EBKDN57"
 // seenActor: every assertion about "you cannot read somebody else" comes down
 // to which id the handler passed down.
 type fakeAccounts struct {
-	seenActor  uuid.UUID
-	seenChange domain.ProfileChange
-	seenWanted domain.Preferences
-	err        error
+	seenActor       uuid.UUID
+	seenChange      domain.ProfileChange
+	seenWanted      domain.Preferences
+	seenContentType string
+	seenObjectKey   string
+	err             error
 }
 
 func (f *fakeAccounts) GetAccount(_ context.Context, actorID uuid.UUID) (service.Account, error) {
@@ -76,6 +78,35 @@ func (f *fakeAccounts) ReplacePreferences(
 	}
 	wanted.UpdatedAt = fixedAt
 	return wanted, nil
+}
+
+func (f *fakeAccounts) RequestAvatarUploadIntent(
+	_ context.Context, actorID uuid.UUID, contentType string,
+) (domain.UploadIntent, error) {
+	f.seenActor = actorID
+	f.seenContentType = contentType
+	if f.err != nil {
+		return domain.UploadIntent{}, f.err
+	}
+	return domain.UploadIntent{
+		URL:         "https://storage.local/fluentra-avatars/users/" + actorID.String() + "/raw.jpg",
+		Method:      "POST",
+		ObjectKey:   "users/" + actorID.String() + "/raw.jpg",
+		ExpiresAt:   fixedAt.Add(5 * time.Minute),
+		MaxBytes:    domain.AvatarMaxBytes,
+		ContentType: contentType,
+	}, nil
+}
+
+func (f *fakeAccounts) ConfirmAvatar(
+	_ context.Context, actorID uuid.UUID, objectKey string,
+) (service.Account, error) {
+	f.seenActor = actorID
+	f.seenObjectKey = objectKey
+	if f.err != nil {
+		return service.Account{}, f.err
+	}
+	return account(actorID), nil
 }
 
 func account(id uuid.UUID) service.Account {
@@ -119,6 +150,11 @@ func newServer(accounts userhttp.Accounts) http.Handler {
 func authenticated(t *testing.T, handler http.Handler, method, path, body string) *httptest.ResponseRecorder {
 	t.Helper()
 	return do(t, handler, method, path, body, &httpx.Actor{UserID: actorID, Role: "user"})
+}
+
+func anonymous(t *testing.T, handler http.Handler, method, path, body string) *httptest.ResponseRecorder {
+	t.Helper()
+	return do(t, handler, method, path, body, nil)
 }
 
 func do(

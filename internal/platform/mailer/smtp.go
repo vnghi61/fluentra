@@ -98,6 +98,12 @@ func (s *SMTPSender) Send(ctx context.Context, msg Message) error {
 	if from == "" {
 		from = "no-reply@fluentra.local"
 	}
+	fromAddress, err := mail.ParseAddress(from)
+	if err != nil {
+		s.record(ctx, toHash, msg, "invalid_from_address", "", err)
+		return fmt.Errorf("mailer: invalid sender address %q: %w", from, err)
+	}
+
 	body, err := buildMIME(from, address.Address, rendered)
 	if err != nil {
 		s.record(ctx, toHash, msg, "failed", "", err)
@@ -114,7 +120,7 @@ func (s *SMTPSender) Send(ctx context.Context, msg Message) error {
 	}
 
 	addr := fmt.Sprintf("%s:%d", host, s.config.Port)
-	if err := s.sendMail(addr, auth, from, []string{address.Address}, body); err != nil {
+	if err := s.sendMail(addr, auth, fromAddress.Address, []string{address.Address}, body); err != nil {
 		permanent := isPermanentSMTPError(err)
 		status := "transient_failure"
 		if permanent {

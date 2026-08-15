@@ -35,6 +35,7 @@ Global policy: [`/TESTING_GUIDELINE.md`](../../../TESTING_GUIDELINE.md).
 - Timeout cancels the handler's context
 - Panic in a handler is recovered and recorded, not fatal to the worker
 - Outbox publishes exactly once per event to each subscriber
+- Outbox retention deletes only published, non-dead-lettered rows past the configured window
 <!-- END GENERATED: test-focus -->
 
 ## Edge cases that have bitten similar modules

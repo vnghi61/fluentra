@@ -6,10 +6,11 @@ go 1.25.0
 // without this line actions/setup-go installs exactly 1.25.0, whose standard
 // library carries 31 known vulnerabilities (govulncheck fails the security job)
 // and which sqlc v1.31.1 refuses to build under — it needs >= 1.26.0.
-toolchain go1.26.5
+toolchain go1.26.6
 
 require (
 	github.com/alexedwards/argon2id v1.0.0
+	github.com/disintegration/imaging v1.6.2
 	github.com/exaring/otelpgx v0.11.1
 	github.com/getkin/kin-openapi v0.146.0
 	github.com/go-chi/chi/v5 v5.3.1
@@ -42,6 +43,7 @@ require (
 	go.opentelemetry.io/otel/sdk/log v0.21.0
 	go.opentelemetry.io/otel/sdk/metric v1.45.0
 	go.opentelemetry.io/otel/trace v1.45.0
+	golang.org/x/image v0.45.0
 	golang.org/x/sync v0.22.0
 	pgregory.net/rapid v1.3.0
 )
@@ -98,7 +100,7 @@ require (
 	golang.org/x/crypto v0.54.0 // indirect
 	golang.org/x/net v0.57.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
-	golang.org/x/text v0.40.0 // indirect
+	golang.org/x/text v0.41.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260803160001-6ac0973c030d // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260803160001-6ac0973c030d // indirect
 	google.golang.org/grpc v1.83.0 // indirect

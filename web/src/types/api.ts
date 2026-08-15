@@ -578,6 +578,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/avatar/upload-intent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request a presigned URL to upload a profile avatar.
+         * @description Issues a presigned upload policy for an avatar image (JPEG, PNG, or WebP; max 5 MB).
+         */
+        post: operations["userRequestAvatarUploadIntent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/avatar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Confirm and process an uploaded avatar.
+         * @description Verifies the uploaded raw image, strips EXIF metadata, generates optimised variants, updates the caller's profile, and deletes the previous avatar.
+         */
+        put: operations["userConfirmAvatar"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/roles": {
         parameters: {
             query?: never;
@@ -1271,6 +1311,54 @@ export interface components {
             quiet_hours?: components["schemas"]["QuietHours"] | null;
             /** @example false */
             ai_processing_opt_out: boolean;
+        };
+        /** @description Constrained browser upload intent for an avatar image. */
+        AvatarUploadIntent: {
+            /**
+             * Format: uri
+             * @description The presigned URL the client POSTs or PUTs the file to.
+             */
+            upload_url: string;
+            /**
+             * @example POST
+             * @enum {string}
+             */
+            method: "POST" | "PUT";
+            /** @description Key-value form fields for multipart POST policy uploads. */
+            form_data?: {
+                [key: string]: string;
+            };
+            /** @example file */
+            file_field?: string;
+            /**
+             * @description The unique object key in storage.
+             * @example users/0199a1c2-3d4e-7f80-9abc-def012345678/2026/08/avatar-raw.jpg
+             */
+            object_key: string;
+            /**
+             * Format: date-time
+             * @description When the presigned upload intent expires.
+             */
+            expires_at: string;
+            /**
+             * Format: int64
+             * @description Maximum permitted file size in bytes (5 MB).
+             * @example 5242880
+             */
+            max_bytes: number;
+            /**
+             * @description Pinned content type (image/jpeg, image/png, image/webp).
+             * @example image/jpeg
+             */
+            content_type: string;
+        };
+        /** @description Confirmation of the uploaded raw avatar in storage. */
+        ConfirmAvatarRequest: {
+            /**
+             * @description The object key returned by the upload intent.
+             * @example users/0199a1c2-3d4e-7f80-9abc-def012345678/2026/08/avatar-raw.jpg
+             */
+            object_key: string;
         };
         /**
          * @description What the caller is allowed to do, as the server currently sees it.
@@ -2681,6 +2769,90 @@ export interface operations {
                      *     }
                      */
                     "application/json": components["schemas"]["Preferences"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    userRequestAvatarUploadIntent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Upload intent generated. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "upload_url": "https://storage.example.com/fluentra-avatars/users/0199a1c2-3d4e-7f80-9abc-def012345678/2026/08/avatar-raw.jpg",
+                     *       "method": "POST",
+                     *       "object_key": "users/0199a1c2-3d4e-7f80-9abc-def012345678/2026/08/avatar-raw.jpg",
+                     *       "expires_at": "2026-08-15T08:05:00Z",
+                     *       "max_bytes": 5242880,
+                     *       "content_type": "image/jpeg"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["AvatarUploadIntent"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    userConfirmAvatar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "object_key": "users/0199a1c2-3d4e-7f80-9abc-def012345678/2026/08/avatar-raw.jpg"
+                 *     }
+                 */
+                "application/json": components["schemas"]["ConfirmAvatarRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated account with the new avatar. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "email": "learner@example.com",
+                     *       "status": "active",
+                     *       "email_verified_at": "2026-08-09T04:21:07Z",
+                     *       "created_at": "2026-08-01T09:15:00Z",
+                     *       "updated_at": "2026-08-09T04:21:07Z",
+                     *       "profile": {
+                     *         "display_name": "Nghi",
+                     *         "avatar_url": null,
+                     *         "country": "VN",
+                     *         "timezone": "Asia/Ho_Chi_Minh",
+                     *         "date_of_birth": "1998-03-04"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Me"];
                 };
             };
             400: components["responses"]["BadRequest"];

@@ -7,12 +7,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fluentra/fluentra/internal/platform/job"
-	"github.com/fluentra/fluentra/internal/platform/telemetry"
 	"github.com/riverqueue/river/rivertype"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
+
+	"github.com/fluentra/fluentra/internal/platform/job"
+	"github.com/fluentra/fluentra/internal/platform/telemetry"
 )
 
 // resultSuccess is the metric label a completed job carries.

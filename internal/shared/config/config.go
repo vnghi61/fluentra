@@ -47,7 +47,7 @@ type Options struct {
 	Required    []RequiredKey
 }
 
-// Load applies defaults, then a YAML file, then environment variables to target.
+// Load applies defaults, then optional .env file, then a YAML file, then environment variables to target.
 func Load(ctx context.Context, options Options, target any) error {
 	if err := ctx.Err(); err != nil {
 		return err
@@ -56,25 +56,69 @@ func Load(ctx context.Context, options Options, target any) error {
 	if err := config.Load(confmap.Provider(options.Defaults, "."), nil); err != nil {
 		return fmt.Errorf("load config defaults: %w", err)
 	}
-	if options.File != "" {
-		if _, err := os.Stat(options.File); err != nil {
-			if !os.IsNotExist(err) {
-				return fmt.Errorf("stat config file: %w", err)
-			}
-		} else if err := config.Load(file.Provider(options.File), yaml.Parser()); err != nil {
-			return fmt.Errorf("load config file: %w", err)
-		}
+	if err := loadDotEnv(config, options); err != nil {
+		return err
+	}
+	if err := loadConfigFile(config, options.File); err != nil {
+		return err
 	}
 	if err := config.Load(env.Provider("", ".", envKey(allowedSections(options))), nil); err != nil {
 		return fmt.Errorf("load config environment: %w", err)
 	}
-	for _, required := range options.Required {
-		if !config.Exists(required.Name) || strings.TrimSpace(config.String(required.Name)) == "" {
-			return fmt.Errorf("required config key %s is missing; see %s", required.Name, required.DocSection)
-		}
+	if err := validateRequired(config, options.Required); err != nil {
+		return err
 	}
 	if err := config.Unmarshal("", target); err != nil {
 		return fmt.Errorf("unmarshal config: %w", err)
+	}
+	return nil
+}
+
+func loadDotEnv(config *koanf.Koanf, options Options) error {
+	if _, err := os.Stat(".env"); err != nil {
+		return nil //nolint:nilerr // .env file is optional
+	}
+	envValues, err := ParseEnvFile(".env")
+	if err != nil {
+		return fmt.Errorf("load .env file: %w", err)
+	}
+	mapped := make(map[string]any, len(envValues))
+	allowed := allowedSections(options)
+	for k, v := range envValues {
+		key := EnvKey(k)
+		if key != "" {
+			if _, ok := allowed[sectionOf(key)]; ok {
+				mapped[key] = v
+			}
+		}
+	}
+	if err := config.Load(confmap.Provider(mapped, "."), nil); err != nil {
+		return fmt.Errorf("load .env file: %w", err)
+	}
+	return nil
+}
+
+func loadConfigFile(config *koanf.Koanf, filePath string) error {
+	if filePath == "" {
+		return nil
+	}
+	if _, err := os.Stat(filePath); err != nil {
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("stat config file: %w", err)
+		}
+		return nil
+	}
+	if err := config.Load(file.Provider(filePath), yaml.Parser()); err != nil {
+		return fmt.Errorf("load config file: %w", err)
+	}
+	return nil
+}
+
+func validateRequired(config *koanf.Koanf, required []RequiredKey) error {
+	for _, req := range required {
+		if !config.Exists(req.Name) || strings.TrimSpace(config.String(req.Name)) == "" {
+			return fmt.Errorf("required config key %s is missing; see %s", req.Name, req.DocSection)
+		}
 	}
 	return nil
 }

@@ -40,6 +40,10 @@ vendors:
   # packages allowed to mint a credential should be exactly the set that does.
   v_jwt: { in: [github.com/golang-jwt/jwt/v5, github.com/golang-jwt/jwt/v5/**] }
 
+  # Granted to m_user_service for avatar image manipulation and resizing.
+  v_imaging: { in: github.com/disintegration/imaging }
+  v_ximage:  { in: [golang.org/x/image, golang.org/x/image/**] }
+
 commonVendors:
   - v_uuid
   - v_pgx
@@ -110,6 +114,7 @@ components:
   # would not catch it — granting a module its own queries would grant it
   # everybody's.
   g_ops:         { in: generated/ops/sqlc }
+  g_job:         { in: generated/job/sqlc }
   g_auth:        { in: generated/auth/sqlc }
   g_user:        { in: generated/user/sqlc }
   g_rbac:        { in: generated/rbac/sqlc }
@@ -236,6 +241,7 @@ deps:
   # sqlc emits pgx types, so it needs the vendor allowance. It depends on nothing
   # of ours, which is what makes it safe for its owner to import.
   g_ops:       { anyVendorDeps: true }
+  g_job:       { anyVendorDeps: true }
   g_auth:      { anyVendorDeps: true }
   g_user:      { anyVendorDeps: true }
   g_rbac:      { anyVendorDeps: true }
@@ -247,7 +253,7 @@ deps:
   p_telemetry: { anyVendorDeps: true }
   p_cache:     { mayDependOn: [p_telemetry], anyVendorDeps: true }
   p_storage:   { mayDependOn: [p_telemetry, p_job], anyVendorDeps: true }
-  p_job:       { mayDependOn: [p_telemetry], anyVendorDeps: true }
+  p_job:       { mayDependOn: [p_telemetry, g_job], anyVendorDeps: true }
   p_mailer:    { mayDependOn: [p_telemetry, p_job, p_storage], anyVendorDeps: true }
   p_ai:        { mayDependOn: [p_telemetry, p_cache, p_job], anyVendorDeps: true }
   p_media:     { mayDependOn: [p_telemetry, p_storage, p_job, p_ai], anyVendorDeps: true }
@@ -293,9 +299,9 @@ deps:
   # shared kernel, which is what makes it testable with zero setup, and the
   # linter rejects both an empty mayDependOn and a rule with no allowance.
   m_user_repository: { mayDependOn: [m_user_domain, g_user] }
-  m_user_service:    { mayDependOn: [m_user_domain, c_user, p_storage, p_telemetry, p_mailer, p_job, c_audit] }
+  m_user_service:    { mayDependOn: [m_user_domain, c_user, p_storage, p_telemetry, p_mailer, p_job, c_audit], canUse: [v_imaging, v_ximage] }
   m_user_http:       { mayDependOn: [m_user_domain, m_user_service] }
-  m_user:            { mayDependOn: [m_user_domain, m_user_repository, m_user_service, m_user_http, c_user] }
+  m_user:            { mayDependOn: [m_user_domain, m_user_repository, m_user_service, m_user_http, c_user, p_storage] }
 
   # rbac, by layer. The domain depends on its own contract because the guard's
   # types — Permission, Role — are the contract: they are what other modules

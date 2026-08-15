@@ -34,3 +34,12 @@ SET display_name  = COALESCE(sqlc.narg(display_name), display_name),
 WHERE user_id = @user_id
 RETURNING id, user_id, display_name, avatar_asset_id, country, timezone, date_of_birth,
           created_at, updated_at;
+
+-- name: UpdateProfileAvatar :one
+UPDATE core.profiles
+SET avatar_asset_id = @avatar_asset_id,
+    updated_at      = now()
+WHERE user_id = @user_id
+RETURNING id, user_id, display_name, avatar_asset_id, country, timezone, date_of_birth,
+          created_at, updated_at;
+

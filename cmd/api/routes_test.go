@@ -73,6 +73,8 @@ func TestEveryPhaseOneOperationIsMounted(t *testing.T) {
 		{http.MethodPatch, "/api/v1/me", ownerUser},
 		{http.MethodGet, "/api/v1/me/preferences", ownerUser},
 		{http.MethodPut, "/api/v1/me/preferences", ownerUser},
+		{http.MethodPost, "/api/v1/me/avatar/upload-intent", ownerUser},
+		{http.MethodPut, "/api/v1/me/avatar", ownerUser},
 		{http.MethodGet, "/api/v1/me/permissions", ownerRBAC},
 		{http.MethodGet, "/api/v1/admin/roles", ownerRBAC},
 		{http.MethodPost, "/api/v1/admin/users/" + someone + "/roles", ownerRBAC},

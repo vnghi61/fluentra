@@ -4,11 +4,11 @@ import {
   createRouter,
   Outlet,
   type AnyRoute,
-} from '@tanstack/react-router';
+} from "@tanstack/react-router";
 
-import { AppShell } from '@/components/layout/AppShell';
-import { HomePage } from '@/routes/HomePage';
-import { PracticePage } from '@/routes/PracticePage';
+import { AppShell } from "@/components/layout/AppShell";
+import { HomePage } from "@/routes/HomePage";
+import { PracticePage } from "@/routes/PracticePage";
 
 /**
  * The route tree is declared in code rather than generated from the filesystem.
@@ -28,21 +28,24 @@ const rootRoute = createRootRoute({
 
 const homeRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/',
+  path: "/",
   component: HomePage,
 });
 
 const practiceRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/practice',
+  path: "/practice",
   component: PracticePage,
 });
 
-const routeTree = rootRoute.addChildren([homeRoute, practiceRoute] as AnyRoute[]);
+const routeTree = rootRoute.addChildren([
+  homeRoute,
+  practiceRoute,
+] as AnyRoute[]);
 
 export const router = createRouter({ routeTree });
 
-declare module '@tanstack/react-router' {
+declare module "@tanstack/react-router" {
   interface Register {
     router: typeof router;
   }

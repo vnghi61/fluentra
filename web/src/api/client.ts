@@ -1,4 +1,4 @@
-import { injectTraceContext } from '@/lib/telemetry';
+import { injectTraceContext } from "@/lib/telemetry";
 
 /**
  * Fetch wrapper. It adds a request id and lets the OpenTelemetry propagator add
@@ -13,7 +13,7 @@ import { injectTraceContext } from '@/lib/telemetry';
  * started the span it names.
  */
 
-export interface RequestOptions extends Omit<RequestInit, 'headers'> {
+export interface RequestOptions extends Omit<RequestInit, "headers"> {
   headers?: Record<string, string>;
 }
 
@@ -32,7 +32,7 @@ export class ApiError extends Error {
 
   constructor(problem: ProblemDetails) {
     super(problem.title);
-    this.name = 'ApiError';
+    this.name = "ApiError";
     this.problem = problem;
   }
 }
@@ -43,17 +43,20 @@ export function generateRequestID(): string {
 
 function isProblemDetails(value: unknown): value is ProblemDetails {
   return (
-    typeof value === 'object' &&
+    typeof value === "object" &&
     value !== null &&
-    typeof (value as { title?: unknown }).title === 'string' &&
-    typeof (value as { status?: unknown }).status === 'number'
+    typeof (value as { title?: unknown }).title === "string" &&
+    typeof (value as { status?: unknown }).status === "number"
   );
 }
 
-export async function apiFetch<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
+export async function apiFetch<T>(
+  endpoint: string,
+  options: RequestOptions = {},
+): Promise<T> {
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    'X-Request-Id': generateRequestID(),
+    "Content-Type": "application/json",
+    "X-Request-Id": generateRequestID(),
     ...options.headers,
   };
 
@@ -72,7 +75,10 @@ export async function apiFetch<T>(endpoint: string, options: RequestOptions = {}
     throw new ApiError(
       isProblemDetails(body)
         ? body
-        : { title: response.statusText || 'Request failed', status: response.status },
+        : {
+            title: response.statusText || "Request failed",
+            status: response.status,
+          },
     );
   }
 

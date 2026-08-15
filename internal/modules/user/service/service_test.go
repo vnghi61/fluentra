@@ -42,6 +42,7 @@ func newHarness(t *testing.T) *harness {
 	}
 	repo.profiles[actor] = domain.Profile{
 		UserID: actor, DisplayName: nameNghi, Timezone: timezoneHoChiMinh,
+		CreatedAt: testNow, UpdatedAt: testNow,
 	}
 	repo.preferences[actor] = domain.Preferences{
 		UserID: actor, Locale: "en", Theme: domain.ThemeSystem, DailyGoalMinutes: 15,
