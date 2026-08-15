@@ -3,27 +3,36 @@
 package user_test
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"image"
+	"image/color"
+	"image/jpeg"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/pressly/goose/v3"
 
 	"github.com/fluentra/fluentra/db/migrations"
 	"github.com/fluentra/fluentra/internal/modules/user"
 	"github.com/fluentra/fluentra/internal/modules/user/contract"
+	"github.com/fluentra/fluentra/internal/platform/storage"
 	"github.com/fluentra/fluentra/internal/shared/httpx"
 )
 
@@ -137,9 +146,139 @@ func replaceDatabase(dsn, database string) (string, error) {
 	return parsed.String(), nil
 }
 
-// newModule builds the module over the real pool and mounts it the way the
-// composition root will, then clears the tables so each test starts empty.
-func newModule(t *testing.T) (*user.Module, http.Handler) {
+type inMemoryStore struct {
+	mu      sync.Mutex
+	objects map[string][]byte
+}
+
+func newInMemoryStore() *inMemoryStore {
+	return &inMemoryStore{objects: make(map[string][]byte)}
+}
+
+func (s *inMemoryStore) PresignPut(
+	_ context.Context, bucket, key, contentType string, maxBytes int64, expiry time.Duration,
+) (storage.UploadIntent, error) {
+	return storage.UploadIntent{
+		URL:         "http://storage.local/" + bucket + "/" + key,
+		Method:      "POST",
+		ObjectKey:   key,
+		ExpiresAt:   time.Now().Add(expiry),
+		MaxBytes:    maxBytes,
+		ContentType: contentType,
+	}, nil
+}
+
+func (s *inMemoryStore) VerifyUpload(
+	_ context.Context, _, key, _ string, maxBytes int64,
+) (storage.ObjectStat, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	data, ok := s.objects[key]
+	if !ok {
+		return storage.ObjectStat{}, storage.ErrObjectNotFound
+	}
+	if maxBytes > 0 && int64(len(data)) > maxBytes {
+		return storage.ObjectStat{}, storage.ErrSizeMismatch
+	}
+	sniffed := http.DetectContentType(data)
+	if len(data) >= 2 && data[0] == 'M' && data[1] == 'Z' {
+		sniffed = "application/x-dosexec"
+	}
+	return storage.ObjectStat{
+		Key:                key,
+		Size:               int64(len(data)),
+		SniffedContentType: sniffed,
+	}, nil
+}
+
+func (s *inMemoryStore) Get(_ context.Context, _, key string) (io.ReadCloser, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	data, ok := s.objects[key]
+	if !ok {
+		return nil, storage.ErrObjectNotFound
+	}
+	return io.NopCloser(bytes.NewReader(data)), nil
+}
+
+func (s *inMemoryStore) Put(
+	_ context.Context, _, key string, reader io.Reader, _ int64, _ string,
+) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		return err
+	}
+	s.objects[key] = data
+	return nil
+}
+
+func (s *inMemoryStore) Delete(_ context.Context, _, key string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.objects, key)
+	return nil
+}
+
+func (s *inMemoryStore) Stat(_ context.Context, _, key string) (storage.ObjectStat, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	data, ok := s.objects[key]
+	if !ok {
+		return storage.ObjectStat{}, storage.ErrObjectNotFound
+	}
+	return storage.ObjectStat{
+		Key:  key,
+		Size: int64(len(data)),
+	}, nil
+}
+
+func (s *inMemoryStore) Copy(_ context.Context, _, srcKey, _, destKey string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	data, ok := s.objects[srcKey]
+	if !ok {
+		return storage.ErrObjectNotFound
+	}
+	copied := make([]byte, len(data))
+	copy(copied, data)
+	s.objects[destKey] = copied
+	return nil
+}
+
+func (s *inMemoryStore) PresignGet(_ context.Context, bucket, key string, _ time.Duration) (string, error) {
+	return "http://storage.local/" + bucket + "/" + key, nil
+}
+
+func newTestStorage(t *testing.T) storage.Store {
+	t.Helper()
+	endpoint := os.Getenv("TEST_S3_ENDPOINT")
+	if endpoint == "" {
+		return newInMemoryStore()
+	}
+	client, err := minio.New(endpoint, &minio.Options{
+		Creds:  credentials.NewStaticV4(os.Getenv("TEST_S3_ACCESS_KEY"), os.Getenv("TEST_S3_SECRET_KEY"), ""),
+		Secure: false,
+	})
+	if err != nil {
+		t.Fatalf("minio client: %v", err)
+	}
+	ctx := context.Background()
+	exists, err := client.BucketExists(ctx, storage.BucketAvatars)
+	if err != nil {
+		t.Fatalf("bucket exists: %v", err)
+	}
+	if !exists {
+		if err := client.MakeBucket(ctx, storage.BucketAvatars, minio.MakeBucketOptions{}); err != nil {
+			t.Fatalf("make bucket %s: %v", storage.BucketAvatars, err)
+		}
+	}
+	return storage.NewMinIOStore(client)
+}
+
+// newModuleWithStorage builds the module over the real pool and test storage.
+func newModuleWithStorage(t *testing.T) (*user.Module, http.Handler, storage.Store) {
 	t.Helper()
 	if pool == nil {
 		t.Skip("TEST_DATABASE_URL is not set")
@@ -150,9 +289,18 @@ func newModule(t *testing.T) (*user.Module, http.Handler) {
 		t.Fatalf("reset tables: %v", err)
 	}
 
-	module := user.New(user.Deps{Pool: pool})
+	store := newTestStorage(t)
+	module := user.New(user.Deps{Pool: pool, Storage: store})
 	router := chi.NewRouter()
 	router.Route("/api/v1", func(api chi.Router) { module.Routes(api) })
+	return module, router, store
+}
+
+// newModule builds the module over the real pool and mounts it the way the
+// composition root will, then clears the tables so each test starts empty.
+func newModule(t *testing.T) (*user.Module, http.Handler) {
+	t.Helper()
+	module, router, _ := newModuleWithStorage(t)
 	return module, router
 }
 
@@ -412,11 +560,130 @@ func TestModule_UnauthenticatedRequestsAreRefused(t *testing.T) {
 		{http.MethodPatch, "/api/v1/me", `{"display_name":"Nghi"}`},
 		{http.MethodGet, "/api/v1/me/preferences", ""},
 		{http.MethodPut, "/api/v1/me/preferences", `{}`},
+		{http.MethodPost, "/api/v1/me/avatar/upload-intent", `{"content_type":"image/jpeg"}`},
+		{http.MethodPut, "/api/v1/me/avatar", `{"object_key":"raw.jpg"}`},
 	}
 	for _, testCase := range cases {
 		recorder := request(t, router, testCase.method, testCase.path, uuid.Nil, testCase.body)
 		if recorder.Code != http.StatusUnauthorized {
 			t.Errorf("%s %s = %d, want 401", testCase.method, testCase.path, recorder.Code)
 		}
+	}
+}
+
+func createTestJPEGImage() []byte {
+	img := image.NewRGBA(image.Rect(0, 0, 64, 64))
+	for x := range 64 {
+		for y := range 64 {
+			img.Set(x, y, color.RGBA{R: uint8(x * 3), G: uint8(y * 3), B: 150, A: 255})
+		}
+	}
+	var buf bytes.Buffer
+	_ = jpeg.Encode(&buf, img, &jpeg.Options{Quality: 85})
+	return buf.Bytes()
+}
+
+func TestModule_AvatarUploadLifecycle(t *testing.T) {
+	module, router, store := newModuleWithStorage(t)
+	actorID := register(t, module, "avatar-learner@fluentra.test", "Avatar Learner")
+
+	// 1. Request upload intent.
+	intentRecorder := request(
+		t, router, http.MethodPost, "/api/v1/me/avatar/upload-intent", actorID, `{"content_type":"image/jpeg"}`,
+	)
+	if intentRecorder.Code != http.StatusOK {
+		t.Fatalf("POST upload-intent: %d, body %s", intentRecorder.Code, intentRecorder.Body)
+	}
+
+	var intent struct {
+		UploadURL string `json:"upload_url"`
+		Method    string `json:"method"`
+		ObjectKey string `json:"object_key"`
+		MaxBytes  int64  `json:"max_bytes"`
+	}
+	if err := json.Unmarshal(intentRecorder.Body.Bytes(), &intent); err != nil {
+		t.Fatalf("decode intent: %v", err)
+	}
+
+	// 2. Upload valid JPEG image to storage at intent.ObjectKey.
+	jpegData := createTestJPEGImage()
+	if err := store.Put(
+		context.Background(), storage.BucketAvatars, intent.ObjectKey,
+		bytes.NewReader(jpegData), int64(len(jpegData)), "image/jpeg",
+	); err != nil {
+		t.Fatalf("store put raw: %v", err)
+	}
+
+	// 3. Confirm avatar.
+	confirmBody := fmt.Sprintf(`{"object_key":%q}`, intent.ObjectKey)
+	confirmRecorder := request(t, router, http.MethodPut, "/api/v1/me/avatar", actorID, confirmBody)
+	if confirmRecorder.Code != http.StatusOK {
+		t.Fatalf("PUT avatar confirm: %d, body %s", confirmRecorder.Code, confirmRecorder.Body)
+	}
+
+	var me struct {
+		Profile struct {
+			AvatarURL *string `json:"avatar_url"`
+		} `json:"profile"`
+	}
+	if err := json.Unmarshal(confirmRecorder.Body.Bytes(), &me); err != nil {
+		t.Fatalf("decode me response: %v", err)
+	}
+	if me.Profile.AvatarURL == nil || !strings.HasPrefix(*me.Profile.AvatarURL, "/api/v1/storage/avatars/") {
+		t.Errorf("avatar_url = %v, want /api/v1/storage/avatars/...", me.Profile.AvatarURL)
+	}
+
+	// 4. Verify outbox event written.
+	rows := outboxRows(t)
+	if len(rows) != 1 {
+		t.Fatalf("outbox has %d rows, want 1", len(rows))
+	}
+	if rows[0].Topic() != contract.EventProfileUpdated {
+		t.Errorf("event topic = %q, want %q", rows[0].Topic(), contract.EventProfileUpdated)
+	}
+}
+
+func TestModule_AvatarUploadRejectsRenamedExecutable(t *testing.T) {
+	module, router, store := newModuleWithStorage(t)
+	actorID := register(t, module, "malicious@fluentra.test", "Attacker")
+
+	intentRecorder := request(
+		t, router, http.MethodPost, "/api/v1/me/avatar/upload-intent", actorID, `{"content_type":"image/jpeg"}`,
+	)
+	if intentRecorder.Code != http.StatusOK {
+		t.Fatalf("POST upload-intent: %d", intentRecorder.Code)
+	}
+
+	var intent struct {
+		ObjectKey string `json:"object_key"`
+	}
+	if err := json.Unmarshal(intentRecorder.Body.Bytes(), &intent); err != nil {
+		t.Fatalf("decode intent: %v", err)
+	}
+
+	// Put executable bytes disguised as jpg into storage.
+	fakeExe := []byte("MZ\x90\x00\x03\x00\x00\x00malicious exe payload")
+	if err := store.Put(
+		context.Background(), storage.BucketAvatars, intent.ObjectKey,
+		bytes.NewReader(fakeExe), int64(len(fakeExe)), "image/jpeg",
+	); err != nil {
+		t.Fatalf("put fake exe: %v", err)
+	}
+
+	// Attempt confirmation.
+	confirmBody := fmt.Sprintf(`{"object_key":%q}`, intent.ObjectKey)
+	confirmRecorder := request(t, router, http.MethodPut, "/api/v1/me/avatar", actorID, confirmBody)
+	if confirmRecorder.Code != http.StatusUnprocessableEntity {
+		t.Errorf("confirm fake exe status = %d, want 422", confirmRecorder.Code)
+	}
+
+	// Database avatar should remain NULL.
+	var avatarID *uuid.UUID
+	const readAvatar = `SELECT avatar_asset_id FROM core.profiles WHERE user_id = $1`
+	if err := pool.QueryRow(context.Background(), readAvatar, actorID).Scan(&avatarID); err != nil {
+		t.Fatalf("query avatar_asset_id: %v", err)
+	}
+	if avatarID != nil {
+		t.Errorf("avatar_asset_id was updated to %v, want NULL", avatarID)
 	}
 }

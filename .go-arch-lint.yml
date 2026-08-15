@@ -40,6 +40,10 @@ vendors:
   # packages allowed to mint a credential should be exactly the set that does.
   v_jwt: { in: [github.com/golang-jwt/jwt/v5, github.com/golang-jwt/jwt/v5/**] }
 
+  # Granted to m_user_service for avatar image manipulation and resizing.
+  v_imaging: { in: github.com/disintegration/imaging }
+  v_ximage:  { in: [golang.org/x/image, golang.org/x/image/**] }
+
 commonVendors:
   - v_uuid
   - v_pgx
@@ -293,9 +297,9 @@ deps:
   # shared kernel, which is what makes it testable with zero setup, and the
   # linter rejects both an empty mayDependOn and a rule with no allowance.
   m_user_repository: { mayDependOn: [m_user_domain, g_user] }
-  m_user_service:    { mayDependOn: [m_user_domain, c_user, p_storage, p_telemetry, p_mailer, p_job, c_audit] }
+  m_user_service:    { mayDependOn: [m_user_domain, c_user, p_storage, p_telemetry, p_mailer, p_job, c_audit], canUse: [v_imaging, v_ximage] }
   m_user_http:       { mayDependOn: [m_user_domain, m_user_service] }
-  m_user:            { mayDependOn: [m_user_domain, m_user_repository, m_user_service, m_user_http, c_user] }
+  m_user:            { mayDependOn: [m_user_domain, m_user_repository, m_user_service, m_user_http, c_user, p_storage] }
 
   # rbac, by layer. The domain depends on its own contract because the guard's
   # types — Permission, Role — are the contract: they are what other modules

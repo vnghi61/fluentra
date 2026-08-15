@@ -1,6 +1,7 @@
 package http
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -37,6 +38,12 @@ type profileResponse struct {
 }
 
 func toMeResponse(account service.Account) meResponse {
+	var avatarURL *string
+	if account.Profile.AvatarAssetID != nil {
+		url := fmt.Sprintf("/api/v1/storage/avatars/%s", account.Profile.AvatarAssetID.String())
+		avatarURL = &url
+	}
+
 	return meResponse{
 		ID:              account.User.ID,
 		Email:           account.User.Email,
@@ -46,13 +53,35 @@ func toMeResponse(account service.Account) meResponse {
 		UpdatedAt:       account.User.UpdatedAt,
 		Profile: profileResponse{
 			DisplayName: account.Profile.DisplayName,
-			// Still null until P3.1 turns the stored asset id into a URL
-			// through the storage facade.
-			AvatarURL:   nil,
+			AvatarURL:   avatarURL,
 			Country:     account.Profile.Country,
 			Timezone:    account.Profile.Timezone,
 			DateOfBirth: formatDate(account.Profile.DateOfBirth),
 		},
+	}
+}
+
+type avatarUploadIntentResponse struct {
+	UploadURL   string            `json:"upload_url"`
+	Method      string            `json:"method"`
+	FormData    map[string]string `json:"form_data,omitempty"`
+	FileField   string            `json:"file_field,omitempty"`
+	ObjectKey   string            `json:"object_key"`
+	ExpiresAt   time.Time         `json:"expires_at"`
+	MaxBytes    int64             `json:"max_bytes"`
+	ContentType string            `json:"content_type"`
+}
+
+func toAvatarUploadIntentResponse(intent domain.UploadIntent) avatarUploadIntentResponse {
+	return avatarUploadIntentResponse{
+		UploadURL:   intent.URL,
+		Method:      intent.Method,
+		FormData:    intent.FormData,
+		FileField:   intent.FileField,
+		ObjectKey:   intent.ObjectKey,
+		ExpiresAt:   intent.ExpiresAt,
+		MaxBytes:    intent.MaxBytes,
+		ContentType: intent.ContentType,
 	}
 }
 

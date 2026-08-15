@@ -13,6 +13,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/user/repository"
 	"github.com/fluentra/fluentra/internal/modules/user/service"
 	userhttp "github.com/fluentra/fluentra/internal/modules/user/transport/http"
+	"github.com/fluentra/fluentra/internal/platform/storage"
 	"github.com/fluentra/fluentra/internal/shared/clock"
 	"github.com/fluentra/fluentra/internal/shared/id"
 	"github.com/fluentra/fluentra/internal/shared/outbox"
@@ -25,8 +26,9 @@ import (
 // writes — and naming the concrete type is honest about that, where a bespoke
 // interface would only be a second name for *pgxpool.Pool.
 type Deps struct {
-	Pool  *pgxpool.Pool
-	Clock clock.Clock
+	Pool    *pgxpool.Pool
+	Clock   clock.Clock
+	Storage storage.Store
 }
 
 // Module is the user module, assembled. It is the only symbol cmd/ imports.
@@ -45,11 +47,12 @@ func New(deps Deps) *Module {
 
 	repo := repositoryAdapter{Repository: repository.New(deps.Pool)}
 	users := service.New(service.Deps{
-		Pool:   deps.Pool,
-		Repo:   repo,
-		Events: outboxWriter{Writer: outbox.NewWriter()},
-		Clock:  timekeeper,
-		NewID:  id.NewUUIDv7,
+		Pool:    deps.Pool,
+		Repo:    repo,
+		Events:  outboxWriter{Writer: outbox.NewWriter()},
+		Clock:   timekeeper,
+		NewID:   id.NewUUIDv7,
+		Storage: deps.Storage,
 	})
 
 	return &Module{service: users, handler: userhttp.NewHandler(users)}

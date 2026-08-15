@@ -3,14 +3,7 @@ package domain
 import (
 	"regexp"
 	"time"
-
-	// tzdata is embedded rather than read from the host. BR-USER-03 says a
-	// timezone must be a valid IANA name, and time.LoadLocation reads the
-	// operating system's zoneinfo — which a scratch or distroless container
-	// does not have. Without this import the same request validates on a
-	// developer's machine and 500s in production, which is the worst possible
-	// place to discover a validation rule is environment-dependent.
-	_ "time/tzdata"
+	_ "time/tzdata" // embed IANA timezone database
 
 	"github.com/google/uuid"
 )

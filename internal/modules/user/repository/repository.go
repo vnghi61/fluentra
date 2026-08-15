@@ -170,6 +170,23 @@ func (r *Repository) UpdateProfile(ctx context.Context, userID uuid.UUID, change
 	return toDomainProfile(row), nil
 }
 
+// UpdateProfileAvatar sets or clears the avatar asset id.
+func (r *Repository) UpdateProfileAvatar(ctx context.Context, userID uuid.UUID, avatarAssetID *uuid.UUID) (
+	domain.Profile, error,
+) {
+	row, err := r.queries.UpdateProfileAvatar(ctx, sqlcuser.UpdateProfileAvatarParams{
+		UserID:        userID,
+		AvatarAssetID: avatarAssetID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.Profile{}, domain.ErrProfileNotFound
+		}
+		return domain.Profile{}, fmt.Errorf("update profile avatar: %w", err)
+	}
+	return toDomainProfile(row), nil
+}
+
 // GetPreferences reads the settings record.
 func (r *Repository) GetPreferences(ctx context.Context, userID uuid.UUID) (domain.Preferences, error) {
 	row, err := r.queries.GetUserPreferences(ctx, userID)

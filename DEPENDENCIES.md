@@ -240,6 +240,20 @@ Business code sees only `ai.Client` and task names.
 | `goimports-reviser` | Import ordering |
 | `dbmate`/`pgtyped` | *not used* — sqlc covers it |
 
+### 1.16 Image processing
+
+| Library | Maturity | Community | Maintenance | Prod-ready | Verdict |
+|---|---|---|---|---|---|
+| **`disintegration/imaging` + `golang.org/x/image`** ✅ | 5 | 5 | 4 | 5 | **Chosen (Pure Go)** |
+| `h2non/bimg` (libvips) | 4 | 4 | 3 | 5 | Rejected (CGo dependency) |
+| `gographics/imagick` (ImageMagick) | 4 | 4 | 3 | 4 | Rejected (CGo dependency, heavy vulnerability history) |
+| stdlib `image` alone | 5 | 5 | 5 | 5 | Insufficient (no high-quality resampler / auto-orientation) |
+
+**Why pure Go (`disintegration/imaging` + `golang.org/x/image`):** zero CGo requirement, trivial cross-compilation and scratch Docker images, and memory safety without external C library CVEs. Pure-Go decoding into `image.Image` / `*image.NRGBA` automatically drops all container EXIF metadata (guaranteeing GPS / device metadata is completely stripped on re-encode).
+**Advantages:** Pure Go, clean Lanczos3 / CatmullRom resampling filters, simple API, WebP support via `golang.org/x/image/webp`.
+**Disadvantages:** Slower than libvips on massive files; acceptable since avatar uploads are constrained to <= 5 MB.
+**Why not bimg / ImageMagick:** CGo complicates deployment, doubles dev container build times, prevents simple static binaries, and introduces unmanaged C memory safety risks.
+
 ---
 
 ## 2. Frontend — TypeScript

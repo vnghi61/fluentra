@@ -70,6 +70,8 @@ type Store interface {
 	) (UploadIntent, error)
 	PresignGet(ctx context.Context, bucket, key string, expiry time.Duration) (string, error)
 	Stat(ctx context.Context, bucket, key string) (ObjectStat, error)
+	Get(ctx context.Context, bucket, key string) (io.ReadCloser, error)
+	Put(ctx context.Context, bucket, key string, reader io.Reader, size int64, contentType string) error
 	Copy(ctx context.Context, srcBucket, srcKey, destBucket, destKey string) error
 	Delete(ctx context.Context, bucket, key string) error
 	VerifyUpload(ctx context.Context, bucket, key, expectedContentType string, maxBytes int64) (ObjectStat, error)
@@ -82,6 +84,34 @@ type MinIOStore struct {
 
 // NewMinIOStore creates a new storage facade instance.
 func NewMinIOStore(client *minio.Client) *MinIOStore { return &MinIOStore{client: client} }
+
+// Get retrieves an object stream from storage. The caller must close the stream.
+func (s *MinIOStore) Get(ctx context.Context, bucket, key string) (io.ReadCloser, error) {
+	ctx, span := tracer.Start(ctx, "storage.Get")
+	defer span.End()
+
+	obj, err := s.client.GetObject(ctx, bucket, key, minio.GetObjectOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("get object: %w", err)
+	}
+	return obj, nil
+}
+
+// Put writes an object directly to storage.
+func (s *MinIOStore) Put(
+	ctx context.Context, bucket, key string, reader io.Reader, size int64, contentType string,
+) error {
+	ctx, span := tracer.Start(ctx, "storage.Put")
+	defer span.End()
+
+	opts := minio.PutObjectOptions{
+		ContentType: contentType,
+	}
+	if _, err := s.client.PutObject(ctx, bucket, key, reader, size, opts); err != nil {
+		return fmt.Errorf("put object: %w", err)
+	}
+	return nil
+}
 
 // Stat retrieves object metadata as reported by the server.
 func (s *MinIOStore) Stat(ctx context.Context, bucket, key string) (ObjectStat, error) {

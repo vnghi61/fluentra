@@ -1175,6 +1175,73 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+  /me/avatar/upload-intent:
+    post:
+      tags: [user]
+      operationId: userRequestAvatarUploadIntent
+      summary: Request a presigned URL to upload a profile avatar.
+      description: >-
+        Issues a presigned upload policy for an avatar image (JPEG, PNG, or
+        WebP; max 5 MB).
+      x-permission: self
+      responses:
+        '200':
+          description: Upload intent generated.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvatarUploadIntent'
+              example:
+                upload_url: https://storage.example.com/fluentra-avatars/users/0199a1c2-3d4e-7f80-9abc-def012345678/2026/08/avatar-raw.jpg
+                method: POST
+                object_key: users/0199a1c2-3d4e-7f80-9abc-def012345678/2026/08/avatar-raw.jpg
+                expires_at: '2026-08-15T08:05:00Z'
+                max_bytes: 5242880
+                content_type: image/jpeg
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /me/avatar:
+    put:
+      tags: [user]
+      operationId: userConfirmAvatar
+      summary: Confirm and process an uploaded avatar.
+      description: >-
+        Verifies the uploaded raw image, strips EXIF metadata, generates
+        optimised variants, updates the caller's profile, and deletes the
+        previous avatar.
+      x-permission: self
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmAvatarRequest'
+            example:
+              object_key: users/0199a1c2-3d4e-7f80-9abc-def012345678/2026/08/avatar-raw.jpg
+      responses:
+        '200':
+          description: The updated account with the new avatar.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+              example: *meExample
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
   /admin/roles:
     get:
       tags: [rbac]
@@ -1650,6 +1717,10 @@ components:
       $ref: ./components/user.yaml#/QuietHours
     ReplacePreferencesRequest:
       $ref: ./components/user.yaml#/ReplacePreferencesRequest
+    AvatarUploadIntent:
+      $ref: ./components/user.yaml#/AvatarUploadIntent
+    ConfirmAvatarRequest:
+      $ref: ./components/user.yaml#/ConfirmAvatarRequest
     MyPermissions:
       $ref: ./components/rbac.yaml#/MyPermissions
     RoleName:
