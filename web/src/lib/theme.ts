@@ -1,6 +1,6 @@
-export type Theme = 'light' | 'dark';
+export type Theme = "light" | "dark";
 
-const STORAGE_KEY = 'fluentra.theme';
+const STORAGE_KEY = "fluentra.theme";
 
 /**
  * The theme is applied by an inline script in index.html before React mounts,
@@ -9,11 +9,11 @@ const STORAGE_KEY = 'fluentra.theme';
  * the flash of the wrong colours on load.
  */
 export function currentTheme(): Theme {
-  return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+  return document.documentElement.classList.contains("dark") ? "dark" : "light";
 }
 
 export function applyTheme(theme: Theme): void {
-  document.documentElement.classList.toggle('dark', theme === 'dark');
+  document.documentElement.classList.toggle("dark", theme === "dark");
   try {
     localStorage.setItem(STORAGE_KEY, theme);
   } catch {
@@ -22,7 +22,7 @@ export function applyTheme(theme: Theme): void {
 }
 
 export function toggleTheme(): Theme {
-  const next: Theme = currentTheme() === 'dark' ? 'light' : 'dark';
+  const next: Theme = currentTheme() === "dark" ? "light" : "dark";
   applyTheme(next);
   return next;
 }

@@ -32,6 +32,7 @@ type Repository interface {
 	GetProfile(ctx context.Context, userID uuid.UUID) (domain.Profile, error)
 	CreateProfile(ctx context.Context, id, userID uuid.UUID, profile domain.Profile) (domain.Profile, error)
 	UpdateProfile(ctx context.Context, userID uuid.UUID, change domain.ProfileChange) (domain.Profile, error)
+	UpdateProfileAvatar(ctx context.Context, userID uuid.UUID, avatarAssetID *uuid.UUID) (domain.Profile, error)
 
 	GetPreferences(ctx context.Context, userID uuid.UUID) (domain.Preferences, error)
 	CreatePreferences(ctx context.Context, id, userID uuid.UUID) (domain.Preferences, error)
@@ -71,25 +72,34 @@ type IDGenerator func(ctx context.Context) (uuid.UUID, error)
 
 // Service implements the user module's use cases.
 type Service struct {
-	pool   dbx.Beginner
-	repo   Repository
-	events EventWriter
-	clock  clock.Clock
-	ids    IDGenerator
+	pool    dbx.Beginner
+	repo    Repository
+	events  EventWriter
+	clock   clock.Clock
+	ids     IDGenerator
+	storage StorageStore
 }
 
 // Deps are the service's collaborators.
 type Deps struct {
-	Pool   dbx.Beginner
-	Repo   Repository
-	Events EventWriter
-	Clock  clock.Clock
-	NewID  IDGenerator
+	Pool    dbx.Beginner
+	Repo    Repository
+	Events  EventWriter
+	Clock   clock.Clock
+	NewID   IDGenerator
+	Storage StorageStore
 }
 
 // New creates the user service.
 func New(deps Deps) *Service {
-	return &Service{pool: deps.Pool, repo: deps.Repo, events: deps.Events, clock: deps.Clock, ids: deps.NewID}
+	return &Service{
+		pool:    deps.Pool,
+		repo:    deps.Repo,
+		events:  deps.Events,
+		clock:   deps.Clock,
+		ids:     deps.NewID,
+		storage: deps.Storage,
+	}
 }
 
 // Account is everything `GET /me` renders: the identity record and the

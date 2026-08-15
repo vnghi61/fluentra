@@ -6,8 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fluentra/fluentra/internal/shared/config"
 	"github.com/riverqueue/river"
+
+	"github.com/fluentra/fluentra/internal/shared/config"
 )
 
 // envQueues is the variable that decides queue concurrency at run time.

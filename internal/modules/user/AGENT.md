@@ -251,8 +251,8 @@ and fails `go-arch-lint` in CI.
 - `core.learning_profiles` has a table and queries but no endpoint. `GET /me` returns identity and
   profile only. It is wired in when onboarding needs it, rather than shipping a write path nothing
   calls.
-- `Summary.AvatarURL` is always null. The asset id is stored; turning it into a URL needs the
-  storage facade, which arrives with P3.1.
+- Avatar upload lifecycle is implemented under `/api/v1/me/avatar/upload-intent` and `/api/v1/me/avatar`.
+  Avatar URLs are derived from the stored asset id through the storage facade (`/api/v1/storage/avatars/{assetID}`).
 
 ## 12. Coding conventions (module-specific)
 

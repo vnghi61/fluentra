@@ -13,6 +13,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
+	"github.com/riverqueue/river"
+
 	"github.com/fluentra/fluentra/internal/modules/audit"
 	"github.com/fluentra/fluentra/internal/modules/auth"
 	authservice "github.com/fluentra/fluentra/internal/modules/auth/service"
@@ -23,9 +27,6 @@ import (
 	"github.com/fluentra/fluentra/internal/shared/config"
 	"github.com/fluentra/fluentra/internal/shared/eventbus"
 	"github.com/fluentra/fluentra/internal/shared/outbox"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/redis/go-redis/v9"
-	"github.com/riverqueue/river"
 )
 
 var (

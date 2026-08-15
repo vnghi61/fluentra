@@ -162,6 +162,24 @@ func (f *fakeRepo) UpdateProfile(_ context.Context, userID uuid.UUID, change dom
 	return profile, nil
 }
 
+func (f *fakeRepo) UpdateProfileAvatar(_ context.Context, userID uuid.UUID, avatarAssetID *uuid.UUID) (
+	domain.Profile, error,
+) {
+	if err := f.record("UpdateProfileAvatar"); err != nil {
+		return domain.Profile{}, err
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	profile, ok := f.profiles[userID]
+	if !ok {
+		return domain.Profile{}, domain.ErrProfileNotFound
+	}
+	profile.AvatarAssetID = avatarAssetID
+	profile.UpdatedAt = testNow
+	f.profiles[userID] = profile
+	return profile, nil
+}
+
 func (f *fakeRepo) GetPreferences(_ context.Context, userID uuid.UUID) (domain.Preferences, error) {
 	if err := f.record("GetPreferences"); err != nil {
 		return domain.Preferences{}, err

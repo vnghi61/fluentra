@@ -13,20 +13,22 @@ import (
 	"time"
 
 	"github.com/exaring/otelpgx"
-	authdomain "github.com/fluentra/fluentra/internal/modules/auth/domain"
-	authservice "github.com/fluentra/fluentra/internal/modules/auth/service"
-	"github.com/fluentra/fluentra/internal/modules/auth/service/oauth/google"
-	"github.com/fluentra/fluentra/internal/platform/cache"
-	"github.com/fluentra/fluentra/internal/platform/mailer"
-	"github.com/fluentra/fluentra/internal/platform/telemetry"
-	"github.com/fluentra/fluentra/internal/shared/config"
-	"github.com/fluentra/fluentra/internal/shared/httpx"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/redis/go-redis/extra/redisotel/v9"
 	"github.com/redis/go-redis/v9"
+
+	authdomain "github.com/fluentra/fluentra/internal/modules/auth/domain"
+	authservice "github.com/fluentra/fluentra/internal/modules/auth/service"
+	"github.com/fluentra/fluentra/internal/modules/auth/service/oauth/google"
+	"github.com/fluentra/fluentra/internal/platform/cache"
+	"github.com/fluentra/fluentra/internal/platform/mailer"
+	"github.com/fluentra/fluentra/internal/platform/storage"
+	"github.com/fluentra/fluentra/internal/platform/telemetry"
+	"github.com/fluentra/fluentra/internal/shared/config"
+	"github.com/fluentra/fluentra/internal/shared/httpx"
 )
 
 var (
@@ -221,6 +223,7 @@ func run(ctx context.Context) error {
 		Pool:       pool,
 		Cache:      cache.NewRedisCache[[]string](redisClient),
 		Limiter:    cache.NewRedisLimiter(redisClient),
+		Storage:    storage.NewMinIOStore(storageClient),
 		Env:        cfg.App.Environment,
 		OTPHMACKey: []byte(cfg.OTP.HMACKey),
 		Tokens: authservice.TokenConfig{
