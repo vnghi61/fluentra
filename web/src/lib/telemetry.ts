@@ -1,4 +1,10 @@
-import { context, propagation, trace, type Span, type Tracer } from '@opentelemetry/api';
+import {
+  context,
+  propagation,
+  trace,
+  type Span,
+  type Tracer,
+} from "@opentelemetry/api";
 
 /**
  * Browser tracing.
@@ -16,7 +22,7 @@ import { context, propagation, trace, type Span, type Tracer } from '@openteleme
  * started the span the header refers to.
  */
 
-const TRACER_NAME = 'fluentra-web';
+const TRACER_NAME = "fluentra-web";
 
 let initialised = false;
 let tracerRef: Tracer | null = null;
@@ -47,21 +53,23 @@ export async function startTelemetry(config: TelemetryConfig): Promise<void> {
       { resourceFromAttributes },
       semconv,
     ] = await Promise.all([
-      import('@opentelemetry/sdk-trace-web'),
-      import('@opentelemetry/exporter-trace-otlp-http'),
-      import('@opentelemetry/context-zone'),
-      import('@opentelemetry/instrumentation'),
-      import('@opentelemetry/instrumentation-fetch'),
-      import('@opentelemetry/resources'),
-      import('@opentelemetry/semantic-conventions'),
+      import("@opentelemetry/sdk-trace-web"),
+      import("@opentelemetry/exporter-trace-otlp-http"),
+      import("@opentelemetry/context-zone"),
+      import("@opentelemetry/instrumentation"),
+      import("@opentelemetry/instrumentation-fetch"),
+      import("@opentelemetry/resources"),
+      import("@opentelemetry/semantic-conventions"),
     ]);
 
     const provider = new WebTracerProvider({
       resource: resourceFromAttributes({
         [semconv.ATTR_SERVICE_NAME]: config.serviceName,
-        'deployment.environment.name': config.environment,
+        "deployment.environment.name": config.environment,
       }),
-      spanProcessors: [new BatchSpanProcessor(new OTLPTraceExporter({ url: config.endpoint }))],
+      spanProcessors: [
+        new BatchSpanProcessor(new OTLPTraceExporter({ url: config.endpoint })),
+      ],
     });
 
     provider.register({ contextManager: new ZoneContextManager() });
@@ -97,16 +105,23 @@ export function tracer(): Tracer {
  * none is, it writes nothing — which is the honest outcome, and unlike the old
  * hand-rolled header it never invents a parent.
  */
-export function injectTraceContext(headers: Record<string, string>): Record<string, string> {
+export function injectTraceContext(
+  headers: Record<string, string>,
+): Record<string, string> {
   propagation.inject(context.active(), headers);
   return headers;
 }
 
 /** Runs `fn` inside a span named `name`, ending the span whatever happens. */
-export async function withSpan<T>(name: string, fn: (span: Span) => Promise<T>): Promise<T> {
+export async function withSpan<T>(
+  name: string,
+  fn: (span: Span) => Promise<T>,
+): Promise<T> {
   const span = tracer().startSpan(name);
   try {
-    return await context.with(trace.setSpan(context.active(), span), () => fn(span));
+    return await context.with(trace.setSpan(context.active(), span), () =>
+      fn(span),
+    );
   } finally {
     span.end();
   }

@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/fluentra/fluentra/internal/shared/id"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 	"go.opentelemetry.io/otel/propagation"
+
+	"github.com/fluentra/fluentra/internal/shared/id"
 )
 
 // DBTx is the transaction surface the writer needs. Its signature matches

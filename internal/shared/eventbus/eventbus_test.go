@@ -8,8 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fluentra/fluentra/internal/shared/eventbus"
 	"github.com/google/uuid"
+
+	"github.com/fluentra/fluentra/internal/shared/eventbus"
 )
 
 func message(topic string) eventbus.Message {

@@ -7,13 +7,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fluentra/fluentra/internal/shared/httpx"
-	"github.com/fluentra/fluentra/internal/shared/id"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/propagation"
+
+	"github.com/fluentra/fluentra/internal/shared/httpx"
+	"github.com/fluentra/fluentra/internal/shared/id"
 )
 
 // Propagator is the one context propagator this service uses. Middleware reads

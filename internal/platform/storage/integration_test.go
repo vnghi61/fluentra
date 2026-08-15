@@ -13,9 +13,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fluentra/fluentra/internal/platform/storage"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+
+	"github.com/fluentra/fluentra/internal/platform/storage"
 )
 
 // contentTypePNG is the type these uploads claim; the point of the suite is

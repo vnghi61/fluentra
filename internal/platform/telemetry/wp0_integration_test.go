@@ -10,13 +10,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fluentra/fluentra/internal/platform/telemetry"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/fluentra/fluentra/internal/platform/telemetry"
 )
 
 // The WP0 gate is "one request, three correlated signals", and its full form
