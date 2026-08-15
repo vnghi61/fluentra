@@ -183,3 +183,38 @@ sql:
               import: time
               type: Time
               pointer: true
+
+  - engine: postgresql
+    queries: db/queries/job
+    # ops.outbox_events is exclusively owned by job. Including only its schema
+    # keeps the retention query from acquiring another module's table contract.
+    schema:
+      - db/migrations/_bootstrap
+      - db/migrations/job
+    gen:
+      go:
+        package: sqlc
+        out: internal/generated/job/sqlc
+        sql_package: pgx/v5
+        emit_pointers_for_null_types: true
+        overrides:
+          - db_type: uuid
+            go_type:
+              import: github.com/google/uuid
+              type: UUID
+          - db_type: uuid
+            nullable: true
+            go_type:
+              import: github.com/google/uuid
+              type: UUID
+              pointer: true
+          - db_type: timestamptz
+            go_type:
+              import: time
+              type: Time
+          - db_type: timestamptz
+            nullable: true
+            go_type:
+              import: time
+              type: Time
+              pointer: true

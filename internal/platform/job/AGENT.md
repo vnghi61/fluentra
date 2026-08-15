@@ -10,7 +10,7 @@ tables: [river_job, outbox_events, job_failures]
 depends_on: [telemetry]
 depended_on_by: [auth, user, audit, notification, mailer, content, writing, speaking, media, ai, srs, analytics, exam, payment]
 spec_version: 1.0.0
-last_verified: 2026-08-08
+last_verified: 2026-08-13
 ---
 
 # job — AGENT.md
@@ -104,7 +104,7 @@ Migrations: `db/migrations/job/` · Queries: `db/queries/job/`
 | Table | Purpose | Key columns / notes |
 |---|---|---|
 | `ops.river_job` | River's queue table | Managed by River's own migrations; do not hand-edit. Applied by `job.MigrateUp` at worker start-up, **not** by goose — River versions this schema itself, so it is deliberately absent from `db/migrations/job/` |
-| `ops.outbox_events` | Transactional event outbox | `aggregate`, `event`, `payload`, `published_at`, `attempts`. Polled with `FOR UPDATE SKIP LOCKED` |
+| `ops.outbox_events` | Transactional event outbox | `aggregate`, `event`, `payload`, `published_at`, `attempts`. Polled with `FOR UPDATE SKIP LOCKED`; published, non-dead-lettered rows are deleted daily after `OUTBOX_PUBLISHED_RETENTION_DAYS` (30 by default). |
 | `ops.job_failures` | Dead-letter record | `kind`, `args`, `last_error`, `failed_at` — retained 30 days for triage |
 
 <!-- END GENERATED: schema -->
@@ -260,6 +260,7 @@ go test -tags=integration ./internal/platform/job/...  # integration (testcontai
 - Timeout cancels the handler's context
 - Panic in a handler is recovered and recorded, not fatal to the worker
 - Outbox publishes exactly once per event to each subscriber
+- Outbox retention deletes only published, non-dead-lettered rows past the configured window
 <!-- END GENERATED: testing -->
 
 ## 14. Do NOT

@@ -472,7 +472,7 @@ func (m *Module) sendPasswordResetEmail(ctx context.Context, payload []byte) err
 
 	return m.mailer.Send(ctx, mailer.Message{
 		To:       event.Email,
-		Template: "password_reset",
+		Template: "reset",
 		Locale:   event.Locale,
 		Data: map[string]any{
 			"DisplayName": event.DisplayName,
