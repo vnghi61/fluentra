@@ -5,8 +5,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/fluentra/fluentra/internal/shared/httpx"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/fluentra/fluentra/internal/shared/httpx"
 )
 
 // routeUserByID is the normalized (ID-free) route these tests assert on. Span and

@@ -4,3182 +4,3173 @@
  */
 
 export interface paths {
-    "/ping": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Check API dependency connectivity.
-         * @description Performs lightweight PostgreSQL and Redis checks for the trace proof.
-         */
-        get: operations["systemPing"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+  "/ping": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/health": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Check process liveness.
-         * @description Returns success when the API process is able to serve requests.
-         */
-        get: operations["systemHealth"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /**
+     * Check API dependency connectivity.
+     * @description Performs lightweight PostgreSQL and Redis checks for the trace proof.
+     */
+    get: operations["systemPing"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/health": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/ready": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Check dependency readiness.
-         * @description Returns success only when every hard dependency is usable.
-         */
-        get: operations["systemReady"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /**
+     * Check process liveness.
+     * @description Returns success when the API process is able to serve requests.
+     */
+    get: operations["systemHealth"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/ready": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/version": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Read the deployed API version.
-         * @description Returns the version associated with the running API build.
-         */
-        get: operations["systemVersion"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /**
+     * Check dependency readiness.
+     * @description Returns success only when every hard dependency is usable.
+     */
+    get: operations["systemReady"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/version": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/auth/register": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Open an account and start email verification.
-         * @description Creates the account and issues a `verify_email` challenge. The six-digit code goes to the address by email; the response carries only the challenge handle.
-         *
-         *     This operation never reveals whether an address is already registered. An address that is already verified gets the same response shape as a fresh registration, and its owner receives a "someone tried to register with your address" email instead of a code -- so a caller probing for accounts learns nothing from either the status or the body.
-         *
-         *     An address registered but **not yet** verified is treated as a fresh registration: the submitted password replaces the stored one and a new challenge is issued. Reissuing the pending challenge instead would be an account-takeover path -- somebody registers an address they do not own, its real owner registers it too, receives the code, verifies, and ends up with an account whose password the first party chose.
-         */
-        post: operations["authRegister"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /**
+     * Read the deployed API version.
+     * @description Returns the version associated with the running API build.
+     */
+    get: operations["systemVersion"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/auth/register": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/auth/login": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Exchange a password for an access token.
-         * @description Authenticates an account and signs it in.
-         *
-         *     An unknown email and a wrong password return the same body and take comparable time (BR-AUTH-02) -- the server performs a dummy password verification for an address it has never seen, so response time cannot be used to enumerate accounts. Per-account and per-IP lockout counters are independent (BR-AUTH-08): locking one does not lock the other.
-         *
-         *     Three refusals are distinguishable on purpose, because the learner's next move differs for each: `EMAIL_NOT_VERIFIED` (403) for an address never proved, `ACCOUNT_SUSPENDED` (403) for an account an administrator disabled, and `ACCOUNT_LOCKED` (429) for too many failed attempts -- which, unlike the other two, clears itself.
-         */
-        post: operations["authLogin"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /**
+     * Open an account and start email verification.
+     * @description Creates the account and issues a `verify_email` challenge. The six-digit code goes to the address by email; the response carries only the challenge handle.
+     *
+     *     This operation never reveals whether an address is already registered. An address that is already verified gets the same response shape as a fresh registration, and its owner receives a "someone tried to register with your address" email instead of a code -- so a caller probing for accounts learns nothing from either the status or the body.
+     *
+     *     An address registered but **not yet** verified is treated as a fresh registration: the submitted password replaces the stored one and a new challenge is issued. Reissuing the pending challenge instead would be an account-takeover path -- somebody registers an address they do not own, its real owner registers it too, receives the code, verifies, and ends up with an account whose password the first party chose.
+     */
+    post: operations["authRegister"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/auth/login": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/auth/challenges/{id}/verify": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The challenge handle returned when it was issued. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Submit the code for a challenge.
-         * @description Accepts the six digits and consumes the challenge. For a `verify_email` challenge this marks the address verified.
-         *
-         *     The code is single-use and expires ten minutes after issuance. Five wrong codes burn the challenge permanently -- a new one must be requested rather than retried. A wrong code returns 401 with the number of attempts left in `meta`.
-         */
-        post: operations["authVerifyChallenge"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /**
+     * Exchange a password for an access token.
+     * @description Authenticates an account and signs it in.
+     *
+     *     An unknown email and a wrong password return the same body and take comparable time (BR-AUTH-02) -- the server performs a dummy password verification for an address it has never seen, so response time cannot be used to enumerate accounts. Per-account and per-IP lockout counters are independent (BR-AUTH-08): locking one does not lock the other.
+     *
+     *     Three refusals are distinguishable on purpose, because the learner's next move differs for each: `EMAIL_NOT_VERIFIED` (403) for an address never proved, `ACCOUNT_SUSPENDED` (403) for an account an administrator disabled, and `ACCOUNT_LOCKED` (429) for too many failed attempts -- which, unlike the other two, clears itself.
+     */
+    post: operations["authLogin"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/auth/challenges/{id}/verify": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The challenge handle returned when it was issued. */
+        id: string;
+      };
+      cookie?: never;
     };
-    "/auth/challenges/{id}/resend": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The challenge to send a new code for. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Send a new code for a challenge.
-         * @description Replaces the code and clears the attempt count. It does **not** extend `expires_at`: resending gives the learner a fresh code, not an indefinitely valid challenge.
-         *
-         *     There is a 60-second cooldown per challenge and a cap on issuances per address per hour. A challenge that is already burned cannot be resent -- request a new one.
-         */
-        post: operations["authResendChallenge"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /**
+     * Submit the code for a challenge.
+     * @description Accepts the six digits and consumes the challenge. For a `verify_email` challenge this marks the address verified.
+     *
+     *     The code is single-use and expires ten minutes after issuance. Five wrong codes burn the challenge permanently -- a new one must be requested rather than retried. A wrong code returns 401 with the number of attempts left in `meta`.
+     */
+    post: operations["authVerifyChallenge"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/auth/challenges/{id}/resend": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The challenge to send a new code for. */
+        id: string;
+      };
+      cookie?: never;
     };
-    "/auth/refresh": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Rotate the refresh token and issue a new access token.
-         * @description Exchanges the `refresh_token` cookie for a fresh access token and a fresh refresh cookie. There is no request body: the credential is the cookie, which the browser attaches on its own and no script can read.
-         *
-         *     A refresh token is single-use (BR-AUTH-04). The exchange spends the one presented and the response always replaces it, so a client that ignores the `Set-Cookie` has signed itself out.
-         *
-         *     **Single use is what makes theft detectable.** A stolen token works exactly once. Whichever party presents the token second -- the thief or the real client -- is presenting one that has already been spent, and at that moment the server has no way to tell which of the two is genuine. So it stops trusting both: every token in the family is revoked, the session is revoked, a `refresh_reuse` security event is raised, and this operation answers 401 `SESSION_REVOKED`. The learner signs in again. That is the intended cost, and it is far smaller than an attacker holding a credential they can renew indefinitely.
-         *
-         *     A consequence worth designing around: two requests racing with the same valid token have exactly one winner, and the loser is indistinguishable from a replay, so it is treated as one. A client refreshing from several tabs must serialise them.
-         *
-         *     An unknown, expired or already-revoked token is 401 `TOKEN_INVALID`. That is a different code from the reuse case on purpose -- reuse means the session was taken away because a token was replayed, which is worth telling the learner and worth finding in a log, while `TOKEN_INVALID` means only that this credential buys nothing. Both end at the login form.
-         *
-         *     A session that has reached its **absolute** expiry answers 401 `SESSION_ABSOLUTE_EXPIRED`, and it is worth a code of its own because nothing is wrong: the learner did nothing, the token was not stolen, and the session simply reached the age at which possession has to be proven again. A client can say so rather than implying something went missing. Rotation moves the idle window forward on every use and never moves this, which is the entire security argument for the idle window being as long as it is (BR-AUTH-22).
-         */
-        post: operations["authRefresh"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /**
+     * Send a new code for a challenge.
+     * @description Replaces the code and clears the attempt count. It does **not** extend `expires_at`: resending gives the learner a fresh code, not an indefinitely valid challenge.
+     *
+     *     There is a 60-second cooldown per challenge and a cap on issuances per address per hour. A challenge that is already burned cannot be resent -- request a new one.
+     */
+    post: operations["authResendChallenge"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/auth/refresh": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/auth/oauth/google/start": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Begin Google sign-in.
-         * @description Generates the `state`, the `nonce` and the PKCE challenge, stores them server-side for ten minutes as a single-use record, and returns the authorization URL to send the browser to.
-         *
-         *     The `state` is server-side and single use, and that is the CSRF defence for the whole flow (BR-AUTH-17): a callback carrying a `state` this server did not issue, or one it has already consumed, is not a callback from a flow this learner started. None of the three values is returned to the client, because a value the page can read is one an attacker who can read the same page can replay.
-         *
-         *     PKCE is mandatory even though Fluentra is a confidential client holding a secret. It costs nothing, and it closes code interception on mobile browsers, which holding a secret does not.
-         */
-        get: operations["authGoogleStart"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /**
+     * Rotate the refresh token and issue a new access token.
+     * @description Exchanges the `refresh_token` cookie for a fresh access token and a fresh refresh cookie. There is no request body: the credential is the cookie, which the browser attaches on its own and no script can read.
+     *
+     *     A refresh token is single-use (BR-AUTH-04). The exchange spends the one presented and the response always replaces it, so a client that ignores the `Set-Cookie` has signed itself out.
+     *
+     *     **Single use is what makes theft detectable.** A stolen token works exactly once. Whichever party presents the token second -- the thief or the real client -- is presenting one that has already been spent, and at that moment the server has no way to tell which of the two is genuine. So it stops trusting both: every token in the family is revoked, the session is revoked, a `refresh_reuse` security event is raised, and this operation answers 401 `SESSION_REVOKED`. The learner signs in again. That is the intended cost, and it is far smaller than an attacker holding a credential they can renew indefinitely.
+     *
+     *     A consequence worth designing around: two requests racing with the same valid token have exactly one winner, and the loser is indistinguishable from a replay, so it is treated as one. A client refreshing from several tabs must serialise them.
+     *
+     *     An unknown, expired or already-revoked token is 401 `TOKEN_INVALID`. That is a different code from the reuse case on purpose -- reuse means the session was taken away because a token was replayed, which is worth telling the learner and worth finding in a log, while `TOKEN_INVALID` means only that this credential buys nothing. Both end at the login form.
+     *
+     *     A session that has reached its **absolute** expiry answers 401 `SESSION_ABSOLUTE_EXPIRED`, and it is worth a code of its own because nothing is wrong: the learner did nothing, the token was not stolen, and the session simply reached the age at which possession has to be proven again. A client can say so rather than implying something went missing. Rotation moves the idle window forward on every use and never moves this, which is the entire security argument for the idle window being as long as it is (BR-AUTH-22).
+     */
+    post: operations["authRefresh"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/auth/oauth/google/start": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/auth/oauth/google/callback": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Complete Google sign-in.
-         * @description Consumes the `state`, exchanges the code with the PKCE verifier, and verifies Google's ID token against its JWKS -- signature, `iss`, `aud`, `exp`, and the `nonce` this server issued. A token failing any of those is rejected and **no account, identity or session is created**: there is no partial state to clean up, because nothing is written until every check has passed (BR-AUTH-18).
-         *
-         *     Then one of five branches, and the third is the one this operation exists to get right (ADR-0023):
-         *
-         *     1. **The identity is already linked** -- sign in.
-         *     2. **The email matches a verified local account** -- link, then sign in.
-         *     3. **The email matches an account that is not yet verified** -- refuse with 409 `OAUTH_ACCOUNT_CONFLICT`. **No link is created.** Anyone can register an address they do not own; the address is not proved until an OTP is completed on it. Auto-linking here would let whoever registered first be handed the account the real owner later signs into with Google, which is the account-takeover path this refusal exists to close (BR-AUTH-16). The learner completes the OTP challenge on that address and tries again.
-         *     4. **No local account** -- create one, already verified, because Google has performed the verification (BR-AUTH-19).
-         *     5. **Google did not assert `email_verified`** -- refuse with 403 `OAUTH_EMAIL_UNVERIFIED` before any of the above is considered. An unverified address from a provider is worth no more than an unverified address from a form.
-         */
-        post: operations["authGoogleCallback"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /**
+     * Begin Google sign-in.
+     * @description Generates the `state`, the `nonce` and the PKCE challenge, stores them server-side for ten minutes as a single-use record, and returns the authorization URL to send the browser to.
+     *
+     *     The `state` is server-side and single use, and that is the CSRF defence for the whole flow (BR-AUTH-17): a callback carrying a `state` this server did not issue, or one it has already consumed, is not a callback from a flow this learner started. None of the three values is returned to the client, because a value the page can read is one an attacker who can read the same page can replay.
+     *
+     *     PKCE is mandatory even though Fluentra is a confidential client holding a secret. It costs nothing, and it closes code interception on mobile browsers, which holding a secret does not.
+     */
+    get: operations["authGoogleStart"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/auth/oauth/google/callback": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/auth/oauth/google/link": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Link a Google identity to the signed-in account.
-         * @description The same exchange and the same ID token checks as the callback, for a learner who is already signed in and adding a second way in.
-         *
-         *     Two refusals are specific to this direction. `OAUTH_EMAIL_MISMATCH` (409) is a Google account whose address is not the one this account holds -- linking those would let somebody attach an identity the account owner cannot receive mail at. `OAUTH_ALREADY_LINKED` (409) is an identity already attached to a different account; one Google account is one Fluentra account, or "sign in with Google" stops identifying anybody.
-         */
-        post: operations["authGoogleLink"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /**
+     * Complete Google sign-in.
+     * @description Consumes the `state`, exchanges the code with the PKCE verifier, and verifies Google's ID token against its JWKS -- signature, `iss`, `aud`, `exp`, and the `nonce` this server issued. A token failing any of those is rejected and **no account, identity or session is created**: there is no partial state to clean up, because nothing is written until every check has passed (BR-AUTH-18).
+     *
+     *     Then one of five branches, and the third is the one this operation exists to get right (ADR-0023):
+     *
+     *     1. **The identity is already linked** -- sign in.
+     *     2. **The email matches a verified local account** -- link, then sign in.
+     *     3. **The email matches an account that is not yet verified** -- refuse with 409 `OAUTH_ACCOUNT_CONFLICT`. **No link is created.** Anyone can register an address they do not own; the address is not proved until an OTP is completed on it. Auto-linking here would let whoever registered first be handed the account the real owner later signs into with Google, which is the account-takeover path this refusal exists to close (BR-AUTH-16). The learner completes the OTP challenge on that address and tries again.
+     *     4. **No local account** -- create one, already verified, because Google has performed the verification (BR-AUTH-19).
+     *     5. **Google did not assert `email_verified`** -- refuse with 403 `OAUTH_EMAIL_UNVERIFIED` before any of the above is considered. An unverified address from a provider is worth no more than an unverified address from a form.
+     */
+    post: operations["authGoogleCallback"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/auth/oauth/google/link": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/auth/oauth/google": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /**
-         * Unlink Google.
-         * @description Removes the linked identity.
-         *
-         *     **Refused with 409 `LAST_SIGN_IN_METHOD` if it would leave the account with no way in** (BR-AUTH-20). An account created through Google has no password, so unlinking it would lock the learner out of their own account with no recovery path -- `forgot-password` cannot help somebody who has no password to reset. They set one first, then unlink.
-         *
-         *     Unlinking when nothing is linked answers 204, for the same reason the other idempotent operations do.
-         */
-        delete: operations["authGoogleUnlink"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /**
+     * Link a Google identity to the signed-in account.
+     * @description The same exchange and the same ID token checks as the callback, for a learner who is already signed in and adding a second way in.
+     *
+     *     Two refusals are specific to this direction. `OAUTH_EMAIL_MISMATCH` (409) is a Google account whose address is not the one this account holds -- linking those would let somebody attach an identity the account owner cannot receive mail at. `OAUTH_ALREADY_LINKED` (409) is an identity already attached to a different account; one Google account is one Fluentra account, or "sign in with Google" stops identifying anybody.
+     */
+    post: operations["authGoogleLink"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/auth/oauth/google": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/auth/forgot-password": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Start a password reset.
-         * @description Issues a `password_reset` challenge and emails the six-digit code to the address, if there is an account on it.
-         *
-         *     **This operation always answers 202** (BR-AUTH-26), with the same body shape, whether or not the address is registered -- and it takes comparable time either way, because an unknown address still has a real challenge issued against it that nobody will ever receive a code for. Anything else here is an account-enumeration oracle: "we sent you an email" versus "no such account" is exactly the question an attacker with a list of addresses is asking.
-         *
-         *     The response carries the challenge handle and not the code. The handle goes to the browser that asked and the code goes to the inbox, so neither party alone can complete the reset (BR-AUTH-11).
-         *
-         *     Asking again invalidates the previous code. A learner who requests twice because the first email was slow must use the second code, which is what stops an old message in an inbox staying usable.
-         */
-        post: operations["authForgotPassword"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Unlink Google.
+     * @description Removes the linked identity.
+     *
+     *     **Refused with 409 `LAST_SIGN_IN_METHOD` if it would leave the account with no way in** (BR-AUTH-20). An account created through Google has no password, so unlinking it would lock the learner out of their own account with no recovery path -- `forgot-password` cannot help somebody who has no password to reset. They set one first, then unlink.
+     *
+     *     Unlinking when nothing is linked answers 204, for the same reason the other idempotent operations do.
+     */
+    delete: operations["authGoogleUnlink"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/auth/forgot-password": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/auth/reset-password": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Set a new password with a reset code.
-         * @description Consumes the challenge and replaces the password.
-         *
-         *     **Every session is revoked**, on every device (BR-AUTH-05). A reset is what a learner reaches for when they think somebody else is in their account, so leaving that somebody signed in would defeat the operation they just performed. The response says how many devices went.
-         *
-         *     The code is single-use and the challenge is burned after five wrong attempts. The reset window is thirty minutes rather than the ten a signup code gets: a reset email can sit unread through a meeting in a way a code typed on the next screen does not.
-         *
-         *     This does not sign the caller in. They have just chosen a password and are asked to use it once, which costs a learner one screen and costs somebody who reset an account they do not own the same password they would need anyway.
-         */
-        post: operations["authResetPassword"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /**
+     * Start a password reset.
+     * @description Issues a `password_reset` challenge and emails the six-digit code to the address, if there is an account on it.
+     *
+     *     **This operation always answers 202** (BR-AUTH-26), with the same body shape, whether or not the address is registered -- and it takes comparable time either way, because an unknown address still has a real challenge issued against it that nobody will ever receive a code for. Anything else here is an account-enumeration oracle: "we sent you an email" versus "no such account" is exactly the question an attacker with a list of addresses is asking.
+     *
+     *     The response carries the challenge handle and not the code. The handle goes to the browser that asked and the code goes to the inbox, so neither party alone can complete the reset (BR-AUTH-11).
+     *
+     *     Asking again invalidates the previous code. A learner who requests twice because the first email was slow must use the second code, which is what stops an old message in an inbox staying usable.
+     */
+    post: operations["authForgotPassword"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/auth/reset-password": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/auth/change-password": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Change the password while signed in.
-         * @description Replaces the password for the signed-in caller, who must present the current one as well as the new one.
-         *
-         *     Requiring the current password is not redundant with the access token. The token proves the session was opened by somebody who knew the password; it does not prove the person holding it now does. Without the check, a token taken from an unlocked laptop is enough to lock its owner out of their own account.
-         *
-         *     **Every other session is revoked and this one is kept** (BR-AUTH-05). Signing the learner out of the device they are standing at, immediately after they did the responsible thing, teaches them not to do it again. The response says how many other devices went.
-         */
-        post: operations["authChangePassword"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /**
+     * Set a new password with a reset code.
+     * @description Consumes the challenge and replaces the password.
+     *
+     *     **Every session is revoked**, on every device (BR-AUTH-05). A reset is what a learner reaches for when they think somebody else is in their account, so leaving that somebody signed in would defeat the operation they just performed. The response says how many devices went.
+     *
+     *     The code is single-use and the challenge is burned after five wrong attempts. The reset window is thirty minutes rather than the ten a signup code gets: a reset email can sit unread through a meeting in a way a code typed on the next screen does not.
+     *
+     *     This does not sign the caller in. They have just chosen a password and are asked to use it once, which costs a learner one screen and costs somebody who reset an account they do not own the same password they would need anyway.
+     */
+    post: operations["authResetPassword"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/auth/change-password": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/auth/devices": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List the devices this account has chosen to trust.
-         * @description Returns the caller's trusted devices, most recently active first, with both expiries: the idle one that every use moves forward, and the absolute one that nothing does.
-         *
-         *     Showing both is the point. "Stay signed in" is only defensible because it ends -- a learner who can see that this laptop stops being trusted on a fixed date can reason about the risk, and one who cannot is being asked to take it on faith.
-         */
-        get: operations["authListDevices"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /**
+     * Change the password while signed in.
+     * @description Replaces the password for the signed-in caller, who must present the current one as well as the new one.
+     *
+     *     Requiring the current password is not redundant with the access token. The token proves the session was opened by somebody who knew the password; it does not prove the person holding it now does. Without the check, a token taken from an unlocked laptop is enough to lock its owner out of their own account.
+     *
+     *     **Every other session is revoked and this one is kept** (BR-AUTH-05). Signing the learner out of the device they are standing at, immediately after they did the responsible thing, teaches them not to do it again. The response says how many other devices went.
+     */
+    post: operations["authChangePassword"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/auth/devices": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/auth/devices/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The device to untrust, from the list operation. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /**
-         * Stop trusting a device.
-         * @description Removes the trust and **revokes the refresh family belonging to it immediately**, so the device is signed out rather than merely demoted to the shorter window. Untrusting is what a learner reaches for when a laptop is lost, and a laptop that stays signed in for thirty more days is not what they asked for.
-         *
-         *     A device belonging to another account is 404, not 403, for the reason `DELETE /auth/sessions/{id}` gives: 403 confirms the id names a real device and turns the operation into a way to enumerate them.
-         *
-         *     Untrusting a device that is already untrusted answers 204.
-         */
-        delete: operations["authUntrustDevice"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /**
+     * List the devices this account has chosen to trust.
+     * @description Returns the caller's trusted devices, most recently active first, with both expiries: the idle one that every use moves forward, and the absolute one that nothing does.
+     *
+     *     Showing both is the point. "Stay signed in" is only defensible because it ends -- a learner who can see that this laptop stops being trusted on a fixed date can reason about the risk, and one who cannot is being asked to take it on faith.
+     */
+    get: operations["authListDevices"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/auth/devices/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The device to untrust, from the list operation. */
+        id: string;
+      };
+      cookie?: never;
     };
-    "/auth/logout": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Sign out of this device.
-         * @description Revokes the session the access token names, revokes its refresh family, and clears the refresh cookie.
-         *
-         *     The access token itself is added to a denylist so it stops working immediately rather than at its own expiry. That denylist is the one thing on the authentication path that reads a datastore, and it fails open (ADR-0007): if it cannot be reached, the token keeps working until it expires, which is at most fifteen minutes. Failing closed would turn a cache outage into a total authentication outage for every signed-in learner, which is the larger harm.
-         *
-         *     Logging out twice is not an error. The second call finds nothing left to revoke and answers 204 all the same -- a client retrying after a dropped connection should not be told something went wrong.
-         */
-        post: operations["authLogout"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Stop trusting a device.
+     * @description Removes the trust and **revokes the refresh family belonging to it immediately**, so the device is signed out rather than merely demoted to the shorter window. Untrusting is what a learner reaches for when a laptop is lost, and a laptop that stays signed in for thirty more days is not what they asked for.
+     *
+     *     A device belonging to another account is 404, not 403, for the reason `DELETE /auth/sessions/{id}` gives: 403 confirms the id names a real device and turns the operation into a way to enumerate them.
+     *
+     *     Untrusting a device that is already untrusted answers 204.
+     */
+    delete: operations["authUntrustDevice"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/auth/logout": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/auth/sessions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List the devices this account is signed in on.
-         * @description Returns the caller's own live sessions, most recently active first. There is no path parameter and no filter by account: the actor comes from the token, so one learner cannot read another's list by changing a segment.
-         *
-         *     No IP address appears here and none is stored -- see `SessionSummary`.
-         */
-        get: operations["authListSessions"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /**
+     * Sign out of this device.
+     * @description Revokes the session the access token names, revokes its refresh family, and clears the refresh cookie.
+     *
+     *     The access token itself is added to a denylist so it stops working immediately rather than at its own expiry. That denylist is the one thing on the authentication path that reads a datastore, and it fails open (ADR-0007): if it cannot be reached, the token keeps working until it expires, which is at most fifteen minutes. Failing closed would turn a cache outage into a total authentication outage for every signed-in learner, which is the larger harm.
+     *
+     *     Logging out twice is not an error. The second call finds nothing left to revoke and answers 204 all the same -- a client retrying after a dropped connection should not be told something went wrong.
+     */
+    post: operations["authLogout"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/auth/sessions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/auth/sessions/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The session to revoke, from the list operation. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /**
-         * Sign out of one device.
-         * @description Revokes the session and its refresh family, so the device it belongs to cannot renew and is signed out within one access-token lifetime.
-         *
-         *     **A session belonging to another account is 404, not 403.** The two are not interchangeable: 403 confirms the id names a real session and turns this operation into an oracle for enumerating them, while 404 says only that the caller has no such session -- which is all they are entitled to know, and is equally true of an id that never existed.
-         *
-         *     Revoking the current session is allowed and signs the caller out here: the response clears the refresh cookie in that case, and in that case only. `current` in the list operation is what lets an interface warn first.
-         *
-         *     Revoking an already-revoked session answers 204, for the same reason logout is idempotent.
-         */
-        delete: operations["authRevokeSession"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /**
+     * List the devices this account is signed in on.
+     * @description Returns the caller's own live sessions, most recently active first. There is no path parameter and no filter by account: the actor comes from the token, so one learner cannot read another's list by changing a segment.
+     *
+     *     No IP address appears here and none is stored -- see `SessionSummary`.
+     */
+    get: operations["authListSessions"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/auth/sessions/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The session to revoke, from the list operation. */
+        id: string;
+      };
+      cookie?: never;
     };
-    "/me": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Read the caller's own account.
-         * @description Returns the account belonging to the access token. There is deliberately no `/users/{id}` counterpart in this version: the actor comes from the token, so one user cannot read another by changing a path segment.
-         */
-        get: operations["userGetMe"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /**
-         * Update the caller's own profile.
-         * @description Partially updates the profile. Omitted fields are left alone; unknown and null fields are rejected with 422.
-         */
-        patch: operations["userUpdateMe"];
-        trace?: never;
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Sign out of one device.
+     * @description Revokes the session and its refresh family, so the device it belongs to cannot renew and is signed out within one access-token lifetime.
+     *
+     *     **A session belonging to another account is 404, not 403.** The two are not interchangeable: 403 confirms the id names a real session and turns this operation into an oracle for enumerating them, while 404 says only that the caller has no such session -- which is all they are entitled to know, and is equally true of an id that never existed.
+     *
+     *     Revoking the current session is allowed and signs the caller out here: the response clears the refresh cookie in that case, and in that case only. `current` in the list operation is what lets an interface warn first.
+     *
+     *     Revoking an already-revoked session answers 204, for the same reason logout is idempotent.
+     */
+    delete: operations["authRevokeSession"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/me": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/me/permissions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Read the caller's own effective permissions.
-         * @description Resolves the caller's roles to the flat set of named permissions they grant. Advisory only: it exists so the interface can hide actions that would fail, and every server call re-checks regardless of what the client believes.
-         */
-        get: operations["rbacGetMyPermissions"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /**
+     * Read the caller's own account.
+     * @description Returns the account belonging to the access token. There is deliberately no `/users/{id}` counterpart in this version: the actor comes from the token, so one user cannot read another by changing a path segment.
+     */
+    get: operations["userGetMe"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /**
+     * Update the caller's own profile.
+     * @description Partially updates the profile. Omitted fields are left alone; unknown and null fields are rejected with 422.
+     */
+    patch: operations["userUpdateMe"];
+    trace?: never;
+  };
+  "/me/permissions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/me/preferences": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Read the caller's preferences.
-         * @description Returns the full preference set. Every account has one from registration onwards, so this never returns an empty body.
-         */
-        get: operations["userGetMyPreferences"];
-        /**
-         * Replace the caller's preferences.
-         * @description Replaces the whole preference set. A field left out is not "unchanged", it is a validation failure -- which is what makes this idempotent.
-         */
-        put: operations["userReplaceMyPreferences"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /**
+     * Read the caller's own effective permissions.
+     * @description Resolves the caller's roles to the flat set of named permissions they grant. Advisory only: it exists so the interface can hide actions that would fail, and every server call re-checks regardless of what the client believes.
+     */
+    get: operations["rbacGetMyPermissions"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/me/preferences": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/me/avatar/upload-intent": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Request a presigned URL to upload a profile avatar.
-         * @description Issues a presigned upload policy for an avatar image (JPEG, PNG, or WebP; max 5 MB).
-         */
-        post: operations["userRequestAvatarUploadIntent"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /**
+     * Read the caller's preferences.
+     * @description Returns the full preference set. Every account has one from registration onwards, so this never returns an empty body.
+     */
+    get: operations["userGetMyPreferences"];
+    /**
+     * Replace the caller's preferences.
+     * @description Replaces the whole preference set. A field left out is not "unchanged", it is a validation failure -- which is what makes this idempotent.
+     */
+    put: operations["userReplaceMyPreferences"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/me/avatar/upload-intent": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/me/avatar": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /**
-         * Confirm and process an uploaded avatar.
-         * @description Verifies the uploaded raw image, strips EXIF metadata, generates optimised variants, updates the caller's profile, and deletes the previous avatar.
-         */
-        put: operations["userConfirmAvatar"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /**
+     * Request a presigned URL to upload a profile avatar.
+     * @description Issues a presigned upload policy for an avatar image (JPEG, PNG, or WebP; max 5 MB).
+     */
+    post: operations["userRequestAvatarUploadIntent"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/me/avatar": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/admin/roles": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List roles and the permissions they grant.
-         * @description The catalogue is small and fixed, so it is returned whole rather than paginated.
-         */
-        get: operations["rbacListRoles"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    /**
+     * Confirm and process an uploaded avatar.
+     * @description Verifies the uploaded raw image, strips EXIF metadata, generates optimised variants, updates the caller's profile, and deletes the previous avatar.
+     */
+    put: operations["userConfirmAvatar"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/admin/roles": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/admin/users/{id}/roles": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The user whose roles are being changed. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Grant a role to a user.
-         * @description Granting is idempotent: a role the user already holds is not an error. An actor cannot grant themselves a role they do not already hold.
-         */
-        post: operations["rbacAssignRole"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /**
+     * List roles and the permissions they grant.
+     * @description The catalogue is small and fixed, so it is returned whole rather than paginated.
+     */
+    get: operations["rbacListRoles"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/admin/users/{id}/roles": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The user whose roles are being changed. */
+        id: string;
+      };
+      cookie?: never;
     };
-    "/admin/users/{id}/roles/{role}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The user whose roles are being changed. */
-                id: string;
-                /** @description The role to revoke. */
-                role: components["schemas"]["RoleName"];
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /**
-         * Revoke a role from a user.
-         * @description Revoking is idempotent. Two revocations are refused: an actor removing their own `admin` role, and any revocation that would leave the system with no administrator.
-         */
-        delete: operations["rbacRevokeRole"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /**
+     * Grant a role to a user.
+     * @description Granting is idempotent: a role the user already holds is not an error. An actor cannot grant themselves a role they do not already hold.
+     */
+    post: operations["rbacAssignRole"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/admin/users/{id}/roles/{role}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The user whose roles are being changed. */
+        id: string;
+        /** @description The role to revoke. */
+        role: components["schemas"]["RoleName"];
+      };
+      cookie?: never;
     };
-    "/admin/audit-logs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Search the audit trail.
-         * @description Returns audit entries newest first, within a bounded time window.
-         *
-         *     The window is mandatory in effect: `to` defaults to now and `from` to 90 days before `to`. The table is partitioned by month on `created_at`, and a query with no bound on it reads every partition ever created — so the default is a bounded scan rather than an unbounded one that happens to be fast while the table is young.
-         */
-        get: operations["auditSearchLogs"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Revoke a role from a user.
+     * @description Revoking is idempotent. Two revocations are refused: an actor removing their own `admin` role, and any revocation that would leave the system with no administrator.
+     */
+    delete: operations["rbacRevokeRole"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/admin/audit-logs": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/admin/security-events": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Read the security event feed.
-         * @description Returns security events newest first, within the same bounded window as the audit trail and for the same reason. `resolved=false` is the triage queue.
-         */
-        get: operations["auditSearchSecurityEvents"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /**
+     * Search the audit trail.
+     * @description Returns audit entries newest first, within a bounded time window.
+     *
+     *     The window is mandatory in effect: `to` defaults to now and `from` to 90 days before `to`. The table is partitioned by month on `created_at`, and a query with no bound on it reads every partition ever created — so the default is a bounded scan rather than an unbounded one that happens to be fast while the table is young.
+     */
+    get: operations["auditSearchLogs"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/admin/security-events": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/admin/security-events/{id}/resolve": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The security event being triaged. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Mark a security event triaged.
-         * @description Records who closed the event and why. Resolving an already-resolved event is a conflict rather than a silent overwrite: the first explanation is the one that describes what was investigated.
-         */
-        post: operations["auditResolveSecurityEvent"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /**
+     * Read the security event feed.
+     * @description Returns security events newest first, within the same bounded window as the audit trail and for the same reason. `resolved=false` is the triage queue.
+     */
+    get: operations["auditSearchSecurityEvents"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/admin/security-events/{id}/resolve": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The security event being triaged. */
+        id: string;
+      };
+      cookie?: never;
     };
+    get?: never;
+    put?: never;
+    /**
+     * Mark a security event triaged.
+     * @description Records who closed the event and why. Resolving an already-resolved event is a conflict rather than a silent overwrite: the first explanation is the one that describes what was investigated.
+     */
+    post: operations["auditResolveSecurityEvent"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: {
-        /** @description RFC 9457 Problem Details response. */
-        Problem: {
-            /**
-             * Format: uri-reference
-             * @description Stable URI identifying the problem type.
-             * @example https://fluentra.dev/errors/validation-failed
-             */
-            type: string;
-            /**
-             * @description A short, safe, human-readable summary.
-             * @example Validation failed
-             */
-            title: string;
-            /**
-             * @description HTTP status code for this occurrence.
-             * @example 422
-             */
-            status: number;
-            /**
-             * @description A safe explanation of this occurrence.
-             * @example One or more request fields are invalid.
-             */
-            detail?: string;
-            /**
-             * @description Request path that produced the problem.
-             * @example /api/v1/auth/register
-             */
-            instance?: string;
-            /**
-             * @description Stable machine-readable error code.
-             * @example VALIDATION_FAILED
-             */
-            code: string;
-            /**
-             * @description Correlation identifier for support and observability.
-             * @example 01J8XQ7Z9K3M4N5P6Q7R8S9T0V
-             */
-            request_id: string;
-            /** @description Safe, problem-specific metadata. */
-            meta?: {
-                [key: string]: unknown;
-            };
-        };
-        ValidationProblem: components["schemas"]["Problem"] & {
-            /** @description Field-level validation failures. */
-            errors: components["schemas"]["ValidationError"][];
-        };
-        /** @description One invalid request field. */
-        ValidationError: {
-            /**
-             * @description JSON field path that failed validation.
-             * @example email
-             */
-            field: string;
-            /**
-             * @description Stable validation error code.
-             * @example REQUIRED
-             */
-            code: string;
-            /**
-             * @description Localised, safe explanation of the validation failure.
-             * @example Email is required.
-             */
-            message: string;
-        };
-        /** @description Cursor pagination metadata returned with every user-facing list. */
-        Page: {
-            /** @description Opaque cursor for the next page, omitted when there is no next page. */
-            next_cursor?: components["schemas"]["Cursor"];
-            /**
-             * @description Whether another page can be requested using next_cursor.
-             * @example true
-             */
-            has_more: boolean;
-            /**
-             * @description Number of items requested for this page.
-             * @example 20
-             */
-            limit: number;
-        };
-        /**
-         * @description Opaque, URL-safe cursor encoding a stable sort value and ID.
-         * @example eyJjIjoiMjAyNi0wOC0wNlQxMDowMDowMFoiLCJpIjoiMDE5M2E3In0
-         */
-        Cursor: string;
-        /** @description Successful API dependency connectivity result. */
-        Ping: {
-            /**
-             * @description Confirms that PostgreSQL and Redis responded.
-             * @enum {string}
-             */
-            status: "ok";
-        };
-        /** @description Successful process liveness result. */
-        Health: {
-            /**
-             * @description Confirms that the process is serving requests.
-             * @enum {string}
-             */
-            status: "ok";
-        };
-        /** @description Successful hard dependency readiness result. */
-        Ready: {
-            /**
-             * @description Confirms that every hard dependency is usable.
-             * @enum {string}
-             */
-            status: "ready";
-        };
-        /** @description Deployed API build version. */
-        Version: {
-            /**
-             * @description Version associated with the running API build.
-             * @example 0.1.0
-             */
-            version: string;
-        };
-        /** @description Everything needed to open an account. There is deliberately no `locale` or `timezone` beyond what is here: the rest of the profile is filled in after the learner is signed in, so that the registration form stays short. */
-        RegisterRequest: {
-            /**
-             * Format: email
-             * @description Normalised to lower case and matched case-insensitively. Whether the address is already registered is never revealed by this operation.
-             * @example learner@example.com
-             */
-            email: string;
-            /**
-             * Format: password
-             * @description At least 12 characters, not equal to the local part of the email, and not present in a public breach corpus. The corpus check fails open, so an outage at the breach service does not block registration.
-             * @example a perfectly fine passphrase
-             */
-            password: string;
-            /**
-             * @description Shown to other learners. Names that impersonate Fluentra staff are rejected.
-             * @example Nghi
-             */
-            display_name: string;
-            /**
-             * @description Chooses the language the verification email is written in.
-             * @default en
-             * @example vi
-             */
-            locale: string;
-            /**
-             * @description IANA timezone name.
-             * @default UTC
-             * @example Asia/Ho_Chi_Minh
-             */
-            timezone: string;
-        };
-        /**
-         * @description A pending one-time code. The code itself is never in this object, or in any response body: it goes to the email channel and nowhere else, which is what makes it prove control of the address.
-         *
-         *     The `id` is the handle. A code is worthless without it, so an attacker who guesses six digits with no challenge id has guessed nothing.
-         */
-        Challenge: {
-            /**
-             * Format: uuid
-             * @description Identifies the challenge in the verify and resend operations.
-             */
-            challenge_id: string;
-            purpose: components["schemas"]["ChallengePurpose"];
-            /**
-             * Format: date-time
-             * @description Absolute expiry, ten minutes from issuance. A resend replaces the code but never moves this.
-             */
-            expires_at: string;
-            /**
-             * Format: date-time
-             * @description The earliest time a resend will be accepted.
-             */
-            resend_after: string;
-            /**
-             * @description Verification attempts left before the challenge is burned permanently.
-             * @example 5
-             */
-            attempts_remaining: number;
-        };
-        /**
-         * @description What a challenge proves. One subsystem serves all four; only `verify_email` is reachable in this version of the API.
-         * @enum {string}
-         */
-        ChallengePurpose: "verify_email" | "login_otp" | "password_reset" | "link_oauth";
-        VerifyChallengeRequest: {
-            /**
-             * @description The six digits from the email.
-             * @example 482913
-             */
-            code: string;
-        };
-        /**
-         * @description The outcome of a successful verification. It signs the learner in: proving the address is the last step of registration, not the second to last.
-         *
-         *     The response also carries the first refresh cookie, so a learner who has just verified an address stays signed in without ever seeing the login form they would otherwise be sent to fifteen minutes later.
-         */
-        VerifiedChallenge: {
-            purpose: components["schemas"]["ChallengePurpose"];
-            /**
-             * Format: date-time
-             * @description The timestamp at which the address was marked verified.
-             */
-            verified_at: string;
-            session: components["schemas"]["AuthSession"];
-        };
-        /**
-         * @description A signed-in session. Returned by every operation that authenticates a caller, so a client has one shape to handle.
-         *
-         *     **The access token belongs in memory only.** Never `localStorage`, never a cookie a script can read: it is a bearer credential, and anything that can read it can act as the learner until it expires.
-         *
-         *     Every response carrying this object is also accompanied by a `Set-Cookie` holding the refresh token. There is no field for it here, and that is the point: a refresh token the page can read is a refresh token an injected script can steal, so it exists only as an `HttpOnly` cookie the browser replays to `POST /auth/refresh` and to nothing else.
-         */
-        AuthSession: {
-            /**
-             * @description A short-lived signed token, presented as `Authorization: Bearer <token>`. It carries the account id, the session id, the role and its own id -- and no personal data at all, so a leaked token reveals nothing about the learner beyond an opaque identifier.
-             * @example eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJleGFtcGxlIn0.example-signature
-             */
-            access_token: string;
-            /**
-             * @description Always `Bearer`. Present so a client can build the header generically.
-             * @enum {string}
-             */
-            token_type: "Bearer";
-            /**
-             * @description Seconds until the access token expires. A client should refresh well before this, not after a rejected request.
-             * @example 900
-             */
-            expires_in: number;
-            /**
-             * Format: uuid
-             * @description The account that was signed in.
-             */
-            user_id: string;
-            /**
-             * @description Advisory only, so the interface can hide actions that would fail. Every server operation re-checks regardless of what the client believes.
-             * @enum {string}
-             */
-            role: "admin" | "user";
-        };
-        LoginRequest: {
-            /**
-             * Format: email
-             * @example learner@example.com
-             */
-            email: string;
-            /**
-             * Format: password
-             * @example a-secret-password
-             */
-            password: string;
-            /**
-             * @description Asks for the longer idle window on this device: 90 days of inactivity instead of 30. It does **not** extend the absolute expiry, and an `admin` account gets neither extension -- 12 hours idle and 7 days absolute, whatever this says.
-             *
-             *     Requires `device_id`. Without one there is nothing to trust, and the request is treated as an ordinary sign-in rather than refused, because the learner asked to be signed in and that part still works.
-             * @default false
-             * @example true
-             */
-            remember_device: boolean;
-            /**
-             * @description A client-generated identifier for this browser or app install, stored only as a keyed digest. It is not a fingerprint and not evidence: the learner can clear it, which looks like a new device and costs them one sign-in -- the correct failure direction.
-             * @example 9f2c1a7e-4b3d-4c11-9d21-7f0a5c8e2b44
-             */
-            device_id?: string;
-        };
-        ForgotPasswordRequest: {
-            /**
-             * Format: email
-             * @example learner@example.com
-             */
-            email: string;
-        };
-        /**
-         * @description The challenge handle, the code from the email, and the password to set.
-         *
-         *     All three are needed, and that is the point: the handle is held by the browser that asked for the reset and the code is held by whoever can read the inbox. Neither alone resets anything (BR-AUTH-11).
-         */
-        ResetPasswordRequest: {
-            /**
-             * Format: uuid
-             * @description The handle returned by `forgot-password`.
-             */
-            challenge_id: string;
-            /**
-             * @description The six digits from the email.
-             * @example 482913
-             */
-            code: string;
-            /**
-             * Format: password
-             * @description The new password. It faces the same policy as registration -- at least 12 characters and not present in a public breach corpus.
-             * @example a perfectly fine passphrase
-             */
-            password: string;
-        };
-        /** @description The current password is required even though the caller is already signed in. An access token proves the session was opened by someone who knew the password; it does not prove the person holding it now does. Without the check, a token stolen from an unlocked laptop is enough to lock its owner out of their own account. */
-        ChangePasswordRequest: {
-            /**
-             * Format: password
-             * @example a-secret-password
-             */
-            current_password: string;
-            /**
-             * Format: password
-             * @example a perfectly fine passphrase
-             */
-            new_password: string;
-        };
-        /** @description The outcome of a reset or a change, and what it cost the learner in still-signed-in devices. */
-        PasswordChanged: {
-            /**
-             * Format: date-time
-             * @description When the new password took effect.
-             */
-            changed_at: string;
-            /**
-             * @description How many devices were signed out. A reset signs out every one of them, because whoever asked for it may be recovering an account somebody else is signed in to. A change keeps the device it was made from and signs out the rest, so a learner tidying up after a scare is not made to sign in again on the machine in front of them.
-             * @example 3
-             */
-            sessions_revoked: number;
-        };
-        /**
-         * @description Where to send the browser, and nothing else.
-         *
-         *     The `state`, the `nonce` and the PKCE verifier are generated here and stored server-side for ten minutes, single use. None of the three is returned: a `state` the client could read is a `state` an attacker who can read the same response could replay, and the whole point of it is that only this server knows what it issued (BR-AUTH-17).
-         */
-        OAuthStart: {
-            /**
-             * Format: uri
-             * @description Google's consent screen, carrying the client id, the scopes, the `state`, the `nonce` and the PKCE challenge. PKCE is included even though Fluentra holds a client secret: it costs nothing and it closes code interception on mobile browsers, which a confidential client is not immune to (BR-AUTH-17).
-             * @example https://accounts.google.com/o/oauth2/v2/auth?client_id=...&state=...&code_challenge=...
-             */
-            authorization_url: string;
-        };
-        /**
-         * @description What Google handed back to the browser, passed straight through.
-         *
-         *     Both are required and both are checked. The `code` is worthless without the `state`, and the `state` is worthless unless this server issued it and has not already consumed it.
-         */
-        OAuthCallbackRequest: {
-            /** @description The authorization code, exchanged server-side with the PKCE verifier. */
-            code: string;
-            /** @description The value this server issued at `start`. Missing, unknown, expired or already used is `OAUTH_STATE_INVALID` and raises a security event -- those four are the shapes a CSRF attempt takes, and they are not worth telling apart in a response. */
-            state: string;
-        };
-        /** @description A linked external identity, as its owner sees it. */
-        OAuthIdentity: {
-            /**
-             * @description Only Google in this version. Apple waits for an iOS app to require it.
-             * @enum {string}
-             */
-            provider: "google";
-            /**
-             * Format: email
-             * @description The address Google asserted. It is shown so a learner can tell which Google account is linked when they hold more than one.
-             */
-            email: string;
-            /** Format: date-time */
-            linked_at: string;
-        };
-        /**
-         * @description A device the learner explicitly chose to stay signed in on.
-         *
-         *     Trusting is opt-in and it buys a longer idle window -- 90 days instead of 30 -- and nothing else. It does not extend the absolute expiry, which is the only thing bounding a theft, and it does not skip any check. A device the learner does not recognise here is one they should untrust, which is why the label and the last-seen time matter more than the identifier.
-         */
-        TrustedDevice: {
-            /**
-             * Format: uuid
-             * @description Identifies the device in the untrust operation.
-             */
-            id: string;
-            /**
-             * @description The same coarse description the session list carries -- "Chrome on macOS", never a version and never a fingerprint.
-             * @example Chrome on macOS
-             */
-            label?: string | null;
-            /**
-             * Format: date-time
-             * @description When the learner chose to trust it.
-             */
-            trusted_at: string;
-            /**
-             * Format: date-time
-             * @description The last time this device renewed a token.
-             */
-            last_seen_at: string;
-            /**
-             * Format: date-time
-             * @description When inactivity alone would end it. Every renewal moves this forward, which is what "stay signed in" means for somebody who keeps using the app.
-             */
-            idle_expires_at: string;
-            /**
-             * Format: date-time
-             * @description When it ends regardless of activity, and **this one never moves** (BR-AUTH-22). It is the whole security argument for the long idle window: without it, a stolen token that is used regularly renews itself forever and the theft becomes permanent and invisible. Reaching it means signing in again, on a device that has been trusted the entire time.
-             */
-            absolute_expires_at: string;
-        };
-        TrustedDeviceList: {
-            devices: components["schemas"]["TrustedDevice"][];
-        };
-        /**
-         * @description One signed-in device, as its owner sees it in the "where am I signed in" list.
-         *
-         *     There is no IP address here and none is stored. The session row keeps a keyed digest of the address, which answers "is this the same origin as last time" without the table becoming a movement log for every learner. The country the address resolves to is a separate matter and is not here yet: it has to be worked out at sign-in, while the address is still in hand, and the local database that does that arrives with its own change.
-         */
-        SessionSummary: {
-            /**
-             * Format: uuid
-             * @description Identifies the session in the revoke operation.
-             */
-            id: string;
-            /** @description Whether this is the session making the request. Revoking it signs the caller out here and now, which is worth warning about before it happens rather than explaining afterwards. */
-            current: boolean;
-            /**
-             * @description A coarse description derived from the user agent -- "Chrome on macOS", not a fingerprint. Null when the session was opened by a path that had no user agent to read, and for sessions that predate labelling.
-             * @example Chrome on macOS
-             */
-            device_label?: string | null;
-            /**
-             * Format: date-time
-             * @description When the learner signed in on this device.
-             */
-            created_at: string;
-            /**
-             * Format: date-time
-             * @description The last time this session refreshed a token. It moves on refresh, not on every request, so it is accurate to within one access-token lifetime.
-             */
-            last_seen_at: string;
-        };
-        /** @description Every session that is still live, newest activity first. Revoked and expired sessions are not listed: the question this answers is "where am I signed in now", and a list that also showed places the learner is no longer signed in would make the answer harder to read, not more complete. */
-        SessionList: {
-            sessions: components["schemas"]["SessionSummary"][];
-        };
-        /** @description The authenticated caller's own account. There is no operation that returns this shape for anybody else: the server reads the actor from the access token and the path carries no user id. */
-        Me: {
-            /**
-             * Format: uuid
-             * @description Stable identifier every other resource references.
-             */
-            id: string;
-            /**
-             * Format: email
-             * @description Returned only here. No other operation exposes a user's email address.
-             * @example learner@example.com
-             */
-            email: string;
-            status: components["schemas"]["UserStatus"];
-            /**
-             * Format: date-time
-             * @description When the address was verified, or null while it is unverified.
-             */
-            email_verified_at?: string | null;
-            /** Format: date-time */
-            created_at: string;
-            /** Format: date-time */
-            updated_at: string;
-            profile: components["schemas"]["MeProfile"];
-        };
-        /** @description Descriptive data about the caller. Nothing here is used to authenticate. */
-        MeProfile: {
-            /**
-             * @description Shown to other learners. Names that impersonate Fluentra staff are rejected.
-             * @example Nghi
-             */
-            display_name: string;
-            /**
-             * Format: uri
-             * @description Public avatar URL, or null when none has been uploaded.
-             */
-            avatar_url?: string | null;
-            /**
-             * @description ISO 3166-1 alpha-2 country code, or null.
-             * @example VN
-             */
-            country?: string | null;
-            /**
-             * @description IANA timezone name. Every timestamp in the API stays UTC; this is used to place reminders and streak boundaries in the learner's day.
-             * @example Asia/Ho_Chi_Minh
-             */
-            timezone: string;
-            /**
-             * Format: date
-             * @description Used only for the age gate. It is never shown to other learners and never leaves this operation.
-             */
-            date_of_birth?: string | null;
-        };
-        /**
-         * @description Account lifecycle state. `pending_deletion` is the 30-day grace period, in which the account is unusable but still recoverable by the owner.
-         * @enum {string}
-         */
-        UserStatus: "active" | "suspended" | "pending_deletion" | "deleted";
-        /** @description A partial update. Omit a field to leave it unchanged; an unknown field is a validation failure rather than something quietly ignored, because a misspelled field name that returns 200 is indistinguishable from success. */
-        UpdateMeRequest: {
-            /** @example Nghi Nguyen */
-            display_name?: string;
-            /** @example VN */
-            country?: string;
-            /** @example Asia/Ho_Chi_Minh */
-            timezone?: string;
-            /**
-             * Format: date
-             * @example 1998-03-04
-             */
-            date_of_birth?: string;
-        };
-        /** @description The caller's settings. Replaced as a whole, never patched. */
-        Preferences: {
-            /**
-             * @description BCP 47 language tag, optionally with a region.
-             * @example vi
-             */
-            locale: string;
-            /** @enum {string} */
-            theme: "light" | "dark" | "system";
-            /**
-             * @description Minutes of study the learner is aiming for each day.
-             * @example 15
-             */
-            daily_goal_minutes: number;
-            /**
-             * @description Channels the learner accepts notifications on.
-             * @example [
-             *       "in_app",
-             *       "email"
-             *     ]
-             */
-            notification_channels: ("in_app" | "email" | "push")[];
-            /** @description A window in which no notification is delivered, or null for none. It is one object rather than two fields so that half a window cannot be expressed. */
-            quiet_hours?: components["schemas"]["QuietHours"] | null;
-            /** @description Disables AI grading only. Deterministic exercises keep working, so opting out never costs the learner access to the product. */
-            ai_processing_opt_out: boolean;
-            /** Format: date-time */
-            updated_at: string;
-        };
-        /** @description Local wall-clock times in the learner's timezone. A window may wrap past midnight, which is the normal case for sleeping hours. */
-        QuietHours: {
-            /** @example 22:00 */
-            start: string;
-            /** @example 07:00 */
-            end: string;
-        };
-        /** @description The complete preference set. This is a PUT: every field is required, and what the caller sends is exactly what is stored. */
-        ReplacePreferencesRequest: {
-            /** @example vi */
-            locale: string;
-            /** @enum {string} */
-            theme: "light" | "dark" | "system";
-            /** @example 30 */
-            daily_goal_minutes: number;
-            /**
-             * @example [
-             *       "in_app",
-             *       "push"
-             *     ]
-             */
-            notification_channels: ("in_app" | "email" | "push")[];
-            quiet_hours?: components["schemas"]["QuietHours"] | null;
-            /** @example false */
-            ai_processing_opt_out: boolean;
-        };
-        /** @description Constrained browser upload intent for an avatar image. */
-        AvatarUploadIntent: {
-            /**
-             * Format: uri
-             * @description The presigned URL the client POSTs or PUTs the file to.
-             */
-            upload_url: string;
-            /**
-             * @example POST
-             * @enum {string}
-             */
-            method: "POST" | "PUT";
-            /** @description Key-value form fields for multipart POST policy uploads. */
-            form_data?: {
-                [key: string]: string;
-            };
-            /** @example file */
-            file_field?: string;
-            /**
-             * @description The unique object key in storage.
-             * @example users/0199a1c2-3d4e-7f80-9abc-def012345678/2026/08/avatar-raw.jpg
-             */
-            object_key: string;
-            /**
-             * Format: date-time
-             * @description When the presigned upload intent expires.
-             */
-            expires_at: string;
-            /**
-             * Format: int64
-             * @description Maximum permitted file size in bytes (5 MB).
-             * @example 5242880
-             */
-            max_bytes: number;
-            /**
-             * @description Pinned content type (image/jpeg, image/png, image/webp).
-             * @example image/jpeg
-             */
-            content_type: string;
-        };
-        /** @description Confirmation of the uploaded raw avatar in storage. */
-        ConfirmAvatarRequest: {
-            /**
-             * @description The object key returned by the upload intent.
-             * @example users/0199a1c2-3d4e-7f80-9abc-def012345678/2026/08/avatar-raw.jpg
-             */
-            object_key: string;
-        };
-        /**
-         * @description What the caller is allowed to do, as the server currently sees it.
-         *     This is advisory (BR-RBAC-08). It exists so the interface can hide actions that would fail, not so the client can decide anything: every server call re-checks, and a client that has this list is no closer to using a permission it was not granted.
-         */
-        MyPermissions: {
-            /**
-             * @description The roles assigned to the caller. There are exactly two in this product.
-             * @example [
-             *       "user"
-             *     ]
-             */
-            roles: components["schemas"]["RoleName"][];
-            /**
-             * @description Every named permission the caller's roles grant, resolved and flattened. A learner holds none of these — access to their own data is not a named permission, it is what `/me` means.
-             * @example []
-             */
-            permissions: string[];
-        };
-        /**
-         * @description Exactly two roles exist (BR-RBAC-02). A third is an ADR, not a row: it changes the shape of the product rather than its data.
-         * @enum {string}
-         */
-        RoleName: "admin" | "user";
-        /** @description A role and the permissions it grants. */
-        Role: {
-            name: components["schemas"]["RoleName"];
-            /** @example Full administrative access. */
-            description: string;
-            /**
-             * @example [
-             *       "rbac.assign",
-             *       "rbac.read",
-             *       "user.list"
-             *     ]
-             */
-            permissions: string[];
-        };
-        /** @description The role catalogue. It is small and fixed, so it is not paginated. */
-        RoleList: {
-            items: components["schemas"]["Role"][];
-        };
-        /** @description Grant a role to a user. */
-        AssignRoleRequest: {
-            role: components["schemas"]["RoleName"];
-        };
-        /** @description The roles held by one user, after the change. */
-        UserRoles: {
-            /** Format: uuid */
-            user_id: string;
-            /**
-             * @example [
-             *       "admin",
-             *       "user"
-             *     ]
-             */
-            roles: components["schemas"]["RoleName"][];
-        };
-        /**
-         * @description One recorded action: who did it, to what, and which fields moved.
-         *     It deliberately does not carry the values that changed (BR-AUDIT-04). An audit trail that stored the old and new display name would be a second copy of personal data with a longer retention period than the first, which is the opposite of what an audit trail is for.
-         */
-        AuditLog: {
-            /**
-             * Format: uuid
-             * @description Stable identifier for this entry.
-             */
-            id: string;
-            /**
-             * Format: date-time
-             * @description When the action happened, taken from the emitting module's event rather than from when this row was written. It is also the partition key, so every search is bounded by it.
-             * @example 2026-08-10T09:15:00Z
-             */
-            created_at: string;
-            /**
-             * Format: uuid
-             * @description The account that performed the action, or null when the system did it or when the actor's account has since been erased. Entries outlive the people in them (BR-AUDIT-06).
-             */
-            actor_id?: string | null;
-            actor_role?: components["schemas"]["ActorRole"];
-            action: components["schemas"]["AuditAction"];
-            /**
-             * @description The kind of thing acted on, such as `user` or `role_assignment`.
-             * @example user
-             */
-            target_type?: string | null;
-            /**
-             * @description Identifier of the thing acted on. It is a string rather than a uuid because not every auditable target is keyed by one.
-             * @example 0199a1c2-3d4e-7f80-9abc-def012345678
-             */
-            target_id?: string | null;
-            /**
-             * @description Names of the fields the action moved, sorted. Empty when the action changed no fields — a read, a grant, a revocation.
-             * @example [
-             *       "display_name",
-             *       "timezone"
-             *     ]
-             */
-            changed_fields: string[];
-            /** @description Prior values for the changed fields, with anything on the PII deny-list replaced by `[redacted]`. Null when the emitting module sent field names only, which is the Phase 1 default. */
-            before?: {
-                [key: string]: unknown;
-            } | null;
-            /** @description New values, redacted on the same terms as `before`. */
-            after?: {
-                [key: string]: unknown;
-            } | null;
-            /**
-             * @description Context that is not a field of the target — the reason an administrator gave, the outbox event that produced the entry. Redacted on the same deny-list as the diff.
-             * @example {
-             *       "source": "outbox"
-             *     }
-             */
-            meta: {
-                [key: string]: unknown;
-            };
-            /**
-             * @description The W3C trace this action belongs to (BR-AUDIT-07), so an entry links straight through to the distributed trace that produced it.
-             * @example 4bf92f3577b34da6a3ce929d0e0e4736
-             */
-            trace_id?: string | null;
-        };
-        /**
-         * @description What happened, named `<module>.<verb>_<object>`. The catalogue lives in `internal/modules/audit/AGENT.md`; unknown names are stored rather than rejected, because refusing an entry loses the record of the very thing that was unexpected.
-         * @example user.profile_updated
-         */
-        AuditAction: string;
-        /**
-         * @description The role the actor held at the time, recorded rather than resolved: a revoked admin must still show as an admin in the entries they left behind.
-         * @enum {string|null}
-         */
-        ActorRole: "admin" | "user" | "system" | null;
-        /** @description One page of audit entries, newest first. */
-        AuditLogPage: {
-            items: components["schemas"]["AuditLog"][];
-            page: components["schemas"]["Page"];
-        };
-        /** @description A security-relevant occurrence: a failed permission check, a lockout, a token reuse. Separate from the audit trail because these are triaged rather than merely recorded, and because they are not always attributable to a known actor. */
-        SecurityEvent: {
-            /** Format: uuid */
-            id: string;
-            /**
-             * Format: date-time
-             * @description When the event occurred. Also the partition key.
-             * @example 2026-08-10T09:15:00Z
-             */
-            created_at: string;
-            /**
-             * @description What happened, named `<module>.<event>`.
-             * @example rbac.access_denied
-             */
-            kind: string;
-            severity: components["schemas"]["SecurityEventSeverity"];
-            /**
-             * Format: uuid
-             * @description The account involved, when one is known. Null for events observed before authentication succeeded.
-             */
-            user_id?: string | null;
-            /**
-             * @description Structured context for triage, redacted on the same terms as an audit diff. It never carries the request body: an event raised by an attacker would otherwise store whatever they chose to send.
-             * @example {
-             *       "permission": "user.suspend"
-             *     }
-             */
-            detail: {
-                [key: string]: unknown;
-            };
-            /**
-             * @description The trace the event was raised in.
-             * @example 4bf92f3577b34da6a3ce929d0e0e4736
-             */
-            trace_id?: string | null;
-            /**
-             * Format: date-time
-             * @description When an administrator marked the event triaged, or null while it is open.
-             */
-            resolved_at?: string | null;
-            /**
-             * Format: uuid
-             * @description The administrator who triaged it.
-             */
-            resolved_by?: string | null;
-            /**
-             * @description Why it was closed. Required when resolving, so a closed event explains itself.
-             * @example Known load test, permission denial expected.
-             */
-            resolution_note?: string | null;
-        };
-        /**
-         * @description How much attention the event deserves. `critical` is reserved for events that indicate a compromise in progress, such as refresh-token reuse.
-         * @enum {string}
-         */
-        SecurityEventSeverity: "low" | "medium" | "high" | "critical";
-        /** @description One page of security events, newest first. */
-        SecurityEventPage: {
-            items: components["schemas"]["SecurityEvent"][];
-            page: components["schemas"]["Page"];
-        };
-        /** @description Mark a security event triaged. The note is required: an event closed with no reason is indistinguishable from one closed by accident. */
-        ResolveSecurityEventRequest: {
-            /** @example Known load test, permission denial expected. */
-            note: string;
-        };
+  schemas: {
+    /** @description RFC 9457 Problem Details response. */
+    Problem: {
+      /**
+       * Format: uri-reference
+       * @description Stable URI identifying the problem type.
+       * @example https://fluentra.dev/errors/validation-failed
+       */
+      type: string;
+      /**
+       * @description A short, safe, human-readable summary.
+       * @example Validation failed
+       */
+      title: string;
+      /**
+       * @description HTTP status code for this occurrence.
+       * @example 422
+       */
+      status: number;
+      /**
+       * @description A safe explanation of this occurrence.
+       * @example One or more request fields are invalid.
+       */
+      detail?: string;
+      /**
+       * @description Request path that produced the problem.
+       * @example /api/v1/auth/register
+       */
+      instance?: string;
+      /**
+       * @description Stable machine-readable error code.
+       * @example VALIDATION_FAILED
+       */
+      code: string;
+      /**
+       * @description Correlation identifier for support and observability.
+       * @example 01J8XQ7Z9K3M4N5P6Q7R8S9T0V
+       */
+      request_id: string;
+      /** @description Safe, problem-specific metadata. */
+      meta?: {
+        [key: string]: unknown;
+      };
     };
-    responses: {
-        /** @description The request is malformed or has an invalid cursor. */
-        BadRequest: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                /**
-                 * @example {
-                 *       "type": "https://fluentra.dev/errors/bad-request",
-                 *       "title": "Bad request",
-                 *       "status": 400,
-                 *       "detail": "The request body could not be decoded.",
-                 *       "code": "BAD_REQUEST",
-                 *       "request_id": "01J8XQ7Z9K3M4N5P6Q7R8S9T0V"
-                 *     }
-                 */
-                "application/problem+json": components["schemas"]["Problem"];
-            };
-        };
-        /** @description Authentication credentials are missing, invalid, or expired. */
-        Unauthorized: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                /**
-                 * @example {
-                 *       "type": "https://fluentra.dev/errors/unauthenticated",
-                 *       "title": "Authentication required",
-                 *       "status": 401,
-                 *       "detail": "Provide a valid access token.",
-                 *       "code": "UNAUTHENTICATED",
-                 *       "request_id": "01J8XQ7Z9K3M4N5P6Q7R8S9T0V"
-                 *     }
-                 */
-                "application/problem+json": components["schemas"]["Problem"];
-            };
-        };
-        /** @description The authenticated actor lacks permission for this operation. */
-        Forbidden: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                /**
-                 * @example {
-                 *       "type": "https://fluentra.dev/errors/permission-denied",
-                 *       "title": "Permission denied",
-                 *       "status": 403,
-                 *       "detail": "You do not have permission to perform this action.",
-                 *       "code": "PERMISSION_DENIED",
-                 *       "request_id": "01J8XQ7Z9K3M4N5P6Q7R8S9T0V"
-                 *     }
-                 */
-                "application/problem+json": components["schemas"]["Problem"];
-            };
-        };
-        /** @description The resource does not exist or is not visible to this actor. */
-        NotFound: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                /**
-                 * @example {
-                 *       "type": "https://fluentra.dev/errors/not-found",
-                 *       "title": "Not found",
-                 *       "status": 404,
-                 *       "detail": "The requested resource was not found.",
-                 *       "code": "NOT_FOUND",
-                 *       "request_id": "01J8XQ7Z9K3M4N5P6Q7R8S9T0V"
-                 *     }
-                 */
-                "application/problem+json": components["schemas"]["Problem"];
-            };
-        };
-        /** @description The requested operation conflicts with the current resource state. */
-        Conflict: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                /**
-                 * @example {
-                 *       "type": "https://fluentra.dev/errors/conflict",
-                 *       "title": "Conflict",
-                 *       "status": 409,
-                 *       "detail": "The operation conflicts with the current resource state.",
-                 *       "code": "CONFLICT",
-                 *       "request_id": "01J8XQ7Z9K3M4N5P6Q7R8S9T0V"
-                 *     }
-                 */
-                "application/problem+json": components["schemas"]["Problem"];
-            };
-        };
-        /** @description One or more request fields failed validation. */
-        ValidationFailed: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                /**
-                 * @example {
-                 *       "type": "https://fluentra.dev/errors/validation-failed",
-                 *       "title": "Validation failed",
-                 *       "status": 422,
-                 *       "detail": "One or more request fields are invalid.",
-                 *       "code": "VALIDATION_FAILED",
-                 *       "request_id": "01J8XQ7Z9K3M4N5P6Q7R8S9T0V",
-                 *       "errors": [
-                 *         {
-                 *           "field": "email",
-                 *           "code": "EMAIL",
-                 *           "message": "Enter a valid email address."
-                 *         }
-                 *       ]
-                 *     }
-                 */
-                "application/problem+json": components["schemas"]["ValidationProblem"];
-            };
-        };
-        /**
-         * @description The applicable rate limit has been exceeded.
-         *
-         *     `Retry-After` says how long to wait. The `RateLimit-*` trio says which limit was hit and when the window resets, which is what lets a client back off against the right budget instead of guessing -- a caller that has exhausted the 5/min `/auth` class and one that has exhausted the 60/min anonymous class both see 429, and they should not wait the same amount of time.
-         */
-        TooManyRequests: {
-            headers: {
-                "Retry-After": components["headers"]["Retry-After"];
-                "RateLimit-Limit": components["headers"]["RateLimit-Limit"];
-                "RateLimit-Remaining": components["headers"]["RateLimit-Remaining"];
-                "RateLimit-Reset": components["headers"]["RateLimit-Reset"];
-                [name: string]: unknown;
-            };
-            content: {
-                /**
-                 * @example {
-                 *       "type": "https://fluentra.dev/errors/rate-limited",
-                 *       "title": "Too many requests",
-                 *       "status": 429,
-                 *       "detail": "Retry after the indicated interval.",
-                 *       "code": "RATE_LIMITED",
-                 *       "request_id": "01J8XQ7Z9K3M4N5P6Q7R8S9T0V"
-                 *     }
-                 */
-                "application/problem+json": components["schemas"]["Problem"];
-            };
-        };
-        /** @description An unexpected server error occurred without exposing internals. */
-        InternalServerError: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                /**
-                 * @example {
-                 *       "type": "https://fluentra.dev/errors/internal",
-                 *       "title": "Internal server error",
-                 *       "status": 500,
-                 *       "detail": "An unexpected error occurred.",
-                 *       "code": "INTERNAL",
-                 *       "request_id": "01J8XQ7Z9K3M4N5P6Q7R8S9T0V"
-                 *     }
-                 */
-                "application/problem+json": components["schemas"]["Problem"];
-            };
-        };
-        /** @description A hard dependency is not available. */
-        ServiceUnavailable: {
-            headers: {
-                "Retry-After": components["headers"]["Retry-After"];
-                [name: string]: unknown;
-            };
-            content: {
-                /**
-                 * @example {
-                 *       "type": "https://fluentra.dev/errors/dependency-unavailable",
-                 *       "title": "Service unavailable",
-                 *       "status": 503,
-                 *       "detail": "A required service is temporarily unavailable.",
-                 *       "code": "DEPENDENCY_UNAVAILABLE",
-                 *       "request_id": "01J8XQ7Z9K3M4N5P6Q7R8S9T0V"
-                 *     }
-                 */
-                "application/problem+json": components["schemas"]["Problem"];
-            };
-        };
+    ValidationProblem: components["schemas"]["Problem"] & {
+      /** @description Field-level validation failures. */
+      errors: components["schemas"]["ValidationError"][];
     };
-    parameters: never;
-    requestBodies: never;
-    headers: {
-        /**
-         * @description Correlation ID supplied by the client or generated by the API.
-         * @example 01J8XQ7Z9K3M4N5P6Q7R8S9T0V
-         */
-        "X-Request-Id": string;
-        /**
-         * @description Entity tag for a cacheable or mutable resource.
-         * @example "v1-01J8XQ7Z9K3M4N5P6Q7R8S9T0V"
-         */
-        ETag: string;
-        /**
-         * @description Cache directive; authenticated responses default to no-store.
-         * @example no-store
-         */
-        "Cache-Control": string;
-        /**
-         * @description Maximum requests permitted in the current rate-limit window.
-         * @example 60
-         */
-        "RateLimit-Limit": number;
-        /**
-         * @description Requests remaining in the current rate-limit window.
-         * @example 59
-         */
-        "RateLimit-Remaining": number;
-        /**
-         * @description Unix timestamp when the current rate-limit window resets.
-         * @example 1786033260
-         */
-        "RateLimit-Reset": number;
-        /**
-         * @description Number of seconds before the request may be retried.
-         * @example 30
-         */
-        "Retry-After": number;
-        /**
-         * @description The rotating refresh token, sent as `HttpOnly; Secure; SameSite=Lax; Path=/api/v1/auth`.
-         *
-         *     It is deliberately unreadable by script. An access token held in memory dies with the tab; a refresh token any injected script could read would be a standing takeover of the account, renewable long after the script is gone. `Path` narrows it further, so it is not attached to the hundreds of ordinary API calls that have no use for it.
-         *
-         *     `Secure` is dropped only when `APP_ENV=local`, where the SPA is served over plain HTTP and a `Secure` cookie would be discarded by the browser rather than merely unprotected.
-         * @example refresh_token=opaque-value; Path=/api/v1/auth; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax
-         */
-        "Set-Cookie-Refresh": string;
-        /**
-         * @description An expired `refresh_token` cookie, sent when the session it belonged to has been signed out.
-         *
-         *     The attributes match the ones the cookie was set with, because a browser treats a deletion whose `Path` or `Secure` differs as a *different* cookie and keeps the original -- so a mismatch here would leave the client replaying a dead token on every launch.
-         * @example refresh_token=; Path=/api/v1/auth; Max-Age=0; HttpOnly; Secure; SameSite=Lax
-         */
-        "Set-Cookie-RefreshCleared": string;
+    /** @description One invalid request field. */
+    ValidationError: {
+      /**
+       * @description JSON field path that failed validation.
+       * @example email
+       */
+      field: string;
+      /**
+       * @description Stable validation error code.
+       * @example REQUIRED
+       */
+      code: string;
+      /**
+       * @description Localised, safe explanation of the validation failure.
+       * @example Email is required.
+       */
+      message: string;
     };
-    pathItems: never;
+    /** @description Cursor pagination metadata returned with every user-facing list. */
+    Page: {
+      /** @description Opaque cursor for the next page, omitted when there is no next page. */
+      next_cursor?: components["schemas"]["Cursor"];
+      /**
+       * @description Whether another page can be requested using next_cursor.
+       * @example true
+       */
+      has_more: boolean;
+      /**
+       * @description Number of items requested for this page.
+       * @example 20
+       */
+      limit: number;
+    };
+    /**
+     * @description Opaque, URL-safe cursor encoding a stable sort value and ID.
+     * @example eyJjIjoiMjAyNi0wOC0wNlQxMDowMDowMFoiLCJpIjoiMDE5M2E3In0
+     */
+    Cursor: string;
+    /** @description Successful API dependency connectivity result. */
+    Ping: {
+      /**
+       * @description Confirms that PostgreSQL and Redis responded.
+       * @enum {string}
+       */
+      status: "ok";
+    };
+    /** @description Successful process liveness result. */
+    Health: {
+      /**
+       * @description Confirms that the process is serving requests.
+       * @enum {string}
+       */
+      status: "ok";
+    };
+    /** @description Successful hard dependency readiness result. */
+    Ready: {
+      /**
+       * @description Confirms that every hard dependency is usable.
+       * @enum {string}
+       */
+      status: "ready";
+    };
+    /** @description Deployed API build version. */
+    Version: {
+      /**
+       * @description Version associated with the running API build.
+       * @example 0.1.0
+       */
+      version: string;
+    };
+    /** @description Everything needed to open an account. There is deliberately no `locale` or `timezone` beyond what is here: the rest of the profile is filled in after the learner is signed in, so that the registration form stays short. */
+    RegisterRequest: {
+      /**
+       * Format: email
+       * @description Normalised to lower case and matched case-insensitively. Whether the address is already registered is never revealed by this operation.
+       * @example learner@example.com
+       */
+      email: string;
+      /**
+       * Format: password
+       * @description At least 12 characters, not equal to the local part of the email, and not present in a public breach corpus. The corpus check fails open, so an outage at the breach service does not block registration.
+       * @example a perfectly fine passphrase
+       */
+      password: string;
+      /**
+       * @description Shown to other learners. Names that impersonate Fluentra staff are rejected.
+       * @example Nghi
+       */
+      display_name: string;
+      /**
+       * @description Chooses the language the verification email is written in.
+       * @default en
+       * @example vi
+       */
+      locale: string;
+      /**
+       * @description IANA timezone name.
+       * @default UTC
+       * @example Asia/Ho_Chi_Minh
+       */
+      timezone: string;
+    };
+    /**
+     * @description A pending one-time code. The code itself is never in this object, or in any response body: it goes to the email channel and nowhere else, which is what makes it prove control of the address.
+     *
+     *     The `id` is the handle. A code is worthless without it, so an attacker who guesses six digits with no challenge id has guessed nothing.
+     */
+    Challenge: {
+      /**
+       * Format: uuid
+       * @description Identifies the challenge in the verify and resend operations.
+       */
+      challenge_id: string;
+      purpose: components["schemas"]["ChallengePurpose"];
+      /**
+       * Format: date-time
+       * @description Absolute expiry, ten minutes from issuance. A resend replaces the code but never moves this.
+       */
+      expires_at: string;
+      /**
+       * Format: date-time
+       * @description The earliest time a resend will be accepted.
+       */
+      resend_after: string;
+      /**
+       * @description Verification attempts left before the challenge is burned permanently.
+       * @example 5
+       */
+      attempts_remaining: number;
+    };
+    /**
+     * @description What a challenge proves. One subsystem serves all four; only `verify_email` is reachable in this version of the API.
+     * @enum {string}
+     */
+    ChallengePurpose:
+      "verify_email" | "login_otp" | "password_reset" | "link_oauth";
+    VerifyChallengeRequest: {
+      /**
+       * @description The six digits from the email.
+       * @example 482913
+       */
+      code: string;
+    };
+    /**
+     * @description The outcome of a successful verification. It signs the learner in: proving the address is the last step of registration, not the second to last.
+     *
+     *     The response also carries the first refresh cookie, so a learner who has just verified an address stays signed in without ever seeing the login form they would otherwise be sent to fifteen minutes later.
+     */
+    VerifiedChallenge: {
+      purpose: components["schemas"]["ChallengePurpose"];
+      /**
+       * Format: date-time
+       * @description The timestamp at which the address was marked verified.
+       */
+      verified_at: string;
+      session: components["schemas"]["AuthSession"];
+    };
+    /**
+     * @description A signed-in session. Returned by every operation that authenticates a caller, so a client has one shape to handle.
+     *
+     *     **The access token belongs in memory only.** Never `localStorage`, never a cookie a script can read: it is a bearer credential, and anything that can read it can act as the learner until it expires.
+     *
+     *     Every response carrying this object is also accompanied by a `Set-Cookie` holding the refresh token. There is no field for it here, and that is the point: a refresh token the page can read is a refresh token an injected script can steal, so it exists only as an `HttpOnly` cookie the browser replays to `POST /auth/refresh` and to nothing else.
+     */
+    AuthSession: {
+      /**
+       * @description A short-lived signed token, presented as `Authorization: Bearer <token>`. It carries the account id, the session id, the role and its own id -- and no personal data at all, so a leaked token reveals nothing about the learner beyond an opaque identifier.
+       * @example eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJleGFtcGxlIn0.example-signature
+       */
+      access_token: string;
+      /**
+       * @description Always `Bearer`. Present so a client can build the header generically.
+       * @enum {string}
+       */
+      token_type: "Bearer";
+      /**
+       * @description Seconds until the access token expires. A client should refresh well before this, not after a rejected request.
+       * @example 900
+       */
+      expires_in: number;
+      /**
+       * Format: uuid
+       * @description The account that was signed in.
+       */
+      user_id: string;
+      /**
+       * @description Advisory only, so the interface can hide actions that would fail. Every server operation re-checks regardless of what the client believes.
+       * @enum {string}
+       */
+      role: "admin" | "user";
+    };
+    LoginRequest: {
+      /**
+       * Format: email
+       * @example learner@example.com
+       */
+      email: string;
+      /**
+       * Format: password
+       * @example a-secret-password
+       */
+      password: string;
+      /**
+       * @description Asks for the longer idle window on this device: 90 days of inactivity instead of 30. It does **not** extend the absolute expiry, and an `admin` account gets neither extension -- 12 hours idle and 7 days absolute, whatever this says.
+       *
+       *     Requires `device_id`. Without one there is nothing to trust, and the request is treated as an ordinary sign-in rather than refused, because the learner asked to be signed in and that part still works.
+       * @default false
+       * @example true
+       */
+      remember_device: boolean;
+      /**
+       * @description A client-generated identifier for this browser or app install, stored only as a keyed digest. It is not a fingerprint and not evidence: the learner can clear it, which looks like a new device and costs them one sign-in -- the correct failure direction.
+       * @example 9f2c1a7e-4b3d-4c11-9d21-7f0a5c8e2b44
+       */
+      device_id?: string;
+    };
+    ForgotPasswordRequest: {
+      /**
+       * Format: email
+       * @example learner@example.com
+       */
+      email: string;
+    };
+    /**
+     * @description The challenge handle, the code from the email, and the password to set.
+     *
+     *     All three are needed, and that is the point: the handle is held by the browser that asked for the reset and the code is held by whoever can read the inbox. Neither alone resets anything (BR-AUTH-11).
+     */
+    ResetPasswordRequest: {
+      /**
+       * Format: uuid
+       * @description The handle returned by `forgot-password`.
+       */
+      challenge_id: string;
+      /**
+       * @description The six digits from the email.
+       * @example 482913
+       */
+      code: string;
+      /**
+       * Format: password
+       * @description The new password. It faces the same policy as registration -- at least 12 characters and not present in a public breach corpus.
+       * @example a perfectly fine passphrase
+       */
+      password: string;
+    };
+    /** @description The current password is required even though the caller is already signed in. An access token proves the session was opened by someone who knew the password; it does not prove the person holding it now does. Without the check, a token stolen from an unlocked laptop is enough to lock its owner out of their own account. */
+    ChangePasswordRequest: {
+      /**
+       * Format: password
+       * @example a-secret-password
+       */
+      current_password: string;
+      /**
+       * Format: password
+       * @example a perfectly fine passphrase
+       */
+      new_password: string;
+    };
+    /** @description The outcome of a reset or a change, and what it cost the learner in still-signed-in devices. */
+    PasswordChanged: {
+      /**
+       * Format: date-time
+       * @description When the new password took effect.
+       */
+      changed_at: string;
+      /**
+       * @description How many devices were signed out. A reset signs out every one of them, because whoever asked for it may be recovering an account somebody else is signed in to. A change keeps the device it was made from and signs out the rest, so a learner tidying up after a scare is not made to sign in again on the machine in front of them.
+       * @example 3
+       */
+      sessions_revoked: number;
+    };
+    /**
+     * @description Where to send the browser, and nothing else.
+     *
+     *     The `state`, the `nonce` and the PKCE verifier are generated here and stored server-side for ten minutes, single use. None of the three is returned: a `state` the client could read is a `state` an attacker who can read the same response could replay, and the whole point of it is that only this server knows what it issued (BR-AUTH-17).
+     */
+    OAuthStart: {
+      /**
+       * Format: uri
+       * @description Google's consent screen, carrying the client id, the scopes, the `state`, the `nonce` and the PKCE challenge. PKCE is included even though Fluentra holds a client secret: it costs nothing and it closes code interception on mobile browsers, which a confidential client is not immune to (BR-AUTH-17).
+       * @example https://accounts.google.com/o/oauth2/v2/auth?client_id=...&state=...&code_challenge=...
+       */
+      authorization_url: string;
+    };
+    /**
+     * @description What Google handed back to the browser, passed straight through.
+     *
+     *     Both are required and both are checked. The `code` is worthless without the `state`, and the `state` is worthless unless this server issued it and has not already consumed it.
+     */
+    OAuthCallbackRequest: {
+      /** @description The authorization code, exchanged server-side with the PKCE verifier. */
+      code: string;
+      /** @description The value this server issued at `start`. Missing, unknown, expired or already used is `OAUTH_STATE_INVALID` and raises a security event -- those four are the shapes a CSRF attempt takes, and they are not worth telling apart in a response. */
+      state: string;
+    };
+    /** @description A linked external identity, as its owner sees it. */
+    OAuthIdentity: {
+      /**
+       * @description Only Google in this version. Apple waits for an iOS app to require it.
+       * @enum {string}
+       */
+      provider: "google";
+      /**
+       * Format: email
+       * @description The address Google asserted. It is shown so a learner can tell which Google account is linked when they hold more than one.
+       */
+      email: string;
+      /** Format: date-time */
+      linked_at: string;
+    };
+    /**
+     * @description A device the learner explicitly chose to stay signed in on.
+     *
+     *     Trusting is opt-in and it buys a longer idle window -- 90 days instead of 30 -- and nothing else. It does not extend the absolute expiry, which is the only thing bounding a theft, and it does not skip any check. A device the learner does not recognise here is one they should untrust, which is why the label and the last-seen time matter more than the identifier.
+     */
+    TrustedDevice: {
+      /**
+       * Format: uuid
+       * @description Identifies the device in the untrust operation.
+       */
+      id: string;
+      /**
+       * @description The same coarse description the session list carries -- "Chrome on macOS", never a version and never a fingerprint.
+       * @example Chrome on macOS
+       */
+      label?: string | null;
+      /**
+       * Format: date-time
+       * @description When the learner chose to trust it.
+       */
+      trusted_at: string;
+      /**
+       * Format: date-time
+       * @description The last time this device renewed a token.
+       */
+      last_seen_at: string;
+      /**
+       * Format: date-time
+       * @description When inactivity alone would end it. Every renewal moves this forward, which is what "stay signed in" means for somebody who keeps using the app.
+       */
+      idle_expires_at: string;
+      /**
+       * Format: date-time
+       * @description When it ends regardless of activity, and **this one never moves** (BR-AUTH-22). It is the whole security argument for the long idle window: without it, a stolen token that is used regularly renews itself forever and the theft becomes permanent and invisible. Reaching it means signing in again, on a device that has been trusted the entire time.
+       */
+      absolute_expires_at: string;
+    };
+    TrustedDeviceList: {
+      devices: components["schemas"]["TrustedDevice"][];
+    };
+    /**
+     * @description One signed-in device, as its owner sees it in the "where am I signed in" list.
+     *
+     *     There is no IP address here and none is stored. The session row keeps a keyed digest of the address, which answers "is this the same origin as last time" without the table becoming a movement log for every learner. The country the address resolves to is a separate matter and is not here yet: it has to be worked out at sign-in, while the address is still in hand, and the local database that does that arrives with its own change.
+     */
+    SessionSummary: {
+      /**
+       * Format: uuid
+       * @description Identifies the session in the revoke operation.
+       */
+      id: string;
+      /** @description Whether this is the session making the request. Revoking it signs the caller out here and now, which is worth warning about before it happens rather than explaining afterwards. */
+      current: boolean;
+      /**
+       * @description A coarse description derived from the user agent -- "Chrome on macOS", not a fingerprint. Null when the session was opened by a path that had no user agent to read, and for sessions that predate labelling.
+       * @example Chrome on macOS
+       */
+      device_label?: string | null;
+      /**
+       * Format: date-time
+       * @description When the learner signed in on this device.
+       */
+      created_at: string;
+      /**
+       * Format: date-time
+       * @description The last time this session refreshed a token. It moves on refresh, not on every request, so it is accurate to within one access-token lifetime.
+       */
+      last_seen_at: string;
+    };
+    /** @description Every session that is still live, newest activity first. Revoked and expired sessions are not listed: the question this answers is "where am I signed in now", and a list that also showed places the learner is no longer signed in would make the answer harder to read, not more complete. */
+    SessionList: {
+      sessions: components["schemas"]["SessionSummary"][];
+    };
+    /** @description The authenticated caller's own account. There is no operation that returns this shape for anybody else: the server reads the actor from the access token and the path carries no user id. */
+    Me: {
+      /**
+       * Format: uuid
+       * @description Stable identifier every other resource references.
+       */
+      id: string;
+      /**
+       * Format: email
+       * @description Returned only here. No other operation exposes a user's email address.
+       * @example learner@example.com
+       */
+      email: string;
+      status: components["schemas"]["UserStatus"];
+      /**
+       * Format: date-time
+       * @description When the address was verified, or null while it is unverified.
+       */
+      email_verified_at?: string | null;
+      /** Format: date-time */
+      created_at: string;
+      /** Format: date-time */
+      updated_at: string;
+      profile: components["schemas"]["MeProfile"];
+    };
+    /** @description Descriptive data about the caller. Nothing here is used to authenticate. */
+    MeProfile: {
+      /**
+       * @description Shown to other learners. Names that impersonate Fluentra staff are rejected.
+       * @example Nghi
+       */
+      display_name: string;
+      /**
+       * Format: uri
+       * @description Public avatar URL, or null when none has been uploaded.
+       */
+      avatar_url?: string | null;
+      /**
+       * @description ISO 3166-1 alpha-2 country code, or null.
+       * @example VN
+       */
+      country?: string | null;
+      /**
+       * @description IANA timezone name. Every timestamp in the API stays UTC; this is used to place reminders and streak boundaries in the learner's day.
+       * @example Asia/Ho_Chi_Minh
+       */
+      timezone: string;
+      /**
+       * Format: date
+       * @description Used only for the age gate. It is never shown to other learners and never leaves this operation.
+       */
+      date_of_birth?: string | null;
+    };
+    /**
+     * @description Account lifecycle state. `pending_deletion` is the 30-day grace period, in which the account is unusable but still recoverable by the owner.
+     * @enum {string}
+     */
+    UserStatus: "active" | "suspended" | "pending_deletion" | "deleted";
+    /** @description A partial update. Omit a field to leave it unchanged; an unknown field is a validation failure rather than something quietly ignored, because a misspelled field name that returns 200 is indistinguishable from success. */
+    UpdateMeRequest: {
+      /** @example Nghi Nguyen */
+      display_name?: string;
+      /** @example VN */
+      country?: string;
+      /** @example Asia/Ho_Chi_Minh */
+      timezone?: string;
+      /**
+       * Format: date
+       * @example 1998-03-04
+       */
+      date_of_birth?: string;
+    };
+    /** @description The caller's settings. Replaced as a whole, never patched. */
+    Preferences: {
+      /**
+       * @description BCP 47 language tag, optionally with a region.
+       * @example vi
+       */
+      locale: string;
+      /** @enum {string} */
+      theme: "light" | "dark" | "system";
+      /**
+       * @description Minutes of study the learner is aiming for each day.
+       * @example 15
+       */
+      daily_goal_minutes: number;
+      /**
+       * @description Channels the learner accepts notifications on.
+       * @example [
+       *       "in_app",
+       *       "email"
+       *     ]
+       */
+      notification_channels: ("in_app" | "email" | "push")[];
+      /** @description A window in which no notification is delivered, or null for none. It is one object rather than two fields so that half a window cannot be expressed. */
+      quiet_hours?: components["schemas"]["QuietHours"] | null;
+      /** @description Disables AI grading only. Deterministic exercises keep working, so opting out never costs the learner access to the product. */
+      ai_processing_opt_out: boolean;
+      /** Format: date-time */
+      updated_at: string;
+    };
+    /** @description Local wall-clock times in the learner's timezone. A window may wrap past midnight, which is the normal case for sleeping hours. */
+    QuietHours: {
+      /** @example 22:00 */
+      start: string;
+      /** @example 07:00 */
+      end: string;
+    };
+    /** @description The complete preference set. This is a PUT: every field is required, and what the caller sends is exactly what is stored. */
+    ReplacePreferencesRequest: {
+      /** @example vi */
+      locale: string;
+      /** @enum {string} */
+      theme: "light" | "dark" | "system";
+      /** @example 30 */
+      daily_goal_minutes: number;
+      /**
+       * @example [
+       *       "in_app",
+       *       "push"
+       *     ]
+       */
+      notification_channels: ("in_app" | "email" | "push")[];
+      quiet_hours?: components["schemas"]["QuietHours"] | null;
+      /** @example false */
+      ai_processing_opt_out: boolean;
+    };
+    /** @description Constrained browser upload intent for an avatar image. */
+    AvatarUploadIntent: {
+      /**
+       * Format: uri
+       * @description The presigned URL the client POSTs or PUTs the file to.
+       */
+      upload_url: string;
+      /**
+       * @example POST
+       * @enum {string}
+       */
+      method: "POST" | "PUT";
+      /** @description Key-value form fields for multipart POST policy uploads. */
+      form_data?: {
+        [key: string]: string;
+      };
+      /** @example file */
+      file_field?: string;
+      /**
+       * @description The unique object key in storage.
+       * @example users/0199a1c2-3d4e-7f80-9abc-def012345678/2026/08/avatar-raw.jpg
+       */
+      object_key: string;
+      /**
+       * Format: date-time
+       * @description When the presigned upload intent expires.
+       */
+      expires_at: string;
+      /**
+       * Format: int64
+       * @description Maximum permitted file size in bytes (5 MB).
+       * @example 5242880
+       */
+      max_bytes: number;
+      /**
+       * @description Pinned content type (image/jpeg, image/png, image/webp).
+       * @example image/jpeg
+       */
+      content_type: string;
+    };
+    /** @description Confirmation of the uploaded raw avatar in storage. */
+    ConfirmAvatarRequest: {
+      /**
+       * @description The object key returned by the upload intent.
+       * @example users/0199a1c2-3d4e-7f80-9abc-def012345678/2026/08/avatar-raw.jpg
+       */
+      object_key: string;
+    };
+    /**
+     * @description What the caller is allowed to do, as the server currently sees it.
+     *     This is advisory (BR-RBAC-08). It exists so the interface can hide actions that would fail, not so the client can decide anything: every server call re-checks, and a client that has this list is no closer to using a permission it was not granted.
+     */
+    MyPermissions: {
+      /**
+       * @description The roles assigned to the caller. There are exactly two in this product.
+       * @example [
+       *       "user"
+       *     ]
+       */
+      roles: components["schemas"]["RoleName"][];
+      /**
+       * @description Every named permission the caller's roles grant, resolved and flattened. A learner holds none of these — access to their own data is not a named permission, it is what `/me` means.
+       * @example []
+       */
+      permissions: string[];
+    };
+    /**
+     * @description Exactly two roles exist (BR-RBAC-02). A third is an ADR, not a row: it changes the shape of the product rather than its data.
+     * @enum {string}
+     */
+    RoleName: "admin" | "user";
+    /** @description A role and the permissions it grants. */
+    Role: {
+      name: components["schemas"]["RoleName"];
+      /** @example Full administrative access. */
+      description: string;
+      /**
+       * @example [
+       *       "rbac.assign",
+       *       "rbac.read",
+       *       "user.list"
+       *     ]
+       */
+      permissions: string[];
+    };
+    /** @description The role catalogue. It is small and fixed, so it is not paginated. */
+    RoleList: {
+      items: components["schemas"]["Role"][];
+    };
+    /** @description Grant a role to a user. */
+    AssignRoleRequest: {
+      role: components["schemas"]["RoleName"];
+    };
+    /** @description The roles held by one user, after the change. */
+    UserRoles: {
+      /** Format: uuid */
+      user_id: string;
+      /**
+       * @example [
+       *       "admin",
+       *       "user"
+       *     ]
+       */
+      roles: components["schemas"]["RoleName"][];
+    };
+    /**
+     * @description One recorded action: who did it, to what, and which fields moved.
+     *     It deliberately does not carry the values that changed (BR-AUDIT-04). An audit trail that stored the old and new display name would be a second copy of personal data with a longer retention period than the first, which is the opposite of what an audit trail is for.
+     */
+    AuditLog: {
+      /**
+       * Format: uuid
+       * @description Stable identifier for this entry.
+       */
+      id: string;
+      /**
+       * Format: date-time
+       * @description When the action happened, taken from the emitting module's event rather than from when this row was written. It is also the partition key, so every search is bounded by it.
+       * @example 2026-08-10T09:15:00Z
+       */
+      created_at: string;
+      /**
+       * Format: uuid
+       * @description The account that performed the action, or null when the system did it or when the actor's account has since been erased. Entries outlive the people in them (BR-AUDIT-06).
+       */
+      actor_id?: string | null;
+      actor_role?: components["schemas"]["ActorRole"];
+      action: components["schemas"]["AuditAction"];
+      /**
+       * @description The kind of thing acted on, such as `user` or `role_assignment`.
+       * @example user
+       */
+      target_type?: string | null;
+      /**
+       * @description Identifier of the thing acted on. It is a string rather than a uuid because not every auditable target is keyed by one.
+       * @example 0199a1c2-3d4e-7f80-9abc-def012345678
+       */
+      target_id?: string | null;
+      /**
+       * @description Names of the fields the action moved, sorted. Empty when the action changed no fields — a read, a grant, a revocation.
+       * @example [
+       *       "display_name",
+       *       "timezone"
+       *     ]
+       */
+      changed_fields: string[];
+      /** @description Prior values for the changed fields, with anything on the PII deny-list replaced by `[redacted]`. Null when the emitting module sent field names only, which is the Phase 1 default. */
+      before?: {
+        [key: string]: unknown;
+      } | null;
+      /** @description New values, redacted on the same terms as `before`. */
+      after?: {
+        [key: string]: unknown;
+      } | null;
+      /**
+       * @description Context that is not a field of the target — the reason an administrator gave, the outbox event that produced the entry. Redacted on the same deny-list as the diff.
+       * @example {
+       *       "source": "outbox"
+       *     }
+       */
+      meta: {
+        [key: string]: unknown;
+      };
+      /**
+       * @description The W3C trace this action belongs to (BR-AUDIT-07), so an entry links straight through to the distributed trace that produced it.
+       * @example 4bf92f3577b34da6a3ce929d0e0e4736
+       */
+      trace_id?: string | null;
+    };
+    /**
+     * @description What happened, named `<module>.<verb>_<object>`. The catalogue lives in `internal/modules/audit/AGENT.md`; unknown names are stored rather than rejected, because refusing an entry loses the record of the very thing that was unexpected.
+     * @example user.profile_updated
+     */
+    AuditAction: string;
+    /**
+     * @description The role the actor held at the time, recorded rather than resolved: a revoked admin must still show as an admin in the entries they left behind.
+     * @enum {string|null}
+     */
+    ActorRole: "admin" | "user" | "system" | null;
+    /** @description One page of audit entries, newest first. */
+    AuditLogPage: {
+      items: components["schemas"]["AuditLog"][];
+      page: components["schemas"]["Page"];
+    };
+    /** @description A security-relevant occurrence: a failed permission check, a lockout, a token reuse. Separate from the audit trail because these are triaged rather than merely recorded, and because they are not always attributable to a known actor. */
+    SecurityEvent: {
+      /** Format: uuid */
+      id: string;
+      /**
+       * Format: date-time
+       * @description When the event occurred. Also the partition key.
+       * @example 2026-08-10T09:15:00Z
+       */
+      created_at: string;
+      /**
+       * @description What happened, named `<module>.<event>`.
+       * @example rbac.access_denied
+       */
+      kind: string;
+      severity: components["schemas"]["SecurityEventSeverity"];
+      /**
+       * Format: uuid
+       * @description The account involved, when one is known. Null for events observed before authentication succeeded.
+       */
+      user_id?: string | null;
+      /**
+       * @description Structured context for triage, redacted on the same terms as an audit diff. It never carries the request body: an event raised by an attacker would otherwise store whatever they chose to send.
+       * @example {
+       *       "permission": "user.suspend"
+       *     }
+       */
+      detail: {
+        [key: string]: unknown;
+      };
+      /**
+       * @description The trace the event was raised in.
+       * @example 4bf92f3577b34da6a3ce929d0e0e4736
+       */
+      trace_id?: string | null;
+      /**
+       * Format: date-time
+       * @description When an administrator marked the event triaged, or null while it is open.
+       */
+      resolved_at?: string | null;
+      /**
+       * Format: uuid
+       * @description The administrator who triaged it.
+       */
+      resolved_by?: string | null;
+      /**
+       * @description Why it was closed. Required when resolving, so a closed event explains itself.
+       * @example Known load test, permission denial expected.
+       */
+      resolution_note?: string | null;
+    };
+    /**
+     * @description How much attention the event deserves. `critical` is reserved for events that indicate a compromise in progress, such as refresh-token reuse.
+     * @enum {string}
+     */
+    SecurityEventSeverity: "low" | "medium" | "high" | "critical";
+    /** @description One page of security events, newest first. */
+    SecurityEventPage: {
+      items: components["schemas"]["SecurityEvent"][];
+      page: components["schemas"]["Page"];
+    };
+    /** @description Mark a security event triaged. The note is required: an event closed with no reason is indistinguishable from one closed by accident. */
+    ResolveSecurityEventRequest: {
+      /** @example Known load test, permission denial expected. */
+      note: string;
+    };
+  };
+  responses: {
+    /** @description The request is malformed or has an invalid cursor. */
+    BadRequest: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        /**
+         * @example {
+         *       "type": "https://fluentra.dev/errors/bad-request",
+         *       "title": "Bad request",
+         *       "status": 400,
+         *       "detail": "The request body could not be decoded.",
+         *       "code": "BAD_REQUEST",
+         *       "request_id": "01J8XQ7Z9K3M4N5P6Q7R8S9T0V"
+         *     }
+         */
+        "application/problem+json": components["schemas"]["Problem"];
+      };
+    };
+    /** @description Authentication credentials are missing, invalid, or expired. */
+    Unauthorized: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        /**
+         * @example {
+         *       "type": "https://fluentra.dev/errors/unauthenticated",
+         *       "title": "Authentication required",
+         *       "status": 401,
+         *       "detail": "Provide a valid access token.",
+         *       "code": "UNAUTHENTICATED",
+         *       "request_id": "01J8XQ7Z9K3M4N5P6Q7R8S9T0V"
+         *     }
+         */
+        "application/problem+json": components["schemas"]["Problem"];
+      };
+    };
+    /** @description The authenticated actor lacks permission for this operation. */
+    Forbidden: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        /**
+         * @example {
+         *       "type": "https://fluentra.dev/errors/permission-denied",
+         *       "title": "Permission denied",
+         *       "status": 403,
+         *       "detail": "You do not have permission to perform this action.",
+         *       "code": "PERMISSION_DENIED",
+         *       "request_id": "01J8XQ7Z9K3M4N5P6Q7R8S9T0V"
+         *     }
+         */
+        "application/problem+json": components["schemas"]["Problem"];
+      };
+    };
+    /** @description The resource does not exist or is not visible to this actor. */
+    NotFound: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        /**
+         * @example {
+         *       "type": "https://fluentra.dev/errors/not-found",
+         *       "title": "Not found",
+         *       "status": 404,
+         *       "detail": "The requested resource was not found.",
+         *       "code": "NOT_FOUND",
+         *       "request_id": "01J8XQ7Z9K3M4N5P6Q7R8S9T0V"
+         *     }
+         */
+        "application/problem+json": components["schemas"]["Problem"];
+      };
+    };
+    /** @description The requested operation conflicts with the current resource state. */
+    Conflict: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        /**
+         * @example {
+         *       "type": "https://fluentra.dev/errors/conflict",
+         *       "title": "Conflict",
+         *       "status": 409,
+         *       "detail": "The operation conflicts with the current resource state.",
+         *       "code": "CONFLICT",
+         *       "request_id": "01J8XQ7Z9K3M4N5P6Q7R8S9T0V"
+         *     }
+         */
+        "application/problem+json": components["schemas"]["Problem"];
+      };
+    };
+    /** @description One or more request fields failed validation. */
+    ValidationFailed: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        /**
+         * @example {
+         *       "type": "https://fluentra.dev/errors/validation-failed",
+         *       "title": "Validation failed",
+         *       "status": 422,
+         *       "detail": "One or more request fields are invalid.",
+         *       "code": "VALIDATION_FAILED",
+         *       "request_id": "01J8XQ7Z9K3M4N5P6Q7R8S9T0V",
+         *       "errors": [
+         *         {
+         *           "field": "email",
+         *           "code": "EMAIL",
+         *           "message": "Enter a valid email address."
+         *         }
+         *       ]
+         *     }
+         */
+        "application/problem+json": components["schemas"]["ValidationProblem"];
+      };
+    };
+    /**
+     * @description The applicable rate limit has been exceeded.
+     *
+     *     `Retry-After` says how long to wait. The `RateLimit-*` trio says which limit was hit and when the window resets, which is what lets a client back off against the right budget instead of guessing -- a caller that has exhausted the 5/min `/auth` class and one that has exhausted the 60/min anonymous class both see 429, and they should not wait the same amount of time.
+     */
+    TooManyRequests: {
+      headers: {
+        "Retry-After": components["headers"]["Retry-After"];
+        "RateLimit-Limit": components["headers"]["RateLimit-Limit"];
+        "RateLimit-Remaining": components["headers"]["RateLimit-Remaining"];
+        "RateLimit-Reset": components["headers"]["RateLimit-Reset"];
+        [name: string]: unknown;
+      };
+      content: {
+        /**
+         * @example {
+         *       "type": "https://fluentra.dev/errors/rate-limited",
+         *       "title": "Too many requests",
+         *       "status": 429,
+         *       "detail": "Retry after the indicated interval.",
+         *       "code": "RATE_LIMITED",
+         *       "request_id": "01J8XQ7Z9K3M4N5P6Q7R8S9T0V"
+         *     }
+         */
+        "application/problem+json": components["schemas"]["Problem"];
+      };
+    };
+    /** @description An unexpected server error occurred without exposing internals. */
+    InternalServerError: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        /**
+         * @example {
+         *       "type": "https://fluentra.dev/errors/internal",
+         *       "title": "Internal server error",
+         *       "status": 500,
+         *       "detail": "An unexpected error occurred.",
+         *       "code": "INTERNAL",
+         *       "request_id": "01J8XQ7Z9K3M4N5P6Q7R8S9T0V"
+         *     }
+         */
+        "application/problem+json": components["schemas"]["Problem"];
+      };
+    };
+    /** @description A hard dependency is not available. */
+    ServiceUnavailable: {
+      headers: {
+        "Retry-After": components["headers"]["Retry-After"];
+        [name: string]: unknown;
+      };
+      content: {
+        /**
+         * @example {
+         *       "type": "https://fluentra.dev/errors/dependency-unavailable",
+         *       "title": "Service unavailable",
+         *       "status": 503,
+         *       "detail": "A required service is temporarily unavailable.",
+         *       "code": "DEPENDENCY_UNAVAILABLE",
+         *       "request_id": "01J8XQ7Z9K3M4N5P6Q7R8S9T0V"
+         *     }
+         */
+        "application/problem+json": components["schemas"]["Problem"];
+      };
+    };
+  };
+  parameters: never;
+  requestBodies: never;
+  headers: {
+    /**
+     * @description Correlation ID supplied by the client or generated by the API.
+     * @example 01J8XQ7Z9K3M4N5P6Q7R8S9T0V
+     */
+    "X-Request-Id": string;
+    /**
+     * @description Entity tag for a cacheable or mutable resource.
+     * @example "v1-01J8XQ7Z9K3M4N5P6Q7R8S9T0V"
+     */
+    ETag: string;
+    /**
+     * @description Cache directive; authenticated responses default to no-store.
+     * @example no-store
+     */
+    "Cache-Control": string;
+    /**
+     * @description Maximum requests permitted in the current rate-limit window.
+     * @example 60
+     */
+    "RateLimit-Limit": number;
+    /**
+     * @description Requests remaining in the current rate-limit window.
+     * @example 59
+     */
+    "RateLimit-Remaining": number;
+    /**
+     * @description Unix timestamp when the current rate-limit window resets.
+     * @example 1786033260
+     */
+    "RateLimit-Reset": number;
+    /**
+     * @description Number of seconds before the request may be retried.
+     * @example 30
+     */
+    "Retry-After": number;
+    /**
+     * @description The rotating refresh token, sent as `HttpOnly; Secure; SameSite=Lax; Path=/api/v1/auth`.
+     *
+     *     It is deliberately unreadable by script. An access token held in memory dies with the tab; a refresh token any injected script could read would be a standing takeover of the account, renewable long after the script is gone. `Path` narrows it further, so it is not attached to the hundreds of ordinary API calls that have no use for it.
+     *
+     *     `Secure` is dropped only when `APP_ENV=local`, where the SPA is served over plain HTTP and a `Secure` cookie would be discarded by the browser rather than merely unprotected.
+     * @example refresh_token=opaque-value; Path=/api/v1/auth; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax
+     */
+    "Set-Cookie-Refresh": string;
+    /**
+     * @description An expired `refresh_token` cookie, sent when the session it belonged to has been signed out.
+     *
+     *     The attributes match the ones the cookie was set with, because a browser treats a deletion whose `Path` or `Secure` differs as a *different* cookie and keeps the original -- so a mismatch here would leave the client replaying a dead token on every launch.
+     * @example refresh_token=; Path=/api/v1/auth; Max-Age=0; HttpOnly; Secure; SameSite=Lax
+     */
+    "Set-Cookie-RefreshCleared": string;
+  };
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    systemPing: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The API and its immediate dependencies responded. */
-            200: {
-                headers: {
-                    "X-Request-Id": components["headers"]["X-Request-Id"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "status": "ok"
-                     *     }
-                     */
-                    "application/json": components["schemas"]["Ping"];
-                };
-            };
-        };
+  systemPing: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    systemHealth: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description The API and its immediate dependencies responded. */
+      200: {
+        headers: {
+          "X-Request-Id": components["headers"]["X-Request-Id"];
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description The API process is live. */
-            200: {
-                headers: {
-                    "X-Request-Id": components["headers"]["X-Request-Id"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "status": "ok"
-                     *     }
-                     */
-                    "application/json": components["schemas"]["Health"];
-                };
-            };
+        content: {
+          /**
+           * @example {
+           *       "status": "ok"
+           *     }
+           */
+          "application/json": components["schemas"]["Ping"];
         };
+      };
     };
-    systemReady: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description All hard dependencies are ready. */
-            200: {
-                headers: {
-                    "X-Request-Id": components["headers"]["X-Request-Id"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "status": "ready"
-                     *     }
-                     */
-                    "application/json": components["schemas"]["Ready"];
-                };
-            };
-            503: components["responses"]["ServiceUnavailable"];
-        };
+  };
+  systemHealth: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    systemVersion: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description The API process is live. */
+      200: {
+        headers: {
+          "X-Request-Id": components["headers"]["X-Request-Id"];
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description The deployed API version. */
-            200: {
-                headers: {
-                    "X-Request-Id": components["headers"]["X-Request-Id"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "version": "0.1.0"
-                     *     }
-                     */
-                    "application/json": components["schemas"]["Version"];
-                };
-            };
+        content: {
+          /**
+           * @example {
+           *       "status": "ok"
+           *     }
+           */
+          "application/json": components["schemas"]["Health"];
         };
+      };
     };
-    authRegister: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "email": "learner@example.com",
-                 *       "password": "a perfectly fine passphrase",
-                 *       "display_name": "Nghi",
-                 *       "locale": "vi",
-                 *       "timezone": "Asia/Ho_Chi_Minh"
-                 *     }
-                 */
-                "application/json": components["schemas"]["RegisterRequest"];
-            };
-        };
-        responses: {
-            /** @description A challenge was issued. This is also the response when the address was already registered -- deliberately indistinguishable. */
-            201: {
-                headers: {
-                    "X-Request-Id": components["headers"]["X-Request-Id"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "challenge_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
-                     *       "purpose": "verify_email",
-                     *       "expires_at": "2026-08-10T09:10:00Z",
-                     *       "resend_after": "2026-08-10T09:01:00Z",
-                     *       "attempts_remaining": 5
-                     *     }
-                     */
-                    "application/json": components["schemas"]["Challenge"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            422: components["responses"]["ValidationFailed"];
-            429: components["responses"]["TooManyRequests"];
-        };
+  };
+  systemReady: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    authLogin: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description All hard dependencies are ready. */
+      200: {
+        headers: {
+          "X-Request-Id": components["headers"]["X-Request-Id"];
+          [name: string]: unknown;
         };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "email": "learner@example.com",
-                 *       "password": "a-secret-password"
-                 *     }
-                 */
-                "application/json": components["schemas"]["LoginRequest"];
-            };
+        content: {
+          /**
+           * @example {
+           *       "status": "ready"
+           *     }
+           */
+          "application/json": components["schemas"]["Ready"];
         };
-        responses: {
-            /** @description The caller is signed in. */
-            200: {
-                headers: {
-                    "X-Request-Id": components["headers"]["X-Request-Id"];
-                    "Set-Cookie": components["headers"]["Set-Cookie-Refresh"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "access_token": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJleGFtcGxlIn0.example-signature",
-                     *       "token_type": "Bearer",
-                     *       "expires_in": 900,
-                     *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
-                     *       "role": "user"
-                     *     }
-                     */
-                    "application/json": components["schemas"]["AuthSession"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            422: components["responses"]["ValidationFailed"];
-            429: components["responses"]["TooManyRequests"];
-        };
+      };
+      503: components["responses"]["ServiceUnavailable"];
     };
-    authVerifyChallenge: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The challenge handle returned when it was issued. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "code": "482913"
-                 *     }
-                 */
-                "application/json": components["schemas"]["VerifyChallengeRequest"];
-            };
-        };
-        responses: {
-            /** @description The code was accepted and the challenge consumed. */
-            200: {
-                headers: {
-                    "X-Request-Id": components["headers"]["X-Request-Id"];
-                    "Set-Cookie": components["headers"]["Set-Cookie-Refresh"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "purpose": "verify_email",
-                     *       "verified_at": "2026-08-10T09:03:12Z",
-                     *       "session": {
-                     *         "access_token": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJleGFtcGxlIn0.example-signature",
-                     *         "token_type": "Bearer",
-                     *         "expires_in": 900,
-                     *         "user_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
-                     *         "role": "user"
-                     *       }
-                     *     }
-                     */
-                    "application/json": components["schemas"]["VerifiedChallenge"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            404: components["responses"]["NotFound"];
-            409: components["responses"]["Conflict"];
-            422: components["responses"]["ValidationFailed"];
-            429: components["responses"]["TooManyRequests"];
-        };
+  };
+  systemVersion: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    authResendChallenge: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The challenge to send a new code for. */
-                id: string;
-            };
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description The deployed API version. */
+      200: {
+        headers: {
+          "X-Request-Id": components["headers"]["X-Request-Id"];
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description A new code was sent. */
-            200: {
-                headers: {
-                    "X-Request-Id": components["headers"]["X-Request-Id"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "challenge_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
-                     *       "purpose": "verify_email",
-                     *       "expires_at": "2026-08-10T09:10:00Z",
-                     *       "resend_after": "2026-08-10T09:01:00Z",
-                     *       "attempts_remaining": 5
-                     *     }
-                     */
-                    "application/json": components["schemas"]["Challenge"];
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            404: components["responses"]["NotFound"];
-            409: components["responses"]["Conflict"];
-            429: components["responses"]["TooManyRequests"];
+        content: {
+          /**
+           * @example {
+           *       "version": "0.1.0"
+           *     }
+           */
+          "application/json": components["schemas"]["Version"];
         };
+      };
     };
-    authRefresh: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Rotated. The old token is now spent and the cookie has been replaced. */
-            200: {
-                headers: {
-                    "X-Request-Id": components["headers"]["X-Request-Id"];
-                    "Set-Cookie": components["headers"]["Set-Cookie-Refresh"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "access_token": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJleGFtcGxlIn0.example-signature",
-                     *       "token_type": "Bearer",
-                     *       "expires_in": 900,
-                     *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
-                     *       "role": "user"
-                     *     }
-                     */
-                    "application/json": components["schemas"]["AuthSession"];
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            429: components["responses"]["TooManyRequests"];
-        };
+  };
+  authRegister: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    authGoogleStart: {
-        parameters: {
-            query?: {
-                /** @description Where to send the learner after signing in. Stored with the state rather than round-tripped through Google, so it cannot be rewritten in flight into an open redirect. */
-                redirect_to?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The authorization URL to send the browser to. */
-            200: {
-                headers: {
-                    "X-Request-Id": components["headers"]["X-Request-Id"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "authorization_url": "https://accounts.google.com/o/oauth2/v2/auth?client_id=example&state=example"
-                     *     }
-                     */
-                    "application/json": components["schemas"]["OAuthStart"];
-                };
-            };
-            429: components["responses"]["TooManyRequests"];
-            503: components["responses"]["ServiceUnavailable"];
-        };
+    requestBody: {
+      content: {
+        /**
+         * @example {
+         *       "email": "learner@example.com",
+         *       "password": "a perfectly fine passphrase",
+         *       "display_name": "Nghi",
+         *       "locale": "vi",
+         *       "timezone": "Asia/Ho_Chi_Minh"
+         *     }
+         */
+        "application/json": components["schemas"]["RegisterRequest"];
+      };
     };
-    authGoogleCallback: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    responses: {
+      /** @description A challenge was issued. This is also the response when the address was already registered -- deliberately indistinguishable. */
+      201: {
+        headers: {
+          "X-Request-Id": components["headers"]["X-Request-Id"];
+          [name: string]: unknown;
         };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "code": "4/0AeanS0by-example-authorization-code",
-                 *       "state": "9f2c1a7e4b3d4c119d217f0a5c8e2b44"
-                 *     }
-                 */
-                "application/json": components["schemas"]["OAuthCallbackRequest"];
-            };
+        content: {
+          /**
+           * @example {
+           *       "challenge_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+           *       "purpose": "verify_email",
+           *       "expires_at": "2026-08-10T09:10:00Z",
+           *       "resend_after": "2026-08-10T09:01:00Z",
+           *       "attempts_remaining": 5
+           *     }
+           */
+          "application/json": components["schemas"]["Challenge"];
         };
-        responses: {
-            /** @description The caller is signed in. */
-            200: {
-                headers: {
-                    "X-Request-Id": components["headers"]["X-Request-Id"];
-                    "Set-Cookie": components["headers"]["Set-Cookie-Refresh"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "access_token": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJleGFtcGxlIn0.example-signature",
-                     *       "token_type": "Bearer",
-                     *       "expires_in": 900,
-                     *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
-                     *       "role": "user"
-                     *     }
-                     */
-                    "application/json": components["schemas"]["AuthSession"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            409: components["responses"]["Conflict"];
-            429: components["responses"]["TooManyRequests"];
-            503: components["responses"]["ServiceUnavailable"];
-        };
+      };
+      400: components["responses"]["BadRequest"];
+      422: components["responses"]["ValidationFailed"];
+      429: components["responses"]["TooManyRequests"];
     };
-    authGoogleLink: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "code": "4/0AeanS0by-example-authorization-code",
-                 *       "state": "9f2c1a7e4b3d4c119d217f0a5c8e2b44"
-                 *     }
-                 */
-                "application/json": components["schemas"]["OAuthCallbackRequest"];
-            };
-        };
-        responses: {
-            /** @description The identity is linked. */
-            200: {
-                headers: {
-                    "X-Request-Id": components["headers"]["X-Request-Id"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "provider": "google",
-                     *       "email": "learner@example.com",
-                     *       "linked_at": "2026-08-12T09:12:44Z"
-                     *     }
-                     */
-                    "application/json": components["schemas"]["OAuthIdentity"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            409: components["responses"]["Conflict"];
-            429: components["responses"]["TooManyRequests"];
-            503: components["responses"]["ServiceUnavailable"];
-        };
+  };
+  authLogin: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    authGoogleUnlink: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No longer linked. */
-            204: {
-                headers: {
-                    "X-Request-Id": components["headers"]["X-Request-Id"];
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            401: components["responses"]["Unauthorized"];
-            409: components["responses"]["Conflict"];
-            429: components["responses"]["TooManyRequests"];
-        };
+    requestBody: {
+      content: {
+        /**
+         * @example {
+         *       "email": "learner@example.com",
+         *       "password": "a-secret-password"
+         *     }
+         */
+        "application/json": components["schemas"]["LoginRequest"];
+      };
     };
-    authForgotPassword: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    responses: {
+      /** @description The caller is signed in. */
+      200: {
+        headers: {
+          "X-Request-Id": components["headers"]["X-Request-Id"];
+          "Set-Cookie": components["headers"]["Set-Cookie-Refresh"];
+          [name: string]: unknown;
         };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "email": "learner@example.com"
-                 *     }
-                 */
-                "application/json": components["schemas"]["ForgotPasswordRequest"];
-            };
+        content: {
+          /**
+           * @example {
+           *       "access_token": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJleGFtcGxlIn0.example-signature",
+           *       "token_type": "Bearer",
+           *       "expires_in": 900,
+           *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+           *       "role": "user"
+           *     }
+           */
+          "application/json": components["schemas"]["AuthSession"];
         };
-        responses: {
-            /** @description A challenge was issued. This is also the response for an address with no account -- deliberately indistinguishable. */
-            202: {
-                headers: {
-                    "X-Request-Id": components["headers"]["X-Request-Id"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "challenge_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
-                     *       "purpose": "password_reset",
-                     *       "expires_at": "2026-08-10T09:30:00Z",
-                     *       "resend_after": "2026-08-10T09:01:00Z",
-                     *       "attempts_remaining": 5
-                     *     }
-                     */
-                    "application/json": components["schemas"]["Challenge"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            422: components["responses"]["ValidationFailed"];
-            429: components["responses"]["TooManyRequests"];
-        };
+      };
+      400: components["responses"]["BadRequest"];
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+      422: components["responses"]["ValidationFailed"];
+      429: components["responses"]["TooManyRequests"];
     };
-    authResetPassword: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "challenge_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
-                 *       "code": "482913",
-                 *       "password": "a perfectly fine passphrase"
-                 *     }
-                 */
-                "application/json": components["schemas"]["ResetPasswordRequest"];
-            };
-        };
-        responses: {
-            /** @description The password was replaced and every session revoked. */
-            200: {
-                headers: {
-                    "X-Request-Id": components["headers"]["X-Request-Id"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "changed_at": "2026-08-10T09:12:44Z",
-                     *       "sessions_revoked": 3
-                     *     }
-                     */
-                    "application/json": components["schemas"]["PasswordChanged"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            404: components["responses"]["NotFound"];
-            409: components["responses"]["Conflict"];
-            422: components["responses"]["ValidationFailed"];
-            429: components["responses"]["TooManyRequests"];
-        };
+  };
+  authVerifyChallenge: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The challenge handle returned when it was issued. */
+        id: string;
+      };
+      cookie?: never;
     };
-    authChangePassword: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "current_password": "a-secret-password",
-                 *       "new_password": "a perfectly fine passphrase"
-                 *     }
-                 */
-                "application/json": components["schemas"]["ChangePasswordRequest"];
-            };
-        };
-        responses: {
-            /** @description The password was replaced and every other session revoked. */
-            200: {
-                headers: {
-                    "X-Request-Id": components["headers"]["X-Request-Id"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "changed_at": "2026-08-10T09:12:44Z",
-                     *       "sessions_revoked": 3
-                     *     }
-                     */
-                    "application/json": components["schemas"]["PasswordChanged"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            422: components["responses"]["ValidationFailed"];
-            429: components["responses"]["TooManyRequests"];
-        };
+    requestBody: {
+      content: {
+        /**
+         * @example {
+         *       "code": "482913"
+         *     }
+         */
+        "application/json": components["schemas"]["VerifyChallengeRequest"];
+      };
     };
-    authListDevices: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    responses: {
+      /** @description The code was accepted and the challenge consumed. */
+      200: {
+        headers: {
+          "X-Request-Id": components["headers"]["X-Request-Id"];
+          "Set-Cookie": components["headers"]["Set-Cookie-Refresh"];
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description The caller's trusted devices. */
-            200: {
-                headers: {
-                    "X-Request-Id": components["headers"]["X-Request-Id"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "devices": [
-                     *         {
-                     *           "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
-                     *           "label": "Chrome on macOS",
-                     *           "trusted_at": "2026-06-14T08:02:11Z",
-                     *           "last_seen_at": "2026-08-11T08:55:13Z",
-                     *           "idle_expires_at": "2026-11-09T08:55:13Z",
-                     *           "absolute_expires_at": "2026-12-11T08:02:11Z"
-                     *         }
-                     *       ]
-                     *     }
-                     */
-                    "application/json": components["schemas"]["TrustedDeviceList"];
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            429: components["responses"]["TooManyRequests"];
+        content: {
+          /**
+           * @example {
+           *       "purpose": "verify_email",
+           *       "verified_at": "2026-08-10T09:03:12Z",
+           *       "session": {
+           *         "access_token": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJleGFtcGxlIn0.example-signature",
+           *         "token_type": "Bearer",
+           *         "expires_in": 900,
+           *         "user_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+           *         "role": "user"
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["VerifiedChallenge"];
         };
+      };
+      400: components["responses"]["BadRequest"];
+      401: components["responses"]["Unauthorized"];
+      404: components["responses"]["NotFound"];
+      409: components["responses"]["Conflict"];
+      422: components["responses"]["ValidationFailed"];
+      429: components["responses"]["TooManyRequests"];
     };
-    authUntrustDevice: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The device to untrust, from the list operation. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No longer trusted, and its refresh family revoked. Carries a cleared refresh cookie when the device untrusted was the caller's own. */
-            204: {
-                headers: {
-                    "X-Request-Id": components["headers"]["X-Request-Id"];
-                    "Set-Cookie": components["headers"]["Set-Cookie-RefreshCleared"];
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            401: components["responses"]["Unauthorized"];
-            404: components["responses"]["NotFound"];
-            429: components["responses"]["TooManyRequests"];
-        };
+  };
+  authResendChallenge: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The challenge to send a new code for. */
+        id: string;
+      };
+      cookie?: never;
     };
-    authLogout: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description A new code was sent. */
+      200: {
+        headers: {
+          "X-Request-Id": components["headers"]["X-Request-Id"];
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Signed out. */
-            204: {
-                headers: {
-                    "X-Request-Id": components["headers"]["X-Request-Id"];
-                    "Set-Cookie": components["headers"]["Set-Cookie-RefreshCleared"];
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            401: components["responses"]["Unauthorized"];
+        content: {
+          /**
+           * @example {
+           *       "challenge_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+           *       "purpose": "verify_email",
+           *       "expires_at": "2026-08-10T09:10:00Z",
+           *       "resend_after": "2026-08-10T09:01:00Z",
+           *       "attempts_remaining": 5
+           *     }
+           */
+          "application/json": components["schemas"]["Challenge"];
         };
+      };
+      401: components["responses"]["Unauthorized"];
+      404: components["responses"]["NotFound"];
+      409: components["responses"]["Conflict"];
+      429: components["responses"]["TooManyRequests"];
     };
-    authListSessions: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The caller's live sessions. */
-            200: {
-                headers: {
-                    "X-Request-Id": components["headers"]["X-Request-Id"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "sessions": [
-                     *         {
-                     *           "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
-                     *           "current": true,
-                     *           "device_label": "Chrome on macOS",
-                     *           "created_at": "2026-08-09T04:21:07Z",
-                     *           "last_seen_at": "2026-08-11T08:55:13Z"
-                     *         },
-                     *         {
-                     *           "id": "0199a1c2-3d4e-7f80-9abc-def0123456ab",
-                     *           "current": false,
-                     *           "device_label": null,
-                     *           "created_at": "2026-07-28T19:02:44Z",
-                     *           "last_seen_at": "2026-08-10T21:14:02Z"
-                     *         }
-                     *       ]
-                     *     }
-                     */
-                    "application/json": components["schemas"]["SessionList"];
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-        };
+  };
+  authRefresh: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    authRevokeSession: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The session to revoke, from the list operation. */
-                id: string;
-            };
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description Rotated. The old token is now spent and the cookie has been replaced. */
+      200: {
+        headers: {
+          "X-Request-Id": components["headers"]["X-Request-Id"];
+          "Set-Cookie": components["headers"]["Set-Cookie-Refresh"];
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Revoked. Carries a cleared refresh cookie when the session revoked was the caller's own. */
-            204: {
-                headers: {
-                    "X-Request-Id": components["headers"]["X-Request-Id"];
-                    "Set-Cookie": components["headers"]["Set-Cookie-RefreshCleared"];
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            401: components["responses"]["Unauthorized"];
-            404: components["responses"]["NotFound"];
+        content: {
+          /**
+           * @example {
+           *       "access_token": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJleGFtcGxlIn0.example-signature",
+           *       "token_type": "Bearer",
+           *       "expires_in": 900,
+           *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+           *       "role": "user"
+           *     }
+           */
+          "application/json": components["schemas"]["AuthSession"];
         };
+      };
+      401: components["responses"]["Unauthorized"];
+      429: components["responses"]["TooManyRequests"];
     };
-    userGetMe: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The caller's account. */
-            200: {
-                headers: {
-                    "X-Request-Id": components["headers"]["X-Request-Id"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
-                     *       "email": "learner@example.com",
-                     *       "status": "active",
-                     *       "email_verified_at": "2026-08-09T04:21:07Z",
-                     *       "created_at": "2026-08-01T09:15:00Z",
-                     *       "updated_at": "2026-08-09T04:21:07Z",
-                     *       "profile": {
-                     *         "display_name": "Nghi",
-                     *         "avatar_url": null,
-                     *         "country": "VN",
-                     *         "timezone": "Asia/Ho_Chi_Minh",
-                     *         "date_of_birth": "1998-03-04"
-                     *       }
-                     *     }
-                     */
-                    "application/json": components["schemas"]["Me"];
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            404: components["responses"]["NotFound"];
-        };
+  };
+  authGoogleStart: {
+    parameters: {
+      query?: {
+        /** @description Where to send the learner after signing in. Stored with the state rather than round-tripped through Google, so it cannot be rewritten in flight into an open redirect. */
+        redirect_to?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    userUpdateMe: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description The authorization URL to send the browser to. */
+      200: {
+        headers: {
+          "X-Request-Id": components["headers"]["X-Request-Id"];
+          [name: string]: unknown;
         };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "display_name": "Nghi Nguyen",
-                 *       "timezone": "Asia/Ho_Chi_Minh"
-                 *     }
-                 */
-                "application/json": components["schemas"]["UpdateMeRequest"];
-            };
+        content: {
+          /**
+           * @example {
+           *       "authorization_url": "https://accounts.google.com/o/oauth2/v2/auth?client_id=example&state=example"
+           *     }
+           */
+          "application/json": components["schemas"]["OAuthStart"];
         };
-        responses: {
-            /** @description The updated account. */
-            200: {
-                headers: {
-                    "X-Request-Id": components["headers"]["X-Request-Id"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
-                     *       "email": "learner@example.com",
-                     *       "status": "active",
-                     *       "email_verified_at": "2026-08-09T04:21:07Z",
-                     *       "created_at": "2026-08-01T09:15:00Z",
-                     *       "updated_at": "2026-08-09T04:21:07Z",
-                     *       "profile": {
-                     *         "display_name": "Nghi",
-                     *         "avatar_url": null,
-                     *         "country": "VN",
-                     *         "timezone": "Asia/Ho_Chi_Minh",
-                     *         "date_of_birth": "1998-03-04"
-                     *       }
-                     *     }
-                     */
-                    "application/json": components["schemas"]["Me"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            404: components["responses"]["NotFound"];
-            422: components["responses"]["ValidationFailed"];
-        };
+      };
+      429: components["responses"]["TooManyRequests"];
+      503: components["responses"]["ServiceUnavailable"];
     };
-    rbacGetMyPermissions: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The caller's roles and permissions. */
-            200: {
-                headers: {
-                    "X-Request-Id": components["headers"]["X-Request-Id"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "roles": [
-                     *         "user"
-                     *       ],
-                     *       "permissions": []
-                     *     }
-                     */
-                    "application/json": components["schemas"]["MyPermissions"];
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-        };
+  };
+  authGoogleCallback: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    userGetMyPreferences: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The caller's preferences. */
-            200: {
-                headers: {
-                    "X-Request-Id": components["headers"]["X-Request-Id"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "locale": "vi",
-                     *       "theme": "dark",
-                     *       "daily_goal_minutes": 30,
-                     *       "notification_channels": [
-                     *         "in_app",
-                     *         "push"
-                     *       ],
-                     *       "quiet_hours": {
-                     *         "start": "22:00",
-                     *         "end": "07:00"
-                     *       },
-                     *       "ai_processing_opt_out": false,
-                     *       "updated_at": "2026-08-09T04:21:07Z"
-                     *     }
-                     */
-                    "application/json": components["schemas"]["Preferences"];
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            404: components["responses"]["NotFound"];
-        };
+    requestBody: {
+      content: {
+        /**
+         * @example {
+         *       "code": "4/0AeanS0by-example-authorization-code",
+         *       "state": "9f2c1a7e4b3d4c119d217f0a5c8e2b44"
+         *     }
+         */
+        "application/json": components["schemas"]["OAuthCallbackRequest"];
+      };
     };
-    userReplaceMyPreferences: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    responses: {
+      /** @description The caller is signed in. */
+      200: {
+        headers: {
+          "X-Request-Id": components["headers"]["X-Request-Id"];
+          "Set-Cookie": components["headers"]["Set-Cookie-Refresh"];
+          [name: string]: unknown;
         };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "locale": "vi",
-                 *       "theme": "dark",
-                 *       "daily_goal_minutes": 30,
-                 *       "notification_channels": [
-                 *         "in_app",
-                 *         "push"
-                 *       ],
-                 *       "quiet_hours": {
-                 *         "start": "22:00",
-                 *         "end": "07:00"
-                 *       },
-                 *       "ai_processing_opt_out": false
-                 *     }
-                 */
-                "application/json": components["schemas"]["ReplacePreferencesRequest"];
-            };
+        content: {
+          /**
+           * @example {
+           *       "access_token": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJleGFtcGxlIn0.example-signature",
+           *       "token_type": "Bearer",
+           *       "expires_in": 900,
+           *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+           *       "role": "user"
+           *     }
+           */
+          "application/json": components["schemas"]["AuthSession"];
         };
-        responses: {
-            /** @description The stored preferences. */
-            200: {
-                headers: {
-                    "X-Request-Id": components["headers"]["X-Request-Id"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "locale": "vi",
-                     *       "theme": "dark",
-                     *       "daily_goal_minutes": 30,
-                     *       "notification_channels": [
-                     *         "in_app",
-                     *         "push"
-                     *       ],
-                     *       "quiet_hours": {
-                     *         "start": "22:00",
-                     *         "end": "07:00"
-                     *       },
-                     *       "ai_processing_opt_out": false,
-                     *       "updated_at": "2026-08-09T04:21:07Z"
-                     *     }
-                     */
-                    "application/json": components["schemas"]["Preferences"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            404: components["responses"]["NotFound"];
-            422: components["responses"]["ValidationFailed"];
-        };
+      };
+      400: components["responses"]["BadRequest"];
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+      409: components["responses"]["Conflict"];
+      429: components["responses"]["TooManyRequests"];
+      503: components["responses"]["ServiceUnavailable"];
     };
-    userRequestAvatarUploadIntent: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Upload intent generated. */
-            200: {
-                headers: {
-                    "X-Request-Id": components["headers"]["X-Request-Id"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "upload_url": "https://storage.example.com/fluentra-avatars/users/0199a1c2-3d4e-7f80-9abc-def012345678/2026/08/avatar-raw.jpg",
-                     *       "method": "POST",
-                     *       "object_key": "users/0199a1c2-3d4e-7f80-9abc-def012345678/2026/08/avatar-raw.jpg",
-                     *       "expires_at": "2026-08-15T08:05:00Z",
-                     *       "max_bytes": 5242880,
-                     *       "content_type": "image/jpeg"
-                     *     }
-                     */
-                    "application/json": components["schemas"]["AvatarUploadIntent"];
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            429: components["responses"]["TooManyRequests"];
-        };
+  };
+  authGoogleLink: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    userConfirmAvatar: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "object_key": "users/0199a1c2-3d4e-7f80-9abc-def012345678/2026/08/avatar-raw.jpg"
-                 *     }
-                 */
-                "application/json": components["schemas"]["ConfirmAvatarRequest"];
-            };
-        };
-        responses: {
-            /** @description The updated account with the new avatar. */
-            200: {
-                headers: {
-                    "X-Request-Id": components["headers"]["X-Request-Id"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
-                     *       "email": "learner@example.com",
-                     *       "status": "active",
-                     *       "email_verified_at": "2026-08-09T04:21:07Z",
-                     *       "created_at": "2026-08-01T09:15:00Z",
-                     *       "updated_at": "2026-08-09T04:21:07Z",
-                     *       "profile": {
-                     *         "display_name": "Nghi",
-                     *         "avatar_url": null,
-                     *         "country": "VN",
-                     *         "timezone": "Asia/Ho_Chi_Minh",
-                     *         "date_of_birth": "1998-03-04"
-                     *       }
-                     *     }
-                     */
-                    "application/json": components["schemas"]["Me"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            404: components["responses"]["NotFound"];
-            422: components["responses"]["ValidationFailed"];
-        };
+    requestBody: {
+      content: {
+        /**
+         * @example {
+         *       "code": "4/0AeanS0by-example-authorization-code",
+         *       "state": "9f2c1a7e4b3d4c119d217f0a5c8e2b44"
+         *     }
+         */
+        "application/json": components["schemas"]["OAuthCallbackRequest"];
+      };
     };
-    rbacListRoles: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    responses: {
+      /** @description The identity is linked. */
+      200: {
+        headers: {
+          "X-Request-Id": components["headers"]["X-Request-Id"];
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Every role, with its permissions. */
-            200: {
-                headers: {
-                    "X-Request-Id": components["headers"]["X-Request-Id"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "items": [
-                     *         {
-                     *           "name": "admin",
-                     *           "description": "Full administrative access.",
-                     *           "permissions": [
-                     *             "rbac.assign",
-                     *             "rbac.read",
-                     *             "user.list"
-                     *           ]
-                     *         },
-                     *         {
-                     *           "name": "user",
-                     *           "description": "A learner. Holds no named permissions.",
-                     *           "permissions": []
-                     *         }
-                     *       ]
-                     *     }
-                     */
-                    "application/json": components["schemas"]["RoleList"];
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
+        content: {
+          /**
+           * @example {
+           *       "provider": "google",
+           *       "email": "learner@example.com",
+           *       "linked_at": "2026-08-12T09:12:44Z"
+           *     }
+           */
+          "application/json": components["schemas"]["OAuthIdentity"];
         };
+      };
+      400: components["responses"]["BadRequest"];
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+      409: components["responses"]["Conflict"];
+      429: components["responses"]["TooManyRequests"];
+      503: components["responses"]["ServiceUnavailable"];
     };
-    rbacAssignRole: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The user whose roles are being changed. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "role": "admin"
-                 *     }
-                 */
-                "application/json": components["schemas"]["AssignRoleRequest"];
-            };
-        };
-        responses: {
-            /** @description The user's roles after the grant. */
-            200: {
-                headers: {
-                    "X-Request-Id": components["headers"]["X-Request-Id"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
-                     *       "roles": [
-                     *         "admin",
-                     *         "user"
-                     *       ]
-                     *     }
-                     */
-                    "application/json": components["schemas"]["UserRoles"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-            422: components["responses"]["ValidationFailed"];
-        };
+  };
+  authGoogleUnlink: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    rbacRevokeRole: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The user whose roles are being changed. */
-                id: string;
-                /** @description The role to revoke. */
-                role: components["schemas"]["RoleName"];
-            };
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description No longer linked. */
+      204: {
+        headers: {
+          "X-Request-Id": components["headers"]["X-Request-Id"];
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description The user's roles after the revocation. */
-            200: {
-                headers: {
-                    "X-Request-Id": components["headers"]["X-Request-Id"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
-                     *       "roles": [
-                     *         "admin",
-                     *         "user"
-                     *       ]
-                     *     }
-                     */
-                    "application/json": components["schemas"]["UserRoles"];
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-            409: components["responses"]["Conflict"];
-        };
+        content?: never;
+      };
+      401: components["responses"]["Unauthorized"];
+      409: components["responses"]["Conflict"];
+      429: components["responses"]["TooManyRequests"];
     };
-    auditSearchLogs: {
-        parameters: {
-            query?: {
-                /** @description Only entries recorded against this actor. */
-                actor_id?: string;
-                /** @description Exact action name, such as `user.profile_updated`. */
-                action?: components["schemas"]["AuditAction"];
-                /** @description Only entries whose target is of this kind. */
-                target_type?: string;
-                /** @description Only entries against this target. Combined with `target_type` it is the "who touched this record" query. */
-                target_id?: string;
-                /** @description Inclusive lower bound on `created_at`. Defaults to 90 days before `to`. */
-                from?: string;
-                /** @description Exclusive upper bound on `created_at`. Defaults to now. */
-                to?: string;
-                /** @description Opaque cursor from the previous page's `next_cursor`. */
-                cursor?: components["schemas"]["Cursor"];
-                /** @description Maximum entries to return. */
-                limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description One page of audit entries. */
-            200: {
-                headers: {
-                    "X-Request-Id": components["headers"]["X-Request-Id"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "items": [
-                     *         {
-                     *           "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
-                     *           "created_at": "2026-08-10T09:15:00Z",
-                     *           "actor_id": "0199a1c2-3d4e-7f80-9abc-def012345679",
-                     *           "actor_role": "user",
-                     *           "action": "user.profile_updated",
-                     *           "target_type": "user",
-                     *           "target_id": "0199a1c2-3d4e-7f80-9abc-def012345679",
-                     *           "changed_fields": [
-                     *             "display_name",
-                     *             "timezone"
-                     *           ],
-                     *           "before": null,
-                     *           "after": null,
-                     *           "meta": {
-                     *             "source": "outbox"
-                     *           },
-                     *           "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736"
-                     *         }
-                     *       ],
-                     *       "page": {
-                     *         "has_more": false,
-                     *         "limit": 20
-                     *       }
-                     *     }
-                     */
-                    "application/json": components["schemas"]["AuditLogPage"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            422: components["responses"]["ValidationFailed"];
-        };
+  };
+  authForgotPassword: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    auditSearchSecurityEvents: {
-        parameters: {
-            query?: {
-                /** @description Exact event kind, such as `rbac.access_denied`. */
-                kind?: string;
-                /** @description Only events at this severity. */
-                severity?: components["schemas"]["SecurityEventSeverity"];
-                /** @description `false` returns only open events, `true` only triaged ones. Omitted returns both. */
-                resolved?: boolean;
-                /** @description Only events involving this account. */
-                user_id?: string;
-                /** @description Inclusive lower bound on `created_at`. Defaults to 90 days before `to`. */
-                from?: string;
-                /** @description Exclusive upper bound on `created_at`. Defaults to now. */
-                to?: string;
-                /** @description Opaque cursor from the previous page's `next_cursor`. */
-                cursor?: components["schemas"]["Cursor"];
-                /** @description Maximum events to return. */
-                limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description One page of security events. */
-            200: {
-                headers: {
-                    "X-Request-Id": components["headers"]["X-Request-Id"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "items": [
-                     *         {
-                     *           "id": "0199a1c2-3d4e-7f80-9abc-def01234567a",
-                     *           "created_at": "2026-08-10T09:15:00Z",
-                     *           "kind": "rbac.access_denied",
-                     *           "severity": "medium",
-                     *           "user_id": "0199a1c2-3d4e-7f80-9abc-def012345679",
-                     *           "detail": {
-                     *             "permission": "user.suspend"
-                     *           },
-                     *           "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
-                     *           "resolved_at": null,
-                     *           "resolved_by": null,
-                     *           "resolution_note": null
-                     *         }
-                     *       ],
-                     *       "page": {
-                     *         "has_more": false,
-                     *         "limit": 20
-                     *       }
-                     *     }
-                     */
-                    "application/json": components["schemas"]["SecurityEventPage"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            422: components["responses"]["ValidationFailed"];
-        };
+    requestBody: {
+      content: {
+        /**
+         * @example {
+         *       "email": "learner@example.com"
+         *     }
+         */
+        "application/json": components["schemas"]["ForgotPasswordRequest"];
+      };
     };
-    auditResolveSecurityEvent: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The security event being triaged. */
-                id: string;
-            };
-            cookie?: never;
+    responses: {
+      /** @description A challenge was issued. This is also the response for an address with no account -- deliberately indistinguishable. */
+      202: {
+        headers: {
+          "X-Request-Id": components["headers"]["X-Request-Id"];
+          [name: string]: unknown;
         };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "note": "Known load test, permission denial expected."
-                 *     }
-                 */
-                "application/json": components["schemas"]["ResolveSecurityEventRequest"];
-            };
+        content: {
+          /**
+           * @example {
+           *       "challenge_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+           *       "purpose": "password_reset",
+           *       "expires_at": "2026-08-10T09:30:00Z",
+           *       "resend_after": "2026-08-10T09:01:00Z",
+           *       "attempts_remaining": 5
+           *     }
+           */
+          "application/json": components["schemas"]["Challenge"];
         };
-        responses: {
-            /** @description The resolved event. */
-            200: {
-                headers: {
-                    "X-Request-Id": components["headers"]["X-Request-Id"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "id": "0199a1c2-3d4e-7f80-9abc-def01234567a",
-                     *       "created_at": "2026-08-10T09:15:00Z",
-                     *       "kind": "rbac.access_denied",
-                     *       "severity": "medium",
-                     *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345679",
-                     *       "detail": {
-                     *         "permission": "user.suspend"
-                     *       },
-                     *       "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
-                     *       "resolved_at": "2026-08-10T10:02:00Z",
-                     *       "resolved_by": "0199a1c2-3d4e-7f80-9abc-def012345678",
-                     *       "resolution_note": "Known load test, permission denial expected."
-                     *     }
-                     */
-                    "application/json": components["schemas"]["SecurityEvent"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-            409: components["responses"]["Conflict"];
-            422: components["responses"]["ValidationFailed"];
-        };
+      };
+      400: components["responses"]["BadRequest"];
+      422: components["responses"]["ValidationFailed"];
+      429: components["responses"]["TooManyRequests"];
     };
+  };
+  authResetPassword: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        /**
+         * @example {
+         *       "challenge_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+         *       "code": "482913",
+         *       "password": "a perfectly fine passphrase"
+         *     }
+         */
+        "application/json": components["schemas"]["ResetPasswordRequest"];
+      };
+    };
+    responses: {
+      /** @description The password was replaced and every session revoked. */
+      200: {
+        headers: {
+          "X-Request-Id": components["headers"]["X-Request-Id"];
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "changed_at": "2026-08-10T09:12:44Z",
+           *       "sessions_revoked": 3
+           *     }
+           */
+          "application/json": components["schemas"]["PasswordChanged"];
+        };
+      };
+      400: components["responses"]["BadRequest"];
+      401: components["responses"]["Unauthorized"];
+      404: components["responses"]["NotFound"];
+      409: components["responses"]["Conflict"];
+      422: components["responses"]["ValidationFailed"];
+      429: components["responses"]["TooManyRequests"];
+    };
+  };
+  authChangePassword: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        /**
+         * @example {
+         *       "current_password": "a-secret-password",
+         *       "new_password": "a perfectly fine passphrase"
+         *     }
+         */
+        "application/json": components["schemas"]["ChangePasswordRequest"];
+      };
+    };
+    responses: {
+      /** @description The password was replaced and every other session revoked. */
+      200: {
+        headers: {
+          "X-Request-Id": components["headers"]["X-Request-Id"];
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "changed_at": "2026-08-10T09:12:44Z",
+           *       "sessions_revoked": 3
+           *     }
+           */
+          "application/json": components["schemas"]["PasswordChanged"];
+        };
+      };
+      400: components["responses"]["BadRequest"];
+      401: components["responses"]["Unauthorized"];
+      422: components["responses"]["ValidationFailed"];
+      429: components["responses"]["TooManyRequests"];
+    };
+  };
+  authListDevices: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The caller's trusted devices. */
+      200: {
+        headers: {
+          "X-Request-Id": components["headers"]["X-Request-Id"];
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "devices": [
+           *         {
+           *           "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+           *           "label": "Chrome on macOS",
+           *           "trusted_at": "2026-06-14T08:02:11Z",
+           *           "last_seen_at": "2026-08-11T08:55:13Z",
+           *           "idle_expires_at": "2026-11-09T08:55:13Z",
+           *           "absolute_expires_at": "2026-12-11T08:02:11Z"
+           *         }
+           *       ]
+           *     }
+           */
+          "application/json": components["schemas"]["TrustedDeviceList"];
+        };
+      };
+      401: components["responses"]["Unauthorized"];
+      429: components["responses"]["TooManyRequests"];
+    };
+  };
+  authUntrustDevice: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The device to untrust, from the list operation. */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No longer trusted, and its refresh family revoked. Carries a cleared refresh cookie when the device untrusted was the caller's own. */
+      204: {
+        headers: {
+          "X-Request-Id": components["headers"]["X-Request-Id"];
+          "Set-Cookie": components["headers"]["Set-Cookie-RefreshCleared"];
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      401: components["responses"]["Unauthorized"];
+      404: components["responses"]["NotFound"];
+      429: components["responses"]["TooManyRequests"];
+    };
+  };
+  authLogout: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Signed out. */
+      204: {
+        headers: {
+          "X-Request-Id": components["headers"]["X-Request-Id"];
+          "Set-Cookie": components["headers"]["Set-Cookie-RefreshCleared"];
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      401: components["responses"]["Unauthorized"];
+    };
+  };
+  authListSessions: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The caller's live sessions. */
+      200: {
+        headers: {
+          "X-Request-Id": components["headers"]["X-Request-Id"];
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "sessions": [
+           *         {
+           *           "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+           *           "current": true,
+           *           "device_label": "Chrome on macOS",
+           *           "created_at": "2026-08-09T04:21:07Z",
+           *           "last_seen_at": "2026-08-11T08:55:13Z"
+           *         },
+           *         {
+           *           "id": "0199a1c2-3d4e-7f80-9abc-def0123456ab",
+           *           "current": false,
+           *           "device_label": null,
+           *           "created_at": "2026-07-28T19:02:44Z",
+           *           "last_seen_at": "2026-08-10T21:14:02Z"
+           *         }
+           *       ]
+           *     }
+           */
+          "application/json": components["schemas"]["SessionList"];
+        };
+      };
+      401: components["responses"]["Unauthorized"];
+    };
+  };
+  authRevokeSession: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The session to revoke, from the list operation. */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Revoked. Carries a cleared refresh cookie when the session revoked was the caller's own. */
+      204: {
+        headers: {
+          "X-Request-Id": components["headers"]["X-Request-Id"];
+          "Set-Cookie": components["headers"]["Set-Cookie-RefreshCleared"];
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      401: components["responses"]["Unauthorized"];
+      404: components["responses"]["NotFound"];
+    };
+  };
+  userGetMe: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The caller's account. */
+      200: {
+        headers: {
+          "X-Request-Id": components["headers"]["X-Request-Id"];
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+           *       "email": "learner@example.com",
+           *       "status": "active",
+           *       "email_verified_at": "2026-08-09T04:21:07Z",
+           *       "created_at": "2026-08-01T09:15:00Z",
+           *       "updated_at": "2026-08-09T04:21:07Z",
+           *       "profile": {
+           *         "display_name": "Nghi",
+           *         "avatar_url": null,
+           *         "country": "VN",
+           *         "timezone": "Asia/Ho_Chi_Minh",
+           *         "date_of_birth": "1998-03-04"
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Me"];
+        };
+      };
+      401: components["responses"]["Unauthorized"];
+      404: components["responses"]["NotFound"];
+    };
+  };
+  userUpdateMe: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        /**
+         * @example {
+         *       "display_name": "Nghi Nguyen",
+         *       "timezone": "Asia/Ho_Chi_Minh"
+         *     }
+         */
+        "application/json": components["schemas"]["UpdateMeRequest"];
+      };
+    };
+    responses: {
+      /** @description The updated account. */
+      200: {
+        headers: {
+          "X-Request-Id": components["headers"]["X-Request-Id"];
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+           *       "email": "learner@example.com",
+           *       "status": "active",
+           *       "email_verified_at": "2026-08-09T04:21:07Z",
+           *       "created_at": "2026-08-01T09:15:00Z",
+           *       "updated_at": "2026-08-09T04:21:07Z",
+           *       "profile": {
+           *         "display_name": "Nghi",
+           *         "avatar_url": null,
+           *         "country": "VN",
+           *         "timezone": "Asia/Ho_Chi_Minh",
+           *         "date_of_birth": "1998-03-04"
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Me"];
+        };
+      };
+      400: components["responses"]["BadRequest"];
+      401: components["responses"]["Unauthorized"];
+      404: components["responses"]["NotFound"];
+      422: components["responses"]["ValidationFailed"];
+    };
+  };
+  rbacGetMyPermissions: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The caller's roles and permissions. */
+      200: {
+        headers: {
+          "X-Request-Id": components["headers"]["X-Request-Id"];
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "roles": [
+           *         "user"
+           *       ],
+           *       "permissions": []
+           *     }
+           */
+          "application/json": components["schemas"]["MyPermissions"];
+        };
+      };
+      401: components["responses"]["Unauthorized"];
+    };
+  };
+  userGetMyPreferences: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The caller's preferences. */
+      200: {
+        headers: {
+          "X-Request-Id": components["headers"]["X-Request-Id"];
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "locale": "vi",
+           *       "theme": "dark",
+           *       "daily_goal_minutes": 30,
+           *       "notification_channels": [
+           *         "in_app",
+           *         "push"
+           *       ],
+           *       "quiet_hours": {
+           *         "start": "22:00",
+           *         "end": "07:00"
+           *       },
+           *       "ai_processing_opt_out": false,
+           *       "updated_at": "2026-08-09T04:21:07Z"
+           *     }
+           */
+          "application/json": components["schemas"]["Preferences"];
+        };
+      };
+      401: components["responses"]["Unauthorized"];
+      404: components["responses"]["NotFound"];
+    };
+  };
+  userReplaceMyPreferences: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        /**
+         * @example {
+         *       "locale": "vi",
+         *       "theme": "dark",
+         *       "daily_goal_minutes": 30,
+         *       "notification_channels": [
+         *         "in_app",
+         *         "push"
+         *       ],
+         *       "quiet_hours": {
+         *         "start": "22:00",
+         *         "end": "07:00"
+         *       },
+         *       "ai_processing_opt_out": false
+         *     }
+         */
+        "application/json": components["schemas"]["ReplacePreferencesRequest"];
+      };
+    };
+    responses: {
+      /** @description The stored preferences. */
+      200: {
+        headers: {
+          "X-Request-Id": components["headers"]["X-Request-Id"];
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "locale": "vi",
+           *       "theme": "dark",
+           *       "daily_goal_minutes": 30,
+           *       "notification_channels": [
+           *         "in_app",
+           *         "push"
+           *       ],
+           *       "quiet_hours": {
+           *         "start": "22:00",
+           *         "end": "07:00"
+           *       },
+           *       "ai_processing_opt_out": false,
+           *       "updated_at": "2026-08-09T04:21:07Z"
+           *     }
+           */
+          "application/json": components["schemas"]["Preferences"];
+        };
+      };
+      400: components["responses"]["BadRequest"];
+      401: components["responses"]["Unauthorized"];
+      404: components["responses"]["NotFound"];
+      422: components["responses"]["ValidationFailed"];
+    };
+  };
+  userRequestAvatarUploadIntent: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Upload intent generated. */
+      200: {
+        headers: {
+          "X-Request-Id": components["headers"]["X-Request-Id"];
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AvatarUploadIntent"];
+        };
+      };
+      401: components["responses"]["Unauthorized"];
+      429: components["responses"]["TooManyRequests"];
+    };
+  };
+  userConfirmAvatar: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        /**
+         * @example {
+         *       "object_key": "users/0199a1c2-3d4e-7f80-9abc-def012345678/2026/08/avatar-raw.jpg"
+         *     }
+         */
+        "application/json": components["schemas"]["ConfirmAvatarRequest"];
+      };
+    };
+    responses: {
+      /** @description The updated account with the new avatar. */
+      200: {
+        headers: {
+          "X-Request-Id": components["headers"]["X-Request-Id"];
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+           *       "email": "learner@example.com",
+           *       "status": "active",
+           *       "email_verified_at": "2026-08-09T04:21:07Z",
+           *       "created_at": "2026-08-01T09:15:00Z",
+           *       "updated_at": "2026-08-09T04:21:07Z",
+           *       "profile": {
+           *         "display_name": "Nghi",
+           *         "avatar_url": null,
+           *         "country": "VN",
+           *         "timezone": "Asia/Ho_Chi_Minh",
+           *         "date_of_birth": "1998-03-04"
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["Me"];
+        };
+      };
+      400: components["responses"]["BadRequest"];
+      401: components["responses"]["Unauthorized"];
+      404: components["responses"]["NotFound"];
+      422: components["responses"]["ValidationFailed"];
+    };
+  };
+  rbacListRoles: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Every role, with its permissions. */
+      200: {
+        headers: {
+          "X-Request-Id": components["headers"]["X-Request-Id"];
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "items": [
+           *         {
+           *           "name": "admin",
+           *           "description": "Full administrative access.",
+           *           "permissions": [
+           *             "rbac.assign",
+           *             "rbac.read",
+           *             "user.list"
+           *           ]
+           *         },
+           *         {
+           *           "name": "user",
+           *           "description": "A learner. Holds no named permissions.",
+           *           "permissions": []
+           *         }
+           *       ]
+           *     }
+           */
+          "application/json": components["schemas"]["RoleList"];
+        };
+      };
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+    };
+  };
+  rbacAssignRole: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The user whose roles are being changed. */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        /**
+         * @example {
+         *       "role": "admin"
+         *     }
+         */
+        "application/json": components["schemas"]["AssignRoleRequest"];
+      };
+    };
+    responses: {
+      /** @description The user's roles after the grant. */
+      200: {
+        headers: {
+          "X-Request-Id": components["headers"]["X-Request-Id"];
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+           *       "roles": [
+           *         "admin",
+           *         "user"
+           *       ]
+           *     }
+           */
+          "application/json": components["schemas"]["UserRoles"];
+        };
+      };
+      400: components["responses"]["BadRequest"];
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+      404: components["responses"]["NotFound"];
+      422: components["responses"]["ValidationFailed"];
+    };
+  };
+  rbacRevokeRole: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The user whose roles are being changed. */
+        id: string;
+        /** @description The role to revoke. */
+        role: components["schemas"]["RoleName"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The user's roles after the revocation. */
+      200: {
+        headers: {
+          "X-Request-Id": components["headers"]["X-Request-Id"];
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+           *       "roles": [
+           *         "admin",
+           *         "user"
+           *       ]
+           *     }
+           */
+          "application/json": components["schemas"]["UserRoles"];
+        };
+      };
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+      404: components["responses"]["NotFound"];
+      409: components["responses"]["Conflict"];
+    };
+  };
+  auditSearchLogs: {
+    parameters: {
+      query?: {
+        /** @description Only entries recorded against this actor. */
+        actor_id?: string;
+        /** @description Exact action name, such as `user.profile_updated`. */
+        action?: components["schemas"]["AuditAction"];
+        /** @description Only entries whose target is of this kind. */
+        target_type?: string;
+        /** @description Only entries against this target. Combined with `target_type` it is the "who touched this record" query. */
+        target_id?: string;
+        /** @description Inclusive lower bound on `created_at`. Defaults to 90 days before `to`. */
+        from?: string;
+        /** @description Exclusive upper bound on `created_at`. Defaults to now. */
+        to?: string;
+        /** @description Opaque cursor from the previous page's `next_cursor`. */
+        cursor?: components["schemas"]["Cursor"];
+        /** @description Maximum entries to return. */
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description One page of audit entries. */
+      200: {
+        headers: {
+          "X-Request-Id": components["headers"]["X-Request-Id"];
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "items": [
+           *         {
+           *           "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+           *           "created_at": "2026-08-10T09:15:00Z",
+           *           "actor_id": "0199a1c2-3d4e-7f80-9abc-def012345679",
+           *           "actor_role": "user",
+           *           "action": "user.profile_updated",
+           *           "target_type": "user",
+           *           "target_id": "0199a1c2-3d4e-7f80-9abc-def012345679",
+           *           "changed_fields": [
+           *             "display_name",
+           *             "timezone"
+           *           ],
+           *           "before": null,
+           *           "after": null,
+           *           "meta": {
+           *             "source": "outbox"
+           *           },
+           *           "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736"
+           *         }
+           *       ],
+           *       "page": {
+           *         "has_more": false,
+           *         "limit": 20
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["AuditLogPage"];
+        };
+      };
+      400: components["responses"]["BadRequest"];
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+      422: components["responses"]["ValidationFailed"];
+    };
+  };
+  auditSearchSecurityEvents: {
+    parameters: {
+      query?: {
+        /** @description Exact event kind, such as `rbac.access_denied`. */
+        kind?: string;
+        /** @description Only events at this severity. */
+        severity?: components["schemas"]["SecurityEventSeverity"];
+        /** @description `false` returns only open events, `true` only triaged ones. Omitted returns both. */
+        resolved?: boolean;
+        /** @description Only events involving this account. */
+        user_id?: string;
+        /** @description Inclusive lower bound on `created_at`. Defaults to 90 days before `to`. */
+        from?: string;
+        /** @description Exclusive upper bound on `created_at`. Defaults to now. */
+        to?: string;
+        /** @description Opaque cursor from the previous page's `next_cursor`. */
+        cursor?: components["schemas"]["Cursor"];
+        /** @description Maximum events to return. */
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description One page of security events. */
+      200: {
+        headers: {
+          "X-Request-Id": components["headers"]["X-Request-Id"];
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "items": [
+           *         {
+           *           "id": "0199a1c2-3d4e-7f80-9abc-def01234567a",
+           *           "created_at": "2026-08-10T09:15:00Z",
+           *           "kind": "rbac.access_denied",
+           *           "severity": "medium",
+           *           "user_id": "0199a1c2-3d4e-7f80-9abc-def012345679",
+           *           "detail": {
+           *             "permission": "user.suspend"
+           *           },
+           *           "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+           *           "resolved_at": null,
+           *           "resolved_by": null,
+           *           "resolution_note": null
+           *         }
+           *       ],
+           *       "page": {
+           *         "has_more": false,
+           *         "limit": 20
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["SecurityEventPage"];
+        };
+      };
+      400: components["responses"]["BadRequest"];
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+      422: components["responses"]["ValidationFailed"];
+    };
+  };
+  auditResolveSecurityEvent: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The security event being triaged. */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        /**
+         * @example {
+         *       "note": "Known load test, permission denial expected."
+         *     }
+         */
+        "application/json": components["schemas"]["ResolveSecurityEventRequest"];
+      };
+    };
+    responses: {
+      /** @description The resolved event. */
+      200: {
+        headers: {
+          "X-Request-Id": components["headers"]["X-Request-Id"];
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "id": "0199a1c2-3d4e-7f80-9abc-def01234567a",
+           *       "created_at": "2026-08-10T09:15:00Z",
+           *       "kind": "rbac.access_denied",
+           *       "severity": "medium",
+           *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345679",
+           *       "detail": {
+           *         "permission": "user.suspend"
+           *       },
+           *       "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+           *       "resolved_at": "2026-08-10T10:02:00Z",
+           *       "resolved_by": "0199a1c2-3d4e-7f80-9abc-def012345678",
+           *       "resolution_note": "Known load test, permission denial expected."
+           *     }
+           */
+          "application/json": components["schemas"]["SecurityEvent"];
+        };
+      };
+      400: components["responses"]["BadRequest"];
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+      404: components["responses"]["NotFound"];
+      409: components["responses"]["Conflict"];
+      422: components["responses"]["ValidationFailed"];
+    };
+  };
 }

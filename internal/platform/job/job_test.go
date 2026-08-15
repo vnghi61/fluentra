@@ -4,8 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/fluentra/fluentra/internal/platform/job"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/fluentra/fluentra/internal/platform/job"
 )
 
 func TestDefaultQueues(t *testing.T) {

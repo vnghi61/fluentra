@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fluentra/fluentra/internal/platform/telemetry"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
@@ -17,6 +16,8 @@ import (
 	"github.com/riverqueue/river/rivermigrate"
 	"github.com/riverqueue/river/rivertype"
 	"go.opentelemetry.io/otel/metric"
+
+	"github.com/fluentra/fluentra/internal/platform/telemetry"
 )
 
 // Schema is where River's own tables live. It is the same schema as the outbox
