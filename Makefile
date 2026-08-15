@@ -37,8 +37,8 @@ setup: ## Install tool binaries, git hooks and frontend dependencies
 
 dev: ## Start the full local stack (app + data + observability)
 	docker compose $(COMPOSE_DEV) up -d --build
-	@echo "web  http://localhost:5173   api http://localhost:8080"
-	@echo "graf http://localhost:3000   mail http://localhost:8025   minio http://localhost:9001"
+	@echo "web    http://localhost:5173   api http://localhost:8080   worker http://localhost:8081"
+	@echo "graf   http://localhost:3000   mail http://localhost:8025   minio  http://localhost:9001"
 
 dev-down: ## Stop the local stack (volumes preserved)
 	docker compose $(COMPOSE_DEV) down
@@ -48,6 +48,15 @@ logs: ## Tail application logs
 
 prod-up: ## Start the production stack
 	docker compose $(COMPOSE_PROD) up -d
+
+api: ## Run the API server on the host
+	go run ./cmd/api
+
+worker: ## Run the background worker on the host
+	go run ./cmd/worker
+
+web: ## Run the frontend dev server on the host
+	cd web && pnpm dev
 
 ## ----------------------------------------------------------------- codegen
 
@@ -278,7 +287,7 @@ security: ## Security scans
 	gitleaks detect --no-banner
 	cd web && pnpm audit --audit-level=high
 
-.PHONY: help setup dev dev-down logs prod-up gen gen-backend gen-sql gen-api gen-mocks gen-web \
+.PHONY: help setup dev dev-down logs prod-up api worker web gen gen-backend gen-sql gen-api gen-mocks gen-web \
         gen-check gen-check-web migrate-up migrate-down migrate-status migrate-new seed \
         db-reset-DANGEROUS check fmt fmt-check vet lint lint-int lint-go arch test test-int \
         test-contract test-web test-e2e test-load test-eval cover cover-check cover-gate docs \

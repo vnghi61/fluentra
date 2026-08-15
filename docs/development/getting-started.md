@@ -54,17 +54,23 @@ make dev
 
 | Service | URL | Notes |
 |---|---|---|
-| Web app | <http://localhost:5173> | Vite dev server with HMR |
-| API | <http://localhost:8080> | `air` hot reload |
+| Web app | <http://localhost:5173> | React frontend running under Vite with HMR |
+| API | <http://localhost:8080> | Go API server under `air` hot reload |
+| Worker | <http://localhost:8081> | Background worker daemon under `air` hot reload (:8081 health/metrics) |
 | API docs | <http://localhost:8080/docs> | Rendered from the OpenAPI spec |
-| Grafana | <http://localhost:3000> | `admin` / `admin` |
+| Grafana | <http://localhost:3000> | `admin` / `admin` (dashboards, logs, traces, metrics) |
 | Mailpit | <http://localhost:8025> | Catches all outbound email |
-| MinIO console | <http://localhost:9001> | `minioadmin` / `minioadmin` |
-| Jaeger (dev only) | <http://localhost:16686> | Convenience UI; production uses Tempo |
-| River UI | <http://localhost:8081> | Job queue inspection |
-| Adminer | <http://localhost:8082> | Database browsing |
+| MinIO console | <http://localhost:9001> | `minioadmin` / `minioadmin` (S3 at :9000) |
 
 First start takes a few minutes while images build. Subsequent starts are seconds.
+
+Alternatively, to run application binaries directly on the host (with data and observability running via Compose):
+
+```bash
+make api     # runs API server on host
+make worker  # runs worker daemon on host
+make web     # runs Vite frontend on host
+```
 
 ## 4. Seed data
 

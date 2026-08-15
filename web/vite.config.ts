@@ -18,6 +18,16 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  server: {
+    host: '0.0.0.0',
+    port: 5173,
+    proxy: {
+      '/api': {
+        target: process.env.VITE_API_TARGET || 'http://localhost:8080',
+        changeOrigin: true,
+      },
+    },
+  },
   build: {
     // The manifest is what scripts/check-bundle.mjs walks to find the chunks a
     // first visit actually downloads.

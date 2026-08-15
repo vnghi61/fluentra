@@ -45,6 +45,7 @@
   "ignores": [
     "node_modules",
     "web/node_modules",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "PROMPT-*.md"
   ]
 }
