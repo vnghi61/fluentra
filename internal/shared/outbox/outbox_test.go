@@ -7,10 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fluentra/fluentra/internal/shared/outbox"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+
+	"github.com/fluentra/fluentra/internal/shared/outbox"
 )
 
 // A real pgx transaction must satisfy DBTx without an adapter. This assertion

@@ -204,3 +204,60 @@ ReplacePreferencesRequest:
     ai_processing_opt_out:
       type: boolean
       example: false
+
+AvatarUploadIntent:
+  type: object
+  description: Constrained browser upload intent for an avatar image.
+  required:
+    - upload_url
+    - method
+    - object_key
+    - expires_at
+    - max_bytes
+    - content_type
+  properties:
+    upload_url:
+      type: string
+      format: uri
+      description: The presigned URL the client POSTs or PUTs the file to.
+    method:
+      type: string
+      enum: [POST, PUT]
+      example: POST
+    form_data:
+      type: object
+      additionalProperties:
+        type: string
+      description: Key-value form fields for multipart POST policy uploads.
+    file_field:
+      type: string
+      example: file
+    object_key:
+      type: string
+      description: The unique object key in storage.
+      example: users/0199a1c2-3d4e-7f80-9abc-def012345678/2026/08/avatar-raw.jpg
+    expires_at:
+      type: string
+      format: date-time
+      description: When the presigned upload intent expires.
+    max_bytes:
+      type: integer
+      format: int64
+      description: Maximum permitted file size in bytes (5 MB).
+      example: 5242880
+    content_type:
+      type: string
+      description: Pinned content type (image/jpeg, image/png, image/webp).
+      example: image/jpeg
+
+ConfirmAvatarRequest:
+  type: object
+  description: Confirmation of the uploaded raw avatar in storage.
+  required:
+    - object_key
+  properties:
+    object_key:
+      type: string
+      description: The object key returned by the upload intent.
+      example: users/0199a1c2-3d4e-7f80-9abc-def012345678/2026/08/avatar-raw.jpg
+

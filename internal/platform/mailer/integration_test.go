@@ -8,11 +8,12 @@ import (
 	"os"
 	"testing"
 
-	"github.com/fluentra/fluentra/db/migrations"
-	"github.com/fluentra/fluentra/internal/platform/mailer"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
+
+	"github.com/fluentra/fluentra/db/migrations"
+	"github.com/fluentra/fluentra/internal/platform/mailer"
 )
 
 func newTestPool(t *testing.T) *pgxpool.Pool {

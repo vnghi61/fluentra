@@ -116,6 +116,23 @@ func TestContract_PreferencesMatchTheSpec(t *testing.T) {
 	assertMatchesSchema(t, responseSchema(t, spec, "/me/preferences", http.MethodPut), written.Body.Bytes())
 }
 
+func TestContract_AvatarEndpointsMatchTheSpec(t *testing.T) {
+	spec := loadSpec(t)
+	server := newServer(&fakeAccounts{})
+
+	intent := authenticated(t, server, http.MethodPost, "/api/v1/me/avatar/upload-intent", `{"content_type":"image/png"}`)
+	if intent.Code != http.StatusOK {
+		t.Fatalf("POST upload-intent status = %d, want 200 (body %s)", intent.Code, intent.Body)
+	}
+	assertMatchesSchema(t, responseSchema(t, spec, "/me/avatar/upload-intent", http.MethodPost), intent.Body.Bytes())
+
+	confirm := authenticated(t, server, http.MethodPut, "/api/v1/me/avatar", `{"object_key":"users/0199a1c2-3d4e-7f80-9abc-def012345678/2026/08/avatar-raw.jpg"}`)
+	if confirm.Code != http.StatusOK {
+		t.Fatalf("PUT avatar status = %d, want 200 (body %s)", confirm.Code, confirm.Body)
+	}
+	assertMatchesSchema(t, responseSchema(t, spec, "/me/avatar", http.MethodPut), confirm.Body.Bytes())
+}
+
 // TestContract_RequestBodiesUsedByTheTestsAreValid closes the other half of the
 // loop. If the bodies these tests send were not themselves valid against the
 // spec, a handler could pass every test above while rejecting everything a
@@ -132,6 +149,7 @@ func TestContract_RequestBodiesUsedByTheTestsAreValid(t *testing.T) {
 		{path: "/me", method: http.MethodPatch, body: `{"timezone":"Asia/Ho_Chi_Minh"}`},
 		{path: "/me", method: http.MethodPatch, body: `{"date_of_birth":"1998-03-04"}`},
 		{path: "/me/preferences", method: http.MethodPut, body: validPreferencesBody},
+		{path: "/me/avatar", method: http.MethodPut, body: `{"object_key":"users/0199a1c2-3d4e-7f80-9abc-def012345678/2026/08/avatar-raw.jpg"}`},
 	}
 	for _, testCase := range cases {
 		item := spec.Paths.Find(testCase.path)

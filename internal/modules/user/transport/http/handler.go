@@ -25,6 +25,8 @@ type Accounts interface {
 	ReplacePreferences(
 		ctx context.Context, actorID uuid.UUID, wanted domain.Preferences,
 	) (domain.Preferences, error)
+	RequestAvatarUploadIntent(ctx context.Context, actorID uuid.UUID, contentType string) (domain.UploadIntent, error)
+	ConfirmAvatar(ctx context.Context, actorID uuid.UUID, objectKey string) (service.Account, error)
 }
 
 // Handler serves the user module's HTTP operations.
@@ -43,16 +45,19 @@ func (h *Handler) Routes(router chi.Router) {
 		me.Patch("/", h.updateMe)
 		me.Get("/preferences", h.getPreferences)
 		me.Put("/preferences", h.replacePreferences)
+		me.Post("/avatar/upload-intent", h.requestAvatarUploadIntent)
+		me.Put("/avatar", h.confirmAvatar)
 	})
 }
 
-// The preference members named in more than one of the lists below.
+// The preference and avatar members named in more than one of the lists below.
 const (
 	fieldAIProcessingOptOut = "ai_processing_opt_out"
 	fieldDailyGoalMinutes   = "daily_goal_minutes"
 	fieldLocale             = "locale"
 	fieldChannels           = "notification_channels"
 	fieldTheme              = "theme"
+	fieldObjectKey          = "object_key"
 )
 
 // updateMeFields is the complete set of members PATCH /me accepts. Anything
@@ -279,4 +284,64 @@ func decodeQuietHours(fields body) (*domain.QuietHours, error) {
 		return nil, err
 	}
 	return &domain.QuietHours{Start: start, End: end}, nil
+}
+
+func (h *Handler) requestAvatarUploadIntent(writer http.ResponseWriter, request *http.Request) {
+	actor, err := requireActor(request)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+
+	var contentType string
+	if request.Body != nil && request.ContentLength > 0 {
+		fields, decodeErr := decodeBody(request, []string{"content_type"})
+		if decodeErr == nil && fields.present("content_type") {
+			_ = readString(fields, "content_type", &contentType)
+		}
+	}
+
+	intent, err := h.accounts.RequestAvatarUploadIntent(request.Context(), actor.UserID, contentType)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+
+	httpx.WriteJSON(writer, request, http.StatusOK, toAvatarUploadIntentResponse(intent))
+}
+
+func (h *Handler) confirmAvatar(writer http.ResponseWriter, request *http.Request) {
+	actor, err := requireActor(request)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+
+	fields, err := decodeBody(request, []string{fieldObjectKey})
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	if err := rejectNulls(fields, []string{fieldObjectKey}); err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	if err := requireFields(fields, []string{fieldObjectKey}); err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+
+	var objectKey string
+	if err := readString(fields, fieldObjectKey, &objectKey); err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+
+	account, err := h.accounts.ConfirmAvatar(request.Context(), actor.UserID, objectKey)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+
+	httpx.WriteJSON(writer, request, http.StatusOK, toMeResponse(account))
 }

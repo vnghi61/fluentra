@@ -1,6 +1,6 @@
-import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { Component, type ErrorInfo, type ReactNode } from "react";
 
-import { tracer } from '@/lib/telemetry';
+import { tracer } from "@/lib/telemetry";
 
 interface Props {
   children: ReactNode;
@@ -28,9 +28,9 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   override componentDidCatch(error: Error, info: ErrorInfo): void {
-    const span = tracer().startSpan('ui.error');
+    const span = tracer().startSpan("ui.error");
     span.recordException(error);
-    span.setAttribute('ui.component_stack', info.componentStack ?? 'unknown');
+    span.setAttribute("ui.component_stack", info.componentStack ?? "unknown");
     span.end();
   }
 

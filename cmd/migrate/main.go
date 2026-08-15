@@ -10,11 +10,12 @@ import (
 	"log"
 	"os"
 
-	"github.com/fluentra/fluentra/db/migrations"
-	"github.com/fluentra/fluentra/internal/shared/config"
 	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
+
+	"github.com/fluentra/fluentra/db/migrations"
+	"github.com/fluentra/fluentra/internal/shared/config"
 )
 
 const migrationRole = "fluentra_migrator"
