@@ -2794,6 +2794,16 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
+          /**
+           * @example {
+           *       "upload_url": "https://storage.example.com/fluentra-avatars/users/0199a1c2-3d4e-7f80-9abc-def012345678/2026/08/avatar-raw.jpg",
+           *       "method": "POST",
+           *       "object_key": "users/0199a1c2-3d4e-7f80-9abc-def012345678/2026/08/avatar-raw.jpg",
+           *       "expires_at": "2026-08-15T08:05:00Z",
+           *       "max_bytes": 5242880,
+           *       "content_type": "image/jpeg"
+           *     }
+           */
           "application/json": components["schemas"]["AvatarUploadIntent"];
         };
       };
