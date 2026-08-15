@@ -647,7 +647,7 @@ WP1 tasks P1.2, P1.3, P1.4 are independent of each other once P1.1 lands.
 |---|---|
 | **Depends on** | P0.9, P1.2 |
 | **Files** | `user/service/avatar.go` |
-| **Do** | `POST /me/avatar/upload-intent` → presigned PUT (image/jpeg, image/png, image/webp; 5 MB; 5 min). `PUT /me/avatar` verifies the object, strips EXIF, re-encodes to WebP at three sizes, publishes to the media bucket. Old avatar deleted. |
+| **Do** | `POST /me/avatar/upload-intent` → presigned PUT (image/jpeg, image/png, image/webp; 5 MB; 5 min). `PUT /me/avatar` verifies the object, strips EXIF, re-encodes to JPEG at three sizes: 64x64, 128x128, and 256x256, publishes to the media bucket. Old avatar deleted. |
 | **Acceptance** | A renamed `.exe` is rejected by magic-byte sniffing. EXIF GPS data is absent from the output. The old object is deleted after the new one is verified. |
 
 ### P3.2 — Data export `M`
