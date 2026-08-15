@@ -3,6 +3,7 @@
 ## Summary
 
 Implements P3.1 Avatar Upload in the `user` module:
+
 - `POST /api/v1/me/avatar/upload-intent`: Issues a presigned upload policy for an avatar image (JPEG, PNG, or WebP; max 5 MB, 5-minute expiry).
 - `PUT /api/v1/me/avatar`: Confirms and finalizes the avatar:
   1. Validates upload key belongs to actor (`users/{actor_id}/...`).
@@ -17,7 +18,9 @@ Implements P3.1 Avatar Upload in the `user` module:
 ## Architectural & Safety Considerations
 
 ### Non-Transactional Storage Lifecycle & Crash Safety
+
 Object storage is non-transactional and cannot participate in database transactions (Rule L4: no cross-module / cross-service transactions). The lifecycle is designed to fail safe:
+
 - **Upload / Verification failure**: DB remains untouched, previous avatar remains active, raw object is cleaned up by orphan GC.
 - **Decoding / Resizing failure**: DB remains untouched, previous avatar remains active, raw object cleaned up by GC.
 - **New avatar storage Put failure**: DB remains untouched, previous avatar remains active.
@@ -25,6 +28,7 @@ Object storage is non-transactional and cannot participate in database transacti
 - **Crash after database commit**: If the process crashes after DB commit but before deleting the old avatar, the old avatar object remains in storage until the periodic storage garbage collection sweeps unreferenced asset IDs. The database and user-facing profile always remain consistent.
 
 ### Pure-Go Image Processing Rationale
+
 - Pure-Go decoding via `github.com/disintegration/imaging` and `golang.org/x/image/webp` avoids CGo dependencies (such as `libvips` or `ImageMagick`), preserving single-binary Go compilation, static linking, and cross-platform simplicity across host, Docker, and CI.
 - Documented in `DEPENDENCIES.md §1.16` with alternatives evaluated (`bimg`, `imagick`, `govips`).
 
