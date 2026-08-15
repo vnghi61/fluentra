@@ -8,8 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fluentra/fluentra/internal/platform/cache"
 	"github.com/redis/go-redis/v9"
+
+	"github.com/fluentra/fluentra/internal/platform/cache"
 )
 
 type mockRedisClient struct {

@@ -1,15 +1,15 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { RouterProvider } from '@tanstack/react-router';
-import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
-import { I18nextProvider } from 'react-i18next';
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { RouterProvider } from "@tanstack/react-router";
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { I18nextProvider } from "react-i18next";
 
-import { router } from '@/app/router';
-import { ErrorBoundary } from '@/components/ErrorBoundary';
-import i18n, { initI18n } from '@/i18n';
-import { startTelemetry } from '@/lib/telemetry';
+import { router } from "@/app/router";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import i18n, { initI18n } from "@/i18n";
+import { startTelemetry } from "@/lib/telemetry";
 
-import './index.css';
+import "./index.css";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -19,9 +19,9 @@ const queryClient = new QueryClient({
 
 initI18n();
 
-const rootElement = document.getElementById('root');
+const rootElement = document.getElementById("root");
 if (rootElement === null) {
-  throw new Error('index.html is missing #root');
+  throw new Error("index.html is missing #root");
 }
 
 createRoot(rootElement).render(
@@ -43,7 +43,7 @@ const endpoint = import.meta.env.VITE_OTEL_ENDPOINT;
 if (endpoint !== undefined && endpoint.length > 0) {
   void startTelemetry({
     endpoint,
-    serviceName: 'fluentra-web',
+    serviceName: "fluentra-web",
     environment: import.meta.env.MODE,
   });
 }

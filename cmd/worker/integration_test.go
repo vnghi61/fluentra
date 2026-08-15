@@ -11,12 +11,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fluentra/fluentra/db/migrations"
-	"github.com/fluentra/fluentra/internal/shared/eventbus"
-	"github.com/fluentra/fluentra/internal/shared/outbox"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
+
+	"github.com/fluentra/fluentra/db/migrations"
+	"github.com/fluentra/fluentra/internal/shared/eventbus"
+	"github.com/fluentra/fluentra/internal/shared/outbox"
 )
 
 // testUserID is the aggregate id these tests round-trip through the outbox.

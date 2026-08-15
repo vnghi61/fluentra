@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/fluentra/fluentra/internal/shared/id"
 	"github.com/redis/go-redis/v9"
+
+	"github.com/fluentra/fluentra/internal/shared/id"
 )
 
 var (

@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/fluentra/fluentra/internal/platform/telemetry"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
 	"go.opentelemetry.io/otel"
@@ -15,6 +14,8 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/fluentra/fluentra/internal/platform/telemetry"
 )
 
 var tracer = otel.Tracer("fluentra.platform.job")

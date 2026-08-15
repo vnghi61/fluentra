@@ -17,6 +17,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/user"
 	"github.com/fluentra/fluentra/internal/platform/cache"
 	"github.com/fluentra/fluentra/internal/platform/mailer"
+	"github.com/fluentra/fluentra/internal/platform/storage"
 	"github.com/fluentra/fluentra/internal/shared/httpx"
 )
 
@@ -36,6 +37,7 @@ type identityDeps struct {
 	Pool       *pgxpool.Pool
 	Cache      rbac.PermissionCache
 	Limiter    cache.Limiter
+	Storage    storage.Store
 	Env        string
 	OTPHMACKey []byte
 	SMTP       mailer.SMTPConfig
@@ -112,7 +114,10 @@ func newIdentity(deps identityDeps) *identity {
 		Env:   deps.Env,
 	})
 
-	assembled.user = user.New(user.Deps{Pool: deps.Pool})
+	assembled.user = user.New(user.Deps{
+		Pool:    deps.Pool,
+		Storage: deps.Storage,
+	})
 
 	// `auth` comes after `user` because it holds a reference to user.Registrar.
 	// The mailer renderer is built with DefaultTemplates so startup fails if a
