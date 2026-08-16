@@ -56,7 +56,7 @@ check, and there is a test that fails if a user-id route ever appears.
 | `GET` | `/api/v1/me/export/{id}` | `self` | Get status of a data export request |
 | `DELETE` | `/api/v1/me` | `self` | Request account deletion (30-day grace) |
 | `POST` | `/api/v1/me/deletion/cancel` | `self` | Cancel a pending deletion |
-| `GET` | `/api/v1/me/deletion/{id}` | `self` | Get status of a deletion request |
+| `GET` | `/api/v1/me/deletion/{id}` | `self` | Get status of an account deletion request |
 | `GET` | `/api/v1/admin/users` | `user.list` | Search and list users |
 | `GET` | `/api/v1/admin/users/{id}` | `user.read` | Read one user |
 | `POST` | `/api/v1/admin/users/{id}/suspend` | `user.suspend` | Suspend an account |
@@ -114,7 +114,7 @@ Get a presigned URL for an avatar upload
 |---|---|
 | Permission | `self` |
 | Success | 200 |
-| Errors | `VALIDATION_FAILED` |
+| Errors | `UNSUPPORTED_MEDIA_TYPE`, `TOO_LARGE` |
 
 ### `PUT /api/v1/me/avatar`
 
@@ -168,7 +168,7 @@ Cancel a pending deletion
 
 ### `GET /api/v1/me/deletion/{id}`
 
-Get status of a deletion request
+Get status of an account deletion request
 
 | | |
 |---|---|

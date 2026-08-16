@@ -289,7 +289,7 @@ func assertNoRBACDataRemains(ctx context.Context, t *testing.T, userID uuid.UUID
 	t.Helper()
 	var roleCount int
 	if err := pool.QueryRow(
-		ctx, "SELECT count(*) FROM rbac.user_roles WHERE user_id = $1", userID,
+		ctx, "SELECT count(*) FROM core.user_roles WHERE user_id = $1", userID,
 	).Scan(&roleCount); err != nil {
 		t.Fatalf("query roles: %v", err)
 	}
