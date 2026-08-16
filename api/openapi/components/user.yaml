@@ -293,4 +293,46 @@ ExportResponse:
       type: string
       format: date-time
 
+DeletionStatus:
+  type: string
+  enum: [pending, processing, completed, failed, cancelled]
+  description: Lifecycle state of an account deletion request.
+
+DeletionResponse:
+  type: object
+  description: Status and metadata of an account deletion request.
+  required:
+    - id
+    - user_id
+    - status
+    - requested_at
+    - execute_at
+  properties:
+    id:
+      type: string
+      format: uuid
+      description: Unique ID of the deletion request.
+    user_id:
+      type: string
+      format: uuid
+      description: ID of the user requesting deletion.
+    status:
+      $ref: '#/DeletionStatus'
+    requested_at:
+      type: string
+      format: date-time
+    execute_at:
+      type: string
+      format: date-time
+    started_at:
+      type: string
+      format: date-time
+    completed_at:
+      type: string
+      format: date-time
+    cancelled_at:
+      type: string
+      format: date-time
+
+
 

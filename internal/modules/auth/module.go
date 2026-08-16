@@ -129,6 +129,7 @@ type Module struct {
 	sessions *service.RefreshService
 	revoker  *service.SessionService
 	oauth    *service.OAuthService
+	repo     *repository.Repository
 	mailer   mailer.Sender
 	handler  *authhttp.Handler
 }
@@ -320,8 +321,9 @@ func New(deps Deps) *Module {
 		tokens:   tokens,
 		sessions: sessions,
 		revoker:  sessionSvc,
-		mailer:   deps.Mailer,
 		oauth:    oauthSvc,
+		repo:     repo,
+		mailer:   deps.Mailer,
 		handler: authhttp.NewHandler(reg, loginSvc, sessions, sessionSvc, passwordSvc, deviceSvc, oauthSvc,
 			authhttp.CookieOptions{Secure: deps.Env != "local"}),
 	}
@@ -430,6 +432,43 @@ func (m *Module) Subscribe(bus eventbus.EventBus) error {
 		if err := bus.Subscribe(topic, m.handleMailEvent); err != nil {
 			return fmt.Errorf("subscribe auth consumer to %s: %w", topic, err)
 		}
+	}
+	if err := bus.Subscribe(usercontract.EventDeletionRequested, m.handleDeletionRequested); err != nil {
+		return fmt.Errorf("subscribe auth consumer to %s: %w", usercontract.EventDeletionRequested, err)
+	}
+	if err := bus.Subscribe(usercontract.EventDeleted, m.handleUserDeleted); err != nil {
+		return fmt.Errorf("subscribe auth consumer to %s: %w", usercontract.EventDeleted, err)
+	}
+	return nil
+}
+
+type deletionEventPayload struct {
+	UserID uuid.UUID `json:"user_id"`
+}
+
+func (m *Module) handleDeletionRequested(ctx context.Context, msg eventbus.Message) error {
+	var payload deletionEventPayload
+	if err := json.Unmarshal(msg.Payload, &payload); err != nil {
+		return fmt.Errorf("decode user.deletion_requested payload: %w", err)
+	}
+	if payload.UserID == uuid.Nil {
+		return nil
+	}
+	_, err := m.revoker.RevokeAll(ctx, payload.UserID)
+	return err
+}
+
+func (m *Module) handleUserDeleted(ctx context.Context, msg eventbus.Message) error {
+	var payload deletionEventPayload
+	if err := json.Unmarshal(msg.Payload, &payload); err != nil {
+		return fmt.Errorf("decode user.deleted payload: %w", err)
+	}
+	if payload.UserID == uuid.Nil {
+		return nil
+	}
+	_, _ = m.revoker.RevokeAll(ctx, payload.UserID)
+	if m.repo != nil {
+		return m.repo.PurgeUser(ctx, payload.UserID)
 	}
 	return nil
 }

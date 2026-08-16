@@ -147,6 +147,16 @@ func (q *Queries) CreateChallenge(ctx context.Context, arg CreateChallengeParams
 	return i, err
 }
 
+const deleteChallengesForUser = `-- name: DeleteChallengesForUser :exec
+DELETE FROM core.auth_challenges
+WHERE user_id = $1
+`
+
+func (q *Queries) DeleteChallengesForUser(ctx context.Context, userID *uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteChallengesForUser, userID)
+	return err
+}
+
 const getChallengeByID = `-- name: GetChallengeByID :one
 SELECT id, purpose, subject_hash, code_hash, attempts, max_attempts,
        expires_at, consumed_at, last_sent_at, created_at, updated_at, user_id

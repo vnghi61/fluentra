@@ -2,6 +2,7 @@ package rbac
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -17,6 +18,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/rbac/service"
 	rbachttp "github.com/fluentra/fluentra/internal/modules/rbac/transport/http"
 	"github.com/fluentra/fluentra/internal/shared/clock"
+	"github.com/fluentra/fluentra/internal/shared/eventbus"
 	"github.com/fluentra/fluentra/internal/shared/outbox"
 )
 
@@ -110,6 +112,29 @@ func (m *Module) RevokeRole(
 // consumer calls it.
 func (m *Module) ForgetUser(ctx context.Context, userID uuid.UUID) error {
 	return m.service.ForgetUser(ctx, userID)
+}
+
+// Subscribe registers the event consumers this module runs in the worker.
+func (m *Module) Subscribe(bus eventbus.EventBus) error {
+	if err := bus.Subscribe("user.deleted", m.handleUserDeleted); err != nil {
+		return fmt.Errorf("subscribe rbac consumer to user.deleted: %w", err)
+	}
+	return nil
+}
+
+type userDeletedPayload struct {
+	UserID uuid.UUID `json:"user_id"`
+}
+
+func (m *Module) handleUserDeleted(ctx context.Context, msg eventbus.Message) error {
+	var payload userDeletedPayload
+	if err := json.Unmarshal(msg.Payload, &payload); err != nil {
+		return fmt.Errorf("decode user.deleted payload: %w", err)
+	}
+	if payload.UserID == uuid.Nil {
+		return nil
+	}
+	return m.ForgetUser(ctx, payload.UserID)
 }
 
 // ExportUserData implements contract.Exportable for GDPR data export.

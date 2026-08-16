@@ -6,7 +6,7 @@ status: PLANNED
 phase: 1
 owner: "@backend-team"
 schema: core
-tables: [users, profiles, user_preferences, learning_profiles, user_deletion_requests, user_exports]
+tables: [users, profiles, user_preferences, learning_profiles, user_deletions, user_exports]
 depends_on: [storage, mailer, audit]
 depended_on_by: [auth, admin, learning, notification, subscription, gamification]
 spec_version: 1.0.0
@@ -150,6 +150,7 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | `GET` | `/api/v1/me/export/{id}` | `self` | Get status of a data export request |
 | `DELETE` | `/api/v1/me` | `self` | Request account deletion (30-day grace) |
 | `POST` | `/api/v1/me/deletion/cancel` | `self` | Cancel a pending deletion |
+| `GET` | `/api/v1/me/deletion/{id}` | `self` | Get status of an account deletion request |
 | `GET` | `/api/v1/admin/users` | `user.list` | Search and list users |
 | `GET` | `/api/v1/admin/users/{id}` | `user.read` | Read one user |
 | `POST` | `/api/v1/admin/users/{id}/suspend` | `user.suspend` | Suspend an account |
@@ -254,6 +255,37 @@ and fails `go-arch-lint` in CI.
   calls.
 - Avatar upload lifecycle is implemented under `/api/v1/me/avatar/upload-intent` and `/api/v1/me/avatar`.
   Avatar URLs are derived from the stored asset id through the storage facade (`/api/v1/storage/avatars/{assetID}`).
+- Account deletion is implemented under `DELETE /api/v1/me`, `POST /api/v1/me/deletion/cancel`, and `GET /api/v1/me/deletion/{id}`
+  with a 30-day grace period, daily `DeletionExecutor` cron job (advisory lock `1_700_000_050`), and event-driven data purging
+  and user anonymisation (`user.deletion_requested`, `user.deleted`).
+
+### Account deletion events
+
+This module publishes the following domain events for account deletion:
+
+#### `user.deletion_requested`
+
+- **When:** Immediately when `DELETE /me` is called and a deletion request is created.
+- **Purpose:** Signal to other modules (particularly `auth`) that the account is entering deletion grace period.
+- **Subscribers:**
+  - `auth` module: Revokes ALL active sessions immediately (before grace period begins).
+- **Payload:**
+  - `UserID uuid.UUID`: Target user ID
+  - `ExecuteAfter time.Time`: Deadline (`now() + 30 days`)
+  - `OccurredAt time.Time`: Timestamp
+- **Why immediate revocation:** Account must be unusable during grace period for security. Learner can cancel and re-authenticate.
+
+#### `user.deleted`
+
+- **When:** After 30-day grace period expires and anonymisation completes successfully.
+- **Purpose:** Signal cross-module data purge. Each module holding personal data subscribes and erases its own data.
+- **Subscribers:**
+  - `auth` module: Purges sessions, tokens, credentials, devices, OAuth links, challenges via `PurgeUser`.
+  - `rbac` module: Deletes role assignments via `ForgetUser`.
+- **Payload:**
+  - `UserID uuid.UUID`: Target user ID
+  - `OccurredAt time.Time`: Timestamp
+- **Architecture note:** This event-driven design (vs CASCADE DELETE) follows Rule L4 (no transaction spans modules) and ensures GDPR erasure completeness can be verified per-module.
 
 ## 12. Coding conventions (module-specific)
 

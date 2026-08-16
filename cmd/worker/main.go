@@ -344,6 +344,10 @@ func startModules(
 		Env:  cfg.App.Environment,
 	})
 
+	if err := rbacModule.Subscribe(bus); err != nil {
+		return err
+	}
+
 	renderer, err := mailer.NewRenderer(nil, nil)
 	if err != nil {
 		return fmt.Errorf("build mailer renderer: %w", err)

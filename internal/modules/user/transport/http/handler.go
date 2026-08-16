@@ -29,6 +29,9 @@ type Accounts interface {
 	ConfirmAvatar(ctx context.Context, actorID uuid.UUID, objectKey string) (service.Account, error)
 	RequestExport(ctx context.Context, actorID uuid.UUID) (domain.ExportRequest, error)
 	GetExportByID(ctx context.Context, actorID, exportID uuid.UUID) (domain.ExportRequest, error)
+	RequestDeletion(ctx context.Context, actorID uuid.UUID) (domain.DeletionRequest, error)
+	CancelDeletion(ctx context.Context, actorID uuid.UUID) (domain.DeletionRequest, error)
+	GetDeletion(ctx context.Context, actorID, deletionID uuid.UUID) (domain.DeletionRequest, error)
 }
 
 // Handler serves the user module's HTTP operations.
@@ -45,12 +48,15 @@ func (h *Handler) Routes(router chi.Router) {
 	router.Route("/me", func(me chi.Router) {
 		me.Get("/", h.getMe)
 		me.Patch("/", h.updateMe)
+		me.Delete("/", h.requestDeletion)
 		me.Get("/preferences", h.getPreferences)
 		me.Put("/preferences", h.replacePreferences)
 		me.Post("/avatar/upload-intent", h.requestAvatarUploadIntent)
 		me.Put("/avatar", h.confirmAvatar)
 		me.Post("/export", h.requestExport)
 		me.Get("/export/{id}", h.getExport)
+		me.Post("/deletion/cancel", h.cancelDeletion)
+		me.Get("/deletion/{id}", h.getDeletion)
 	})
 }
 
@@ -386,4 +392,58 @@ func (h *Handler) getExport(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	httpx.WriteJSON(writer, request, http.StatusOK, toExportResponse(req))
+}
+
+func (h *Handler) requestDeletion(writer http.ResponseWriter, request *http.Request) {
+	actor, err := requireActor(request)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+
+	req, err := h.accounts.RequestDeletion(request.Context(), actor.UserID)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+
+	httpx.WriteJSON(writer, request, http.StatusAccepted, toDeletionResponse(req))
+}
+
+func (h *Handler) cancelDeletion(writer http.ResponseWriter, request *http.Request) {
+	actor, err := requireActor(request)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+
+	req, err := h.accounts.CancelDeletion(request.Context(), actor.UserID)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+
+	httpx.WriteJSON(writer, request, http.StatusOK, toDeletionResponse(req))
+}
+
+func (h *Handler) getDeletion(writer http.ResponseWriter, request *http.Request) {
+	actor, err := requireActor(request)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+
+	deletionID, err := uuid.Parse(chi.URLParam(request, "id"))
+	if err != nil {
+		httpx.WriteProblem(writer, request, apperr.New(apperr.Validation, "INVALID_DELETION_ID", "must be a valid UUID"))
+		return
+	}
+
+	req, err := h.accounts.GetDeletion(request.Context(), actor.UserID, deletionID)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+
+	httpx.WriteJSON(writer, request, http.StatusOK, toDeletionResponse(req))
 }

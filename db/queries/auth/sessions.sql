@@ -102,3 +102,13 @@ UPDATE core.refresh_tokens rt
 SET revoked_at = sqlc.arg(now)::timestamptz
 FROM core.sessions s
 WHERE s.id = rt.session_id AND s.trusted_device_id = $1 AND rt.revoked_at IS NULL;
+
+-- name: DeleteSessionsForUser :exec
+DELETE FROM core.sessions
+WHERE user_id = $1;
+
+-- name: DeleteRefreshTokensForUser :exec
+DELETE FROM core.refresh_tokens rt
+USING core.sessions s
+WHERE s.id = rt.session_id AND s.user_id = $1;
+

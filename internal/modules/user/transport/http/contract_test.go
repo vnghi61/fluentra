@@ -196,3 +196,32 @@ func TestContract_ExportResponsesMatchTheSpec(t *testing.T) {
 	}
 	assertMatchesSchema(t, responseSchema(t, spec, "/me/export/{id}", http.MethodGet), getReq.Body.Bytes())
 }
+
+func TestContract_DeletionResponsesMatchTheSpec(t *testing.T) {
+	spec := loadSpec(t)
+	server := newServer(&fakeAccounts{})
+
+	// 1. DELETE /me -> 202
+	deleteReq := authenticated(t, server, http.MethodDelete, "/api/v1/me", "")
+	if deleteReq.Code != http.StatusAccepted {
+		t.Fatalf("DELETE /me status = %d, want 202 (body %s)", deleteReq.Code, deleteReq.Body)
+	}
+	item := spec.Paths.Find("/me")
+	operation := item.GetOperation(http.MethodDelete)
+	response := operation.Responses.Status(http.StatusAccepted)
+	assertMatchesSchema(t, response.Value.Content.Get("application/json").Schema.Value, deleteReq.Body.Bytes())
+
+	// 2. POST /me/deletion/cancel -> 200
+	cancelReq := authenticated(t, server, http.MethodPost, "/api/v1/me/deletion/cancel", "")
+	if cancelReq.Code != http.StatusOK {
+		t.Fatalf("POST /me/deletion/cancel status = %d, want 200 (body %s)", cancelReq.Code, cancelReq.Body)
+	}
+	assertMatchesSchema(t, responseSchema(t, spec, "/me/deletion/cancel", http.MethodPost), cancelReq.Body.Bytes())
+
+	// 3. GET /me/deletion/{id} -> 200
+	getReq := authenticated(t, server, http.MethodGet, "/api/v1/me/deletion/0199a1c2-3d4e-7f80-9abc-def888888888", "")
+	if getReq.Code != http.StatusOK {
+		t.Fatalf("GET /me/deletion/{id} status = %d, want 200 (body %s)", getReq.Code, getReq.Body)
+	}
+	assertMatchesSchema(t, responseSchema(t, spec, "/me/deletion/{id}", http.MethodGet), getReq.Body.Bytes())
+}

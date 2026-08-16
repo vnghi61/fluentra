@@ -90,3 +90,8 @@ WHERE purpose = $1
   AND consumed_at IS NULL
   AND attempts < max_attempts
   AND expires_at > sqlc.arg(now)::timestamptz;
+
+-- name: DeleteChallengesForUser :exec
+DELETE FROM core.auth_challenges
+WHERE user_id = $1;
+

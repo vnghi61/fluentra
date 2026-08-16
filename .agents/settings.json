@@ -1,0 +1,15 @@
+{
+  "toolPermission": "always-proceed",
+  "permissions": {
+    "allow": [
+      "command(*)",
+      "read_file(*)",
+      "write_file(*)",
+      "read_url(*)",
+      "execute_url(*)",
+      "mcp(*)"
+    ],
+    "ask": [],
+    "deny": []
+  }
+}

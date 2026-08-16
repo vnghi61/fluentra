@@ -98,6 +98,29 @@ func (r *Repository) ReplaceHash(ctx context.Context, userID uuid.UUID, password
 	return toDomain(row), nil
 }
 
+// PurgeUser hard-deletes credentials, sessions, refresh tokens, devices, OAuth identities, and challenges for userID.
+func (r *Repository) PurgeUser(ctx context.Context, userID uuid.UUID) error {
+	if err := r.queries.DeleteRefreshTokensForUser(ctx, userID); err != nil {
+		return fmt.Errorf("purge refresh tokens: %w", err)
+	}
+	if err := r.queries.DeleteSessionsForUser(ctx, userID); err != nil {
+		return fmt.Errorf("purge sessions: %w", err)
+	}
+	if err := r.queries.DeleteCredentialByUserID(ctx, userID); err != nil {
+		return fmt.Errorf("purge credentials: %w", err)
+	}
+	if err := r.queries.DeleteTrustedDevicesForUser(ctx, userID); err != nil {
+		return fmt.Errorf("purge trusted devices: %w", err)
+	}
+	if err := r.queries.DeleteOAuthIdentitiesForUser(ctx, userID); err != nil {
+		return fmt.Errorf("purge oauth identities: %w", err)
+	}
+	if err := r.queries.DeleteChallengesForUser(ctx, &userID); err != nil {
+		return fmt.Errorf("purge challenges: %w", err)
+	}
+	return nil
+}
+
 func toDomain(row sqlcauth.CoreCredential) domain.Credential {
 	return domain.Credential{
 		ID:           row.ID,

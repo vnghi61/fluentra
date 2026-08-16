@@ -68,6 +68,27 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (C
 	return i, err
 }
 
+const deleteRefreshTokensForUser = `-- name: DeleteRefreshTokensForUser :exec
+DELETE FROM core.refresh_tokens rt
+USING core.sessions s
+WHERE s.id = rt.session_id AND s.user_id = $1
+`
+
+func (q *Queries) DeleteRefreshTokensForUser(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteRefreshTokensForUser, userID)
+	return err
+}
+
+const deleteSessionsForUser = `-- name: DeleteSessionsForUser :exec
+DELETE FROM core.sessions
+WHERE user_id = $1
+`
+
+func (q *Queries) DeleteSessionsForUser(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteSessionsForUser, userID)
+	return err
+}
+
 const getOwnedSession = `-- name: GetOwnedSession :one
 SELECT id, user_id, device_label, ip_hash, user_agent_hash, created_at, last_seen_at, revoked_at,
        absolute_expires_at, idle_window, trusted_device_id

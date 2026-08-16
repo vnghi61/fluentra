@@ -20,3 +20,7 @@ UPDATE core.credentials
 SET password_hash = $2, updated_at = now()
 WHERE user_id = $1
 RETURNING id, user_id, password_hash, algo_params, created_at, updated_at;
+
+-- name: DeleteCredentialByUserID :exec
+DELETE FROM core.credentials
+WHERE user_id = $1;

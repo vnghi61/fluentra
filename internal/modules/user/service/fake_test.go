@@ -20,6 +20,7 @@ import (
 const (
 	nameNghi          = "Nghi"
 	timezoneHoChiMinh = "Asia/Ho_Chi_Minh"
+	timezoneUTC       = "UTC"
 )
 
 // fakeRepo is an in-memory stand-in for the repository. It exists so the
@@ -34,6 +35,7 @@ type fakeRepo struct {
 	preferences map[uuid.UUID]domain.Preferences
 	summaries   map[uuid.UUID]domain.Summary
 	exports     map[uuid.UUID]domain.ExportRequest
+	deletions   map[uuid.UUID]domain.DeletionRequest
 
 	// calls counts every repository method by name. A test asserting "one
 	// query for N ids" asserts on this.
@@ -49,6 +51,7 @@ func newFakeRepo() *fakeRepo {
 		preferences: map[uuid.UUID]domain.Preferences{},
 		summaries:   map[uuid.UUID]domain.Summary{},
 		exports:     map[uuid.UUID]domain.ExportRequest{},
+		deletions:   map[uuid.UUID]domain.DeletionRequest{},
 		calls:       map[string]int{},
 		failOn:      map[string]error{},
 	}
@@ -533,6 +536,190 @@ func (f *fakeRepo) DeleteExport(_ context.Context, id uuid.UUID) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	delete(f.exports, id)
+	return nil
+}
+
+func (f *fakeRepo) CreateDeletionRequest(_ context.Context, id, userID uuid.UUID, executeAt time.Time) (
+	domain.DeletionRequest, error,
+) {
+	if err := f.record("CreateDeletionRequest"); err != nil {
+		return domain.DeletionRequest{}, err
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	req := domain.DeletionRequest{
+		ID:          id,
+		UserID:      userID,
+		Status:      domain.DeletionStatusPending,
+		RequestedAt: time.Now().UTC(),
+		ExecuteAt:   executeAt,
+		CreatedAt:   time.Now().UTC(),
+		UpdatedAt:   time.Now().UTC(),
+	}
+	f.deletions[id] = req
+	return req, nil
+}
+
+func (f *fakeRepo) GetPendingDeletionForUser(_ context.Context, userID uuid.UUID) (
+	domain.DeletionRequest, bool, error,
+) {
+	if err := f.record("GetPendingDeletionForUser"); err != nil {
+		return domain.DeletionRequest{}, false, err
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, req := range f.deletions {
+		if req.UserID == userID && (req.Status == domain.DeletionStatusPending ||
+			req.Status == domain.DeletionStatusProcessing) {
+			return req, true, nil
+		}
+	}
+	return domain.DeletionRequest{}, false, nil
+}
+
+func (f *fakeRepo) GetDeletionByID(_ context.Context, id uuid.UUID) (domain.DeletionRequest, error) {
+	if err := f.record("GetDeletionByID"); err != nil {
+		return domain.DeletionRequest{}, err
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	req, ok := f.deletions[id]
+	if !ok {
+		return domain.DeletionRequest{}, domain.ErrDeletionNotFound
+	}
+	return req, nil
+}
+
+func (f *fakeRepo) CancelDeletion(_ context.Context, id uuid.UUID, cancelledAt time.Time) error {
+	if err := f.record("CancelDeletion"); err != nil {
+		return err
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	req, ok := f.deletions[id]
+	if !ok || req.Status != domain.DeletionStatusPending {
+		return domain.ErrDeletionNotCancellable
+	}
+	req.Status = domain.DeletionStatusCancelled
+	req.CancelledAt = &cancelledAt
+	req.UpdatedAt = time.Now().UTC()
+	f.deletions[id] = req
+	return nil
+}
+
+func (f *fakeRepo) UpdateDeletionStatus(
+	_ context.Context, id uuid.UUID, status domain.DeletionStatus,
+	startedAt, completedAt *time.Time, errorMessage *string,
+) error {
+	if err := f.record("UpdateDeletionStatus"); err != nil {
+		return err
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	req, ok := f.deletions[id]
+	if !ok {
+		return domain.ErrDeletionNotFound
+	}
+	req.Status = status
+	if startedAt != nil {
+		req.StartedAt = startedAt
+	}
+	if completedAt != nil {
+		req.CompletedAt = completedAt
+	}
+	if errorMessage != nil {
+		req.ErrorMessage = errorMessage
+	}
+	req.UpdatedAt = time.Now().UTC()
+	f.deletions[id] = req
+	return nil
+}
+
+func (f *fakeRepo) GetDueDeletions(_ context.Context, cutoff time.Time, limit int32) ([]domain.DeletionRequest, error) {
+	if err := f.record("GetDueDeletions"); err != nil {
+		return nil, err
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var result []domain.DeletionRequest
+	for _, req := range f.deletions {
+		if req.Status == domain.DeletionStatusPending && (req.ExecuteAt.Before(cutoff) || req.ExecuteAt.Equal(cutoff)) {
+			result = append(result, req)
+			if len(result) >= int(limit) {
+				break
+			}
+		}
+	}
+	return result, nil
+}
+
+func (f *fakeRepo) AnonymiseUser(_ context.Context, userID uuid.UUID, anonymisedEmail string) error {
+	if err := f.record("AnonymiseUser"); err != nil {
+		return err
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	user, ok := f.users[userID]
+	if !ok {
+		return domain.ErrUserNotFound
+	}
+	user.Email = anonymisedEmail
+	user.Status = domain.StatusDeleted
+	user.UpdatedAt = time.Now().UTC()
+	f.users[userID] = user
+	return nil
+}
+
+func (f *fakeRepo) AnonymiseProfile(_ context.Context, userID uuid.UUID) error {
+	if err := f.record("AnonymiseProfile"); err != nil {
+		return err
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	profile, ok := f.profiles[userID]
+	if !ok {
+		return nil
+	}
+	profile.DisplayName = "Deleted User"
+	profile.AvatarAssetID = nil
+	profile.Country = nil
+	profile.Timezone = timezoneUTC
+	profile.DateOfBirth = nil
+	profile.UpdatedAt = time.Now().UTC()
+	f.profiles[userID] = profile
+	return nil
+}
+
+func (f *fakeRepo) DeletePreferences(_ context.Context, userID uuid.UUID) error {
+	if err := f.record("DeletePreferences"); err != nil {
+		return err
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	delete(f.preferences, userID)
+	return nil
+}
+
+func (f *fakeRepo) DeleteLearningProfile(_ context.Context, _ uuid.UUID) error {
+	if err := f.record("DeleteLearningProfile"); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (f *fakeRepo) UpdateUserStatus(_ context.Context, userID uuid.UUID, status domain.Status) error {
+	if err := f.record("UpdateUserStatus"); err != nil {
+		return err
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	user, ok := f.users[userID]
+	if !ok {
+		return domain.ErrUserNotFound
+	}
+	user.Status = status
+	user.UpdatedAt = time.Now().UTC()
+	f.users[userID] = user
 	return nil
 }
 

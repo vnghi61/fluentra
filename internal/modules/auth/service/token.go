@@ -229,6 +229,25 @@ func (s *TokenService) Issue(ctx context.Context, userID, sessionID uuid.UUID) (
 	}, nil
 }
 
+// IssueAccessTokenForTest mints a signed JWT for testing without assembling the whole service.
+func IssueAccessTokenForTest(signingKey []byte, userID uuid.UUID, role string) (string, error) {
+	now := time.Now().UTC()
+	claims := accessClaims{
+		SessionID: uuid.New().String(),
+		Role:      role,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   userID.String(),
+			ID:        uuid.New().String(),
+			IssuedAt:  jwt.NewNumericDate(now),
+			NotBefore: jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(15 * time.Minute)),
+			Issuer:    "fluentra",
+			Audience:  audienceOf("fluentra-api"),
+		},
+	}
+	return jwt.NewWithClaims(signingMethod, claims).SignedString(signingKey)
+}
+
 // Verify validates a token and returns the caller it identifies.
 //
 // The two failures a client must tell apart are separated deliberately
