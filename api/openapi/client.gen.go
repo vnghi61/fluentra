@@ -531,6 +531,20 @@ type ClientInterface interface {
 	// Corresponds with POST /me/avatar/upload-intent (the `UserRequestAvatarUploadIntent` operationId).
 	UserRequestAvatarUploadIntent(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// UserRequestExport Request a complete export of all personal data (GDPR).
+	//
+	// Starts an asynchronous background job to collect the user's data across all modules, package it as a ZIP archive, and send a secure download link via email. If an export is already pending or processing, returns 409 Conflict.
+	//
+	// Corresponds with POST /me/export (the `UserRequestExport` operationId).
+	UserRequestExport(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UserGetExport Get the status of a specific data export request.
+	//
+	// Returns the status and metadata for a previously requested data export.
+	//
+	// Corresponds with GET /me/export/{id} (the `UserGetExport` operationId).
+	UserGetExport(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// RbacGetMyPermissions Read the caller's own effective permissions.
 	//
 	// Resolves the caller's roles to the flat set of named permissions they grant. Advisory only: it exists so the interface can hide actions that would fail, and every server call re-checks regardless of what the client believes.
@@ -1415,6 +1429,40 @@ func (c *Client) UserConfirmAvatar(ctx context.Context, body UserConfirmAvatarJS
 // Corresponds with POST /me/avatar/upload-intent (the `UserRequestAvatarUploadIntent` operationId).
 func (c *Client) UserRequestAvatarUploadIntent(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUserRequestAvatarUploadIntentRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UserRequestExport Request a complete export of all personal data (GDPR).
+//
+// Starts an asynchronous background job to collect the user's data across all modules, package it as a ZIP archive, and send a secure download link via email. If an export is already pending or processing, returns 409 Conflict.
+//
+// Corresponds with POST /me/export (the `UserRequestExport` operationId).
+func (c *Client) UserRequestExport(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserRequestExportRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UserGetExport Get the status of a specific data export request.
+//
+// Returns the status and metadata for a previously requested data export.
+//
+// Corresponds with GET /me/export/{id} (the `UserGetExport` operationId).
+func (c *Client) UserGetExport(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserGetExportRequest(c.Server, id)
 	if err != nil {
 		return nil, err
 	}
@@ -2765,6 +2813,67 @@ func NewUserRequestAvatarUploadIntentRequest(server string) (*http.Request, erro
 	return req, nil
 }
 
+// NewUserRequestExportRequest constructs an http.Request for the UserRequestExport method
+func NewUserRequestExportRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/export")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUserGetExportRequest constructs an http.Request for the UserGetExport method
+func NewUserGetExportRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/export/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewRbacGetMyPermissionsRequest constructs an http.Request for the RbacGetMyPermissions method
 func NewRbacGetMyPermissionsRequest(server string) (*http.Request, error) {
 	var err error
@@ -3455,6 +3564,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /me/avatar/upload-intent (the `UserRequestAvatarUploadIntent` operationId).
 	UserRequestAvatarUploadIntentWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*UserRequestAvatarUploadIntentResponse, error)
+
+	// UserRequestExportWithResponse Request a complete export of all personal data (GDPR).
+	//
+	// Starts an asynchronous background job to collect the user's data across all modules, package it as a ZIP archive, and send a secure download link via email. If an export is already pending or processing, returns 409 Conflict.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /me/export (the `UserRequestExport` operationId).
+	UserRequestExportWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*UserRequestExportResponse, error)
+
+	// UserGetExportWithResponse Get the status of a specific data export request.
+	//
+	// Returns the status and metadata for a previously requested data export.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /me/export/{id} (the `UserGetExport` operationId).
+	UserGetExportWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*UserGetExportResponse, error)
 
 	// RbacGetMyPermissionsWithResponse Read the caller's own effective permissions.
 	//
@@ -5686,6 +5813,130 @@ func (r UserRequestAvatarUploadIntentResponse) ContentType() string {
 	return ""
 }
 
+// UserRequestExportResponse202Headers the declared response headers of an HTTP 202 response for UserRequestExport
+type UserRequestExportResponse202Headers struct {
+	XRequestId *string
+}
+
+type UserRequestExportResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON202 the response for an HTTP 202 `application/json` response
+	JSON202 *ExportResponse
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// Headers202 the parsed response headers for an HTTP 202 response
+	Headers202 *UserRequestExportResponse202Headers
+}
+
+// GetJSON202 returns the response for an HTTP 202 `application/json` response
+func (r UserRequestExportResponse) GetJSON202() *ExportResponse {
+	return r.JSON202
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r UserRequestExportResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r UserRequestExportResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r UserRequestExportResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UserRequestExportResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UserRequestExportResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UserRequestExportResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// UserGetExportResponse200Headers the declared response headers of an HTTP 200 response for UserGetExport
+type UserGetExportResponse200Headers struct {
+	XRequestId *string
+}
+
+type UserGetExportResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ExportResponse
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *UserGetExportResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UserGetExportResponse) GetJSON200() *ExportResponse {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r UserGetExportResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r UserGetExportResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r UserGetExportResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UserGetExportResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UserGetExportResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UserGetExportResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // RbacGetMyPermissionsResponse200Headers the declared response headers of an HTTP 200 response for RbacGetMyPermissions
 type RbacGetMyPermissionsResponse200Headers struct {
 	XRequestId *string
@@ -6747,6 +6998,36 @@ func (c *ClientWithResponses) UserRequestAvatarUploadIntentWithResponse(ctx cont
 		return nil, err
 	}
 	return ParseUserRequestAvatarUploadIntentResponse(rsp)
+}
+
+// UserRequestExportWithResponse Request a complete export of all personal data (GDPR).
+//
+// Starts an asynchronous background job to collect the user's data across all modules, package it as a ZIP archive, and send a secure download link via email. If an export is already pending or processing, returns 409 Conflict.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /me/export (the `UserRequestExport` operationId).
+func (c *ClientWithResponses) UserRequestExportWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*UserRequestExportResponse, error) {
+	rsp, err := c.UserRequestExport(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserRequestExportResponse(rsp)
+}
+
+// UserGetExportWithResponse Get the status of a specific data export request.
+//
+// Returns the status and metadata for a previously requested data export.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /me/export/{id} (the `UserGetExport` operationId).
+func (c *ClientWithResponses) UserGetExportWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*UserGetExportResponse, error) {
+	rsp, err := c.UserGetExport(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserGetExportResponse(rsp)
 }
 
 // RbacGetMyPermissionsWithResponse Read the caller's own effective permissions.
@@ -9141,6 +9422,112 @@ func ParseUserRequestAvatarUploadIntentResponse(rsp *http.Response) (*UserReques
 			headers.RetryAfter = &value
 		}
 		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseUserRequestExportResponse parses an HTTP response from a UserRequestExportWithResponse call
+func ParseUserRequestExportResponse(rsp *http.Response) (*UserRequestExportResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UserRequestExportResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest ExportResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 202:
+		var headers UserRequestExportResponse202Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers202 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseUserGetExportResponse parses an HTTP response from a UserGetExportWithResponse call
+func ParseUserGetExportResponse(rsp *http.Response) (*UserGetExportResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UserGetExportResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ExportResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers UserGetExportResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
 	}
 
 	return response, nil

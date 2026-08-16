@@ -24,6 +24,7 @@ import (
 	authservice "github.com/fluentra/fluentra/internal/modules/auth/service"
 	"github.com/fluentra/fluentra/internal/modules/auth/service/oauth/google"
 	"github.com/fluentra/fluentra/internal/platform/cache"
+	"github.com/fluentra/fluentra/internal/platform/job"
 	"github.com/fluentra/fluentra/internal/platform/mailer"
 	"github.com/fluentra/fluentra/internal/platform/storage"
 	"github.com/fluentra/fluentra/internal/platform/telemetry"
@@ -220,11 +221,19 @@ func run(ctx context.Context) error {
 		Env:                 cfg.App.Environment,
 	})
 
+	jobClient, err := job.NewClientFromPool(pool)
+	if err != nil {
+		_ = redisClient.Close()
+		pool.Close()
+		return fmt.Errorf("create job client: %w", err)
+	}
+
 	modules := newIdentity(identityDeps{
 		Pool:       pool,
 		Cache:      cache.NewRedisCache[[]string](redisClient),
 		Limiter:    cache.NewRedisLimiter(redisClient),
 		Storage:    storage.NewMinIOStore(storageClient),
+		Enqueuer:   jobClient,
 		Env:        cfg.App.Environment,
 		OTPHMACKey: []byte(cfg.OTP.HMACKey),
 		Tokens: authservice.TokenConfig{

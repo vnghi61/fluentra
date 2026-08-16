@@ -131,3 +131,24 @@ func toPreferencesResponse(preferences domain.Preferences) preferencesResponse {
 	}
 	return response
 }
+
+// exportResponse mirrors the ExportRequest schema in OpenAPI.
+type exportResponse struct {
+	ID          uuid.UUID           `json:"id"`
+	Status      domain.ExportStatus `json:"status"`
+	CreatedAt   time.Time           `json:"created_at"`
+	StartedAt   *time.Time          `json:"started_at,omitempty"`
+	CompletedAt *time.Time          `json:"completed_at,omitempty"`
+	ExpiresAt   *time.Time          `json:"expires_at,omitempty"`
+}
+
+func toExportResponse(req domain.ExportRequest) exportResponse {
+	return exportResponse{
+		ID:          req.ID,
+		Status:      req.Status,
+		CreatedAt:   req.CreatedAt,
+		StartedAt:   req.StartedAt,
+		CompletedAt: req.CompletedAt,
+		ExpiresAt:   req.ExpiresAt,
+	}
+}

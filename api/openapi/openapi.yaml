@@ -1242,6 +1242,72 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+  /me/export:
+    post:
+      tags: [user]
+      operationId: userRequestExport
+      summary: Request a complete export of all personal data (GDPR).
+      description: >-
+        Starts an asynchronous background job to collect the user's data across all modules,
+        package it as a ZIP archive, and send a secure download link via email.
+        If an export is already pending or processing, returns 409 Conflict.
+      x-permission: self
+      responses:
+        '202':
+          description: Data export request accepted and queued for processing.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportResponse'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def012345678
+                user_id: 0199a1c2-3d4e-7f80-9abc-def012345678
+                status: pending
+                created_at: '2026-08-16T10:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /me/export/{id}:
+    get:
+      tags: [user]
+      operationId: userGetExport
+      summary: Get the status of a specific data export request.
+      description: Returns the status and metadata for a previously requested data export.
+      x-permission: self
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Unique identifier of the export request.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Current status and metadata of the export request.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportResponse'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def012345678
+                user_id: 0199a1c2-3d4e-7f80-9abc-def012345678
+                status: completed
+                created_at: '2026-08-16T10:00:00Z'
+                started_at: '2026-08-16T10:00:05Z'
+                completed_at: '2026-08-16T10:00:15Z'
+                expires_at: '2026-08-23T10:00:15Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /admin/roles:
     get:
       tags: [rbac]
@@ -1721,6 +1787,10 @@ components:
       $ref: ./components/user.yaml#/AvatarUploadIntent
     ConfirmAvatarRequest:
       $ref: ./components/user.yaml#/ConfirmAvatarRequest
+    ExportStatus:
+      $ref: ./components/user.yaml#/ExportStatus
+    ExportResponse:
+      $ref: ./components/user.yaml#/ExportResponse
     MyPermissions:
       $ref: ./components/rbac.yaml#/MyPermissions
     RoleName:

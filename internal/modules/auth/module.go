@@ -338,6 +338,46 @@ func (m *Module) TokenVerifier() contract.TokenVerifier { return m.tokens }
 // module exists yet, so today it is published and unconsumed.
 func (m *Module) SessionRevoker() contract.SessionRevoker { return m.revoker }
 
+// Exportable returns this module's data export contract.
+func (m *Module) Exportable() usercontract.Exportable { return m }
+
+// ExportUserData implements usercontract.Exportable for GDPR data export.
+func (m *Module) ExportUserData(ctx context.Context, userIDStr string) (map[string]interface{}, error) {
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		return nil, fmt.Errorf("parse user id for auth export: %w", err)
+	}
+
+	sessions, err := m.revoker.ListForUser(ctx, userID)
+	if err != nil {
+		sessions = nil
+	}
+
+	sessionItems := make([]map[string]interface{}, 0, len(sessions))
+	for _, s := range sessions {
+		sessionItems = append(sessionItems, map[string]interface{}{
+			"id":           s.ID.String(),
+			"device_label": s.DeviceLabel,
+			"created_at":   s.CreatedAt,
+			"last_seen_at": s.LastSeenAt,
+			"revoked_at":   s.RevokedAt,
+		})
+	}
+
+	identityItems := make([]map[string]interface{}, 0)
+	if googleIdent, found, err := m.oauth.FindIdentityByUser(ctx, userID, domain.ProviderGoogle); err == nil && found {
+		identityItems = append(identityItems, map[string]interface{}{
+			"provider":  googleIdent.Provider,
+			"linked_at": googleIdent.LinkedAt,
+		})
+	}
+
+	return map[string]interface{}{
+		"sessions":   sessionItems,
+		"identities": identityItems,
+	}, nil
+}
+
 // Authenticate is the middleware that turns a bearer token into an actor in the
 // request context.
 //

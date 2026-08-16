@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -18,9 +20,10 @@ import (
 // error in this package rather than a runtime surprise in whichever module
 // depends on it.
 var (
-	_ contract.Reader    = (*Service)(nil)
-	_ contract.Creator   = (*Service)(nil)
-	_ contract.Registrar = (*Service)(nil)
+	_ contract.Reader     = (*Service)(nil)
+	_ contract.Creator    = (*Service)(nil)
+	_ contract.Registrar  = (*Service)(nil)
+	_ contract.Exportable = (*Service)(nil)
 )
 
 // GetByID returns one rendering summary.
@@ -155,6 +158,67 @@ func (s *Service) MarkEmailVerified(ctx context.Context, userID uuid.UUID) error
 // PurgeUnverifiedBefore deletes accounts that never completed verification.
 func (s *Service) PurgeUnverifiedBefore(ctx context.Context, cutoff time.Time) (int, error) {
 	return s.repo.PurgeUnverifiedBefore(ctx, cutoff)
+}
+
+// ExportUserData returns a JSON-serializable map of all personal data held in user module (BR-USER-07).
+func (s *Service) ExportUserData(ctx context.Context, userIDStr string) (map[string]interface{}, error) {
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		return nil, fmt.Errorf("parse user id for export: %w", err)
+	}
+
+	user, err := s.repo.GetUser(ctx, userID)
+	if err != nil {
+		if errors.Is(err, domain.ErrUserNotFound) {
+			return map[string]interface{}{}, nil
+		}
+		return nil, err
+	}
+
+	data := map[string]interface{}{
+		"id":                user.ID.String(),
+		"email":             user.Email,
+		"status":            string(user.Status),
+		"email_verified_at": user.EmailVerifiedAt,
+		"created_at":        user.CreatedAt,
+		"updated_at":        user.UpdatedAt,
+	}
+
+	profile, err := s.repo.GetProfile(ctx, userID)
+	if err == nil {
+		data["profile"] = map[string]interface{}{
+			"display_name":    profile.DisplayName,
+			"avatar_asset_id": profile.AvatarAssetID,
+			"country":         profile.Country,
+			"timezone":        profile.Timezone,
+			"date_of_birth":   profile.DateOfBirth,
+		}
+	}
+
+	preferences, err := s.repo.GetPreferences(ctx, userID)
+	if err == nil {
+		channels := make([]string, 0, len(preferences.NotificationChannels))
+		for _, ch := range preferences.NotificationChannels {
+			channels = append(channels, string(ch))
+		}
+		var quietHours map[string]interface{}
+		if preferences.QuietHours != nil {
+			quietHours = map[string]interface{}{
+				"start": fmt.Sprintf("%02d:%02d", preferences.QuietHours.Start.Hour, preferences.QuietHours.Start.Minute),
+				"end":   fmt.Sprintf("%02d:%02d", preferences.QuietHours.End.Hour, preferences.QuietHours.End.Minute),
+			}
+		}
+		data["preferences"] = map[string]interface{}{
+			"locale":                preferences.Locale,
+			"theme":                 string(preferences.Theme),
+			"daily_goal_minutes":    preferences.DailyGoalMinutes,
+			"notification_channels": channels,
+			"quiet_hours":           quietHours,
+			"ai_processing_opt_out": preferences.AIProcessingOptOut,
+		}
+	}
+
+	return data, nil
 }
 
 // toContractSummary converts the internal shape to the published one. The

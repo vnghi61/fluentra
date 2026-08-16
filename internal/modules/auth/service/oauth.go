@@ -557,6 +557,13 @@ func (s *OAuthService) Unlink(ctx context.Context, actor httpx.Actor) error {
 	})
 }
 
+// FindIdentityByUser returns the linked identity for provider if any.
+func (s *OAuthService) FindIdentityByUser(
+	ctx context.Context, userID uuid.UUID, provider string,
+) (domain.OAuthIdentity, bool, error) {
+	return s.repo.FindOAuthIdentityByUser(ctx, userID, provider)
+}
+
 // SweepOAuthStates removes authorization requests nobody came back for.
 //
 // Most rows in the table are abandoned consent screens, and an expired state is

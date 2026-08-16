@@ -27,6 +27,8 @@ type Accounts interface {
 	) (domain.Preferences, error)
 	RequestAvatarUploadIntent(ctx context.Context, actorID uuid.UUID, contentType string) (domain.UploadIntent, error)
 	ConfirmAvatar(ctx context.Context, actorID uuid.UUID, objectKey string) (service.Account, error)
+	RequestExport(ctx context.Context, actorID uuid.UUID) (domain.ExportRequest, error)
+	GetExportByID(ctx context.Context, actorID, exportID uuid.UUID) (domain.ExportRequest, error)
 }
 
 // Handler serves the user module's HTTP operations.
@@ -47,6 +49,8 @@ func (h *Handler) Routes(router chi.Router) {
 		me.Put("/preferences", h.replacePreferences)
 		me.Post("/avatar/upload-intent", h.requestAvatarUploadIntent)
 		me.Put("/avatar", h.confirmAvatar)
+		me.Post("/export", h.requestExport)
+		me.Get("/export/{id}", h.getExport)
 	})
 }
 
@@ -344,4 +348,42 @@ func (h *Handler) confirmAvatar(writer http.ResponseWriter, request *http.Reques
 	}
 
 	httpx.WriteJSON(writer, request, http.StatusOK, toMeResponse(account))
+}
+
+func (h *Handler) requestExport(writer http.ResponseWriter, request *http.Request) {
+	actor, err := requireActor(request)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+
+	req, err := h.accounts.RequestExport(request.Context(), actor.UserID)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+
+	httpx.WriteJSON(writer, request, http.StatusAccepted, toExportResponse(req))
+}
+
+func (h *Handler) getExport(writer http.ResponseWriter, request *http.Request) {
+	actor, err := requireActor(request)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+
+	exportID, err := uuid.Parse(chi.URLParam(request, "id"))
+	if err != nil {
+		httpx.WriteProblem(writer, request, apperr.New(apperr.Validation, "INVALID_EXPORT_ID", "must be a valid UUID"))
+		return
+	}
+
+	req, err := h.accounts.GetExportByID(request.Context(), actor.UserID, exportID)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+
+	httpx.WriteJSON(writer, request, http.StatusOK, toExportResponse(req))
 }

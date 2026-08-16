@@ -618,6 +618,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request a complete export of all personal data (GDPR).
+         * @description Starts an asynchronous background job to collect the user's data across all modules, package it as a ZIP archive, and send a secure download link via email. If an export is already pending or processing, returns 409 Conflict.
+         */
+        post: operations["userRequestExport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/export/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the status of a specific data export request.
+         * @description Returns the status and metadata for a previously requested data export.
+         */
+        get: operations["userGetExport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/roles": {
         parameters: {
             query?: never;
@@ -1359,6 +1399,28 @@ export interface components {
              * @example users/0199a1c2-3d4e-7f80-9abc-def012345678/2026/08/avatar-raw.jpg
              */
             object_key: string;
+        };
+        /**
+         * @description Lifecycle state of a user data export request.
+         * @enum {string}
+         */
+        ExportStatus: "pending" | "processing" | "completed" | "failed";
+        /** @description Status and metadata of a user data export. */
+        ExportResponse: {
+            /**
+             * Format: uuid
+             * @description Unique ID of the export request.
+             */
+            id: string;
+            status: components["schemas"]["ExportStatus"];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            started_at?: string;
+            /** Format: date-time */
+            completed_at?: string;
+            /** Format: date-time */
+            expires_at?: string;
         };
         /**
          * @description What the caller is allowed to do, as the server currently sees it.
@@ -2859,6 +2921,74 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
             422: components["responses"]["ValidationFailed"];
+        };
+    };
+    userRequestExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Data export request accepted and queued for processing. */
+            202: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "status": "pending",
+                     *       "created_at": "2026-08-16T10:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ExportResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    userGetExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Unique identifier of the export request. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current status and metadata of the export request. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "status": "completed",
+                     *       "created_at": "2026-08-16T10:00:00Z",
+                     *       "started_at": "2026-08-16T10:00:05Z",
+                     *       "completed_at": "2026-08-16T10:00:15Z",
+                     *       "expires_at": "2026-08-23T10:00:15Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ExportResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
         };
     };
     rbacListRoles: {

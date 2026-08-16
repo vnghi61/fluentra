@@ -48,7 +48,26 @@ type Repository interface {
 	MarkEmailVerified(ctx context.Context, userID uuid.UUID) (domain.User, error)
 	PurgeUnverifiedBefore(ctx context.Context, cutoff time.Time) (int, error)
 
+	// The export lifecycle (GDPR).
+	CreateExportRequest(ctx context.Context, id, userID uuid.UUID) (domain.ExportRequest, error)
+	GetPendingExportForUser(ctx context.Context, userID uuid.UUID) (domain.ExportRequest, bool, error)
+	GetExportByID(ctx context.Context, id uuid.UUID) (domain.ExportRequest, error)
+	UpdateExportStatus(
+		ctx context.Context,
+		id uuid.UUID,
+		status domain.ExportStatus,
+		startedAt, completedAt, expiresAt *time.Time,
+		objectKey, errorMessage *string,
+	) error
+	GetExpiredExports(ctx context.Context, limit int32) ([]domain.ExportRequest, error)
+	DeleteExport(ctx context.Context, id uuid.UUID) error
+
 	WithTx(tx pgx.Tx) Repository
+}
+
+// JobEnqueuer is what the service uses to schedule background work inside a transaction.
+type JobEnqueuer interface {
+	EnqueueExportTx(ctx context.Context, tx pgx.Tx, exportID, userID uuid.UUID) error
 }
 
 // OutboxTx is the transaction surface the outbox writer needs. Its shape
@@ -72,33 +91,36 @@ type IDGenerator func(ctx context.Context) (uuid.UUID, error)
 
 // Service implements the user module's use cases.
 type Service struct {
-	pool    dbx.Beginner
-	repo    Repository
-	events  EventWriter
-	clock   clock.Clock
-	ids     IDGenerator
-	storage StorageStore
+	pool     dbx.Beginner
+	repo     Repository
+	events   EventWriter
+	clock    clock.Clock
+	ids      IDGenerator
+	storage  StorageStore
+	enqueuer JobEnqueuer
 }
 
 // Deps are the service's collaborators.
 type Deps struct {
-	Pool    dbx.Beginner
-	Repo    Repository
-	Events  EventWriter
-	Clock   clock.Clock
-	NewID   IDGenerator
-	Storage StorageStore
+	Pool     dbx.Beginner
+	Repo     Repository
+	Events   EventWriter
+	Clock    clock.Clock
+	NewID    IDGenerator
+	Storage  StorageStore
+	Enqueuer JobEnqueuer
 }
 
 // New creates the user service.
 func New(deps Deps) *Service {
 	return &Service{
-		pool:    deps.Pool,
-		repo:    deps.Repo,
-		events:  deps.Events,
-		clock:   deps.Clock,
-		ids:     deps.NewID,
-		storage: deps.Storage,
+		pool:     deps.Pool,
+		repo:     deps.Repo,
+		events:   deps.Events,
+		clock:    deps.Clock,
+		ids:      deps.NewID,
+		storage:  deps.Storage,
+		enqueuer: deps.Enqueuer,
 	}
 }
 

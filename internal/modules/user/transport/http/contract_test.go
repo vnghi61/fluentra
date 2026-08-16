@@ -176,3 +176,23 @@ func TestContract_ProblemResponsesMatchTheSpec(t *testing.T) {
 	}
 	assertMatchesSchema(t, schema, recorder.Body.Bytes())
 }
+
+func TestContract_ExportResponsesMatchTheSpec(t *testing.T) {
+	spec := loadSpec(t)
+	server := newServer(&fakeAccounts{})
+
+	postReq := authenticated(t, server, http.MethodPost, "/api/v1/me/export", "")
+	if postReq.Code != http.StatusAccepted {
+		t.Fatalf("POST /me/export status = %d, want 202 (body %s)", postReq.Code, postReq.Body)
+	}
+	item := spec.Paths.Find("/me/export")
+	operation := item.GetOperation(http.MethodPost)
+	response := operation.Responses.Status(http.StatusAccepted)
+	assertMatchesSchema(t, response.Value.Content.Get("application/json").Schema.Value, postReq.Body.Bytes())
+
+	getReq := authenticated(t, server, http.MethodGet, "/api/v1/me/export/0199a1c2-3d4e-7f80-9abc-def999999999", "")
+	if getReq.Code != http.StatusOK {
+		t.Fatalf("GET /me/export/{id} status = %d, want 200 (body %s)", getReq.Code, getReq.Body)
+	}
+	assertMatchesSchema(t, responseSchema(t, spec, "/me/export/{id}", http.MethodGet), getReq.Body.Bytes())
+}

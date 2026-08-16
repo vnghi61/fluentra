@@ -412,6 +412,7 @@
       { "method": "POST", "path": "/api/v1/me/avatar/upload-intent", "permission": "self", "purpose": "Get a presigned URL for an avatar upload", "success": "200", "errors": ["UNSUPPORTED_MEDIA_TYPE", "TOO_LARGE"] },
       { "method": "PUT", "path": "/api/v1/me/avatar", "permission": "self", "purpose": "Confirm the uploaded avatar", "success": "200" },
       { "method": "POST", "path": "/api/v1/me/export", "permission": "self", "purpose": "Request a data export", "success": "202" },
+      { "method": "GET", "path": "/api/v1/me/export/{id}", "permission": "self", "purpose": "Get status of a data export request", "success": "200" },
       { "method": "DELETE", "path": "/api/v1/me", "permission": "self", "purpose": "Request account deletion (30-day grace)", "success": "202" },
       { "method": "POST", "path": "/api/v1/me/deletion/cancel", "permission": "self", "purpose": "Cancel a pending deletion", "success": "200", "errors": ["INVALID_STATE_TRANSITION"] },
       { "method": "GET", "path": "/api/v1/admin/users", "permission": "user.list", "purpose": "Search and list users", "success": "200" },

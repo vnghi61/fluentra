@@ -134,6 +134,11 @@ func (s *SessionService) List(ctx context.Context, actor httpx.Actor) ([]Session
 	return views, nil
 }
 
+// ListForUser returns all live sessions for an account (used by GDPR export).
+func (s *SessionService) ListForUser(ctx context.Context, userID uuid.UUID) ([]domain.Session, error) {
+	return s.repo.ListLiveSessions(ctx, userID)
+}
+
 // Revoke signs one device out.
 //
 // A session belonging to another account is `RESOURCE_NOT_FOUND`, the same

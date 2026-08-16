@@ -1,0 +1,6 @@
+Xin chào {{.DisplayName}},
+
+Dữ liệu xuất bạn yêu cầu đã sẵn sàng để tải về:
+{{.DownloadURL}}
+
+Liên kết này sẽ hết hạn trong vòng {{.ExpiresHours}} giờ.

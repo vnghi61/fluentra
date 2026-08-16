@@ -72,7 +72,7 @@ Legend — **Status**: `PLANNED` (spec only) · `IN_PROGRESS` · `DONE` · `DEPR
 | # | Module | Purpose | Schema | Owns tables | Depends on | Phase | Status |
 |---|---|---|---|---|---|---|---|
 | C1 | `auth` | Registration, login, tokens, sessions, MFA, password reset, OAuth | `core` | `credentials`, `sessions`, `refresh_tokens`, `mfa_secrets`, `verification_tokens`, `login_attempts` | user, rbac, mailer, cache, audit | 1 | PLANNED |
-| C2 | `user` | Profile, preferences, locale, level, avatar, export, deletion | `core` | `users`, `profiles`, `user_preferences`, `user_deletion_requests` | storage, mailer, audit | 1 | PLANNED |
+| C2 | `user` | Profile, preferences, locale, level, avatar, export, deletion | `core` | `users`, `profiles`, `user_preferences`, `user_deletion_requests`, `user_exports` | storage, mailer, audit, job, auth, rbac | 1 | PLANNED |
 | C3 | `rbac` | Roles, permissions, policy evaluation, guards | `core` | `roles`, `permissions`, `role_permissions`, `user_roles` | cache, audit | 1 | PLANNED |
 | C4 | `audit` | Immutable action log, security events, admin trail, retention | `audit` | `audit_logs`, `security_events` | job | 1 | PLANNED |
 | C5 | `admin` | Back-office surface: dashboards, user management, moderation, feature flags | — (reads others via contract) | `feature_flags`, `admin_notes` | all core + learning contracts | 2 | PLANNED |

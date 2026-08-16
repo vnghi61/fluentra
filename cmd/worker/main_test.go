@@ -135,11 +135,11 @@ func TestLoadConfig_RejectsUnusableJobSettings(t *testing.T) {
 	}
 }
 
-// TestRegisterJobKinds_IsTheSinglePlaceP1Adds documents why the worker does not
-// start River today, so the next agent does not read the warning as a bug.
+// TestRegisterJobKinds_IsTheSinglePlaceP1Adds asserts that registered job kinds
+// includes the active workers (user.data_export).
 func TestRegisterJobKinds_IsTheSinglePlaceP1Adds(t *testing.T) {
-	if got := registerJobKinds(river.NewWorkers()); got != 0 {
-		t.Errorf("registered kinds = %d; update this test when P1 adds the first one", got)
+	if got := registerJobKinds(river.NewWorkers()); got != 1 {
+		t.Errorf("registered kinds = %d; want 1", got)
 	}
 }
 
