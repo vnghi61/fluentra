@@ -244,6 +244,21 @@ type CoreUser struct {
 	UpdatedAt       time.Time
 }
 
+// Tracks data export requests and their artifacts
+type CoreUserExport struct {
+	ID           uuid.UUID
+	UserID       uuid.UUID
+	Status       string
+	ObjectKey    *string
+	RequestedAt  time.Time
+	StartedAt    *time.Time
+	CompletedAt  *time.Time
+	ExpiresAt    *time.Time
+	ErrorMessage *string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
+
 type CoreUserPreference struct {
 	ID                   uuid.UUID
 	UserID               uuid.UUID

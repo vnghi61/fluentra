@@ -257,6 +257,88 @@ func (r *Repository) ListSummaries(ctx context.Context, ids []uuid.UUID) ([]doma
 	return summaries, nil
 }
 
+// CreateExportRequest inserts a new export record.
+func (r *Repository) CreateExportRequest(ctx context.Context, id, userID uuid.UUID) (domain.ExportRequest, error) {
+	row, err := r.queries.CreateExportRequest(ctx, sqlcuser.CreateExportRequestParams{
+		ID:     id,
+		UserID: userID,
+	})
+	if err != nil {
+		return domain.ExportRequest{}, fmt.Errorf("create export request: %w", err)
+	}
+	return toDomainExport(row), nil
+}
+
+// GetPendingExportForUser finds an active export request in pending or processing state.
+func (r *Repository) GetPendingExportForUser(
+	ctx context.Context, userID uuid.UUID,
+) (domain.ExportRequest, bool, error) {
+	row, err := r.queries.GetPendingExportForUser(ctx, userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.ExportRequest{}, false, nil
+		}
+		return domain.ExportRequest{}, false, fmt.Errorf("get pending export for user: %w", err)
+	}
+	return toDomainExport(row), true, nil
+}
+
+// GetExportByID retrieves an export request by ID.
+func (r *Repository) GetExportByID(ctx context.Context, id uuid.UUID) (domain.ExportRequest, error) {
+	row, err := r.queries.GetExportByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.ExportRequest{}, domain.ErrUserNotFound
+		}
+		return domain.ExportRequest{}, fmt.Errorf("get export by id: %w", err)
+	}
+	return toDomainExport(row), nil
+}
+
+// UpdateExportStatus updates the state and timestamps of an export request.
+func (r *Repository) UpdateExportStatus(
+	ctx context.Context,
+	id uuid.UUID,
+	status domain.ExportStatus,
+	startedAt, completedAt, expiresAt *time.Time,
+	objectKey, errorMessage *string,
+) error {
+	err := r.queries.UpdateExportStatus(ctx, sqlcuser.UpdateExportStatusParams{
+		ID:           id,
+		Status:       string(status),
+		StartedAt:    startedAt,
+		CompletedAt:  completedAt,
+		ExpiresAt:    expiresAt,
+		ObjectKey:    objectKey,
+		ErrorMessage: errorMessage,
+	})
+	if err != nil {
+		return fmt.Errorf("update export status: %w", err)
+	}
+	return nil
+}
+
+// GetExpiredExports lists completed exports whose retention has expired.
+func (r *Repository) GetExpiredExports(ctx context.Context, limit int32) ([]domain.ExportRequest, error) {
+	rows, err := r.queries.GetExpiredExports(ctx, limit)
+	if err != nil {
+		return nil, fmt.Errorf("get expired exports: %w", err)
+	}
+	items := make([]domain.ExportRequest, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, toDomainExport(row))
+	}
+	return items, nil
+}
+
+// DeleteExport removes an export record.
+func (r *Repository) DeleteExport(ctx context.Context, id uuid.UUID) error {
+	if err := r.queries.DeleteExport(ctx, id); err != nil {
+		return fmt.Errorf("delete export: %w", err)
+	}
+	return nil
+}
+
 // isUniqueViolation reports whether err is a unique constraint failure on the
 // named constraint. Matching the name and not just the code matters: a table
 // with two unique constraints would otherwise report the wrong one, and the

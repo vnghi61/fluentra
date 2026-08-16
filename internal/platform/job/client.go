@@ -6,7 +6,9 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
+	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/riverqueue/river/rivertype"
 )
 
@@ -63,4 +65,13 @@ func (c *Client) EnqueueTx(
 		return nil, fmt.Errorf("insert river job: %w", err)
 	}
 	return res, nil
+}
+
+// NewClientFromPool creates a job client using the connection pool.
+func NewClientFromPool(pool *pgxpool.Pool) (*Client, error) {
+	riverClient, err := river.NewClient(riverpgxv5.New(pool), &river.Config{})
+	if err != nil {
+		return nil, fmt.Errorf("create river client: %w", err)
+	}
+	return NewClient(riverClient), nil
 }

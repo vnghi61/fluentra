@@ -2,6 +2,7 @@ package rbac
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -109,6 +110,37 @@ func (m *Module) RevokeRole(
 // consumer calls it.
 func (m *Module) ForgetUser(ctx context.Context, userID uuid.UUID) error {
 	return m.service.ForgetUser(ctx, userID)
+}
+
+// ExportUserData implements contract.Exportable for GDPR data export.
+func (m *Module) ExportUserData(ctx context.Context, userIDStr string) (map[string]interface{}, error) {
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		return nil, fmt.Errorf("parse user id for rbac export: %w", err)
+	}
+
+	roles, err := m.service.RolesOf(ctx, userID)
+	if err != nil {
+		roles = nil
+	}
+	roleStrings := make([]string, 0, len(roles))
+	for _, r := range roles {
+		roleStrings = append(roleStrings, string(r))
+	}
+
+	perms, err := m.service.PermissionsOf(ctx, userID)
+	if err != nil {
+		perms = nil
+	}
+	permStrings := make([]string, 0, len(perms))
+	for _, p := range perms {
+		permStrings = append(permStrings, string(p))
+	}
+
+	return map[string]interface{}{
+		"roles":       roleStrings,
+		"permissions": permStrings,
+	}, nil
 }
 
 // repositoryAdapter narrows *repository.Repository to the service's interface.

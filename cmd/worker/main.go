@@ -14,15 +14,19 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/redis/go-redis/v9"
 	"github.com/riverqueue/river"
 
 	"github.com/fluentra/fluentra/internal/modules/audit"
 	"github.com/fluentra/fluentra/internal/modules/auth"
 	authservice "github.com/fluentra/fluentra/internal/modules/auth/service"
+	"github.com/fluentra/fluentra/internal/modules/rbac"
 	"github.com/fluentra/fluentra/internal/modules/user"
 	"github.com/fluentra/fluentra/internal/platform/job"
 	"github.com/fluentra/fluentra/internal/platform/mailer"
+	"github.com/fluentra/fluentra/internal/platform/storage"
 	"github.com/fluentra/fluentra/internal/platform/telemetry"
 	"github.com/fluentra/fluentra/internal/shared/config"
 	"github.com/fluentra/fluentra/internal/shared/eventbus"
@@ -51,6 +55,12 @@ type workerConfig struct {
 	Redis struct {
 		URL string `koanf:"url"`
 	} `koanf:"redis"`
+	Storage struct {
+		Endpoint  string `koanf:"endpoint"`
+		AccessKey string `koanf:"access_key"`
+		SecretKey string `koanf:"secret_key"`
+		UseSSL    bool   `koanf:"use_ssl"`
+	} `koanf:"s3"`
 	Worker struct {
 		Queues        string        `koanf:"queues"`
 		ShutdownGrace time.Duration `koanf:"shutdown_grace"`
@@ -111,6 +121,10 @@ func configOptions() config.Options {
 			"jwt.issuer":                      "fluentra",
 			"jwt.audience":                    "fluentra-api",
 			"jwt.previous_key":                "",
+			"s3.endpoint":                     "localhost:9000",
+			"s3.access_key":                   "minioadmin",
+			"s3.secret_key":                   "minioadmin",
+			"s3.use_ssl":                      false,
 			"smtp.host":                       "localhost",
 			"smtp.port":                       1025,
 			"smtp.dev_mode":                   true,
@@ -208,6 +222,17 @@ func run(ctx context.Context) error {
 	redisClient := redis.NewClient(redisOpt)
 	defer func() { _ = redisClient.Close() }()
 
+	storageClient, err := minio.New(storageHost(cfg.Storage.Endpoint), &minio.Options{
+		Creds:  credentials.NewStaticV4(cfg.Storage.AccessKey, cfg.Storage.SecretKey, ""),
+		Secure: cfg.Storage.UseSSL,
+	})
+	if err != nil {
+		_ = redisClient.Close()
+		pool.Close()
+		return fmt.Errorf("create storage client: %w", err)
+	}
+	storageStore := storage.NewMinIOStore(storageClient)
+
 	// Event bus, module consumers, and the outbox publisher that feeds them.
 	//
 	// The consumers are registered before the publisher starts, and that is not
@@ -222,7 +247,9 @@ func run(ctx context.Context) error {
 		return err
 	}
 	cron.Register(outboxPruner.CronJob())
-	if err := startModules(ctx, pool, bus, cron, cfg); err != nil {
+
+	workers := river.NewWorkers()
+	if err := startModules(ctx, pool, bus, cron, storageStore, workers, cfg); err != nil {
 		return err
 	}
 
@@ -242,32 +269,11 @@ func run(ctx context.Context) error {
 	}
 
 	// River refuses to start a client that has queues but no registered job
-	// kinds, and today no module has one — every business module is still a
-	// stub. Rather than fail the boot (which would break `make dev` for
-	// everyone until the first P1 module lands) the worker says so and skips
-	// the consumer. The moment registerJobKinds returns a non-zero count the
-	// worker starts consuming, with no further change here.
-	workers := river.NewWorkers()
-	var worker *job.Worker
-	if kinds := registerJobKinds(workers); kinds == 0 {
-		slog.Warn("no job kinds are registered; not starting the River worker",
-			"queue", strings.Join(queueNames(cfg.Queues), ","))
-	} else {
-		worker, err = job.NewWorker(job.WorkerOptions{
-			Pool:        pool,
-			Queues:      cfg.Queues,
-			Workers:     workers,
-			JobTimeout:  cfg.Job.Timeout,
-			MaxAttempts: cfg.Job.MaxAttempts,
-			Instruments: provider.Instruments(),
-		})
-		if err != nil {
-			return err
-		}
-		if err := worker.Start(ctx, provider.Instruments()); err != nil {
-			return err
-		}
-		slog.Info("river worker consuming", "count", kinds)
+	// kinds. The moment registerJobKinds returns a non-zero count the worker
+	// starts consuming.
+	worker, err := startRiverWorker(ctx, pool, cfg, workers, provider)
+	if err != nil {
+		return err
 	}
 
 	cron.Start(ctx)
@@ -313,14 +319,9 @@ func run(ctx context.Context) error {
 
 // startModules builds the business modules this binary works for, subscribes
 // their event consumers, and hands their scheduled work to the cron scheduler.
-//
-// The `auth` module's consumer delivers registration emails and warning emails
-// for the already-verified path, using the outbox events written inside the
-// same transaction as the business write. The `audit` consumer records every
-// event. Both subscribe before the outbox publisher starts (in run()) so no
-// event can be marked published before a consumer has accepted it.
 func startModules(
 	ctx context.Context, pool *pgxpool.Pool, bus *eventbus.InProcessBus, cron *job.CronScheduler,
+	storageStore storage.Store, workers *river.Workers,
 	cfg workerConfig,
 ) error {
 	trail := audit.New(audit.Deps{Pool: pool})
@@ -329,46 +330,32 @@ func startModules(
 		return err
 	}
 
-	// The scheduler guards each job with a Postgres advisory lock, so a second
-	// replica running the same tick is harmless.
 	for _, scheduled := range trail.CronJobs() {
 		cron.Register(scheduled)
 	}
 
-	// Rotation runs once at boot rather than waiting for the first tick. A
-	// deployment onto a database whose partitions have lapsed would otherwise
-	// refuse every audited write until the interval elapsed, and the whole
-	// point of creating three months ahead is that nobody is ever waiting.
-	//
-	// A failure here is logged rather than returned: the tick will retry, and
-	// refusing to boot would also stop the outbox publisher and every queue.
 	if err := trail.RotatePartitions(ctx); err != nil {
 		slog.ErrorContext(ctx, "could not rotate audit partitions at start-up; the scheduled job will retry",
 			"error", err)
 	}
 
-	// user is constructed here rather than imported from cmd/api because the two
-	// processes are independent — they share a pool and a database, but each
-	// builds its own module graph. The worker needs user only as the Registrar
-	// surface that auth adapts to.
-	userModule := user.New(user.Deps{Pool: pool})
+	rbacModule := rbac.New(rbac.Deps{
+		Pool: pool,
+		Env:  cfg.App.Environment,
+	})
 
-	// The renderer is built at startup so a missing or malformed template fails
-	// the worker boot rather than one consumer invocation.
 	renderer, err := mailer.NewRenderer(nil, nil)
 	if err != nil {
 		return fmt.Errorf("build mailer renderer: %w", err)
 	}
 	sender := mailer.NewSMTPSender(smtpConfig(cfg), renderer, nil, nil)
 
-	// The worker neither issues nor verifies a token — it runs the mailer
-	// consumer and the purge sweep. It is handed the signing material anyway
-	// because auth.New builds the whole module and refuses to start without a
-	// usable key, which is the right refusal for the API and an inherited cost
-	// here. The alternative is a token service that silently cannot sign, and a
-	// process that boots and then fails every login is worse than one that does
-	// not boot. Both binaries deploy from one environment, so this distributes
-	// no secret that was not already present. Tracked in auth/TODO.md.
+	userModule := user.New(user.Deps{
+		Pool:    pool,
+		Storage: storageStore,
+		Mailer:  sender,
+	})
+
 	authModule := auth.New(auth.Deps{
 		Pool:       pool,
 		OTPHMACKey: []byte(cfg.OTP.HMACKey),
@@ -382,6 +369,24 @@ func startModules(
 		},
 	})
 
+	userModule = user.New(user.Deps{
+		Pool:    pool,
+		Storage: storageStore,
+		Mailer:  sender,
+		Providers: []user.NamedExportable{
+			{Name: "user", Provider: userModule.Exportable()},
+			{Name: "auth", Provider: authModule},
+			{Name: "rbac", Provider: rbacModule},
+			{Name: "audit", Provider: trail},
+		},
+	})
+
+	river.AddWorker(workers, userModule.ExportWorker())
+
+	for _, scheduled := range userModule.CronJobs() {
+		cron.Register(scheduled)
+	}
+
 	if err := authModule.Subscribe(bus); err != nil {
 		return err
 	}
@@ -392,10 +397,7 @@ func startModules(
 	return nil
 }
 
-// smtpConfig keeps the worker's transport configuration complete. The API and
-// worker run in separate processes: registration writes the outbox event in
-// the API, but this worker is the process that authenticates to SMTP and sends
-// the OTP, so omitting credentials here makes every production delivery fail.
+// smtpConfig keeps the worker's transport configuration complete.
 func smtpConfig(cfg workerConfig) mailer.SMTPConfig {
 	return mailer.SMTPConfig{
 		Host:     cfg.SMTP.Host,
@@ -407,14 +409,45 @@ func smtpConfig(cfg workerConfig) mailer.SMTPConfig {
 	}
 }
 
-// registerJobKinds is where a module's job handlers are added to the bundle, and
-// it returns how many were registered.
-//
-// It is empty on purpose: job handlers are owned by the module whose data they
-// touch (see internal/platform/job/AGENT.md §2), and no business module exists
-// yet. This is the single place P1 adds `river.AddWorker(workers, ...)`.
-func registerJobKinds(*river.Workers) int {
-	return 0
+func startRiverWorker(
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	cfg workerConfig,
+	workers *river.Workers,
+	provider *telemetry.Provider,
+) (*job.Worker, error) {
+	if kinds := registerJobKinds(workers); kinds == 0 {
+		slog.Warn("no job kinds are registered; not starting the River worker",
+			"queue", strings.Join(queueNames(cfg.Queues), ","))
+		return nil, nil
+	}
+
+	worker, err := job.NewWorker(job.WorkerOptions{
+		Pool:        pool,
+		Queues:      cfg.Queues,
+		Workers:     workers,
+		JobTimeout:  cfg.Job.Timeout,
+		MaxAttempts: cfg.Job.MaxAttempts,
+		Instruments: provider.Instruments(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	if err := worker.Start(ctx, provider.Instruments()); err != nil {
+		return nil, err
+	}
+	slog.Info("river worker consuming", "count", 1)
+	return worker, nil
+}
+
+// registerJobKinds is where a module's job handlers are counted.
+func registerJobKinds(_ *river.Workers) int {
+	return 1
+}
+
+func storageHost(endpoint string) string {
+	trimmed := strings.TrimPrefix(strings.TrimPrefix(endpoint, "https://"), "http://")
+	return strings.TrimSuffix(trimmed, "/")
 }
 
 // queueNames returns the configured queue names in a stable order, for logging.

@@ -265,13 +265,15 @@ func newTestStorage(t *testing.T) storage.Store {
 		t.Fatalf("minio client: %v", err)
 	}
 	ctx := context.Background()
-	exists, err := client.BucketExists(ctx, storage.BucketAvatars)
-	if err != nil {
-		t.Fatalf("bucket exists: %v", err)
-	}
-	if !exists {
-		if err := client.MakeBucket(ctx, storage.BucketAvatars, minio.MakeBucketOptions{}); err != nil {
-			t.Fatalf("make bucket %s: %v", storage.BucketAvatars, err)
+	for _, bucket := range []string{storage.BucketAvatars, storage.BucketExports} {
+		exists, err := client.BucketExists(ctx, bucket)
+		if err != nil {
+			t.Fatalf("bucket %s exists check: %v", bucket, err)
+		}
+		if !exists {
+			if err := client.MakeBucket(ctx, bucket, minio.MakeBucketOptions{}); err != nil {
+				t.Fatalf("make bucket %s: %v", bucket, err)
+			}
 		}
 	}
 	return storage.NewMinIOStore(client)

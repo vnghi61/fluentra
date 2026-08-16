@@ -33,6 +33,7 @@ type fakeRepo struct {
 	profiles    map[uuid.UUID]domain.Profile
 	preferences map[uuid.UUID]domain.Preferences
 	summaries   map[uuid.UUID]domain.Summary
+	exports     map[uuid.UUID]domain.ExportRequest
 
 	// calls counts every repository method by name. A test asserting "one
 	// query for N ids" asserts on this.
@@ -47,6 +48,7 @@ func newFakeRepo() *fakeRepo {
 		profiles:    map[uuid.UUID]domain.Profile{},
 		preferences: map[uuid.UUID]domain.Preferences{},
 		summaries:   map[uuid.UUID]domain.Summary{},
+		exports:     map[uuid.UUID]domain.ExportRequest{},
 		calls:       map[string]int{},
 		failOn:      map[string]error{},
 	}
@@ -424,6 +426,130 @@ func lower(b byte) byte {
 		return b + ('a' - 'A')
 	}
 	return b
+}
+
+func (f *fakeRepo) CreateExportRequest(_ context.Context, id, userID uuid.UUID) (domain.ExportRequest, error) {
+	if err := f.record("CreateExportRequest"); err != nil {
+		return domain.ExportRequest{}, err
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	req := domain.ExportRequest{
+		ID:        id,
+		UserID:    userID,
+		Status:    domain.ExportStatusPending,
+		CreatedAt: time.Now().UTC(),
+	}
+	f.exports[id] = req
+	return req, nil
+}
+
+func (f *fakeRepo) GetPendingExportForUser(_ context.Context, userID uuid.UUID) (domain.ExportRequest, bool, error) {
+	if err := f.record("GetPendingExportForUser"); err != nil {
+		return domain.ExportRequest{}, false, err
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, req := range f.exports {
+		if req.UserID == userID && (req.Status == domain.ExportStatusPending || req.Status == domain.ExportStatusProcessing) {
+			return req, true, nil
+		}
+	}
+	return domain.ExportRequest{}, false, nil
+}
+
+func (f *fakeRepo) GetExportByID(_ context.Context, id uuid.UUID) (domain.ExportRequest, error) {
+	if err := f.record("GetExportByID"); err != nil {
+		return domain.ExportRequest{}, err
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	req, ok := f.exports[id]
+	if !ok {
+		return domain.ExportRequest{}, domain.ErrUserNotFound
+	}
+	return req, nil
+}
+
+func (f *fakeRepo) UpdateExportStatus(
+	_ context.Context,
+	id uuid.UUID,
+	status domain.ExportStatus,
+	startedAt, completedAt, expiresAt *time.Time,
+	objectKey, errorMessage *string,
+) error {
+	if err := f.record("UpdateExportStatus"); err != nil {
+		return err
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	req, ok := f.exports[id]
+	if !ok {
+		return domain.ErrUserNotFound
+	}
+	req.Status = status
+	if startedAt != nil {
+		req.StartedAt = startedAt
+	}
+	if completedAt != nil {
+		req.CompletedAt = completedAt
+	}
+	if expiresAt != nil {
+		req.ExpiresAt = expiresAt
+	}
+	if objectKey != nil {
+		req.ObjectKey = objectKey
+	}
+	if errorMessage != nil {
+		req.ErrorMessage = errorMessage
+	}
+	f.exports[id] = req
+	return nil
+}
+
+func (f *fakeRepo) GetExpiredExports(_ context.Context, limit int32) ([]domain.ExportRequest, error) {
+	if err := f.record("GetExpiredExports"); err != nil {
+		return nil, err
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var result []domain.ExportRequest
+	now := time.Now().UTC()
+	for _, req := range f.exports {
+		if req.Status == domain.ExportStatusCompleted && req.ExpiresAt != nil && req.ExpiresAt.Before(now) {
+			result = append(result, req)
+			if int64(len(result)) >= int64(limit) {
+				break
+			}
+		}
+	}
+	return result, nil
+}
+
+func (f *fakeRepo) DeleteExport(_ context.Context, id uuid.UUID) error {
+	if err := f.record("DeleteExport"); err != nil {
+		return err
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	delete(f.exports, id)
+	return nil
+}
+
+type fakeEnqueuer struct {
+	mu       sync.Mutex
+	enqueued []uuid.UUID
+	err      error
+}
+
+func (f *fakeEnqueuer) EnqueueExportTx(_ context.Context, _ pgx.Tx, exportID, _ uuid.UUID) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.err != nil {
+		return f.err
+	}
+	f.enqueued = append(f.enqueued, exportID)
+	return nil
 }
 
 // newUserFixture is a registration payload that passes validation, so a test

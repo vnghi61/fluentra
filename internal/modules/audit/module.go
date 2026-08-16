@@ -6,9 +6,11 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/fluentra/fluentra/internal/modules/audit/contract"
+	"github.com/fluentra/fluentra/internal/modules/audit/domain"
 	"github.com/fluentra/fluentra/internal/modules/audit/repository"
 	"github.com/fluentra/fluentra/internal/modules/audit/service"
 	audithttp "github.com/fluentra/fluentra/internal/modules/audit/transport/http"
@@ -162,4 +164,35 @@ func (m *Module) CronJobs() []job.CronJob {
 // have lapsed would otherwise refuse writes until then.
 func (m *Module) RotatePartitions(ctx context.Context) error {
 	return m.service.RotatePartitions(ctx)
+}
+
+// ExportUserData implements contract.Exportable for GDPR data export.
+func (m *Module) ExportUserData(ctx context.Context, userIDStr string) (map[string]interface{}, error) {
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		return nil, fmt.Errorf("parse user id for audit export: %w", err)
+	}
+
+	logs, _, err := m.service.SearchLogs(ctx, domain.LogQuery{ActorID: &userID, Limit: 500})
+	if err != nil {
+		logs = nil
+	}
+
+	logItems := make([]map[string]interface{}, 0, len(logs))
+	for _, l := range logs {
+		logItems = append(logItems, map[string]interface{}{
+			"id":             l.ID.String(),
+			"action":         l.Action,
+			"target_type":    l.TargetType,
+			"target_id":      l.TargetID,
+			"changed_fields": l.ChangedFields,
+			"before":         l.Before,
+			"after":          l.After,
+			"created_at":     l.CreatedAt,
+		})
+	}
+
+	return map[string]interface{}{
+		"audit_logs": logItems,
+	}, nil
 }

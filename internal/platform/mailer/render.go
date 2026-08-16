@@ -24,7 +24,7 @@ var templateFS embed.FS
 var DefaultLocales = []string{"en", "vi"}
 
 // DefaultTemplates is the set validated at startup.
-var DefaultTemplates = []string{"verify_email", "reset", "new_device", "registration_attempt"}
+var DefaultTemplates = []string{"verify_email", "reset", "new_device", "registration_attempt", "data_export"}
 
 // safeName is what may appear in a template or locale name. Both reach a file
 // path, and a locale arrives from a user preference — `../../etc` must never

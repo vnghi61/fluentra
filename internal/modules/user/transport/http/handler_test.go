@@ -109,6 +109,32 @@ func (f *fakeAccounts) ConfirmAvatar(
 	return account(actorID), nil
 }
 
+func (f *fakeAccounts) RequestExport(_ context.Context, actorID uuid.UUID) (domain.ExportRequest, error) {
+	f.seenActor = actorID
+	if f.err != nil {
+		return domain.ExportRequest{}, f.err
+	}
+	return domain.ExportRequest{
+		ID:        uuid.MustParse("0199a1c2-3d4e-7f80-9abc-def999999999"),
+		UserID:    actorID,
+		Status:    domain.ExportStatusPending,
+		CreatedAt: fixedAt,
+	}, nil
+}
+
+func (f *fakeAccounts) GetExportByID(_ context.Context, actorID, exportID uuid.UUID) (domain.ExportRequest, error) {
+	f.seenActor = actorID
+	if f.err != nil {
+		return domain.ExportRequest{}, f.err
+	}
+	return domain.ExportRequest{
+		ID:        exportID,
+		UserID:    actorID,
+		Status:    domain.ExportStatusCompleted,
+		CreatedAt: fixedAt,
+	}, nil
+}
+
 func account(id uuid.UUID) service.Account {
 	country := "VN"
 	born := time.Date(1998, time.March, 4, 0, 0, 0, 0, time.UTC)

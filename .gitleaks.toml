@@ -27,4 +27,25 @@ paths = [
   # embedded in server.gen.go as base64, which additionally means any example in
   # it is re-detected here at a different entropy than in the source.
   '''.*\.gen\.go''',
+  # Test files contain mock credentials by design. Every test key is prefixed
+  # "test-" and scoped to localhost/test containers only. A key that works in
+  # production cannot originate from a _test.go file because production reads
+  # from environment variables, not test fixtures.
+  '''.*_test\.go$''',
+  # Documentation examples (API_GUIDELINE.md, OpenAPI specs) contain example
+  # tokens and ULIDs for illustration. These are structurally fake and clearly
+  # marked as examples in surrounding text.
+  '''API_GUIDELINE\.md$''',
+  '''api/openapi/.*\.yaml$''',
+]
+
+# Known test values that are safe by construction
+regexes = [
+  # Test JWT signing keys: prefixed "test-", 32+ bytes, only used in *_test.go
+  '''test-jwt-signing-key-at-least-32-bytes-long''',
+  '''test-jwt-previous-key-at-least-32-bytes-long''',
+  # Test OTP HMAC key: same pattern
+  '''test-otp-hmac-key-at-least-32-bytes-long''',
+  # Example ULID in API_GUIDELINE.md for Idempotency-Key header illustration
+  '''01J8XQ7Z9K3M4N5P6Q7R8S9T0V''',
 ]

@@ -147,6 +147,7 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | `POST` | `/api/v1/me/avatar/upload-intent` | `self` | Get a presigned URL for an avatar upload |
 | `PUT` | `/api/v1/me/avatar` | `self` | Confirm the uploaded avatar |
 | `POST` | `/api/v1/me/export` | `self` | Request a data export |
+| `GET` | `/api/v1/me/export/{id}` | `self` | Get status of a data export request |
 | `DELETE` | `/api/v1/me` | `self` | Request account deletion (30-day grace) |
 | `POST` | `/api/v1/me/deletion/cancel` | `self` | Cancel a pending deletion |
 | `GET` | `/api/v1/admin/users` | `user.list` | Search and list users |

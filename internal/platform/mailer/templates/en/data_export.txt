@@ -1,0 +1,6 @@
+Hello {{.DisplayName}},
+
+Your requested data export is ready to download:
+{{.DownloadURL}}
+
+This link will expire in {{.ExpiresHours}} hours.

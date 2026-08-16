@@ -107,3 +107,19 @@ func summaryFrom(
 	}
 	return summary
 }
+
+func toDomainExport(row sqlcuser.CoreUserExport) domain.ExportRequest {
+	return domain.ExportRequest{
+		ID:           row.ID,
+		UserID:       row.UserID,
+		Status:       domain.ExportStatus(row.Status),
+		ObjectKey:    row.ObjectKey,
+		RequestedAt:  row.RequestedAt,
+		StartedAt:    row.StartedAt,
+		CompletedAt:  row.CompletedAt,
+		ExpiresAt:    row.ExpiresAt,
+		ErrorMessage: row.ErrorMessage,
+		CreatedAt:    row.CreatedAt,
+		UpdatedAt:    row.UpdatedAt,
+	}
+}

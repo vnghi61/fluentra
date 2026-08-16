@@ -261,3 +261,36 @@ ConfirmAvatarRequest:
       description: The object key returned by the upload intent.
       example: users/0199a1c2-3d4e-7f80-9abc-def012345678/2026/08/avatar-raw.jpg
 
+ExportStatus:
+  type: string
+  enum: [pending, processing, completed, failed]
+  description: Lifecycle state of a user data export request.
+
+ExportResponse:
+  type: object
+  description: Status and metadata of a user data export.
+  required:
+    - id
+    - status
+    - created_at
+  properties:
+    id:
+      type: string
+      format: uuid
+      description: Unique ID of the export request.
+    status:
+      $ref: '#/ExportStatus'
+    created_at:
+      type: string
+      format: date-time
+    started_at:
+      type: string
+      format: date-time
+    completed_at:
+      type: string
+      format: date-time
+    expires_at:
+      type: string
+      format: date-time
+
+

@@ -37,6 +37,10 @@ var (
 	// malformed — the address is simply taken.
 	ErrEmailAlreadyRegistered = apperr.New(
 		apperr.Conflict, "EMAIL_ALREADY_REGISTERED", "That email address is already registered.")
+
+	// ErrExportAlreadyPending is returned when an export is already pending or processing.
+	ErrExportAlreadyPending = apperr.New(
+		apperr.Conflict, "EXPORT_ALREADY_PENDING", "A data export is already in progress.")
 )
 
 // invalid builds a 422 carrying exactly one field violation. Every validation

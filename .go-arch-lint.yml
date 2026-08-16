@@ -180,6 +180,7 @@ components:
   m_user_domain:   { in: modules/user/domain }
   m_user_repository: { in: modules/user/repository }
   m_user_service:  { in: modules/user/service }
+  m_user_job:      { in: modules/user/job }
   m_user_http:     { in: modules/user/transport/http }
   m_rbac:          { in: modules/rbac }
   m_rbac_domain:   { in: modules/rbac/domain }
@@ -300,8 +301,10 @@ deps:
   # linter rejects both an empty mayDependOn and a rule with no allowance.
   m_user_repository: { mayDependOn: [m_user_domain, g_user] }
   m_user_service:    { mayDependOn: [m_user_domain, c_user, p_storage, p_telemetry, p_mailer, p_job, c_audit], canUse: [v_imaging, v_ximage] }
+  m_user_job:        { mayDependOn: [m_user_domain, m_user_repository, c_user, p_storage, p_job, p_mailer, p_telemetry], anyVendorDeps: true }
   m_user_http:       { mayDependOn: [m_user_domain, m_user_service] }
-  m_user:            { mayDependOn: [m_user_domain, m_user_repository, m_user_service, m_user_http, c_user, p_storage] }
+  m_user:            { mayDependOn: [m_user_domain, m_user_repository, m_user_service, m_user_job, m_user_http, c_user, p_storage, p_job, p_mailer] }
+
 
   # rbac, by layer. The domain depends on its own contract because the guard's
   # types — Permission, Role — are the contract: they are what other modules

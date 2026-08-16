@@ -16,6 +16,7 @@ import (
 	rbaccontract "github.com/fluentra/fluentra/internal/modules/rbac/contract"
 	"github.com/fluentra/fluentra/internal/modules/user"
 	"github.com/fluentra/fluentra/internal/platform/cache"
+	"github.com/fluentra/fluentra/internal/platform/job"
 	"github.com/fluentra/fluentra/internal/platform/mailer"
 	"github.com/fluentra/fluentra/internal/platform/storage"
 	"github.com/fluentra/fluentra/internal/shared/httpx"
@@ -74,6 +75,9 @@ type identityDeps struct {
 	// OAuthStateTTL is OAUTH_STATE_TTL: how long an authorization request stays
 	// completable.
 	OAuthStateTTL time.Duration
+
+	// Enqueuer schedules background River jobs within database transactions.
+	Enqueuer job.Enqueuer
 }
 
 // newIdentity constructs the modules in dependency order — audit, then rbac,
@@ -115,8 +119,9 @@ func newIdentity(deps identityDeps) *identity {
 	})
 
 	assembled.user = user.New(user.Deps{
-		Pool:    deps.Pool,
-		Storage: deps.Storage,
+		Pool:     deps.Pool,
+		Storage:  deps.Storage,
+		Enqueuer: deps.Enqueuer,
 	})
 
 	// `auth` comes after `user` because it holds a reference to user.Registrar.
