@@ -524,7 +524,11 @@ export interface paths {
         get: operations["userGetMe"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Request account deletion (GDPR Article 17).
+         * @description Initiates the 30-day grace period for account deletion. Revokes all active sessions immediately.
+         */
+        delete: operations["userRequestDeletion"];
         options?: never;
         head?: never;
         /**
@@ -650,6 +654,46 @@ export interface paths {
          * @description Returns the status and metadata for a previously requested data export.
          */
         get: operations["userGetExport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/deletion/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel a pending account deletion request.
+         * @description Cancels the active pending deletion request during the 30-day grace period and restores the account to active status.
+         */
+        post: operations["userCancelDeletion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/deletion/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the status of an account deletion request.
+         * @description Returns the status and metadata for a previously requested account deletion.
+         */
+        get: operations["userGetDeletion"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1421,6 +1465,35 @@ export interface components {
             completed_at?: string;
             /** Format: date-time */
             expires_at?: string;
+        };
+        /**
+         * @description Lifecycle state of an account deletion request.
+         * @enum {string}
+         */
+        DeletionStatus: "pending" | "processing" | "completed" | "failed" | "cancelled";
+        /** @description Status and metadata of an account deletion request. */
+        DeletionResponse: {
+            /**
+             * Format: uuid
+             * @description Unique ID of the deletion request.
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description ID of the user requesting deletion.
+             */
+            user_id: string;
+            status: components["schemas"]["DeletionStatus"];
+            /** Format: date-time */
+            requested_at: string;
+            /** Format: date-time */
+            execute_at: string;
+            /** Format: date-time */
+            started_at?: string;
+            /** Format: date-time */
+            completed_at?: string;
+            /** Format: date-time */
+            cancelled_at?: string;
         };
         /**
          * @description What the caller is allowed to do, as the server currently sees it.
@@ -2655,6 +2728,38 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    userRequestDeletion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deletion requested and scheduled. */
+            202: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "status": "pending",
+                     *       "requested_at": "2026-08-16T10:00:00Z",
+                     *       "execute_at": "2026-09-15T10:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["DeletionResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            409: components["responses"]["Conflict"];
+        };
+    };
     userUpdateMe: {
         parameters: {
             query?: never;
@@ -2985,6 +3090,75 @@ export interface operations {
                      *     }
                      */
                     "application/json": components["schemas"]["ExportResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    userCancelDeletion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deletion request successfully cancelled. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "status": "cancelled",
+                     *       "requested_at": "2026-08-16T10:00:00Z",
+                     *       "execute_at": "2026-09-15T10:00:00Z",
+                     *       "cancelled_at": "2026-08-16T11:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["DeletionResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    userGetDeletion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Unique identifier of the deletion request. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current status and metadata of the deletion request. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "status": "pending",
+                     *       "requested_at": "2026-08-16T10:00:00Z",
+                     *       "execute_at": "2026-09-15T10:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["DeletionResponse"];
                 };
             };
             401: components["responses"]["Unauthorized"];

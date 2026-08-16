@@ -57,3 +57,8 @@ WHERE user_id = $1 AND provider = $2;
 SELECT
     (SELECT count(*) FROM core.credentials c WHERE c.user_id = sqlc.arg(user_id))
     + (SELECT count(*) FROM core.oauth_identities i WHERE i.user_id = sqlc.arg(user_id)) AS methods;
+
+-- name: DeleteOAuthIdentitiesForUser :exec
+DELETE FROM core.oauth_identities
+WHERE user_id = $1;
+

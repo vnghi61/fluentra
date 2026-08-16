@@ -135,6 +135,50 @@ func (f *fakeAccounts) GetExportByID(_ context.Context, actorID, exportID uuid.U
 	}, nil
 }
 
+func (f *fakeAccounts) RequestDeletion(_ context.Context, actorID uuid.UUID) (domain.DeletionRequest, error) {
+	f.seenActor = actorID
+	if f.err != nil {
+		return domain.DeletionRequest{}, f.err
+	}
+	return domain.DeletionRequest{
+		ID:          uuid.MustParse("0199a1c2-3d4e-7f80-9abc-def888888888"),
+		UserID:      actorID,
+		Status:      domain.DeletionStatusPending,
+		RequestedAt: fixedAt,
+		ExecuteAt:   fixedAt.Add(domain.DeletionGracePeriod),
+	}, nil
+}
+
+func (f *fakeAccounts) CancelDeletion(_ context.Context, actorID uuid.UUID) (domain.DeletionRequest, error) {
+	f.seenActor = actorID
+	if f.err != nil {
+		return domain.DeletionRequest{}, f.err
+	}
+	now := fixedAt
+	return domain.DeletionRequest{
+		ID:          uuid.MustParse("0199a1c2-3d4e-7f80-9abc-def888888888"),
+		UserID:      actorID,
+		Status:      domain.DeletionStatusCancelled,
+		RequestedAt: fixedAt,
+		ExecuteAt:   fixedAt.Add(domain.DeletionGracePeriod),
+		CancelledAt: &now,
+	}, nil
+}
+
+func (f *fakeAccounts) GetDeletion(_ context.Context, actorID, deletionID uuid.UUID) (domain.DeletionRequest, error) {
+	f.seenActor = actorID
+	if f.err != nil {
+		return domain.DeletionRequest{}, f.err
+	}
+	return domain.DeletionRequest{
+		ID:          deletionID,
+		UserID:      actorID,
+		Status:      domain.DeletionStatusPending,
+		RequestedAt: fixedAt,
+		ExecuteAt:   fixedAt.Add(domain.DeletionGracePeriod),
+	}, nil
+}
+
 func account(id uuid.UUID) service.Account {
 	country := "VN"
 	born := time.Date(1998, time.March, 4, 0, 0, 0, 0, time.UTC)

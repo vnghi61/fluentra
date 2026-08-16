@@ -152,3 +152,28 @@ func toExportResponse(req domain.ExportRequest) exportResponse {
 		ExpiresAt:   req.ExpiresAt,
 	}
 }
+
+// deletionResponse mirrors the DeletionResponse schema in OpenAPI.
+type deletionResponse struct {
+	ID          uuid.UUID             `json:"id"`
+	UserID      uuid.UUID             `json:"user_id"`
+	Status      domain.DeletionStatus `json:"status"`
+	RequestedAt time.Time             `json:"requested_at"`
+	ExecuteAt   time.Time             `json:"execute_at"`
+	StartedAt   *time.Time            `json:"started_at,omitempty"`
+	CompletedAt *time.Time            `json:"completed_at,omitempty"`
+	CancelledAt *time.Time            `json:"cancelled_at,omitempty"`
+}
+
+func toDeletionResponse(req domain.DeletionRequest) deletionResponse {
+	return deletionResponse{
+		ID:          req.ID,
+		UserID:      req.UserID,
+		Status:      req.Status,
+		RequestedAt: req.RequestedAt,
+		ExecuteAt:   req.ExecuteAt,
+		StartedAt:   req.StartedAt,
+		CompletedAt: req.CompletedAt,
+		CancelledAt: req.CancelledAt,
+	}
+}

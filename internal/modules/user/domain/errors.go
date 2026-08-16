@@ -41,6 +41,18 @@ var (
 	// ErrExportAlreadyPending is returned when an export is already pending or processing.
 	ErrExportAlreadyPending = apperr.New(
 		apperr.Conflict, "EXPORT_ALREADY_PENDING", "A data export is already in progress.")
+
+	// ErrDeletionAlreadyPending is returned when a deletion request is already pending or processing.
+	ErrDeletionAlreadyPending = apperr.New(
+		apperr.Conflict, "DELETION_ALREADY_PENDING", "An account deletion is already in progress.")
+
+	// ErrDeletionNotFound is returned when no deletion request exists.
+	ErrDeletionNotFound = apperr.New(
+		apperr.NotFound, "DELETION_NOT_FOUND", "The deletion request was not found.")
+
+	// ErrDeletionNotCancellable is returned when trying to cancel a non-pending deletion.
+	ErrDeletionNotCancellable = apperr.New(
+		apperr.Conflict, "DELETION_NOT_CANCELLABLE", "This deletion request cannot be cancelled.")
 )
 
 // invalid builds a 422 carrying exactly one field violation. Every validation

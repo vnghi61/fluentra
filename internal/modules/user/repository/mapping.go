@@ -123,3 +123,19 @@ func toDomainExport(row sqlcuser.CoreUserExport) domain.ExportRequest {
 		UpdatedAt:    row.UpdatedAt,
 	}
 }
+
+func toDomainDeletion(row sqlcuser.CoreUserDeletion) domain.DeletionRequest {
+	return domain.DeletionRequest{
+		ID:           row.ID,
+		UserID:       row.UserID,
+		Status:       domain.DeletionStatus(row.Status),
+		RequestedAt:  row.RequestedAt,
+		ExecuteAt:    row.ExecuteAt,
+		StartedAt:    row.StartedAt,
+		CompletedAt:  row.CompletedAt,
+		CancelledAt:  row.CancelledAt,
+		ErrorMessage: row.ErrorMessage,
+		CreatedAt:    row.CreatedAt,
+		UpdatedAt:    row.UpdatedAt,
+	}
+}

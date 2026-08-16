@@ -41,10 +41,11 @@ type Deps struct {
 
 // Module is the user module, assembled. It is the only symbol cmd/ imports.
 type Module struct {
-	service *service.Service
-	handler *userhttp.Handler
-	worker  *userjob.ExportWorker
-	cleaner *userjob.ExportCleaner
+	service      *service.Service
+	handler      *userhttp.Handler
+	worker       *userjob.ExportWorker
+	cleaner      *userjob.ExportCleaner
+	deletionExec *userjob.DeletionExecutor
 }
 
 // New wires the module.
@@ -62,10 +63,12 @@ func New(deps Deps) *Module {
 		enqueuer = jobEnqueuerAdapter{enqueuer: deps.Enqueuer}
 	}
 
+	events := outboxWriter{Writer: outbox.NewWriter()}
+
 	users := service.New(service.Deps{
 		Pool:     deps.Pool,
 		Repo:     repoAdapter,
-		Events:   outboxWriter{Writer: outbox.NewWriter()},
+		Events:   events,
 		Clock:    timekeeper,
 		NewID:    id.NewUUIDv7,
 		Storage:  deps.Storage,
@@ -85,12 +88,20 @@ func New(deps Deps) *Module {
 	})
 
 	cleaner := userjob.NewExportCleaner(repo, deps.Storage, deps.Bucket)
+	deletionExec := userjob.NewDeletionExecutor(
+		deps.Pool,
+		repo,
+		deps.Storage,
+		outbox.NewWriter(),
+		storage.BucketAvatars,
+	)
 
 	return &Module{
-		service: users,
-		handler: userhttp.NewHandler(users),
-		worker:  worker,
-		cleaner: cleaner,
+		service:      users,
+		handler:      userhttp.NewHandler(users),
+		worker:       worker,
+		cleaner:      cleaner,
+		deletionExec: deletionExec,
 	}
 }
 
@@ -114,12 +125,14 @@ func (m *Module) ExportWorker() *userjob.ExportWorker { return m.worker }
 
 // CronJobs returns background scheduled jobs owned by the user module.
 func (m *Module) CronJobs() []job.CronJob {
-	if m.cleaner == nil {
-		return nil
+	jobs := make([]job.CronJob, 0, 2)
+	if m.cleaner != nil {
+		jobs = append(jobs, m.cleaner.CronJob())
 	}
-	return []job.CronJob{
-		m.cleaner.CronJob(),
+	if m.deletionExec != nil {
+		jobs = append(jobs, m.deletionExec.CronJob())
 	}
+	return jobs
 }
 
 // repositoryAdapter narrows *repository.Repository to the interface the service declares.

@@ -163,3 +163,10 @@ type DeletionRequested struct {
 	ExecuteAfter time.Time `json:"execute_after"`
 	OccurredAt   time.Time `json:"occurred_at"`
 }
+
+// UserDeleted is published when an account deletion is executed.
+// Every module holding personal data for this user must purge or anonymise it.
+type UserDeleted struct {
+	UserID     uuid.UUID `json:"user_id"`
+	OccurredAt time.Time `json:"occurred_at"`
+}

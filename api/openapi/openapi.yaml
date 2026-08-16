@@ -1074,6 +1074,34 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+    delete:
+      tags: [user]
+      operationId: userRequestDeletion
+      summary: Request account deletion (GDPR Article 17).
+      description: >-
+        Initiates the 30-day grace period for account deletion. Revokes all
+        active sessions immediately.
+      x-permission: self
+      responses:
+        '202':
+          description: Deletion requested and scheduled.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeletionResponse'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def012345678
+                user_id: 0199a1c2-3d4e-7f80-9abc-def012345678
+                status: pending
+                requested_at: '2026-08-16T10:00:00Z'
+                execute_at: '2026-09-15T10:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /me/permissions:
     get:
       tags: [rbac]
@@ -1304,6 +1332,73 @@ paths:
                 started_at: '2026-08-16T10:00:05Z'
                 completed_at: '2026-08-16T10:00:15Z'
                 expires_at: '2026-08-23T10:00:15Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /me/deletion/cancel:
+    post:
+      tags: [user]
+      operationId: userCancelDeletion
+      summary: Cancel a pending account deletion request.
+      description: >-
+        Cancels the active pending deletion request during the 30-day grace
+        period and restores the account to active status.
+      x-permission: self
+      responses:
+        '200':
+          description: Deletion request successfully cancelled.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeletionResponse'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def012345678
+                user_id: 0199a1c2-3d4e-7f80-9abc-def012345678
+                status: cancelled
+                requested_at: '2026-08-16T10:00:00Z'
+                execute_at: '2026-09-15T10:00:00Z'
+                cancelled_at: '2026-08-16T11:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /me/deletion/{id}:
+    get:
+      tags: [user]
+      operationId: userGetDeletion
+      summary: Get the status of an account deletion request.
+      description: Returns the status and metadata for a previously requested account deletion.
+      x-permission: self
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Unique identifier of the deletion request.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Current status and metadata of the deletion request.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeletionResponse'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def012345678
+                user_id: 0199a1c2-3d4e-7f80-9abc-def012345678
+                status: pending
+                requested_at: '2026-08-16T10:00:00Z'
+                execute_at: '2026-09-15T10:00:00Z'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -1791,6 +1886,10 @@ components:
       $ref: ./components/user.yaml#/ExportStatus
     ExportResponse:
       $ref: ./components/user.yaml#/ExportResponse
+    DeletionStatus:
+      $ref: ./components/user.yaml#/DeletionStatus
+    DeletionResponse:
+      $ref: ./components/user.yaml#/DeletionResponse
     MyPermissions:
       $ref: ./components/rbac.yaml#/MyPermissions
     RoleName:

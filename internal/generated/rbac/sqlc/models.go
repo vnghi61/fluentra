@@ -244,6 +244,20 @@ type CoreUser struct {
 	UpdatedAt       time.Time
 }
 
+type CoreUserDeletion struct {
+	ID           uuid.UUID
+	UserID       uuid.UUID
+	Status       string
+	RequestedAt  time.Time
+	ExecuteAt    time.Time
+	StartedAt    *time.Time
+	CompletedAt  *time.Time
+	CancelledAt  *time.Time
+	ErrorMessage *string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
+
 // Tracks data export requests and their artifacts
 type CoreUserExport struct {
 	ID           uuid.UUID

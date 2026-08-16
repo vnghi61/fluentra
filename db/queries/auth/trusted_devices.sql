@@ -56,3 +56,8 @@ WHERE user_id = $1 AND revoked_at IS NULL;
 UPDATE core.trusted_devices
 SET last_seen_at = sqlc.arg(now)::timestamptz
 WHERE id = $1 AND revoked_at IS NULL;
+
+-- name: DeleteTrustedDevicesForUser :exec
+DELETE FROM core.trusted_devices
+WHERE user_id = $1;
+

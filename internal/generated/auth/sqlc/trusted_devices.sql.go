@@ -13,6 +13,16 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const deleteTrustedDevicesForUser = `-- name: DeleteTrustedDevicesForUser :exec
+DELETE FROM core.trusted_devices
+WHERE user_id = $1
+`
+
+func (q *Queries) DeleteTrustedDevicesForUser(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteTrustedDevicesForUser, userID)
+	return err
+}
+
 const getOwnedTrustedDevice = `-- name: GetOwnedTrustedDevice :one
 SELECT id, user_id, device_id_hash, label, idle_window, absolute_expires_at,
        trusted_at, last_seen_at, revoked_at

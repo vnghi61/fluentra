@@ -415,6 +415,7 @@
       { "method": "GET", "path": "/api/v1/me/export/{id}", "permission": "self", "purpose": "Get status of a data export request", "success": "200" },
       { "method": "DELETE", "path": "/api/v1/me", "permission": "self", "purpose": "Request account deletion (30-day grace)", "success": "202" },
       { "method": "POST", "path": "/api/v1/me/deletion/cancel", "permission": "self", "purpose": "Cancel a pending deletion", "success": "200", "errors": ["INVALID_STATE_TRANSITION"] },
+      { "method": "GET", "path": "/api/v1/me/deletion/{id}", "permission": "self", "purpose": "Get status of an account deletion request", "success": "200" },
       { "method": "GET", "path": "/api/v1/admin/users", "permission": "user.list", "purpose": "Search and list users", "success": "200" },
       { "method": "GET", "path": "/api/v1/admin/users/{id}", "permission": "user.read", "purpose": "Read one user", "success": "200" },
       { "method": "POST", "path": "/api/v1/admin/users/{id}/suspend", "permission": "user.suspend", "purpose": "Suspend an account", "success": "200", "errors": ["INVALID_STATE_TRANSITION"] },

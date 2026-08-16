@@ -339,6 +339,154 @@ func (r *Repository) DeleteExport(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
+// CreateDeletionRequest inserts a new deletion record.
+func (r *Repository) CreateDeletionRequest(
+	ctx context.Context, id, userID uuid.UUID, executeAt time.Time,
+) (domain.DeletionRequest, error) {
+	row, err := r.queries.CreateDeletionRequest(ctx, sqlcuser.CreateDeletionRequestParams{
+		ID:          id,
+		UserID:      userID,
+		Status:      string(domain.DeletionStatusPending),
+		RequestedAt: time.Now().UTC(),
+		ExecuteAt:   executeAt,
+	})
+	if err != nil {
+		return domain.DeletionRequest{}, fmt.Errorf("create deletion request: %w", err)
+	}
+	return toDomainDeletion(row), nil
+}
+
+// GetPendingDeletionForUser finds an active deletion request in pending or processing state.
+func (r *Repository) GetPendingDeletionForUser(
+	ctx context.Context, userID uuid.UUID,
+) (domain.DeletionRequest, bool, error) {
+	row, err := r.queries.GetPendingDeletionByUserID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.DeletionRequest{}, false, nil
+		}
+		return domain.DeletionRequest{}, false, fmt.Errorf("get pending deletion for user: %w", err)
+	}
+	return toDomainDeletion(row), true, nil
+}
+
+// GetDeletionByID reads a deletion record by ID.
+func (r *Repository) GetDeletionByID(ctx context.Context, id uuid.UUID) (domain.DeletionRequest, error) {
+	row, err := r.queries.GetDeletionByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.DeletionRequest{}, domain.ErrDeletionNotFound
+		}
+		return domain.DeletionRequest{}, fmt.Errorf("get deletion by id: %w", err)
+	}
+	return toDomainDeletion(row), nil
+}
+
+// CancelDeletion marks a pending deletion request as cancelled.
+func (r *Repository) CancelDeletion(ctx context.Context, id uuid.UUID, cancelledAt time.Time) error {
+	_, err := r.queries.CancelDeletion(ctx, sqlcuser.CancelDeletionParams{
+		ID:          id,
+		CancelledAt: &cancelledAt,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.ErrDeletionNotCancellable
+		}
+		return fmt.Errorf("cancel deletion: %w", err)
+	}
+	return nil
+}
+
+// UpdateDeletionStatus updates lifecycle timestamps and error state on a deletion request.
+func (r *Repository) UpdateDeletionStatus(
+	ctx context.Context,
+	id uuid.UUID,
+	status domain.DeletionStatus,
+	startedAt, completedAt *time.Time,
+	errorMessage *string,
+) error {
+	err := r.queries.UpdateDeletionStatus(ctx, sqlcuser.UpdateDeletionStatusParams{
+		ID:           id,
+		Status:       string(status),
+		StartedAt:    startedAt,
+		CompletedAt:  completedAt,
+		ErrorMessage: errorMessage,
+	})
+	if err != nil {
+		return fmt.Errorf("update deletion status: %w", err)
+	}
+	return nil
+}
+
+// GetDueDeletions returns pending deletions whose execute_at timestamp is at or before cutoff.
+func (r *Repository) GetDueDeletions(
+	ctx context.Context, cutoff time.Time, limit int32,
+) ([]domain.DeletionRequest, error) {
+	rows, err := r.queries.GetDueDeletions(ctx, sqlcuser.GetDueDeletionsParams{
+		ExecuteAt: cutoff,
+		Limit:     limit,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("get due deletions: %w", err)
+	}
+	items := make([]domain.DeletionRequest, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, toDomainDeletion(row))
+	}
+	return items, nil
+}
+
+// AnonymiseUser rewrites the email and sets status to deleted.
+func (r *Repository) AnonymiseUser(ctx context.Context, userID uuid.UUID, anonymisedEmail string) error {
+	err := r.queries.AnonymiseUser(ctx, sqlcuser.AnonymiseUserParams{
+		ID:    userID,
+		Email: anonymisedEmail,
+	})
+	if err != nil {
+		return fmt.Errorf("anonymise user: %w", err)
+	}
+	return nil
+}
+
+// AnonymiseProfile clears personal profile details.
+func (r *Repository) AnonymiseProfile(ctx context.Context, userID uuid.UUID) error {
+	err := r.queries.AnonymiseProfile(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("anonymise profile: %w", err)
+	}
+	return nil
+}
+
+// DeletePreferences removes the user_preferences row.
+func (r *Repository) DeletePreferences(ctx context.Context, userID uuid.UUID) error {
+	err := r.queries.DeleteUserPreferences(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("delete user preferences: %w", err)
+	}
+	return nil
+}
+
+// DeleteLearningProfile removes the learning_profiles row.
+func (r *Repository) DeleteLearningProfile(ctx context.Context, userID uuid.UUID) error {
+	err := r.queries.DeleteLearningProfile(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("delete learning profile: %w", err)
+	}
+	return nil
+}
+
+// UpdateUserStatus changes the user's status.
+func (r *Repository) UpdateUserStatus(ctx context.Context, userID uuid.UUID, status domain.Status) error {
+	_, err := r.queries.UpdateUserStatus(ctx, sqlcuser.UpdateUserStatusParams{
+		ID:     userID,
+		Status: sqlcuser.CoreUserStatus(status),
+	})
+	if err != nil {
+		return fmt.Errorf("update user status: %w", err)
+	}
+	return nil
+}
+
 // isUniqueViolation reports whether err is a unique constraint failure on the
 // named constraint. Matching the name and not just the code matters: a table
 // with two unique constraints would otherwise report the wrong one, and the

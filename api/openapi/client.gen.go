@@ -481,6 +481,13 @@ type ClientInterface interface {
 	// Corresponds with GET /health (the `SystemHealth` operationId).
 	SystemHealth(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// UserRequestDeletion Request account deletion (GDPR Article 17).
+	//
+	// Initiates the 30-day grace period for account deletion. Revokes all active sessions immediately.
+	//
+	// Corresponds with DELETE /me (the `UserRequestDeletion` operationId).
+	UserRequestDeletion(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// UserGetMe Read the caller's own account.
 	//
 	// Returns the account belonging to the access token. There is deliberately no `/users/{id}` counterpart in this version: the actor comes from the token, so one user cannot read another by changing a path segment.
@@ -530,6 +537,20 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /me/avatar/upload-intent (the `UserRequestAvatarUploadIntent` operationId).
 	UserRequestAvatarUploadIntent(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UserCancelDeletion Cancel a pending account deletion request.
+	//
+	// Cancels the active pending deletion request during the 30-day grace period and restores the account to active status.
+	//
+	// Corresponds with POST /me/deletion/cancel (the `UserCancelDeletion` operationId).
+	UserCancelDeletion(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UserGetDeletion Get the status of an account deletion request.
+	//
+	// Returns the status and metadata for a previously requested account deletion.
+	//
+	// Corresponds with GET /me/deletion/{id} (the `UserGetDeletion` operationId).
+	UserGetDeletion(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UserRequestExport Request a complete export of all personal data (GDPR).
 	//
@@ -1329,6 +1350,23 @@ func (c *Client) SystemHealth(ctx context.Context, reqEditors ...RequestEditorFn
 	return c.Client.Do(req)
 }
 
+// UserRequestDeletion Request account deletion (GDPR Article 17).
+//
+// Initiates the 30-day grace period for account deletion. Revokes all active sessions immediately.
+//
+// Corresponds with DELETE /me (the `UserRequestDeletion` operationId).
+func (c *Client) UserRequestDeletion(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserRequestDeletionRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // UserGetMe Read the caller's own account.
 //
 // Returns the account belonging to the access token. There is deliberately no `/users/{id}` counterpart in this version: the actor comes from the token, so one user cannot read another by changing a path segment.
@@ -1429,6 +1467,40 @@ func (c *Client) UserConfirmAvatar(ctx context.Context, body UserConfirmAvatarJS
 // Corresponds with POST /me/avatar/upload-intent (the `UserRequestAvatarUploadIntent` operationId).
 func (c *Client) UserRequestAvatarUploadIntent(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUserRequestAvatarUploadIntentRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UserCancelDeletion Cancel a pending account deletion request.
+//
+// Cancels the active pending deletion request during the 30-day grace period and restores the account to active status.
+//
+// Corresponds with POST /me/deletion/cancel (the `UserCancelDeletion` operationId).
+func (c *Client) UserCancelDeletion(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserCancelDeletionRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UserGetDeletion Get the status of an account deletion request.
+//
+// Returns the status and metadata for a previously requested account deletion.
+//
+// Corresponds with GET /me/deletion/{id} (the `UserGetDeletion` operationId).
+func (c *Client) UserGetDeletion(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserGetDeletionRequest(c.Server, id)
 	if err != nil {
 		return nil, err
 	}
@@ -2679,6 +2751,33 @@ func NewSystemHealthRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewUserRequestDeletionRequest constructs an http.Request for the UserRequestDeletion method
+func NewUserRequestDeletionRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewUserGetMeRequest constructs an http.Request for the UserGetMe method
 func NewUserGetMeRequest(server string) (*http.Request, error) {
 	var err error
@@ -2806,6 +2905,67 @@ func NewUserRequestAvatarUploadIntentRequest(server string) (*http.Request, erro
 	}
 
 	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUserCancelDeletionRequest constructs an http.Request for the UserCancelDeletion method
+func NewUserCancelDeletionRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/deletion/cancel")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUserGetDeletionRequest constructs an http.Request for the UserGetDeletion method
+func NewUserGetDeletionRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/deletion/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -3511,6 +3671,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /health (the `SystemHealth` operationId).
 	SystemHealthWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*SystemHealthResponse, error)
 
+	// UserRequestDeletionWithResponse Request account deletion (GDPR Article 17).
+	//
+	// Initiates the 30-day grace period for account deletion. Revokes all active sessions immediately.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /me (the `UserRequestDeletion` operationId).
+	UserRequestDeletionWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*UserRequestDeletionResponse, error)
+
 	// UserGetMeWithResponse Read the caller's own account.
 	//
 	// Returns the account belonging to the access token. There is deliberately no `/users/{id}` counterpart in this version: the actor comes from the token, so one user cannot read another by changing a path segment.
@@ -3564,6 +3733,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /me/avatar/upload-intent (the `UserRequestAvatarUploadIntent` operationId).
 	UserRequestAvatarUploadIntentWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*UserRequestAvatarUploadIntentResponse, error)
+
+	// UserCancelDeletionWithResponse Cancel a pending account deletion request.
+	//
+	// Cancels the active pending deletion request during the 30-day grace period and restores the account to active status.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /me/deletion/cancel (the `UserCancelDeletion` operationId).
+	UserCancelDeletionWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*UserCancelDeletionResponse, error)
+
+	// UserGetDeletionWithResponse Get the status of an account deletion request.
+	//
+	// Returns the status and metadata for a previously requested account deletion.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /me/deletion/{id} (the `UserGetDeletion` operationId).
+	UserGetDeletionWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*UserGetDeletionResponse, error)
 
 	// UserRequestExportWithResponse Request a complete export of all personal data (GDPR).
 	//
@@ -5527,6 +5714,68 @@ func (r SystemHealthResponse) ContentType() string {
 	return ""
 }
 
+// UserRequestDeletionResponse202Headers the declared response headers of an HTTP 202 response for UserRequestDeletion
+type UserRequestDeletionResponse202Headers struct {
+	XRequestId *string
+}
+
+type UserRequestDeletionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON202 the response for an HTTP 202 `application/json` response
+	JSON202 *DeletionResponse
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// Headers202 the parsed response headers for an HTTP 202 response
+	Headers202 *UserRequestDeletionResponse202Headers
+}
+
+// GetJSON202 returns the response for an HTTP 202 `application/json` response
+func (r UserRequestDeletionResponse) GetJSON202() *DeletionResponse {
+	return r.JSON202
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r UserRequestDeletionResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r UserRequestDeletionResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r UserRequestDeletionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UserRequestDeletionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UserRequestDeletionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UserRequestDeletionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // UserGetMeResponse200Headers the declared response headers of an HTTP 200 response for UserGetMe
 type UserGetMeResponse200Headers struct {
 	XRequestId *string
@@ -5807,6 +6056,137 @@ func (r UserRequestAvatarUploadIntentResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r UserRequestAvatarUploadIntentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// UserCancelDeletionResponse200Headers the declared response headers of an HTTP 200 response for UserCancelDeletion
+type UserCancelDeletionResponse200Headers struct {
+	XRequestId *string
+}
+
+type UserCancelDeletionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *DeletionResponse
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *UserCancelDeletionResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UserCancelDeletionResponse) GetJSON200() *DeletionResponse {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r UserCancelDeletionResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r UserCancelDeletionResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r UserCancelDeletionResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r UserCancelDeletionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UserCancelDeletionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UserCancelDeletionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UserCancelDeletionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// UserGetDeletionResponse200Headers the declared response headers of an HTTP 200 response for UserGetDeletion
+type UserGetDeletionResponse200Headers struct {
+	XRequestId *string
+}
+
+type UserGetDeletionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *DeletionResponse
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *UserGetDeletionResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UserGetDeletionResponse) GetJSON200() *DeletionResponse {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r UserGetDeletionResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r UserGetDeletionResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r UserGetDeletionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UserGetDeletionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UserGetDeletionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UserGetDeletionResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -6910,6 +7290,21 @@ func (c *ClientWithResponses) SystemHealthWithResponse(ctx context.Context, reqE
 	return ParseSystemHealthResponse(rsp)
 }
 
+// UserRequestDeletionWithResponse Request account deletion (GDPR Article 17).
+//
+// Initiates the 30-day grace period for account deletion. Revokes all active sessions immediately.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /me (the `UserRequestDeletion` operationId).
+func (c *ClientWithResponses) UserRequestDeletionWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*UserRequestDeletionResponse, error) {
+	rsp, err := c.UserRequestDeletion(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserRequestDeletionResponse(rsp)
+}
+
 // UserGetMeWithResponse Read the caller's own account.
 //
 // Returns the account belonging to the access token. There is deliberately no `/users/{id}` counterpart in this version: the actor comes from the token, so one user cannot read another by changing a path segment.
@@ -6998,6 +7393,36 @@ func (c *ClientWithResponses) UserRequestAvatarUploadIntentWithResponse(ctx cont
 		return nil, err
 	}
 	return ParseUserRequestAvatarUploadIntentResponse(rsp)
+}
+
+// UserCancelDeletionWithResponse Cancel a pending account deletion request.
+//
+// Cancels the active pending deletion request during the 30-day grace period and restores the account to active status.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /me/deletion/cancel (the `UserCancelDeletion` operationId).
+func (c *ClientWithResponses) UserCancelDeletionWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*UserCancelDeletionResponse, error) {
+	rsp, err := c.UserCancelDeletion(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserCancelDeletionResponse(rsp)
+}
+
+// UserGetDeletionWithResponse Get the status of an account deletion request.
+//
+// Returns the status and metadata for a previously requested account deletion.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /me/deletion/{id} (the `UserGetDeletion` operationId).
+func (c *ClientWithResponses) UserGetDeletionWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*UserGetDeletionResponse, error) {
+	rsp, err := c.UserGetDeletion(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserGetDeletionResponse(rsp)
 }
 
 // UserRequestExportWithResponse Request a complete export of all personal data (GDPR).
@@ -9156,6 +9581,59 @@ func ParseSystemHealthResponse(rsp *http.Response) (*SystemHealthResponse, error
 	return response, nil
 }
 
+// ParseUserRequestDeletionResponse parses an HTTP response from a UserRequestDeletionWithResponse call
+func ParseUserRequestDeletionResponse(rsp *http.Response) (*UserRequestDeletionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UserRequestDeletionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest DeletionResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 202:
+		var headers UserRequestDeletionResponse202Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers202 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseUserGetMeResponse parses an HTTP response from a UserGetMeWithResponse call
 func ParseUserGetMeResponse(rsp *http.Response) (*UserGetMeResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -9422,6 +9900,119 @@ func ParseUserRequestAvatarUploadIntentResponse(rsp *http.Response) (*UserReques
 			headers.RetryAfter = &value
 		}
 		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseUserCancelDeletionResponse parses an HTTP response from a UserCancelDeletionWithResponse call
+func ParseUserCancelDeletionResponse(rsp *http.Response) (*UserCancelDeletionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UserCancelDeletionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DeletionResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers UserCancelDeletionResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseUserGetDeletionResponse parses an HTTP response from a UserGetDeletionWithResponse call
+func ParseUserGetDeletionResponse(rsp *http.Response) (*UserGetDeletionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UserGetDeletionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DeletionResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers UserGetDeletionResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
 	}
 
 	return response, nil

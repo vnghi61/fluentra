@@ -6,7 +6,7 @@ status: PLANNED
 phase: 1
 owner: "@backend-team"
 schema: core
-tables: [users, profiles, user_preferences, learning_profiles, user_deletion_requests, user_exports]
+tables: [users, profiles, user_preferences, learning_profiles, user_deletions, user_exports]
 depends_on: [storage, mailer, audit]
 depended_on_by: [auth, admin, learning, notification, subscription, gamification]
 spec_version: 1.0.0
@@ -56,6 +56,7 @@ check, and there is a test that fails if a user-id route ever appears.
 | `GET` | `/api/v1/me/export/{id}` | `self` | Get status of a data export request |
 | `DELETE` | `/api/v1/me` | `self` | Request account deletion (30-day grace) |
 | `POST` | `/api/v1/me/deletion/cancel` | `self` | Cancel a pending deletion |
+| `GET` | `/api/v1/me/deletion/{id}` | `self` | Get status of a deletion request |
 | `GET` | `/api/v1/admin/users` | `user.list` | Search and list users |
 | `GET` | `/api/v1/admin/users/{id}` | `user.read` | Read one user |
 | `POST` | `/api/v1/admin/users/{id}/suspend` | `user.suspend` | Suspend an account |
@@ -113,7 +114,7 @@ Get a presigned URL for an avatar upload
 |---|---|
 | Permission | `self` |
 | Success | 200 |
-| Errors | `UNSUPPORTED_MEDIA_TYPE`, `TOO_LARGE` |
+| Errors | `VALIDATION_FAILED` |
 
 ### `PUT /api/v1/me/avatar`
 
@@ -164,6 +165,16 @@ Cancel a pending deletion
 | Permission | `self` |
 | Success | 200 |
 | Errors | `INVALID_STATE_TRANSITION` |
+
+### `GET /api/v1/me/deletion/{id}`
+
+Get status of a deletion request
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
 
 ### `GET /api/v1/admin/users`
 

@@ -62,6 +62,25 @@ type Repository interface {
 	GetExpiredExports(ctx context.Context, limit int32) ([]domain.ExportRequest, error)
 	DeleteExport(ctx context.Context, id uuid.UUID) error
 
+	// The deletion lifecycle (GDPR).
+	CreateDeletionRequest(ctx context.Context, id, userID uuid.UUID, executeAt time.Time) (domain.DeletionRequest, error)
+	GetPendingDeletionForUser(ctx context.Context, userID uuid.UUID) (domain.DeletionRequest, bool, error)
+	GetDeletionByID(ctx context.Context, id uuid.UUID) (domain.DeletionRequest, error)
+	CancelDeletion(ctx context.Context, id uuid.UUID, cancelledAt time.Time) error
+	UpdateDeletionStatus(
+		ctx context.Context,
+		id uuid.UUID,
+		status domain.DeletionStatus,
+		startedAt, completedAt *time.Time,
+		errorMessage *string,
+	) error
+	GetDueDeletions(ctx context.Context, cutoff time.Time, limit int32) ([]domain.DeletionRequest, error)
+	AnonymiseUser(ctx context.Context, userID uuid.UUID, anonymisedEmail string) error
+	AnonymiseProfile(ctx context.Context, userID uuid.UUID) error
+	DeletePreferences(ctx context.Context, userID uuid.UUID) error
+	DeleteLearningProfile(ctx context.Context, userID uuid.UUID) error
+	UpdateUserStatus(ctx context.Context, userID uuid.UUID, status domain.Status) error
+
 	WithTx(tx pgx.Tx) Repository
 }
 

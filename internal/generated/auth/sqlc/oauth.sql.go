@@ -166,6 +166,16 @@ func (q *Queries) DeleteExpiredOAuthStates(ctx context.Context, cutoff time.Time
 	return result.RowsAffected(), nil
 }
 
+const deleteOAuthIdentitiesForUser = `-- name: DeleteOAuthIdentitiesForUser :exec
+DELETE FROM core.oauth_identities
+WHERE user_id = $1
+`
+
+func (q *Queries) DeleteOAuthIdentitiesForUser(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteOAuthIdentitiesForUser, userID)
+	return err
+}
+
 const deleteOAuthIdentity = `-- name: DeleteOAuthIdentity :execrows
 DELETE FROM core.oauth_identities
 WHERE user_id = $1 AND provider = $2
