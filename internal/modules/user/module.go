@@ -41,11 +41,12 @@ type Deps struct {
 
 // Module is the user module, assembled. It is the only symbol cmd/ imports.
 type Module struct {
-	service      *service.Service
-	handler      *userhttp.Handler
-	worker       *userjob.ExportWorker
-	cleaner      *userjob.ExportCleaner
-	deletionExec *userjob.DeletionExecutor
+	service        *service.Service
+	handler        *userhttp.Handler
+	worker         *userjob.ExportWorker
+	cleaner        *userjob.ExportCleaner
+	deletionExec   *userjob.DeletionExecutor
+	erasureChecker *userjob.ErasureChecker
 }
 
 // New wires the module.
@@ -95,13 +96,15 @@ func New(deps Deps) *Module {
 		outbox.NewWriter(),
 		storage.BucketAvatars,
 	)
+	erasureChecker := userjob.NewErasureChecker(repo, deps.Providers)
 
 	return &Module{
-		service:      users,
-		handler:      userhttp.NewHandler(users),
-		worker:       worker,
-		cleaner:      cleaner,
-		deletionExec: deletionExec,
+		service:        users,
+		handler:        userhttp.NewHandler(users),
+		worker:         worker,
+		cleaner:        cleaner,
+		deletionExec:   deletionExec,
+		erasureChecker: erasureChecker,
 	}
 }
 
@@ -131,12 +134,15 @@ func (m *Module) ExportWorker() *userjob.ExportWorker { return m.worker }
 
 // CronJobs returns background scheduled jobs owned by the user module.
 func (m *Module) CronJobs() []job.CronJob {
-	jobs := make([]job.CronJob, 0, 2)
+	jobs := make([]job.CronJob, 0, 3)
 	if m.cleaner != nil {
 		jobs = append(jobs, m.cleaner.CronJob())
 	}
 	if m.deletionExec != nil {
 		jobs = append(jobs, m.deletionExec.CronJob())
+	}
+	if m.erasureChecker != nil {
+		jobs = append(jobs, m.erasureChecker.CronJob())
 	}
 	return jobs
 }

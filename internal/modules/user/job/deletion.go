@@ -157,7 +157,7 @@ func (e *DeletionExecutor) processDeletion(ctx context.Context, item domain.Dele
 		}
 
 		// 2. Anonymise user record
-		anonymisedEmail := fmt.Sprintf("deleted-%s@anonymised.invalid", item.UserID)
+		anonymisedEmail := fmt.Sprintf("deleted-%s%s", item.UserID, AnonymisedEmailSuffix)
 		if err := txRepo.AnonymiseUser(ctx, item.UserID, anonymisedEmail); err != nil {
 			return fmt.Errorf("anonymise user: %w", err)
 		}
@@ -193,11 +193,11 @@ func (e *DeletionExecutor) processDeletion(ctx context.Context, item domain.Dele
 			}
 		}
 
-		// 6. Mark deletion completed
+		// 6. Keep deletion in processing status until completeness check verifies all providers
 		if err := txRepo.UpdateDeletionStatus(
-			ctx, item.ID, domain.DeletionStatusCompleted, nil, &completedAt, nil,
+			ctx, item.ID, domain.DeletionStatusProcessing, &startedAt, nil, nil,
 		); err != nil {
-			return fmt.Errorf("mark deletion completed: %w", err)
+			return fmt.Errorf("mark deletion processing: %w", err)
 		}
 
 		return nil

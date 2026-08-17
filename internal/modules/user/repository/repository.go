@@ -436,6 +436,21 @@ func (r *Repository) GetDueDeletions(
 	return items, nil
 }
 
+// GetProcessingDeletions returns account deletion requests currently in processing status.
+func (r *Repository) GetProcessingDeletions(
+	ctx context.Context, limit int32,
+) ([]domain.DeletionRequest, error) {
+	rows, err := r.queries.GetProcessingDeletions(ctx, limit)
+	if err != nil {
+		return nil, fmt.Errorf("get processing deletions: %w", err)
+	}
+	items := make([]domain.DeletionRequest, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, toDomainDeletion(row))
+	}
+	return items, nil
+}
+
 // AnonymiseUser rewrites the email and sets status to deleted.
 func (r *Repository) AnonymiseUser(ctx context.Context, userID uuid.UUID, anonymisedEmail string) error {
 	err := r.queries.AnonymiseUser(ctx, sqlcuser.AnonymiseUserParams{

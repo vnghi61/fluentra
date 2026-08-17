@@ -51,6 +51,12 @@ WHERE status = 'pending' AND execute_at <= $1
 ORDER BY execute_at ASC
 LIMIT $2;
 
+-- name: GetProcessingDeletions :many
+SELECT * FROM core.user_deletions
+WHERE status = 'processing'
+ORDER BY updated_at ASC
+LIMIT $1;
+
 -- name: AnonymiseUser :exec
 UPDATE core.users
 SET email = $2,

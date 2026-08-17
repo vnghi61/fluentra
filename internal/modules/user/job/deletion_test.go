@@ -242,10 +242,10 @@ func TestDeletionExecutor_DueExecution(t *testing.T) {
 		t.Errorf("expected preferences to be purged")
 	}
 
-	// 4. Assert deletion completed
+	// 4. Assert deletion status set to processing (awaiting completeness check)
 	deletion := repo.deletions[deletionID]
-	if deletion.Status != domain.DeletionStatusCompleted {
-		t.Errorf("got deletion status %s, want completed", deletion.Status)
+	if deletion.Status != domain.DeletionStatusProcessing {
+		t.Errorf("got deletion status %s, want processing", deletion.Status)
 	}
 
 	// 5. Assert user.deleted event published
