@@ -126,7 +126,6 @@ func (m *Module) AdminReader() contract.AdminReader { return m.service }
 // AdminManager is this module's state management contract for admin user operations.
 func (m *Module) AdminManager() contract.AdminManager { return m.service }
 
-
 // ExportWorker returns the River worker for user data export jobs.
 func (m *Module) ExportWorker() *userjob.ExportWorker { return m.worker }
 

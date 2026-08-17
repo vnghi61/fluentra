@@ -177,7 +177,6 @@ const (
 	EventReinstated         = "user.reinstated"
 )
 
-
 // Aggregate is the outbox aggregate name every event above is written under.
 const Aggregate = "user"
 

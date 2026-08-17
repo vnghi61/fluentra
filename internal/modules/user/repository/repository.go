@@ -614,7 +614,7 @@ func (r *Repository) SearchUsersAdmin(
 		CreatedBefore:   createdBefore,
 		CursorID:        cID,
 		CursorCreatedAt: cTime,
-		ResultLimit:     int32(limit),
+		ResultLimit:     int32(limit), //nolint:gosec // limit is validated by handler to positive integer
 	})
 	if err != nil {
 		return nil, fmt.Errorf("search users admin: %w", err)
@@ -635,4 +635,3 @@ func (r *Repository) SearchUsersAdmin(
 	}
 	return result, nil
 }
-
