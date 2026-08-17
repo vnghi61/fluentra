@@ -52,6 +52,16 @@ tags:
       The record of what happened. Append-only: there is no operation here that
       edits or removes an audit entry, and the application database role holds
       no grant that would let one exist.
+  - name: admin
+    description: >-
+      The back-office surface: acting on *other* people's accounts, and on the
+      platform's own switches.
+
+
+      Every operation here that changes state requires a reason and is written
+      to the admin action log with the acting administrator. An administrator
+      may not use these operations on their own account — that path exists so
+      that a compromised admin session cannot quietly widen its own reach.
 security:
   - BearerAuth: []
 paths:
@@ -1408,37 +1418,67 @@ paths:
       tags: [admin]
       operationId: adminListUsers
       summary: Search users with cursor pagination.
+      description: >-
+        Finds accounts by prefix, status, or creation window. The filters
+        combine with AND; supplying none walks every account.
+
+
+        The search itself is not audited — an administrator typing into a
+        search box is not an action on anybody. Opening a result is, which is
+        why the row is thin and `adminGetUser` is a separate operation.
       x-permission: user.list
       parameters:
         - name: email_prefix
           in: query
+          description: >-
+            Matches the start of the address only. Substring search over
+            addresses is deliberately not offered.
           schema: { type: string }
         - name: display_name
           in: query
+          description: Matches the start of the display name.
           schema: { type: string }
         - name: status
           in: query
-          schema: { type: string }
+          description: Restricts results to one lifecycle state.
+          schema:
+            $ref: '#/components/schemas/UserStatus'
+        - name: created_after
+          in: query
+          description: Only accounts created at or after this instant.
+          schema: { type: string, format: date-time }
+        - name: created_before
+          in: query
+          description: Only accounts created at or before this instant.
+          schema: { type: string, format: date-time }
         - name: cursor
           in: query
+          description: >-
+            The `next_cursor` of the previous page. Omit for the first page.
           schema: { type: string }
         - name: limit
           in: query
-          schema: { type: integer, default: 20 }
+          description: Rows per page.
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
       responses:
         '200':
-          description: Search results.
+          description: One page of matching accounts.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  items:
-                    type: array
-                    items:
-                      type: object
-                  next_cursor:
-                    type: string
+                $ref: '#/components/schemas/AdminUserPage'
+              example:
+                items:
+                  - id: 0199a1c2-3d4e-7f80-9abc-def012345678
+                    email: learner@example.com
+                    display_name: Nghi
+                    avatar_url: null
+                    status: active
+                    created_at: '2026-08-01T09:15:00Z'
+                next_cursor: MjAyNi0wOC0wMVQwOToxNTowMFo
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
   /admin/users/{id}:
@@ -1446,15 +1486,38 @@ paths:
       tags: [admin]
       operationId: adminGetUser
       summary: Get detailed user profile. Audited on read.
+      description: >-
+        Returns one account in full. Unlike the search, the read itself is
+        recorded as `admin.user_viewed` with the acting administrator: looking
+        at a specific person's account is an act, and the audit log is what
+        makes it reviewable.
       x-permission: user.read
       parameters:
         - name: id
           in: path
           required: true
+          description: The account to inspect.
           schema: { type: string, format: uuid }
       responses:
         '200':
-          description: User detail.
+          description: The account, and an audit entry recording the read.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserDetail'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def012345678
+                email: learner@example.com
+                display_name: Nghi
+                avatar_url: null
+                locale: vi-VN
+                timezone: Asia/Ho_Chi_Minh
+                status: active
+                created_at: '2026-08-01T09:15:00Z'
+                updated_at: '2026-08-14T02:30:00Z'
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -1463,156 +1526,290 @@ paths:
       tags: [admin]
       operationId: adminSuspendUser
       summary: Suspend user and revoke active sessions.
+      description: >-
+        Moves the account to `suspended` and ends every active session, so the
+        suspension takes effect on the next request rather than whenever the
+        access token happens to expire.
+
+
+        The two halves run in separate transactions, in that order: the admin
+        action log records the intent before anything is revoked. An
+        administrator suspending their own account is refused with 403
+        `SELF_ADMIN_ACTION_FORBIDDEN`.
       x-permission: user.suspend
       parameters:
         - name: id
           in: path
           required: true
+          description: The account to suspend. May not be the caller's own.
           schema: { type: string, format: uuid }
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required: [reason]
-              properties:
-                reason: { type: string, minLength: 10 }
+              $ref: '#/components/schemas/AdminActionRequest'
+            example:
+              reason: Repeated spam reports confirmed by moderation review.
       responses:
         '200':
-          description: User suspended.
+          description: The account is suspended and its sessions are gone.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserStatusChanged'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def012345678
+                status: suspended
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
   /admin/users/{id}/reinstate:
     post:
       tags: [admin]
       operationId: adminReinstateUser
       summary: Reinstate suspended user.
+      description: >-
+        Returns a suspended account to `active`. Sessions are not restored —
+        they were destroyed, not paused — so the learner signs in again.
+
+
+        A reason is required here as well: reversing a suspension is as much a
+        decision as making one, and the log should carry both sides.
       x-permission: user.reinstate
       parameters:
         - name: id
           in: path
           required: true
+          description: The account to reinstate. May not be the caller's own.
           schema: { type: string, format: uuid }
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required: [reason]
-              properties:
-                reason: { type: string, minLength: 10 }
+              $ref: '#/components/schemas/AdminActionRequest'
+            example:
+              reason: Appeal upheld; the reports were not substantiated.
       responses:
         '200':
-          description: User reinstated.
+          description: The account is active again.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserStatusChanged'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def012345678
+                status: active
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
   /admin/users/{id}/sessions/revoke:
     post:
       tags: [admin]
       operationId: adminRevokeUserSessions
       summary: Revoke all active sessions for a user.
+      description: >-
+        Signs the user out everywhere without changing their account status —
+        the response to a lost device or a shared password, where suspension
+        would be the wrong punishment.
+
+
+        Idempotent: revoking sessions for a user who has none succeeds.
       x-permission: user.manage_sessions
       parameters:
         - name: id
           in: path
           required: true
+          description: The account whose sessions are ended.
           schema: { type: string, format: uuid }
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required: [reason]
-              properties:
-                reason: { type: string, minLength: 10 }
+              $ref: '#/components/schemas/AdminActionRequest'
+            example:
+              reason: Learner reported their laptop stolen over support chat.
       responses:
         '200':
-          description: Sessions revoked.
+          description: Every active session for the user has been ended.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminSessionsRevoked'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def012345678
+                revoked: true
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
   /admin/flags:
     get:
       tags: [admin]
       operationId: adminListFlags
       summary: List all feature flags.
+      description: >-
+        Returns every flag, unpaginated. The set is small by design, and an
+        administrator needs the whole of it to see which flags are past their
+        `expires_on` and should have been deleted.
       x-permission: system.flags
       responses:
         '200':
-          description: Feature flag list.
+          description: Every feature flag the platform defines.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeatureFlagList'
+              example:
+                items:
+                  - key: streaks_v2
+                    enabled: true
+                    rollout_percent: 25
+                    owner: '@backend-team'
+                    expires_on: '2026-12-31'
+                    description: Second-generation streak calculation.
+                    created_at: '2026-08-01T09:15:00Z'
+                    updated_at: '2026-08-16T11:00:00Z'
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
     post:
       tags: [admin]
       operationId: adminCreateFlag
       summary: Create feature flag.
+      description: >-
+        Defines a new flag, off by default. `owner` and `expires_on` are
+        required and `expires_on` must be in the future: a flag with nobody
+        accountable and no end date is how a temporary switch becomes
+        permanent.
       x-permission: system.flags
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required: [key, owner, expires_on, description]
-              properties:
-                key: { type: string }
-                enabled: { type: boolean }
-                rollout_percent: { type: integer, minimum: 0, maximum: 100 }
-                owner: { type: string }
-                expires_on: { type: string, format: date }
-                description: { type: string }
+              $ref: '#/components/schemas/CreateFeatureFlagRequest'
+            example:
+              key: streaks_v2
+              enabled: false
+              rollout_percent: 0
+              owner: '@backend-team'
+              expires_on: '2026-12-31'
+              description: Second-generation streak calculation.
       responses:
         '201':
-          description: Flag created.
+          description: The flag was created.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeatureFlag'
+              example:
+                key: streaks_v2
+                enabled: false
+                rollout_percent: 0
+                owner: '@backend-team'
+                expires_on: '2026-12-31'
+                description: Second-generation streak calculation.
+                created_at: '2026-08-17T06:25:00Z'
+                updated_at: '2026-08-17T06:25:00Z'
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
   /admin/flags/{key}:
     put:
       tags: [admin]
       operationId: adminUpdateFlag
       summary: Update feature flag.
+      description: >-
+        Replaces the mutable fields of a flag. Because bucketing hashes the
+        flag key together with the user id, raising `rollout_percent` only ever
+        adds users to the treatment group — nobody who was already in it is
+        moved out.
+
+
+        The change invalidates the 30-second evaluation cache for this key, so
+        it is visible within one cache generation rather than immediately.
       x-permission: system.flags
       parameters:
         - name: key
           in: path
           required: true
+          description: The flag to update.
           schema: { type: string }
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required: [expires_on, description]
-              properties:
-                enabled: { type: boolean }
-                rollout_percent: { type: integer, minimum: 0, maximum: 100 }
-                expires_on: { type: string, format: date }
-                description: { type: string }
+              $ref: '#/components/schemas/UpdateFeatureFlagRequest'
+            example:
+              enabled: true
+              rollout_percent: 50
+              expires_on: '2026-12-31'
+              description: Second-generation streak calculation.
       responses:
         '200':
-          description: Flag updated.
+          description: The flag as it now stands.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeatureFlag'
+              example:
+                key: streaks_v2
+                enabled: true
+                rollout_percent: 50
+                owner: '@backend-team'
+                expires_on: '2026-12-31'
+                description: Second-generation streak calculation.
+                created_at: '2026-08-01T09:15:00Z'
+                updated_at: '2026-08-17T06:25:00Z'
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
     delete:
       tags: [admin]
       operationId: adminDeleteFlag
       summary: Delete feature flag.
+      description: >-
+        Removes the flag. Every subsequent evaluation of the key returns
+        false, so delete the flag only once the code that reads it is gone —
+        otherwise the feature silently turns off for everybody.
       x-permission: system.flags
       parameters:
         - name: key
           in: path
           required: true
+          description: The flag to delete.
           schema: { type: string }
       responses:
-        '240':
-          description: Flag deleted.
+        '204':
+          description: The flag is gone. No body.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -2132,6 +2329,26 @@ components:
       $ref: ./components/audit.yaml#/SecurityEventPage
     ResolveSecurityEventRequest:
       $ref: ./components/audit.yaml#/ResolveSecurityEventRequest
+    AdminUserSummary:
+      $ref: ./components/admin.yaml#/AdminUserSummary
+    AdminUserPage:
+      $ref: ./components/admin.yaml#/AdminUserPage
+    AdminUserDetail:
+      $ref: ./components/admin.yaml#/AdminUserDetail
+    AdminActionRequest:
+      $ref: ./components/admin.yaml#/AdminActionRequest
+    AdminUserStatusChanged:
+      $ref: ./components/admin.yaml#/AdminUserStatusChanged
+    AdminSessionsRevoked:
+      $ref: ./components/admin.yaml#/AdminSessionsRevoked
+    FeatureFlag:
+      $ref: ./components/admin.yaml#/FeatureFlag
+    FeatureFlagList:
+      $ref: ./components/admin.yaml#/FeatureFlagList
+    CreateFeatureFlagRequest:
+      $ref: ./components/admin.yaml#/CreateFeatureFlagRequest
+    UpdateFeatureFlagRequest:
+      $ref: ./components/admin.yaml#/UpdateFeatureFlagRequest
   headers:
     X-Request-Id:
       $ref: ./components/headers.yaml#/X-Request-Id

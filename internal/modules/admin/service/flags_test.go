@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	sqlcadmin "github.com/fluentra/fluentra/internal/generated/admin/sqlc"
 	adminsvc "github.com/fluentra/fluentra/internal/modules/admin/service"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type fakeFlagRepo struct {

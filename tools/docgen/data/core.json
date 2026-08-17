@@ -918,11 +918,18 @@
       { "name": "moderation_items", "purpose": "The moderation queue", "notes": "`kind`, `target_type`, `target_id`, `reason`, `status`, `assignee_id`" }
     ],
     "endpoints": [
+      { "method": "GET", "path": "/api/v1/admin/users", "permission": "user.list", "purpose": "Search accounts, cursor-paginated", "success": "200", "notes": "The search itself is not audited; opening one result is" },
+      { "method": "GET", "path": "/api/v1/admin/users/{id}", "permission": "user.read", "purpose": "One account in full", "success": "200", "notes": "Recorded as `admin.user_viewed`" },
+      { "method": "POST", "path": "/api/v1/admin/users/{id}/suspend", "permission": "user.suspend", "purpose": "Suspend an account and end its sessions", "success": "200", "notes": "Reason required; refused on the caller's own account" },
+      { "method": "POST", "path": "/api/v1/admin/users/{id}/reinstate", "permission": "user.reinstate", "purpose": "Return a suspended account to active", "success": "200", "notes": "Reason required; sessions are not restored" },
+      { "method": "POST", "path": "/api/v1/admin/users/{id}/sessions/revoke", "permission": "user.manage_sessions", "purpose": "Sign a user out everywhere", "success": "200", "notes": "Reason required; status is unchanged" },
+      { "method": "GET", "path": "/api/v1/admin/flags", "permission": "system.flags", "purpose": "List every feature flag", "success": "200", "notes": "Unpaginated — the set is small by design" },
+      { "method": "POST", "path": "/api/v1/admin/flags", "permission": "system.flags", "purpose": "Create a feature flag", "success": "201", "notes": "`owner` and a future `expires_on` are required" },
+      { "method": "PUT", "path": "/api/v1/admin/flags/{key}", "permission": "system.flags", "purpose": "Update a feature flag", "success": "200", "notes": "Visible within one 30 s cache generation" },
+      { "method": "DELETE", "path": "/api/v1/admin/flags/{key}", "permission": "system.flags", "purpose": "Delete a feature flag", "success": "204", "notes": "Evaluations of the key then return false" },
       { "method": "GET", "path": "/api/v1/admin/dashboard", "permission": "admin.dashboard", "purpose": "Composed KPI summary", "success": "200" },
       { "method": "GET", "path": "/api/v1/admin/moderation", "permission": "moderation.read", "purpose": "Moderation queue", "success": "200" },
       { "method": "POST", "path": "/api/v1/admin/moderation/{id}/resolve", "permission": "moderation.act", "purpose": "Resolve a queue item", "success": "200" },
-      { "method": "GET", "path": "/api/v1/admin/feature-flags", "permission": "system.flags", "purpose": "List flags", "success": "200" },
-      { "method": "PUT", "path": "/api/v1/admin/feature-flags/{key}", "permission": "system.flags", "purpose": "Update a flag", "success": "200" },
       { "method": "POST", "path": "/api/v1/admin/jobs/{id}/retry", "permission": "system.jobs", "purpose": "Retry a failed job", "success": "202" },
       { "method": "POST", "path": "/api/v1/admin/impersonate/{user_id}", "permission": "user.impersonate", "purpose": "Start a time-boxed impersonation session", "success": "200", "notes": "Audited; blocked for payment actions; a banner is shown throughout" }
     ],
@@ -948,7 +955,11 @@
     ],
     "errors": [
       { "code": "IMPERSONATION_FORBIDDEN_ACTION", "status": "403", "meaning": "The attempted action is not permitted while impersonating" },
-      { "code": "SELF_ADMIN_ACTION_FORBIDDEN", "status": "403", "meaning": "An admin may not administer their own account" }
+      { "code": "SELF_ADMIN_ACTION_FORBIDDEN", "status": "403", "meaning": "An admin may not administer their own account" },
+      { "code": "REASON_REQUIRED", "status": "422", "meaning": "A state-changing admin action was sent without a reason of at least 10 characters" },
+      { "code": "USER_NOT_FOUND", "status": "404", "meaning": "The target user account does not exist" },
+      { "code": "FEATURE_FLAG_NOT_FOUND", "status": "404", "meaning": "The requested feature flag does not exist" },
+      { "code": "FEATURE_FLAG_ALREADY_EXISTS", "status": "409", "meaning": "A feature flag with that key already exists" }
     ],
     "security": [
       "All `/admin/*` routes require the `admin` role at the route group and a specific permission at the service.",

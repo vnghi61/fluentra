@@ -7,10 +7,11 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/fluentra/fluentra/internal/modules/admin/service"
 	"github.com/fluentra/fluentra/internal/shared/apperr"
 	"github.com/fluentra/fluentra/internal/shared/httpx"
-	"github.com/go-chi/chi/v5"
 )
 
 // Guard is the authorization surface these handlers need.
