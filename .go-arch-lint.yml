@@ -119,6 +119,7 @@ components:
   g_user:        { in: generated/user/sqlc }
   g_rbac:        { in: generated/rbac/sqlc }
   g_audit:       { in: generated/audit/sqlc }
+  g_admin:       { in: generated/admin/sqlc }
 
   # platform capabilities
   p_telemetry:   { in: platform/telemetry/** }
@@ -192,7 +193,11 @@ components:
   m_audit_repository: { in: modules/audit/repository }
   m_audit_service: { in: modules/audit/service }
   m_audit_http:    { in: modules/audit/transport/http }
-  m_admin:         { in: modules/admin/** }
+  m_admin:            { in: modules/admin }
+  m_admin_domain:     { in: modules/admin/domain }
+  m_admin_repository: { in: modules/admin/repository }
+  m_admin_service:    { in: modules/admin/service }
+  m_admin_http:       { in: modules/admin/transport/http }
   m_notification:  { in: modules/notification/** }
   m_content:       { in: modules/content/** }
   m_lesson:        { in: modules/lesson/** }
@@ -247,6 +252,7 @@ deps:
   g_user:      { anyVendorDeps: true }
   g_rbac:      { anyVendorDeps: true }
   g_audit:     { anyVendorDeps: true }
+  g_admin:     { anyVendorDeps: true }
 
   # A platform capability exists to wrap a vendor SDK, so each may import one.
   # Business modules deliberately may not: they reach external systems through
@@ -335,7 +341,11 @@ deps:
   # prescribes. What would be wrong is the reverse.
   m_audit_http:       { mayDependOn: [m_audit_domain, m_audit_service, c_audit] }
   m_audit:            { mayDependOn: [m_audit_domain, m_audit_repository, m_audit_service, m_audit_http, c_audit, p_job, p_telemetry] }
-  m_admin:        { mayDependOn: [p_cache, p_telemetry, c_user, c_rbac, c_audit, c_auth, c_content, c_analytics, c_subscription] }
+  m_admin_domain:     { mayDependOn: [c_admin] }
+  m_admin_repository: { mayDependOn: [m_admin_domain, c_admin, g_admin] }
+  m_admin_service:    { mayDependOn: [m_admin_domain, c_admin, c_user, c_auth, c_audit, g_admin] }
+  m_admin_http:       { mayDependOn: [m_admin_domain, m_admin_service, c_admin, c_user] }
+  m_admin:            { mayDependOn: [m_admin_domain, m_admin_repository, m_admin_service, m_admin_http, c_admin, c_user, c_auth, c_audit] }
   m_notification: { mayDependOn: [p_mailer, p_job, p_cache, p_telemetry, c_user] }
 
   # learning

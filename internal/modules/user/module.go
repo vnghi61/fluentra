@@ -120,6 +120,13 @@ func (m *Module) Registrar() contract.Registrar { return m.service }
 // Exportable is this module's GDPR export contract.
 func (m *Module) Exportable() contract.Exportable { return m.service }
 
+// AdminReader is this module's read contract for admin user management.
+func (m *Module) AdminReader() contract.AdminReader { return m.service }
+
+// AdminManager is this module's state management contract for admin user operations.
+func (m *Module) AdminManager() contract.AdminManager { return m.service }
+
+
 // ExportWorker returns the River worker for user data export jobs.
 func (m *Module) ExportWorker() *userjob.ExportWorker { return m.worker }
 
@@ -142,6 +149,40 @@ type repositoryAdapter struct {
 
 func (a repositoryAdapter) WithTx(tx pgx.Tx) service.Repository {
 	return repositoryAdapter{Repository: a.Repository.WithTx(tx)}
+}
+
+func (a repositoryAdapter) SearchUsersAdmin(
+	ctx context.Context,
+	filter contract.UserFilter,
+	cursorID *uuid.UUID,
+	cursorTime *time.Time,
+	limit int,
+) ([]service.SearchUserRow, error) {
+	params := repository.UserFilterParams{
+		EmailPrefix:   filter.EmailPrefix,
+		DisplayName:   filter.DisplayName,
+		Status:        filter.Status,
+		CreatedAfter:  filter.CreatedAfter,
+		CreatedBefore: filter.CreatedBefore,
+	}
+	rows, err := a.Repository.SearchUsersAdmin(ctx, params, cursorID, cursorTime, limit)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]service.SearchUserRow, 0, len(rows))
+	for _, r := range rows {
+		result = append(result, service.SearchUserRow{
+			ID:          r.ID,
+			Email:       r.Email,
+			Status:      r.Status,
+			CreatedAt:   r.CreatedAt,
+			UpdatedAt:   r.UpdatedAt,
+			DisplayName: r.DisplayName,
+			Locale:      r.Locale,
+			Timezone:    r.Timezone,
+		})
+	}
+	return result, nil
 }
 
 // jobEnqueuerAdapter adapts job.Enqueuer to service.JobEnqueuer.

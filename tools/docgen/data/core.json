@@ -71,7 +71,7 @@
       { "method": "DELETE", "path": "/api/v1/auth/oauth/google", "permission": "self", "purpose": "Unlink Google", "success": "204", "errors": ["LAST_SIGN_IN_METHOD"], "notes": "Refused if it would leave the account with no way to sign in" },
       { "method": "GET", "path": "/api/v1/auth/devices", "permission": "self", "purpose": "List trusted devices with their idle and absolute expiry", "success": "200" },
       { "method": "DELETE", "path": "/api/v1/auth/devices/{id}", "permission": "self", "purpose": "Untrust a device, revoking its refresh family", "success": "204" },
-      { "method": "POST", "path": "/api/v1/admin/users/{id}/sessions/revoke", "permission": "user.session.revoke", "purpose": "Admin revokes all sessions for a user", "success": "204", "errors": ["PERMISSION_DENIED", "RESOURCE_NOT_FOUND"] }
+      { "method": "POST", "path": "/api/v1/admin/users/{id}/sessions/revoke", "permission": "user.manage_sessions", "purpose": "Admin revokes all sessions for a user", "success": "204", "errors": ["PERMISSION_DENIED", "RESOURCE_NOT_FOUND"] }
     ],
     "contract": [
       { "kind": "interface", "name": "auth.TokenVerifier", "purpose": "Validate an access token and return the actor — used by the HTTP middleware" },
@@ -419,7 +419,7 @@
       { "method": "GET", "path": "/api/v1/admin/users", "permission": "user.list", "purpose": "Search and list users", "success": "200" },
       { "method": "GET", "path": "/api/v1/admin/users/{id}", "permission": "user.read", "purpose": "Read one user", "success": "200" },
       { "method": "POST", "path": "/api/v1/admin/users/{id}/suspend", "permission": "user.suspend", "purpose": "Suspend an account", "success": "200", "errors": ["INVALID_STATE_TRANSITION"] },
-      { "method": "POST", "path": "/api/v1/admin/users/{id}/reinstate", "permission": "user.suspend", "purpose": "Reinstate a suspended account", "success": "200" }
+      { "method": "POST", "path": "/api/v1/admin/users/{id}/reinstate", "permission": "user.reinstate", "purpose": "Reinstate a suspended account", "success": "200" }
     ],
     "contract": [
       { "kind": "interface", "name": "user.Reader", "purpose": "`GetByID`, `GetManyByIDs`, `Exists` — batched to avoid N+1 across modules" },
@@ -912,6 +912,7 @@
       "Its own copies of other modules' data"
     ],
     "tables": [
+      { "name": "admin_actions", "purpose": "Audit log of admin operations on accounts", "notes": "`actor_id`, `target_id`, `action` (suspend/reinstate/revoke_sessions), `reason`, `occurred_at`. CHECK actor_id != target_id" },
       { "name": "feature_flags", "purpose": "Runtime feature toggles", "notes": "`key`, `enabled`, `rollout_percent`, `owner`, `expires_on`. Cached 30 s in-process." },
       { "name": "admin_notes", "purpose": "Free-text notes attached to a user or content item", "notes": "Visible to admins only; audited on create" },
       { "name": "moderation_items", "purpose": "The moderation queue", "notes": "`kind`, `target_type`, `target_id`, `reason`, `status`, `assignee_id`" }
@@ -990,8 +991,6 @@
     "todo": [
       { "title": "Phase 2", "items": [
         "Dashboard composing user, learning and AI-cost summaries",
-        "User management screens with audit on every action",
-        "Feature flag CRUD with in-process caching",
         "Moderation queue with assignment and resolution",
         "Job retry and webhook replay tooling",
         "Impersonation with all its guards"

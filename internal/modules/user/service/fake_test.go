@@ -723,6 +723,19 @@ func (f *fakeRepo) UpdateUserStatus(_ context.Context, userID uuid.UUID, status 
 	return nil
 }
 
+func (f *fakeRepo) SearchUsersAdmin(
+	_ context.Context,
+	_ contract.UserFilter,
+	_ *uuid.UUID,
+	_ *time.Time,
+	_ int,
+) ([]service.SearchUserRow, error) {
+	if err := f.record("SearchUsersAdmin"); err != nil {
+		return nil, err
+	}
+	return nil, nil
+}
+
 type fakeEnqueuer struct {
 	mu       sync.Mutex
 	enqueued []uuid.UUID

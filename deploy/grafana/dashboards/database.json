@@ -1,0 +1,37 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "panels": [
+    {
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "Connection Pool Usage",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "pg_pool_active_connections / pg_pool_max_connections",
+          "legendFormat": "Usage Ratio"
+        }
+      ]
+    },
+    {
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "id": 2,
+      "title": "Slow Queries Rate",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "rate(pg_slow_queries_total[5m])",
+          "legendFormat": "Slow Queries / sec"
+        }
+      ]
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["fluentra", "database"],
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "Database Overview",
+  "uid": "fluentra-database"
+}

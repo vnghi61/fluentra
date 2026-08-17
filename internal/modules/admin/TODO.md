@@ -22,8 +22,6 @@ agent knows what is already handled and what is deliberately deferred.
 ## Phase 2
 
 - [ ] Dashboard composing user, learning and AI-cost summaries
-- [ ] User management screens with audit on every action
-- [ ] Feature flag CRUD with in-process caching
 - [ ] Moderation queue with assignment and resolution
 - [ ] Job retry and webhook replay tooling
 - [ ] Impersonation with all its guards

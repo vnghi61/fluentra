@@ -90,6 +90,7 @@ Migrations: `db/migrations/admin/` · Queries: `db/queries/admin/`
 
 | Table | Purpose | Key columns / notes |
 |---|---|---|
+| `core.admin_actions` | Audit log of admin operations on accounts | `actor_id`, `target_id`, `action` (suspend/reinstate/revoke_sessions), `reason`, `occurred_at`. CHECK actor_id != target_id |
 | `core.feature_flags` | Runtime feature toggles | `key`, `enabled`, `rollout_percent`, `owner`, `expires_on`. Cached 30 s in-process. |
 | `core.admin_notes` | Free-text notes attached to a user or content item | Visible to admins only; audited on create |
 | `core.moderation_items` | The moderation queue | `kind`, `target_type`, `target_id`, `reason`, `status`, `assignee_id` |

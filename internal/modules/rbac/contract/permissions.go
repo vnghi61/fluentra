@@ -24,10 +24,12 @@ const (
 	PermRBACAssign Permission = "rbac.assign"
 
 	// user
-	PermUserList        Permission = "user.list"
-	PermUserRead        Permission = "user.read"
-	PermUserSuspend     Permission = "user.suspend"
-	PermUserImpersonate Permission = "user.impersonate"
+	PermUserList           Permission = "user.list"
+	PermUserRead           Permission = "user.read"
+	PermUserSuspend        Permission = "user.suspend"
+	PermUserReinstate      Permission = "user.reinstate"
+	PermUserManageSessions Permission = "user.manage_sessions"
+	PermUserImpersonate    Permission = "user.impersonate"
 
 	// audit
 	PermAuditRead   Permission = "audit.read"
@@ -48,7 +50,7 @@ const (
 func All() []Permission {
 	return []Permission{
 		PermRBACRead, PermRBACAssign,
-		PermUserList, PermUserRead, PermUserSuspend, PermUserImpersonate,
+		PermUserList, PermUserRead, PermUserSuspend, PermUserReinstate, PermUserManageSessions, PermUserImpersonate,
 		PermAuditRead, PermAuditExport, PermAuditManage,
 		PermAdminDashboard, PermModerationRead, PermModerationAct,
 		PermSystemFlags, PermSystemJobs,

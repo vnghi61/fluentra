@@ -55,3 +55,27 @@ DELETE FROM core.users
 WHERE email_verified_at IS NULL
   AND status = 'active'
   AND created_at < @cutoff;
+
+-- name: SearchUsersAdmin :many
+SELECT
+    u.id,
+    u.email,
+    u.status,
+    u.created_at,
+    u.updated_at,
+    p.display_name,
+    p.avatar_asset_id,
+    p.timezone,
+    pref.locale
+FROM core.users u
+JOIN core.profiles p ON p.user_id = u.id
+JOIN core.user_preferences pref ON pref.user_id = u.id
+WHERE (@email_prefix::text = '' OR u.email ILIKE @email_prefix || '%')
+  AND (@display_name::text = '' OR p.display_name ILIKE '%' || @display_name || '%')
+  AND (@status::text = '' OR u.status::text = @status)
+  AND (@created_after::timestamptz IS NULL OR u.created_at >= @created_after)
+  AND (@created_before::timestamptz IS NULL OR u.created_at <= @created_before)
+  AND (@cursor_id::uuid IS NULL OR (u.created_at, u.id) < (@cursor_created_at::timestamptz, @cursor_id::uuid))
+ORDER BY u.created_at DESC, u.id DESC
+LIMIT @result_limit;
+

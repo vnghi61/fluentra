@@ -60,7 +60,7 @@ check, and there is a test that fails if a user-id route ever appears.
 | `GET` | `/api/v1/admin/users` | `user.list` | Search and list users |
 | `GET` | `/api/v1/admin/users/{id}` | `user.read` | Read one user |
 | `POST` | `/api/v1/admin/users/{id}/suspend` | `user.suspend` | Suspend an account |
-| `POST` | `/api/v1/admin/users/{id}/reinstate` | `user.suspend` | Reinstate a suspended account |
+| `POST` | `/api/v1/admin/users/{id}/reinstate` | `user.reinstate` | Reinstate a suspended account |
 <!-- END GENERATED: api-summary -->
 
 ## Endpoint detail
@@ -212,7 +212,7 @@ Reinstate a suspended account
 
 | | |
 |---|---|
-| Permission | `user.suspend` |
+| Permission | `user.reinstate` |
 | Success | 200 |
 | Errors | standard set |
 

@@ -252,7 +252,7 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | `DELETE` | `/api/v1/auth/oauth/google` | `self` | Unlink Google |
 | `GET` | `/api/v1/auth/devices` | `self` | List trusted devices with their idle and absolute expiry |
 | `DELETE` | `/api/v1/auth/devices/{id}` | `self` | Untrust a device, revoking its refresh family |
-| `POST` | `/api/v1/admin/users/{id}/sessions/revoke` | `user.session.revoke` | Admin revokes all sessions for a user |
+| `POST` | `/api/v1/admin/users/{id}/sessions/revoke` | `user.manage_sessions` | Admin revokes all sessions for a user |
 <!-- END GENERATED: endpoints -->
 
 ## 7. Folder map
