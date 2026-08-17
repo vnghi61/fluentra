@@ -91,6 +91,33 @@ func TestSelfSuspensionRefused(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected error when admin suspends self, got nil")
 	}
+	if !errors.Is(err, admindomain.ErrSelfAdminActionForbidden) {
+		t.Fatalf("expected ErrSelfAdminActionForbidden, got %v", err)
+	}
+}
+
+func TestSelfRevocationRefused(t *testing.T) {
+	adminID := uuid.New()
+	uReader := &fakeUserReader{users: make(map[uuid.UUID]*usercontract.UserDetail)}
+	uMgr := &fakeUserManager{suspended: make(map[uuid.UUID]bool), reinstated: make(map[uuid.UUID]bool)}
+	revoker := &fakeSessionRevoker{revoked: make(map[uuid.UUID]bool)}
+
+	svc := adminsvc.New(adminsvc.Deps{
+		UserReader:     uReader,
+		UserManager:    uMgr,
+		SessionRevoker: revoker,
+	})
+
+	err := svc.RevokeUserSessions(context.Background(), adminID, adminID, "A valid reason for self session revocation")
+	if err == nil {
+		t.Fatalf("expected error when admin revokes own sessions, got nil")
+	}
+	if !errors.Is(err, admindomain.ErrSelfAdminActionForbidden) {
+		t.Fatalf("expected ErrSelfAdminActionForbidden, got %v", err)
+	}
+	if revoker.revoked[adminID] {
+		t.Fatalf("expected SessionRevoker.RevokeAll NOT to be called")
+	}
 }
 
 func TestReasonRequirement(t *testing.T) {

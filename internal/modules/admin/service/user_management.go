@@ -150,6 +150,10 @@ func (s *Service) RevokeUserSessions(
 	targetID uuid.UUID,
 	reason string,
 ) error {
+	if actorID == targetID {
+		return admindomain.ErrSelfAdminActionForbidden
+	}
+
 	trimmedReason := strings.TrimSpace(reason)
 	if len(trimmedReason) < 10 {
 		return admindomain.ErrReasonRequired

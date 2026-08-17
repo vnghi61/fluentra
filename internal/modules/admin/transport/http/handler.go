@@ -8,8 +8,11 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 
+	admincontract "github.com/fluentra/fluentra/internal/modules/admin/contract"
 	"github.com/fluentra/fluentra/internal/modules/admin/service"
+	usercontract "github.com/fluentra/fluentra/internal/modules/user/contract"
 	"github.com/fluentra/fluentra/internal/shared/apperr"
 	"github.com/fluentra/fluentra/internal/shared/httpx"
 )
@@ -19,14 +22,29 @@ type Guard interface {
 	Require(ctx context.Context, permission string) error
 }
 
+// AdminService defines the service methods called by admin HTTP handlers.
+type AdminService interface {
+	SearchUsers(
+		ctx context.Context, filter usercontract.UserFilter, cursor string, limit int,
+	) ([]usercontract.UserSummary, string, error)
+	GetUserByID(ctx context.Context, actorID uuid.UUID, targetID uuid.UUID) (*usercontract.UserDetail, error)
+	SuspendUser(ctx context.Context, actorID uuid.UUID, targetID uuid.UUID, reason string) error
+	ReinstateUser(ctx context.Context, actorID uuid.UUID, targetID uuid.UUID, reason string) error
+	RevokeUserSessions(ctx context.Context, actorID uuid.UUID, targetID uuid.UUID, reason string) error
+	ListFlags(ctx context.Context) ([]admincontract.FeatureFlag, error)
+	CreateFlag(ctx context.Context, req service.CreateFlagRequest) (admincontract.FeatureFlag, error)
+	UpdateFlag(ctx context.Context, key string, req service.UpdateFlagRequest) (admincontract.FeatureFlag, error)
+	DeleteFlag(ctx context.Context, key string) error
+}
+
 // Handler serves HTTP endpoints for the admin module.
 type Handler struct {
-	service *service.Service
+	service AdminService
 	guard   Guard
 }
 
 // NewHandler creates a new Handler.
-func NewHandler(service *service.Service, guard Guard) *Handler {
+func NewHandler(service AdminService, guard Guard) *Handler {
 	return &Handler{service: service, guard: guard}
 }
 
