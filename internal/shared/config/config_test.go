@@ -11,6 +11,7 @@ import (
 
 // keyHTTPPort is the koanf path these tests use to prove default/override precedence.
 const keyHTTPPort = "http.port"
+const keyDBDSN = "db.dsn"
 
 // fakeDSNCredentials is the user:password segment of the throwaway DSN below. It is
 // kept separate and joined at run time so no string shaped like a real connection
@@ -90,7 +91,7 @@ func TestLoad_MissingAndInvalidFiles(t *testing.T) {
 func TestEnvKey_SplitsOnFirstUnderscoreOnly(t *testing.T) {
 	t.Parallel()
 	for variable, want := range map[string]string{
-		"DB_DSN":                      "db.dsn",
+		"DB_DSN":                      keyDBDSN,
 		"S3_ACCESS_KEY":               "s3.access_key",
 		"HTTP_READ_TIMEOUT":           "http.read_timeout",
 		"OTEL_EXPORTER_OTLP_ENDPOINT": "otel.exporter_otlp_endpoint",
@@ -173,12 +174,63 @@ func TestParseEnvFile(t *testing.T) {
 func TestLoad_MissingRequiredKeyNamesDocumentation(t *testing.T) {
 	var target struct{}
 	err := Load(context.Background(), Options{Required: []RequiredKey{{
-		Name:       "db.dsn",
+		Name:       keyDBDSN,
 		DocSection: "docs/deployment/configuration.md#database",
 	}}}, &target)
 	if err == nil ||
-		!strings.Contains(err.Error(), "db.dsn") ||
+		!strings.Contains(err.Error(), keyDBDSN) ||
 		!strings.Contains(err.Error(), "configuration.md") {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestLoad_SatisfiedRequiredKey(t *testing.T) {
+	var target struct {
+		DB struct {
+			DSN string `koanf:"dsn"`
+		} `koanf:"db"`
+	}
+	err := Load(context.Background(), Options{
+		Defaults: map[string]any{keyDBDSN: fakeDSN},
+		Required: []RequiredKey{{
+			Name:       keyDBDSN,
+			DocSection: "docs/deployment/configuration.md#database",
+		}},
+	}, &target)
+	if err != nil {
+		t.Fatalf("unexpected error for satisfied required key: %v", err)
+	}
+	if target.DB.DSN != fakeDSN {
+		t.Fatalf("got DSN %q, want %q", target.DB.DSN, fakeDSN)
+	}
+}
+
+func TestLoad_WithDotEnvFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Chdir(origDir) }()
+
+	envBody := "HTTP_PORT=9595\n"
+	if err := os.WriteFile(".env", []byte(envBody), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	var target struct {
+		HTTP struct {
+			Port int `koanf:"port"`
+		} `koanf:"http"`
+	}
+	err = Load(context.Background(), Options{Defaults: map[string]any{keyHTTPPort: 8080}}, &target)
+	if err != nil {
+		t.Fatalf("load with .env: %v", err)
+	}
+	if target.HTTP.Port != 9595 {
+		t.Fatalf("target.HTTP.Port = %d, want 9595", target.HTTP.Port)
 	}
 }
