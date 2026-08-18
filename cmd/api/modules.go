@@ -20,6 +20,7 @@ import (
 	"github.com/fluentra/fluentra/internal/platform/job"
 	"github.com/fluentra/fluentra/internal/platform/mailer"
 	"github.com/fluentra/fluentra/internal/platform/storage"
+	"github.com/fluentra/fluentra/internal/platform/telemetry"
 	"github.com/fluentra/fluentra/internal/shared/httpx"
 )
 
@@ -80,6 +81,10 @@ type identityDeps struct {
 
 	// Enqueuer schedules background River jobs within database transactions.
 	Enqueuer job.Enqueuer
+
+	// Instruments are the shared metric instruments, wired into the modules that
+	// record to them (auth lockouts and refresh reuse).
+	Instruments telemetry.Instruments
 }
 
 // newIdentity constructs the modules in dependency order — audit, then rbac,
@@ -154,6 +159,7 @@ func newIdentity(deps identityDeps) *identity {
 		Windows:          deps.Windows,
 		Google:           deps.Google,
 		OAuthStateTTL:    deps.OAuthStateTTL,
+		Telemetry:        deps.Instruments,
 	})
 
 	assembled.admin = admin.New(admin.Deps{

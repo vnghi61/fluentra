@@ -5,11 +5,11 @@
     {
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
       "id": 1,
-      "title": "River Queue Depth",
+      "title": "Oldest Pending Job (s)",
       "type": "timeseries",
       "targets": [
         {
-          "expr": "river_queue_depth",
+          "expr": "job_oldest_pending_seconds",
           "legendFormat": "{{queue}}"
         }
       ]
@@ -17,11 +17,11 @@
     {
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
       "id": 2,
-      "title": "Job Failure Rate",
+      "title": "Job Failure Rate (%)",
       "type": "timeseries",
       "targets": [
         {
-          "expr": "rate(river_job_completed_total{state=\"failed\"}[5m]) / rate(river_job_completed_total[5m])",
+          "expr": "sum(rate(job_attempts_total{result!=\"success\"}[5m])) / sum(rate(job_attempts_total[5m])) * 100",
           "legendFormat": "Failure %"
         }
       ]

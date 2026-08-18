@@ -288,7 +288,7 @@ deps:
   # lets the five linking branches be tested against a fake rather than against
   # Google.
   m_auth_oauth:      { canUse: [v_jwt] }
-  m_auth_service:    { mayDependOn: [m_auth_domain, m_auth_oauth, c_auth, p_cache], canUse: [v_jwt] }
+  m_auth_service:    { mayDependOn: [m_auth_domain, m_auth_oauth, c_auth, p_cache, p_telemetry], canUse: [v_jwt] }
   # m_auth_service is here for the same reason it is on m_audit_http and
   # m_rbac_http: module.go passes the concrete *service.RegisterService into
   # authhttp.NewHandler, and go-arch-lint's deepScan reads that injection as an

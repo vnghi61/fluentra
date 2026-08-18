@@ -12,6 +12,7 @@ import (
 
 	"github.com/fluentra/fluentra/internal/modules/auth/contract"
 	"github.com/fluentra/fluentra/internal/modules/auth/domain"
+	"github.com/fluentra/fluentra/internal/platform/telemetry"
 	"github.com/fluentra/fluentra/internal/shared/clock"
 	"github.com/fluentra/fluentra/internal/shared/dbx"
 	"github.com/fluentra/fluentra/internal/shared/secret"
@@ -101,20 +102,24 @@ type RefreshDeps struct {
 
 	// Entropy draws the token bytes. Nil means crypto/rand.
 	Entropy io.Reader
+
+	// Telemetry carries the shared instruments so refresh reuse can be counted.
+	Telemetry telemetry.Instruments
 }
 
 // RefreshService issues, rotates and revokes refresh tokens.
 type RefreshService struct {
-	pool    dbx.Beginner
-	repo    RefreshRepo
-	tokens  Tokens
-	events  EventWriter
-	keys    domain.Keyring
-	clock   clock.Clock
-	ids     IDGenerator
-	roles   Roles
-	windows domain.WindowConfig
-	entropy io.Reader
+	pool      dbx.Beginner
+	repo      RefreshRepo
+	tokens    Tokens
+	events    EventWriter
+	keys      domain.Keyring
+	clock     clock.Clock
+	ids       IDGenerator
+	roles     Roles
+	windows   domain.WindowConfig
+	entropy   io.Reader
+	telemetry telemetry.Instruments
 }
 
 // NewRefreshService creates the service.
@@ -124,16 +129,17 @@ func NewRefreshService(deps RefreshDeps) *RefreshService {
 		windows.Idle = deps.TTL
 	}
 	return &RefreshService{
-		pool:    deps.Pool,
-		repo:    deps.Repo,
-		tokens:  deps.Tokens,
-		events:  deps.Events,
-		keys:    deps.Keys,
-		clock:   deps.Clock,
-		ids:     deps.NewID,
-		roles:   deps.Roles,
-		windows: windows,
-		entropy: deps.Entropy,
+		pool:      deps.Pool,
+		repo:      deps.Repo,
+		tokens:    deps.Tokens,
+		events:    deps.Events,
+		keys:      deps.Keys,
+		clock:     deps.Clock,
+		ids:       deps.NewID,
+		roles:     deps.Roles,
+		windows:   windows,
+		entropy:   deps.Entropy,
+		telemetry: deps.Telemetry,
 	}
 }
 
@@ -469,6 +475,7 @@ func (s *RefreshService) refuse(ctx context.Context, digest []byte, now time.Tim
 // stolen token simply refreshes inside, which is to say it is not an
 // alternative. OAuth 2.0 BCP §4.14.2 makes the same call.
 func (s *RefreshService) handleReuse(ctx context.Context, token domain.SessionToken, now time.Time) error {
+	s.telemetry.RecordAuthRefreshReuse(ctx)
 	// Whether this call is the one that burnt the family, or the fourth caller
 	// to arrive at a family already burnt. Both return the same refusal to the
 	// client; only the first reports an incident. A replay storm is one theft,

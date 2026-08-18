@@ -12,6 +12,7 @@ import (
 
 	"github.com/fluentra/fluentra/internal/modules/auth/domain"
 	"github.com/fluentra/fluentra/internal/platform/cache"
+	"github.com/fluentra/fluentra/internal/platform/telemetry"
 	"github.com/fluentra/fluentra/internal/shared/apperr"
 	"github.com/fluentra/fluentra/internal/shared/clock"
 )
@@ -82,6 +83,7 @@ type LoginDeps struct {
 	Clock       clock.Clock
 	NewID       func(ctx context.Context) (uuid.UUID, error)
 	Sessions    Sessions
+	Telemetry   telemetry.Instruments
 }
 
 // LoginService handles authentication, lockout enforcement, and timing equalisation.
@@ -95,6 +97,7 @@ type LoginService struct {
 	clock       clock.Clock
 	newID       func(ctx context.Context) (uuid.UUID, error)
 	sessions    Sessions
+	telemetry   telemetry.Instruments
 }
 
 // NewLoginService constructs a LoginService.
@@ -109,6 +112,7 @@ func NewLoginService(deps LoginDeps) *LoginService {
 		clock:       deps.Clock,
 		newID:       deps.NewID,
 		sessions:    deps.Sessions,
+		telemetry:   deps.Telemetry,
 	}
 }
 
@@ -253,6 +257,7 @@ func (s *LoginService) startLockout(ctx context.Context, scope string, subjectHa
 		slog.WarnContext(ctx, "failed to advance lockout", "module", "auth", "error", err)
 		return nil
 	}
+	s.telemetry.RecordAuthLockout(ctx)
 	return lockedError()
 }
 

@@ -11,14 +11,17 @@ import (
 
 	"github.com/redis/go-redis/v9"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"golang.org/x/sync/singleflight"
 )
 
 var (
-	tracer                  = otel.Tracer("fluentra.platform.cache")
-	meter                   = otel.Meter("fluentra.platform.cache")
-	cacheUnavailableCounter metric.Int64Counter
+	tracer                          = otel.Tracer("fluentra.platform.cache")
+	meter                           = otel.Meter("fluentra.platform.cache")
+	cacheUnavailableCounter         metric.Int64Counter
+	cacheOperationDurationHistogram metric.Float64Histogram
+	cacheRequestsCounter            metric.Int64Counter
 )
 
 func init() {
@@ -29,6 +32,21 @@ func init() {
 	)
 	if err != nil {
 		slog.Error("failed to create cache_unavailable_total metric", "error", err)
+	}
+	cacheOperationDurationHistogram, err = meter.Float64Histogram(
+		"cache_operation_duration_seconds",
+		metric.WithUnit("s"),
+		metric.WithDescription("Duration of cache operations"),
+	)
+	if err != nil {
+		slog.Error("failed to create cache_operation_duration_seconds metric", "error", err)
+	}
+	cacheRequestsCounter, err = meter.Int64Counter(
+		"cache_requests_total",
+		metric.WithDescription("Total count of cache requests"),
+	)
+	if err != nil {
+		slog.Error("failed to create cache_requests_total metric", "error", err)
 	}
 }
 
@@ -69,15 +87,35 @@ func (c *RedisCache[T]) Get(ctx context.Context, key string) (T, error) {
 	if c.client == nil {
 		return zero, redis.Nil
 	}
+	start := time.Now()
+	defer func() {
+		dur := time.Since(start).Seconds()
+		if cacheOperationDurationHistogram != nil {
+			cacheOperationDurationHistogram.Record(ctx, dur, metric.WithAttributes(attribute.String("op", "get")))
+		}
+	}()
+
 	ctx, span := tracer.Start(ctx, "cache.Get")
 	defer span.End()
 
 	valBytes, err := c.client.Get(ctx, key).Bytes()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
+			if cacheRequestsCounter != nil {
+				cacheRequestsCounter.Add(
+					ctx, 1,
+					metric.WithAttributes(attribute.String("module", "cache"), attribute.String("result", "miss")),
+				)
+			}
 			// Wrapped, not replaced: a caller already matching on redis.Nil
 			// keeps working while new callers match on ErrMiss.
 			return zero, fmt.Errorf("%w: %w", ErrMiss, err)
+		}
+		if cacheRequestsCounter != nil {
+			cacheRequestsCounter.Add(
+				ctx, 1,
+				metric.WithAttributes(attribute.String("module", "cache"), attribute.String("result", "error")),
+			)
 		}
 		c.recordUnavailable(ctx, "get", err)
 		return zero, err
@@ -85,7 +123,20 @@ func (c *RedisCache[T]) Get(ctx context.Context, key string) (T, error) {
 
 	var target T
 	if err := json.Unmarshal(valBytes, &target); err != nil {
+		if cacheRequestsCounter != nil {
+			cacheRequestsCounter.Add(
+				ctx, 1,
+				metric.WithAttributes(attribute.String("module", "cache"), attribute.String("result", "error")),
+			)
+		}
 		return zero, err
+	}
+
+	if cacheRequestsCounter != nil {
+		cacheRequestsCounter.Add(
+			ctx, 1,
+			metric.WithAttributes(attribute.String("module", "cache"), attribute.String("result", "hit")),
+		)
 	}
 	return target, nil
 }
@@ -95,6 +146,14 @@ func (c *RedisCache[T]) Set(ctx context.Context, key string, value T, ttl time.D
 	if c.client == nil {
 		return nil
 	}
+	start := time.Now()
+	defer func() {
+		dur := time.Since(start).Seconds()
+		if cacheOperationDurationHistogram != nil {
+			cacheOperationDurationHistogram.Record(ctx, dur, metric.WithAttributes(attribute.String("op", "set")))
+		}
+	}()
+
 	ctx, span := tracer.Start(ctx, "cache.Set")
 	defer span.End()
 
@@ -116,6 +175,14 @@ func (c *RedisCache[T]) Delete(ctx context.Context, keys ...string) error {
 	if c.client == nil || len(keys) == 0 {
 		return nil
 	}
+	start := time.Now()
+	defer func() {
+		dur := time.Since(start).Seconds()
+		if cacheOperationDurationHistogram != nil {
+			cacheOperationDurationHistogram.Record(ctx, dur, metric.WithAttributes(attribute.String("op", "delete")))
+		}
+	}()
+
 	ctx, span := tracer.Start(ctx, "cache.Delete")
 	defer span.End()
 

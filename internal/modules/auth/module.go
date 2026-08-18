@@ -25,6 +25,7 @@ import (
 	"github.com/fluentra/fluentra/internal/platform/cache"
 	"github.com/fluentra/fluentra/internal/platform/job"
 	"github.com/fluentra/fluentra/internal/platform/mailer"
+	"github.com/fluentra/fluentra/internal/platform/telemetry"
 	"github.com/fluentra/fluentra/internal/shared/clock"
 	"github.com/fluentra/fluentra/internal/shared/eventbus"
 	"github.com/fluentra/fluentra/internal/shared/id"
@@ -119,6 +120,11 @@ type Deps struct {
 	// reads Postgres, which is correct but chattier — it is nil in tests that do
 	// not exercise it.
 	SessionCache cache.Cache[uuid.UUID]
+
+	// Telemetry carries the shared instruments so lockouts and refresh reuse can
+	// be counted. The zero value records nothing, which is correct for callers
+	// (e.g. the worker) that never run login or refresh.
+	Telemetry telemetry.Instruments
 }
 
 // Module is the auth module, assembled.
@@ -222,16 +228,17 @@ func New(deps Deps) *Module {
 	// route through it so there is one place a refresh family is rooted, which
 	// is what makes "revoke the family" a complete statement.
 	sessions := service.NewRefreshService(service.RefreshDeps{
-		Pool:    deps.Pool,
-		Repo:    refreshAdapter{Repository: repo},
-		Tokens:  tokens,
-		Events:  events,
-		Keys:    keys,
-		Clock:   timekeeper,
-		NewID:   id.NewUUIDv7,
-		Roles:   rolesAdapter{Reader: deps.Roles},
-		Windows: deps.Windows,
-		TTL:     deps.RefreshTTL,
+		Pool:      deps.Pool,
+		Repo:      refreshAdapter{Repository: repo},
+		Tokens:    tokens,
+		Events:    events,
+		Keys:      keys,
+		Clock:     timekeeper,
+		NewID:     id.NewUUIDv7,
+		Roles:     rolesAdapter{Reader: deps.Roles},
+		Windows:   deps.Windows,
+		TTL:       deps.RefreshTTL,
+		Telemetry: deps.Telemetry,
 	})
 
 	reg := service.NewRegisterService(service.RegisterDeps{
@@ -257,6 +264,7 @@ func New(deps Deps) *Module {
 		Clock:       timekeeper,
 		NewID:       id.NewUUIDv7,
 		Sessions:    sessions,
+		Telemetry:   deps.Telemetry,
 	})
 
 	// The session service shares the repository and the token service with the
