@@ -1,30 +1,17 @@
+import { type ProblemDetails } from "@/lib/errors/catalogue";
 import { injectTraceContext } from "@/lib/telemetry";
+
+export type { ProblemDetails };
 
 /**
  * Fetch wrapper. It adds a request id and lets the OpenTelemetry propagator add
  * the trace context.
- *
- * It deliberately does **not** construct `traceparent` itself. The previous
- * version generated a random trace id per request, which produced a well-formed
- * header pointing at a span that had never existed — the server dutifully
- * started a child of nothing and every request became its own orphan trace. It
- * looked like distributed tracing on a dashboard, which is exactly why the bug
- * survived. Only the SDK can emit a header that joins, because only the SDK has
- * started the span it names.
  */
 
 export interface RequestOptions extends Omit<RequestInit, "headers"> {
-  headers?: Record<string, string>;
-}
-
-/** RFC 9457 Problem Details, the only error shape this API returns. */
-export interface ProblemDetails {
-  type?: string;
-  title: string;
-  status: number;
-  detail?: string;
-  instance?: string;
-  code?: string;
+  headers?: Record<string, string> | undefined;
+  /** Internal flag to avoid infinite retry loops on 401 */
+  _isRetry?: boolean | undefined;
 }
 
 export class ApiError extends Error {
@@ -50,6 +37,46 @@ function isProblemDetails(value: unknown): value is ProblemDetails {
   );
 }
 
+/** Token and refresh hooks configured by the session store */
+type TokenGetter = () => string | null;
+type RefreshHandler = () => Promise<string | null>;
+
+let tokenGetter: TokenGetter = () => null;
+let refreshHandler: RefreshHandler | null = null;
+let inFlightRefresh: Promise<string | null> | null = null;
+
+export function configureAuthInterceptor(options: {
+  getToken: TokenGetter;
+  onRefresh: RefreshHandler;
+}): void {
+  tokenGetter = options.getToken;
+  refreshHandler = options.onRefresh;
+}
+
+/** Single-flight refresh: ten concurrent 401s trigger exactly one refresh */
+export async function executeSingleFlightRefresh(): Promise<string | null> {
+  if (inFlightRefresh) {
+    return inFlightRefresh;
+  }
+  if (!refreshHandler) {
+    return null;
+  }
+  inFlightRefresh = refreshHandler().finally(() => {
+    inFlightRefresh = null;
+  });
+  return inFlightRefresh;
+}
+
+function isAuthBypassEndpoint(endpoint: string): boolean {
+  return (
+    endpoint.includes("/auth/refresh") ||
+    endpoint.includes("/auth/login") ||
+    endpoint.includes("/auth/register") ||
+    endpoint.includes("/auth/forgot-password") ||
+    endpoint.includes("/auth/reset-password")
+  );
+}
+
 export async function apiFetch<T>(
   endpoint: string,
   options: RequestOptions = {},
@@ -59,6 +86,11 @@ export async function apiFetch<T>(
     "X-Request-Id": generateRequestID(),
     ...options.headers,
   };
+
+  const currentToken = tokenGetter();
+  if (currentToken && !headers["Authorization"]) {
+    headers["Authorization"] = `Bearer ${currentToken}`;
+  }
 
   const response = await fetch(endpoint, {
     ...options,
@@ -72,14 +104,35 @@ export async function apiFetch<T>(
     } catch {
       body = undefined;
     }
-    throw new ApiError(
-      isProblemDetails(body)
-        ? body
-        : {
-            title: response.statusText || "Request failed",
-            status: response.status,
+
+    const problem: ProblemDetails = isProblemDetails(body)
+      ? body
+      : {
+          title: response.statusText || "Request failed",
+          status: response.status,
+        };
+
+    // Single-flight 401 refresh interceptor
+    if (
+      response.status === 401 &&
+      !options._isRetry &&
+      !isAuthBypassEndpoint(endpoint) &&
+      refreshHandler
+    ) {
+      const newToken = await executeSingleFlightRefresh();
+      if (newToken) {
+        return apiFetch<T>(endpoint, {
+          ...options,
+          _isRetry: true,
+          headers: {
+            ...options.headers,
+            Authorization: `Bearer ${newToken}`,
           },
-    );
+        });
+      }
+    }
+
+    throw new ApiError(problem);
   }
 
   if (response.status === 204) {
