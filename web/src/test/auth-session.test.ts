@@ -55,7 +55,10 @@ describe("Token Handling and Session Boundary (Task 5)", () => {
           protectedEndpointCalls++;
           const auth = request.headers.get("Authorization");
           if (auth === "Bearer fresh-rotated-token") {
-            return HttpResponse.json({ data: "success", call: protectedEndpointCalls });
+            return HttpResponse.json({
+              data: "success",
+              call: protectedEndpointCalls,
+            });
           }
           return HttpResponse.json(
             { title: "Token expired", status: 401, code: "TOKEN_EXPIRED" },
@@ -155,7 +158,9 @@ describe("Token Handling and Session Boundary (Task 5)", () => {
 
       expect(msg).toBe("Custom Title");
       expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining("Uncatalogued error code received: \"SOME_UNKNOWN_CODE\""),
+        expect.stringContaining(
+          'Uncatalogued error code received: "SOME_UNKNOWN_CODE"',
+        ),
       );
       warnSpy.mockRestore();
     });

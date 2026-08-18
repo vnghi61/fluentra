@@ -82,9 +82,15 @@ describe("UI Components Baseline", () => {
   });
 
   describe("OtpInput", () => {
-    function ControlledOtp({ onComplete }: { onComplete?: (code: string) => void }) {
+    function ControlledOtp({
+      onComplete,
+    }: {
+      onComplete?: (code: string) => void;
+    }) {
       const [value, setValue] = useState("");
-      return <OtpInput value={value} onChange={setValue} onComplete={onComplete} />;
+      return (
+        <OtpInput value={value} onChange={setValue} onComplete={onComplete} />
+      );
     }
 
     it("renders 6 segmented inputs with numeric inputmode and one-time-code autocomplete", () => {

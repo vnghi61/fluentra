@@ -97,7 +97,9 @@ export function GoogleButton({
     } catch (err) {
       setIsLoading(false);
       const errorMessage =
-        err instanceof Error ? err.message : "Unable to initiate Google sign-in";
+        err instanceof Error
+          ? err.message
+          : "Unable to initiate Google sign-in";
       onError?.(errorMessage);
     }
   };
@@ -108,7 +110,10 @@ export function GoogleButton({
       variant="outline"
       isLoading={isLoading}
       onClick={() => void handleGoogleSignIn()}
-      className={cn("w-full gap-2 border-slate-700 bg-slate-900/60 hover:bg-slate-800 text-slate-100", className)}
+      className={cn(
+        "w-full gap-2 border-slate-700 bg-slate-900/60 hover:bg-slate-800 text-slate-100",
+        className,
+      )}
     >
       <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24">
         <path

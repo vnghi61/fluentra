@@ -66,8 +66,14 @@ describe("Auth Flows (Tasks 1, 3, 4, 5, 6, 7, 8)", () => {
       const onSuccess = vi.fn();
       await renderWithRouter(<LoginForm onSuccess={onSuccess} />);
 
-      await user.type(screen.getByLabelText(/email address/i), "learner@fluentra.test");
-      await user.type(screen.getByLabelText(/password/i), "CorrectPassword123!");
+      await user.type(
+        screen.getByLabelText(/email address/i),
+        "learner@fluentra.test",
+      );
+      await user.type(
+        screen.getByLabelText(/password/i),
+        "CorrectPassword123!",
+      );
       await user.click(screen.getByRole("button", { name: /^sign in$/i }));
 
       await waitFor(() => {
@@ -79,7 +85,9 @@ describe("Auth Flows (Tasks 1, 3, 4, 5, 6, 7, 8)", () => {
         password: "CorrectPassword123!",
         remember_device: true,
       });
-      expect(typeof (requestBody as Record<string, unknown> | null)?.device_id).toBe("string");
+      expect(
+        typeof (requestBody as Record<string, unknown> | null)?.device_id,
+      ).toBe("string");
       expect(useAuthStore.getState().accessToken).toBe("login-token-123");
     });
 
@@ -96,12 +104,17 @@ describe("Auth Flows (Tasks 1, 3, 4, 5, 6, 7, 8)", () => {
 
       await renderWithRouter(<LoginForm />);
 
-      await user.type(screen.getByLabelText(/email address/i), "wrong@fluentra.test");
+      await user.type(
+        screen.getByLabelText(/email address/i),
+        "wrong@fluentra.test",
+      );
       await user.type(screen.getByLabelText(/password/i), "WrongPassword123!");
       await user.click(screen.getByRole("button", { name: /^sign in$/i }));
 
       const alert = await screen.findByRole("alert");
-      expect(alert).toHaveTextContent("The email or password you entered is incorrect.");
+      expect(alert).toHaveTextContent(
+        "The email or password you entered is incorrect.",
+      );
     });
   });
 
@@ -123,11 +136,19 @@ describe("Auth Flows (Tasks 1, 3, 4, 5, 6, 7, 8)", () => {
       );
 
       const onChallengeIssued = vi.fn();
-      await renderWithRouter(<RegisterForm onChallengeIssued={onChallengeIssued} />);
+      await renderWithRouter(
+        <RegisterForm onChallengeIssued={onChallengeIssued} />,
+      );
 
-      await user.type(screen.getByLabelText(/email address/i), "newlearner@fluentra.test");
+      await user.type(
+        screen.getByLabelText(/email address/i),
+        "newlearner@fluentra.test",
+      );
       await user.type(screen.getByLabelText(/display name/i), "New Learner");
-      await user.type(screen.getByLabelText(/password/i), "SuperStrongPassword123!");
+      await user.type(
+        screen.getByLabelText(/password/i),
+        "SuperStrongPassword123!",
+      );
       await user.click(screen.getByRole("button", { name: /create account/i }));
 
       await waitFor(() => {
@@ -159,11 +180,19 @@ describe("Auth Flows (Tasks 1, 3, 4, 5, 6, 7, 8)", () => {
       );
 
       const onChallengeIssued = vi.fn();
-      await renderWithRouter(<RegisterForm onChallengeIssued={onChallengeIssued} />);
+      await renderWithRouter(
+        <RegisterForm onChallengeIssued={onChallengeIssued} />,
+      );
 
-      await user.type(screen.getByLabelText(/email address/i), "single@fluentra.test");
+      await user.type(
+        screen.getByLabelText(/email address/i),
+        "single@fluentra.test",
+      );
       await user.type(screen.getByLabelText(/display name/i), "A");
-      await user.type(screen.getByLabelText(/password/i), "SuperStrongPassword123!");
+      await user.type(
+        screen.getByLabelText(/password/i),
+        "SuperStrongPassword123!",
+      );
       await user.click(screen.getByRole("button", { name: /create account/i }));
 
       await waitFor(() => {
@@ -183,7 +212,8 @@ describe("Auth Flows (Tasks 1, 3, 4, 5, 6, 7, 8)", () => {
       server.use(
         http.get("/api/v1/auth/oauth/google/start", () => {
           return HttpResponse.json({
-            authorization_url: "https://accounts.google.com/o/oauth2/v2/auth?client_id=123",
+            authorization_url:
+              "https://accounts.google.com/o/oauth2/v2/auth?client_id=123",
           });
         }),
       );
@@ -192,12 +222,16 @@ describe("Auth Flows (Tasks 1, 3, 4, 5, 6, 7, 8)", () => {
         focus: vi.fn(),
         closed: false,
       };
-      const openSpy = vi.spyOn(window, "open").mockReturnValue(mockPopup as unknown as Window);
+      const openSpy = vi
+        .spyOn(window, "open")
+        .mockReturnValue(mockPopup as unknown as Window);
 
       const onSuccess = vi.fn();
       await renderWithRouter(<GoogleButton onSuccess={onSuccess} />);
 
-      const button = screen.getByRole("button", { name: /continue with google/i });
+      const button = screen.getByRole("button", {
+        name: /continue with google/i,
+      });
       await user.click(button);
 
       await waitFor(() => {
@@ -227,7 +261,9 @@ describe("Auth Flows (Tasks 1, 3, 4, 5, 6, 7, 8)", () => {
         expect(onSuccess).toHaveBeenCalled();
       });
 
-      expect(useAuthStore.getState().accessToken).toBe("google-session-token-999");
+      expect(useAuthStore.getState().accessToken).toBe(
+        "google-session-token-999",
+      );
       expect(useAuthStore.getState().status).toBe("authenticated");
     });
 
@@ -238,7 +274,8 @@ describe("Auth Flows (Tasks 1, 3, 4, 5, 6, 7, 8)", () => {
       server.use(
         http.get("/api/v1/auth/oauth/google/start", () => {
           return HttpResponse.json({
-            authorization_url: "https://accounts.google.com/o/oauth2/v2/auth?client_id=123",
+            authorization_url:
+              "https://accounts.google.com/o/oauth2/v2/auth?client_id=123",
           });
         }),
       );
@@ -251,7 +288,9 @@ describe("Auth Flows (Tasks 1, 3, 4, 5, 6, 7, 8)", () => {
 
       await renderWithRouter(<GoogleButton />);
 
-      const button = screen.getByRole("button", { name: /continue with google/i });
+      const button = screen.getByRole("button", {
+        name: /continue with google/i,
+      });
       await user.click(button);
 
       // User closed the popup window without completing login
@@ -271,7 +310,8 @@ describe("Auth Flows (Tasks 1, 3, 4, 5, 6, 7, 8)", () => {
 
     it("falls back to full page redirect if popup is blocked", async () => {
       const user = userEvent.setup();
-      const authUrl = "https://accounts.google.com/o/oauth2/v2/auth?client_id=123";
+      const authUrl =
+        "https://accounts.google.com/o/oauth2/v2/auth?client_id=123";
 
       server.use(
         http.get("/api/v1/auth/oauth/google/start", () => {
@@ -299,7 +339,9 @@ describe("Auth Flows (Tasks 1, 3, 4, 5, 6, 7, 8)", () => {
 
       await renderWithRouter(<GoogleButton />);
 
-      const button = screen.getByRole("button", { name: /continue with google/i });
+      const button = screen.getByRole("button", {
+        name: /continue with google/i,
+      });
       await user.click(button);
 
       // Verify it falls back to redirect
@@ -361,7 +403,9 @@ describe("Auth Flows (Tasks 1, 3, 4, 5, 6, 7, 8)", () => {
         expect(onSuccess).toHaveBeenCalledWith(mockVerified);
       });
 
-      expect(useAuthStore.getState().accessToken).toBe("verified-session-token");
+      expect(useAuthStore.getState().accessToken).toBe(
+        "verified-session-token",
+      );
     });
 
     it("reads authoritative attempts_remaining from server Problem Details meta", async () => {
@@ -479,10 +523,17 @@ describe("Auth Flows (Tasks 1, 3, 4, 5, 6, 7, 8)", () => {
       );
 
       const onChallengeIssued = vi.fn();
-      await renderWithRouter(<ForgotPasswordForm onChallengeIssued={onChallengeIssued} />);
+      await renderWithRouter(
+        <ForgotPasswordForm onChallengeIssued={onChallengeIssued} />,
+      );
 
-      await user.type(screen.getByLabelText(/email address/i), "anyemail@fluentra.test");
-      await user.click(screen.getByRole("button", { name: /send recovery code/i }));
+      await user.type(
+        screen.getByLabelText(/email address/i),
+        "anyemail@fluentra.test",
+      );
+      await user.click(
+        screen.getByRole("button", { name: /send recovery code/i }),
+      );
 
       await waitFor(() => {
         expect(onChallengeIssued).toHaveBeenCalledWith(
@@ -519,7 +570,10 @@ describe("Auth Flows (Tasks 1, 3, 4, 5, 6, 7, 8)", () => {
       await user.click(inputs[0]!);
       await user.paste("654321");
 
-      await user.type(screen.getByLabelText(/new password/i), "BrandNewSecurePassword123!");
+      await user.type(
+        screen.getByLabelText(/new password/i),
+        "BrandNewSecurePassword123!",
+      );
       await user.click(screen.getByRole("button", { name: /reset password/i }));
 
       const status = await screen.findByRole("status");

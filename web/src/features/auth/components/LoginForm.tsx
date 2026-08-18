@@ -5,7 +5,14 @@ import { Link } from "@tanstack/react-router";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { authApi } from "@/features/auth/api/authApi";
 import { GoogleButton } from "@/features/auth/components/GoogleButton";
@@ -45,7 +52,9 @@ export function LoginForm({ onSuccess }: LoginFormProps): React.JSX.Element {
       if (err instanceof ApiError) {
         setServerError(getErrorMessage(err.problem));
       } else {
-        setServerError("Failed to sign in. Please check your connection and try again.");
+        setServerError(
+          "Failed to sign in. Please check your connection and try again.",
+        );
       }
     }
   };
@@ -80,7 +89,10 @@ export function LoginForm({ onSuccess }: LoginFormProps): React.JSX.Element {
       )}
 
       <Form {...form}>
-        <form onSubmit={(e) => void form.handleSubmit(onSubmit)(e)} className="space-y-4">
+        <form
+          onSubmit={(e) => void form.handleSubmit(onSubmit)(e)}
+          className="space-y-4"
+        >
           <FormField
             control={form.control}
             name="email"

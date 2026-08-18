@@ -44,7 +44,10 @@ export const AppShell: React.FC<AppShellProps> = ({
           {status === "authenticated" && user ? (
             <div className="space-y-3">
               <div className="text-xs text-slate-400 px-2 truncate">
-                Role: <span className="font-semibold text-slate-200 uppercase">{user.role}</span>
+                Role:{" "}
+                <span className="font-semibold text-slate-200 uppercase">
+                  {user.role}
+                </span>
               </div>
               <button
                 type="button"

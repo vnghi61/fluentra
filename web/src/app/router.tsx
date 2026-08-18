@@ -2,6 +2,7 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  lazyRouteComponent,
   Outlet,
   redirect,
   useNavigate,
@@ -12,10 +13,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { authApi } from "@/features/auth";
 import { ForgotPasswordPage } from "@/pages/ForgotPasswordPage";
 import { LoginPage } from "@/pages/LoginPage";
-import { OAuthCallbackPage } from "@/pages/OAuthCallbackPage";
 import { RegisterPage } from "@/pages/RegisterPage";
-import { HomePage } from "@/routes/HomePage";
-import { PracticePage } from "@/routes/PracticePage";
 import { useAuthStore } from "@/stores/authStore";
 
 /**
@@ -24,6 +22,34 @@ import { useAuthStore } from "@/stores/authStore";
  * generated file that nothing yet regenerates in CI is a staleness gate waiting
  * to be discovered — which this repository has already been bitten by once.
  */
+
+function RouteLoadingSpinner(): React.JSX.Element {
+  return (
+    <div
+      role="status"
+      aria-label="Loading"
+      className="flex items-center justify-center p-8 min-h-[200px]"
+    >
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-700 border-t-indigo-500" />
+      <span className="sr-only">Loading...</span>
+    </div>
+  );
+}
+
+const HomePage = lazyRouteComponent(
+  () => import("@/routes/HomePage"),
+  "HomePage",
+);
+
+const PracticePage = lazyRouteComponent(
+  () => import("@/routes/PracticePage"),
+  "PracticePage",
+);
+
+const OAuthCallbackPage = lazyRouteComponent(
+  () => import("@/pages/OAuthCallbackPage"),
+  "OAuthCallbackPage",
+);
 
 function RootApp(): React.JSX.Element {
   const user = useAuthStore((s) => s.user);
@@ -36,11 +62,7 @@ function RootApp(): React.JSX.Element {
   };
 
   return (
-    <AppShell
-      user={user}
-      status={status}
-      onLogout={() => void handleLogout()}
-    >
+    <AppShell user={user} status={status} onLogout={() => void handleLogout()}>
       <Outlet />
     </AppShell>
   );
@@ -125,7 +147,10 @@ export const routeTree = rootRoute.addChildren([
   oauthCallbackRoute,
 ] as AnyRoute[]);
 
-export const router = createRouter({ routeTree });
+export const router = createRouter({
+  routeTree,
+  defaultPendingComponent: RouteLoadingSpinner,
+});
 
 declare module "@tanstack/react-router" {
   interface Register {

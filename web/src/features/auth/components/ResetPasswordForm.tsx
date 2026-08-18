@@ -5,11 +5,22 @@ import { Link } from "@tanstack/react-router";
 import { CheckCircle2, ShieldAlert } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { OtpInput } from "@/components/ui/otp-input";
 import { authApi, type PasswordChanged } from "@/features/auth/api/authApi";
-import { resetPasswordSchema, type ResetPasswordFormData } from "@/features/auth/model/schemas";
+import {
+  resetPasswordSchema,
+  type ResetPasswordFormData,
+} from "@/features/auth/model/schemas";
 import { ApiError } from "@/api/client";
 import { getErrorMessage } from "@/lib/errors/catalogue";
 
@@ -25,7 +36,8 @@ export function ResetPasswordForm({
   onSuccess,
 }: ResetPasswordFormProps): React.JSX.Element {
   const [serverError, setServerError] = React.useState<string | null>(null);
-  const [successResult, setSuccessResult] = React.useState<PasswordChanged | null>(null);
+  const [successResult, setSuccessResult] =
+    React.useState<PasswordChanged | null>(null);
 
   const form = useForm<ResetPasswordFormData>({
     resolver: (zodResolver as (schema: unknown) => never)(resetPasswordSchema),
@@ -49,7 +61,9 @@ export function ResetPasswordForm({
       if (err instanceof ApiError) {
         setServerError(getErrorMessage(err.problem));
       } else {
-        setServerError("Failed to reset password. Please check your connection.");
+        setServerError(
+          "Failed to reset password. Please check your connection.",
+        );
       }
     }
   };
@@ -78,7 +92,8 @@ export function ResetPasswordForm({
             <ShieldAlert className="h-4 w-4 shrink-0 text-amber-400 mt-0.5" />
             <span>
               For your security, {successResult.sessions_revoked} active session
-              {successResult.sessions_revoked > 1 ? "s were" : " was"} signed out across your devices.
+              {successResult.sessions_revoked > 1 ? "s were" : " was"} signed
+              out across your devices.
             </span>
           </div>
         )}
@@ -100,7 +115,9 @@ export function ResetPasswordForm({
           Create new password
         </h1>
         <p className="text-sm text-slate-400">
-          Enter the 6-digit code sent to <span className="font-semibold text-slate-200">{email}</span> and your new password
+          Enter the 6-digit code sent to{" "}
+          <span className="font-semibold text-slate-200">{email}</span> and your
+          new password
         </p>
       </div>
 
@@ -114,13 +131,18 @@ export function ResetPasswordForm({
       )}
 
       <Form {...form}>
-        <form onSubmit={(e) => void form.handleSubmit(onSubmit)(e)} className="space-y-5">
+        <form
+          onSubmit={(e) => void form.handleSubmit(onSubmit)(e)}
+          className="space-y-5"
+        >
           <FormField
             control={form.control}
             name="code"
             render={({ field }) => (
               <FormItem className="space-y-3">
-                <FormLabel required className="justify-center">6-Digit Reset Code</FormLabel>
+                <FormLabel required className="justify-center">
+                  6-Digit Reset Code
+                </FormLabel>
                 <FormControl>
                   <OtpInput
                     value={field.value}
@@ -148,7 +170,8 @@ export function ResetPasswordForm({
                   />
                 </FormControl>
                 <FormDescription>
-                  Must be at least 12 characters and different from previous passwords.
+                  Must be at least 12 characters and different from previous
+                  passwords.
                 </FormDescription>
                 <FormMessage />
               </FormItem>

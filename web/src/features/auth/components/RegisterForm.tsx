@@ -4,11 +4,22 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "@tanstack/react-router";
 
 import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { authApi, type Challenge } from "@/features/auth/api/authApi";
 import { GoogleButton } from "@/features/auth/components/GoogleButton";
-import { registerSchema, type RegisterFormData } from "@/features/auth/model/schemas";
+import {
+  registerSchema,
+  type RegisterFormData,
+} from "@/features/auth/model/schemas";
 import { ApiError } from "@/api/client";
 import { getErrorMessage } from "@/lib/errors/catalogue";
 
@@ -16,7 +27,9 @@ export interface RegisterFormProps {
   onChallengeIssued: (challenge: Challenge, email: string) => void;
 }
 
-export function RegisterForm({ onChallengeIssued }: RegisterFormProps): React.JSX.Element {
+export function RegisterForm({
+  onChallengeIssued,
+}: RegisterFormProps): React.JSX.Element {
   const [serverError, setServerError] = React.useState<string | null>(null);
 
   const form = useForm<RegisterFormData>({
@@ -49,7 +62,9 @@ export function RegisterForm({ onChallengeIssued }: RegisterFormProps): React.JS
       if (err instanceof ApiError) {
         setServerError(getErrorMessage(err.problem));
       } else {
-        setServerError("Failed to create account. Please check your connection and try again.");
+        setServerError(
+          "Failed to create account. Please check your connection and try again.",
+        );
       }
     }
   };
@@ -84,7 +99,10 @@ export function RegisterForm({ onChallengeIssued }: RegisterFormProps): React.JS
       )}
 
       <Form {...form}>
-        <form onSubmit={(e) => void form.handleSubmit(onSubmit)(e)} className="space-y-4">
+        <form
+          onSubmit={(e) => void form.handleSubmit(onSubmit)(e)}
+          className="space-y-4"
+        >
           <FormField
             control={form.control}
             name="email"

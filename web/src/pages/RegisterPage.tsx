@@ -1,6 +1,10 @@
 import * as React from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { OtpVerificationScreen, RegisterForm, type Challenge } from "@/features/auth";
+import {
+  OtpVerificationScreen,
+  RegisterForm,
+  type Challenge,
+} from "@/features/auth";
 
 export function RegisterPage(): React.JSX.Element {
   const navigate = useNavigate();

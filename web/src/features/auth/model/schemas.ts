@@ -1,7 +1,10 @@
 import { z } from "zod";
 
 export const loginSchema = z.object({
-  email: z.string().min(1, "Email is required").email("Please enter a valid email address"),
+  email: z
+    .string()
+    .min(1, "Email is required")
+    .email("Please enter a valid email address"),
   password: z.string().min(1, "Password is required"),
   remember_device: z.boolean().default(true),
 });
@@ -9,8 +12,14 @@ export const loginSchema = z.object({
 export type LoginFormData = z.infer<typeof loginSchema>;
 
 export const registerSchema = z.object({
-  email: z.string().min(1, "Email is required").email("Please enter a valid email address"),
-  display_name: z.string().min(1, "Name is required").max(50, "Name is too long"),
+  email: z
+    .string()
+    .min(1, "Email is required")
+    .email("Please enter a valid email address"),
+  display_name: z
+    .string()
+    .min(1, "Name is required")
+    .max(50, "Name is too long"),
   password: z
     .string()
     .min(12, "Password must be at least 12 characters for security"),
@@ -30,7 +39,10 @@ export const otpSchema = z.object({
 export type OtpFormData = z.infer<typeof otpSchema>;
 
 export const forgotPasswordSchema = z.object({
-  email: z.string().min(1, "Email is required").email("Please enter a valid email address"),
+  email: z
+    .string()
+    .min(1, "Email is required")
+    .email("Please enter a valid email address"),
 });
 
 export type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;

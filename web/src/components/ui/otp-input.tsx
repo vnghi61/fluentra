@@ -96,7 +96,10 @@ export const OtpInput = React.forwardRef<HTMLDivElement, OtpInputProps>(
         ref={ref}
         role="group"
         aria-label="One-Time Password"
-        className={cn("flex items-center justify-center gap-2 sm:gap-3", className)}
+        className={cn(
+          "flex items-center justify-center gap-2 sm:gap-3",
+          className,
+        )}
       >
         {digits.map((digit, index) => (
           <input

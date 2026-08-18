@@ -1,5 +1,9 @@
 import * as React from "react";
-import { ForgotPasswordForm, ResetPasswordForm, type Challenge } from "@/features/auth";
+import {
+  ForgotPasswordForm,
+  ResetPasswordForm,
+  type Challenge,
+} from "@/features/auth";
 
 export function ForgotPasswordPage(): React.JSX.Element {
   const [challengeState, setChallengeState] = React.useState<{

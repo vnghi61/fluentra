@@ -5,10 +5,20 @@ import { Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { authApi, type Challenge } from "@/features/auth/api/authApi";
-import { forgotPasswordSchema, type ForgotPasswordFormData } from "@/features/auth/model/schemas";
+import {
+  forgotPasswordSchema,
+  type ForgotPasswordFormData,
+} from "@/features/auth/model/schemas";
 import { ApiError } from "@/api/client";
 import { getErrorMessage } from "@/lib/errors/catalogue";
 
@@ -16,7 +26,9 @@ export interface ForgotPasswordFormProps {
   onChallengeIssued: (challenge: Challenge, email: string) => void;
 }
 
-export function ForgotPasswordForm({ onChallengeIssued }: ForgotPasswordFormProps): React.JSX.Element {
+export function ForgotPasswordForm({
+  onChallengeIssued,
+}: ForgotPasswordFormProps): React.JSX.Element {
   const [serverError, setServerError] = React.useState<string | null>(null);
 
   const form = useForm<ForgotPasswordFormData>({
@@ -70,7 +82,10 @@ export function ForgotPasswordForm({ onChallengeIssued }: ForgotPasswordFormProp
       )}
 
       <Form {...form}>
-        <form onSubmit={(e) => void form.handleSubmit(onSubmit)(e)} className="space-y-4">
+        <form
+          onSubmit={(e) => void form.handleSubmit(onSubmit)(e)}
+          className="space-y-4"
+        >
           <FormField
             control={form.control}
             name="email"
