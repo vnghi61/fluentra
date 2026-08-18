@@ -56,6 +56,11 @@ const AccountSettingsPage = lazyRouteComponent(
   "AccountSettingsPage",
 );
 
+const AdminPage = lazyRouteComponent(
+  () => import("@/pages/AdminPage"),
+  "AdminPage",
+);
+
 function RootApp(): React.JSX.Element {
   const user = useAuthStore((s) => s.user);
   const status = useAuthStore((s) => s.status);
@@ -113,6 +118,21 @@ export const settingsRoute = createRoute({
   component: AccountSettingsPage,
 });
 
+export const adminRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin",
+  beforeLoad: () => {
+    const { status, user } = useAuthStore.getState();
+    if (status === "unauthenticated") {
+      throw redirect({ to: "/login" });
+    }
+    if (user?.role !== "admin") {
+      throw redirect({ to: "/" });
+    }
+  },
+  component: AdminPage,
+});
+
 export const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/login",
@@ -159,6 +179,7 @@ export const routeTree = rootRoute.addChildren([
   homeRoute,
   practiceRoute,
   settingsRoute,
+  adminRoute,
   loginRoute,
   registerRoute,
   forgotPasswordRoute,

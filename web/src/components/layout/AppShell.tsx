@@ -44,6 +44,14 @@ export const AppShell: React.FC<AppShellProps> = ({
                 Settings
               </Link>
             )}
+            {status === "authenticated" && user?.role === "admin" && (
+              <Link
+                to="/admin"
+                className="flex items-center h-11 px-4 rounded-lg text-indigo-300 hover:bg-indigo-500/10 min-h-[44px] transition-colors font-medium"
+              >
+                Admin Panel
+              </Link>
+            )}
           </nav>
         </div>
 
@@ -114,6 +122,14 @@ export const AppShell: React.FC<AppShellProps> = ({
             >
               Settings
             </Link>
+            {user?.role === "admin" && (
+              <Link
+                to="/admin"
+                className="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] text-indigo-400 text-xs font-medium"
+              >
+                Admin
+              </Link>
+            )}
             <button
               type="button"
               onClick={onLogout}
