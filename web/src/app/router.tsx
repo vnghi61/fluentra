@@ -51,6 +51,11 @@ const OAuthCallbackPage = lazyRouteComponent(
   "OAuthCallbackPage",
 );
 
+const AccountSettingsPage = lazyRouteComponent(
+  () => import("@/pages/AccountSettingsPage"),
+  "AccountSettingsPage",
+);
+
 function RootApp(): React.JSX.Element {
   const user = useAuthStore((s) => s.user);
   const status = useAuthStore((s) => s.status);
@@ -94,6 +99,18 @@ export const practiceRoute = createRoute({
     }
   },
   component: PracticePage,
+});
+
+export const settingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/settings",
+  beforeLoad: () => {
+    const { status } = useAuthStore.getState();
+    if (status === "unauthenticated") {
+      throw redirect({ to: "/login" });
+    }
+  },
+  component: AccountSettingsPage,
 });
 
 export const loginRoute = createRoute({
@@ -141,6 +158,7 @@ export const oauthCallbackRoute = createRoute({
 export const routeTree = rootRoute.addChildren([
   homeRoute,
   practiceRoute,
+  settingsRoute,
   loginRoute,
   registerRoute,
   forgotPasswordRoute,

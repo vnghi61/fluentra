@@ -36,6 +36,14 @@ export const AppShell: React.FC<AppShellProps> = ({
             >
               Practice
             </Link>
+            {status === "authenticated" && (
+              <Link
+                to="/settings"
+                className="flex items-center h-11 px-4 rounded-lg text-slate-300 hover:bg-slate-800 min-h-[44px] transition-colors"
+              >
+                Settings
+              </Link>
+            )}
           </nav>
         </div>
 
@@ -99,13 +107,21 @@ export const AppShell: React.FC<AppShellProps> = ({
           Practice
         </Link>
         {status === "authenticated" ? (
-          <button
-            type="button"
-            onClick={onLogout}
-            className="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] text-rose-400 text-xs font-medium"
-          >
-            Logout
-          </button>
+          <>
+            <Link
+              to="/settings"
+              className="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] text-slate-400 text-xs font-medium"
+            >
+              Settings
+            </Link>
+            <button
+              type="button"
+              onClick={onLogout}
+              className="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] text-rose-400 text-xs font-medium"
+            >
+              Logout
+            </button>
+          </>
         ) : (
           <Link
             to="/login"
