@@ -207,7 +207,7 @@ export const AdminUserList: React.FC = () => {
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value as UserStatus | "")}
-            className="h-11 rounded-lg border border-slate-800 bg-slate-900 px-3 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="h-11 min-h-[44px] rounded-lg border border-slate-800 bg-slate-900 px-3 text-base md:text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             <option value="">All Statuses</option>
             <option value="active">Active</option>
@@ -219,7 +219,7 @@ export const AdminUserList: React.FC = () => {
           <select
             value={selectedRole}
             onChange={(e) => setSelectedRole(e.target.value as RoleName | "")}
-            className="h-11 rounded-lg border border-slate-800 bg-slate-900 px-3 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="h-11 min-h-[44px] rounded-lg border border-slate-800 bg-slate-900 px-3 text-base md:text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             <option value="">All Roles</option>
             <option value="user">User</option>

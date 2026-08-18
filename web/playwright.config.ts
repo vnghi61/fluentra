@@ -27,6 +27,24 @@ export default defineConfig({
         viewport: { width: 1280, height: 800 },
       },
     },
+    {
+      name: "mobile-ios",
+      use: {
+        ...devices["iPhone 13"],
+      },
+    },
+    {
+      name: "mobile-android",
+      use: {
+        ...devices["Pixel 7"],
+      },
+    },
+    {
+      name: "tablet",
+      use: {
+        ...devices["iPad (gen 7)"],
+      },
+    },
   ],
   webServer: {
     command: "pnpm run dev",

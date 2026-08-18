@@ -176,7 +176,7 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
               <select
                 id="locale"
                 {...register("locale")}
-                className="w-full h-11 rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full h-11 min-h-[44px] rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-base md:text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="vi">Tiếng Việt (Vietnamese)</option>
                 <option value="en">English</option>

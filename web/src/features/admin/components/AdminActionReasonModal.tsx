@@ -131,7 +131,7 @@ export const AdminActionReasonModal: React.FC<AdminActionReasonModalProps> = ({
               rows={3}
               {...register("reason")}
               placeholder="State the justification for this administrative action..."
-              className="w-full rounded-lg border border-slate-800 bg-slate-950 p-3 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full rounded-lg border border-slate-800 bg-slate-950 p-3 text-base md:text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               aria-invalid={!!errors.reason}
             />
             {errors.reason && (
