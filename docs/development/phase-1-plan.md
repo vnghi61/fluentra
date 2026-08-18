@@ -737,7 +737,7 @@ WP1 tasks P1.2, P1.3, P1.4 are independent of each other once P1.1 lands.
 | | |
 |---|---|
 | **Depends on** | P5.3 |
-| **Context** | `ADR-0024`, `web/AGENT.md` §12 |
+| **Context** | `ADR-0024`, `web/AGENT.md` §6b |
 | **Files** | `web/src/components/{ui,layout}/**`, `web/tailwind.config.ts`, `web/src/hooks/useViewport.ts`, `web/playwright.config.ts` |
 | **Do** | Convert the shell to mobile-first: bottom navigation below `md`, sidebar above. Enforce the baseline — 44×44 CSS px minimum touch targets, 16 px minimum input font size (below this iOS zooms the page on focus), `env(safe-area-inset-*)` honoured for notch and home indicator, no hover-only affordance, `visualViewport`-aware layout so the virtual keyboard does not cover the field being typed into. Sheets instead of modals on small viewports. Tables become card lists. Add four Playwright device projects: iPhone-class 390×844, Android-class 412×915, tablet 768×1024, desktop 1280×800. Set the Web Vitals budget against a **mid-tier Android on 4G**, not a developer laptop. |
 | **Acceptance** | Every screen from P5.1–P5.3 is usable at 320 px width with no horizontal scroll. A lint rule fails a touch target under 44 px and an input font under 16 px. Focusing an input near the bottom of the OTP screen keeps it visible above the keyboard on a real iOS viewport. Safe-area padding is present on notched devices. All E2E journeys pass on all four device projects. LCP < 2.5 s and INP < 200 ms under 4G throttling with mid-tier CPU throttling. |

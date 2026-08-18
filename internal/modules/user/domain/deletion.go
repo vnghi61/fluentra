@@ -15,7 +15,9 @@ type DeletionStatus string
 const (
 	// DeletionStatusPending means the deletion was requested and is waiting out the 30-day grace period.
 	DeletionStatusPending DeletionStatus = "pending"
-	// DeletionStatusProcessing means the deletion job has picked up the request and is executing data erasure.
+	// DeletionStatusProcessing means the deletion job has picked up the request
+	// and is executing data erasure, or has finished erasing and is waiting for
+	// the completeness check to confirm every module purged its own data.
 	DeletionStatusProcessing DeletionStatus = "processing"
 	// DeletionStatusCompleted means the user has been fully anonymised and personal data purged across modules.
 	DeletionStatusCompleted DeletionStatus = "completed"
