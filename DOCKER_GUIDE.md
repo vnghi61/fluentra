@@ -49,9 +49,42 @@ deploy/compose/
 ```
 
 ```bash
-make dev     # base + dev + observability
-make prod-up # base + prod + observability
+make dev            # base + dev + observability — the full local stack
+make dev-infra      # postgres + redis + minio only, ports published
+make dev-infra-down # stop those three, leaving everything else alone
+make prod-up        # base + prod + observability
 ```
+
+**Never run `compose.yaml` on its own for local work.** Its `backend` network is
+`internal: true` and it publishes no ports, so the services come up healthy and nothing
+on the host can reach them — a failure that looks like a connection bug rather than a
+missing overlay. `compose.dev.yaml` is what publishes the ports and flips the network;
+`make dev` and `make dev-infra` combine them for you.
+
+Use `make dev-infra` when you only need the data services: running the integration suite,
+`go run ./cmd/api` on the host, or `psql` against the dev database. It skips building the
+application images, which is most of the wait.
+
+### Port already in use
+
+Another project's container on 5432 or 6379 is common. Borrow the port, then give it
+back:
+
+```bash
+docker ps --format "{{.Names}} {{.Ports}}"   # find the holder
+docker stop <name>
+# ... your work ...
+docker start <name>                             # do not skip this
+```
+
+`docker stop` / `docker start` keep the container and its volumes; the data is untouched.
+Never `docker rm` or `docker volume rm` something you did not create in order to free a
+port, and never renumber the project's ports to dodge a conflict — the DSNs in
+`compose.dev.yaml`, the CI workflow and every runbook assume the standard ones.
+
+Prefer `make dev-infra-down` over `docker compose down`. `down` operates on the whole
+project and has stopped unrelated containers carrying matching labels; the target names
+the three services explicitly.
 
 ## 4. Service definitions — required properties
 

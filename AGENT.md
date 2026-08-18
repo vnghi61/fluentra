@@ -211,6 +211,50 @@ make docs-check    # docs lint + drift check
 **Never** run `docker compose down -v`, `make db-reset`, or anything that deletes volumes
 without explicit human approval — it destroys local learning data.
 
+### Which compose file to run
+
+Neither `compose.yaml` nor `compose.dev.yaml` is run on its own. **Use `make dev`.**
+
+- `deploy/compose/compose.yaml` — the base. Data services only, on an `internal: true`
+  network with **no published ports**, so nothing on your host can reach them. Running
+  this alone looks like it worked and then every connection is refused.
+- `deploy/compose/compose.dev.yaml` — the overlay that makes it usable locally: publishes
+  5432, 6379, 9000/9001 and 8025, flips the network to `internal: false`, and adds `api`,
+  `worker`, `web` with hot reload plus mailpit.
+- `compose.observability.yaml` / `.observability.dev.yaml` — Grafana, Tempo, Loki,
+  Prometheus, the collector.
+
+`make dev` combines all four in the right order. Do not hand-assemble `-f` chains;
+the ordering and the observability split are load-bearing (see the comment at the top
+of `compose.dev.yaml`).
+
+**Only need the data services** — running the integration suite, or `go run ./cmd/api`
+on the host?
+
+```
+make dev-infra     # postgres + redis + minio, ports published, no app containers
+```
+
+### When a port is already taken
+
+Another project's container is often already on 5432 or 6379. That is not a reason to
+change ports or to remove anything.
+
+**Stop it, do the work, start it again.** `docker stop <name>` and `docker start <name>`
+preserve the container and its volumes — data survives.
+
+```
+docker ps --format "{{.Names}} {{.Ports}}"   # find what holds the port
+docker stop <name>                             # borrow it
+...                                            # your work
+docker start <name>                            # give it back — do not skip this
+```
+
+**Never** `docker rm` a container you did not create, and never `docker volume rm`
+anything to free a port. And note `docker compose down` acts on the whole project: it has
+stopped unrelated containers that happened to carry matching labels. Prefer naming the
+services you started — `docker compose ... stop postgres redis minio`.
+
 ---
 
 ## 10. What You Must NOT Do

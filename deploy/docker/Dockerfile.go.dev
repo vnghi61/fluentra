@@ -2,7 +2,11 @@ FROM golang:1.25-alpine
 
 RUN apk add --no-cache git ca-certificates tzdata
 
-RUN go install github.com/air-verse/air@latest
+# Pinned, not @latest. air v1.67 raised its floor to Go 1.26 while this image
+# is on the 1.25 toolchain the repository builds with, so `@latest` broke every
+# `make dev` the day that released — the same failure mode the Makefile's
+# bundler comment describes. Move this when the base image moves.
+RUN go install github.com/air-verse/air@v1.66.1
 
 WORKDIR /app
 
