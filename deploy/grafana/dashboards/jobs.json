@@ -1,0 +1,37 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "panels": [
+    {
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "Oldest Pending Job (s)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "job_oldest_pending_seconds",
+          "legendFormat": "{{queue}}"
+        }
+      ]
+    },
+    {
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "id": 2,
+      "title": "Job Failure Rate (%)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(job_attempts_total{result!=\"success\"}[5m])) / sum(rate(job_attempts_total[5m])) * 100",
+          "legendFormat": "Failure %"
+        }
+      ]
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["fluentra", "jobs"],
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "Jobs & Queues Overview",
+  "uid": "fluentra-jobs"
+}

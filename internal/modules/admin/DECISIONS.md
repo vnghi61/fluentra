@@ -6,7 +6,7 @@ status: PLANNED
 phase: 2
 owner: "@backend-team"
 schema: core
-tables: [feature_flags, admin_notes, moderation_items]
+tables: [admin_actions, feature_flags, admin_notes, moderation_items]
 depends_on: [user, rbac, audit, auth, content, cache]
 depended_on_by: []
 spec_version: 1.0.0
@@ -25,6 +25,7 @@ contract belongs in a repository-level ADR instead — see [`/DECISIONS.md`](../
 |---|---|---|
 | Separate admin service or the same binary? | Same binary, separate route group | A separate service would duplicate every contract call over the network for a handful of screens; the route group plus per-operation permissions gives the isolation that matters |
 | Does admin own data? | Only flags, notes and the moderation queue | Anything else would duplicate another module's state and drift from it |
+| Does user erasure purge `core.admin_actions`? | Retained as an accountability record | The rows record who acted on whom and why. Like `audit`, this is an accountability log that must outlive the account it describes, or an administrator could erase the evidence of their own action by deleting the target. The erasure completeness check excludes it by name for this reason — see `internal/modules/user/job/erasure_checker.go` |
 <!-- END GENERATED: decisions -->
 
 ## Related repository ADRs

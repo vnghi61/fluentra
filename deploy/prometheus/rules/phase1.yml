@@ -1,0 +1,79 @@
+groups:
+  - name: api
+    interval: 30s
+    rules:
+      - alert: HighErrorRate
+        expr: sum(rate(http_server_request_duration_seconds_count{status_class="5xx"}[5m])) / sum(rate(http_server_request_duration_seconds_count[5m])) > 0.05
+        for: 5m
+        annotations:
+          summary: "API error rate > 5%"
+          runbook_url: "https://fluentra.dev/runbooks/high-error-rate"
+
+      - alert: SlowRequests
+        expr: histogram_quantile(0.95, sum(rate(http_server_request_duration_seconds_bucket[5m])) by (le)) > 2
+        for: 10m
+        annotations:
+          summary: "P95 latency > 2s"
+          runbook_url: "https://fluentra.dev/runbooks/slow-requests"
+
+  - name: database
+    rules:
+      # `max` is published by the same observable callback as `acquired`, so the
+      # ratio is exact rather than compared against a value configured twice.
+      # `waiting` is deliberately not used here: pgxpool exposes no gauge of
+      # callers blocked in Acquire — see ObserveDBPoolConnections.
+      - alert: DatabaseConnectionPoolExhausted
+        expr: db_pool_connections{state="acquired"} / db_pool_connections{state="max"} > 0.9
+        for: 5m
+        annotations:
+          summary: "Database connection pool over 90% acquired"
+          runbook_url: "https://fluentra.dev/runbooks/db-pool-exhausted"
+
+      - alert: SlowQueries
+        expr: histogram_quantile(0.95, sum(rate(db_query_duration_seconds_bucket[5m])) by (le)) > 1
+        for: 10m
+        annotations:
+          summary: "P95 query duration > 1s"
+          runbook_url: "https://fluentra.dev/runbooks/slow-queries"
+
+  - name: jobs
+    rules:
+      - alert: JobQueueStalled
+        expr: job_oldest_pending_seconds > 300
+        for: 5m
+        annotations:
+          summary: "Job queue stalled: oldest pending > 300s"
+          runbook_url: "https://fluentra.dev/runbooks/job-queue-backlog"
+
+      - alert: JobFailureRateHigh
+        expr: sum(rate(job_attempts_total{result!="success"}[5m])) / sum(rate(job_attempts_total[5m])) > 0.1
+        for: 10m
+        annotations:
+          summary: "Job failure rate > 10%"
+          runbook_url: "https://fluentra.dev/runbooks/job-failures"
+
+  - name: outbox
+    rules:
+      - alert: OutboxLagHigh
+        expr: outbox_lag_seconds > 60
+        for: 2m
+        annotations:
+          summary: "Outbox lag > 60s"
+          runbook_url: "https://fluentra.dev/runbooks/outbox-lag"
+
+  - name: security
+    rules:
+      - alert: LoginLockoutSpike
+        expr: rate(auth_lockout_total[5m]) > 50
+        for: 5m
+        annotations:
+          summary: "Auth login lockout spike > 50/5m"
+          runbook_url: "https://fluentra.dev/runbooks/lockout-spike"
+
+      - alert: RefreshReuseDetected
+        expr: rate(auth_refresh_reuse_total[1m]) > 0
+        for: 1m
+        annotations:
+          severity: "critical"
+          summary: "Refresh token reuse detected"
+          runbook_url: "https://fluentra.dev/runbooks/refresh-reuse"

@@ -7,6 +7,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/fluentra/fluentra/internal/modules/admin"
 	"github.com/fluentra/fluentra/internal/modules/audit"
 	"github.com/fluentra/fluentra/internal/modules/auth"
 	authdomain "github.com/fluentra/fluentra/internal/modules/auth/domain"
@@ -19,16 +20,18 @@ import (
 	"github.com/fluentra/fluentra/internal/platform/job"
 	"github.com/fluentra/fluentra/internal/platform/mailer"
 	"github.com/fluentra/fluentra/internal/platform/storage"
+	"github.com/fluentra/fluentra/internal/platform/telemetry"
 	"github.com/fluentra/fluentra/internal/shared/httpx"
 )
 
-// identity is WP1+WP2 assembled: the modules that know who a caller is and what
+// identity is WP1+WP2+WP4 assembled: the modules that know who a caller is and what
 // they may do, and the record of what they did.
 type identity struct {
 	audit *audit.Module
 	rbac  *rbac.Module
 	user  *user.Module
 	auth  *auth.Module
+	admin *admin.Module
 
 	rateLimit *httpx.RateLimiter
 }
@@ -78,6 +81,10 @@ type identityDeps struct {
 
 	// Enqueuer schedules background River jobs within database transactions.
 	Enqueuer job.Enqueuer
+
+	// Instruments are the shared metric instruments, wired into the modules that
+	// record to them (auth lockouts and refresh reuse).
+	Instruments telemetry.Instruments
 }
 
 // newIdentity constructs the modules in dependency order — audit, then rbac,
@@ -152,6 +159,16 @@ func newIdentity(deps identityDeps) *identity {
 		Windows:          deps.Windows,
 		Google:           deps.Google,
 		OAuthStateTTL:    deps.OAuthStateTTL,
+		Telemetry:        deps.Instruments,
+	})
+
+	assembled.admin = admin.New(admin.Deps{
+		Pool:           deps.Pool,
+		UserReader:     assembled.user.AdminReader(),
+		UserManager:    assembled.user.AdminManager(),
+		SessionRevoker: assembled.auth.SessionRevoker(),
+		Audit:          assembled.audit.Recorder(),
+		Guard:          lazyGuard{of: assembled},
 	})
 
 	return assembled
@@ -201,6 +218,7 @@ func (i *identity) Routes(api chi.Router) {
 		authenticated.Group(func(admin chi.Router) {
 			admin.Use(i.rbac.AdminOnly())
 			i.audit.Routes(admin)
+			i.admin.Routes(admin)
 		})
 	})
 }
@@ -215,6 +233,7 @@ func (i *identity) Routes(api chi.Router) {
 type lazyGuard struct{ of *identity }
 
 var _ audit.Guard = lazyGuard{}
+var _ admin.Guard = lazyGuard{}
 
 func (g lazyGuard) Require(ctx context.Context, permission string) error {
 	return g.authorizer().Require(ctx, rbaccontract.Permission(permission))

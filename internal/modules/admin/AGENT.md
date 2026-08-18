@@ -6,11 +6,11 @@ status: PLANNED
 phase: 2
 owner: "@backend-team"
 schema: core
-tables: [feature_flags, admin_notes, moderation_items]
+tables: [admin_actions, feature_flags, admin_notes, moderation_items]
 depends_on: [user, rbac, audit, auth, content, cache]
 depended_on_by: []
 spec_version: 1.0.0
-last_verified: 2026-08-06
+last_verified: 2026-08-17
 ---
 
 # admin — AGENT.md
@@ -90,6 +90,7 @@ Migrations: `db/migrations/admin/` · Queries: `db/queries/admin/`
 
 | Table | Purpose | Key columns / notes |
 |---|---|---|
+| `core.admin_actions` | Audit log of admin operations on accounts | `actor_id`, `target_id`, `action` (suspend/reinstate/revoke_sessions), `reason`, `occurred_at`. CHECK actor_id != target_id |
 | `core.feature_flags` | Runtime feature toggles | `key`, `enabled`, `rollout_percent`, `owner`, `expires_on`. Cached 30 s in-process. |
 | `core.admin_notes` | Free-text notes attached to a user or content item | Visible to admins only; audited on create |
 | `core.moderation_items` | The moderation queue | `kind`, `target_type`, `target_id`, `reason`, `status`, `assignee_id` |
@@ -104,11 +105,18 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 <!-- BEGIN GENERATED: endpoints -->
 | Method | Path | Permission | Purpose |
 |---|---|---|---|
+| `GET` | `/api/v1/admin/users` | `user.list` | Search accounts, cursor-paginated |
+| `GET` | `/api/v1/admin/users/{id}` | `user.read` | One account in full |
+| `POST` | `/api/v1/admin/users/{id}/suspend` | `user.suspend` | Suspend an account and end its sessions |
+| `POST` | `/api/v1/admin/users/{id}/reinstate` | `user.reinstate` | Return a suspended account to active |
+| `POST` | `/api/v1/admin/users/{id}/sessions/revoke` | `user.manage_sessions` | Sign a user out everywhere |
+| `GET` | `/api/v1/admin/flags` | `system.flags` | List every feature flag |
+| `POST` | `/api/v1/admin/flags` | `system.flags` | Create a feature flag |
+| `PUT` | `/api/v1/admin/flags/{key}` | `system.flags` | Update a feature flag |
+| `DELETE` | `/api/v1/admin/flags/{key}` | `system.flags` | Delete a feature flag |
 | `GET` | `/api/v1/admin/dashboard` | `admin.dashboard` | Composed KPI summary |
 | `GET` | `/api/v1/admin/moderation` | `moderation.read` | Moderation queue |
 | `POST` | `/api/v1/admin/moderation/{id}/resolve` | `moderation.act` | Resolve a queue item |
-| `GET` | `/api/v1/admin/feature-flags` | `system.flags` | List flags |
-| `PUT` | `/api/v1/admin/feature-flags/{key}` | `system.flags` | Update a flag |
 | `POST` | `/api/v1/admin/jobs/{id}/retry` | `system.jobs` | Retry a failed job |
 | `POST` | `/api/v1/admin/impersonate/{user_id}` | `user.impersonate` | Start a time-boxed impersonation session |
 <!-- END GENERATED: endpoints -->

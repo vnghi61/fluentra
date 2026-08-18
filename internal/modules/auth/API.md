@@ -46,7 +46,7 @@ Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR
 | `DELETE` | `/api/v1/auth/oauth/google` | `self` | Unlink Google |
 | `GET` | `/api/v1/auth/devices` | `self` | List trusted devices with their idle and absolute expiry |
 | `DELETE` | `/api/v1/auth/devices/{id}` | `self` | Untrust a device, revoking its refresh family |
-| `POST` | `/api/v1/admin/users/{id}/sessions/revoke` | `user.session.revoke` | Admin revokes all sessions for a user |
+| `POST` | `/api/v1/admin/users/{id}/sessions/revoke` | `user.manage_sessions` | Admin revokes all sessions for a user |
 <!-- END GENERATED: api-summary -->
 
 ## Endpoint detail
@@ -257,7 +257,7 @@ Admin revokes all sessions for a user
 
 | | |
 |---|---|
-| Permission | `user.session.revoke` |
+| Permission | `user.manage_sessions` |
 | Success | 204 |
 | Errors | `PERMISSION_DENIED`, `RESOURCE_NOT_FOUND` |
 

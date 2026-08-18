@@ -1,0 +1,49 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "panels": [
+    {
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "Hit Ratio per Module (%)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(cache_requests_total{result=\"hit\"}[5m])) by (module) / sum(rate(cache_requests_total[5m])) by (module) * 100",
+          "legendFormat": "{{module}}"
+        }
+      ]
+    },
+    {
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "id": 2,
+      "title": "Operation Latency P95 (s)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(cache_operation_duration_seconds_bucket[5m])) by (le, op))",
+          "legendFormat": "{{op}}"
+        }
+      ]
+    },
+    {
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
+      "id": 3,
+      "title": "Cache Unavailable Rate",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "rate(cache_unavailable_total[5m])",
+          "legendFormat": "Unavailable Events / sec"
+        }
+      ]
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["fluentra", "cache", "redis"],
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "Cache & Redis Overview",
+  "uid": "fluentra-cache-redis"
+}

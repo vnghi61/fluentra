@@ -100,6 +100,60 @@ type ClientInterface interface {
 	// Corresponds with GET /admin/audit-logs (the `AuditSearchLogs` operationId).
 	AuditSearchLogs(ctx context.Context, params *AuditSearchLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AdminListFlags List all feature flags.
+	//
+	// Returns every flag, unpaginated. The set is small by design, and an administrator needs the whole of it to see which flags are past their `expires_on` and should have been deleted.
+	//
+	// Corresponds with GET /admin/flags (the `AdminListFlags` operationId).
+	AdminListFlags(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminCreateFlagWithBody Create feature flag.
+	//
+	// Defines a new flag, off by default. `owner` and `expires_on` are required and `expires_on` must be in the future: a flag with nobody accountable and no end date is how a temporary switch becomes permanent.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /admin/flags (the `AdminCreateFlag` operationId).
+	AdminCreateFlagWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminCreateFlag Create feature flag.
+	//
+	// Defines a new flag, off by default. `owner` and `expires_on` are required and `expires_on` must be in the future: a flag with nobody accountable and no end date is how a temporary switch becomes permanent.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /admin/flags (the `AdminCreateFlag` operationId).
+	AdminCreateFlag(ctx context.Context, body AdminCreateFlagJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminDeleteFlag Delete feature flag.
+	//
+	// Removes the flag. Every subsequent evaluation of the key returns false, so delete the flag only once the code that reads it is gone — otherwise the feature silently turns off for everybody.
+	//
+	// Corresponds with DELETE /admin/flags/{key} (the `AdminDeleteFlag` operationId).
+	AdminDeleteFlag(ctx context.Context, key string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminUpdateFlagWithBody Update feature flag.
+	//
+	// Replaces the mutable fields of a flag. Because bucketing hashes the flag key together with the user id, raising `rollout_percent` only ever adds users to the treatment group — nobody who was already in it is moved out.
+	//
+	// The change invalidates the 30-second evaluation cache for this key, so it is visible within one cache generation rather than immediately.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /admin/flags/{key} (the `AdminUpdateFlag` operationId).
+	AdminUpdateFlagWithBody(ctx context.Context, key string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminUpdateFlag Update feature flag.
+	//
+	// Replaces the mutable fields of a flag. Because bucketing hashes the flag key together with the user id, raising `rollout_percent` only ever adds users to the treatment group — nobody who was already in it is moved out.
+	//
+	// The change invalidates the 30-second evaluation cache for this key, so it is visible within one cache generation rather than immediately.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /admin/flags/{key} (the `AdminUpdateFlag` operationId).
+	AdminUpdateFlag(ctx context.Context, key string, body AdminUpdateFlagJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// RbacListRoles List roles and the permissions they grant.
 	//
 	// The catalogue is small and fixed, so it is returned whole rather than paginated.
@@ -132,6 +186,44 @@ type ClientInterface interface {
 	// Corresponds with POST /admin/security-events/{id}/resolve (the `AuditResolveSecurityEvent` operationId).
 	AuditResolveSecurityEvent(ctx context.Context, id openapi_types.UUID, body AuditResolveSecurityEventJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AdminListUsers Search users with cursor pagination.
+	//
+	// Finds accounts by prefix, status, or creation window. The filters combine with AND; supplying none walks every account.
+	//
+	// The search itself is not audited — an administrator typing into a search box is not an action on anybody. Opening a result is, which is why the row is thin and `adminGetUser` is a separate operation.
+	//
+	// Corresponds with GET /admin/users (the `AdminListUsers` operationId).
+	AdminListUsers(ctx context.Context, params *AdminListUsersParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminGetUser Get detailed user profile. Audited on read.
+	//
+	// Returns one account in full. Unlike the search, the read itself is recorded as `admin.user_viewed` with the acting administrator: looking at a specific person's account is an act, and the audit log is what makes it reviewable.
+	//
+	// Corresponds with GET /admin/users/{id} (the `AdminGetUser` operationId).
+	AdminGetUser(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminReinstateUserWithBody Reinstate suspended user.
+	//
+	// Returns a suspended account to `active`. Sessions are not restored — they were destroyed, not paused — so the learner signs in again.
+	//
+	// A reason is required here as well: reversing a suspension is as much a decision as making one, and the log should carry both sides.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /admin/users/{id}/reinstate (the `AdminReinstateUser` operationId).
+	AdminReinstateUserWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminReinstateUser Reinstate suspended user.
+	//
+	// Returns a suspended account to `active`. Sessions are not restored — they were destroyed, not paused — so the learner signs in again.
+	//
+	// A reason is required here as well: reversing a suspension is as much a decision as making one, and the log should carry both sides.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /admin/users/{id}/reinstate (the `AdminReinstateUser` operationId).
+	AdminReinstateUser(ctx context.Context, id openapi_types.UUID, body AdminReinstateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// RbacAssignRoleWithBody Grant a role to a user.
 	//
 	// Granting is idempotent: a role the user already holds is not an error. An actor cannot grant themselves a role they do not already hold.
@@ -156,6 +248,50 @@ type ClientInterface interface {
 	//
 	// Corresponds with DELETE /admin/users/{id}/roles/{role} (the `RbacRevokeRole` operationId).
 	RbacRevokeRole(ctx context.Context, id openapi_types.UUID, role RoleName, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminRevokeUserSessionsWithBody Revoke all active sessions for a user.
+	//
+	// Signs the user out everywhere without changing their account status — the response to a lost device or a shared password, where suspension would be the wrong punishment.
+	//
+	// Idempotent: revoking sessions for a user who has none succeeds.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /admin/users/{id}/sessions/revoke (the `AdminRevokeUserSessions` operationId).
+	AdminRevokeUserSessionsWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminRevokeUserSessions Revoke all active sessions for a user.
+	//
+	// Signs the user out everywhere without changing their account status — the response to a lost device or a shared password, where suspension would be the wrong punishment.
+	//
+	// Idempotent: revoking sessions for a user who has none succeeds.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /admin/users/{id}/sessions/revoke (the `AdminRevokeUserSessions` operationId).
+	AdminRevokeUserSessions(ctx context.Context, id openapi_types.UUID, body AdminRevokeUserSessionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminSuspendUserWithBody Suspend user and revoke active sessions.
+	//
+	// Moves the account to `suspended` and ends every active session, so the suspension takes effect on the next request rather than whenever the access token happens to expire.
+	//
+	// The two halves run in separate transactions, in that order: the admin action log records the intent before anything is revoked. An administrator suspending their own account is refused with 403 `SELF_ADMIN_ACTION_FORBIDDEN`.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /admin/users/{id}/suspend (the `AdminSuspendUser` operationId).
+	AdminSuspendUserWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminSuspendUser Suspend user and revoke active sessions.
+	//
+	// Moves the account to `suspended` and ends every active session, so the suspension takes effect on the next request rather than whenever the access token happens to expire.
+	//
+	// The two halves run in separate transactions, in that order: the admin action log records the intent before anything is revoked. An administrator suspending their own account is refused with 403 `SELF_ADMIN_ACTION_FORBIDDEN`.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /admin/users/{id}/suspend (the `AdminSuspendUser` operationId).
+	AdminSuspendUser(ctx context.Context, id openapi_types.UUID, body AdminSuspendUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// AuthResendChallenge Send a new code for a challenge.
 	//
@@ -639,6 +775,120 @@ func (c *Client) AuditSearchLogs(ctx context.Context, params *AuditSearchLogsPar
 	return c.Client.Do(req)
 }
 
+// AdminListFlags List all feature flags.
+//
+// Returns every flag, unpaginated. The set is small by design, and an administrator needs the whole of it to see which flags are past their `expires_on` and should have been deleted.
+//
+// Corresponds with GET /admin/flags (the `AdminListFlags` operationId).
+func (c *Client) AdminListFlags(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminListFlagsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminCreateFlagWithBody Create feature flag.
+//
+// Defines a new flag, off by default. `owner` and `expires_on` are required and `expires_on` must be in the future: a flag with nobody accountable and no end date is how a temporary switch becomes permanent.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /admin/flags (the `AdminCreateFlag` operationId).
+func (c *Client) AdminCreateFlagWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminCreateFlagRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminCreateFlag Create feature flag.
+//
+// Defines a new flag, off by default. `owner` and `expires_on` are required and `expires_on` must be in the future: a flag with nobody accountable and no end date is how a temporary switch becomes permanent.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /admin/flags (the `AdminCreateFlag` operationId).
+func (c *Client) AdminCreateFlag(ctx context.Context, body AdminCreateFlagJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminCreateFlagRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminDeleteFlag Delete feature flag.
+//
+// Removes the flag. Every subsequent evaluation of the key returns false, so delete the flag only once the code that reads it is gone — otherwise the feature silently turns off for everybody.
+//
+// Corresponds with DELETE /admin/flags/{key} (the `AdminDeleteFlag` operationId).
+func (c *Client) AdminDeleteFlag(ctx context.Context, key string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminDeleteFlagRequest(c.Server, key)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminUpdateFlagWithBody Update feature flag.
+//
+// Replaces the mutable fields of a flag. Because bucketing hashes the flag key together with the user id, raising `rollout_percent` only ever adds users to the treatment group — nobody who was already in it is moved out.
+//
+// The change invalidates the 30-second evaluation cache for this key, so it is visible within one cache generation rather than immediately.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /admin/flags/{key} (the `AdminUpdateFlag` operationId).
+func (c *Client) AdminUpdateFlagWithBody(ctx context.Context, key string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminUpdateFlagRequestWithBody(c.Server, key, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminUpdateFlag Update feature flag.
+//
+// Replaces the mutable fields of a flag. Because bucketing hashes the flag key together with the user id, raising `rollout_percent` only ever adds users to the treatment group — nobody who was already in it is moved out.
+//
+// The change invalidates the 30-second evaluation cache for this key, so it is visible within one cache generation rather than immediately.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /admin/flags/{key} (the `AdminUpdateFlag` operationId).
+func (c *Client) AdminUpdateFlag(ctx context.Context, key string, body AdminUpdateFlagJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminUpdateFlagRequest(c.Server, key, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // RbacListRoles List roles and the permissions they grant.
 //
 // The catalogue is small and fixed, so it is returned whole rather than paginated.
@@ -711,6 +961,84 @@ func (c *Client) AuditResolveSecurityEvent(ctx context.Context, id openapi_types
 	return c.Client.Do(req)
 }
 
+// AdminListUsers Search users with cursor pagination.
+//
+// Finds accounts by prefix, status, or creation window. The filters combine with AND; supplying none walks every account.
+//
+// The search itself is not audited — an administrator typing into a search box is not an action on anybody. Opening a result is, which is why the row is thin and `adminGetUser` is a separate operation.
+//
+// Corresponds with GET /admin/users (the `AdminListUsers` operationId).
+func (c *Client) AdminListUsers(ctx context.Context, params *AdminListUsersParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminListUsersRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminGetUser Get detailed user profile. Audited on read.
+//
+// Returns one account in full. Unlike the search, the read itself is recorded as `admin.user_viewed` with the acting administrator: looking at a specific person's account is an act, and the audit log is what makes it reviewable.
+//
+// Corresponds with GET /admin/users/{id} (the `AdminGetUser` operationId).
+func (c *Client) AdminGetUser(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminGetUserRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminReinstateUserWithBody Reinstate suspended user.
+//
+// Returns a suspended account to `active`. Sessions are not restored — they were destroyed, not paused — so the learner signs in again.
+//
+// A reason is required here as well: reversing a suspension is as much a decision as making one, and the log should carry both sides.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /admin/users/{id}/reinstate (the `AdminReinstateUser` operationId).
+func (c *Client) AdminReinstateUserWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminReinstateUserRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminReinstateUser Reinstate suspended user.
+//
+// Returns a suspended account to `active`. Sessions are not restored — they were destroyed, not paused — so the learner signs in again.
+//
+// A reason is required here as well: reversing a suspension is as much a decision as making one, and the log should carry both sides.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /admin/users/{id}/reinstate (the `AdminReinstateUser` operationId).
+func (c *Client) AdminReinstateUser(ctx context.Context, id openapi_types.UUID, body AdminReinstateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminReinstateUserRequest(c.Server, id, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // RbacAssignRoleWithBody Grant a role to a user.
 //
 // Granting is idempotent: a role the user already holds is not an error. An actor cannot grant themselves a role they do not already hold.
@@ -756,6 +1084,90 @@ func (c *Client) RbacAssignRole(ctx context.Context, id openapi_types.UUID, body
 // Corresponds with DELETE /admin/users/{id}/roles/{role} (the `RbacRevokeRole` operationId).
 func (c *Client) RbacRevokeRole(ctx context.Context, id openapi_types.UUID, role RoleName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRbacRevokeRoleRequest(c.Server, id, role)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminRevokeUserSessionsWithBody Revoke all active sessions for a user.
+//
+// Signs the user out everywhere without changing their account status — the response to a lost device or a shared password, where suspension would be the wrong punishment.
+//
+// Idempotent: revoking sessions for a user who has none succeeds.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /admin/users/{id}/sessions/revoke (the `AdminRevokeUserSessions` operationId).
+func (c *Client) AdminRevokeUserSessionsWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminRevokeUserSessionsRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminRevokeUserSessions Revoke all active sessions for a user.
+//
+// Signs the user out everywhere without changing their account status — the response to a lost device or a shared password, where suspension would be the wrong punishment.
+//
+// Idempotent: revoking sessions for a user who has none succeeds.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /admin/users/{id}/sessions/revoke (the `AdminRevokeUserSessions` operationId).
+func (c *Client) AdminRevokeUserSessions(ctx context.Context, id openapi_types.UUID, body AdminRevokeUserSessionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminRevokeUserSessionsRequest(c.Server, id, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminSuspendUserWithBody Suspend user and revoke active sessions.
+//
+// Moves the account to `suspended` and ends every active session, so the suspension takes effect on the next request rather than whenever the access token happens to expire.
+//
+// The two halves run in separate transactions, in that order: the admin action log records the intent before anything is revoked. An administrator suspending their own account is refused with 403 `SELF_ADMIN_ACTION_FORBIDDEN`.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /admin/users/{id}/suspend (the `AdminSuspendUser` operationId).
+func (c *Client) AdminSuspendUserWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminSuspendUserRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminSuspendUser Suspend user and revoke active sessions.
+//
+// Moves the account to `suspended` and ends every active session, so the suspension takes effect on the next request rather than whenever the access token happens to expire.
+//
+// The two halves run in separate transactions, in that order: the admin action log records the intent before anything is revoked. An administrator suspending their own account is refused with 403 `SELF_ADMIN_ACTION_FORBIDDEN`.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /admin/users/{id}/suspend (the `AdminSuspendUser` operationId).
+func (c *Client) AdminSuspendUser(ctx context.Context, id openapi_types.UUID, body AdminSuspendUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminSuspendUserRequest(c.Server, id, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1806,6 +2218,154 @@ func NewAuditSearchLogsRequest(server string, params *AuditSearchLogsParams) (*h
 	return req, nil
 }
 
+// NewAdminListFlagsRequest constructs an http.Request for the AdminListFlags method
+func NewAdminListFlagsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/flags")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAdminCreateFlagRequest calls the generic AdminCreateFlag builder with application/json body
+func NewAdminCreateFlagRequest(server string, body AdminCreateFlagJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAdminCreateFlagRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewAdminCreateFlagRequestWithBody constructs an http.Request for the AdminCreateFlag method, with any body, and a specified content type
+func NewAdminCreateFlagRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/flags")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewAdminDeleteFlagRequest constructs an http.Request for the AdminDeleteFlag method
+func NewAdminDeleteFlagRequest(server string, key string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "key", key, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/flags/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAdminUpdateFlagRequest calls the generic AdminUpdateFlag builder with application/json body
+func NewAdminUpdateFlagRequest(server string, key string, body AdminUpdateFlagJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAdminUpdateFlagRequestWithBody(server, key, "application/json", bodyReader)
+}
+
+// NewAdminUpdateFlagRequestWithBody constructs an http.Request for the AdminUpdateFlag method, with any body, and a specified content type
+func NewAdminUpdateFlagRequestWithBody(server string, key string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "key", key, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/flags/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewRbacListRolesRequest constructs an http.Request for the RbacListRoles method
 func NewRbacListRolesRequest(server string) (*http.Request, error) {
 	var err error
@@ -2018,6 +2578,213 @@ func NewAuditResolveSecurityEventRequestWithBody(server string, id openapi_types
 	return req, nil
 }
 
+// NewAdminListUsersRequest constructs an http.Request for the AdminListUsers method
+func NewAdminListUsersRequest(server string, params *AdminListUsersParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/users")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.EmailPrefix != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "email_prefix", *params.EmailPrefix, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.DisplayName != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "display_name", *params.DisplayName, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Status != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "status", *params.Status, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.CreatedAfter != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "created_after", *params.CreatedAfter, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date-time"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.CreatedBefore != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "created_before", *params.CreatedBefore, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date-time"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAdminGetUserRequest constructs an http.Request for the AdminGetUser method
+func NewAdminGetUserRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/users/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAdminReinstateUserRequest calls the generic AdminReinstateUser builder with application/json body
+func NewAdminReinstateUserRequest(server string, id openapi_types.UUID, body AdminReinstateUserJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAdminReinstateUserRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewAdminReinstateUserRequestWithBody constructs an http.Request for the AdminReinstateUser method, with any body, and a specified content type
+func NewAdminReinstateUserRequestWithBody(server string, id openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/users/%s/reinstate", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewRbacAssignRoleRequest calls the generic RbacAssignRole builder with application/json body
 func NewRbacAssignRoleRequest(server string, id openapi_types.UUID, body RbacAssignRoleJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -2102,6 +2869,100 @@ func NewRbacRevokeRoleRequest(server string, id openapi_types.UUID, role RoleNam
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewAdminRevokeUserSessionsRequest calls the generic AdminRevokeUserSessions builder with application/json body
+func NewAdminRevokeUserSessionsRequest(server string, id openapi_types.UUID, body AdminRevokeUserSessionsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAdminRevokeUserSessionsRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewAdminRevokeUserSessionsRequestWithBody constructs an http.Request for the AdminRevokeUserSessions method, with any body, and a specified content type
+func NewAdminRevokeUserSessionsRequestWithBody(server string, id openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/users/%s/sessions/revoke", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewAdminSuspendUserRequest calls the generic AdminSuspendUser builder with application/json body
+func NewAdminSuspendUserRequest(server string, id openapi_types.UUID, body AdminSuspendUserJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAdminSuspendUserRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewAdminSuspendUserRequestWithBody constructs an http.Request for the AdminSuspendUser method, with any body, and a specified content type
+func NewAdminSuspendUserRequestWithBody(server string, id openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/users/%s/suspend", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -3264,6 +4125,64 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /admin/audit-logs (the `AuditSearchLogs` operationId).
 	AuditSearchLogsWithResponse(ctx context.Context, params *AuditSearchLogsParams, reqEditors ...RequestEditorFn) (*AuditSearchLogsResponse, error)
 
+	// AdminListFlagsWithResponse List all feature flags.
+	//
+	// Returns every flag, unpaginated. The set is small by design, and an administrator needs the whole of it to see which flags are past their `expires_on` and should have been deleted.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/flags (the `AdminListFlags` operationId).
+	AdminListFlagsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AdminListFlagsResponse, error)
+
+	// AdminCreateFlagWithBodyWithResponse Create feature flag.
+	//
+	// Defines a new flag, off by default. `owner` and `expires_on` are required and `expires_on` must be in the future: a flag with nobody accountable and no end date is how a temporary switch becomes permanent.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/flags (the `AdminCreateFlag` operationId).
+	AdminCreateFlagWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminCreateFlagResponse, error)
+
+	// AdminCreateFlagWithResponse Create feature flag.
+	//
+	// Defines a new flag, off by default. `owner` and `expires_on` are required and `expires_on` must be in the future: a flag with nobody accountable and no end date is how a temporary switch becomes permanent.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/flags (the `AdminCreateFlag` operationId).
+	AdminCreateFlagWithResponse(ctx context.Context, body AdminCreateFlagJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminCreateFlagResponse, error)
+
+	// AdminDeleteFlagWithResponse Delete feature flag.
+	//
+	// Removes the flag. Every subsequent evaluation of the key returns false, so delete the flag only once the code that reads it is gone — otherwise the feature silently turns off for everybody.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /admin/flags/{key} (the `AdminDeleteFlag` operationId).
+	AdminDeleteFlagWithResponse(ctx context.Context, key string, reqEditors ...RequestEditorFn) (*AdminDeleteFlagResponse, error)
+
+	// AdminUpdateFlagWithBodyWithResponse Update feature flag.
+	//
+	// Replaces the mutable fields of a flag. Because bucketing hashes the flag key together with the user id, raising `rollout_percent` only ever adds users to the treatment group — nobody who was already in it is moved out.
+	//
+	// The change invalidates the 30-second evaluation cache for this key, so it is visible within one cache generation rather than immediately.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /admin/flags/{key} (the `AdminUpdateFlag` operationId).
+	AdminUpdateFlagWithBodyWithResponse(ctx context.Context, key string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminUpdateFlagResponse, error)
+
+	// AdminUpdateFlagWithResponse Update feature flag.
+	//
+	// Replaces the mutable fields of a flag. Because bucketing hashes the flag key together with the user id, raising `rollout_percent` only ever adds users to the treatment group — nobody who was already in it is moved out.
+	//
+	// The change invalidates the 30-second evaluation cache for this key, so it is visible within one cache generation rather than immediately.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /admin/flags/{key} (the `AdminUpdateFlag` operationId).
+	AdminUpdateFlagWithResponse(ctx context.Context, key string, body AdminUpdateFlagJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminUpdateFlagResponse, error)
+
 	// RbacListRolesWithResponse List roles and the permissions they grant.
 	//
 	// The catalogue is small and fixed, so it is returned whole rather than paginated.
@@ -3300,6 +4219,48 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /admin/security-events/{id}/resolve (the `AuditResolveSecurityEvent` operationId).
 	AuditResolveSecurityEventWithResponse(ctx context.Context, id openapi_types.UUID, body AuditResolveSecurityEventJSONRequestBody, reqEditors ...RequestEditorFn) (*AuditResolveSecurityEventResponse, error)
 
+	// AdminListUsersWithResponse Search users with cursor pagination.
+	//
+	// Finds accounts by prefix, status, or creation window. The filters combine with AND; supplying none walks every account.
+	//
+	// The search itself is not audited — an administrator typing into a search box is not an action on anybody. Opening a result is, which is why the row is thin and `adminGetUser` is a separate operation.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/users (the `AdminListUsers` operationId).
+	AdminListUsersWithResponse(ctx context.Context, params *AdminListUsersParams, reqEditors ...RequestEditorFn) (*AdminListUsersResponse, error)
+
+	// AdminGetUserWithResponse Get detailed user profile. Audited on read.
+	//
+	// Returns one account in full. Unlike the search, the read itself is recorded as `admin.user_viewed` with the acting administrator: looking at a specific person's account is an act, and the audit log is what makes it reviewable.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/users/{id} (the `AdminGetUser` operationId).
+	AdminGetUserWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*AdminGetUserResponse, error)
+
+	// AdminReinstateUserWithBodyWithResponse Reinstate suspended user.
+	//
+	// Returns a suspended account to `active`. Sessions are not restored — they were destroyed, not paused — so the learner signs in again.
+	//
+	// A reason is required here as well: reversing a suspension is as much a decision as making one, and the log should carry both sides.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/users/{id}/reinstate (the `AdminReinstateUser` operationId).
+	AdminReinstateUserWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminReinstateUserResponse, error)
+
+	// AdminReinstateUserWithResponse Reinstate suspended user.
+	//
+	// Returns a suspended account to `active`. Sessions are not restored — they were destroyed, not paused — so the learner signs in again.
+	//
+	// A reason is required here as well: reversing a suspension is as much a decision as making one, and the log should carry both sides.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/users/{id}/reinstate (the `AdminReinstateUser` operationId).
+	AdminReinstateUserWithResponse(ctx context.Context, id openapi_types.UUID, body AdminReinstateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminReinstateUserResponse, error)
+
 	// RbacAssignRoleWithBodyWithResponse Grant a role to a user.
 	//
 	// Granting is idempotent: a role the user already holds is not an error. An actor cannot grant themselves a role they do not already hold.
@@ -3326,6 +4287,50 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with DELETE /admin/users/{id}/roles/{role} (the `RbacRevokeRole` operationId).
 	RbacRevokeRoleWithResponse(ctx context.Context, id openapi_types.UUID, role RoleName, reqEditors ...RequestEditorFn) (*RbacRevokeRoleResponse, error)
+
+	// AdminRevokeUserSessionsWithBodyWithResponse Revoke all active sessions for a user.
+	//
+	// Signs the user out everywhere without changing their account status — the response to a lost device or a shared password, where suspension would be the wrong punishment.
+	//
+	// Idempotent: revoking sessions for a user who has none succeeds.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/users/{id}/sessions/revoke (the `AdminRevokeUserSessions` operationId).
+	AdminRevokeUserSessionsWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminRevokeUserSessionsResponse, error)
+
+	// AdminRevokeUserSessionsWithResponse Revoke all active sessions for a user.
+	//
+	// Signs the user out everywhere without changing their account status — the response to a lost device or a shared password, where suspension would be the wrong punishment.
+	//
+	// Idempotent: revoking sessions for a user who has none succeeds.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/users/{id}/sessions/revoke (the `AdminRevokeUserSessions` operationId).
+	AdminRevokeUserSessionsWithResponse(ctx context.Context, id openapi_types.UUID, body AdminRevokeUserSessionsJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminRevokeUserSessionsResponse, error)
+
+	// AdminSuspendUserWithBodyWithResponse Suspend user and revoke active sessions.
+	//
+	// Moves the account to `suspended` and ends every active session, so the suspension takes effect on the next request rather than whenever the access token happens to expire.
+	//
+	// The two halves run in separate transactions, in that order: the admin action log records the intent before anything is revoked. An administrator suspending their own account is refused with 403 `SELF_ADMIN_ACTION_FORBIDDEN`.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/users/{id}/suspend (the `AdminSuspendUser` operationId).
+	AdminSuspendUserWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminSuspendUserResponse, error)
+
+	// AdminSuspendUserWithResponse Suspend user and revoke active sessions.
+	//
+	// Moves the account to `suspended` and ends every active session, so the suspension takes effect on the next request rather than whenever the access token happens to expire.
+	//
+	// The two halves run in separate transactions, in that order: the admin action log records the intent before anything is revoked. An administrator suspending their own account is refused with 403 `SELF_ADMIN_ACTION_FORBIDDEN`.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/users/{id}/suspend (the `AdminSuspendUser` operationId).
+	AdminSuspendUserWithResponse(ctx context.Context, id openapi_types.UUID, body AdminSuspendUserJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminSuspendUserResponse, error)
 
 	// AuthResendChallengeWithResponse Send a new code for a challenge.
 	//
@@ -3910,6 +4915,282 @@ func (r AuditSearchLogsResponse) ContentType() string {
 	return ""
 }
 
+// AdminListFlagsResponse200Headers the declared response headers of an HTTP 200 response for AdminListFlags
+type AdminListFlagsResponse200Headers struct {
+	XRequestId *string
+}
+
+type AdminListFlagsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *FeatureFlagList
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AdminListFlagsResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AdminListFlagsResponse) GetJSON200() *FeatureFlagList {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AdminListFlagsResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminListFlagsResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminListFlagsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminListFlagsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminListFlagsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminListFlagsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AdminCreateFlagResponse201Headers the declared response headers of an HTTP 201 response for AdminCreateFlag
+type AdminCreateFlagResponse201Headers struct {
+	XRequestId *string
+}
+
+type AdminCreateFlagResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *FeatureFlag
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *AdminCreateFlagResponse201Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r AdminCreateFlagResponse) GetJSON201() *FeatureFlag {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AdminCreateFlagResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminCreateFlagResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AdminCreateFlagResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AdminCreateFlagResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminCreateFlagResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminCreateFlagResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminCreateFlagResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminCreateFlagResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AdminDeleteFlagResponse204Headers the declared response headers of an HTTP 204 response for AdminDeleteFlag
+type AdminDeleteFlagResponse204Headers struct {
+	XRequestId *string
+}
+
+type AdminDeleteFlagResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// Headers204 the parsed response headers for an HTTP 204 response
+	Headers204 *AdminDeleteFlagResponse204Headers
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AdminDeleteFlagResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminDeleteFlagResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AdminDeleteFlagResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminDeleteFlagResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminDeleteFlagResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminDeleteFlagResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminDeleteFlagResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AdminUpdateFlagResponse200Headers the declared response headers of an HTTP 200 response for AdminUpdateFlag
+type AdminUpdateFlagResponse200Headers struct {
+	XRequestId *string
+}
+
+type AdminUpdateFlagResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *FeatureFlag
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AdminUpdateFlagResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AdminUpdateFlagResponse) GetJSON200() *FeatureFlag {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AdminUpdateFlagResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminUpdateFlagResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AdminUpdateFlagResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AdminUpdateFlagResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminUpdateFlagResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminUpdateFlagResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminUpdateFlagResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminUpdateFlagResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // RbacListRolesResponse200Headers the declared response headers of an HTTP 200 response for RbacListRoles
 type RbacListRolesResponse200Headers struct {
 	XRequestId *string
@@ -4138,6 +5419,213 @@ func (r AuditResolveSecurityEventResponse) ContentType() string {
 	return ""
 }
 
+// AdminListUsersResponse200Headers the declared response headers of an HTTP 200 response for AdminListUsers
+type AdminListUsersResponse200Headers struct {
+	XRequestId *string
+}
+
+type AdminListUsersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AdminUserPage
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AdminListUsersResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AdminListUsersResponse) GetJSON200() *AdminUserPage {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AdminListUsersResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminListUsersResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminListUsersResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminListUsersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminListUsersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminListUsersResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AdminGetUserResponse200Headers the declared response headers of an HTTP 200 response for AdminGetUser
+type AdminGetUserResponse200Headers struct {
+	XRequestId *string
+}
+
+type AdminGetUserResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AdminUserDetail
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AdminGetUserResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AdminGetUserResponse) GetJSON200() *AdminUserDetail {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AdminGetUserResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminGetUserResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AdminGetUserResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminGetUserResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminGetUserResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminGetUserResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminGetUserResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AdminReinstateUserResponse200Headers the declared response headers of an HTTP 200 response for AdminReinstateUser
+type AdminReinstateUserResponse200Headers struct {
+	XRequestId *string
+}
+
+type AdminReinstateUserResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AdminUserStatusChanged
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AdminReinstateUserResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AdminReinstateUserResponse) GetJSON200() *AdminUserStatusChanged {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AdminReinstateUserResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminReinstateUserResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AdminReinstateUserResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AdminReinstateUserResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminReinstateUserResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminReinstateUserResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminReinstateUserResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminReinstateUserResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // RbacAssignRoleResponse200Headers the declared response headers of an HTTP 200 response for RbacAssignRole
 type RbacAssignRoleResponse200Headers struct {
 	XRequestId *string
@@ -4291,6 +5779,158 @@ func (r RbacRevokeRoleResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r RbacRevokeRoleResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AdminRevokeUserSessionsResponse200Headers the declared response headers of an HTTP 200 response for AdminRevokeUserSessions
+type AdminRevokeUserSessionsResponse200Headers struct {
+	XRequestId *string
+}
+
+type AdminRevokeUserSessionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AdminSessionsRevoked
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AdminRevokeUserSessionsResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AdminRevokeUserSessionsResponse) GetJSON200() *AdminSessionsRevoked {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AdminRevokeUserSessionsResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminRevokeUserSessionsResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AdminRevokeUserSessionsResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AdminRevokeUserSessionsResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminRevokeUserSessionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminRevokeUserSessionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminRevokeUserSessionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminRevokeUserSessionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AdminSuspendUserResponse200Headers the declared response headers of an HTTP 200 response for AdminSuspendUser
+type AdminSuspendUserResponse200Headers struct {
+	XRequestId *string
+}
+
+type AdminSuspendUserResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AdminUserStatusChanged
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AdminSuspendUserResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AdminSuspendUserResponse) GetJSON200() *AdminUserStatusChanged {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AdminSuspendUserResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminSuspendUserResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AdminSuspendUserResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AdminSuspendUserResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminSuspendUserResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminSuspendUserResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminSuspendUserResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminSuspendUserResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -6685,6 +8325,100 @@ func (c *ClientWithResponses) AuditSearchLogsWithResponse(ctx context.Context, p
 	return ParseAuditSearchLogsResponse(rsp)
 }
 
+// AdminListFlagsWithResponse List all feature flags.
+//
+// Returns every flag, unpaginated. The set is small by design, and an administrator needs the whole of it to see which flags are past their `expires_on` and should have been deleted.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/flags (the `AdminListFlags` operationId).
+func (c *ClientWithResponses) AdminListFlagsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AdminListFlagsResponse, error) {
+	rsp, err := c.AdminListFlags(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminListFlagsResponse(rsp)
+}
+
+// AdminCreateFlagWithBodyWithResponse Create feature flag.
+//
+// Defines a new flag, off by default. `owner` and `expires_on` are required and `expires_on` must be in the future: a flag with nobody accountable and no end date is how a temporary switch becomes permanent.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/flags (the `AdminCreateFlag` operationId).
+func (c *ClientWithResponses) AdminCreateFlagWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminCreateFlagResponse, error) {
+	rsp, err := c.AdminCreateFlagWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminCreateFlagResponse(rsp)
+}
+
+// AdminCreateFlagWithResponse Create feature flag.
+//
+// Defines a new flag, off by default. `owner` and `expires_on` are required and `expires_on` must be in the future: a flag with nobody accountable and no end date is how a temporary switch becomes permanent.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/flags (the `AdminCreateFlag` operationId).
+func (c *ClientWithResponses) AdminCreateFlagWithResponse(ctx context.Context, body AdminCreateFlagJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminCreateFlagResponse, error) {
+	rsp, err := c.AdminCreateFlag(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminCreateFlagResponse(rsp)
+}
+
+// AdminDeleteFlagWithResponse Delete feature flag.
+//
+// Removes the flag. Every subsequent evaluation of the key returns false, so delete the flag only once the code that reads it is gone — otherwise the feature silently turns off for everybody.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /admin/flags/{key} (the `AdminDeleteFlag` operationId).
+func (c *ClientWithResponses) AdminDeleteFlagWithResponse(ctx context.Context, key string, reqEditors ...RequestEditorFn) (*AdminDeleteFlagResponse, error) {
+	rsp, err := c.AdminDeleteFlag(ctx, key, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminDeleteFlagResponse(rsp)
+}
+
+// AdminUpdateFlagWithBodyWithResponse Update feature flag.
+//
+// Replaces the mutable fields of a flag. Because bucketing hashes the flag key together with the user id, raising `rollout_percent` only ever adds users to the treatment group — nobody who was already in it is moved out.
+//
+// The change invalidates the 30-second evaluation cache for this key, so it is visible within one cache generation rather than immediately.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /admin/flags/{key} (the `AdminUpdateFlag` operationId).
+func (c *ClientWithResponses) AdminUpdateFlagWithBodyWithResponse(ctx context.Context, key string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminUpdateFlagResponse, error) {
+	rsp, err := c.AdminUpdateFlagWithBody(ctx, key, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminUpdateFlagResponse(rsp)
+}
+
+// AdminUpdateFlagWithResponse Update feature flag.
+//
+// Replaces the mutable fields of a flag. Because bucketing hashes the flag key together with the user id, raising `rollout_percent` only ever adds users to the treatment group — nobody who was already in it is moved out.
+//
+// The change invalidates the 30-second evaluation cache for this key, so it is visible within one cache generation rather than immediately.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /admin/flags/{key} (the `AdminUpdateFlag` operationId).
+func (c *ClientWithResponses) AdminUpdateFlagWithResponse(ctx context.Context, key string, body AdminUpdateFlagJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminUpdateFlagResponse, error) {
+	rsp, err := c.AdminUpdateFlag(ctx, key, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminUpdateFlagResponse(rsp)
+}
+
 // RbacListRolesWithResponse List roles and the permissions they grant.
 //
 // The catalogue is small and fixed, so it is returned whole rather than paginated.
@@ -6745,6 +8479,72 @@ func (c *ClientWithResponses) AuditResolveSecurityEventWithResponse(ctx context.
 	return ParseAuditResolveSecurityEventResponse(rsp)
 }
 
+// AdminListUsersWithResponse Search users with cursor pagination.
+//
+// Finds accounts by prefix, status, or creation window. The filters combine with AND; supplying none walks every account.
+//
+// The search itself is not audited — an administrator typing into a search box is not an action on anybody. Opening a result is, which is why the row is thin and `adminGetUser` is a separate operation.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/users (the `AdminListUsers` operationId).
+func (c *ClientWithResponses) AdminListUsersWithResponse(ctx context.Context, params *AdminListUsersParams, reqEditors ...RequestEditorFn) (*AdminListUsersResponse, error) {
+	rsp, err := c.AdminListUsers(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminListUsersResponse(rsp)
+}
+
+// AdminGetUserWithResponse Get detailed user profile. Audited on read.
+//
+// Returns one account in full. Unlike the search, the read itself is recorded as `admin.user_viewed` with the acting administrator: looking at a specific person's account is an act, and the audit log is what makes it reviewable.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/users/{id} (the `AdminGetUser` operationId).
+func (c *ClientWithResponses) AdminGetUserWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*AdminGetUserResponse, error) {
+	rsp, err := c.AdminGetUser(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminGetUserResponse(rsp)
+}
+
+// AdminReinstateUserWithBodyWithResponse Reinstate suspended user.
+//
+// Returns a suspended account to `active`. Sessions are not restored — they were destroyed, not paused — so the learner signs in again.
+//
+// A reason is required here as well: reversing a suspension is as much a decision as making one, and the log should carry both sides.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/users/{id}/reinstate (the `AdminReinstateUser` operationId).
+func (c *ClientWithResponses) AdminReinstateUserWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminReinstateUserResponse, error) {
+	rsp, err := c.AdminReinstateUserWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminReinstateUserResponse(rsp)
+}
+
+// AdminReinstateUserWithResponse Reinstate suspended user.
+//
+// Returns a suspended account to `active`. Sessions are not restored — they were destroyed, not paused — so the learner signs in again.
+//
+// A reason is required here as well: reversing a suspension is as much a decision as making one, and the log should carry both sides.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/users/{id}/reinstate (the `AdminReinstateUser` operationId).
+func (c *ClientWithResponses) AdminReinstateUserWithResponse(ctx context.Context, id openapi_types.UUID, body AdminReinstateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminReinstateUserResponse, error) {
+	rsp, err := c.AdminReinstateUser(ctx, id, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminReinstateUserResponse(rsp)
+}
+
 // RbacAssignRoleWithBodyWithResponse Grant a role to a user.
 //
 // Granting is idempotent: a role the user already holds is not an error. An actor cannot grant themselves a role they do not already hold.
@@ -6788,6 +8588,74 @@ func (c *ClientWithResponses) RbacRevokeRoleWithResponse(ctx context.Context, id
 		return nil, err
 	}
 	return ParseRbacRevokeRoleResponse(rsp)
+}
+
+// AdminRevokeUserSessionsWithBodyWithResponse Revoke all active sessions for a user.
+//
+// Signs the user out everywhere without changing their account status — the response to a lost device or a shared password, where suspension would be the wrong punishment.
+//
+// Idempotent: revoking sessions for a user who has none succeeds.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/users/{id}/sessions/revoke (the `AdminRevokeUserSessions` operationId).
+func (c *ClientWithResponses) AdminRevokeUserSessionsWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminRevokeUserSessionsResponse, error) {
+	rsp, err := c.AdminRevokeUserSessionsWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminRevokeUserSessionsResponse(rsp)
+}
+
+// AdminRevokeUserSessionsWithResponse Revoke all active sessions for a user.
+//
+// Signs the user out everywhere without changing their account status — the response to a lost device or a shared password, where suspension would be the wrong punishment.
+//
+// Idempotent: revoking sessions for a user who has none succeeds.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/users/{id}/sessions/revoke (the `AdminRevokeUserSessions` operationId).
+func (c *ClientWithResponses) AdminRevokeUserSessionsWithResponse(ctx context.Context, id openapi_types.UUID, body AdminRevokeUserSessionsJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminRevokeUserSessionsResponse, error) {
+	rsp, err := c.AdminRevokeUserSessions(ctx, id, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminRevokeUserSessionsResponse(rsp)
+}
+
+// AdminSuspendUserWithBodyWithResponse Suspend user and revoke active sessions.
+//
+// Moves the account to `suspended` and ends every active session, so the suspension takes effect on the next request rather than whenever the access token happens to expire.
+//
+// The two halves run in separate transactions, in that order: the admin action log records the intent before anything is revoked. An administrator suspending their own account is refused with 403 `SELF_ADMIN_ACTION_FORBIDDEN`.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/users/{id}/suspend (the `AdminSuspendUser` operationId).
+func (c *ClientWithResponses) AdminSuspendUserWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminSuspendUserResponse, error) {
+	rsp, err := c.AdminSuspendUserWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminSuspendUserResponse(rsp)
+}
+
+// AdminSuspendUserWithResponse Suspend user and revoke active sessions.
+//
+// Moves the account to `suspended` and ends every active session, so the suspension takes effect on the next request rather than whenever the access token happens to expire.
+//
+// The two halves run in separate transactions, in that order: the admin action log records the intent before anything is revoked. An administrator suspending their own account is refused with 403 `SELF_ADMIN_ACTION_FORBIDDEN`.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/users/{id}/suspend (the `AdminSuspendUser` operationId).
+func (c *ClientWithResponses) AdminSuspendUserWithResponse(ctx context.Context, id openapi_types.UUID, body AdminSuspendUserJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminSuspendUserResponse, error) {
+	rsp, err := c.AdminSuspendUser(ctx, id, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminSuspendUserResponse(rsp)
 }
 
 // AuthResendChallengeWithResponse Send a new code for a challenge.
@@ -7627,6 +9495,249 @@ func ParseAuditSearchLogsResponse(rsp *http.Response) (*AuditSearchLogsResponse,
 	return response, nil
 }
 
+// ParseAdminListFlagsResponse parses an HTTP response from a AdminListFlagsWithResponse call
+func ParseAdminListFlagsResponse(rsp *http.Response) (*AdminListFlagsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminListFlagsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest FeatureFlagList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AdminListFlagsResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAdminCreateFlagResponse parses an HTTP response from a AdminCreateFlagWithResponse call
+func ParseAdminCreateFlagResponse(rsp *http.Response) (*AdminCreateFlagResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminCreateFlagResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest FeatureFlag
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers AdminCreateFlagResponse201Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers201 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAdminDeleteFlagResponse parses an HTTP response from a AdminDeleteFlagWithResponse call
+func ParseAdminDeleteFlagResponse(rsp *http.Response) (*AdminDeleteFlagResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminDeleteFlagResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		var headers AdminDeleteFlagResponse204Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers204 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAdminUpdateFlagResponse parses an HTTP response from a AdminUpdateFlagWithResponse call
+func ParseAdminUpdateFlagResponse(rsp *http.Response) (*AdminUpdateFlagResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminUpdateFlagResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest FeatureFlag
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AdminUpdateFlagResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseRbacListRolesResponse parses an HTTP response from a RbacListRolesWithResponse call
 func ParseRbacListRolesResponse(rsp *http.Response) (*RbacListRolesResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -7828,6 +9939,186 @@ func ParseAuditResolveSecurityEventResponse(rsp *http.Response) (*AuditResolveSe
 	return response, nil
 }
 
+// ParseAdminListUsersResponse parses an HTTP response from a AdminListUsersWithResponse call
+func ParseAdminListUsersResponse(rsp *http.Response) (*AdminListUsersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminListUsersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AdminUserPage
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AdminListUsersResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAdminGetUserResponse parses an HTTP response from a AdminGetUserWithResponse call
+func ParseAdminGetUserResponse(rsp *http.Response) (*AdminGetUserResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminGetUserResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AdminUserDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AdminGetUserResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAdminReinstateUserResponse parses an HTTP response from a AdminReinstateUserWithResponse call
+func ParseAdminReinstateUserResponse(rsp *http.Response) (*AdminReinstateUserResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminReinstateUserResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AdminUserStatusChanged
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AdminReinstateUserResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseRbacAssignRoleResponse parses an HTTP response from a RbacAssignRoleWithResponse call
 func ParseRbacAssignRoleResponse(rsp *http.Response) (*RbacAssignRoleResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -7956,6 +10247,140 @@ func ParseRbacRevokeRoleResponse(rsp *http.Response) (*RbacRevokeRoleResponse, e
 	switch {
 	case rsp.StatusCode == 200:
 		var headers RbacRevokeRoleResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAdminRevokeUserSessionsResponse parses an HTTP response from a AdminRevokeUserSessionsWithResponse call
+func ParseAdminRevokeUserSessionsResponse(rsp *http.Response) (*AdminRevokeUserSessionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminRevokeUserSessionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AdminSessionsRevoked
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AdminRevokeUserSessionsResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAdminSuspendUserResponse parses an HTTP response from a AdminSuspendUserWithResponse call
+func ParseAdminSuspendUserResponse(rsp *http.Response) (*AdminSuspendUserResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminSuspendUserResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AdminUserStatusChanged
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AdminSuspendUserResponse200Headers
 		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
 			var value string
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {

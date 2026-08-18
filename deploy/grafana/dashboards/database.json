@@ -1,0 +1,61 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "panels": [
+    {
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "P95 Query Latency",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(db_query_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "P95 Latency (s)"
+        }
+      ]
+    },
+    {
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "id": 2,
+      "title": "Query Rate by Statement",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(db_query_duration_seconds_count[5m])) by (query_name)",
+          "legendFormat": "{{query_name}}"
+        }
+      ]
+    },
+    {
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "id": 3,
+      "title": "Connection Pool",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "db_pool_connections",
+          "legendFormat": "{{state}}"
+        }
+      ]
+    },
+    {
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "id": 4,
+      "title": "Pool Saturation (alert fires above 0.9)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "db_pool_connections{state=\"acquired\"} / db_pool_connections{state=\"max\"}",
+          "legendFormat": "acquired / max"
+        }
+      ]
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["fluentra", "database"],
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "Database Overview",
+  "uid": "fluentra-database"
+}

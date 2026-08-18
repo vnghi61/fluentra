@@ -169,10 +169,17 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("parse database configuration: %w", err)
 	}
-	poolConfig.ConnConfig.Tracer = otelpgx.NewTracer(otelpgx.WithDisableConnectionDetailsInAttributes())
+	poolConfig.ConnConfig.Tracer = telemetry.NewDBQueryTracer(
+		otelpgx.NewTracer(otelpgx.WithDisableConnectionDetailsInAttributes()),
+		provider.Instruments(),
+	)
 	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {
 		return fmt.Errorf("create database pool: %w", err)
+	}
+	if _, err := provider.Instruments().ObserveDBPoolConnections(pool); err != nil {
+		// Losing the gauge is not a reason to refuse startup; queries still work.
+		slog.Warn("db pool gauge not registered", "error", err)
 	}
 
 	redisOptions, err := redis.ParseURL(cfg.Redis.URL)
@@ -229,13 +236,14 @@ func run(ctx context.Context) error {
 	}
 
 	modules := newIdentity(identityDeps{
-		Pool:       pool,
-		Cache:      cache.NewRedisCache[[]string](redisClient),
-		Limiter:    cache.NewRedisLimiter(redisClient),
-		Storage:    storage.NewMinIOStore(storageClient),
-		Enqueuer:   jobClient,
-		Env:        cfg.App.Environment,
-		OTPHMACKey: []byte(cfg.OTP.HMACKey),
+		Pool:        pool,
+		Cache:       cache.NewRedisCache[[]string](redisClient),
+		Limiter:     cache.NewRedisLimiter(redisClient),
+		Storage:     storage.NewMinIOStore(storageClient),
+		Enqueuer:    jobClient,
+		Instruments: provider.Instruments(),
+		Env:         cfg.App.Environment,
+		OTPHMACKey:  []byte(cfg.OTP.HMACKey),
 		Tokens: authservice.TokenConfig{
 			SigningKey:  []byte(cfg.JWT.SigningKey),
 			PreviousKey: []byte(cfg.JWT.PreviousKey),

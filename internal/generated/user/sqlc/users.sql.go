@@ -164,6 +164,92 @@ func (q *Queries) PurgeUnverifiedUsersBefore(ctx context.Context, cutoff time.Ti
 	return result.RowsAffected(), nil
 }
 
+const searchUsersAdmin = `-- name: SearchUsersAdmin :many
+SELECT
+    u.id,
+    u.email,
+    u.status,
+    u.created_at,
+    u.updated_at,
+    p.display_name,
+    p.avatar_asset_id,
+    p.timezone,
+    pref.locale
+FROM core.users u
+JOIN core.profiles p ON p.user_id = u.id
+JOIN core.user_preferences pref ON pref.user_id = u.id
+WHERE ($1::text = '' OR u.email ILIKE $1 || '%')
+  AND ($2::text = '' OR p.display_name ILIKE '%' || $2 || '%')
+  AND ($3::text = '' OR u.status::text = $3)
+  AND ($4::timestamptz IS NULL OR u.created_at >= $4)
+  AND ($5::timestamptz IS NULL OR u.created_at <= $5)
+  AND ($6::uuid IS NULL OR (u.created_at, u.id) < ($7::timestamptz, $6::uuid))
+ORDER BY u.created_at DESC, u.id DESC
+LIMIT $8
+`
+
+type SearchUsersAdminParams struct {
+	EmailPrefix     string
+	DisplayName     string
+	Status          string
+	CreatedAfter    time.Time
+	CreatedBefore   time.Time
+	CursorID        uuid.UUID
+	CursorCreatedAt time.Time
+	ResultLimit     int32
+}
+
+type SearchUsersAdminRow struct {
+	ID            uuid.UUID
+	Email         string
+	Status        CoreUserStatus
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	DisplayName   string
+	AvatarAssetID *uuid.UUID
+	Timezone      string
+	Locale        string
+}
+
+func (q *Queries) SearchUsersAdmin(ctx context.Context, arg SearchUsersAdminParams) ([]SearchUsersAdminRow, error) {
+	rows, err := q.db.Query(ctx, searchUsersAdmin,
+		arg.EmailPrefix,
+		arg.DisplayName,
+		arg.Status,
+		arg.CreatedAfter,
+		arg.CreatedBefore,
+		arg.CursorID,
+		arg.CursorCreatedAt,
+		arg.ResultLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SearchUsersAdminRow
+	for rows.Next() {
+		var i SearchUsersAdminRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Email,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DisplayName,
+			&i.AvatarAssetID,
+			&i.Timezone,
+			&i.Locale,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateUserStatus = `-- name: UpdateUserStatus :one
 UPDATE core.users
 SET status = $2, updated_at = now()

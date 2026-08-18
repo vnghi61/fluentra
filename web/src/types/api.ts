@@ -702,6 +702,164 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search users with cursor pagination.
+         * @description Finds accounts by prefix, status, or creation window. The filters combine with AND; supplying none walks every account.
+         *
+         *     The search itself is not audited — an administrator typing into a search box is not an action on anybody. Opening a result is, which is why the row is thin and `adminGetUser` is a separate operation.
+         */
+        get: operations["adminListUsers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/users/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get detailed user profile. Audited on read.
+         * @description Returns one account in full. Unlike the search, the read itself is recorded as `admin.user_viewed` with the acting administrator: looking at a specific person's account is an act, and the audit log is what makes it reviewable.
+         */
+        get: operations["adminGetUser"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/users/{id}/suspend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Suspend user and revoke active sessions.
+         * @description Moves the account to `suspended` and ends every active session, so the suspension takes effect on the next request rather than whenever the access token happens to expire.
+         *
+         *     The two halves run in separate transactions, in that order: the admin action log records the intent before anything is revoked. An administrator suspending their own account is refused with 403 `SELF_ADMIN_ACTION_FORBIDDEN`.
+         */
+        post: operations["adminSuspendUser"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/users/{id}/reinstate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reinstate suspended user.
+         * @description Returns a suspended account to `active`. Sessions are not restored — they were destroyed, not paused — so the learner signs in again.
+         *
+         *     A reason is required here as well: reversing a suspension is as much a decision as making one, and the log should carry both sides.
+         */
+        post: operations["adminReinstateUser"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/users/{id}/sessions/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revoke all active sessions for a user.
+         * @description Signs the user out everywhere without changing their account status — the response to a lost device or a shared password, where suspension would be the wrong punishment.
+         *
+         *     Idempotent: revoking sessions for a user who has none succeeds.
+         */
+        post: operations["adminRevokeUserSessions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/flags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List all feature flags.
+         * @description Returns every flag, unpaginated. The set is small by design, and an administrator needs the whole of it to see which flags are past their `expires_on` and should have been deleted.
+         */
+        get: operations["adminListFlags"];
+        put?: never;
+        /**
+         * Create feature flag.
+         * @description Defines a new flag, off by default. `owner` and `expires_on` are required and `expires_on` must be in the future: a flag with nobody accountable and no end date is how a temporary switch becomes permanent.
+         */
+        post: operations["adminCreateFlag"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/flags/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update feature flag.
+         * @description Replaces the mutable fields of a flag. Because bucketing hashes the flag key together with the user id, raising `rollout_percent` only ever adds users to the treatment group — nobody who was already in it is moved out.
+         *
+         *     The change invalidates the 30-second evaluation cache for this key, so it is visible within one cache generation rather than immediately.
+         */
+        put: operations["adminUpdateFlag"];
+        post?: never;
+        /**
+         * Delete feature flag.
+         * @description Removes the flag. Every subsequent evaluation of the key returns false, so delete the flag only once the code that reads it is gone — otherwise the feature silently turns off for everybody.
+         */
+        delete: operations["adminDeleteFlag"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/roles": {
         parameters: {
             query?: never;
@@ -1696,6 +1854,152 @@ export interface components {
         ResolveSecurityEventRequest: {
             /** @example Known load test, permission denial expected. */
             note: string;
+        };
+        /** @description A user as it appears in an administrative search result. Deliberately thinner than `AdminUserDetail`: a list screen shows many rows at once, and reading a row is not audited, so it carries only what the row renders. */
+        AdminUserSummary: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * Format: email
+             * @description Visible here because `user.list` is an administrative permission. The learner-facing search operations never return an address.
+             * @example learner@example.com
+             */
+            email: string;
+            /** @example Nghi */
+            display_name: string;
+            /**
+             * Format: uri
+             * @description Public avatar URL, or null when none has been uploaded.
+             */
+            avatar_url?: string | null;
+            status: components["schemas"]["UserStatus"];
+            /** Format: date-time */
+            created_at: string;
+        };
+        /** @description One page of search results. Cursor-paginated rather than offset-paginated because the underlying set changes while an administrator pages through it. */
+        AdminUserPage: {
+            items: components["schemas"]["AdminUserSummary"][];
+            /** @description Opaque cursor for the following page. Absent on the last page — its absence, not an empty `items`, is what ends the walk. */
+            next_cursor?: string;
+        };
+        /** @description The full profile an administrator sees on one user. Reading this is recorded as `admin.user_viewed`, which is why it is a separate operation from the search rather than a wider search row. */
+        AdminUserDetail: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * Format: email
+             * @example learner@example.com
+             */
+            email: string;
+            /** @example Nghi */
+            display_name: string;
+            /** Format: uri */
+            avatar_url?: string | null;
+            /**
+             * @description IETF language tag the learner reads the product in.
+             * @example vi-VN
+             */
+            locale: string;
+            /**
+             * @description IANA timezone name. Every timestamp in the API stays UTC.
+             * @example Asia/Ho_Chi_Minh
+             */
+            timezone: string;
+            status: components["schemas"]["UserStatus"];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        /** @description The reason an administrative action was taken. Required on every operation that changes another account's state: the reason is written to the admin action log alongside the actor, and a log entry without one would not answer the question the log exists to answer. */
+        AdminActionRequest: {
+            /**
+             * @description Free text, at least 10 characters. Trimmed before the length is checked, so whitespace does not satisfy it.
+             * @example Repeated spam reports confirmed by moderation review.
+             */
+            reason: string;
+        };
+        /** @description The user's new lifecycle state after a suspend or reinstate. */
+        AdminUserStatusChanged: {
+            /** Format: uuid */
+            id: string;
+            status: components["schemas"]["UserStatus"];
+        };
+        /** @description Acknowledges that every active session for the user was ended. */
+        AdminSessionsRevoked: {
+            /** Format: uuid */
+            id: string;
+            /** @description Always true on success. The count is deliberately not returned — it leaks how many devices a user is signed in on, and the operation is idempotent, so zero and many are the same outcome. */
+            revoked: boolean;
+        };
+        /** @description A feature flag and its rollout. Evaluation buckets a user by a stable hash of the flag key and the user id, so a given user stays on the same side of a partial rollout across requests. */
+        FeatureFlag: {
+            /**
+             * @description Stable identifier the code checks. Never reused after deletion.
+             * @example streaks_v2
+             */
+            key: string;
+            /** @description The master switch. A disabled flag is off for everybody regardless of `rollout_percent`. */
+            enabled: boolean;
+            /**
+             * @description Share of users the flag is on for while `enabled` is true.
+             * @example 25
+             */
+            rollout_percent: number;
+            /**
+             * @description Who is accountable for removing this flag. Required so that an expired flag has somebody to chase.
+             * @example @backend-team
+             */
+            owner: string;
+            /**
+             * Format: date
+             * @description The date this flag is expected to be gone. Flags are meant to be temporary; this is what makes an abandoned one visible.
+             * @example 2026-12-31
+             */
+            expires_on: string;
+            /**
+             * @description What the flag controls, in a sentence.
+             * @example Second-generation streak calculation.
+             */
+            description: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        /** @description Every flag, unpaginated. The set is small and an administrator needs to see all of it to spot the expired ones. */
+        FeatureFlagList: {
+            items: components["schemas"]["FeatureFlag"][];
+        };
+        CreateFeatureFlagRequest: {
+            /** @example streaks_v2 */
+            key: string;
+            /** @default false */
+            enabled: boolean;
+            /** @default 0 */
+            rollout_percent: number;
+            /** @example @backend-team */
+            owner: string;
+            /**
+             * Format: date
+             * @description Must be in the future.
+             * @example 2026-12-31
+             */
+            expires_on: string;
+            /** @example Second-generation streak calculation. */
+            description: string;
+        };
+        /** @description A full replacement of the mutable fields. `key` and `owner` are not here: changing either would make the flag a different flag, and the audit trail reads better when that is a delete and a create. */
+        UpdateFeatureFlagRequest: {
+            enabled?: boolean;
+            rollout_percent?: number;
+            /**
+             * Format: date
+             * @example 2026-12-31
+             */
+            expires_on: string;
+            /** @example Second-generation streak calculation. */
+            description: string;
         };
     };
     responses: {
@@ -3162,6 +3466,395 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    adminListUsers: {
+        parameters: {
+            query?: {
+                /** @description Matches the start of the address only. Substring search over addresses is deliberately not offered. */
+                email_prefix?: string;
+                /** @description Matches the start of the display name. */
+                display_name?: string;
+                /** @description Restricts results to one lifecycle state. */
+                status?: components["schemas"]["UserStatus"];
+                /** @description Only accounts created at or after this instant. */
+                created_after?: string;
+                /** @description Only accounts created at or before this instant. */
+                created_before?: string;
+                /** @description The `next_cursor` of the previous page. Omit for the first page. */
+                cursor?: string;
+                /** @description Rows per page. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of matching accounts. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *           "email": "learner@example.com",
+                     *           "display_name": "Nghi",
+                     *           "avatar_url": null,
+                     *           "status": "active",
+                     *           "created_at": "2026-08-01T09:15:00Z"
+                     *         }
+                     *       ],
+                     *       "next_cursor": "MjAyNi0wOC0wMVQwOToxNTowMFo"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["AdminUserPage"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    adminGetUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The account to inspect. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The account, and an audit entry recording the read. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "email": "learner@example.com",
+                     *       "display_name": "Nghi",
+                     *       "avatar_url": null,
+                     *       "locale": "vi-VN",
+                     *       "timezone": "Asia/Ho_Chi_Minh",
+                     *       "status": "active",
+                     *       "created_at": "2026-08-01T09:15:00Z",
+                     *       "updated_at": "2026-08-14T02:30:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["AdminUserDetail"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    adminSuspendUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The account to suspend. May not be the caller's own. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "reason": "Repeated spam reports confirmed by moderation review."
+                 *     }
+                 */
+                "application/json": components["schemas"]["AdminActionRequest"];
+            };
+        };
+        responses: {
+            /** @description The account is suspended and its sessions are gone. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "status": "suspended"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["AdminUserStatusChanged"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    adminReinstateUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The account to reinstate. May not be the caller's own. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "reason": "Appeal upheld; the reports were not substantiated."
+                 *     }
+                 */
+                "application/json": components["schemas"]["AdminActionRequest"];
+            };
+        };
+        responses: {
+            /** @description The account is active again. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "status": "active"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["AdminUserStatusChanged"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    adminRevokeUserSessions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The account whose sessions are ended. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "reason": "Learner reported their laptop stolen over support chat."
+                 *     }
+                 */
+                "application/json": components["schemas"]["AdminActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Every active session for the user has been ended. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "revoked": true
+                     *     }
+                     */
+                    "application/json": components["schemas"]["AdminSessionsRevoked"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    adminListFlags: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every feature flag the platform defines. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "key": "streaks_v2",
+                     *           "enabled": true,
+                     *           "rollout_percent": 25,
+                     *           "owner": "@backend-team",
+                     *           "expires_on": "2026-12-31",
+                     *           "description": "Second-generation streak calculation.",
+                     *           "created_at": "2026-08-01T09:15:00Z",
+                     *           "updated_at": "2026-08-16T11:00:00Z"
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["FeatureFlagList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    adminCreateFlag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "key": "streaks_v2",
+                 *       "enabled": false,
+                 *       "rollout_percent": 0,
+                 *       "owner": "@backend-team",
+                 *       "expires_on": "2026-12-31",
+                 *       "description": "Second-generation streak calculation."
+                 *     }
+                 */
+                "application/json": components["schemas"]["CreateFeatureFlagRequest"];
+            };
+        };
+        responses: {
+            /** @description The flag was created. */
+            201: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "key": "streaks_v2",
+                     *       "enabled": false,
+                     *       "rollout_percent": 0,
+                     *       "owner": "@backend-team",
+                     *       "expires_on": "2026-12-31",
+                     *       "description": "Second-generation streak calculation.",
+                     *       "created_at": "2026-08-17T06:25:00Z",
+                     *       "updated_at": "2026-08-17T06:25:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["FeatureFlag"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    adminUpdateFlag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The flag to update. */
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "enabled": true,
+                 *       "rollout_percent": 50,
+                 *       "expires_on": "2026-12-31",
+                 *       "description": "Second-generation streak calculation."
+                 *     }
+                 */
+                "application/json": components["schemas"]["UpdateFeatureFlagRequest"];
+            };
+        };
+        responses: {
+            /** @description The flag as it now stands. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "key": "streaks_v2",
+                     *       "enabled": true,
+                     *       "rollout_percent": 50,
+                     *       "owner": "@backend-team",
+                     *       "expires_on": "2026-12-31",
+                     *       "description": "Second-generation streak calculation.",
+                     *       "created_at": "2026-08-01T09:15:00Z",
+                     *       "updated_at": "2026-08-17T06:25:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["FeatureFlag"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    adminDeleteFlag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The flag to delete. */
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The flag is gone. No body. */
+            204: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
         };
     };

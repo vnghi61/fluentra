@@ -19,6 +19,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/riverqueue/river"
 
+	"github.com/fluentra/fluentra/internal/modules/admin"
 	"github.com/fluentra/fluentra/internal/modules/audit"
 	"github.com/fluentra/fluentra/internal/modules/auth"
 	authservice "github.com/fluentra/fluentra/internal/modules/auth/service"
@@ -209,7 +210,7 @@ func run(ctx context.Context) error {
 		return err
 	}
 
-	pool, err := pgxpool.New(ctx, cfg.Database.DSN)
+	pool, err := openPool(ctx, cfg.Database.DSN, provider.Instruments())
 	if err != nil {
 		return err
 	}
@@ -398,6 +399,13 @@ func startModules(
 		cron.Register(scheduled)
 	}
 
+	adminModule := admin.New(admin.Deps{
+		Pool: pool,
+	})
+	for _, scheduled := range adminModule.CronJobs() {
+		cron.Register(scheduled)
+	}
+
 	return nil
 }
 
@@ -452,6 +460,24 @@ func registerJobKinds(_ *river.Workers) int {
 func storageHost(endpoint string) string {
 	trimmed := strings.TrimPrefix(strings.TrimPrefix(endpoint, "https://"), "http://")
 	return strings.TrimSuffix(trimmed, "/")
+}
+
+// openPool creates the connection pool with the query tracer and pool gauge
+// attached, so the database metrics the alert rules rely on are actually emitted.
+func openPool(ctx context.Context, dsn string, instruments telemetry.Instruments) (*pgxpool.Pool, error) {
+	poolConfig, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		return nil, fmt.Errorf("parse database configuration: %w", err)
+	}
+	poolConfig.ConnConfig.Tracer = telemetry.NewDBQueryTracer(nil, instruments)
+	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
+	if err != nil {
+		return nil, fmt.Errorf("create database pool: %w", err)
+	}
+	if _, err := instruments.ObserveDBPoolConnections(pool); err != nil {
+		slog.Warn("db pool gauge not registered", "error", err)
+	}
+	return pool, nil
 }
 
 // queueNames returns the configured queue names in a stable order, for logging.

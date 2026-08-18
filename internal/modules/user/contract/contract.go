@@ -121,6 +121,50 @@ type Registrar interface {
 	PurgeUnverifiedBefore(ctx context.Context, cutoff time.Time) (int, error)
 }
 
+// UserFilter contains filters for user search by admin.
+type UserFilter struct {
+	EmailPrefix   *string
+	DisplayName   *string
+	Status        *string
+	CreatedAfter  *time.Time
+	CreatedBefore *time.Time
+}
+
+// UserSummary is a lightweight user representation for search results.
+type UserSummary struct {
+	ID          uuid.UUID `json:"id"`
+	Email       string    `json:"email"`
+	DisplayName string    `json:"display_name"`
+	AvatarURL   *string   `json:"avatar_url,omitempty"`
+	Status      string    `json:"status"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
+// UserDetail is the full profile details rendered for admin inspection.
+type UserDetail struct {
+	ID          uuid.UUID `json:"id"`
+	Email       string    `json:"email"`
+	DisplayName string    `json:"display_name"`
+	AvatarURL   *string   `json:"avatar_url,omitempty"`
+	Locale      string    `json:"locale"`
+	Timezone    string    `json:"timezone"`
+	Status      string    `json:"status"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// AdminReader reads users for administrative administration screens.
+type AdminReader interface {
+	SearchUsers(ctx context.Context, filter UserFilter, cursor string, limit int) ([]UserSummary, string, error)
+	GetUserByID(ctx context.Context, id uuid.UUID) (*UserDetail, error)
+}
+
+// AdminManager manages user account state (suspension, reinstatement).
+type AdminManager interface {
+	SuspendUser(ctx context.Context, id uuid.UUID, actorID uuid.UUID, reason string) error
+	ReinstateUser(ctx context.Context, id uuid.UUID, actorID uuid.UUID, reason string) error
+}
+
 // Event names published by this module. They are strings rather than a Go type
 // because a consumer in another module matches on the wire value, and a typed
 // constant it cannot import would not help it.
@@ -130,6 +174,7 @@ const (
 	EventDeletionRequested  = "user.deletion_requested"
 	EventDeleted            = "user.deleted"
 	EventSuspended          = "user.suspended"
+	EventReinstated         = "user.reinstated"
 )
 
 // Aggregate is the outbox aggregate name every event above is written under.

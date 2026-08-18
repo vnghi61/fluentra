@@ -246,6 +246,45 @@ func (q *Queries) GetPendingDeletionByUserID(ctx context.Context, userID uuid.UU
 	return i, err
 }
 
+const getProcessingDeletions = `-- name: GetProcessingDeletions :many
+SELECT id, user_id, status, requested_at, execute_at, started_at, completed_at, cancelled_at, error_message, created_at, updated_at FROM core.user_deletions
+WHERE status = 'processing'
+ORDER BY updated_at ASC
+LIMIT $1
+`
+
+func (q *Queries) GetProcessingDeletions(ctx context.Context, limit int32) ([]CoreUserDeletion, error) {
+	rows, err := q.db.Query(ctx, getProcessingDeletions, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CoreUserDeletion
+	for rows.Next() {
+		var i CoreUserDeletion
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Status,
+			&i.RequestedAt,
+			&i.ExecuteAt,
+			&i.StartedAt,
+			&i.CompletedAt,
+			&i.CancelledAt,
+			&i.ErrorMessage,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateDeletionStatus = `-- name: UpdateDeletionStatus :exec
 UPDATE core.user_deletions
 SET status = $2,

@@ -5,12 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/minio/minio-go/v7"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 )
 
 var (
@@ -23,8 +26,31 @@ var (
 	// the content type the uploader declared.
 	ErrContentTypeMismatch = errors.New("storage: content type mismatch")
 
-	tracer = otel.Tracer("fluentra.platform.storage")
+	tracer                            = otel.Tracer("fluentra.platform.storage")
+	meter                             = otel.Meter("fluentra.platform.storage")
+	storageOperationDurationHistogram metric.Float64Histogram
+	storageBytesCounter               metric.Int64Counter
 )
+
+func init() {
+	var err error
+	storageOperationDurationHistogram, err = meter.Float64Histogram(
+		"storage_operation_duration_seconds",
+		metric.WithUnit("s"),
+		metric.WithDescription("Duration of storage operations"),
+	)
+	if err != nil {
+		slog.Error("failed to create storage_operation_duration_seconds metric", "error", err)
+	}
+	storageBytesCounter, err = meter.Int64Counter(
+		"storage_bytes_total",
+		metric.WithUnit("By"),
+		metric.WithDescription("Total bytes transferred in storage operations"),
+	)
+	if err != nil {
+		slog.Error("failed to create storage_bytes_total metric", "error", err)
+	}
+}
 
 const (
 	// DefaultPresignPutExpiry is the pinned lifetime of an upload intent. Writes
@@ -87,6 +113,15 @@ func NewMinIOStore(client *minio.Client) *MinIOStore { return &MinIOStore{client
 
 // Get retrieves an object stream from storage. The caller must close the stream.
 func (s *MinIOStore) Get(ctx context.Context, bucket, key string) (io.ReadCloser, error) {
+	start := time.Now()
+	defer func() {
+		dur := time.Since(start).Seconds()
+		if storageOperationDurationHistogram != nil {
+			storageOperationDurationHistogram.Record(ctx, dur, metric.WithAttributes(
+				attribute.String("op", "get"), attribute.String("bucket", bucket)))
+		}
+	}()
+
 	ctx, span := tracer.Start(ctx, "storage.Get")
 	defer span.End()
 
@@ -101,6 +136,15 @@ func (s *MinIOStore) Get(ctx context.Context, bucket, key string) (io.ReadCloser
 func (s *MinIOStore) Put(
 	ctx context.Context, bucket, key string, reader io.Reader, size int64, contentType string,
 ) error {
+	start := time.Now()
+	defer func() {
+		dur := time.Since(start).Seconds()
+		if storageOperationDurationHistogram != nil {
+			storageOperationDurationHistogram.Record(ctx, dur, metric.WithAttributes(
+				attribute.String("op", "put"), attribute.String("bucket", bucket)))
+		}
+	}()
+
 	ctx, span := tracer.Start(ctx, "storage.Put")
 	defer span.End()
 
@@ -109,6 +153,11 @@ func (s *MinIOStore) Put(
 	}
 	if _, err := s.client.PutObject(ctx, bucket, key, reader, size, opts); err != nil {
 		return fmt.Errorf("put object: %w", err)
+	}
+
+	if storageBytesCounter != nil && size > 0 {
+		storageBytesCounter.Add(ctx, size, metric.WithAttributes(
+			attribute.String("direction", "upload"), attribute.String("bucket", bucket)))
 	}
 	return nil
 }

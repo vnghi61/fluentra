@@ -436,6 +436,21 @@ func (r *Repository) GetDueDeletions(
 	return items, nil
 }
 
+// GetProcessingDeletions returns account deletion requests currently in processing status.
+func (r *Repository) GetProcessingDeletions(
+	ctx context.Context, limit int32,
+) ([]domain.DeletionRequest, error) {
+	rows, err := r.queries.GetProcessingDeletions(ctx, limit)
+	if err != nil {
+		return nil, fmt.Errorf("get processing deletions: %w", err)
+	}
+	items := make([]domain.DeletionRequest, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, toDomainDeletion(row))
+	}
+	return items, nil
+}
+
 // AnonymiseUser rewrites the email and sets status to deleted.
 func (r *Repository) AnonymiseUser(ctx context.Context, userID uuid.UUID, anonymisedEmail string) error {
 	err := r.queries.AnonymiseUser(ctx, sqlcuser.AnonymiseUserParams{
@@ -549,4 +564,89 @@ func channelsToStrings(channels []domain.Channel) []string {
 		values = append(values, string(channel))
 	}
 	return values
+}
+
+// SearchAdminRow is the raw search row returned for admin search queries.
+type SearchAdminRow struct {
+	ID          uuid.UUID
+	Email       string
+	Status      domain.Status
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	DisplayName string
+	Locale      string
+	Timezone    string
+}
+
+// UserFilterParams carries filter fields for user search at repository layer.
+type UserFilterParams struct {
+	EmailPrefix   *string
+	DisplayName   *string
+	Status        *string
+	CreatedAfter  *time.Time
+	CreatedBefore *time.Time
+}
+
+// SearchUsersAdmin performs cursor-paginated user searches for admin screens.
+func (r *Repository) SearchUsersAdmin(
+	ctx context.Context,
+	filter UserFilterParams,
+	cursorID *uuid.UUID,
+	cursorTime *time.Time,
+	limit int,
+) ([]SearchAdminRow, error) {
+	var emailPrefix, displayName, status string
+	if filter.EmailPrefix != nil {
+		emailPrefix = *filter.EmailPrefix
+	}
+	if filter.DisplayName != nil {
+		displayName = *filter.DisplayName
+	}
+	if filter.Status != nil {
+		status = *filter.Status
+	}
+	var createdAfter, createdBefore time.Time
+	if filter.CreatedAfter != nil {
+		createdAfter = *filter.CreatedAfter
+	}
+	if filter.CreatedBefore != nil {
+		createdBefore = *filter.CreatedBefore
+	}
+	var cID uuid.UUID
+	if cursorID != nil {
+		cID = *cursorID
+	}
+	var cTime time.Time
+	if cursorTime != nil {
+		cTime = *cursorTime
+	}
+
+	rows, err := r.queries.SearchUsersAdmin(ctx, sqlcuser.SearchUsersAdminParams{
+		EmailPrefix:     emailPrefix,
+		DisplayName:     displayName,
+		Status:          status,
+		CreatedAfter:    createdAfter,
+		CreatedBefore:   createdBefore,
+		CursorID:        cID,
+		CursorCreatedAt: cTime,
+		ResultLimit:     int32(limit), //nolint:gosec // limit is validated by handler to positive integer
+	})
+	if err != nil {
+		return nil, fmt.Errorf("search users admin: %w", err)
+	}
+
+	result := make([]SearchAdminRow, 0, len(rows))
+	for _, row := range rows {
+		result = append(result, SearchAdminRow{
+			ID:          row.ID,
+			Email:       row.Email,
+			Status:      domain.Status(row.Status),
+			CreatedAt:   row.CreatedAt,
+			UpdatedAt:   row.UpdatedAt,
+			DisplayName: row.DisplayName,
+			Locale:      row.Locale,
+			Timezone:    row.Timezone,
+		})
+	}
+	return result, nil
 }

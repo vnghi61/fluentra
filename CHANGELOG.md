@@ -13,6 +13,10 @@ generated text describes commits; release notes should describe change.
 
 ### Added
 
+- WP4 Admin Shell (P4.1): Admin user management endpoints (`GET /api/v1/admin/users`, `GET /api/v1/admin/users/{id}`, `POST /api/v1/admin/users/{id}/suspend`, `POST /api/v1/admin/users/{id}/reinstate`, `POST /api/v1/admin/users/{id}/sessions/revoke`) with cursor pagination, audited reads and writes, and self-administration guards.
+- WP4 Feature Flags (P4.2): Feature flags system with stable per-user bucketing via SHA256, percentage rollouts, in-memory caching (30s TTL), and CRUD management endpoints (`/api/v1/admin/flags`).
+- WP4 Observability (P4.3): Prometheus alerting rules (`deploy/prometheus/rules/phase1.yml`), Grafana dashboards (API Overview, Database, Jobs, Auth & Security), and operational runbooks (`docs/operations/runbooks/`).
+
 - Complete Software Architecture Document ([ARCHITECTURE.md](ARCHITECTURE.md))
 - Plan review and optimisation record ([docs/architecture/00-plan-review.md](docs/architecture/00-plan-review.md))
 - AI context engineering strategy ([AI_CONTEXT.md](AI_CONTEXT.md)) and root [AGENT.md](AGENT.md)

@@ -1,0 +1,37 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "panels": [
+    {
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "Auth Lockout Rate",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "rate(auth_lockout_total[5m])",
+          "legendFormat": "Lockouts / sec"
+        }
+      ]
+    },
+    {
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "id": 2,
+      "title": "Refresh Token Reuse Events",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "rate(auth_refresh_reuse_total[1m])",
+          "legendFormat": "Reuse Events / sec"
+        }
+      ]
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["fluentra", "security"],
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "Auth & Security Overview",
+  "uid": "fluentra-auth-security"
+}

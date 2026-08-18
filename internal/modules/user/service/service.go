@@ -80,8 +80,27 @@ type Repository interface {
 	DeletePreferences(ctx context.Context, userID uuid.UUID) error
 	DeleteLearningProfile(ctx context.Context, userID uuid.UUID) error
 	UpdateUserStatus(ctx context.Context, userID uuid.UUID, status domain.Status) error
+	SearchUsersAdmin(
+		ctx context.Context,
+		filter contract.UserFilter,
+		cursorID *uuid.UUID,
+		cursorTime *time.Time,
+		limit int,
+	) ([]SearchUserRow, error)
 
 	WithTx(tx pgx.Tx) Repository
+}
+
+// SearchUserRow is the search result row for admin user search.
+type SearchUserRow struct {
+	ID          uuid.UUID
+	Email       string
+	Status      domain.Status
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	DisplayName string
+	Locale      string
+	Timezone    string
 }
 
 // JobEnqueuer is what the service uses to schedule background work inside a transaction.
