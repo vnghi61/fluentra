@@ -3,6 +3,7 @@ package cache_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -75,6 +76,60 @@ func (m *mockRedisClient) Del(ctx context.Context, keys ...string) *redis.IntCmd
 		}
 	}
 	cmd.SetVal(count)
+	return cmd
+}
+
+func (m *mockRedisClient) SetNX(ctx context.Context, key string, value any, _ time.Duration) *redis.BoolCmd {
+	cmd := redis.NewBoolCmd(ctx, "setnx", key, value)
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.down {
+		cmd.SetErr(errors.New("redis down"))
+		return cmd
+	}
+	if _, exists := m.data[key]; exists {
+		cmd.SetVal(false)
+		return cmd
+	}
+	switch v := value.(type) {
+	case string:
+		m.data[key] = []byte(v)
+	case []byte:
+		m.data[key] = v
+	}
+	cmd.SetVal(true)
+	return cmd
+}
+
+func (m *mockRedisClient) Eval(ctx context.Context, _ string, keys []string, args ...any) *redis.Cmd {
+	cmd := redis.NewCmd(ctx, "eval")
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.down {
+		cmd.SetErr(errors.New("redis down"))
+		return cmd
+	}
+	if len(keys) > 0 && len(args) > 0 {
+		k := keys[0]
+		expectedToken := fmt.Sprintf("%v", args[0])
+		actualToken := string(m.data[k])
+		if actualToken != "" && actualToken == expectedToken {
+			delete(m.data, k)
+			cmd.SetVal(int64(1))
+			return cmd
+		}
+	}
+	cmd.SetVal(int64(0))
+	return cmd
+}
+
+func (m *mockRedisClient) EvalSha(ctx context.Context, sha string, keys []string, args ...any) *redis.Cmd {
+	return m.Eval(ctx, sha, keys, args...)
+}
+
+func (m *mockRedisClient) ScriptLoad(ctx context.Context, _ string) *redis.StringCmd {
+	cmd := redis.NewStringCmd(ctx, "script", "load")
+	cmd.SetVal("mocksha")
 	return cmd
 }
 
@@ -191,5 +246,49 @@ func TestLocker_DoesNotFailOpen(t *testing.T) {
 
 	if _, err := cache.NewRedisLocker(client).Acquire(context.Background(), "lock:k", time.Minute); err == nil {
 		t.Fatal("Acquire returned a lock while Redis was unreachable")
+	}
+}
+
+func TestLocker_ReleasePathValidation(t *testing.T) {
+	client := newMockRedisClient()
+	locker := cache.NewRedisLocker(client)
+	ctx := context.Background()
+	lockKey := "test:lock:key"
+
+	// 1. Acquire as holder A
+	releaseA, err := locker.Acquire(ctx, lockKey, time.Minute)
+	if err != nil {
+		t.Fatalf("failed to acquire lock: %v", err)
+	}
+
+	// 2. Release as holder A -> succeeds
+	if err := releaseA(ctx); err != nil {
+		t.Fatalf("expected releaseA to succeed, got: %v", err)
+	}
+
+	// 3. Re-acquire as holder A
+	releaseA2, err := locker.Acquire(ctx, lockKey, time.Minute)
+	if err != nil {
+		t.Fatalf("failed to re-acquire lock: %v", err)
+	}
+
+	// 4. Overwrite token in Redis (simulating A's lock expired and B acquired it)
+	client.Set(ctx, lockKey, "holder_B_token", time.Minute)
+
+	// 5. Attempt release as holder A2 -> must report mismatch and NOT delete B's lock
+	err = releaseA2(ctx)
+	if err == nil {
+		t.Fatal("expected error releasing lock owned by holder B, got nil")
+	}
+
+	// Verify holder B's lock is still in Redis
+	if val := client.Get(ctx, lockKey).Val(); val != "holder_B_token" {
+		t.Fatalf("holder B's lock was deleted! got %q", val)
+	}
+
+	// 6. Release twice -> second call reports mismatch/error as well
+	err2 := releaseA2(ctx)
+	if err2 == nil {
+		t.Fatal("expected error on second release attempt, got nil")
 	}
 }
