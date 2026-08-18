@@ -11,7 +11,7 @@ import tseslint from 'typescript-eslint';
  * convention, not a constraint.
  */
 export default tseslint.config(
-  { ignores: ['dist', 'node_modules', 'src/types/api.ts', 'coverage'] },
+  { ignores: ['dist', 'node_modules', 'coverage'] },
 
   js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
@@ -47,21 +47,23 @@ export default tseslint.config(
       'boundaries/elements': [
         { type: 'app', pattern: 'src/app/**/*', mode: 'file' },
         { type: 'routes', pattern: 'src/routes/**/*', mode: 'file' },
+        { type: 'pages', pattern: 'src/pages/**/*', mode: 'file' },
+        { type: 'features', pattern: 'src/features/**/*', mode: 'file' },
         { type: 'components', pattern: 'src/components/**/*', mode: 'file' },
         { type: 'api', pattern: 'src/api/**/*', mode: 'file' },
+        { type: 'stores', pattern: 'src/stores/**/*', mode: 'file' },
+        { type: 'hooks', pattern: 'src/hooks/**/*', mode: 'file' },
         { type: 'lib', pattern: 'src/lib/**/*', mode: 'file' },
         { type: 'i18n', pattern: 'src/i18n/**/*', mode: 'file' },
+        { type: 'types', pattern: 'src/types/**/*', mode: 'file' },
         { type: 'test', pattern: 'src/test/**/*', mode: 'file' },
       ],
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
 
-      // Direction is one-way: app composes routes, routes use components and
-      // api, everything may use lib. Nothing lower reaches back up, which is
-      // what keeps a shared component from depending on one screen's data.
-      // Loud about anything the element patterns fail to classify: an
-      // unclassified file is one the boundary rules silently skip.
+      // Direction is one-way: app composes routes/pages, pages use features,
+      // features use components/api/stores/lib.
       'boundaries/no-unknown-files': 'error',
       'boundaries/no-unknown': 'error',
       'boundaries/element-types': [
@@ -69,13 +71,18 @@ export default tseslint.config(
         {
           default: 'disallow',
           rules: [
-            { from: 'app', allow: ['routes', 'components', 'api', 'lib', 'i18n'] },
-            { from: 'routes', allow: ['components', 'api', 'lib', 'i18n'] },
-            { from: 'components', allow: ['lib', 'i18n'] },
-            { from: 'api', allow: ['lib'] },
-            { from: 'lib', allow: ['lib'] },
-            { from: 'i18n', allow: ['i18n'] },
-            { from: 'test', allow: ['api', 'lib', 'components', 'routes', 'app', 'i18n', 'test'] },
+            { from: 'app', allow: ['routes', 'pages', 'features', 'components', 'api', 'stores', 'hooks', 'lib', 'i18n', 'types'] },
+            { from: 'routes', allow: ['pages', 'features', 'components', 'api', 'stores', 'hooks', 'lib', 'i18n', 'types'] },
+            { from: 'pages', allow: ['features', 'components', 'api', 'stores', 'hooks', 'lib', 'i18n', 'types'] },
+            { from: 'features', allow: ['features', 'components', 'api', 'stores', 'hooks', 'lib', 'i18n', 'types'] },
+            { from: 'components', allow: ['lib', 'i18n', 'types'] },
+            { from: 'api', allow: ['lib', 'types'] },
+            { from: 'stores', allow: ['lib', 'types'] },
+            { from: 'hooks', allow: ['stores', 'lib', 'api', 'types'] },
+            { from: 'lib', allow: ['lib', 'types'] },
+            { from: 'i18n', allow: ['i18n', 'types'] },
+            { from: 'types', allow: ['types'] },
+            { from: 'test', allow: ['api', 'lib', 'components', 'routes', 'pages', 'features', 'stores', 'hooks', 'app', 'i18n', 'types', 'test'] },
           ],
         },
       ],
@@ -83,6 +90,11 @@ export default tseslint.config(
       '@typescript-eslint/no-unused-vars': [
         'error',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
+      // TanStack Router uses thrown Redirect objects in beforeLoad navigation guards
+      '@typescript-eslint/only-throw-error': [
+        'error',
+        { allow: ['Redirect'] },
       ],
       // The API client throws ApiError; floating promises hide failures from
       // both the user and the error boundary.
@@ -93,7 +105,7 @@ export default tseslint.config(
   // Build tooling runs in Node and is outside the app's tsconfig, so the
   // type-aware rules have no program to consult.
   {
-    files: ['vite.config.ts', 'eslint.config.js', 'scripts/**/*.mjs'],
+    files: ['vite.config.ts', 'eslint.config.js', 'playwright.config.ts', 'scripts/**/*.mjs', 'e2e/**/*.ts'],
     ...tseslint.configs.disableTypeChecked,
     languageOptions: { globals: { ...globals.node } },
   },
