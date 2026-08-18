@@ -71,8 +71,38 @@ func (f *fakeFlagRepo) DeleteFeatureFlag(_ context.Context, key string) error {
 	return nil
 }
 
-func (f *fakeFlagRepo) GetFlagsExpiringWithin(_ context.Context, _ time.Time) ([]sqlcadmin.CoreFeatureFlag, error) {
-	return nil, nil
+func (f *fakeFlagRepo) GetFlagsExpiringWithin(
+	_ context.Context, cutoff time.Time,
+) ([]sqlcadmin.CoreFeatureFlag, error) {
+	var list []sqlcadmin.CoreFeatureFlag
+	for _, fl := range f.flags {
+		if fl.ExpiresOn.Valid && !fl.ExpiresOn.Time.After(cutoff) {
+			list = append(list, fl)
+		}
+	}
+	return list, nil
+}
+
+func TestReportExpiringFlags(t *testing.T) {
+	now := time.Date(2026, 8, 17, 12, 0, 0, 0, time.UTC)
+	repo := &fakeFlagRepo{flags: map[string]sqlcadmin.CoreFeatureFlag{
+		"expiring_soon": {
+			Key:       "expiring_soon",
+			Owner:     "@backend",
+			ExpiresOn: pgtype.Date{Time: now.Add(3 * 24 * time.Hour), Valid: true},
+		},
+		"expiring_far": {
+			Key:       "expiring_far",
+			Owner:     "@backend",
+			ExpiresOn: pgtype.Date{Time: now.Add(30 * 24 * time.Hour), Valid: true},
+		},
+	}}
+
+	svc := adminsvc.New(adminsvc.Deps{Repo: repo})
+	err := svc.ReportExpiringFlags(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error running ReportExpiringFlags: %v", err)
+	}
 }
 
 func TestFlagBucketingStability(t *testing.T) {

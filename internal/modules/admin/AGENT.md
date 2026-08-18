@@ -10,7 +10,7 @@ tables: [admin_actions, feature_flags, admin_notes, moderation_items]
 depends_on: [user, rbac, audit, auth, content, cache]
 depended_on_by: []
 spec_version: 1.0.0
-last_verified: 2026-08-06
+last_verified: 2026-08-17
 ---
 
 # admin — AGENT.md

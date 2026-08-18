@@ -345,7 +345,7 @@ deps:
   m_admin_repository: { mayDependOn: [m_admin_domain, c_admin, g_admin] }
   m_admin_service:    { mayDependOn: [m_admin_domain, c_admin, c_user, c_auth, c_audit, g_admin] }
   m_admin_http:       { mayDependOn: [m_admin_domain, m_admin_service, c_admin, c_user] }
-  m_admin:            { mayDependOn: [m_admin_domain, m_admin_repository, m_admin_service, m_admin_http, c_admin, c_user, c_auth, c_audit] }
+  m_admin:            { mayDependOn: [m_admin_domain, m_admin_repository, m_admin_service, m_admin_http, c_admin, c_user, c_auth, c_audit, p_job] }
   m_notification: { mayDependOn: [p_mailer, p_job, p_cache, p_telemetry, c_user] }
 
   # learning

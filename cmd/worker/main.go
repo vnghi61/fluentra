@@ -19,6 +19,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/riverqueue/river"
 
+	"github.com/fluentra/fluentra/internal/modules/admin"
 	"github.com/fluentra/fluentra/internal/modules/audit"
 	"github.com/fluentra/fluentra/internal/modules/auth"
 	authservice "github.com/fluentra/fluentra/internal/modules/auth/service"
@@ -395,6 +396,13 @@ func startModules(
 		return err
 	}
 	for _, scheduled := range authModule.CronJobs() {
+		cron.Register(scheduled)
+	}
+
+	adminModule := admin.New(admin.Deps{
+		Pool: pool,
+	})
+	for _, scheduled := range adminModule.CronJobs() {
 		cron.Register(scheduled)
 	}
 

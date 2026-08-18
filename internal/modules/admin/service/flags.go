@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -231,4 +232,26 @@ func toContractFlag(row sqlcadmin.CoreFeatureFlag) admincontract.FeatureFlag {
 		CreatedAt:      row.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:      row.UpdatedAt.Format(time.RFC3339),
 	}
+}
+
+// ReportExpiringFlags logs feature flags expiring within 7 days.
+func (s *Service) ReportExpiringFlags(ctx context.Context) error {
+	cutoff := s.clock.Now().Add(7 * 24 * time.Hour)
+	flags, err := s.repo.GetFlagsExpiringWithin(ctx, cutoff)
+	if err != nil {
+		return err
+	}
+
+	for _, flag := range flags {
+		var expiresStr string
+		if flag.ExpiresOn.Valid {
+			expiresStr = flag.ExpiresOn.Time.Format("2006-01-02")
+		}
+		slog.InfoContext(ctx, "feature flag expiring soon",
+			"key", flag.Key,
+			"owner", flag.Owner,
+			"expires_on", expiresStr,
+		)
+	}
+	return nil
 }
