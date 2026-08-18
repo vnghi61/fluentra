@@ -22,8 +22,14 @@ import (
 )
 
 const (
-	testUserEmail  = "user@example.com"
-	testUserModule = "user"
+	testUserEmail   = "user@example.com"
+	testUserModule  = "user"
+	testAuthModule  = "auth"
+	testRBACModule  = "rbac"
+	testAuditModule = "audit"
+	keyEmail        = "email"
+	keySessions     = "sessions"
+	keyRoles        = "roles"
 )
 
 type fakeJobRepo struct {
@@ -232,23 +238,23 @@ func buildTestProviders() []userjob.NamedExportable {
 		{
 			Name: testUserModule,
 			Provider: &fakeExportable{
-				data: map[string]interface{}{"email": testUserEmail},
+				data: map[string]interface{}{keyEmail: testUserEmail},
 			},
 		},
 		{
-			Name: "auth",
+			Name: testAuthModule,
 			Provider: &fakeExportable{
-				data: map[string]interface{}{"sessions": []string{"sess_1"}},
+				data: map[string]interface{}{keySessions: []string{"sess_1"}},
 			},
 		},
 		{
-			Name: "rbac",
+			Name: testRBACModule,
 			Provider: &fakeExportable{
-				data: map[string]interface{}{"roles": []string{"user"}},
+				data: map[string]interface{}{keyRoles: []string{"user"}},
 			},
 		},
 		{
-			Name: "audit",
+			Name: testAuditModule,
 			Provider: &fakeExportable{
 				data: map[string]interface{}{"audit_logs": []string{}},
 			},
