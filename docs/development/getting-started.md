@@ -194,6 +194,9 @@ template. Expect the review to be about boundaries and tests, not style — styl
 | No traces in Grafana | Collector endpoint wrong in `.env`, or the Collector is unhealthy; check its own logs |
 | Frontend cannot reach the API | `CORS_ALLOWED_ORIGINS` does not include `http://localhost:5173` |
 | `make check` fails on generated code | Run `make gen` — someone changed the spec or a query |
+| `port is already allocated` on 5432 or 6379 | Another project's container holds it. `docker stop <name>`, work, then `docker start <name>` — the data survives. Do not `docker rm` it and do not renumber our ports |
+| Everything is healthy but nothing connects | You ran `compose.yaml` alone. It publishes no ports by design — use `make dev` or `make dev-infra` |
+| Only need the database for tests | `make dev-infra` — postgres, redis and minio with ports published, no application images to build |
 | Port already in use | Another project's stack is running; `docker ps` |
 | Slow Docker on macOS/Windows | Enable VirtioFS / WSL2 backend |
 

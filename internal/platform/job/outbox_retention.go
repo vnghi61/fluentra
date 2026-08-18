@@ -6,8 +6,9 @@ import (
 	"log/slog"
 	"time"
 
-	jobsqlc "github.com/fluentra/fluentra/internal/generated/job/sqlc"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	jobsqlc "github.com/fluentra/fluentra/internal/generated/job/sqlc"
 )
 
 const (

@@ -29,7 +29,7 @@ setup: ## Install tool binaries, git hooks and frontend dependencies
 	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
 	go install github.com/fe3dback/go-arch-lint@latest
 	go install golang.org/x/vuln/cmd/govulncheck@latest
-	go install github.com/air-verse/air@latest
+	go install github.com/air-verse/air@v1.66.1  # pinned: v1.67 needs Go 1.26
 	cd web && pnpm install
 	pre-commit install || true
 
@@ -39,6 +39,16 @@ dev: ## Start the full local stack (app + data + observability)
 	docker compose $(COMPOSE_DEV) up -d --build
 	@echo "web    http://localhost:5173   api http://localhost:8080   worker http://localhost:8081"
 	@echo "graf   http://localhost:3000   mail http://localhost:8025   minio  http://localhost:9001"
+
+dev-infra: ## Start only postgres, redis and minio, with ports published
+	# What the integration suite and a host-run `go run ./cmd/api` need. The dev
+	# overlay is included because the base file keeps `backend` internal and
+	# publishes nothing, so the base alone is unreachable from the host.
+	docker compose -f $(COMPOSE_BASE) -f deploy/compose/compose.dev.yaml up -d postgres redis minio
+	@echo "postgres 127.0.0.1:5432   redis 127.0.0.1:6379   minio 127.0.0.1:9000"
+
+dev-infra-down: ## Stop the data services only, leaving other projects alone
+	docker compose -f $(COMPOSE_BASE) -f deploy/compose/compose.dev.yaml stop postgres redis minio
 
 dev-down: ## Stop the local stack (volumes preserved)
 	docker compose $(COMPOSE_DEV) down
@@ -287,7 +297,7 @@ security: ## Security scans
 	gitleaks detect --no-banner
 	cd web && pnpm audit --audit-level=high
 
-.PHONY: help setup dev dev-down logs prod-up api worker web gen gen-backend gen-sql gen-api gen-mocks gen-web \
+.PHONY: help setup dev dev-infra dev-infra-down dev-down logs prod-up api worker web gen gen-backend gen-sql gen-api gen-mocks gen-web \
         gen-check gen-check-web migrate-up migrate-down migrate-status migrate-new seed \
         db-reset-DANGEROUS check fmt fmt-check vet lint lint-int lint-go arch test test-int \
         test-contract test-web test-e2e test-load test-eval cover cover-check cover-gate docs \
