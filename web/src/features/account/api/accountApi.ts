@@ -17,6 +17,7 @@ export type ChangePasswordRequest =
   components["schemas"]["ChangePasswordRequest"];
 export type PasswordChanged = components["schemas"]["PasswordChanged"];
 export type OAuthIdentity = components["schemas"]["OAuthIdentity"];
+export type GoogleLinkStatus = components["schemas"]["GoogleLinkStatus"];
 export type OAuthStart = components["schemas"]["OAuthStart"];
 export type ExportResponse = components["schemas"]["ExportResponse"];
 export type DeletionResponse = components["schemas"]["DeletionResponse"];
@@ -106,6 +107,11 @@ export const accountApi = {
       method: "PUT",
       body: JSON.stringify(data),
     });
+  },
+
+  /** Whether Google is linked, and whether it may be unlinked */
+  async getGoogleLinkStatus(): Promise<GoogleLinkStatus> {
+    return apiFetch<GoogleLinkStatus>("/api/v1/auth/oauth/google");
   },
 
   /** List trusted devices */

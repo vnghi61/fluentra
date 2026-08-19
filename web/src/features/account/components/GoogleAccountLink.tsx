@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   CheckCircle2,
   Link2,
@@ -6,23 +6,52 @@ import {
   Unlink,
   AlertCircle,
 } from "lucide-react";
-import { accountApi } from "../api/accountApi";
+import { accountApi, type GoogleLinkStatus } from "../api/accountApi";
 import { ApiError } from "@/api/client";
 import { Button } from "@/components/ui/button";
 
-interface GoogleAccountLinkProps {
-  initialLinkedEmail?: string | null;
-}
-
-export const GoogleAccountLink: React.FC<GoogleAccountLinkProps> = ({
-  initialLinkedEmail,
-}) => {
-  const [linkedEmail, setLinkedEmail] = useState<string | null>(
-    initialLinkedEmail || null,
-  );
+export const GoogleAccountLink: React.FC = () => {
+  // Read from the server rather than taken as a prop. The prop was never
+  // passed, so `linkedEmail` was always null: the component only ever rendered
+  // "Not connected", the Unlink button was unreachable, and the
+  // LAST_SIGN_IN_METHOD branch below it could not run.
+  const [status, setStatus] = useState<GoogleLinkStatus | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  const refresh = React.useCallback(async () => {
+    setStatus(await accountApi.getGoogleLinkStatus());
+  }, []);
+
+  useEffect(() => {
+    // The read is started from inside the effect and its result is discarded if
+    // the component goes away first. Awaiting a callback that sets state on the
+    // way in is what react-hooks flags as a cascading render.
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const current = await accountApi.getGoogleLinkStatus();
+        if (!cancelled) setStatus(current);
+      } catch (err: unknown) {
+        if (!cancelled) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Could not read your Google link.",
+          );
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const linked = status?.linked ?? false;
+  const canUnlink = status?.can_unlink ?? false;
 
   const handleStartLink = async () => {
     setIsLoading(true);
@@ -43,6 +72,10 @@ export const GoogleAccountLink: React.FC<GoogleAccountLinkProps> = ({
   };
 
   const handleUnlink = async () => {
+    // The UI prevents the common case; the server prevents the crafted one. The
+    // button is disabled when `can_unlink` is false, and this guard means a
+    // programmatic call cannot slip past the disabled attribute either.
+    if (!canUnlink) return;
     if (!confirm("Are you sure you want to disconnect your Google account?")) {
       return;
     }
@@ -53,7 +86,7 @@ export const GoogleAccountLink: React.FC<GoogleAccountLinkProps> = ({
 
     try {
       await accountApi.unlinkGoogle();
-      setLinkedEmail(null);
+      await refresh();
       setSuccess("Google account unlinked successfully.");
     } catch (err: unknown) {
       if (
@@ -103,7 +136,7 @@ export const GoogleAccountLink: React.FC<GoogleAccountLinkProps> = ({
         </div>
       )}
 
-      <div className="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-900/40 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-800 bg-slate-900/40 p-4">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-800 text-slate-200">
             <svg className="h-5 w-5" viewBox="0 0 24 24">
@@ -128,12 +161,16 @@ export const GoogleAccountLink: React.FC<GoogleAccountLinkProps> = ({
           <div>
             <p className="text-sm font-medium text-slate-200">Google</p>
             <p className="text-xs text-slate-400">
-              {linkedEmail ? `Connected as ${linkedEmail}` : "Not connected"}
+              {linked
+                ? status?.linked_at
+                  ? `Connected since ${new Date(status.linked_at).toLocaleDateString()}`
+                  : "Connected"
+                : "Not connected"}
             </p>
           </div>
         </div>
 
-        {linkedEmail ? (
+        {linked ? (
           <Button
             type="button"
             variant="destructive"
@@ -141,7 +178,12 @@ export const GoogleAccountLink: React.FC<GoogleAccountLinkProps> = ({
             onClick={() => {
               void handleUnlink();
             }}
-            disabled={isLoading}
+            disabled={isLoading || !canUnlink}
+            title={
+              canUnlink
+                ? undefined
+                : "Google is your only sign-in method. Set a password before unlinking."
+            }
           >
             {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />

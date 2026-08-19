@@ -310,16 +310,25 @@ describe("Account Management Settings (P5.2)", () => {
         }),
       );
 
+      // Linked, and the server says it may be unlinked. The 409 above is the
+      // crafted case: the client believed it could, and the server refused
+      // anyway — which is the half of "both, always" this test covers.
+      server.use(
+        http.get("/api/v1/auth/oauth/google", () =>
+          HttpResponse.json({
+            linked: true,
+            linked_at: "2026-08-01T00:00:00Z",
+            can_unlink: true,
+          }),
+        ),
+      );
+
       vi.spyOn(window, "confirm").mockReturnValue(true);
 
       const user = userEvent.setup();
-      render(<GoogleAccountLink initialLinkedEmail="learner@google.com" />);
+      render(<GoogleAccountLink />);
 
-      expect(
-        screen.getByText(/Connected as learner@google\.com/i),
-      ).toBeInTheDocument();
-
-      const unlinkBtn = screen.getByRole("button", { name: /Unlink/i });
+      const unlinkBtn = await screen.findByRole("button", { name: /Unlink/i });
       await user.click(unlinkBtn);
 
       await waitFor(() => {
@@ -329,6 +338,29 @@ describe("Account Management Settings (P5.2)", () => {
           ),
         ).toBeInTheDocument();
       });
+    });
+
+    it("does not offer Unlink when Google is the only sign-in method", async () => {
+      // The other half: the interface prevents the common case before the
+      // learner can reach the refusal.
+      server.use(
+        http.get("/api/v1/auth/oauth/google", () =>
+          HttpResponse.json({
+            linked: true,
+            linked_at: "2026-08-01T00:00:00Z",
+            can_unlink: false,
+          }),
+        ),
+      );
+
+      render(<GoogleAccountLink />);
+
+      const unlinkBtn = await screen.findByRole("button", { name: /Unlink/i });
+      expect(unlinkBtn).toBeDisabled();
+      expect(unlinkBtn).toHaveAttribute(
+        "title",
+        expect.stringContaining("only sign-in method"),
+      );
     });
 
     it("changes password and notifies about revoked sessions", async () => {
