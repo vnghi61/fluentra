@@ -87,7 +87,10 @@ jobs:
   e2e:
     name: Frontend E2E
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # 20 was the budget when this job installed pnpm and ran a smoke test. It now
+    # migrates a database, starts an API and a worker, builds the bundle and
+    # drives four browser projects against them.
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -182,8 +185,41 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Install Playwright Browsers
-        run: pnpm exec playwright install --with-deps chromium webkit
+      # The browsers are cached, and the OS packages are installed separately.
+      # `playwright install --with-deps` downloads two browsers and runs apt on
+      # every shard of every run; three of four shards once sat on that step for
+      # nineteen minutes and were killed by the job timeout, which reads as a
+      # hung test suite and is really a download.
+      - name: Resolve the Playwright version
+        id: playwright
+        run: echo "version=$(pnpm exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the browser cache
+        id: browser-cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+
+      # apt every time: the cache carries the browsers, not the shared libraries
+      # they link against, and a cached browser that cannot start is worse than
+      # no cache at all.
+      - name: Install the browsers' OS dependencies
+        run: pnpm exec playwright install-deps chromium webkit
+
+      # Retried rather than left to the job timeout. A stalled download should
+      # cost one attempt, not the whole budget, and `install` is idempotent — a
+      # second attempt resumes rather than starting over.
+      - name: Install Playwright browsers
+        if: steps.browser-cache.outputs.cache-hit != 'true'
+        run: |
+          for attempt in 1 2 3; do
+            if timeout 300 pnpm exec playwright install chromium webkit; then
+              exit 0
+            fi
+            echo "browser install attempt $attempt stalled or failed; retrying"
+          done
+          echo "browsers could not be installed after three attempts"; exit 1
 
       # A skipped or vacuous test passes while proving nothing, and that is how
       # this job used to go green with no backend behind it. Grep for the skip
