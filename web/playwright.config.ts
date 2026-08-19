@@ -123,11 +123,16 @@ export default defineConfig({
       : []),
   ],
   webServer: {
-    // `pnpm exec vite`, not `pnpm run dev -- …`: the `--` form does not forward
-    // the flags reliably through pnpm, and the server then starts on 5173 —
-    // where the container already is — so Playwright waits for a port nothing
-    // will ever answer on.
-    command: `pnpm exec vite --port ${E2E_PORT} --strictPort`,
+    // The built bundle, not the dev server. `vite dev` transforms modules on
+    // demand, and WebKit pays about 25 seconds for the first navigation of every
+    // test — most of the default timeout, before the journey has done anything.
+    // Serving the build costs one ~10s build for the whole run, and tests what a
+    // learner is actually served.
+    //
+    // `pnpm exec`, not `pnpm run … --`: the `--` form does not forward flags
+    // reliably through pnpm, so the server came up on 5173 — where the `make dev`
+    // container already is — and Playwright waited for a port nothing answered.
+    command: `pnpm run build && pnpm exec vite preview --port ${E2E_PORT} --strictPort`,
     url: E2E_ORIGIN,
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
