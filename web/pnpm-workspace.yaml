@@ -13,3 +13,16 @@ allowBuilds:
   esbuild: true
   msw: true
   unrs-resolver: true
+
+# Transitive advisories that the direct dependency has not picked up yet. Both
+# are patch-level bumps within the range the parent already asks for, so this
+# raises the floor rather than changing anybody's major:
+#
+#   js-yaml  <4.3.1   quadratic CPU on !!omap  (via openapi-typescript)
+#   nanoid   <3.3.18  custom generators can loop  (via vite -> postcss)
+#
+# Remove an entry once the parent ships a release that no longer resolves below
+# the floor; `pnpm audit` is what says whether it is still needed.
+overrides:
+  js-yaml@>=4.0.0 <4.3.1: '>=4.3.1'
+  nanoid@<3.3.18: '>=3.3.18'
