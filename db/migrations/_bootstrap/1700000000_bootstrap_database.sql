@@ -1,12 +1,32 @@
 -- +goose Up
 -- +goose StatementBegin
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
-CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
-CREATE EXTENSION IF NOT EXISTS btree_gin;
-
 DO $$
 BEGIN
+    -- On Supabase / cloud PostgreSQL, extensions live in the 'extensions' schema.
+    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'extensions') THEN
+        BEGIN
+            CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
+        EXCEPTION WHEN OTHERS THEN NULL;
+        END;
+        BEGIN
+            CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA extensions;
+        EXCEPTION WHEN OTHERS THEN NULL;
+        END;
+        BEGIN
+            CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA extensions;
+        EXCEPTION WHEN OTHERS THEN NULL;
+        END;
+        BEGIN
+            CREATE EXTENSION IF NOT EXISTS btree_gin WITH SCHEMA extensions;
+        EXCEPTION WHEN OTHERS THEN NULL;
+        END;
+    ELSE
+        CREATE EXTENSION IF NOT EXISTS pgcrypto;
+        CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+        CREATE EXTENSION IF NOT EXISTS pg_trgm;
+        CREATE EXTENSION IF NOT EXISTS btree_gin;
+    END IF;
+
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'fluentra_app') THEN
         CREATE ROLE fluentra_app NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION;
     END IF;
@@ -19,6 +39,23 @@ BEGIN
     -- requires CREATE on the database. Without this grant the very first
     -- migration fails on a fresh database.
     EXECUTE format('GRANT CONNECT, CREATE ON DATABASE %I TO fluentra_migrator', current_database());
+
+    -- Grant permissions on public schema (for goose version table and general access)
+    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'public') THEN
+        BEGIN
+            EXECUTE 'GRANT ALL ON SCHEMA public TO fluentra_migrator';
+            EXECUTE 'GRANT USAGE ON SCHEMA public TO fluentra_app';
+        EXCEPTION WHEN OTHERS THEN NULL;
+        END;
+    END IF;
+
+    -- Grant permissions on extensions schema if present
+    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'extensions') THEN
+        BEGIN
+            EXECUTE 'GRANT USAGE ON SCHEMA extensions TO fluentra_migrator, fluentra_app';
+        EXCEPTION WHEN OTHERS THEN NULL;
+        END;
+    END IF;
 
     -- Every later migration runs as fluentra_migrator (cmd/migrate does SET
     -- ROLE), and goose records each applied version in the same transaction.
@@ -108,8 +145,13 @@ DROP ROLE IF EXISTS fluentra_app;
 DROP OWNED BY fluentra_migrator;
 DROP ROLE IF EXISTS fluentra_migrator;
 
-DROP EXTENSION IF EXISTS btree_gin;
-DROP EXTENSION IF EXISTS pg_trgm;
-DROP EXTENSION IF EXISTS pg_stat_statements;
-DROP EXTENSION IF EXISTS pgcrypto;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'extensions') THEN
+        DROP EXTENSION IF EXISTS btree_gin;
+        DROP EXTENSION IF EXISTS pg_trgm;
+        DROP EXTENSION IF EXISTS pg_stat_statements;
+        DROP EXTENSION IF EXISTS pgcrypto;
+    END IF;
+END $$;
 -- +goose StatementEnd

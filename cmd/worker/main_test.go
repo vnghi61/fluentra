@@ -8,6 +8,7 @@ import (
 
 	"github.com/riverqueue/river"
 
+	"github.com/fluentra/fluentra/internal/platform/mailer"
 	"github.com/fluentra/fluentra/internal/shared/config"
 )
 
@@ -95,20 +96,44 @@ func assertWorkerConfig(t *testing.T, cfg workerConfig) {
 	}
 }
 
-func TestSMTPConfig_PreservesWorkerCredentials(t *testing.T) {
+func TestNewMailSender_SMTPTransport(t *testing.T) {
 	cfg := workerConfig{}
+	cfg.Mail.Transport = "smtp"
 	cfg.SMTP.Host = "smtp.example.test"
 	cfg.SMTP.Port = 587
 	cfg.SMTP.Username = "mailer-user"
 	cfg.SMTP.Password = "mailer-password"
 	cfg.Mail.From = "no-reply@example.test"
 
-	got := smtpConfig(cfg)
-	if got.Username != cfg.SMTP.Username || got.Password != cfg.SMTP.Password {
-		t.Fatalf("SMTP credentials = %q / %q, want worker config values", got.Username, got.Password)
+	renderer, err := mailer.NewRenderer(nil, nil)
+	if err != nil {
+		t.Fatalf("NewRenderer: %v", err)
 	}
-	if got.Host != cfg.SMTP.Host || got.Port != cfg.SMTP.Port || got.From != cfg.Mail.From {
-		t.Errorf("SMTP transport config = %#v, want values from worker config", got)
+	sender := newMailSender(cfg, renderer, nil)
+	if sender == nil {
+		t.Fatal("newMailSender returned nil")
+	}
+	if _, ok := sender.(*mailer.SMTPSender); !ok {
+		t.Errorf("expected *mailer.SMTPSender, got %T", sender)
+	}
+}
+
+func TestNewMailSender_ResendTransport(t *testing.T) {
+	cfg := workerConfig{}
+	cfg.Mail.Transport = "resend"
+	cfg.Resend.APIKey = "re_test_key"
+	cfg.Mail.From = "no-reply@example.test"
+
+	renderer, err := mailer.NewRenderer(nil, nil)
+	if err != nil {
+		t.Fatalf("NewRenderer: %v", err)
+	}
+	sender := newMailSender(cfg, renderer, nil)
+	if sender == nil {
+		t.Fatal("newMailSender returned nil")
+	}
+	if _, ok := sender.(*mailer.ResendSender); !ok {
+		t.Errorf("expected *mailer.ResendSender, got %T", sender)
 	}
 }
 

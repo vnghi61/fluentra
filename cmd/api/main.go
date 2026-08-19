@@ -133,7 +133,8 @@ type applicationConfig struct {
 		StateTTL           time.Duration `koanf:"state_ttl"`
 	} `koanf:"oauth"`
 	Mail struct {
-		From string `koanf:"from"`
+		Transport string `koanf:"transport"`
+		From      string `koanf:"from"`
 	} `koanf:"mail"`
 	SMTP struct {
 		Host     string `koanf:"host"`
@@ -142,6 +143,9 @@ type applicationConfig struct {
 		Password string `koanf:"password"`
 		DevMode  bool   `koanf:"dev_mode"`
 	} `koanf:"smtp"`
+	Resend struct {
+		APIKey string `koanf:"api_key"`
+	} `koanf:"resend"`
 }
 
 func main() {
@@ -280,14 +284,7 @@ func run(ctx context.Context) error {
 		// A separate typed cache from the permission one. They share the Redis
 		// client but not the value type, and Cache[T] is generic per type.
 		Denylist: cache.NewRedisCache[bool](redisClient),
-		SMTP: mailer.SMTPConfig{
-			Host:     cfg.SMTP.Host,
-			Port:     cfg.SMTP.Port,
-			Username: cfg.SMTP.Username,
-			Password: cfg.SMTP.Password,
-			From:     cfg.Mail.From,
-			DevMode:  cfg.SMTP.DevMode,
-		},
+		Mailer:   newAPIMailSender(cfg, pool),
 	})
 
 	health := telemetry.NewHealthHandler(cfg.App.Version,
@@ -371,7 +368,9 @@ func configOptions() config.Options {
 			"smtp.host":                      "localhost",
 			"smtp.port":                      1025,
 			"smtp.dev_mode":                  true,
+			"mail.transport":                 "smtp",
 			"mail.from":                      "no-reply@fluentra.local",
+			"resend.api_key":                 "",
 			"jwt.issuer":                     "fluentra",
 			"jwt.audience":                   "fluentra-api",
 			"jwt.previous_key":               "",
@@ -510,4 +509,34 @@ func routePattern(request *http.Request) string {
 		}
 	}
 	return request.URL.Path
+}
+
+// newAPIMailSender builds the appropriate Sender based on MAIL_TRANSPORT.
+// "resend" uses the Resend HTTP API (port 443, works on Render Free).
+// Everything else falls back to SMTP (works locally with Mailpit).
+func newAPIMailSender(cfg applicationConfig, pool *pgxpool.Pool) mailer.Sender {
+	renderer, err := mailer.NewRenderer(nil, nil)
+	if err != nil {
+		panic("mailer.NewRenderer: " + err.Error())
+	}
+	var suppressions mailer.SuppressionStore
+	var recorder mailer.DeliveryRecorder
+	if pool != nil {
+		suppressions = mailer.NewPostgresSuppressionStore(pool)
+		recorder = mailer.NewPostgresRecorder(pool)
+	}
+	if cfg.Mail.Transport == "resend" {
+		return mailer.NewResendSender(mailer.ResendConfig{
+			APIKey: cfg.Resend.APIKey,
+			From:   cfg.Mail.From,
+		}, renderer, suppressions, recorder)
+	}
+	return mailer.NewSMTPSender(mailer.SMTPConfig{
+		Host:     cfg.SMTP.Host,
+		Port:     cfg.SMTP.Port,
+		Username: cfg.SMTP.Username,
+		Password: cfg.SMTP.Password,
+		From:     cfg.Mail.From,
+		DevMode:  cfg.SMTP.DevMode,
+	}, renderer, suppressions, recorder)
 }
