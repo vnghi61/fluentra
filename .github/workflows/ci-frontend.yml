@@ -200,8 +200,24 @@ jobs:
       # apt every time: the cache carries the browsers, not the shared libraries
       # they link against, and a cached browser that cannot start is worse than
       # no cache at all.
+      # Bounded and retried, for the same reason the download below is. This is
+      # apt, and apt waits on the dpkg lock indefinitely — three shards of an
+      # earlier run sat here for thirty minutes each and were killed by the job
+      # timeout, while a fourth on an identical image finished the whole job in
+      # three and a half. An unbounded wait turns somebody else's background
+      # upgrade into a red build with no explanation in it.
       - name: Install the browsers' OS dependencies
-        run: pnpm exec playwright install-deps chromium webkit
+        run: |
+          for attempt in 1 2 3; do
+            if timeout 300 pnpm exec playwright install-deps chromium webkit; then
+              exit 0
+            fi
+            echo "install-deps attempt $attempt timed out or failed; retrying"
+            sudo pkill -9 -f 'apt-get|unattended-upgr' || true
+            sudo rm -f /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock || true
+            sudo dpkg --configure -a || true
+          done
+          echo "the browsers' OS dependencies could not be installed"; exit 1
 
       # Retried rather than left to the job timeout. A stalled download should
       # cost one attempt, not the whole budget, and `install` is idempotent — a
