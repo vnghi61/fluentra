@@ -485,6 +485,7 @@ func decodeChangePasswordRequest(request *http.Request) (service.ChangeInput, er
 // who cannot is being asked to take it on faith.
 type deviceResponse struct {
 	ID                string  `json:"id"`
+	Current           bool    `json:"current"`
 	Label             *string `json:"label"`
 	TrustedAt         string  `json:"trusted_at"`
 	LastSeenAt        string  `json:"last_seen_at"`
@@ -503,6 +504,7 @@ func toDeviceListResponse(devices []service.DeviceView) deviceListResponse {
 	for _, device := range devices {
 		out = append(out, deviceResponse{
 			ID:                device.ID.String(),
+			Current:           device.Current,
 			Label:             device.Label,
 			TrustedAt:         device.TrustedAt.UTC().Format(time.RFC3339),
 			LastSeenAt:        device.LastSeenAt.UTC().Format(time.RFC3339),
@@ -511,4 +513,31 @@ func toDeviceListResponse(devices []service.DeviceView) deviceListResponse {
 		})
 	}
 	return deviceListResponse{Devices: out}
+}
+
+// googleLinkStatusResponse is GoogleLinkStatus from the spec.
+//
+// `linked_at` is a pointer so an unlinked account serialises it as null rather
+// than as a zero time, which a client would have to know to read as "none".
+// There is no address here: the identity row keeps a hash of it, never the
+// address, so the only way to return one would be to invent it.
+type googleLinkStatusResponse struct {
+	Linked    bool    `json:"linked"`
+	LinkedAt  *string `json:"linked_at"`
+	CanUnlink bool    `json:"can_unlink"`
+}
+
+func toGoogleLinkStatusResponse(state service.LinkState) googleLinkStatusResponse {
+	if !state.Linked {
+		// can_unlink is false when nothing is linked: there is no action to
+		// offer, and reporting true would invite one.
+		return googleLinkStatusResponse{}
+	}
+
+	linkedAt := state.Identity.LinkedAt.UTC().Format(time.RFC3339)
+	return googleLinkStatusResponse{
+		Linked:    true,
+		LinkedAt:  &linkedAt,
+		CanUnlink: state.CanUnlink,
+	}
 }

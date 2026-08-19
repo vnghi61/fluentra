@@ -22,6 +22,7 @@ import (
 // reason about the risk instead of taking it on faith.
 type DeviceView struct {
 	ID                uuid.UUID
+	Current           bool
 	Label             *string
 	TrustedAt         time.Time
 	LastSeenAt        time.Time
@@ -33,6 +34,10 @@ type DeviceView struct {
 type DeviceRepo interface {
 	ListTrustedDevices(ctx context.Context, userID uuid.UUID, now time.Time) ([]domain.TrustedDevice, error)
 	GetOwnedTrustedDevice(ctx context.Context, deviceID, userID uuid.UUID) (domain.TrustedDevice, bool, error)
+	// GetOwnedSession is how the service learns which device the caller is on:
+	// the current session carries the trusted-device id it was opened for, and
+	// that id is what "current" in the list is compared against.
+	GetOwnedSession(ctx context.Context, sessionID, userID uuid.UUID) (domain.Session, bool, error)
 	UntrustDevice(ctx context.Context, deviceID uuid.UUID, now time.Time) (bool, error)
 	RevokeSessionsForDevice(ctx context.Context, deviceID uuid.UUID, now time.Time) (int, error)
 	RevokeRefreshTokensForDevice(ctx context.Context, deviceID uuid.UUID, now time.Time) (int, error)
@@ -68,10 +73,25 @@ func (s *DeviceService) List(ctx context.Context, actor httpx.Actor) ([]DeviceVi
 		return nil, err
 	}
 
+	// The current device is the one the caller's own session was opened for. If
+	// the session cannot be read — it was just revoked, say — no device is
+	// marked current, which is the safe direction: the interface then warns
+	// "if this is the device you are on" rather than asserting it confidently.
+	var (
+		currentID  uuid.UUID
+		hasCurrent bool
+	)
+	if session, found, err := s.repo.GetOwnedSession(ctx, actor.SessionID, actor.UserID); err == nil &&
+		found && session.TrustedDeviceID != nil {
+		currentID = *session.TrustedDeviceID
+		hasCurrent = true
+	}
+
 	views := make([]DeviceView, 0, len(devices))
 	for _, device := range devices {
 		views = append(views, DeviceView{
 			ID:                device.ID,
+			Current:           hasCurrent && device.ID == currentID,
 			Label:             device.Label,
 			TrustedAt:         device.TrustedAt,
 			LastSeenAt:        device.LastSeenAt,

@@ -557,6 +557,37 @@ func (s *OAuthService) Unlink(ctx context.Context, actor httpx.Actor) error {
 	})
 }
 
+// LinkState is what the account screen needs to decide what to offer.
+type LinkState struct {
+	Linked    bool
+	Identity  domain.OAuthIdentity
+	CanUnlink bool
+}
+
+// LinkStatus reports whether Google is linked and whether it may be removed.
+//
+// It answers the question Unlink refuses on, before the learner presses
+// anything: `CanUnlink` is false exactly when the identity is the only sign-in
+// method, which is the 409 LAST_SIGN_IN_METHOD case (BR-AUTH-20). The refusal
+// stays in Unlink — this is what lets the interface explain instead of offering
+// a button that fails.
+func (s *OAuthService) LinkStatus(ctx context.Context, actor httpx.Actor) (LinkState, error) {
+	identity, linked, err := s.repo.FindOAuthIdentityByUser(ctx, actor.UserID, domain.ProviderGoogle)
+	if err != nil {
+		return LinkState{}, err
+	}
+	if !linked {
+		return LinkState{}, nil
+	}
+
+	methods, err := s.repo.CountSignInMethods(ctx, actor.UserID)
+	if err != nil {
+		return LinkState{}, err
+	}
+
+	return LinkState{Linked: true, Identity: identity, CanUnlink: methods > 1}, nil
+}
+
 // FindIdentityByUser returns the linked identity for provider if any.
 func (s *OAuthService) FindIdentityByUser(
 	ctx context.Context, userID uuid.UUID, provider string,

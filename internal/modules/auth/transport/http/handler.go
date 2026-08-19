@@ -68,6 +68,7 @@ type OAuth interface {
 	Callback(ctx context.Context, input service.CallbackInput) (service.SignedIn, error)
 	Link(ctx context.Context, actor httpx.Actor, input service.CallbackInput) (service.LinkedIdentity, error)
 	Unlink(ctx context.Context, actor httpx.Actor) error
+	LinkStatus(ctx context.Context, actor httpx.Actor) (service.LinkState, error)
 }
 
 // Handler serves the auth module's HTTP operations.
@@ -123,6 +124,7 @@ func (h *Handler) Routes(router chi.Router) {
 		auth.Get("/oauth/google/start", h.oauthStart)
 		auth.Post("/oauth/google/callback", h.oauthCallback)
 		auth.Post("/oauth/google/link", h.oauthLink)
+		auth.Get("/oauth/google", h.oauthLinkStatus)
 		auth.Delete("/oauth/google", h.oauthUnlink)
 		auth.Route("/challenges/{id}", func(challenge chi.Router) {
 			challenge.Post("/verify", h.verify)
@@ -432,6 +434,22 @@ func (h *Handler) oauthUnlink(writer http.ResponseWriter, request *http.Request)
 		return
 	}
 	writer.WriteHeader(http.StatusNoContent)
+}
+
+// oauthLinkStatus answers what the account screen needs before it renders: is
+// Google linked, and would removing it leave no way in.
+func (h *Handler) oauthLinkStatus(writer http.ResponseWriter, request *http.Request) {
+	actor, err := requireActor(request)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	state, err := h.oauth.LinkStatus(request.Context(), actor)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	httpx.WriteJSON(writer, request, http.StatusOK, toGoogleLinkStatusResponse(state))
 }
 
 // deviceIDFrom parses the path segment. A malformed uuid is the same 404 an

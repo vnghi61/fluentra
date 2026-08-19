@@ -373,13 +373,19 @@ TrustedDevice:
     only thing bounding a theft, and it does not skip any check. A device the
     learner does not recognise here is one they should untrust, which is why the
     label and the last-seen time matter more than the identifier.
-  required: [id, trusted_at, last_seen_at, idle_expires_at, absolute_expires_at]
+  required: [id, current, trusted_at, last_seen_at, idle_expires_at, absolute_expires_at]
   additionalProperties: false
   properties:
     id:
       type: string
       format: uuid
       description: Identifies the device in the untrust operation.
+    current:
+      type: boolean
+      description: >-
+        Whether this is the device the signed-in caller is reading the page on.
+        Untrusting it signs the caller out here and now, which the interface must
+        warn about before it happens rather than explain afterwards.
     label:
       type: [string, 'null']
       maxLength: 80
@@ -473,6 +479,36 @@ OAuthCallbackRequest:
         already used is `OAUTH_STATE_INVALID` and raises a security event --
         those four are the shapes a CSRF attempt takes, and they are not worth
         telling apart in a response.
+
+GoogleLinkStatus:
+  type: object
+  description: >-
+    Whether the caller has Google linked, and whether removing it would leave
+    them with no way in.
+  required: [linked, can_unlink]
+  additionalProperties: false
+  properties:
+    linked:
+      type: boolean
+      description: >-
+        Whether a Google identity is attached to this account.
+
+
+        The address Google asserted is deliberately not returned: the identity
+        row stores a hash of it and never the address itself, so there is
+        nothing to return that would not have to be invented.
+    linked_at:
+      type: [string, 'null']
+      format: date-time
+      description: When the identity was attached, when linked.
+    can_unlink:
+      type: boolean
+      description: >-
+        False when Google is the only sign-in method the account has. Unlinking
+        then is refused with 409 `LAST_SIGN_IN_METHOD` (BR-AUTH-20), and the
+        interface should say so rather than offer the button and explain
+        afterwards. Always false when `linked` is false, because there is
+        nothing to unlink.
 
 OAuthIdentity:
   type: object
