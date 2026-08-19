@@ -121,7 +121,10 @@ export function LoginForm({ onSuccess }: LoginFormProps): React.JSX.Element {
                   <FormLabel required>Password</FormLabel>
                   <Link
                     to="/forgot-password"
-                    className="text-xs font-medium text-indigo-400 hover:text-indigo-300 hover:underline"
+                    // A standalone control, not a link inside a sentence, so
+                    // R1's 44 px minimum applies to it. The negative margin
+                    // keeps the row's visual rhythm while the hit area grows.
+                    className="inline-flex min-h-11 items-center -my-3 text-xs font-medium text-indigo-400 hover:text-indigo-300 hover:underline"
                   >
                     Forgot password?
                   </Link>

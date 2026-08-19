@@ -112,7 +112,10 @@ export function AccountSettingsPage(): React.JSX.Element {
   ];
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 py-4">
+    // min-w-0 is what lets the tab row's own `overflow-x-auto` actually clip:
+    // without it the container is sized by its content and the whole page
+    // scrolls sideways instead (R6, measured at 320 px).
+    <div className="max-w-5xl mx-auto min-w-0 space-y-8 py-4">
       {/* Header */}
       <header className="space-y-1">
         <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-2.5">
@@ -126,7 +129,7 @@ export function AccountSettingsPage(): React.JSX.Element {
       </header>
 
       {/* Tabs Navigation */}
-      <div className="flex border-b border-slate-800 overflow-x-auto gap-2 pb-px scrollbar-none">
+      <div className="flex w-full min-w-0 border-b border-slate-800 overflow-x-auto gap-2 pb-px scrollbar-none">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.key;

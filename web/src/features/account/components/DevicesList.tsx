@@ -59,9 +59,9 @@ export const DevicesList: React.FC<DevicesListProps> = ({ onLoggedOut }) => {
       setDevices((prev) => prev.filter((d) => d.id !== device.id));
       setConfirmDevice(null);
 
-      // If user untrusts current device, they are signed out
-      const storedDeviceId = localStorage.getItem("fluentra_device_id");
-      if (storedDeviceId && device.id.includes(storedDeviceId)) {
+      // Untrusting the device the caller is on signs them out, and the server
+      // marks that device `current` precisely so this does not have to guess.
+      if (device.current) {
         onLoggedOut?.();
       }
     } catch (err: unknown) {
@@ -112,7 +112,7 @@ export const DevicesList: React.FC<DevicesListProps> = ({ onLoggedOut }) => {
             return (
               <div
                 key={device.id}
-                className="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-900/40 p-4"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-800 bg-slate-900/40 p-4"
               >
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-800 text-slate-300">
@@ -127,6 +127,11 @@ export const DevicesList: React.FC<DevicesListProps> = ({ onLoggedOut }) => {
                       <p className="text-sm font-medium text-slate-200">
                         {device.label || "Unknown Device"}
                       </p>
+                      {device.current && (
+                        <span className="inline-flex items-center rounded-full border border-indigo-500/40 bg-indigo-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-300">
+                          This device
+                        </span>
+                      )}
                     </div>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400 mt-0.5">
                       <span>
@@ -146,7 +151,10 @@ export const DevicesList: React.FC<DevicesListProps> = ({ onLoggedOut }) => {
                   variant="ghost"
                   size="sm"
                   onClick={() => setConfirmDevice(device)}
-                  className="text-slate-400 hover:text-rose-400 hover:bg-rose-500/10"
+                  // Icon-only: the `sm` size gives 44 px of height but only
+                  // 40 px of width, so the square hit area R1 asks for has to
+                  // be stated explicitly.
+                  className="min-w-11 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10"
                 >
                   <Trash2 className="h-4 w-4" />
                   <span className="sr-only">Untrust device</span>
@@ -181,8 +189,17 @@ export const DevicesList: React.FC<DevicesListProps> = ({ onLoggedOut }) => {
             </p>
 
             <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">
-              <strong>Notice:</strong> If this is the device you are currently
-              reading this page on, untrusting it will log you out immediately.
+              {confirmDevice.current ? (
+                <strong>
+                  This is the device you are using right now. Untrusting it will
+                  sign you out of this browser immediately.
+                </strong>
+              ) : (
+                <span>
+                  This device will stop being signed in. The device you are using
+                  now is unaffected.
+                </span>
+              )}
             </div>
 
             <div className="flex items-center justify-end gap-3 pt-2">

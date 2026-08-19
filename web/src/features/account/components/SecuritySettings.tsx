@@ -60,8 +60,11 @@ export const SecuritySettings: React.FC<SecuritySettingsProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-900/40 p-4">
-          <div>
+        {/* Wraps at 320 px: the label and a 89 px button do not fit on one
+            line there, and without the wrap the button pushed the page 5 px
+            wider than the viewport (R6). */}
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-800 bg-slate-900/40 p-4">
+          <div className="min-w-0">
             <p className="text-sm font-medium text-slate-200">
               Account Password
             </p>

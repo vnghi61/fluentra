@@ -115,7 +115,7 @@ export const SessionsList: React.FC<SessionsListProps> = ({ onLoggedOut }) => {
             return (
               <div
                 key={session.id}
-                className="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-900/40 p-4"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-800 bg-slate-900/40 p-4"
               >
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-800 text-slate-300">
