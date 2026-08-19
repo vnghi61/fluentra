@@ -55,6 +55,13 @@ type identityDeps struct {
 	// PasswordResetTTL is PASSWORD_RESET_TTL: how long a reset code lives.
 	PasswordResetTTL time.Duration
 
+	// IssuesPerIPPerHour and IssuesPerSubjectPerHour are OTP_ISSUE_PER_IP_PER_HOUR
+	// and OTP_ISSUE_PER_SUBJECT_PER_HOUR. They are forwarded to the auth module
+	// because the challenge service is what enforces them; the HTTP boundary
+	// limiter gets the per-IP one separately and the two are not the same gate.
+	IssuesPerIPPerHour      int
+	IssuesPerSubjectPerHour int
+
 	// Windows are the session lifetimes, from the SESSION_* keys.
 	Windows authdomain.WindowConfig
 
@@ -145,21 +152,23 @@ func newIdentity(deps identityDeps) *identity {
 	sender := mailer.NewSMTPSender(deps.SMTP, renderer, nil, nil)
 
 	assembled.auth = auth.New(auth.Deps{
-		Pool:             deps.Pool,
-		OTPHMACKey:       deps.OTPHMACKey,
-		Mailer:           sender,
-		Registrar:        assembled.user.Registrar(),
-		Limiter:          deps.Limiter,
-		Tokens:           deps.Tokens,
-		Roles:            assembled.rbac.RoleReader(),
-		Denylist:         deps.Denylist,
-		Env:              deps.Env,
-		RefreshTTL:       deps.RefreshTTL,
-		PasswordResetTTL: deps.PasswordResetTTL,
-		Windows:          deps.Windows,
-		Google:           deps.Google,
-		OAuthStateTTL:    deps.OAuthStateTTL,
-		Telemetry:        deps.Instruments,
+		Pool:                    deps.Pool,
+		OTPHMACKey:              deps.OTPHMACKey,
+		Mailer:                  sender,
+		Registrar:               assembled.user.Registrar(),
+		Limiter:                 deps.Limiter,
+		Tokens:                  deps.Tokens,
+		Roles:                   assembled.rbac.RoleReader(),
+		Denylist:                deps.Denylist,
+		Env:                     deps.Env,
+		RefreshTTL:              deps.RefreshTTL,
+		PasswordResetTTL:        deps.PasswordResetTTL,
+		IssuesPerIPPerHour:      deps.IssuesPerIPPerHour,
+		IssuesPerSubjectPerHour: deps.IssuesPerSubjectPerHour,
+		Windows:                 deps.Windows,
+		Google:                  deps.Google,
+		OAuthStateTTL:           deps.OAuthStateTTL,
+		Telemetry:               deps.Instruments,
 	})
 
 	assembled.admin = admin.New(admin.Deps{

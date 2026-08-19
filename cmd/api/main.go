@@ -54,6 +54,12 @@ type applicationConfig struct {
 		ShutdownGrace  time.Duration `koanf:"shutdown_grace"`
 		TrustedProxies string        `koanf:"trusted_proxies"`
 	} `koanf:"http"`
+	// CORS_ALLOWED_ORIGINS, a comma-separated allowlist. Empty means the
+	// same-origin deployment and no cross-origin client is expected; the local
+	// dev split sets it to the Vite dev server's origin.
+	CORS struct {
+		AllowedOrigins string `koanf:"allowed_origins"`
+	} `koanf:"cors"`
 	Database struct {
 		DSN string `koanf:"dsn"`
 	} `koanf:"db"`
@@ -71,8 +77,9 @@ type applicationConfig struct {
 		ServiceName string `koanf:"service_name"`
 	} `koanf:"otel"`
 	OTP struct {
-		HMACKey           string `koanf:"hmac_key"`
-		IssuePerIPPerHour int    `koanf:"issue_per_ip_per_hour"`
+		HMACKey                string `koanf:"hmac_key"`
+		IssuePerIPPerHour      int    `koanf:"issue_per_ip_per_hour"`
+		IssuePerSubjectPerHour int    `koanf:"issue_per_subject_per_hour"`
 	} `koanf:"otp"`
 	// PASSWORD_RESET_TTL, under the first-underscore-becomes-a-dot rule.
 	Password struct {
@@ -251,9 +258,11 @@ func run(ctx context.Context) error {
 			Audience:    cfg.JWT.Audience,
 			AccessTTL:   cfg.Access.TokenTTL,
 		},
-		RefreshTTL:       cfg.Refresh.TokenTTL,
-		PasswordResetTTL: cfg.Password.ResetTTL,
-		RateLimit:        rateLimiter,
+		RefreshTTL:              cfg.Refresh.TokenTTL,
+		PasswordResetTTL:        cfg.Password.ResetTTL,
+		IssuesPerIPPerHour:      cfg.OTP.IssuePerIPPerHour,
+		IssuesPerSubjectPerHour: cfg.OTP.IssuePerSubjectPerHour,
+		RateLimit:               rateLimiter,
 		// OAUTH_GOOGLE_ENABLED gates the credentials rather than the routes. The
 		// operations stay mounted either way and answer the same refusal a bad
 		// code gets, because a deployment with the provider switched off should
@@ -296,6 +305,7 @@ func run(ctx context.Context) error {
 			Version:        health.Version,
 			RequestTimeout: cfg.HTTP.RequestTimeout,
 			ClientIP:       clientIP,
+			CORS:           httpx.CORS(splitList(cfg.CORS.AllowedOrigins)),
 			Modules:        modules.Routes,
 			Middleware: func(next http.Handler) http.Handler {
 				return telemetry.Middleware(routePattern, next)
@@ -344,44 +354,46 @@ const (
 func configOptions() config.Options {
 	return config.Options{
 		Defaults: map[string]any{
-			"app.env":                     "local",
-			"app.name":                    "fluentra",
-			"app.version":                 version,
-			"http.port":                   "8080",
-			"http.read_timeout":           "15s",
-			"http.write_timeout":          defaultTimeout,
-			"http.idle_timeout":           "120s",
-			"http.request_timeout":        defaultTimeout,
-			"http.shutdown_grace":         defaultTimeout,
-			"http.trusted_proxies":        "",
-			"s3.use_ssl":                  false,
-			"otel.exporter_otlp_endpoint": defaultOTLPEndpoint,
-			"otel.service_name":           "fluentra-api",
-			"smtp.host":                   "localhost",
-			"smtp.port":                   1025,
-			"smtp.dev_mode":               true,
-			"mail.from":                   "no-reply@fluentra.local",
-			"jwt.issuer":                  "fluentra",
-			"jwt.audience":                "fluentra-api",
-			"jwt.previous_key":            "",
-			"access.token_ttl":            "15m",
-			"refresh.token_ttl":           "720h",
-			"password.reset_ttl":          "30m",
-			"session.idle_window":         "720h",
-			"session.idle_window_trusted": "2160h",
-			"session.absolute_ttl":        "4320h",
-			"session.idle_window_admin":   "12h",
-			"session.absolute_ttl_admin":  "168h",
-			"rate.limit_anon_per_min":     60,
-			"rate.limit_user_per_min":     600,
-			"rate.limit_auth_per_min":     5,
-			"rate.limit_upload_per_hour":  30,
-			"otp.issue_per_ip_per_hour":   20,
-			"oauth.google_enabled":        false,
-			"oauth.google_jwks_url":       "https://www.googleapis.com/oauth2/v3/certs",
-			"oauth.google_issuer":         "https://accounts.google.com",
-			"oauth.jwks_cache_ttl":        "6h",
-			"oauth.state_ttl":             "10m",
+			"app.env":                        "local",
+			"app.name":                       "fluentra",
+			"app.version":                    version,
+			"http.port":                      "8080",
+			"http.read_timeout":              "15s",
+			"http.write_timeout":             defaultTimeout,
+			"http.idle_timeout":              "120s",
+			"http.request_timeout":           defaultTimeout,
+			"http.shutdown_grace":            defaultTimeout,
+			"http.trusted_proxies":           "",
+			"cors.allowed_origins":           "",
+			"s3.use_ssl":                     false,
+			"otel.exporter_otlp_endpoint":    defaultOTLPEndpoint,
+			"otel.service_name":              "fluentra-api",
+			"smtp.host":                      "localhost",
+			"smtp.port":                      1025,
+			"smtp.dev_mode":                  true,
+			"mail.from":                      "no-reply@fluentra.local",
+			"jwt.issuer":                     "fluentra",
+			"jwt.audience":                   "fluentra-api",
+			"jwt.previous_key":               "",
+			"access.token_ttl":               "15m",
+			"refresh.token_ttl":              "720h",
+			"password.reset_ttl":             "30m",
+			"session.idle_window":            "720h",
+			"session.idle_window_trusted":    "2160h",
+			"session.absolute_ttl":           "4320h",
+			"session.idle_window_admin":      "12h",
+			"session.absolute_ttl_admin":     "168h",
+			"rate.limit_anon_per_min":        60,
+			"rate.limit_user_per_min":        600,
+			"rate.limit_auth_per_min":        5,
+			"rate.limit_upload_per_hour":     30,
+			"otp.issue_per_ip_per_hour":      20,
+			"otp.issue_per_subject_per_hour": 3,
+			"oauth.google_enabled":           false,
+			"oauth.google_jwks_url":          "https://www.googleapis.com/oauth2/v3/certs",
+			"oauth.google_issuer":            "https://accounts.google.com",
+			"oauth.jwks_cache_ttl":           "6h",
+			"oauth.state_ttl":                "10m",
 		},
 		Required: []config.RequiredKey{
 			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},
