@@ -689,3 +689,72 @@ func TestModule_AvatarUploadRejectsRenamedExecutable(t *testing.T) {
 		t.Errorf("avatar_asset_id was updated to %v, want NULL", avatarID)
 	}
 }
+
+// TestModule_IDOR_UserBSeesUserARowsAsNotFound is the P5.5 IDOR suite, against
+// real SQL rather than a fake.
+//
+// The service-level suite in service/idor_test.go drives an in-memory
+// repository, which cannot tell whether the query it stands in for carries its
+// `AND user_id = $2`. Dropping that clause from the real statement is exactly
+// the mistake worth catching, and only a test that reaches PostgreSQL can catch
+// it — so this one owns two accounts and asks for each other's rows.
+//
+// 404 and not 403 throughout: a 403 confirms the row exists, which is the whole
+// of what an enumeration attempt is trying to learn.
+func TestModule_IDOR_UserBSeesUserARowsAsNotFound(t *testing.T) {
+	module, router := newModule(t)
+
+	owner := register(t, module, "idor-owner@example.com", "Owner")
+	stranger := register(t, module, "idor-stranger@example.com", "Stranger")
+
+	// An export and a deletion, both addressed by their own id in the URL, which
+	// is what makes them reachable by guessing at all. /me and /me/preferences
+	// are deliberately not here: they carry no id, so the actor is the address.
+	exportResponse := request(t, router, http.MethodPost, "/api/v1/me/export", owner, "")
+	if exportResponse.Code != http.StatusAccepted && exportResponse.Code != http.StatusCreated {
+		t.Fatalf("create export: status %d body %s", exportResponse.Code, exportResponse.Body.String())
+	}
+	var export struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(exportResponse.Body.Bytes(), &export); err != nil {
+		t.Fatalf("decode export: %v", err)
+	}
+
+	// Requesting deletion is DELETE /me, not POST /me/deletion.
+	deletionResponse := request(t, router, http.MethodDelete, "/api/v1/me", owner, "")
+	if deletionResponse.Code != http.StatusAccepted && deletionResponse.Code != http.StatusCreated {
+		t.Fatalf("create deletion: status %d body %s", deletionResponse.Code, deletionResponse.Body.String())
+	}
+	var deletion struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(deletionResponse.Body.Bytes(), &deletion); err != nil {
+		t.Fatalf("decode deletion: %v", err)
+	}
+
+	cases := []struct {
+		name string
+		path string
+	}{
+		{"another learner's export", "/api/v1/me/export/" + export.ID},
+		{"another learner's deletion", "/api/v1/me/deletion/" + deletion.ID},
+	}
+
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			// The owner can read it: without this the 404 below would pass just
+			// as well against a path that does not resolve for anybody.
+			if owned := request(t, router, http.MethodGet, testCase.path, owner, ""); owned.Code != http.StatusOK {
+				t.Fatalf("owner GET %s = %d, want 200 — the 404 below would prove nothing",
+					testCase.path, owned.Code)
+			}
+
+			stranged := request(t, router, http.MethodGet, testCase.path, stranger, "")
+			if stranged.Code != http.StatusNotFound {
+				t.Errorf("stranger GET %s = %d, want 404 (a 403 would confirm the row exists)",
+					testCase.path, stranged.Code)
+			}
+		})
+	}
+}

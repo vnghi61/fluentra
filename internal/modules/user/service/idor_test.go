@@ -61,4 +61,36 @@ func TestIDOR_UserResourcesReturnNotFoundWhenAccessedByAnotherActor(t *testing.T
 			t.Errorf("ReplacePreferences error = %v, want NotFound (404)", err)
 		}
 	})
+
+	// 5. User B attempting to read User A's export. The resource is addressed
+	// by its own id, so this is a real cross-user IDOR: a 403 here would confirm
+	// to user B that the export id names a real row.
+	t.Run("GetExportByID returns NotFound for another user's export", func(t *testing.T) {
+		exportID := uuid.New()
+		h.repo.exports[exportID] = domain.ExportRequest{
+			ID:        exportID,
+			UserID:    h.actor,
+			Status:    domain.ExportStatusCompleted,
+			CreatedAt: testNow,
+		}
+
+		_, err := h.service.GetExportByID(context.Background(), userB, exportID)
+		if !apperr.Is(err, apperr.NotFound) {
+			t.Errorf("GetExportByID error = %v, want NotFound (404)", err)
+		}
+	})
+
+	// 6. User B attempting to read User A's deletion request, same reasoning as
+	// the export case above.
+	t.Run("GetDeletion returns NotFound for another user's deletion", func(t *testing.T) {
+		request, err := h.service.RequestDeletion(context.Background(), h.actor)
+		if err != nil {
+			t.Fatalf("RequestDeletion: %v", err)
+		}
+
+		_, err = h.service.GetDeletion(context.Background(), userB, request.ID)
+		if !apperr.Is(err, apperr.NotFound) {
+			t.Errorf("GetDeletion error = %v, want NotFound (404)", err)
+		}
+	})
 }

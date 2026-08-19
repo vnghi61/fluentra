@@ -101,6 +101,12 @@ jobs:
         with:
           languages: ${{ matrix.language }}
 
+      # Without a build step the analyzer has no database to read for a compiled
+      # language, and `analyze` fails or reports on nothing. autobuild knows the
+      # Go and JavaScript/TypeScript build commands and runs the right one.
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@b56ba49b26e50535fa1ea49bd30e9dd3845e789d # v3.28.10
+
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@b56ba49b26e50535fa1ea49bd30e9dd3845e789d # v3.28.10
 
@@ -112,7 +118,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Run Trivy vulnerability scanner in repo mode
+      # Two passes on purpose. The SARIF pass is for the code-scanning UI and
+      # must not stop the job, or the upload below never runs. The gating pass
+      # is what makes a HIGH or CRITICAL finding fail: `format: sarif` leaves
+      # exit-code at 0, so the single-pass version reported findings and went
+      # green — advisory output dressed as a gate.
+      - name: Run Trivy and write SARIF
         uses: aquasecurity/trivy-action@18f2510ee396bbf400402947b394f2dd8c87dbb0 # v0.29.0
         with:
           scan-type: 'fs'
@@ -120,6 +131,23 @@ jobs:
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
+
+      - name: Fail on HIGH or CRITICAL findings
+        uses: aquasecurity/trivy-action@18f2510ee396bbf400402947b394f2dd8c87dbb0 # v0.29.0
+        with:
+          scan-type: 'fs'
+          ignore-unfixed: true
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+
+      # The SARIF is only useful if it lands in the code-scanning UI. Writing it
+      # to the runner without uploading it means the results are invisible.
+      - name: Upload Trivy results to code scanning
+        uses: github/codeql-action/upload-sarif@b56ba49b26e50535fa1ea49bd30e9dd3845e789d # v3.28.10
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
 
   sbom:
     name: Software Bill of Materials (SBOM)
