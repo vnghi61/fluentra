@@ -2,7 +2,12 @@ import * as React from "react";
 import { AlertCircle, ArrowLeft, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { OtpInput } from "@/components/ui/otp-input";
-import { authApi, type Challenge, type VerifiedChallenge } from "@/features/auth/api/authApi";
+import { useViewport } from "@/hooks/useViewport";
+import {
+  authApi,
+  type Challenge,
+  type VerifiedChallenge,
+} from "@/features/auth/api/authApi";
 import { ApiError } from "@/api/client";
 import { getErrorMessage } from "@/lib/errors/catalogue";
 
@@ -29,21 +34,31 @@ export function OtpVerificationScreen({
   );
   const [isBurned, setIsBurned] = React.useState(false);
 
+  // The OTP screen is the R5 case in miniature: the virtual keyboard shrinks the
+  // visual viewport, and the card must reserve that space or the field being
+  // typed into sits under the keyboard (ADR-0024). Reserving it lets the page
+  // scroll the field above the keyboard instead of pinching to zoom back out.
+  const { isKeyboardOpen, keyboardHeight } = useViewport();
+
   // Time remaining until challenge expiry
-  const [secondsUntilExpiry, setSecondsUntilExpiry] = React.useState<number>(() => {
-    const diff = Math.floor(
-      (new Date(initialChallenge.expires_at).getTime() - Date.now()) / 1000,
-    );
-    return Math.max(0, diff);
-  });
+  const [secondsUntilExpiry, setSecondsUntilExpiry] = React.useState<number>(
+    () => {
+      const diff = Math.floor(
+        (new Date(initialChallenge.expires_at).getTime() - Date.now()) / 1000,
+      );
+      return Math.max(0, diff);
+    },
+  );
 
   // Time remaining until resend cooldown ends
-  const [secondsUntilResend, setSecondsUntilResend] = React.useState<number>(() => {
-    const diff = Math.floor(
-      (new Date(initialChallenge.resend_after).getTime() - Date.now()) / 1000,
-    );
-    return Math.max(0, diff);
-  });
+  const [secondsUntilResend, setSecondsUntilResend] = React.useState<number>(
+    () => {
+      const diff = Math.floor(
+        (new Date(initialChallenge.resend_after).getTime() - Date.now()) / 1000,
+      );
+      return Math.max(0, diff);
+    },
+  );
 
   // Countdown intervals
   React.useEffect(() => {
@@ -76,10 +91,18 @@ export function OtpVerificationScreen({
             ? err.problem.meta.attempts_remaining
             : null;
 
+        // The server's codes, not invented ones. It answers OTP_INVALID (401)
+        // for a wrong code and OTP_ATTEMPTS_EXCEEDED (429) once the fifth is
+        // spent. The previous list named CODE_INVALID and CHALLENGE_BURNED,
+        // which nothing emits, and left 429 out of the status fallback — so the
+        // burn never registered and the screen sat on "Attempts left: 1/5"
+        // forever, with the burned branch below unreachable.
         const isWrongCode =
-          err.problem.code === "CODE_INVALID" ||
-          err.problem.code === "CHALLENGE_BURNED" ||
-          (err.problem.status === 400 || err.problem.status === 401 || err.problem.status === 422);
+          err.problem.code === "OTP_INVALID" ||
+          err.problem.code === "OTP_ATTEMPTS_EXCEEDED" ||
+          err.problem.status === 400 ||
+          err.problem.status === 401 ||
+          err.problem.status === 422;
 
         let newAttempts = attemptsRemaining;
         if (serverAttempts !== null) {
@@ -89,7 +112,7 @@ export function OtpVerificationScreen({
         }
         setAttemptsRemaining(newAttempts);
 
-        if (newAttempts === 0 || err.problem.code === "CHALLENGE_BURNED") {
+        if (newAttempts === 0 || err.problem.code === "OTP_ATTEMPTS_EXCEEDED") {
           setIsBurned(true);
           setError(
             "This verification code has been burned after 5 incorrect attempts. Please restart the process to receive a fresh code.",
@@ -111,17 +134,24 @@ export function OtpVerificationScreen({
     setCode("");
 
     try {
-      const updatedChallenge = await authApi.resendChallenge(challenge.challenge_id);
+      const updatedChallenge = await authApi.resendChallenge(
+        challenge.challenge_id,
+      );
       setChallenge(updatedChallenge);
       setAttemptsRemaining(updatedChallenge.attempts_remaining ?? 5);
 
       const newExpiry = Math.max(
         0,
-        Math.floor((new Date(updatedChallenge.expires_at).getTime() - Date.now()) / 1000),
+        Math.floor(
+          (new Date(updatedChallenge.expires_at).getTime() - Date.now()) / 1000,
+        ),
       );
       const newResend = Math.max(
         0,
-        Math.floor((new Date(updatedChallenge.resend_after).getTime() - Date.now()) / 1000),
+        Math.floor(
+          (new Date(updatedChallenge.resend_after).getTime() - Date.now()) /
+            1000,
+        ),
       );
       setSecondsUntilExpiry(newExpiry);
       setSecondsUntilResend(newResend);
@@ -143,12 +173,17 @@ export function OtpVerificationScreen({
   };
 
   return (
-    <div className="mx-auto w-full max-w-md space-y-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-6 sm:p-8 shadow-xl backdrop-blur-sm">
+    <div
+      className="mx-auto w-full max-w-md space-y-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-6 sm:p-8 shadow-xl backdrop-blur-sm"
+      style={
+        isKeyboardOpen ? { paddingBottom: `max(1.5rem, ${keyboardHeight}px)` } : undefined
+      }
+    >
       {onBack && (
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors"
+          className="inline-flex min-h-11 items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Back
@@ -160,7 +195,8 @@ export function OtpVerificationScreen({
           Enter verification code
         </h1>
         <p className="text-sm text-slate-400">
-          We emailed a 6-digit code to <span className="font-semibold text-slate-200">{email}</span>
+          We emailed a 6-digit code to{" "}
+          <span className="font-semibold text-slate-200">{email}</span>
         </p>
       </div>
 
@@ -186,13 +222,25 @@ export function OtpVerificationScreen({
         <div className="flex items-center justify-between text-xs text-slate-400 px-1">
           <span>
             Expires in:{" "}
-            <span className={secondsUntilExpiry < 60 ? "font-semibold text-rose-400" : "font-semibold text-slate-200"}>
+            <span
+              className={
+                secondsUntilExpiry < 60
+                  ? "font-semibold text-rose-400"
+                  : "font-semibold text-slate-200"
+              }
+            >
               {formatTime(secondsUntilExpiry)}
             </span>
           </span>
           <span>
             Attempts left:{" "}
-            <span className={attemptsRemaining <= 2 ? "font-semibold text-amber-400" : "font-semibold text-slate-200"}>
+            <span
+              className={
+                attemptsRemaining <= 2
+                  ? "font-semibold text-amber-400"
+                  : "font-semibold text-slate-200"
+              }
+            >
               {attemptsRemaining}/5
             </span>
           </span>
@@ -215,9 +263,13 @@ export function OtpVerificationScreen({
             type="button"
             disabled={secondsUntilResend > 0 || isResending || isBurned}
             onClick={() => void handleResend()}
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-400 hover:text-indigo-300 disabled:opacity-50 disabled:pointer-events-none transition-colors"
+            className="inline-flex min-h-11 items-center gap-1.5 text-xs font-medium text-indigo-400 hover:text-indigo-300 disabled:opacity-50 disabled:pointer-events-none transition-colors"
           >
-            <RotateCw className={isResending ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} />
+            <RotateCw
+              className={
+                isResending ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"
+              }
+            />
             {secondsUntilResend > 0
               ? `Resend code in ${secondsUntilResend}s`
               : "Didn't receive a code? Resend"}

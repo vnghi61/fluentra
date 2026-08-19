@@ -5,7 +5,14 @@ import { Link } from "@tanstack/react-router";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { authApi } from "@/features/auth/api/authApi";
 import { GoogleButton } from "@/features/auth/components/GoogleButton";
@@ -45,7 +52,9 @@ export function LoginForm({ onSuccess }: LoginFormProps): React.JSX.Element {
       if (err instanceof ApiError) {
         setServerError(getErrorMessage(err.problem));
       } else {
-        setServerError("Failed to sign in. Please check your connection and try again.");
+        setServerError(
+          "Failed to sign in. Please check your connection and try again.",
+        );
       }
     }
   };
@@ -80,7 +89,10 @@ export function LoginForm({ onSuccess }: LoginFormProps): React.JSX.Element {
       )}
 
       <Form {...form}>
-        <form onSubmit={(e) => void form.handleSubmit(onSubmit)(e)} className="space-y-4">
+        <form
+          onSubmit={(e) => void form.handleSubmit(onSubmit)(e)}
+          className="space-y-4"
+        >
           <FormField
             control={form.control}
             name="email"
@@ -109,7 +121,10 @@ export function LoginForm({ onSuccess }: LoginFormProps): React.JSX.Element {
                   <FormLabel required>Password</FormLabel>
                   <Link
                     to="/forgot-password"
-                    className="text-xs font-medium text-indigo-400 hover:text-indigo-300 hover:underline"
+                    // A standalone control, not a link inside a sentence, so
+                    // R1's 44 px minimum applies to it. The negative margin
+                    // keeps the row's visual rhythm while the hit area grows.
+                    className="inline-flex min-h-11 items-center -my-3 text-xs font-medium text-indigo-400 hover:text-indigo-300 hover:underline"
                   >
                     Forgot password?
                   </Link>

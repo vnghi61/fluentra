@@ -68,8 +68,17 @@ func (c *Client) EnqueueTx(
 }
 
 // NewClientFromPool creates a job client using the connection pool.
+//
+// Schema is not optional. River's tables live in `ops` — MigrateUp puts them
+// there and the worker's own config says so — and a client left with the zero
+// Config looks for `river_job` on the default search_path instead. It compiles,
+// it starts, and every insert fails at runtime: the API answered 500 on
+// `POST /me/export` for exactly this reason, with no row written and no job
+// queued. An enqueue-only client that cannot see the queue is the same class of
+// defect as a query with no caller, and it is why this line is asserted in
+// TestNewClientFromPool_InsertsIntoTheSchemaTheMigratorCreated.
 func NewClientFromPool(pool *pgxpool.Pool) (*Client, error) {
-	riverClient, err := river.NewClient(riverpgxv5.New(pool), &river.Config{})
+	riverClient, err := river.NewClient(riverpgxv5.New(pool), &river.Config{Schema: Schema})
 	if err != nil {
 		return nil, fmt.Errorf("create river client: %w", err)
 	}

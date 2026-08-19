@@ -10,7 +10,13 @@
     "skipLibCheck": true,
     "strict": true,
     "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true
+    "exactOptionalPropertyTypes": true,
+    // The layout specs stub API responses. Typing those stubs against the
+    // generated schema is what stops them drifting from the spec the way the
+    // first round of journeys did — a stub for an endpoint that does not exist
+    // matches nothing and asserts against a screen the app never rendered.
+    "baseUrl": ".",
+    "paths": { "@/*": ["./src/*"] }
   },
-  "include": ["playwright.config.ts", "e2e"]
+  "include": ["playwright.config.ts", "e2e", "src/types/api.ts"]
 }

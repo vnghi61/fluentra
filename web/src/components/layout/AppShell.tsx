@@ -36,6 +36,22 @@ export const AppShell: React.FC<AppShellProps> = ({
             >
               Practice
             </Link>
+            {status === "authenticated" && (
+              <Link
+                to="/settings"
+                className="flex items-center h-11 px-4 rounded-lg text-slate-300 hover:bg-slate-800 min-h-[44px] transition-colors"
+              >
+                Settings
+              </Link>
+            )}
+            {status === "authenticated" && user?.role === "admin" && (
+              <Link
+                to="/admin"
+                className="flex items-center h-11 px-4 rounded-lg text-indigo-300 hover:bg-indigo-500/10 min-h-[44px] transition-colors font-medium"
+              >
+                Admin Panel
+              </Link>
+            )}
           </nav>
         </div>
 
@@ -44,7 +60,10 @@ export const AppShell: React.FC<AppShellProps> = ({
           {status === "authenticated" && user ? (
             <div className="space-y-3">
               <div className="text-xs text-slate-400 px-2 truncate">
-                Role: <span className="font-semibold text-slate-200 uppercase">{user.role}</span>
+                Role:{" "}
+                <span className="font-semibold text-slate-200 uppercase">
+                  {user.role}
+                </span>
               </div>
               <button
                 type="button"
@@ -96,13 +115,29 @@ export const AppShell: React.FC<AppShellProps> = ({
           Practice
         </Link>
         {status === "authenticated" ? (
-          <button
-            type="button"
-            onClick={onLogout}
-            className="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] text-rose-400 text-xs font-medium"
-          >
-            Logout
-          </button>
+          <>
+            <Link
+              to="/settings"
+              className="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] text-slate-400 text-xs font-medium"
+            >
+              Settings
+            </Link>
+            {user?.role === "admin" && (
+              <Link
+                to="/admin"
+                className="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] text-indigo-400 text-xs font-medium"
+              >
+                Admin
+              </Link>
+            )}
+            <button
+              type="button"
+              onClick={onLogout}
+              className="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] text-rose-400 text-xs font-medium"
+            >
+              Logout
+            </button>
+          </>
         ) : (
           <Link
             to="/login"

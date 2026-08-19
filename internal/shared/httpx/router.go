@@ -30,6 +30,7 @@ type RouterDependencies struct {
 	Database       PingDatabase
 	Cache          PingCache
 	Middleware     func(http.Handler) http.Handler
+	CORS           func(http.Handler) http.Handler
 	Health         http.HandlerFunc
 	Ready          http.HandlerFunc
 	Version        http.HandlerFunc
@@ -67,6 +68,11 @@ func NewRouter(deps RouterDependencies) http.Handler {
 
 	router := chi.NewRouter()
 	router.Use(resolver.Middleware)
+	if deps.CORS != nil {
+		// Outermost of the request-scoped concerns, so a preflight is answered
+		// before it would be charged a rate-limit budget or asked for a token.
+		router.Use(deps.CORS)
+	}
 	router.Use(middleware.Timeout(requestTimeout))
 	if deps.Middleware != nil {
 		router.Use(deps.Middleware)

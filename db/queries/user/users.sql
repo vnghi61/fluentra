@@ -73,9 +73,18 @@ JOIN core.user_preferences pref ON pref.user_id = u.id
 WHERE (@email_prefix::text = '' OR u.email ILIKE @email_prefix || '%')
   AND (@display_name::text = '' OR p.display_name ILIKE '%' || @display_name || '%')
   AND (@status::text = '' OR u.status::text = @status)
-  AND (@created_after::timestamptz IS NULL OR u.created_at >= @created_after)
-  AND (@created_before::timestamptz IS NULL OR u.created_at <= @created_before)
-  AND (@cursor_id::uuid IS NULL OR (u.created_at, u.id) < (@cursor_created_at::timestamptz, @cursor_id::uuid))
+  -- sqlc.narg, not @: `@name` generates a non-nullable Go parameter, so an
+  -- absent cursor arrives as the zero UUID rather than NULL. The guard then
+  -- reads `'00000000-…' IS NULL OR (created_at, id) < ('0001-01-01', '000…')`,
+  -- which is false for every row — the first page of an unfiltered admin search
+  -- returned nothing at all, and no test noticed because the fixtures always
+  -- passed a cursor.
+  AND (sqlc.narg('created_after')::timestamptz IS NULL OR u.created_at >= sqlc.narg('created_after')::timestamptz)
+  AND (sqlc.narg('created_before')::timestamptz IS NULL OR u.created_at <= sqlc.narg('created_before')::timestamptz)
+  AND (
+    sqlc.narg('cursor_id')::uuid IS NULL
+    OR (u.created_at, u.id) < (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+  )
 ORDER BY u.created_at DESC, u.id DESC
 LIMIT @result_limit;
 

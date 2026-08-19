@@ -16,6 +16,11 @@ services:
     volumes:
       - ../..:/app
       - /app/tmp
+      # The image downloads modules behind a BuildKit cache mount, which the
+      # container cannot see: without a volume here every restart re-downloads
+      # the whole module graph before the API can start, and `make dev` looks
+      # hung for minutes. Named, so api and worker share one copy.
+      - gomodcache:/go/pkg/mod
     environment:
       - APP_ENV=local
       - HTTP_PORT=8080
@@ -26,8 +31,30 @@ services:
       - S3_SECRET_KEY=minioadmin
       - SMTP_HOST=mailpit
       - SMTP_PORT=1025
+      # Blanked deliberately, and not merely left unset. A developer's own .env
+      # may carry real provider credentials (config load order is defaults ->
+      # .env -> file -> environment, so only an explicit environment entry wins).
+      # With a username present the mailer calls PlainAuth, Mailpit answers
+      # "server doesn't support AUTH", and every OTP email dead-letters after
+      # five attempts — the stack looks healthy and no code ever arrives.
+      - SMTP_USERNAME=
+      - SMTP_PASSWORD=
+      - SMTP_TLS=false
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - CORS_ALLOWED_ORIGINS=http://localhost:5173
+      # The E2E suite is ten journeys across four device projects, and every one
+      # of them registers a learner from the same address the runner uses. At the
+      # production cap of 20 per IP per hour the back half of the matrix is
+      # refused and fails as an unrelated timeout. Raised here only: the cap
+      # itself is what the per-IP campaign test exercises, and it stays as
+      # shipped in .env.example.
+      - OTP_ISSUE_PER_IP_PER_HOUR=500
+      # Same reason, different gate: RATE_LIMIT_AUTH_PER_MIN ships at 5, and the
+      # journeys register, verify, sign out and sign in from one address in far
+      # less than a minute. At 5 the suite refuses its own logins with 429 and
+      # the failure reads as "still on /login" with no hint why.
+      - RATE_LIMIT_AUTH_PER_MIN=500
+      - RATE_LIMIT_ANON_PER_MIN=2000
       - OTP_HMAC_KEY=change-me-32-bytes-minimum-for-otp-hmac
       - JWT_SIGNING_KEY=change-me-at-least-32-bytes-long-secret
     networks: [frontend, backend]
@@ -48,6 +75,7 @@ services:
     volumes:
       - ../..:/app
       - /app/tmp
+      - gomodcache:/go/pkg/mod
     environment:
       - APP_ENV=local
       - HTTP_PORT=8081
@@ -58,6 +86,15 @@ services:
       - S3_SECRET_KEY=minioadmin
       - SMTP_HOST=mailpit
       - SMTP_PORT=1025
+      # Blanked deliberately, and not merely left unset. A developer's own .env
+      # may carry real provider credentials (config load order is defaults ->
+      # .env -> file -> environment, so only an explicit environment entry wins).
+      # With a username present the mailer calls PlainAuth, Mailpit answers
+      # "server doesn't support AUTH", and every OTP email dead-letters after
+      # five attempts — the stack looks healthy and no code ever arrives.
+      - SMTP_USERNAME=
+      - SMTP_PASSWORD=
+      - SMTP_TLS=false
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - OTP_HMAC_KEY=change-me-32-bytes-minimum-for-otp-hmac
       - JWT_SIGNING_KEY=change-me-at-least-32-bytes-long-secret
@@ -80,6 +117,16 @@ services:
       - /app/node_modules
     environment:
       - VITE_API_TARGET=http://api:8080
+      # See vite.config.ts: without polling the container never sees an edit to
+      # the bind-mounted source, and `make dev` serves a stale app until the
+      # container is recreated.
+      - VITE_USE_POLLING=true
+      # `pnpm dev` runs a dependency-status check first, and when it decides the
+      # mounted node_modules volume is stale it wants to purge and reinstall.
+      # Without a TTY it refuses and exits 1, so the container comes up
+      # "running" and serves nothing. CI=true is pnpm's own documented answer:
+      # proceed non-interactively instead of asking.
+      - CI=true
     networks: [frontend]
     depends_on:
       api:
@@ -93,7 +140,12 @@ services:
     ports: ["127.0.0.1:9000:9000", "127.0.0.1:9001:9001"]
   mailpit:
     image: axllent/mailpit:latest
-    ports: ["127.0.0.1:8025:8025"]
+    # 8025 is the HTTP API a test reads the delivered code from; 1025 is the
+    # SMTP port the worker sends to. Publishing only 8025 leaves an API run on
+    # the host (`make dev-infra` + `go run ./cmd/api`, and the E2E job) with
+    # nowhere to deliver, so registration writes the challenge and no code ever
+    # arrives.
+    ports: ["127.0.0.1:8025:8025", "127.0.0.1:1025:1025"]
     networks: [backend]
     healthcheck:
       test: [CMD, wget, -qO-, http://localhost:8025/livez]
@@ -101,10 +153,34 @@ services:
       timeout: 3s
       retries: 20
 
+  # MinIO starts empty and nothing in the application creates its buckets: the
+  # storage client presigns against a bucket it expects to already exist. Without
+  # this the stack comes up healthy and the first avatar upload fails against it,
+  # which is the "looks wired, never actually reached" shape this repo keeps
+  # finding. One-shot: it exits 0 once the five buckets are there, and `--ignore-existing`
+  # makes a second `up` a no-op rather than an error.
+  createbuckets:
+    image: minio/mc:latest
+    networks: [backend]
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        mc alias set local http://minio:9000 minioadmin minioadmin
+        for bucket in fluentra-avatars fluentra-media fluentra-uploads fluentra-derived fluentra-exports; do
+          mc mb --ignore-existing "local/$$bucket"
+        done
+
 # In compose.yaml backend is internal: true (data services stay off the host).
 # In dev we publish their ports so host tooling (psql, redis-cli, migrations,
 # tests) can connect. Compose ignores published ports on an internal network,
 # so we override it to internal: false here.
+volumes:
+  gomodcache:
+
 networks:
   backend:
     internal: false

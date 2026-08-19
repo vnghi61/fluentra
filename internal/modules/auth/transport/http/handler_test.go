@@ -179,6 +179,7 @@ type fakeOAuth struct {
 	callbackFn func(ctx context.Context, input service.CallbackInput) (service.SignedIn, error)
 	linkFn     func(ctx context.Context, actor httpx.Actor, input service.CallbackInput) (service.LinkedIdentity, error)
 	unlinkFn   func(ctx context.Context, actor httpx.Actor) error
+	statusFn   func(ctx context.Context, actor httpx.Actor) (service.LinkState, error)
 
 	sawActor    httpx.Actor
 	sawRedirect string
@@ -1214,4 +1215,12 @@ func TestHandler_UntrustingAnsWers204AndPassesTheActorThrough(t *testing.T) {
 	if devices.sawActor.UserID != actor.UserID {
 		t.Errorf("the service was given account %s, want %s", devices.sawActor.UserID, actor.UserID)
 	}
+}
+
+func (f *fakeOAuth) LinkStatus(ctx context.Context, actor httpx.Actor) (service.LinkState, error) {
+	f.sawActor = actor
+	if f.statusFn != nil {
+		return f.statusFn(ctx, actor)
+	}
+	return service.LinkState{}, nil
 }

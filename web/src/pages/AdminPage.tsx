@@ -1,0 +1,90 @@
+import React, { useState } from "react";
+import { Flag, Shield, Users } from "lucide-react";
+import { AdminUserList, AdminFeatureFlags } from "@/features/admin";
+import { PERMISSIONS, usePermissions } from "@/features/admin/model/permissions";
+
+type AdminTab = "users" | "flags";
+
+export function AdminPage(): React.JSX.Element {
+  const [activeTab, setActiveTab] = useState<AdminTab>("users");
+  const { can, isLoading } = usePermissions();
+
+  // The route already refuses non-admins. This is the finer cut: `admin` is one
+  // role but its permissions are individually grantable, so an administrator
+  // without `system.flags` must not be shown a Feature Flags tab whose every
+  // action answers 403. The server still enforces both — see each operation's
+  // x-permission in api/openapi/openapi.yaml.
+  const tabs = [
+    ...(can(PERMISSIONS.userList)
+      ? [{ key: "users" as AdminTab, label: "Learner Management", icon: Users }]
+      : []),
+    ...(can(PERMISSIONS.systemFlags)
+      ? [{ key: "flags" as AdminTab, label: "Feature Flags", icon: Flag }]
+      : []),
+  ];
+
+  // Nothing is rendered on a guess: until the read lands, and if it fails,
+  // no administrative surface is offered.
+  const visible = tabs.some((tab) => tab.key === activeTab)
+    ? activeTab
+    : tabs[0]?.key;
+
+  return (
+    <div className="max-w-6xl mx-auto space-y-8 py-4">
+      {/* Header */}
+      <header className="space-y-1">
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1 rounded-md bg-indigo-500/10 px-2 py-0.5 text-xs font-semibold text-indigo-400 border border-indigo-500/20 uppercase tracking-wider">
+            <Shield className="h-3 w-3" />
+            Administration
+          </span>
+        </div>
+        <h1 className="text-2xl font-bold text-slate-100">
+          Platform Administration
+        </h1>
+        <p className="text-sm text-slate-400">
+          Manage platform learners, enforce moderation, and configure system feature flags.
+        </p>
+      </header>
+
+      {/* Tabs */}
+      <div className="flex border-b border-slate-800 gap-2 pb-px overflow-x-auto">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = visible === tab.key;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex items-center gap-2 whitespace-nowrap px-4 py-3 text-sm font-medium border-b-2 transition-colors min-h-[44px] cursor-pointer ${
+                isActive
+                  ? "border-indigo-500 text-indigo-400 bg-indigo-500/5 rounded-t-lg"
+                  : "border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700"
+              }`}
+            >
+              <Icon className="h-4 w-4" />
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Tab Panels */}
+      <div>
+        {isLoading ? (
+          <p className="text-sm text-slate-400">Checking your permissions…</p>
+        ) : tabs.length === 0 ? (
+          <p className="text-sm text-slate-400">
+            Your account holds no administrative permissions.
+          </p>
+        ) : (
+          <>
+            {visible === "users" && <AdminUserList />}
+            {visible === "flags" && <AdminFeatureFlags />}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

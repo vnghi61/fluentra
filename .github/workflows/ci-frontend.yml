@@ -83,14 +83,88 @@ jobs:
       - name: Build and enforce the bundle budget
         run: pnpm run build
 
+
   e2e:
     name: Frontend E2E
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # 20 was the budget when this job installed pnpm and ran a smoke test. It now
+    # migrates a database, starts an API and a worker, builds the bundle and
+    # drives four browser projects against them.
+    timeout-minutes: 30
 
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      # `deploy/compose/` already describes this stack, and `make dev-infra` is
+      # how a developer starts it. Writing a second description here — a handful
+      # of `docker run` lines with their own credentials and their own idea of
+      # which services exist — is how CI and the local stack drift until a test
+      # passes in one and not the other. One description, two callers.
+      #
+      # It brings up postgres, redis, minio and mailpit with host ports
+      # published, waits for every healthcheck, and provisions the MinIO buckets
+      # as a one-shot whose exit code is checked.
+      - name: Start the data services
+        working-directory: .
+        run: make dev-infra
+
+      - name: Apply migrations and start the API and the worker
+        working-directory: .
+        env:
+          # These match deploy/compose/compose.dev.yaml. The API runs on the
+          # host rather than in compose so it uses the Go build cache above
+          # instead of rebuilding the hot-reload image on every run.
+          DB_DSN: postgres://fluentra:fluentra@127.0.0.1:5432/fluentra?sslmode=disable
+          REDIS_URL: redis://127.0.0.1:6379/0
+          SMTP_HOST: 127.0.0.1
+          SMTP_PORT: '1025'
+          # Mailpit does not offer AUTH. A non-empty username makes the mailer
+          # try PlainAuth anyway and every OTP mail dead-letters.
+          SMTP_USERNAME: ''
+          SMTP_PASSWORD: ''
+          SMTP_TLS: 'false'
+          S3_ENDPOINT: http://127.0.0.1:9000
+          S3_ACCESS_KEY: minioadmin
+          S3_SECRET_KEY: minioadmin
+          CORS_ALLOWED_ORIGINS: http://localhost:5173
+          # Ten journeys across four device projects all register from the
+          # runner's single IP. The shipped cap of 20/hour refuses the back half
+          # of the matrix, which fails as a timeout somewhere unrelated.
+          OTP_ISSUE_PER_IP_PER_HOUR: '500'
+          # RATE_LIMIT_AUTH_PER_MIN ships at 5; the suite signs in far more
+          # often than that from the runner's single address.
+          RATE_LIMIT_AUTH_PER_MIN: '500'
+          RATE_LIMIT_ANON_PER_MIN: '2000'
+        run: |
+          export OTP_HMAC_KEY="$(openssl rand -hex 32)"
+          export JWT_SIGNING_KEY="$(openssl rand -hex 32)"
+          go run ./cmd/migrate up
+
+          # Built, not `go run`: a backgrounded `go run` is a parent whose child
+          # is the actual server, so the pid this step leaves behind is not the
+          # process the next step depends on.
+          go build -o ./bin/api ./cmd/api
+          go build -o ./bin/worker ./cmd/worker
+
+          HTTP_PORT=8080 ./bin/api > api.log 2>&1 &
+          # The worker is what turns an outbox row into an email in Mailpit.
+          # Without it, registration writes the challenge and nothing delivers
+          # the code, and every OTP journey times out — which is exactly the
+          # "passing against nothing" failure this stack exists to prevent.
+          HTTP_PORT=8081 ./bin/worker > worker.log 2>&1 &
+
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:8080/ready; then echo "API is ready"; exit 0; fi
+            sleep 1
+          done
+          echo "API never became ready"; cat api.log; exit 1
 
       - name: Set up pnpm
         uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
@@ -107,31 +181,109 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Install Playwright Chromium
-        run: pnpm exec playwright install --with-deps chromium
+      # The browsers are cached, and the OS packages are installed separately.
+      # `playwright install --with-deps` downloads two browsers and runs apt on
+      # every shard of every run; three of four shards once sat on that step for
+      # nineteen minutes and were killed by the job timeout, which reads as a
+      # hung test suite and is really a download.
+      - name: Resolve the Playwright version
+        id: playwright
+        run: echo "version=$(pnpm exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
 
-      - name: Run E2E tests
-        run: pnpm run test:e2e
+      - name: Restore the browser cache
+        id: browser-cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
 
-      - name: Upload Playwright report & traces
+      # apt every time: the cache carries the browsers, not the shared libraries
+      # they link against, and a cached browser that cannot start is worse than
+      # no cache at all.
+      # Bounded and retried, for the same reason the download below is. This is
+      # apt, and apt waits on the dpkg lock indefinitely — three shards of an
+      # earlier run sat here for thirty minutes each and were killed by the job
+      # timeout, while a fourth on an identical image finished the whole job in
+      # three and a half. An unbounded wait turns somebody else's background
+      # upgrade into a red build with no explanation in it.
+      - name: Install the browsers' OS dependencies
+        run: |
+          for attempt in 1 2 3; do
+            if timeout 300 pnpm exec playwright install-deps chromium webkit; then
+              exit 0
+            fi
+            echo "install-deps attempt $attempt timed out or failed; retrying"
+            sudo pkill -9 -f 'apt-get|unattended-upgr' || true
+            sudo rm -f /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock || true
+            sudo dpkg --configure -a || true
+          done
+          echo "the browsers' OS dependencies could not be installed"; exit 1
+
+      # Retried rather than left to the job timeout. A stalled download should
+      # cost one attempt, not the whole budget, and `install` is idempotent — a
+      # second attempt resumes rather than starting over.
+      - name: Install Playwright browsers
+        if: steps.browser-cache.outputs.cache-hit != 'true'
+        run: |
+          for attempt in 1 2 3; do
+            if timeout 300 pnpm exec playwright install chromium webkit; then
+              exit 0
+            fi
+            echo "browser install attempt $attempt stalled or failed; retrying"
+          done
+          echo "browsers could not be installed after three attempts"; exit 1
+
+      # A skipped or vacuous test passes while proving nothing, and that is how
+      # this job used to go green with no backend behind it. Grep for the skip
+      # spellings rather than trusting that none happen to be present today.
+      - name: Fail on skipped E2E tests
+        run: |
+          if grep -rEn "\.skip\(|test\.fixme|describe\.skip|test\.describe\.skip" e2e/; then
+            echo "E2E journeys must not be skipped"; exit 1
+          fi
+
+      # The stack is up, so prove the journeys are actually reaching it before
+      # running them. A suite that silently fell back to mocks would still be
+      # green here; a stack that is not listening would not.
+      - name: Prove the stack is reachable
+        working-directory: .
+        run: |
+          curl -sf http://127.0.0.1:8080/ready > /dev/null || { echo "API not reachable"; exit 1; }
+          curl -sf http://127.0.0.1:8025/api/v1/messages > /dev/null || { echo "Mailpit not reachable"; exit 1; }
+          curl -sf http://127.0.0.1:9000/minio/health/live || { echo "MinIO not reachable"; exit 1; }
+
+      # One runner, not four shards. Sharding pays off when test time dominates
+      # setup; here it is the other way round. Each shard stood up its own
+      # Postgres, Redis, MinIO, Mailpit, API and worker, apt-installed the
+      # browsers' libraries and built the bundle — five to twenty minutes — to
+      # then run about ten tests in one to three. Three of four shards were
+      # killed by the job timeout while sitting in apt, and the one that finished
+      # spent 3m26s of which the tests were a fraction.
+      #
+      # The whole suite is 39 tests and runs in under five minutes locally, so
+      # paying the setup once is both faster and simpler to read when it fails.
+      - name: Run E2E tests against real backend
+        run: pnpm exec playwright test
+
+      # P5.4's acceptance asks for traces and video retained on failure. Keeping
+      # them on the runner and never uploading them is the same as not keeping
+      # them: the artifact is the only way anybody reads a trace afterwards.
+      - name: Upload the Playwright report
+        if: failure()
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
-        if: always()
         with:
           name: playwright-report
-          path: web/playwright-report/
-          retention-days: 14
+          path: |
+            web/playwright-report
+            web/test-results
+          retention-days: 7
 
-  build-dev-image:
-    name: Build Go Dev Image
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    defaults:
-      run:
+      # A journey that fails because the API rejected something is diagnosed
+      # from the API's log, not from the browser's screenshot.
+      - name: Dump the server logs
+        if: failure()
         working-directory: .
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Build Dockerfile.go.dev
-        run: docker build -f deploy/docker/Dockerfile.go.dev -t fluentra-go-dev:ci .
+        run: |
+          echo "::group::api"; cat api.log || true; echo "::endgroup::"
+          echo "::group::worker"; cat worker.log || true; echo "::endgroup::"
+          docker compose -f deploy/compose/compose.yaml -f deploy/compose/compose.dev.yaml logs --no-color || true

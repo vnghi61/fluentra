@@ -17,8 +17,27 @@ concurrency:
 
 permissions:
   contents: read
+  security-events: write
 
 jobs:
+  # Pinning by SHA is the supply-chain control, and a SHA nobody resolved is a
+  # string that looks like one. codeql-action was pinned to forty plausible hex
+  # characters that were not a commit; CodeQL and Trivy failed at "Set up job"
+  # with "unable to resolve action", which reads like an outage rather than a
+  # typo sitting in the file. This job names the typo.
+  action-pins:
+    name: Pinned actions resolve
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Verify every pinned SHA exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/verify-action-pins.sh
+
   gitleaks:
     name: Secret scan
     runs-on: ubuntu-latest
@@ -57,3 +76,114 @@ jobs:
 
       - name: Run govulncheck
         run: govulncheck ./...
+
+  npm-audit:
+    name: Node / npm vulnerability audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          package_json_file: web/package.json
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Run audit for high/critical vulnerabilities
+        run: pnpm audit --audit-level=high
+
+  codeql:
+    name: CodeQL Static Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        language: [go, javascript-typescript]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@f3712979fa5f215279b101dd0a2e3bdfb4353324 # codeql-bundle-v2.26.3
+        with:
+          languages: ${{ matrix.language }}
+
+      # Without a build step the analyzer has no database to read for a compiled
+      # language, and `analyze` fails or reports on nothing. autobuild knows the
+      # Go and JavaScript/TypeScript build commands and runs the right one.
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@f3712979fa5f215279b101dd0a2e3bdfb4353324 # codeql-bundle-v2.26.3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@f3712979fa5f215279b101dd0a2e3bdfb4353324 # codeql-bundle-v2.26.3
+
+  trivy:
+    name: Trivy Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Two passes on purpose. The SARIF pass is for the code-scanning UI and
+      # must not stop the job, or the upload below never runs. The gating pass
+      # is what makes a HIGH or CRITICAL finding fail: `format: sarif` leaves
+      # exit-code at 0, so the single-pass version reported findings and went
+      # green — advisory output dressed as a gate.
+      - name: Run Trivy and write SARIF
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: 'fs'
+          ignore-unfixed: true
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Fail on HIGH or CRITICAL findings
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: 'fs'
+          ignore-unfixed: true
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+
+      # The SARIF is only useful if it lands in the code-scanning UI. Writing it
+      # to the runner without uploading it means the results are invisible.
+      - name: Upload Trivy results to code scanning
+        uses: github/codeql-action/upload-sarif@f3712979fa5f215279b101dd0a2e3bdfb4353324 # codeql-bundle-v2.26.3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  sbom:
+    name: Software Bill of Materials (SBOM)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Generate CycloneDX SBOM
+        uses: anchore/sbom-action@f325610c9f50a54015d37c8d16cb3b0e2c8f4de0 # v0.17.9
+        with:
+          format: 'cyclonedx-json'
+          output-file: 'sbom.cyclonedx.json'
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: sbom
+          path: sbom.cyclonedx.json
+          retention-days: 14

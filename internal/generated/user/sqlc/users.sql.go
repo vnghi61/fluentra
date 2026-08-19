@@ -181,9 +181,18 @@ JOIN core.user_preferences pref ON pref.user_id = u.id
 WHERE ($1::text = '' OR u.email ILIKE $1 || '%')
   AND ($2::text = '' OR p.display_name ILIKE '%' || $2 || '%')
   AND ($3::text = '' OR u.status::text = $3)
-  AND ($4::timestamptz IS NULL OR u.created_at >= $4)
-  AND ($5::timestamptz IS NULL OR u.created_at <= $5)
-  AND ($6::uuid IS NULL OR (u.created_at, u.id) < ($7::timestamptz, $6::uuid))
+  -- sqlc.narg, not @: ` + "`" + `@name` + "`" + ` generates a non-nullable Go parameter, so an
+  -- absent cursor arrives as the zero UUID rather than NULL. The guard then
+  -- reads ` + "`" + `'00000000-…' IS NULL OR (created_at, id) < ('0001-01-01', '000…')` + "`" + `,
+  -- which is false for every row — the first page of an unfiltered admin search
+  -- returned nothing at all, and no test noticed because the fixtures always
+  -- passed a cursor.
+  AND ($4::timestamptz IS NULL OR u.created_at >= $4::timestamptz)
+  AND ($5::timestamptz IS NULL OR u.created_at <= $5::timestamptz)
+  AND (
+    $6::uuid IS NULL
+    OR (u.created_at, u.id) < ($7::timestamptz, $6::uuid)
+  )
 ORDER BY u.created_at DESC, u.id DESC
 LIMIT $8
 `
@@ -192,10 +201,10 @@ type SearchUsersAdminParams struct {
 	EmailPrefix     string
 	DisplayName     string
 	Status          string
-	CreatedAfter    time.Time
-	CreatedBefore   time.Time
-	CursorID        uuid.UUID
-	CursorCreatedAt time.Time
+	CreatedAfter    *time.Time
+	CreatedBefore   *time.Time
+	CursorID        *uuid.UUID
+	CursorCreatedAt *time.Time
 	ResultLimit     int32
 }
 

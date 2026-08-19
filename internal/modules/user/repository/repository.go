@@ -605,30 +605,18 @@ func (r *Repository) SearchUsersAdmin(
 	if filter.Status != nil {
 		status = *filter.Status
 	}
-	var createdAfter, createdBefore time.Time
-	if filter.CreatedAfter != nil {
-		createdAfter = *filter.CreatedAfter
-	}
-	if filter.CreatedBefore != nil {
-		createdBefore = *filter.CreatedBefore
-	}
-	var cID uuid.UUID
-	if cursorID != nil {
-		cID = *cursorID
-	}
-	var cTime time.Time
-	if cursorTime != nil {
-		cTime = *cursorTime
-	}
-
+	// The optional bounds are passed through as pointers, never dereferenced
+	// into a zero value. A nil cursor must reach SQL as NULL: as the zero UUID
+	// it made the guard `cursor_id IS NULL OR (created_at, id) < (…)` false for
+	// every row, so the first page of every admin search came back empty.
 	rows, err := r.queries.SearchUsersAdmin(ctx, sqlcuser.SearchUsersAdminParams{
 		EmailPrefix:     emailPrefix,
 		DisplayName:     displayName,
 		Status:          status,
-		CreatedAfter:    createdAfter,
-		CreatedBefore:   createdBefore,
-		CursorID:        cID,
-		CursorCreatedAt: cTime,
+		CreatedAfter:    filter.CreatedAfter,
+		CreatedBefore:   filter.CreatedBefore,
+		CursorID:        cursorID,
+		CursorCreatedAt: cursorTime,
 		ResultLimit:     int32(limit), //nolint:gosec // limit is validated by handler to positive integer
 	})
 	if err != nil {

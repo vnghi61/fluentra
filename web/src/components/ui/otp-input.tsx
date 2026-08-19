@@ -96,7 +96,10 @@ export const OtpInput = React.forwardRef<HTMLDivElement, OtpInputProps>(
         ref={ref}
         role="group"
         aria-label="One-Time Password"
-        className={cn("flex items-center justify-center gap-2 sm:gap-3", className)}
+        className={cn(
+          "flex items-center justify-center gap-2 sm:gap-3",
+          className,
+        )}
       >
         {digits.map((digit, index) => (
           <input
@@ -118,8 +121,8 @@ export const OtpInput = React.forwardRef<HTMLDivElement, OtpInputProps>(
             onPaste={handlePaste}
             onFocus={(e) => e.target.select()}
             className={cn(
-              // min-h-[44px] touch target, text-xl font-bold, visual feedback
-              "h-12 w-10 sm:h-14 sm:w-12 rounded-lg border text-center text-xl font-semibold text-slate-100 bg-slate-900/80 transition-all select-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 disabled:cursor-not-allowed disabled:opacity-50",
+              // 44×44 px touch target, text-xl font-bold, visual feedback
+              "h-12 w-11 sm:h-14 sm:w-12 rounded-lg border text-center text-xl font-semibold text-slate-100 bg-slate-900/80 transition-all select-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 disabled:cursor-not-allowed disabled:opacity-50",
               error
                 ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500"
                 : digit

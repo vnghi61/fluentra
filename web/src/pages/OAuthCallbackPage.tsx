@@ -56,7 +56,9 @@ export function OAuthCallbackPage(): React.JSX.Element {
           setError(getErrorMessage(err.problem));
           setErrorCode(err.problem.code ?? null);
         } else {
-          setError("Failed to complete Google authentication. Please try again.");
+          setError(
+            "Failed to complete Google authentication. Please try again.",
+          );
         }
       }
     }
@@ -86,15 +88,14 @@ export function OAuthCallbackPage(): React.JSX.Element {
           <h1 className="text-xl font-bold tracking-tight text-slate-100">
             Authentication Issue
           </h1>
-          <p className="text-sm text-slate-300 leading-relaxed">
-            {error}
-          </p>
+          <p className="text-sm text-slate-300 leading-relaxed">{error}</p>
         </div>
 
         {errorCode === "OAUTH_ACCOUNT_CONFLICT" && (
           <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3.5 text-left text-xs font-medium text-amber-200 space-y-2">
             <p>
-              To protect your account, email ownership must be confirmed before connecting Google sign-in.
+              To protect your account, email ownership must be confirmed before
+              connecting Google sign-in.
             </p>
             <Link
               to="/register"

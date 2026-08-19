@@ -512,3 +512,54 @@ func TestWorker_QueueConcurrencyComesFromConfiguration(t *testing.T) {
 		})
 	}
 }
+
+// TestNewClientFromPool_InsertsIntoTheSchemaTheMigratorCreated is the regression
+// test for a client that started, compiled, and could not enqueue anything.
+//
+// MigrateUp puts River's tables in `ops`, and the worker's config says so, but
+// NewClientFromPool built its client from a zero river.Config — no Schema — so
+// every insert looked for `river_job` on the default search_path. The API
+// answered 500 on `POST /me/export` with no row written and no job queued, and
+// nothing failed at build time.
+//
+// Deleting `Schema: Schema` from NewClientFromPool turns this test red, which is
+// the property worth having: it fails on the mistake rather than on its symptom.
+func TestNewClientFromPool_InsertsIntoTheSchemaTheMigratorCreated(t *testing.T) {
+	pool := newTestPool(t)
+	ctx := context.Background()
+
+	client, err := job.NewClientFromPool(pool)
+	if err != nil {
+		t.Fatalf("NewClientFromPool: %v", err)
+	}
+
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin: %v", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if _, err := client.EnqueueTx(ctx, tx, probeArgs{}, nil); err != nil {
+		t.Fatalf("EnqueueTx into %s: %v", job.Schema, err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatalf("commit: %v", err)
+	}
+
+	// Counted in ops explicitly: a client pointed at the wrong schema would
+	// either error above or leave the row somewhere this query cannot see.
+	var queued int
+	const countQuery = "SELECT count(*) FROM ops.river_job WHERE kind = $1"
+	if err := pool.QueryRow(ctx, countQuery, probeArgs{}.Kind()).Scan(&queued); err != nil {
+		t.Fatalf("count queued jobs: %v", err)
+	}
+	if queued != 1 {
+		t.Errorf("ops.river_job holds %d rows for %q, want 1", queued, probeArgs{}.Kind())
+	}
+}
+
+// probeArgs is a job kind that exists only to be inserted. It is never worked,
+// so it needs no worker registered.
+type probeArgs struct{}
+
+func (probeArgs) Kind() string { return "platform.enqueue_probe" }

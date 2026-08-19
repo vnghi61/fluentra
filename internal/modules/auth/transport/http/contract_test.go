@@ -575,3 +575,7 @@ func TestContract_UnlinkAnswers204WithNoBody(t *testing.T) {
 		t.Errorf("204 carried a body: %s", rec.Body.String())
 	}
 }
+
+func (fakeContractOAuth) LinkStatus(context.Context, httpx.Actor) (service.LinkState, error) {
+	return service.LinkState{Linked: true, CanUnlink: true}, nil
+}

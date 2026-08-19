@@ -8,20 +8,10 @@
     <!--
       The theme is applied before React mounts. Doing it in a component means one
       painted frame in the wrong colours on every load, which reads as a flash.
+      It is a blocking external script so the CSP can run script-src 'self'
+      without 'unsafe-inline'.
     -->
-    <script>
-      (function () {
-        try {
-          var stored = localStorage.getItem('fluentra.theme');
-          var dark =
-            stored === 'dark' ||
-            (stored !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-          document.documentElement.classList.toggle('dark', dark);
-        } catch (e) {
-          /* private mode: fall back to the light default */
-        }
-      })();
-    </script>
+    <script src="/theme-init.js"></script>
   </head>
   <body class="h-full">
     <div id="root" class="h-full"></div>

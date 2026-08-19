@@ -171,10 +171,32 @@ The Makefile target that does this is named `db-reset-DANGEROUS` and prompts for
 | `api` | Go API server running under `air` hot reload at :8080 |
 | `worker` | Background worker daemon running under `air` hot reload at :8081 |
 | `web` | React frontend running under `vite` dev server with HMR at :5173 |
-| `mailpit` | Catches all outbound email at :8025 |
+| `mailpit` | Catches all outbound email. HTTP API at :8025, SMTP at :1025 |
 | `postgres` | Port published at 127.0.0.1:5432 |
 | `redis` | Port published at 127.0.0.1:6379 |
 | `minio` | S3 API at :9000 and console at :9001 |
+| `createbuckets` | One-shot. Creates the five buckets; exits 0 and stays exited |
+
+Four things in this overlay exist because the stack did not work without them, and each
+is easy to remove by accident:
+
+- **Mailpit publishes 1025 as well as 8025.** The HTTP port is how a test reads a
+  message; the SMTP port is where the worker delivers it. With only 8025 published, an
+  API run on the host has nowhere to send, registration writes the challenge, and no code
+  ever arrives.
+- **`createbuckets`.** MinIO starts empty and nothing in the application creates its
+  buckets — the storage client presigns against a bucket it expects to exist. Without it
+  the stack comes up healthy and the first avatar upload fails against it.
+- **`VITE_USE_POLLING=true` on `web`.** A bind-mounted source tree delivers no inotify
+  events to the container on Windows or macOS, so Vite never learns a file changed and
+  serves the module it transformed at startup. The app then looks stale while the file on
+  disk is right. The polling is scoped in `vite.config.ts`; unscoped it costs a core.
+- **`CI=true` on `web`.** `pnpm dev` runs a dependency check first, and when it decides
+  the mounted `node_modules` volume is stale it wants to purge and reinstall. Without a
+  TTY it refuses and exits 1, so the container reports "running" and serves nothing.
+- **The `gomodcache` volume on `api` and `worker`.** The image downloads modules behind a
+  BuildKit cache mount the container cannot see; without the volume every restart
+  re-downloads the module graph. Ready in 15s with it, 170s without.
 
 `compose.dev.yaml` overrides `backend` to `internal: false` so that published data ports are accessible from localhost for host tooling (`psql`, `redis-cli`, `make migrate-up`, tests).
 
@@ -183,6 +205,12 @@ For running application binaries on the host directly (pointing at containerized
 - `make api` — starts the API server on the host
 - `make worker` — starts the worker daemon on the host
 - `make web` — starts Vite dev server on the host
+
+`make dev-infra` starts only the data services — postgres, redis, minio, mailpit — with
+their ports published and the buckets provisioned. It is what the integration suite and
+the E2E job both use, so the stack has one description rather than a second one written
+out by hand in a workflow file. Tests point at it through `TEST_DATABASE_URL`,
+`TEST_REDIS_ADDR` and `TEST_S3_*`; they never start their own containers.
 
 ## 10. Troubleshooting
 

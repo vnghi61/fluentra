@@ -6,12 +6,16 @@ export type LoginRequest = components["schemas"]["LoginRequest"];
 export type RegisterRequest = components["schemas"]["RegisterRequest"];
 export type Challenge = components["schemas"]["Challenge"];
 export type VerifiedChallenge = components["schemas"]["VerifiedChallenge"];
-export type VerifyChallengeRequest = components["schemas"]["VerifyChallengeRequest"];
-export type ForgotPasswordRequest = components["schemas"]["ForgotPasswordRequest"];
-export type ResetPasswordRequest = components["schemas"]["ResetPasswordRequest"];
+export type VerifyChallengeRequest =
+  components["schemas"]["VerifyChallengeRequest"];
+export type ForgotPasswordRequest =
+  components["schemas"]["ForgotPasswordRequest"];
+export type ResetPasswordRequest =
+  components["schemas"]["ResetPasswordRequest"];
 export type PasswordChanged = components["schemas"]["PasswordChanged"];
 export type OAuthStart = components["schemas"]["OAuthStart"];
-export type OAuthCallbackRequest = components["schemas"]["OAuthCallbackRequest"];
+export type OAuthCallbackRequest =
+  components["schemas"]["OAuthCallbackRequest"];
 export type AuthSession = components["schemas"]["AuthSession"];
 export type Session = AuthSession;
 
@@ -91,7 +95,9 @@ export const authApi = {
   },
 
   async googleStart(redirectTo?: string): Promise<OAuthStart> {
-    const query = redirectTo ? `?redirect_to=${encodeURIComponent(redirectTo)}` : "";
+    const query = redirectTo
+      ? `?redirect_to=${encodeURIComponent(redirectTo)}`
+      : "";
     return apiFetch<OAuthStart>(`/api/v1/auth/oauth/google/start${query}`, {
       method: "GET",
     });

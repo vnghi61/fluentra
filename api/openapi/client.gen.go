@@ -448,6 +448,15 @@ type ClientInterface interface {
 	// Corresponds with DELETE /auth/oauth/google (the `AuthGoogleUnlink` operationId).
 	AuthGoogleUnlink(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AuthGoogleLinkStatus Read whether Google is linked, and whether it can be unlinked.
+	//
+	// The interface cannot decide what to offer without this. Rendering an "Unlink" button unconditionally means offering an action the server will refuse with 409 `LAST_SIGN_IN_METHOD` whenever Google is the only way in, and there was no operation that said which case the caller is in.
+	//
+	// `can_unlink` is advisory in exactly the way `/me/permissions` is: it exists so the screen can explain the situation before the learner acts, and `authGoogleUnlink` re-checks it regardless.
+	//
+	// Corresponds with GET /auth/oauth/google (the `AuthGoogleLinkStatus` operationId).
+	AuthGoogleLinkStatus(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AuthGoogleCallbackWithBody Complete Google sign-in.
 	//
 	// Consumes the `state`, exchanges the code with the PKCE verifier, and verifies Google's ID token against its JWKS -- signature, `iss`, `aud`, `exp`, and the `nonce` this server issued. A token failing any of those is rejected and **no account, identity or session is created**: there is no partial state to clean up, because nothing is written until every check has passed (BR-AUTH-18).
@@ -1453,6 +1462,25 @@ func (c *Client) AuthLogout(ctx context.Context, reqEditors ...RequestEditorFn) 
 // Corresponds with DELETE /auth/oauth/google (the `AuthGoogleUnlink` operationId).
 func (c *Client) AuthGoogleUnlink(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAuthGoogleUnlinkRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AuthGoogleLinkStatus Read whether Google is linked, and whether it can be unlinked.
+//
+// The interface cannot decide what to offer without this. Rendering an "Unlink" button unconditionally means offering an action the server will refuse with 409 `LAST_SIGN_IN_METHOD` whenever Google is the only way in, and there was no operation that said which case the caller is in.
+//
+// `can_unlink` is advisory in exactly the way `/me/permissions` is: it exists so the screen can explain the situation before the learner acts, and `authGoogleUnlink` re-checks it regardless.
+//
+// Corresponds with GET /auth/oauth/google (the `AuthGoogleLinkStatus` operationId).
+func (c *Client) AuthGoogleLinkStatus(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthGoogleLinkStatusRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -3283,6 +3311,33 @@ func NewAuthGoogleUnlinkRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewAuthGoogleLinkStatusRequest constructs an http.Request for the AuthGoogleLinkStatus method
+func NewAuthGoogleLinkStatusRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/oauth/google")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewAuthGoogleCallbackRequest calls the generic AuthGoogleCallback builder with application/json body
 func NewAuthGoogleCallbackRequest(server string, body AuthGoogleCallbackJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -4496,6 +4551,17 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with DELETE /auth/oauth/google (the `AuthGoogleUnlink` operationId).
 	AuthGoogleUnlinkWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AuthGoogleUnlinkResponse, error)
+
+	// AuthGoogleLinkStatusWithResponse Read whether Google is linked, and whether it can be unlinked.
+	//
+	// The interface cannot decide what to offer without this. Rendering an "Unlink" button unconditionally means offering an action the server will refuse with 409 `LAST_SIGN_IN_METHOD` whenever Google is the only way in, and there was no operation that said which case the caller is in.
+	//
+	// `can_unlink` is advisory in exactly the way `/me/permissions` is: it exists so the screen can explain the situation before the learner acts, and `authGoogleUnlink` re-checks it regardless.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /auth/oauth/google (the `AuthGoogleLinkStatus` operationId).
+	AuthGoogleLinkStatusWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AuthGoogleLinkStatusResponse, error)
 
 	// AuthGoogleCallbackWithBodyWithResponse Complete Google sign-in.
 	//
@@ -6643,6 +6709,78 @@ func (r AuthGoogleUnlinkResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r AuthGoogleUnlinkResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AuthGoogleLinkStatusResponse200Headers the declared response headers of an HTTP 200 response for AuthGoogleLinkStatus
+type AuthGoogleLinkStatusResponse200Headers struct {
+	XRequestId *string
+}
+
+// AuthGoogleLinkStatusResponse429Headers the declared response headers of an HTTP 429 response for AuthGoogleLinkStatus
+type AuthGoogleLinkStatusResponse429Headers struct {
+	RateLimitLimit     *int
+	RateLimitRemaining *int
+	RateLimitReset     *int
+	RetryAfter         *int
+}
+
+type AuthGoogleLinkStatusResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *GoogleLinkStatus
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AuthGoogleLinkStatusResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AuthGoogleLinkStatusResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AuthGoogleLinkStatusResponse) GetJSON200() *GoogleLinkStatus {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AuthGoogleLinkStatusResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AuthGoogleLinkStatusResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetBody returns the raw response body bytes
+func (r AuthGoogleLinkStatusResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AuthGoogleLinkStatusResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AuthGoogleLinkStatusResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AuthGoogleLinkStatusResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -8899,6 +9037,23 @@ func (c *ClientWithResponses) AuthGoogleUnlinkWithResponse(ctx context.Context, 
 		return nil, err
 	}
 	return ParseAuthGoogleUnlinkResponse(rsp)
+}
+
+// AuthGoogleLinkStatusWithResponse Read whether Google is linked, and whether it can be unlinked.
+//
+// The interface cannot decide what to offer without this. Rendering an "Unlink" button unconditionally means offering an action the server will refuse with 409 `LAST_SIGN_IN_METHOD` whenever Google is the only way in, and there was no operation that said which case the caller is in.
+//
+// `can_unlink` is advisory in exactly the way `/me/permissions` is: it exists so the screen can explain the situation before the learner acts, and `authGoogleUnlink` re-checks it regardless.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /auth/oauth/google (the `AuthGoogleLinkStatus` operationId).
+func (c *ClientWithResponses) AuthGoogleLinkStatusWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AuthGoogleLinkStatusResponse, error) {
+	rsp, err := c.AuthGoogleLinkStatus(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthGoogleLinkStatusResponse(rsp)
 }
 
 // AuthGoogleCallbackWithBodyWithResponse Complete Google sign-in.
@@ -11192,6 +11347,90 @@ func ParseAuthGoogleUnlinkResponse(rsp *http.Response) (*AuthGoogleUnlinkRespons
 		response.Headers204 = &headers
 	case rsp.StatusCode == 429:
 		var headers AuthGoogleUnlinkResponse429Headers
+		if values := rsp.Header.Values("RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitReset = &value
+		}
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAuthGoogleLinkStatusResponse parses an HTTP response from a AuthGoogleLinkStatusWithResponse call
+func ParseAuthGoogleLinkStatusResponse(rsp *http.Response) (*AuthGoogleLinkStatusResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AuthGoogleLinkStatusResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GoogleLinkStatus
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AuthGoogleLinkStatusResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AuthGoogleLinkStatusResponse429Headers
 		if values := rsp.Header.Values("RateLimit-Limit"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

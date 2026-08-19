@@ -3,6 +3,7 @@ import boundaries from 'eslint-plugin-boundaries';
 import reactHooks from 'eslint-plugin-react-hooks';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
+import mobileBaseline from './eslint-local-rules/mobile-baseline.js';
 
 /**
  * The boundaries plugin is the frontend's answer to go-arch-lint: it is what
@@ -11,7 +12,7 @@ import tseslint from 'typescript-eslint';
  * convention, not a constraint.
  */
 export default tseslint.config(
-  { ignores: ['dist', 'node_modules', 'coverage'] },
+  { ignores: ['dist', 'node_modules', 'coverage', 'public'] },
 
   js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
@@ -28,6 +29,7 @@ export default tseslint.config(
     plugins: {
       'react-hooks': reactHooks,
       boundaries,
+      'mobile-baseline': mobileBaseline,
     },
     settings: {
       // Without a resolver the plugin cannot follow the `@/` alias, so every
@@ -99,13 +101,18 @@ export default tseslint.config(
       // The API client throws ApiError; floating promises hide failures from
       // both the user and the error boundary.
       '@typescript-eslint/no-floating-promises': 'error',
+
+      // ADR-0024's two hard limits (web/AGENT.md §6b R1/R2), enforced by local
+      // rules rather than a guideline. See eslint-local-rules/mobile-baseline.js.
+      'mobile-baseline/touch-target': 'error',
+      'mobile-baseline/input-font-size': 'error',
     },
   },
 
   // Build tooling runs in Node and is outside the app's tsconfig, so the
   // type-aware rules have no program to consult.
   {
-    files: ['vite.config.ts', 'eslint.config.js', 'playwright.config.ts', 'scripts/**/*.mjs', 'e2e/**/*.ts'],
+    files: ['vite.config.ts', 'eslint.config.js', 'playwright.config.ts', 'scripts/**/*.mjs', 'e2e/**/*.ts', 'eslint-local-rules/**/*.js'],
     ...tseslint.configs.disableTypeChecked,
     languageOptions: { globals: { ...globals.node } },
   },

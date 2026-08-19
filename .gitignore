@@ -18,6 +18,9 @@ web/dist/
 web/.vite/
 playwright-report/
 test-results/
+# pnpm's content-addressed store lands here when the container installs against
+# the bind-mounted tree. It is 300 MB of cache, not source.
+web/.pnpm-store/
 
 # Tooling and editor state
 .idea/

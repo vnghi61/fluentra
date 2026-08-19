@@ -1,5 +1,9 @@
 import * as React from "react";
-import { ForgotPasswordForm, ResetPasswordForm, type Challenge } from "@/features/auth";
+import {
+  ForgotPasswordForm,
+  ResetPasswordForm,
+  type Challenge,
+} from "@/features/auth";
 
 export function ForgotPasswordPage(): React.JSX.Element {
   const [challengeState, setChallengeState] = React.useState<{
@@ -11,6 +15,9 @@ export function ForgotPasswordPage(): React.JSX.Element {
     <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-4 py-12">
       {challengeState ? (
         <ResetPasswordForm
+          // Same reason as RegisterPage: a fresh challenge must not inherit the
+          // previous one's state.
+          key={challengeState.challenge.challenge_id}
           challengeId={challengeState.challenge.challenge_id}
           email={challengeState.email}
         />

@@ -96,6 +96,17 @@ type Deps struct {
 	// Zero means service.DefaultRefreshTTL.
 	RefreshTTL time.Duration
 
+	// IssuesPerIPPerHour and IssuesPerSubjectPerHour are the challenge issuance
+	// caps (OTP_ISSUE_PER_IP_PER_HOUR, OTP_ISSUE_PER_SUBJECT_PER_HOUR).
+	//
+	// They have to be carried here to reach the service that enforces them.
+	// Before this, main.go passed OTP_ISSUE_PER_IP_PER_HOUR only to the HTTP
+	// boundary limiter and the service kept its hardcoded default, so raising
+	// the key moved one of the two gates and OTP_ISSUE_PER_SUBJECT_PER_HOUR
+	// reached nothing at all. Zero means the service's own default.
+	IssuesPerIPPerHour      int
+	IssuesPerSubjectPerHour int
+
 	// PasswordResetTTL is how long a reset code lives (PASSWORD_RESET_TTL).
 	// Zero leaves the purpose on the shared OTP window.
 	PasswordResetTTL time.Duration
@@ -194,6 +205,8 @@ func New(deps Deps) *Module {
 			TTLByPurpose: map[service.Purpose]time.Duration{
 				domain.PurposePasswordReset: deps.PasswordResetTTL,
 			},
+			IssuesPerIPPerHour:      deps.IssuesPerIPPerHour,
+			IssuesPerSubjectPerHour: deps.IssuesPerSubjectPerHour,
 		},
 		// Namespaced, so a staging deploy pointed at a shared Redis cannot
 		// spend a production learner's issuance budget — or, worse, fail to.

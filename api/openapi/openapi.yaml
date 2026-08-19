@@ -609,6 +609,39 @@ paths:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
   /auth/oauth/google:
+    get:
+      tags: [auth]
+      operationId: authGoogleLinkStatus
+      summary: Read whether Google is linked, and whether it can be unlinked.
+      description: >-
+        The interface cannot decide what to offer without this. Rendering an
+        "Unlink" button unconditionally means offering an action the server will
+        refuse with 409 `LAST_SIGN_IN_METHOD` whenever Google is the only way
+        in, and there was no operation that said which case the caller is in.
+
+
+        `can_unlink` is advisory in exactly the way `/me/permissions` is: it
+        exists so the screen can explain the situation before the learner acts,
+        and `authGoogleUnlink` re-checks it regardless.
+      x-permission: self
+      responses:
+        '200':
+          description: The caller's Google link status.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoogleLinkStatus'
+              example:
+                linked: true
+                linked_at: '2026-08-18T10:00:00Z'
+                can_unlink: false
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
     delete:
       tags: [auth]
       operationId: authGoogleUnlink
@@ -839,6 +872,7 @@ paths:
               example:
                 devices:
                   - id: 0199a1c2-3d4e-7f80-9abc-def012345678
+                    current: true
                     label: Chrome on macOS
                     trusted_at: '2026-06-14T08:02:11Z'
                     last_seen_at: '2026-08-11T08:55:13Z'
@@ -2267,6 +2301,8 @@ components:
       $ref: ./components/auth.yaml#/OAuthCallbackRequest
     OAuthIdentity:
       $ref: ./components/auth.yaml#/OAuthIdentity
+    GoogleLinkStatus:
+      $ref: ./components/auth.yaml#/GoogleLinkStatus
     TrustedDevice:
       $ref: ./components/auth.yaml#/TrustedDevice
     TrustedDeviceList:

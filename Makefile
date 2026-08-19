@@ -11,6 +11,10 @@ COMPOSE_DEV  := -f $(COMPOSE_BASE) \
                 -f deploy/compose/compose.observability.yaml \
                 -f deploy/compose/compose.observability.dev.yaml
 COMPOSE_PROD := -f $(COMPOSE_BASE) -f deploy/compose/compose.prod.yaml -f deploy/compose/compose.observability.yaml
+# The data services on their own, with host ports published. `make dev-infra`
+# and the E2E job both use it, so the stack has one description rather than a
+# second one written out by hand in a workflow file.
+COMPOSE_INFRA := -f $(COMPOSE_BASE) -f deploy/compose/compose.dev.yaml
 
 ## ----------------------------------------------------------------- help
 
@@ -40,15 +44,22 @@ dev: ## Start the full local stack (app + data + observability)
 	@echo "web    http://localhost:5173   api http://localhost:8080   worker http://localhost:8081"
 	@echo "graf   http://localhost:3000   mail http://localhost:8025   minio  http://localhost:9001"
 
-dev-infra: ## Start only postgres, redis and minio, with ports published
-	# What the integration suite and a host-run `go run ./cmd/api` need. The dev
-	# overlay is included because the base file keeps `backend` internal and
-	# publishes nothing, so the base alone is unreachable from the host.
-	docker compose -f $(COMPOSE_BASE) -f deploy/compose/compose.dev.yaml up -d postgres redis minio
-	@echo "postgres 127.0.0.1:5432   redis 127.0.0.1:6379   minio 127.0.0.1:9000"
+dev-infra: ## Start postgres, redis, minio and mailpit, with ports published
+	# What the integration suite, the E2E job and a host-run `go run ./cmd/api`
+	# need. The dev overlay is included because the base file keeps `backend`
+	# internal and publishes nothing, so the base alone is unreachable from the
+	# host. Mailpit is here because an API with nowhere to deliver writes the OTP
+	# challenge and never produces a code, which fails as a timeout somewhere
+	# unrelated.
+	docker compose $(COMPOSE_INFRA) up -d --wait postgres redis minio mailpit
+	# Buckets are provisioned by a one-shot rather than folded into `up`, so a
+	# failure to create them fails here instead of scrolling past in a detached
+	# container's log.
+	docker compose $(COMPOSE_INFRA) run --rm createbuckets
+	@echo "postgres 127.0.0.1:5432   redis 127.0.0.1:6379   minio 127.0.0.1:9000   mail 127.0.0.1:8025"
 
 dev-infra-down: ## Stop the data services only, leaving other projects alone
-	docker compose -f $(COMPOSE_BASE) -f deploy/compose/compose.dev.yaml stop postgres redis minio
+	docker compose $(COMPOSE_INFRA) stop postgres redis minio mailpit
 
 dev-down: ## Stop the local stack (volumes preserved)
 	docker compose $(COMPOSE_DEV) down
@@ -127,6 +138,17 @@ migrate-new: ## Create a migration: make migrate-new MODULE=auth NAME=add_mfa
 
 seed: ## Load the development dataset
 	go run ./cmd/seed
+
+audit-logs: ## Prove no OTP code or personal data reaches Loki (needs `make dev`)
+	python scripts/audit-log-privacy.py
+
+promote-admin: ## Grant the admin role to an account: make promote-admin EMAIL=you@example.com
+	# db/seeds/rbac.sql is idempotent and says so politely when the account does
+	# not exist yet, so registering first and promoting after is the order. The
+	# E2E admin journey drives this target rather than reaching into the database
+	# itself, so dev and CI promote by the same path.
+	@test -n "$(EMAIL)" || (echo "EMAIL is required: make promote-admin EMAIL=you@example.com" && exit 1)
+	docker compose $(COMPOSE_INFRA) exec -T postgres psql -U fluentra -d fluentra -v seed_admin_email=$(EMAIL) -f - < db/seeds/rbac.sql
 
 db-reset-DANGEROUS: ## DESTROYS all local data. Requires confirmation.
 	@read -p "This deletes every local volume including learner data. Type 'yes' to continue: " c; \
@@ -298,7 +320,7 @@ security: ## Security scans
 	cd web && pnpm audit --audit-level=high
 
 .PHONY: help setup dev dev-infra dev-infra-down dev-down logs prod-up api worker web gen gen-backend gen-sql gen-api gen-mocks gen-web \
-        gen-check gen-check-web migrate-up migrate-down migrate-status migrate-new seed \
+        gen-check gen-check-web migrate-up migrate-down migrate-status migrate-new seed promote-admin audit-logs \
         db-reset-DANGEROUS check fmt fmt-check vet lint lint-int lint-go arch test test-int \
         test-contract test-web test-e2e test-load test-eval cover cover-check cover-gate docs \
         docs-check ci ci-backend ci-frontend ci-fast security

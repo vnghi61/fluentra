@@ -204,6 +204,9 @@ make test-int      # integration tests (testcontainers)
 make test-e2e      # Playwright
 make gen           # sqlc + oapi-codegen + mocks + openapi-typescript
 make migrate-up    # apply migrations
+make seed          # the two demo accounts getting-started.md names
+make promote-admin EMAIL=you@example.com   # grant the admin role to an existing account
+make audit-logs    # prove no OTP code or personal data is searchable in Loki
 make docs          # regenerate module doc scaffolding
 make docs-check    # docs lint + drift check
 ```
@@ -232,8 +235,14 @@ of `compose.dev.yaml`).
 on the host?
 
 ```
-make dev-infra     # postgres + redis + minio, ports published, no app containers
+make dev-infra     # postgres, redis, minio, mailpit — ports published, buckets created
 ```
+
+Mailpit is in there because an API with nowhere to deliver writes the OTP challenge and
+never produces a code; the failure then shows up as a timeout somewhere unrelated. The
+MinIO buckets are provisioned by the same target, because nothing in the application
+creates them and the first avatar upload otherwise fails against a stack that looks
+healthy.
 
 ### When a port is already taken
 
@@ -254,6 +263,37 @@ docker start <name>                            # give it back — do not skip th
 anything to free a port. And note `docker compose down` acts on the whole project: it has
 stopped unrelated containers that happened to carry matching labels. Prefer naming the
 services you started — `docker compose ... stop postgres redis minio`.
+
+### Testing against the real stack
+
+**Bring the stack up and test against it. Do not mock the API, and do not stand up a
+second one.**
+
+This is the rule most often broken here, and it has been expensive. Every one of the ten
+E2E journeys was once written against browser-level `page.route` stubs; they passed while
+proving that fixtures agreed with each other, and when the stack was finally put behind
+them, all ten failed — on endpoints the application does not have, on fields the schema
+does not carry, on a form field that was never built. A mocked journey is a test of the
+mock.
+
+```
+make dev                      # the whole stack, first
+cd web && pnpm exec playwright test
+```
+
+- **The stack is described once**, in `deploy/compose/`. CI drives it through
+  `make dev-infra`. If you find yourself writing `docker run` lines or a services block
+  in a workflow, stop: that is a second description of the same stack, and the two drift
+  until a test passes in one and not the other.
+- **Integration tests take the DSN of the running stack**, they do not start their own:
+  `TEST_DATABASE_URL`, `TEST_REDIS_ADDR`, `TEST_S3_*`. Run them with `-tags integration`.
+- **Mocking is legitimate in exactly one place**: a spec that measures rendered geometry
+  rather than behaviour, such as `web/e2e/responsive/`. Even there the payloads are typed
+  against the generated schema (`web/e2e/helpers/stubs.ts`), so a stub that drifts fails
+  `pnpm run typecheck` instead of silently matching nothing.
+- **`make audit-logs`** is the same idea for privacy: it registers a real account, reads
+  the real code out of Mailpit and asks Loki whether any of it is searchable, ending with
+  a control query so that a row of zeros cannot come from a query that never matches.
 
 ---
 

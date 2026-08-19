@@ -293,7 +293,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Read whether Google is linked, and whether it can be unlinked.
+         * @description The interface cannot decide what to offer without this. Rendering an "Unlink" button unconditionally means offering an action the server will refuse with 409 `LAST_SIGN_IN_METHOD` whenever Google is the only way in, and there was no operation that said which case the caller is in.
+         *
+         *     `can_unlink` is advisory in exactly the way `/me/permissions` is: it exists so the screen can explain the situation before the learner acts, and `authGoogleUnlink` re-checks it regardless.
+         */
+        get: operations["authGoogleLinkStatus"];
         put?: never;
         post?: never;
         /**
@@ -1354,6 +1360,22 @@ export interface components {
             /** Format: date-time */
             linked_at: string;
         };
+        /** @description Whether the caller has Google linked, and whether removing it would leave them with no way in. */
+        GoogleLinkStatus: {
+            /**
+             * @description Whether a Google identity is attached to this account.
+             *
+             *     The address Google asserted is deliberately not returned: the identity row stores a hash of it and never the address itself, so there is nothing to return that would not have to be invented.
+             */
+            linked: boolean;
+            /**
+             * Format: date-time
+             * @description When the identity was attached, when linked.
+             */
+            linked_at?: string | null;
+            /** @description False when Google is the only sign-in method the account has. Unlinking then is refused with 409 `LAST_SIGN_IN_METHOD` (BR-AUTH-20), and the interface should say so rather than offer the button and explain afterwards. Always false when `linked` is false, because there is nothing to unlink. */
+            can_unlink: boolean;
+        };
         /**
          * @description A device the learner explicitly chose to stay signed in on.
          *
@@ -1365,6 +1387,8 @@ export interface components {
              * @description Identifies the device in the untrust operation.
              */
             id: string;
+            /** @description Whether this is the device the signed-in caller is reading the page on. Untrusting it signs the caller out here and now, which the interface must warn about before it happens rather than explain afterwards. */
+            current: boolean;
             /**
              * @description The same coarse description the session list carries -- "Chrome on macOS", never a version and never a fingerprint.
              * @example Chrome on macOS
@@ -2692,6 +2716,36 @@ export interface operations {
             503: components["responses"]["ServiceUnavailable"];
         };
     };
+    authGoogleLinkStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The caller's Google link status. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "linked": true,
+                     *       "linked_at": "2026-08-18T10:00:00Z",
+                     *       "can_unlink": false
+                     *     }
+                     */
+                    "application/json": components["schemas"]["GoogleLinkStatus"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
     authGoogleUnlink: {
         parameters: {
             query?: never;
@@ -2862,6 +2916,7 @@ export interface operations {
                      *       "devices": [
                      *         {
                      *           "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *           "current": true,
                      *           "label": "Chrome on macOS",
                      *           "trusted_at": "2026-06-14T08:02:11Z",
                      *           "last_seen_at": "2026-08-11T08:55:13Z",

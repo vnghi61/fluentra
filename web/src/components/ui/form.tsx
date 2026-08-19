@@ -102,7 +102,8 @@ export const FormControl = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ children, ...props }, ref) => {
-  const { error, formItemId, formDescriptionId, formMessageId } = useFormField();
+  const { error, formItemId, formDescriptionId, formMessageId } =
+    useFormField();
 
   const child = React.Children.only(children) as React.ReactElement<{
     id?: string | undefined;
@@ -159,7 +160,10 @@ export const FormMessage = React.forwardRef<
       ref={ref}
       id={formMessageId}
       role="alert"
-      className={cn("text-xs font-medium text-rose-400 animate-in fade-in-50", className)}
+      className={cn(
+        "text-xs font-medium text-rose-400 animate-in fade-in-50",
+        className,
+      )}
       {...props}
     >
       {body}
