@@ -91,10 +91,6 @@ jobs:
     # migrates a database, starts an API and a worker, builds the bundle and
     # drives four browser projects against them.
     timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3, 4]
 
     steps:
       - name: Checkout code
@@ -240,8 +236,18 @@ jobs:
           curl -sf http://127.0.0.1:8025/api/v1/messages > /dev/null || { echo "Mailpit not reachable"; exit 1; }
           curl -sf http://127.0.0.1:9000/minio/health/live || { echo "MinIO not reachable"; exit 1; }
 
+      # One runner, not four shards. Sharding pays off when test time dominates
+      # setup; here it is the other way round. Each shard stood up its own
+      # Postgres, Redis, MinIO, Mailpit, API and worker, apt-installed the
+      # browsers' libraries and built the bundle — five to twenty minutes — to
+      # then run about ten tests in one to three. Three of four shards were
+      # killed by the job timeout while sitting in apt, and the one that finished
+      # spent 3m26s of which the tests were a fraction.
+      #
+      # The whole suite is 39 tests and runs in under five minutes locally, so
+      # paying the setup once is both faster and simpler to read when it fails.
       - name: Run E2E tests against real backend
-        run: pnpm exec playwright test --shard=${{ matrix.shard }}/${{ strategy.job-total }}
+        run: pnpm exec playwright test
 
       # P5.4's acceptance asks for traces and video retained on failure. Keeping
       # them on the runner and never uploading them is the same as not keeping
@@ -250,7 +256,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
         with:
-          name: playwright-report-shard-${{ matrix.shard }}
+          name: playwright-report
           path: |
             web/playwright-report
             web/test-results
