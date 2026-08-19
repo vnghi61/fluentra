@@ -131,8 +131,47 @@ which is the only one at 320 px — the device matrix below starts at 390 px and
 | `narrow-320` | 320×640 | every PR — runs `e2e/responsive/` only |
 | `google-manual` | 1280×800, headed | manual, opt-in via `E2E_GOOGLE=1` — see `web/e2e/google/README.md` |
 
-The E2E dev server runs on **5174**, beside `make dev` on 5173, so the two do not
-fight over the port. Point the suite somewhere else with `E2E_BASE_URL`.
+### Running the suite
+
+Bring the stack up first — the journeys drive the real API, and a mocked journey is a test
+of the mock (root `AGENT.md` §9, "Testing against the real stack").
+
+```
+make dev                                   # from the repository root
+cd web && pnpm exec playwright test        # all projects
+pnpm exec playwright test --project=desktop -g "Journey 6"   # one of them
+```
+
+Playwright serves the app itself on **5174**, beside the `make dev` container on 5173, so
+the two never fight over a port. It serves the **built bundle** through `vite preview`,
+not the dev server: `vite dev` transforms modules on demand and WebKit pays about 25
+seconds for the first navigation of every test — most of a 30 s timeout before the journey
+has done anything. `E2E_BASE_URL` points the suite somewhere else; `E2E_PORT` moves it.
+
+Retries are **0**, on purpose. P5.4's acceptance is zero flakes, and a retry hides exactly
+the flake that acceptance is about. A journey that genuinely needs longer — two accounts,
+several round trips — says `test.slow()` and says why.
+
+### Things that will cost you an hour if you guess
+
+Each of these was found by a journey failing for a reason that had nothing to do with what
+it was testing:
+
+| Guess | What the product actually does |
+|---|---|
+| `Password123!@#` as a test password | Refused: it is in the breach corpus. Generate one — see `newPassword()`. |
+| A display name containing the journey's tag | "admin", "support", "fluentra" and friends are refused as impersonation (BR-USER-02). `newLearner()` keeps the tag out of the name. |
+| A "Confirm password" field on registration | There isn't one. |
+| `getByLabel(/^Password$/)` | Labels render a required marker, so the accessible name is `Password *`. |
+| Clicking "Verify & continue" after typing the code | The screen submits itself on the sixth digit; the click races a detached element. |
+| Re-typing a code over filled boxes | They are not cleared after a refusal, so `onComplete` fires on the first keystroke with five stale digits. `enterOtp()` clears first. |
+| `getByRole("button", { name: /Sign out/i })` | Desktop says "Sign out", mobile says "Logout". Use `expectSignedIn()`. |
+| `clearMailbox()` between steps | One inbox serves every parallel worker; clearing it deletes another journey's code. Match on recipient, subject and a time bound instead. |
+
+The per-IP OTP cap and `RATE_LIMIT_AUTH_PER_MIN` are raised for the test stack only, in
+`compose.dev.yaml` and the E2E job. At the shipped values the suite refuses its own
+registrations and logins from the runner's single address, and the failure reads as a
+timeout rather than as a rate limit.
 
 ### Performance budget — stated for the device learners actually use
 
