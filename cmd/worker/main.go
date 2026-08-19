@@ -90,7 +90,8 @@ type workerConfig struct {
 		Audience    string `koanf:"audience"`
 	} `koanf:"jwt"`
 	Mail struct {
-		From string `koanf:"from"`
+		Transport string `koanf:"transport"`
+		From      string `koanf:"from"`
 	} `koanf:"mail"`
 	SMTP struct {
 		Host     string `koanf:"host"`
@@ -99,6 +100,9 @@ type workerConfig struct {
 		Password string `koanf:"password"`
 		DevMode  bool   `koanf:"dev_mode"`
 	} `koanf:"smtp"`
+	Resend struct {
+		APIKey string `koanf:"api_key"`
+	} `koanf:"resend"`
 }
 
 // configOptions declares every key this binary reads. A key absent from here
@@ -129,7 +133,9 @@ func configOptions() config.Options {
 			"smtp.host":                       "localhost",
 			"smtp.port":                       1025,
 			"smtp.dev_mode":                   true,
+			"mail.transport":                  "smtp",
 			"mail.from":                       "no-reply@fluentra.local",
+			"resend.api_key":                  "",
 		},
 		Required: []config.RequiredKey{
 			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},
@@ -353,7 +359,7 @@ func startModules(
 	if err != nil {
 		return fmt.Errorf("build mailer renderer: %w", err)
 	}
-	sender := mailer.NewSMTPSender(smtpConfig(cfg), renderer, nil, nil)
+	sender := newMailSender(cfg, renderer, pool)
 
 	userModule := user.New(user.Deps{
 		Pool:    pool,
@@ -409,16 +415,32 @@ func startModules(
 	return nil
 }
 
-// smtpConfig keeps the worker's transport configuration complete.
-func smtpConfig(cfg workerConfig) mailer.SMTPConfig {
-	return mailer.SMTPConfig{
+// newMailSender builds the appropriate Sender based on MAIL_TRANSPORT.
+// "resend" uses the Resend HTTP API (port 443, works on Render Free).
+// Everything else falls back to SMTP (port 587, works locally / Mailpit).
+func newMailSender(cfg workerConfig, renderer *mailer.Renderer, pool *pgxpool.Pool) mailer.Sender {
+	var suppressions mailer.SuppressionStore
+	var recorder mailer.DeliveryRecorder
+	if pool != nil {
+		suppressions = mailer.NewPostgresSuppressionStore(pool)
+		recorder = mailer.NewPostgresRecorder(pool)
+	}
+	if cfg.Mail.Transport == "resend" {
+		slog.Info("mail transport: resend (HTTPS API)")
+		return mailer.NewResendSender(mailer.ResendConfig{
+			APIKey: cfg.Resend.APIKey,
+			From:   cfg.Mail.From,
+		}, renderer, suppressions, recorder)
+	}
+	slog.Info("mail transport: smtp", "host", cfg.SMTP.Host, "port", cfg.SMTP.Port)
+	return mailer.NewSMTPSender(mailer.SMTPConfig{
 		Host:     cfg.SMTP.Host,
 		Port:     cfg.SMTP.Port,
 		Username: cfg.SMTP.Username,
 		Password: cfg.SMTP.Password,
 		From:     cfg.Mail.From,
 		DevMode:  cfg.SMTP.DevMode,
-	}
+	}, renderer, suppressions, recorder)
 }
 
 func startRiverWorker(

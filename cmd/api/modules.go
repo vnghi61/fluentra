@@ -44,7 +44,7 @@ type identityDeps struct {
 	Storage    storage.Store
 	Env        string
 	OTPHMACKey []byte
-	SMTP       mailer.SMTPConfig
+	Mailer     mailer.Sender
 
 	// Tokens is the JWT signing material from the JWT_* configuration keys.
 	Tokens authservice.TokenConfig
@@ -139,22 +139,10 @@ func newIdentity(deps identityDeps) *identity {
 	})
 
 	// `auth` comes after `user` because it holds a reference to user.Registrar.
-	// The mailer renderer is built with DefaultTemplates so startup fails if a
-	// template is missing from either locale — a missing template discovered at
-	// request time would fail one learner's request rather than the boot.
-	renderer, err := mailer.NewRenderer(nil, nil)
-	if err != nil {
-		// NewRenderer fails only if a template is malformed or missing — that is
-		// a programmer error, not an operational one. Panic rather than returning
-		// an error that main would have to propagate through newIdentity.
-		panic("mailer.NewRenderer: " + err.Error())
-	}
-	sender := mailer.NewSMTPSender(deps.SMTP, renderer, nil, nil)
-
 	assembled.auth = auth.New(auth.Deps{
 		Pool:                    deps.Pool,
 		OTPHMACKey:              deps.OTPHMACKey,
-		Mailer:                  sender,
+		Mailer:                  deps.Mailer,
 		Registrar:               assembled.user.Registrar(),
 		Limiter:                 deps.Limiter,
 		Tokens:                  deps.Tokens,
