@@ -1,16 +1,33 @@
 import React, { useState } from "react";
 import { Flag, Shield, Users } from "lucide-react";
 import { AdminUserList, AdminFeatureFlags } from "@/features/admin";
+import { PERMISSIONS, usePermissions } from "@/features/admin/model/permissions";
 
 type AdminTab = "users" | "flags";
 
 export function AdminPage(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<AdminTab>("users");
+  const { can, isLoading } = usePermissions();
 
+  // The route already refuses non-admins. This is the finer cut: `admin` is one
+  // role but its permissions are individually grantable, so an administrator
+  // without `system.flags` must not be shown a Feature Flags tab whose every
+  // action answers 403. The server still enforces both — see each operation's
+  // x-permission in api/openapi/openapi.yaml.
   const tabs = [
-    { key: "users" as AdminTab, label: "Learner Management", icon: Users },
-    { key: "flags" as AdminTab, label: "Feature Flags", icon: Flag },
+    ...(can(PERMISSIONS.userList)
+      ? [{ key: "users" as AdminTab, label: "Learner Management", icon: Users }]
+      : []),
+    ...(can(PERMISSIONS.systemFlags)
+      ? [{ key: "flags" as AdminTab, label: "Feature Flags", icon: Flag }]
+      : []),
   ];
+
+  // Nothing is rendered on a guess: until the read lands, and if it fails,
+  // no administrative surface is offered.
+  const visible = tabs.some((tab) => tab.key === activeTab)
+    ? activeTab
+    : tabs[0]?.key;
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 py-4">
@@ -34,7 +51,7 @@ export function AdminPage(): React.JSX.Element {
       <div className="flex border-b border-slate-800 gap-2 pb-px overflow-x-auto">
         {tabs.map((tab) => {
           const Icon = tab.icon;
-          const isActive = activeTab === tab.key;
+          const isActive = visible === tab.key;
           return (
             <button
               key={tab.key}
@@ -55,8 +72,18 @@ export function AdminPage(): React.JSX.Element {
 
       {/* Tab Panels */}
       <div>
-        {activeTab === "users" && <AdminUserList />}
-        {activeTab === "flags" && <AdminFeatureFlags />}
+        {isLoading ? (
+          <p className="text-sm text-slate-400">Checking your permissions…</p>
+        ) : tabs.length === 0 ? (
+          <p className="text-sm text-slate-400">
+            Your account holds no administrative permissions.
+          </p>
+        ) : (
+          <>
+            {visible === "users" && <AdminUserList />}
+            {visible === "flags" && <AdminFeatureFlags />}
+          </>
+        )}
       </div>
     </div>
   );

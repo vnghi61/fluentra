@@ -24,7 +24,6 @@ import { Input } from "@/components/ui/input";
 import type { components } from "@/types/api";
 
 type UserStatus = components["schemas"]["UserStatus"];
-type RoleName = components["schemas"]["RoleName"];
 
 const columnHelper = createColumnHelper<AdminUserSummary>();
 
@@ -36,7 +35,6 @@ export const AdminUserList: React.FC = () => {
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<UserStatus | "">("");
-  const [selectedRole, setSelectedRole] = useState<RoleName | "">("");
 
   // Cursor Pagination state
   const [currentCursor, setCurrentCursor] = useState<string | undefined>(undefined);
@@ -51,10 +49,19 @@ export const AdminUserList: React.FC = () => {
     setError(null);
 
     try {
+      // `email_prefix` and `display_name` are separate parameters and the
+      // server ANDs them, so one search box has to choose. An "@" means the
+      // administrator is typing an address; anything else is a name. Sending
+      // both would match only accounts whose name and address both start with
+      // the same text, which is nobody.
+      const term = searchQuery.trim();
       const res = await adminApi.searchUsers({
-        query: searchQuery.trim() || undefined,
+        ...(term
+          ? term.includes("@")
+            ? { email_prefix: term }
+            : { display_name: term }
+          : {}),
         status: selectedStatus || undefined,
-        role: selectedRole || undefined,
         cursor,
         limit: 15,
       });
@@ -76,7 +83,7 @@ export const AdminUserList: React.FC = () => {
     setCursorHistory([]);
     void fetchUsers(undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedStatus, selectedRole]);
+  }, [selectedStatus]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -214,16 +221,6 @@ export const AdminUserList: React.FC = () => {
             <option value="suspended">Suspended</option>
             <option value="pending_deletion">Pending Deletion</option>
             <option value="deleted">Deleted</option>
-          </select>
-
-          <select
-            value={selectedRole}
-            onChange={(e) => setSelectedRole(e.target.value as RoleName | "")}
-            className="h-11 min-h-[44px] rounded-lg border border-slate-800 bg-slate-900 px-3 text-base md:text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
-            <option value="">All Roles</option>
-            <option value="user">User</option>
-            <option value="admin">Admin</option>
           </select>
 
           <Button type="submit" size="md">

@@ -12,10 +12,18 @@ export type FeatureFlagList = components["schemas"]["FeatureFlagList"];
 export type CreateFeatureFlagRequest = components["schemas"]["CreateFeatureFlagRequest"];
 export type UpdateFeatureFlagRequest = components["schemas"]["UpdateFeatureFlagRequest"];
 
+/**
+ * The parameters `adminSearchUsers` actually takes.
+ *
+ * It previously declared `query` and `role`, neither of which is in the
+ * operation: the server matched nothing and the table showed "No learners
+ * found" for every search. `email_prefix` and `display_name` are separate
+ * parameters and they are ANDed, so a caller picks one — see `searchUsers`.
+ */
 export interface SearchUsersParams {
-  query?: string | undefined;
+  email_prefix?: string | undefined;
+  display_name?: string | undefined;
   status?: components["schemas"]["UserStatus"] | undefined;
-  role?: components["schemas"]["RoleName"] | undefined;
   cursor?: string | undefined;
   limit?: number | undefined;
 }
@@ -24,9 +32,13 @@ export const adminApi = {
   /** Search users with cursor pagination */
   async searchUsers(params: SearchUsersParams = {}): Promise<AdminUserPage> {
     const searchParams = new URLSearchParams();
-    if (params.query) searchParams.set("query", params.query);
+    if (params.email_prefix) {
+      searchParams.set("email_prefix", params.email_prefix);
+    }
+    if (params.display_name) {
+      searchParams.set("display_name", params.display_name);
+    }
     if (params.status) searchParams.set("status", params.status);
-    if (params.role) searchParams.set("role", params.role);
     if (params.cursor) searchParams.set("cursor", params.cursor);
     if (params.limit) searchParams.set("limit", params.limit.toString());
 

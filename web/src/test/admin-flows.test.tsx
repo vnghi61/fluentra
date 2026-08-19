@@ -52,6 +52,23 @@ describe("Admin Shell & Operations", () => {
   beforeEach(() => {
     // Default mock handlers for admin endpoints
     server.use(
+      // The admin screens ask what the caller may do before rendering any of
+      // it, so every admin test needs this. An administrator holding the full
+      // set is the case these tests are about; the gating itself is covered in
+      // its own test below.
+      http.get("/api/v1/me/permissions", () =>
+        HttpResponse.json({
+          roles: ["admin"],
+          permissions: [
+            "user.list",
+            "user.read",
+            "user.suspend",
+            "user.reinstate",
+            "user.manage_sessions",
+            "system.flags",
+          ],
+        }),
+      ),
       http.get("/api/v1/admin/users", ({ request }) => {
         const url = new URL(request.url);
         const cursor = url.searchParams.get("cursor");
@@ -139,8 +156,16 @@ describe("Admin Shell & Operations", () => {
     render(<AdminPage />);
 
     expect(screen.getByText("Platform Administration")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Learner Management/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Feature Flags/i })).toBeInTheDocument();
+
+    // Awaited: the tabs are built from /me/permissions, so nothing
+    // administrative renders until that read lands. Rendering the tabs first
+    // and hiding them afterwards would flash actions the caller may not have.
+    expect(
+      await screen.findByRole("button", { name: /Learner Management/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Feature Flags/i }),
+    ).toBeInTheDocument();
 
     // Switch to Feature Flags tab
     await user.click(screen.getByRole("button", { name: /Feature Flags/i }));
@@ -304,5 +329,42 @@ describe("Admin Shell & Operations", () => {
     await waitFor(() => {
       expect(screen.getByText("audio_v2")).toBeInTheDocument();
     });
+  });
+});
+
+describe("Admin permission gating", () => {
+  it("offers only the sections the caller's permissions allow", async () => {
+    // An administrator without system.flags. The route lets them in — they are
+    // an admin — but the Feature Flags section is not theirs, and every action
+    // in it would answer 403.
+    server.use(
+      http.get("/api/v1/me/permissions", () =>
+        HttpResponse.json({ roles: ["admin"], permissions: ["user.list"] }),
+      ),
+    );
+
+    render(<AdminPage />);
+
+    expect(
+      await screen.findByRole("button", { name: /Learner Management/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Feature Flags/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("offers nothing when the permission read fails", async () => {
+    server.use(
+      http.get("/api/v1/me/permissions", () =>
+        HttpResponse.json({ title: "Server error", status: 500 }, { status: 500 }),
+      ),
+    );
+
+    render(<AdminPage />);
+
+    // A read that did not happen is not evidence of a permission.
+    expect(
+      await screen.findByText(/no administrative permissions/i),
+    ).toBeInTheDocument();
   });
 });

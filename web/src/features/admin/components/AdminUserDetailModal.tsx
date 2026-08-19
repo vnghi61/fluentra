@@ -17,6 +17,7 @@ import {
   type AdminUserDetail,
 } from "../api/adminApi";
 import { AdminActionReasonModal } from "./AdminActionReasonModal";
+import { PERMISSIONS, usePermissions } from "../model/permissions";
 import { Button } from "@/components/ui/button";
 
 interface AdminUserDetailModalProps {
@@ -34,6 +35,12 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actionType, setActionType] = useState<"suspend" | "reinstate" | "revoke_sessions" | null>(null);
+
+  // Suspend, reinstate and session revocation are three separate permissions
+  // (user.suspend, user.reinstate, user.manage_sessions), so an administrator
+  // granted one is not shown the other two. The server checks each of them on
+  // its own operation; this only stops the button existing.
+  const { can } = usePermissions();
 
   useEffect(() => {
     if (!userId) return;
@@ -197,7 +204,7 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
                   Administrative Controls
                 </h4>
                 <div className="flex flex-wrap gap-3">
-                  {detail.status === "active" ? (
+                  {detail.status === "active" && can(PERMISSIONS.userSuspend) ? (
                     <Button
                       type="button"
                       variant="destructive"
@@ -207,7 +214,8 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
                       <Ban className="mr-1.5 h-3.5 w-3.5" />
                       Suspend User
                     </Button>
-                  ) : detail.status === "suspended" ? (
+                  ) : detail.status === "suspended" &&
+                    can(PERMISSIONS.userReinstate) ? (
                     <Button
                       type="button"
                       variant="outline"
@@ -220,15 +228,17 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
                     </Button>
                   ) : null}
 
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setActionType("revoke_sessions")}
-                  >
-                    <LogOut className="mr-1.5 h-3.5 w-3.5" />
-                    Revoke Active Sessions
-                  </Button>
+                  {can(PERMISSIONS.userManageSessions) && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setActionType("revoke_sessions")}
+                    >
+                      <LogOut className="mr-1.5 h-3.5 w-3.5" />
+                      Revoke Active Sessions
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
