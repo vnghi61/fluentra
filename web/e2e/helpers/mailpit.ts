@@ -28,6 +28,12 @@ export interface MailpitListResponse {
 
 const MAILPIT_HTTP_URL = process.env.MAILPIT_URL || "http://127.0.0.1:8025";
 
+/**
+ * Empties the whole Mailpit inbox.
+ *
+ * Only safe in a serial test. Under `fullyParallel` it deletes other workers'
+ * messages — prefer `waitForEmail` with a recipient (and a subject) instead.
+ */
 export async function clearMailbox(): Promise<void> {
   try {
     await fetch(`${MAILPIT_HTTP_URL}/api/v1/messages`, {
@@ -38,10 +44,21 @@ export async function clearMailbox(): Promise<void> {
   }
 }
 
+/**
+ * Waits for a message addressed to `toEmail`, optionally matching a subject.
+ *
+ * Matching on the recipient — and never clearing the whole mailbox — is what
+ * makes this safe under `fullyParallel`. Mailpit has one inbox for the entire
+ * run, so a `DELETE /api/v1/messages` in one worker throws away the code
+ * another worker is waiting for, and the failure surfaces as an unrelated
+ * timeout in whichever test lost the race.
+ */
 export async function waitForEmail(
   toEmail: string,
   timeoutMs = 15000,
   intervalMs = 500,
+  subjectPattern?: RegExp,
+  after?: Date,
 ): Promise<MailpitMessageDetail> {
   const startTime = Date.now();
 
@@ -50,8 +67,19 @@ export async function waitForEmail(
       const res = await fetch(`${MAILPIT_HTTP_URL}/api/v1/messages`);
       if (res.ok) {
         const data = (await res.json()) as MailpitListResponse;
-        const matchingSummary = data.messages?.find((msg) =>
-          msg.To.some((to) => to.Address.toLowerCase() === toEmail.toLowerCase()),
+        const matchingSummary = data.messages?.find(
+          (msg) =>
+            msg.To.some(
+              (to) => to.Address.toLowerCase() === toEmail.toLowerCase(),
+            ) &&
+            (subjectPattern === undefined || subjectPattern.test(msg.Subject)) &&
+            // `after` is what makes a second code readable. The inbox is shared
+            // and never cleared, so the first message to this address is still
+            // sitting in it; without a lower bound the wait returns instantly
+            // with the stale code, the journey types a code the server has
+            // already replaced, and the failure surfaces somewhere else
+            // entirely — as a burned challenge with a disabled input.
+            (after === undefined || new Date(msg.Created) > after),
         );
 
         if (matchingSummary) {

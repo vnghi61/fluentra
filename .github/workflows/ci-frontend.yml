@@ -83,35 +83,15 @@ jobs:
       - name: Build and enforce the bundle budget
         run: pnpm run build
 
+
   e2e:
     name: Frontend E2E
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-
-    services:
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_DB: fluentra_test
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres -d fluentra_test"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 20
-
-      redis:
-        image: redis:7.4-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 20
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
 
     steps:
       - name: Checkout code
@@ -123,42 +103,69 @@ jobs:
           go-version-file: 'go.mod'
           cache: true
 
-      - name: Start MinIO and Mailpit
-        run: |
-          docker run -d --name minio -p 9000:9000 \
-            -e MINIO_ROOT_USER=minioadmin \
-            -e MINIO_ROOT_PASSWORD=minioadmin \
-            minio/minio:latest server /data
-          docker run -d --name mailpit -p 8025:8025 -p 1025:1025 \
-            axllent/mailpit:latest
-          for i in $(seq 1 30); do
-            if curl -sf http://127.0.0.1:9000/minio/health/live && curl -sf http://127.0.0.1:8025/api/v1/messages; then exit 0; fi
-            sleep 1
-          done
-          echo "Data services failed to start"; exit 1
+      # `deploy/compose/` already describes this stack, and `make dev-infra` is
+      # how a developer starts it. Writing a second description here — a handful
+      # of `docker run` lines with their own credentials and their own idea of
+      # which services exist — is how CI and the local stack drift until a test
+      # passes in one and not the other. One description, two callers.
+      #
+      # It brings up postgres, redis, minio and mailpit with host ports
+      # published, waits for every healthcheck, and provisions the MinIO buckets
+      # as a one-shot whose exit code is checked.
+      - name: Start the data services
+        working-directory: .
+        run: make dev-infra
 
-      - name: Apply DB migrations and start API backend
+      - name: Apply migrations and start the API and the worker
         working-directory: .
         env:
-          DB_DSN: postgres://postgres:postgres@127.0.0.1:5432/fluentra_test?sslmode=disable
+          # These match deploy/compose/compose.dev.yaml. The API runs on the
+          # host rather than in compose so it uses the Go build cache above
+          # instead of rebuilding the hot-reload image on every run.
+          DB_DSN: postgres://fluentra:fluentra@127.0.0.1:5432/fluentra?sslmode=disable
           REDIS_URL: redis://127.0.0.1:6379/0
-          HTTP_PORT: '8080'
           SMTP_HOST: 127.0.0.1
           SMTP_PORT: '1025'
+          # Mailpit does not offer AUTH. A non-empty username makes the mailer
+          # try PlainAuth anyway and every OTP mail dead-letters.
+          SMTP_USERNAME: ''
+          SMTP_PASSWORD: ''
+          SMTP_TLS: 'false'
           S3_ENDPOINT: http://127.0.0.1:9000
           S3_ACCESS_KEY: minioadmin
           S3_SECRET_KEY: minioadmin
           CORS_ALLOWED_ORIGINS: http://localhost:5173
+          # Ten journeys across four device projects all register from the
+          # runner's single IP. The shipped cap of 20/hour refuses the back half
+          # of the matrix, which fails as a timeout somewhere unrelated.
+          OTP_ISSUE_PER_IP_PER_HOUR: '500'
+          # RATE_LIMIT_AUTH_PER_MIN ships at 5; the suite signs in far more
+          # often than that from the runner's single address.
+          RATE_LIMIT_AUTH_PER_MIN: '500'
+          RATE_LIMIT_ANON_PER_MIN: '2000'
         run: |
           export OTP_HMAC_KEY="$(openssl rand -hex 32)"
           export JWT_SIGNING_KEY="$(openssl rand -hex 32)"
           go run ./cmd/migrate up
-          go run ./cmd/api &
+
+          # Built, not `go run`: a backgrounded `go run` is a parent whose child
+          # is the actual server, so the pid this step leaves behind is not the
+          # process the next step depends on.
+          go build -o ./bin/api ./cmd/api
+          go build -o ./bin/worker ./cmd/worker
+
+          HTTP_PORT=8080 ./bin/api > api.log 2>&1 &
+          # The worker is what turns an outbox row into an email in Mailpit.
+          # Without it, registration writes the challenge and nothing delivers
+          # the code, and every OTP journey times out — which is exactly the
+          # "passing against nothing" failure this stack exists to prevent.
+          HTTP_PORT=8081 ./bin/worker > worker.log 2>&1 &
+
           for i in $(seq 1 30); do
-            if curl -sf http://127.0.0.1:8080/ready || curl -sf http://127.0.0.1:8080/api/v1/health; then echo "API is ready"; exit 0; fi
+            if curl -sf http://127.0.0.1:8080/ready; then echo "API is ready"; exit 0; fi
             sleep 1
           done
-          echo "API never became ready"; exit 1
+          echo "API never became ready"; cat api.log; exit 1
 
       - name: Set up pnpm
         uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
@@ -178,28 +185,47 @@ jobs:
       - name: Install Playwright Browsers
         run: pnpm exec playwright install --with-deps chromium webkit
 
-      - name: Run E2E tests against real backend
-        run: pnpm run test:e2e
+      # A skipped or vacuous test passes while proving nothing, and that is how
+      # this job used to go green with no backend behind it. Grep for the skip
+      # spellings rather than trusting that none happen to be present today.
+      - name: Fail on skipped E2E tests
+        run: |
+          if grep -rEn "\.skip\(|test\.fixme|describe\.skip|test\.describe\.skip" e2e/; then
+            echo "E2E journeys must not be skipped"; exit 1
+          fi
 
-      - name: Upload Playwright report & traces
-        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
-        if: always()
-        with:
-          name: playwright-report
-          path: web/playwright-report/
-          retention-days: 14
-
-  build-dev-image:
-    name: Build Go Dev Image
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    defaults:
-      run:
+      # The stack is up, so prove the journeys are actually reaching it before
+      # running them. A suite that silently fell back to mocks would still be
+      # green here; a stack that is not listening would not.
+      - name: Prove the stack is reachable
         working-directory: .
+        run: |
+          curl -sf http://127.0.0.1:8080/ready > /dev/null || { echo "API not reachable"; exit 1; }
+          curl -sf http://127.0.0.1:8025/api/v1/messages > /dev/null || { echo "Mailpit not reachable"; exit 1; }
+          curl -sf http://127.0.0.1:9000/minio/health/live || { echo "MinIO not reachable"; exit 1; }
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Run E2E tests against real backend
+        run: pnpm exec playwright test --shard=${{ matrix.shard }}/${{ strategy.job-total }}
 
-      - name: Build Dockerfile.go.dev
-        run: docker build -f deploy/docker/Dockerfile.go.dev -t fluentra-go-dev:ci .
+      # P5.4's acceptance asks for traces and video retained on failure. Keeping
+      # them on the runner and never uploading them is the same as not keeping
+      # them: the artifact is the only way anybody reads a trace afterwards.
+      - name: Upload the Playwright report
+        if: failure()
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: playwright-report-shard-${{ matrix.shard }}
+          path: |
+            web/playwright-report
+            web/test-results
+          retention-days: 7
+
+      # A journey that fails because the API rejected something is diagnosed
+      # from the API's log, not from the browser's screenshot.
+      - name: Dump the server logs
+        if: failure()
+        working-directory: .
+        run: |
+          echo "::group::api"; cat api.log || true; echo "::endgroup::"
+          echo "::group::worker"; cat worker.log || true; echo "::endgroup::"
+          docker compose -f deploy/compose/compose.yaml -f deploy/compose/compose.dev.yaml logs --no-color || true

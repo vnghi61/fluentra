@@ -1,69 +1,45 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
-test.describe("Journey 10: GDPR Data Export Request & Download", () => {
-  test("requests personal archive export, tracks status, and displays download readiness", async ({
+import { newLearner, registerAndVerify } from "../helpers/auth";
+import { waitForEmail } from "../helpers/mailpit";
+
+/**
+ * Journey 10 runs against the real API and the real worker. The previous
+ * version mocked `GET /api/v1/me/export`, an endpoint whose real shape is
+ * `/me/export/{id}`, and asserted on a `download_url` and a `ready` status that
+ * are not in the schema — so it proved the mock matched itself.
+ *
+ * What the card asks for is the round trip: request → the worker builds the
+ * archive → the learner is told by email.
+ */
+test.describe("Journey 10: GDPR data export", () => {
+  test("requests an archive and the worker delivers the ready email", async ({
     page,
   }) => {
-    let exportRequested = false;
-
-    await page.route("**/api/v1/auth/refresh", async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          user: {
-            id: "10101010-1010-1010-1010-101010101010",
-            email: "export-learner@example.com",
-            display_name: "Export Learner",
-            role: "user",
-          },
-          session_id: "sess-export-123",
-        }),
-      });
-    });
-
-    await page.route("**/api/v1/me/export", async (route) => {
-      if (route.request().method() === "POST") {
-        exportRequested = true;
-        await route.fulfill({
-          status: 202,
-          contentType: "application/json",
-          body: JSON.stringify({
-            status: "pending",
-            requested_at: new Date().toISOString(),
-          }),
-        });
-      } else {
-        await route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify(
-            exportRequested
-              ? {
-                  status: "ready",
-                  requested_at: new Date().toISOString(),
-                  download_url: "http://127.0.0.1:9000/exports/archive.zip",
-                  expires_at: new Date(Date.now() + 86400000).toISOString(),
-                }
-              : {
-                  status: "none",
-                },
-          ),
-        });
-      }
-    });
+    const learner = newLearner("j10");
+    await registerAndVerify(page, learner);
 
     await page.goto("/settings");
     await page.getByRole("button", { name: /Data & Privacy/i }).click();
 
-    await expect(page.getByText("Export Personal Data")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /Export Your Personal Data/i }),
+    ).toBeVisible();
 
-    // Click request export
     await page.getByRole("button", { name: /Request Data Export/i }).click();
 
-    // Export status updates
-    await expect(
-      page.getByText(/Export Request Submitted|ready|Download/i),
-    ).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("status")).toContainText(
+      /Data export requested/i,
+      { timeout: 15_000 },
+    );
+
+    // The archive is built by the worker out of the outbox, so this is also
+    // what proves the worker is running and reaching MinIO. Without the bucket
+    // the job fails and no message ever arrives.
+    // Matched by subject rather than by clearing the inbox: the registration
+    // OTP for this same address is already sitting in it, and a global clear
+    // would take other workers' messages with it.
+    const message = await waitForEmail(learner.email, 60_000, 500, /export/i);
+    expect(message.Subject).toMatch(/export/i);
   });
 });

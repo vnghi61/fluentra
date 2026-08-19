@@ -1,51 +1,57 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
-test.describe("Journey 6: Stay Signed In (Silent Refresh on Boot)", () => {
-  test("reopening application boots straight to dashboard with zero login flash", async ({
+import {
+  expectSignedIn,
+  newLearner,
+  registerAndVerify,
+} from "../helpers/auth";
+
+/**
+ * Journey 6 proves the headline feature, so it runs against the real API: a
+ * mocked `/auth/refresh` would prove only that the mock returns a user, which
+ * is the one thing nobody doubts. What is under test is that the real refresh
+ * cookie survives a fresh browser context and that boot resolves to the
+ * dashboard without passing through the login screen.
+ */
+test.describe("Journey 6: Stay Signed In (silent refresh on boot)", () => {
+  test("reopening the browser lands on the dashboard with no login screen in the route sequence", async ({
     browser,
   }) => {
-    // 1. Create context with authenticated storage state / refresh cookies
     const context = await browser.newContext();
-
-    // Mock silent refresh endpoint returning valid user session
-    await context.route("**/api/v1/auth/refresh", async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          user: {
-            id: "66666666-6666-6666-6666-666666666666",
-            email: "persisted-learner@example.com",
-            display_name: "Persisted Learner",
-            role: "user",
-            avatar_url: null,
-          },
-          session_id: "sess-persisted-123",
-          expires_at: new Date(Date.now() + 3600000).toISOString(),
-        }),
-      });
-    });
-
     const page = await context.newPage();
 
-    // Track all navigated URLs to prove login screen never flashes
-    const visitedUrls: string[] = [];
-    page.on("framenavigated", (frame) => {
-      if (frame === page.mainFrame()) {
-        visitedUrls.push(frame.url());
+    const learner = newLearner("j6");
+    await registerAndVerify(page, learner);
+
+    // "Close the browser" without losing the cookie jar: the storage state is
+    // what a returning learner actually has. A brand-new context would be a
+    // different browser, which is a different requirement.
+    const state = await context.storageState();
+    await context.close();
+
+    const reopened = await browser.newContext({ storageState: state });
+    const reopenedPage = await reopened.newPage();
+
+    // The card's trap: assert on the route sequence, not a screenshot. A login
+    // screen that flashes for 200 ms and disappears still fails the
+    // requirement, and a screenshot taken afterwards reports success.
+    const resolvedRoutes: string[] = [];
+    reopenedPage.on("framenavigated", (frame) => {
+      if (frame === reopenedPage.mainFrame()) {
+        resolvedRoutes.push(new URL(frame.url()).pathname);
       }
     });
 
-    // 2. Open root page directly
-    await page.goto("/");
+    await reopenedPage.goto("/");
 
-    // 3. User is immediately on dashboard
-    await expect(page).toHaveURL("/", { timeout: 10000 });
-    await expect(page.getByText(/Persisted Learner/i)).toBeVisible();
+    await expect(reopenedPage).toHaveURL("/", { timeout: 15_000 });
+    await expectSignedIn(reopenedPage);
 
-    // 4. Assert login route was NEVER visited during boot resolution
-    expect(visitedUrls.some((url) => url.includes("/login"))).toBe(false);
+    expect(
+      resolvedRoutes,
+      `boot passed through the login screen: ${resolvedRoutes.join(" -> ")}`,
+    ).not.toContain("/login");
 
-    await context.close();
+    await reopened.close();
   });
 });
