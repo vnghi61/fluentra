@@ -41,12 +41,51 @@ export const ERROR_MESSAGES: Record<string, string> = {
   LAST_SIGN_IN_METHOD:
     "Cannot unlink Google: it is currently the only sign-in method for this account. Set a password first.",
 
-  // Challenges (OTP)
-  CHALLENGE_EXPIRED:
-    "This verification code has expired. Please request a new code.",
-  CHALLENGE_BURNED:
-    "Too many incorrect attempts. This challenge has been invalidated. Please request a new code.",
-  CODE_INVALID: "The code you entered is incorrect.",
+  // Challenges (OTP).
+  //
+  // These are the codes `internal/modules/auth/domain/errors.go` actually
+  // emits. The catalogue used to carry CODE_INVALID, CHALLENGE_BURNED and
+  // CHALLENGE_EXPIRED, none of which the server has ever sent — so every OTP
+  // refusal fell through to the RFC 9457 `title` ("Authentication required",
+  // "Rate limited") and the burned state was unreachable in the UI.
+  // catalogue.test.ts now fails if a code drifts like that again.
+  OTP_INVALID: "The code you entered is incorrect.",
+  OTP_EXPIRED: "This verification code has expired. Please request a new code.",
+  OTP_ATTEMPTS_EXCEEDED:
+    "Too many incorrect attempts. This code has been invalidated. Please request a new one.",
+  OTP_ALREADY_USED:
+    "This verification code has already been used. Please request a new one.",
+  OTP_RESEND_TOO_SOON:
+    "A new code was sent recently. Please wait a moment before asking for another.",
+  OTP_ISSUE_LIMIT_REACHED:
+    "Too many codes have been requested from here. Please wait a while and try again.",
+  CHALLENGE_NOT_FOUND:
+    "This verification step is no longer available. Please start again.",
+
+  // Registration & credentials
+  EMAIL_ALREADY_REGISTERED:
+    "An account with this email address already exists. Try signing in instead.",
+  PASSWORD_TOO_WEAK:
+    "That password does not meet the password policy. Use at least 12 characters and something not easily guessed.",
+  DISPLAY_NAME_NOT_ALLOWED: "Please choose a different display name.",
+
+  // Administration
+  SELF_ADMIN_ACTION_FORBIDDEN:
+    "You cannot perform this administrative action on your own account.",
+  REASON_REQUIRED:
+    "A reason of at least 10 characters is required for this action.",
+  LAST_ADMIN_PROTECTED:
+    "This is the last administrator; the role cannot be removed.",
+
+  // Account data
+  EXPORT_ALREADY_PENDING:
+    "An export is already being prepared for your account. You will be emailed when it is ready.",
+  DELETION_ALREADY_PENDING:
+    "Your account is already scheduled for deletion. You can cancel it from this page.",
+  DELETION_NOT_CANCELLABLE:
+    "This deletion can no longer be cancelled because erasure has already begun.",
+  ACCOUNT_NOT_USABLE:
+    "This action is not available while your account is in its current state.",
 };
 
 export function getErrorMessage(problem: ProblemDetails): string {
