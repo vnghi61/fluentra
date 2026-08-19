@@ -125,10 +125,10 @@ func run(ctx context.Context, out io.Writer) error {
 		if created {
 			state = "created"
 		}
-		fmt.Fprintf(out, "%-24s %s\n", account.email, state)
+		_, _ = fmt.Fprintf(out, "%-24s %s\n", account.email, state)
 	}
 
-	fmt.Fprintf(out, "\npassword for both: %s\n", demoPassword)
+	_, _ = fmt.Fprintf(out, "\npassword for both: %s\n", demoPassword)
 	return nil
 }
 
