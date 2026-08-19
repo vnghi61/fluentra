@@ -9,6 +9,15 @@ import (
 	"testing"
 )
 
+const (
+	testAPIKey    = "re_test_key"
+	testRecipient = "test@example.com"
+	testSender    = "test@fluentra.dev"
+	testCode      = "Code"
+	testName      = "DisplayName"
+	testUserName  = "Test User"
+)
+
 func TestResendSender_Send(t *testing.T) {
 	renderer, err := NewRenderer(nil, nil)
 	if err != nil {
@@ -20,7 +29,7 @@ func TestResendSender_Send(t *testing.T) {
 			if r.Method != http.MethodPost {
 				t.Errorf("expected POST, got %s", r.Method)
 			}
-			if got := r.Header.Get("Authorization"); got != "Bearer re_test_key" {
+			if got := r.Header.Get("Authorization"); got != "Bearer "+testAPIKey {
 				t.Errorf("unexpected auth header: %s", got)
 			}
 			if got := r.Header.Get("Content-Type"); got != "application/json" {
@@ -31,7 +40,7 @@ func TestResendSender_Send(t *testing.T) {
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 				t.Fatalf("decode request body: %v", err)
 			}
-			if len(body.To) != 1 || body.To[0] != "test@example.com" {
+			if len(body.To) != 1 || body.To[0] != testRecipient {
 				t.Errorf("unexpected To: %v", body.To)
 			}
 			if body.Subject == "" {
@@ -44,22 +53,10 @@ func TestResendSender_Send(t *testing.T) {
 		defer server.Close()
 
 		sender := NewResendSender(
-			ResendConfig{APIKey: "re_test_key", From: "test@fluentra.dev"},
+			ResendConfig{APIKey: testAPIKey, From: testSender},
 			renderer, nil, nil,
 		)
-		// Override the API URL for testing by using a custom HTTP client
-		// that redirects to the test server. We do this by replacing the
-		// package-level constant's effect through the client's transport.
 		sender.client = server.Client()
-		// We also need to point to the test server URL. Since resendAPIURL is
-		// a const, we'll use a helper approach: temporarily override via a
-		// wrapper. For simplicity in this test, we'll directly set the URL
-		// by making the sender use the test server.
-		originalURL := resendAPIURL
-		_ = originalURL // acknowledge the const
-
-		// Instead, let's use a different approach: set up a transport that
-		// rewrites the URL
 		sender.client.Transport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			req.URL.Scheme = "http"
 			req.URL.Host = server.Listener.Addr().String()
@@ -67,10 +64,10 @@ func TestResendSender_Send(t *testing.T) {
 		})
 
 		err := sender.Send(context.Background(), Message{
-			To:       "test@example.com",
-			Template: "verify_email",
+			To:       testRecipient,
+			Template: TemplateVerifyEmail,
 			Locale:   "en",
-			Data:     map[string]any{"Code": "123456", "DisplayName": "Test User"},
+			Data:     map[string]any{testCode: "123456", testName: testUserName},
 		})
 		if err != nil {
 			t.Fatalf("Send returned error: %v", err)
@@ -89,7 +86,7 @@ func TestResendSender_Send(t *testing.T) {
 		defer server.Close()
 
 		sender := NewResendSender(
-			ResendConfig{APIKey: "bad_key", From: "test@fluentra.dev"},
+			ResendConfig{APIKey: "bad_key", From: testSender},
 			renderer, nil, nil,
 		)
 		sender.client.Transport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
@@ -99,10 +96,10 @@ func TestResendSender_Send(t *testing.T) {
 		})
 
 		err := sender.Send(context.Background(), Message{
-			To:       "test@example.com",
-			Template: "verify_email",
+			To:       testRecipient,
+			Template: TemplateVerifyEmail,
 			Locale:   "en",
-			Data:     map[string]any{"Code": "123456", "DisplayName": "Test User"},
+			Data:     map[string]any{testCode: "123456", testName: testUserName},
 		})
 		if err == nil {
 			t.Fatal("expected error, got nil")
@@ -114,15 +111,15 @@ func TestResendSender_Send(t *testing.T) {
 		_ = suppressions.SuppressAddress(context.Background(), "suppressed@example.com", "hard_bounce")
 
 		sender := NewResendSender(
-			ResendConfig{APIKey: "re_test_key", From: "test@fluentra.dev"},
+			ResendConfig{APIKey: testAPIKey, From: testSender},
 			renderer, suppressions, nil,
 		)
 
 		err := sender.Send(context.Background(), Message{
 			To:       "suppressed@example.com",
-			Template: "verify_email",
+			Template: TemplateVerifyEmail,
 			Locale:   "en",
-			Data:     map[string]any{"Code": "123456", "DisplayName": "Test User"},
+			Data:     map[string]any{testCode: "123456", testName: testUserName},
 		})
 		if err == nil {
 			t.Fatal("expected suppression error, got nil")
@@ -131,15 +128,15 @@ func TestResendSender_Send(t *testing.T) {
 
 	t.Run("invalid recipient is refused", func(t *testing.T) {
 		sender := NewResendSender(
-			ResendConfig{APIKey: "re_test_key", From: "test@fluentra.dev"},
+			ResendConfig{APIKey: testAPIKey, From: testSender},
 			renderer, nil, nil,
 		)
 
 		err := sender.Send(context.Background(), Message{
 			To:       "not-an-email",
-			Template: "verify_email",
+			Template: TemplateVerifyEmail,
 			Locale:   "en",
-			Data:     map[string]any{"Code": "123456", "DisplayName": "Test User"},
+			Data:     map[string]any{testCode: "123456", testName: testUserName},
 		})
 		if err == nil {
 			t.Fatal("expected invalid address error, got nil")
@@ -153,15 +150,15 @@ func TestResendSender_InvalidFromIsRefused(t *testing.T) {
 		t.Fatalf("NewRenderer: %v", err)
 	}
 	sender := NewResendSender(
-		ResendConfig{APIKey: "re_test_key", From: "not-an-address"},
+		ResendConfig{APIKey: testAPIKey, From: "not-an-address"},
 		renderer, nil, nil,
 	)
 
 	err = sender.Send(context.Background(), Message{
-		To:       "test@example.com",
-		Template: "verify_email",
+		To:       testRecipient,
+		Template: TemplateVerifyEmail,
 		Locale:   "en",
-		Data:     map[string]any{"Code": "123456", "DisplayName": "Test User"},
+		Data:     map[string]any{testCode: "123456", testName: testUserName},
 	})
 	if err == nil || !strings.Contains(err.Error(), "invalid sender address") {
 		t.Fatalf("err = %v, want an invalid sender address error", err)

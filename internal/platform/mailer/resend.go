@@ -165,7 +165,12 @@ func (s *ResendSender) Send(ctx context.Context, msg Message) error {
 
 	apiErr := fmt.Errorf("resend: status=%d name=%s message=%s", resp.StatusCode, resendErr.Name, resendErr.Message)
 	s.record(ctx, toHash, msg, status, "", apiErr)
-	slog.ErrorContext(ctx, "failed to send email via resend", "to_hash", toHash, "template", msg.Template, "status", resp.StatusCode, "error", apiErr)
+	slog.ErrorContext(ctx, "failed to send email via resend",
+		"to_hash", toHash,
+		"template", msg.Template,
+		"status", resp.StatusCode,
+		"error", apiErr,
+	)
 	return fmt.Errorf("send email via resend api: %w", apiErr)
 }
 

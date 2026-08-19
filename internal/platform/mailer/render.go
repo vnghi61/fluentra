@@ -23,8 +23,23 @@ var templateFS embed.FS
 // them or startup fails.
 var DefaultLocales = []string{"en", "vi"}
 
+// Template name constants for standard transactional emails.
+const (
+	TemplateVerifyEmail         = "verify_email"
+	TemplateReset               = "reset"
+	TemplateNewDevice           = "new_device"
+	TemplateRegistrationAttempt = "registration_attempt"
+	TemplateDataExport          = "data_export"
+)
+
 // DefaultTemplates is the set validated at startup.
-var DefaultTemplates = []string{"verify_email", "reset", "new_device", "registration_attempt", "data_export"}
+var DefaultTemplates = []string{
+	TemplateVerifyEmail,
+	TemplateReset,
+	TemplateNewDevice,
+	TemplateRegistrationAttempt,
+	TemplateDataExport,
+}
 
 // safeName is what may appear in a template or locale name. Both reach a file
 // path, and a locale arrives from a user preference — `../../etc` must never
