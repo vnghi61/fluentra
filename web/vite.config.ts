@@ -21,6 +21,35 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5173,
+    // A bind-mounted source tree does not deliver inotify events to the
+    // container on Windows or macOS, so Vite never learns a file changed and
+    // keeps serving the module it transformed at startup. The app then looks
+    // stale in the browser while the file on disk is right, and the usual
+    // conclusion is that the edit was wrong. Polling is the cost of noticing.
+    //
+    // Off by default: a host-run `pnpm dev` gets real filesystem events and
+    // should not pay for a poll loop. compose.dev.yaml switches it on.
+    //
+    // Scoped, because polling costs what it watches: an unbounded poll over the
+    // mounted tree kept a core busy and slowed the container enough to blow
+    // navigation timeouts. Only `src` changes need to be noticed this way.
+    ...(process.env.VITE_USE_POLLING === 'true'
+      ? {
+          watch: {
+            usePolling: true,
+            interval: 1000,
+            ignored: [
+              '**/node_modules/**',
+              '**/.git/**',
+              '**/dist/**',
+              '**/test-results/**',
+              '**/playwright-report/**',
+              '**/.pnpm-store/**',
+              '**/e2e/**',
+            ],
+          },
+        }
+      : {}),
     proxy: {
       '/api': {
         target: process.env.VITE_API_TARGET || 'http://localhost:8080',

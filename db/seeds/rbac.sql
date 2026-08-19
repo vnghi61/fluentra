@@ -21,9 +21,17 @@
 \set seed_admin_email 'admin@fluentra.local'
 \endif
 
+-- The address is handed to the block through a session setting rather than
+-- interpolated into it. psql does not substitute :'variables' inside a
+-- dollar-quoted body, so the original `citext := :'seed_admin_email'` was a
+-- syntax error every time this file was run — which is to say it had never been
+-- run. set_config is an ordinary statement, so the substitution happens here,
+-- outside the quoting, and the block reads the value back.
+SELECT set_config('fluentra.seed_admin_email', :'seed_admin_email', false);
+
 DO $$
 DECLARE
-    target_email  citext := :'seed_admin_email';
+    target_email  citext := current_setting('fluentra.seed_admin_email')::citext;
     target_user   uuid;
     admin_role    uuid;
 BEGIN

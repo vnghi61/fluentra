@@ -1,11 +1,19 @@
 FROM node:24-alpine
 
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable
 
 WORKDIR /app
 
-COPY web/package.json web/pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+# pnpm-workspace.yaml carries the `allowBuilds` list. Without it in the image,
+# pnpm bars esbuild, msw and unrs-resolver from running their install scripts
+# and `--frozen-lockfile` exits 1 with ERR_PNPM_IGNORED_BUILDS — so the whole
+# `make dev` stack fails to build, which is how this file was found.
+COPY web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml ./
+
+# `corepack prepare pnpm@latest` floats: the image would silently change pnpm
+# version between builds. package.json pins `packageManager`, and corepack reads
+# it, so the pin is the single source of the version.
+RUN corepack install && pnpm install --frozen-lockfile
 
 COPY web ./
 
