@@ -45,10 +45,12 @@ const (
 
 	// content reading, authoring & publishing
 	//
-	// content.read.published gates published courses, lessons and content
-	// versions. It is in the catalogue and held by admin; who else holds it is
-	// open — see db/migrations/rbac/1700000180 and WP7 task P7.5. Declaring it
-	// here is what lets a handler name it without a bare string.
+	// The line between these two groups is the product rule: a signed-in learner
+	// reads published material, and everything that changes it belongs to an
+	// administrator. content.read.published is the only one the `user` role
+	// holds (1700000180); the four below are admin-only, and
+	// TestAdminHoldsEverythingAndLearnerReadsOnly fails if that stops being
+	// true.
 	PermContentReadPublished Permission = "content.read.published"
 
 	PermContentCreate  Permission = "content.create"

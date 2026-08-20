@@ -25,6 +25,7 @@ contract belongs in a repository-level ADR instead — see [`/DECISIONS.md`](../
 |---|---|---|
 | Bind activities to items or versions? | Versions | A learner's attempt must be interpretable against exactly what they saw; item binding would let a republish change the meaning of past results |
 | Where do unlocking rules live? | Defined here, evaluated by `learning` | The rule is structural (a property of the curriculum); the state is personal (a property of the learner). Splitting them keeps both modules honest |
+| Are the course and lesson reads public? | No — signed in, with `content.read.published` | A lesson response carries its activities and their resolved content versions, so an anonymous `/lessons/{id}` publishes the whole course and removes the surface Phase 4 attaches entitlements to. The `user` role holds the read permission; writing courses and reordering activities stays with `admin` |
 <!-- END GENERATED: decisions -->
 
 ## Related repository ADRs

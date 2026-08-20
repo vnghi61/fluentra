@@ -130,7 +130,8 @@
     "decisions": [
       { "question": "Shared content model or per-skill models?", "choice": "Shared", "why": "Six near-identical models would diverge within a year and make mixed-skill lessons impossible. The genuinely different part — the grader — stays in the skill module (ADR-0015)" },
       { "question": "Mutable content or versions?", "choice": "Immutable versions", "why": "A learner's attempt must be interpretable against the material they actually saw; editing published material in place would silently rewrite history" },
-      { "question": "Who assigns the CEFR level?", "choice": "A human, with AI assistance", "why": "Levelling is a pedagogical judgement with real consequences for learner experience; the model proposes, the author disposes" }
+      { "question": "Who assigns the CEFR level?", "choice": "A human, with AI assistance", "why": "Levelling is a pedagogical judgement with real consequences for learner experience; the model proposes, the author disposes" },
+      { "question": "Who may read published content, and who may change it?", "choice": "Any signed-in learner reads; only an administrator writes", "why": "Published material is the first thing a learner reads that is not their own data, so `self` cannot express it and it needs a named permission — `content.read.published`, held by the `user` role. Leaving the reads anonymous would hand a whole course to anyone with the URL and remove the surface Phase 4 attaches entitlements to. Create, edit, review, publish and archive stay with `admin` (migration 1700000180)" }
     ],
     "adrs": [{ "id": "ADR-0015", "file": "ADR-0015-content-exercise-core.md", "title": "Shared content + exercise engine" }],
     "todo": [
@@ -251,7 +252,8 @@
     ],
     "decisions": [
       { "question": "Bind activities to items or versions?", "choice": "Versions", "why": "A learner's attempt must be interpretable against exactly what they saw; item binding would let a republish change the meaning of past results" },
-      { "question": "Where do unlocking rules live?", "choice": "Defined here, evaluated by `learning`", "why": "The rule is structural (a property of the curriculum); the state is personal (a property of the learner). Splitting them keeps both modules honest" }
+      { "question": "Where do unlocking rules live?", "choice": "Defined here, evaluated by `learning`", "why": "The rule is structural (a property of the curriculum); the state is personal (a property of the learner). Splitting them keeps both modules honest" },
+      { "question": "Are the course and lesson reads public?", "choice": "No — signed in, with `content.read.published`", "why": "A lesson response carries its activities and their resolved content versions, so an anonymous `/lessons/{id}` publishes the whole course and removes the surface Phase 4 attaches entitlements to. The `user` role holds the read permission; writing courses and reordering activities stays with `admin`" }
     ],
     "todo": [
       { "title": "Phase 2", "items": [

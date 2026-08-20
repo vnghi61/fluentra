@@ -26,18 +26,27 @@ JOIN core.permissions p
 WHERE r.name = 'admin'
 ON CONFLICT DO NOTHING;
 
--- `content.read.published` is deliberately granted to NOBODY here.
+-- `user` gets the read permission and only the read permission: a signed-in
+-- learner may see published material, and every create, edit, review, publish
+-- and archive stays with `admin`.
 --
--- Six module AGENT.md files name it as the permission on published-content
--- reads, but 1700000020 gave the learner role no named permissions at all and
--- TestAdminHoldsEverythingAndLearnerHoldsNothing asserts that. Granting it to
--- `user` would silently overturn a tested design decision inside a
--- contract-only task.
+-- This is the first named permission the learner role holds. 1700000020 said it
+-- holds none, and that was right while every named permission was a back-office
+-- one and `self` described a learner completely. Published learning material is
+-- the first thing a learner reads that is not their own data, so `self` cannot
+-- express it — and leaving the endpoints open instead would hand the whole
+-- course to anyone with the URL and remove the surface Phase 4 attaches
+-- entitlements to.
 --
--- So the permission exists, admin holds it, and *who else holds it* is an open
--- question for P7.5 — the task that writes the guard. Until it is answered the
--- five read endpoints are authenticated (no `security: []`) and un-enforced,
--- which is the honest state rather than a guess baked into the catalogue.
+-- The split is the point: read is a grant, write is not. `content.read.published`
+-- is the only permission that may ever appear on this role without a decision,
+-- and TestAdminHoldsEverythingAndLearnerReadsOnly enforces exactly that.
+INSERT INTO core.role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM core.roles r
+JOIN core.permissions p ON p.name = 'content.read.published'
+WHERE r.name = 'user'
+ON CONFLICT DO NOTHING;
 
 -- +goose StatementEnd
 
