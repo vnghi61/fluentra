@@ -62,6 +62,12 @@ tags:
       to the admin action log with the acting administrator. An administrator
       may not use these operations on their own account — that path exists so
       that a compromised admin session cannot quietly widen its own reach.
+  - name: content
+    description: >-
+      Canonical content model, versioning, publish workflow, and taxonomy.
+  - name: lesson
+    description: >-
+      Courses, units, lessons, and activity sequencing.
 security:
   - BearerAuth: []
 paths:
@@ -2259,6 +2265,591 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+  /courses:
+    get:
+      tags: [lesson]
+      operationId: listCourses
+      summary: List published courses with level filters.
+      description: Returns catalogue summaries for published courses.
+      x-permission: content.read.published
+      parameters:
+        - name: level
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/CEFRLevel'
+      responses:
+        '200':
+          description: List of available courses.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseList'
+              example:
+                courses:
+                  - id: 0199a1c2-3d4e-7f80-9abc-def012345678
+                    slug: ielts-foundation
+                    title: IELTS Foundation 5.0 - 6.5
+                    description: Core skills and vocabulary for IELTS academic preparation.
+                    cefr_from: B1
+                    cefr_to: B2
+                    status: published
+                    estimated_hours: 40
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /courses/{slug}:
+    get:
+      tags: [lesson]
+      operationId: getCourseBySlug
+      summary: Get course detail with units and lesson summaries.
+      description: >-
+        Returns one published course with its ordered units and each unit's
+        lesson summaries, for the learner catalogue and course landing page.
+      x-permission: content.read.published
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Course detail.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseDetail'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def012345678
+                slug: ielts-foundation
+                title: IELTS Foundation 5.0 - 6.5
+                description: Comprehensive curriculum covering all 4 modules.
+                cefr_from: B1
+                cefr_to: B2
+                status: published
+                estimated_hours: 40
+                units:
+                  - id: 0199a1c2-3d4e-7f80-9abc-def012345679
+                    course_id: 0199a1c2-3d4e-7f80-9abc-def012345678
+                    position: 1
+                    title: Unit 1 - Everyday Campus Life
+                    description: Vocabulary and functional grammar for university scenarios.
+                    lessons:
+                      - id: 0199a1c2-3d4e-7f80-9abc-def01234567a
+                        unit_id: 0199a1c2-3d4e-7f80-9abc-def012345679
+                        position: 1
+                        title: Academic Word List - Topic 1
+                        skill_focus: vocabulary
+                        estimated_minutes: 15
+                        status: published
+                        locked: false
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /lessons/{id}:
+    get:
+      tags: [lesson]
+      operationId: getLessonById
+      summary: Get lesson with activities and resolved content versions.
+      description: >-
+        Returns one lesson with its ordered activities and each activity's
+        resolved content version, ready for the lesson renderer.
+      x-permission: content.read.published
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Lesson with resolved activities.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LessonDetail'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def01234567a
+                unit_id: 0199a1c2-3d4e-7f80-9abc-def012345679
+                position: 1
+                title: Academic Word List - Topic 1
+                skill_focus: vocabulary
+                estimated_minutes: 15
+                status: published
+                activities:
+                  - id: 0199a1c2-3d4e-7f80-9abc-def01234567b
+                    lesson_id: 0199a1c2-3d4e-7f80-9abc-def01234567a
+                    position: 1
+                    kind: vocab_multiple_choice
+                    content_version_id: 0199a1c2-3d4e-7f80-9abc-def01234567c
+                    weight: 10
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /admin/courses:
+    post:
+      tags: [lesson]
+      operationId: adminCreateCourse
+      summary: Create a course curriculum container.
+      description: Creates a top-level course container in draft state.
+      x-permission: content.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCourseRequest'
+      responses:
+        '201':
+          description: Course created.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseSummary'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def012345678
+                slug: ielts-foundation
+                title: IELTS Foundation
+                description: Core skills and vocabulary for IELTS academic preparation.
+                cefr_from: B1
+                cefr_to: B2
+                status: draft
+                estimated_hours: 40
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/lessons/{id}/activities:
+    put:
+      tags: [lesson]
+      operationId: adminUpdateLessonActivities
+      summary: Update or reorder lesson activities.
+      description: >-
+        Replaces the ordered activity list of a lesson, used to assemble a
+        lesson from published content versions.
+      x-permission: content.edit
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateActivitiesRequest'
+      responses:
+        '200':
+          description: Activities updated.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LessonDetail'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def01234567a
+                unit_id: 0199a1c2-3d4e-7f80-9abc-def012345679
+                position: 1
+                title: Academic Word List - Topic 1
+                skill_focus: vocabulary
+                estimated_minutes: 15
+                status: draft
+                activities:
+                  - id: 0199a1c2-3d4e-7f80-9abc-def01234567b
+                    lesson_id: 0199a1c2-3d4e-7f80-9abc-def01234567a
+                    position: 1
+                    kind: vocab_multiple_choice
+                    content_version_id: 0199a1c2-3d4e-7f80-9abc-def01234567c
+                    weight: 10
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /content:
+    get:
+      tags: [content]
+      operationId: browsePublishedContent
+      summary: Browse published content with taxonomy filters.
+      description: >-
+        Returns published content versions, optionally filtered by kind and
+        CEFR level, with cursor-free offset pagination for catalogue browsing.
+      x-permission: content.read.published
+      parameters:
+        - name: kind
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: cefr_level
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/CEFRLevel'
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Published content items.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentVersionList'
+              example:
+                items:
+                  - id: 0199a1c2-3d4e-7f80-9abc-def01234567c
+                    item_id: 0199a1c2-3d4e-7f80-9abc-def01234567d
+                    version: 1
+                    kind: vocab_word
+                    body: { word: environment, definition: the natural world }
+                    cefr_level: B1
+                    status: published
+                    tags: []
+                total: 1
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /content/{slug}:
+    get:
+      tags: [content]
+      operationId: getContentBySlug
+      summary: Fetch a published content version by item slug.
+      description: Returns the current published version of a content item by its stable slug.
+      x-permission: content.read.published
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Published content version.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentVersion'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def01234567c
+                item_id: 0199a1c2-3d4e-7f80-9abc-def01234567d
+                version: 1
+                kind: vocab_word
+                body: { word: environment, definition: the natural world }
+                cefr_level: B1
+                status: published
+                tags: []
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /admin/content:
+    post:
+      tags: [content]
+      operationId: adminCreateContent
+      summary: Create a draft content item.
+      description: Creates a new content item with an initial draft version.
+      x-permission: content.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateContentItemRequest'
+      responses:
+        '201':
+          description: Draft content item created.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentItem'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def01234567d
+                kind: vocab_word
+                slug: environment-n-1
+                current_version_id: 0199a1c2-3d4e-7f80-9abc-def01234567c
+                status: draft
+                owner_id: 0199a1c2-3d4e-7f80-9abc-def01234567e
+                created_at: '2026-08-20T08:00:00Z'
+                updated_at: '2026-08-20T08:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /admin/content/{id}/draft:
+    put:
+      tags: [content]
+      operationId: adminUpdateDraft
+      summary: Update working draft of a content item.
+      description: Updates the working draft, creating a new version when appropriate.
+      x-permission: content.edit
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDraftRequest'
+      responses:
+        '200':
+          description: Draft updated.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentVersion'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def01234567c
+                item_id: 0199a1c2-3d4e-7f80-9abc-def01234567d
+                version: 2
+                kind: vocab_word
+                body: { word: environment, definition: the natural world }
+                cefr_level: B1
+                status: draft
+                tags: []
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /admin/content/{id}/submit:
+    post:
+      tags: [content]
+      operationId: adminSubmitContentForReview
+      summary: Submit working draft for editorial review.
+      description: Moves the current draft to in_review, ready for an editor.
+      x-permission: content.edit
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Version submitted for review.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentVersion'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def01234567c
+                item_id: 0199a1c2-3d4e-7f80-9abc-def01234567d
+                version: 2
+                kind: vocab_word
+                body: { word: environment, definition: the natural world }
+                cefr_level: B1
+                status: in_review
+                tags: []
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /admin/content/{id}/review:
+    post:
+      tags: [content]
+      operationId: adminReviewContent
+      summary: Approve or request changes on a submitted version.
+      description: >-
+        Records an editor's decision on a submitted version, moving it to
+        approved or back to draft with comments.
+      x-permission: content.review
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewDecisionRequest'
+      responses:
+        '200':
+          description: Review decision recorded.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentVersion'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def01234567c
+                item_id: 0199a1c2-3d4e-7f80-9abc-def01234567d
+                version: 2
+                kind: vocab_word
+                body: { word: environment, definition: the natural world }
+                cefr_level: B1
+                status: approved
+                tags: []
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /admin/content/{id}/publish:
+    post:
+      tags: [content]
+      operationId: adminPublishContent
+      summary: Publish an approved content version.
+      description: >-
+        Publishes the approved version, making it the learner-facing snapshot
+        and emitting the content.published event.
+      x-permission: content.publish
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Version published.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentVersion'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def01234567c
+                item_id: 0199a1c2-3d4e-7f80-9abc-def01234567d
+                version: 2
+                kind: vocab_word
+                body: { word: environment, definition: the natural world }
+                cefr_level: B1
+                status: published
+                published_at: '2026-08-20T09:00:00Z'
+                tags: []
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /admin/content/{id}/archive:
+    post:
+      tags: [content]
+      operationId: adminArchiveContent
+      summary: Archive a content item.
+      description: Archives a content item so it is no longer learner-facing.
+      x-permission: content.publish
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Item archived.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentItem'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def01234567d
+                kind: vocab_word
+                slug: environment-n-1
+                current_version_id: 0199a1c2-3d4e-7f80-9abc-def01234567c
+                status: archived
+                owner_id: 0199a1c2-3d4e-7f80-9abc-def01234567e
+                created_at: '2026-08-20T08:00:00Z'
+                updated_at: '2026-08-20T10:00:00Z'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
 components:
   securitySchemes:
     BearerAuth:
@@ -2402,6 +2993,46 @@ components:
       $ref: ./components/admin.yaml#/CreateFeatureFlagRequest
     UpdateFeatureFlagRequest:
       $ref: ./components/admin.yaml#/UpdateFeatureFlagRequest
+    CEFRLevel:
+      $ref: ./components/content.yaml#/CEFRLevel
+    AuthoringStatus:
+      $ref: ./components/content.yaml#/AuthoringStatus
+    TaxonomyTag:
+      $ref: ./components/content.yaml#/TaxonomyTag
+    MediaAssetSummary:
+      $ref: ./components/content.yaml#/MediaAssetSummary
+    ContentVersion:
+      $ref: ./components/content.yaml#/ContentVersion
+    ContentItem:
+      $ref: ./components/content.yaml#/ContentItem
+    ContentVersionList:
+      $ref: ./components/content.yaml#/ContentVersionList
+    CreateContentItemRequest:
+      $ref: ./components/content.yaml#/CreateContentItemRequest
+    UpdateDraftRequest:
+      $ref: ./components/content.yaml#/UpdateDraftRequest
+    ReviewDecisionRequest:
+      $ref: ./components/content.yaml#/ReviewDecisionRequest
+    CourseSummary:
+      $ref: ./components/lesson.yaml#/CourseSummary
+    CourseList:
+      $ref: ./components/lesson.yaml#/CourseList
+    LessonActivity:
+      $ref: ./components/lesson.yaml#/LessonActivity
+    LessonSummary:
+      $ref: ./components/lesson.yaml#/LessonSummary
+    CourseUnit:
+      $ref: ./components/lesson.yaml#/CourseUnit
+    CourseDetail:
+      $ref: ./components/lesson.yaml#/CourseDetail
+    LessonDetail:
+      $ref: ./components/lesson.yaml#/LessonDetail
+    CreateCourseRequest:
+      $ref: ./components/lesson.yaml#/CreateCourseRequest
+    ActivityInput:
+      $ref: ./components/lesson.yaml#/ActivityInput
+    UpdateActivitiesRequest:
+      $ref: ./components/lesson.yaml#/UpdateActivitiesRequest
   headers:
     X-Request-Id:
       $ref: ./components/headers.yaml#/X-Request-Id

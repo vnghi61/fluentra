@@ -10,7 +10,7 @@ tables: [roles, permissions, role_permissions, user_roles]
 depends_on: [cache, audit]
 depended_on_by: [auth, admin, content, questionbank, exam, user]
 spec_version: 1.0.0
-last_verified: 2026-08-10
+last_verified: 2026-08-20
 ---
 
 # rbac — AGENT.md
@@ -104,6 +104,27 @@ Migrations: `db/migrations/rbac/` · Queries: `db/queries/rbac/`
 
 All four tables, plus the reference data.
 
+`1700000021` added `user.reinstate` and `user.manage_sessions`. `1700000180`
+added the Phase 2 content permissions — `content.read.published`,
+`content.create`, `content.edit`, `content.review`, `content.publish` —
+backing the `/courses`, `/lessons/{id}`, `/content/*` reads and the
+`/admin/content/*`, `/admin/courses`, `/admin/lessons/*` writes declared in
+P7.1.
+
+**`content.read.published` is the one named permission the `user` role holds.**
+A signed-in learner reads published courses, lessons and content versions;
+create, edit, review, publish and archive stay with `admin`. That is the
+product rule, and the split is deliberate — read is a grant, write is not.
+
+It is also the first crack in "a learner holds nothing", so it is fenced
+rather than left to convention. `module_integration_test.go` declares the
+learner's permitted set as a list of one and asserts **both** directions:
+a learner who lacks the read permission fails, and a learner who holds
+anything outside that list fails. Granting a learner a write permission
+therefore cannot happen quietly — it has to edit that list, in a diff someone
+reads. A second test drives the guard itself: the same account passes
+`Require(content.read.published)` and is refused all four writes.
+
 **The roles, the permission catalogue and the admin mapping are in the migration, not in
 `db/seeds/rbac.sql`.** Authorization is deny-by-default, so a database with an empty catalogue is
 one where every administrative operation is refused and nobody can grant themselves the ability
@@ -112,8 +133,10 @@ does the part that genuinely is development data: giving a local account the adm
 
 `admin` holds every permission, expressed as a `CROSS JOIN` rather than a list — so a permission
 added by a later migration is granted without this one having to be edited, and the two cannot
-drift apart. `user` holds none: reading your own profile is not a named permission, it is what the
-`/me` routes mean.
+drift apart. `user` held none until Phase 2: reading your own profile is not a named permission,
+it is what the `/me` routes mean. It now holds exactly one, `content.read.published`, because
+published material is the first thing a learner reads that is **not** their own data and `self`
+cannot express that. The paragraph above says how that stays a set of one.
 
 ## 6. HTTP endpoints
 

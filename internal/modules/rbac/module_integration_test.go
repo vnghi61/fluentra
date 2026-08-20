@@ -249,9 +249,21 @@ func TestSeededRolesAreExactlyTwo(t *testing.T) {
 	}
 }
 
-// TestAdminHoldsEverythingAndLearnerHoldsNothing checks the role-permission
-// mapping the migration builds with a set difference.
-func TestAdminHoldsEverythingAndLearnerHoldsNothing(t *testing.T) {
+// learnerPermissions is every permission the `user` role may hold — read-only,
+// and enumerated here rather than derived, so that granting a learner anything
+// that writes has to change this list and explain itself in the diff.
+//
+// A learner held nothing at all until Phase 2, when published content became
+// the first thing they read that is not their own data (1700000180). The rule
+// since: reading is a grant, writing is not.
+var learnerPermissions = []contract.Permission{
+	contract.PermContentReadPublished,
+}
+
+// TestAdminHoldsEverythingAndLearnerReadsOnly checks the role-permission
+// mapping the migrations build, from both ends: admin has the whole catalogue,
+// and a learner has exactly the read-only set above and nothing that mutates.
+func TestAdminHoldsEverythingAndLearnerReadsOnly(t *testing.T) {
 	module, _ := newModule(t)
 	ctx := context.Background()
 
@@ -269,12 +281,47 @@ func TestAdminHoldsEverythingAndLearnerHoldsNothing(t *testing.T) {
 			len(adminPermissions), len(contract.All()))
 	}
 
-	learnerPermissions, err := module.RoleReader().PermissionsOf(ctx, learner)
+	held, err := module.RoleReader().PermissionsOf(ctx, learner)
 	if err != nil {
 		t.Fatalf("PermissionsOf(learner): %v", err)
 	}
-	if len(learnerPermissions) != 0 {
-		t.Errorf("a learner holds %v, want none", learnerPermissions)
+
+	for _, want := range learnerPermissions {
+		if !slices.Contains(held, want) {
+			t.Errorf("a learner does not hold %s; published content would be unreadable", want)
+		}
+	}
+	for _, got := range held {
+		if !slices.Contains(learnerPermissions, got) {
+			t.Errorf("a learner holds %s, which is not read-only — writing belongs to admin", got)
+		}
+	}
+}
+
+// TestLearnerCanReadPublishedContentButNotChangeIt is the guard doing what the
+// mapping above only describes: the same account passes the read check and is
+// refused every content write. This is the pair the product rule is stated in —
+// a signed-in learner sees published material, an administrator changes it.
+func TestLearnerCanReadPublishedContentButNotChangeIt(t *testing.T) {
+	module, _ := newModule(t)
+
+	learner := createUser(t, "reader@fluentra.test")
+	grant(t, learner, contract.RoleUser)
+	ctx := httpx.WithActor(context.Background(), httpx.Actor{UserID: learner})
+
+	if err := module.Authorizer().Require(ctx, contract.PermContentReadPublished); err != nil {
+		t.Errorf("a signed-in learner was refused published content: %v", err)
+	}
+
+	for _, write := range []contract.Permission{
+		contract.PermContentCreate,
+		contract.PermContentEdit,
+		contract.PermContentReview,
+		contract.PermContentPublish,
+	} {
+		if err := module.Authorizer().Require(ctx, write); err == nil {
+			t.Errorf("a learner was allowed %s", write)
+		}
 	}
 }
 

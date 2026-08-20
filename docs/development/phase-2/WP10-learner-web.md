@@ -77,7 +77,7 @@ package runs *beside* WP8 and WP9, not after them.
 | **Context** | The UI plan §7 — adopted as written, it is the best-specified part of that plan |
 | **Files** | `web/src/features/learning/components/`, `web/src/routes/LessonPage.tsx` |
 | **Do** | Full-screen, distraction-free. Header: exit, lesson title. Then step counter and progress bar, the activity canvas, one primary action. Three exercise types only: **multiple choice, gap-fill, flashcard**. Exit asks for confirmation. Completion shows score, accuracy and time — no XP, and no long celebration animation. |
-| **Acceptance** | The runner sends the **idempotency key** the WP8 contract defines on every submit — open the same lesson in two tabs and exactly one attempt is created. Keyboard: answer selectable and submittable without a mouse. Completion animation honours `prefers-reduced-motion`. A submit failure keeps the learner's answer on screen and offers a retry rather than dropping it. |
+| **Acceptance** | The runner sends the **`Idempotency-Key` HTTP header** as defined in the WP8 contract on every submit — open the same lesson in two tabs and exactly one attempt is created. Keyboard: answer selectable and submittable without a mouse. Completion animation honours `prefers-reduced-motion`. A submit failure keeps the learner's answer on screen and offers a retry rather than dropping it. |
 | **Trap** | Do not implement all the exercise types the content model can express. Three types cover the seeded content; a fourth is added when content needs it. |
 
 ## P10.4 — Review session `M`

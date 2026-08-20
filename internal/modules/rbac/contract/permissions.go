@@ -42,6 +42,21 @@ const (
 	PermModerationAct  Permission = "moderation.act"
 	PermSystemFlags    Permission = "system.flags"
 	PermSystemJobs     Permission = "system.jobs"
+
+	// content reading, authoring & publishing
+	//
+	// The line between these two groups is the product rule: a signed-in learner
+	// reads published material, and everything that changes it belongs to an
+	// administrator. content.read.published is the only one the `user` role
+	// holds (1700000180); the four below are admin-only, and
+	// TestAdminHoldsEverythingAndLearnerReadsOnly fails if that stops being
+	// true.
+	PermContentReadPublished Permission = "content.read.published"
+
+	PermContentCreate  Permission = "content.create"
+	PermContentEdit    Permission = "content.edit"
+	PermContentReview  Permission = "content.review"
+	PermContentPublish Permission = "content.publish"
 )
 
 // All is every permission this build knows about. An integration test compares
@@ -54,6 +69,8 @@ func All() []Permission {
 		PermAuditRead, PermAuditExport, PermAuditManage,
 		PermAdminDashboard, PermModerationRead, PermModerationAct,
 		PermSystemFlags, PermSystemJobs,
+		PermContentReadPublished,
+		PermContentCreate, PermContentEdit, PermContentReview, PermContentPublish,
 	}
 }
 
