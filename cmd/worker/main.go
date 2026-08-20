@@ -60,6 +60,7 @@ type workerConfig struct {
 		Endpoint  string `koanf:"endpoint"`
 		AccessKey string `koanf:"access_key"`
 		SecretKey string `koanf:"secret_key"`
+		Region    string `koanf:"region"`
 		UseSSL    bool   `koanf:"use_ssl"`
 	} `koanf:"s3"`
 	Worker struct {
@@ -129,6 +130,7 @@ func configOptions() config.Options {
 			"s3.endpoint":                     "localhost:9000",
 			"s3.access_key":                   "minioadmin",
 			"s3.secret_key":                   "minioadmin",
+			"s3.region":                       "us-east-1",
 			"s3.use_ssl":                      false,
 			"smtp.host":                       "localhost",
 			"smtp.port":                       1025,
@@ -232,6 +234,7 @@ func run(ctx context.Context) error {
 	storageClient, err := minio.New(storageHost(cfg.Storage.Endpoint), &minio.Options{
 		Creds:  credentials.NewStaticV4(cfg.Storage.AccessKey, cfg.Storage.SecretKey, ""),
 		Secure: cfg.Storage.UseSSL,
+		Region: cfg.Storage.Region,
 	})
 	if err != nil {
 		_ = redisClient.Close()
