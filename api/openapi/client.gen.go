@@ -676,12 +676,23 @@ type ClientInterface interface {
 	// Corresponds with PUT /me/avatar (the `UserConfirmAvatar` operationId).
 	UserConfirmAvatar(ctx context.Context, body UserConfirmAvatarJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// UserRequestAvatarUploadIntentWithBody Request a presigned URL to upload a profile avatar.
+	//
+	// Issues a presigned upload policy for an avatar image (JPEG, PNG, or WebP; max 5 MB).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /me/avatar/upload-intent (the `UserRequestAvatarUploadIntent` operationId).
+	UserRequestAvatarUploadIntentWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// UserRequestAvatarUploadIntent Request a presigned URL to upload a profile avatar.
 	//
 	// Issues a presigned upload policy for an avatar image (JPEG, PNG, or WebP; max 5 MB).
 	//
+	// Takes a body of the `application/json` content type.
+	//
 	// Corresponds with POST /me/avatar/upload-intent (the `UserRequestAvatarUploadIntent` operationId).
-	UserRequestAvatarUploadIntent(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UserRequestAvatarUploadIntent(ctx context.Context, body UserRequestAvatarUploadIntentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UserCancelDeletion Cancel a pending account deletion request.
 	//
@@ -1900,13 +1911,34 @@ func (c *Client) UserConfirmAvatar(ctx context.Context, body UserConfirmAvatarJS
 	return c.Client.Do(req)
 }
 
+// UserRequestAvatarUploadIntentWithBody Request a presigned URL to upload a profile avatar.
+//
+// Issues a presigned upload policy for an avatar image (JPEG, PNG, or WebP; max 5 MB).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /me/avatar/upload-intent (the `UserRequestAvatarUploadIntent` operationId).
+func (c *Client) UserRequestAvatarUploadIntentWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserRequestAvatarUploadIntentRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // UserRequestAvatarUploadIntent Request a presigned URL to upload a profile avatar.
 //
 // Issues a presigned upload policy for an avatar image (JPEG, PNG, or WebP; max 5 MB).
 //
+// Takes a body of the `application/json` content type.
+//
 // Corresponds with POST /me/avatar/upload-intent (the `UserRequestAvatarUploadIntent` operationId).
-func (c *Client) UserRequestAvatarUploadIntent(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUserRequestAvatarUploadIntentRequest(c.Server)
+func (c *Client) UserRequestAvatarUploadIntent(ctx context.Context, body UserRequestAvatarUploadIntentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserRequestAvatarUploadIntentRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3801,8 +3833,19 @@ func NewUserConfirmAvatarRequestWithBody(server string, contentType string, body
 	return req, nil
 }
 
-// NewUserRequestAvatarUploadIntentRequest constructs an http.Request for the UserRequestAvatarUploadIntent method
-func NewUserRequestAvatarUploadIntentRequest(server string) (*http.Request, error) {
+// NewUserRequestAvatarUploadIntentRequest calls the generic UserRequestAvatarUploadIntent builder with application/json body
+func NewUserRequestAvatarUploadIntentRequest(server string, body UserRequestAvatarUploadIntentJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUserRequestAvatarUploadIntentRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewUserRequestAvatarUploadIntentRequestWithBody constructs an http.Request for the UserRequestAvatarUploadIntent method, with any body, and a specified content type
+func NewUserRequestAvatarUploadIntentRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -3820,10 +3863,12 @@ func NewUserRequestAvatarUploadIntentRequest(server string) (*http.Request, erro
 		return nil, err
 	}
 
-	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -4796,14 +4841,23 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with PUT /me/avatar (the `UserConfirmAvatar` operationId).
 	UserConfirmAvatarWithResponse(ctx context.Context, body UserConfirmAvatarJSONRequestBody, reqEditors ...RequestEditorFn) (*UserConfirmAvatarResponse, error)
 
+	// UserRequestAvatarUploadIntentWithBodyWithResponse Request a presigned URL to upload a profile avatar.
+	//
+	// Issues a presigned upload policy for an avatar image (JPEG, PNG, or WebP; max 5 MB).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /me/avatar/upload-intent (the `UserRequestAvatarUploadIntent` operationId).
+	UserRequestAvatarUploadIntentWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UserRequestAvatarUploadIntentResponse, error)
+
 	// UserRequestAvatarUploadIntentWithResponse Request a presigned URL to upload a profile avatar.
 	//
 	// Issues a presigned upload policy for an avatar image (JPEG, PNG, or WebP; max 5 MB).
 	//
-	// Returns a wrapper object for the known response body format(s).
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with POST /me/avatar/upload-intent (the `UserRequestAvatarUploadIntent` operationId).
-	UserRequestAvatarUploadIntentWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*UserRequestAvatarUploadIntentResponse, error)
+	UserRequestAvatarUploadIntentWithResponse(ctx context.Context, body UserRequestAvatarUploadIntentJSONRequestBody, reqEditors ...RequestEditorFn) (*UserRequestAvatarUploadIntentResponse, error)
 
 	// UserCancelDeletionWithResponse Cancel a pending account deletion request.
 	//
@@ -9403,15 +9457,30 @@ func (c *ClientWithResponses) UserConfirmAvatarWithResponse(ctx context.Context,
 	return ParseUserConfirmAvatarResponse(rsp)
 }
 
+// UserRequestAvatarUploadIntentWithBodyWithResponse Request a presigned URL to upload a profile avatar.
+//
+// Issues a presigned upload policy for an avatar image (JPEG, PNG, or WebP; max 5 MB).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /me/avatar/upload-intent (the `UserRequestAvatarUploadIntent` operationId).
+func (c *ClientWithResponses) UserRequestAvatarUploadIntentWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UserRequestAvatarUploadIntentResponse, error) {
+	rsp, err := c.UserRequestAvatarUploadIntentWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserRequestAvatarUploadIntentResponse(rsp)
+}
+
 // UserRequestAvatarUploadIntentWithResponse Request a presigned URL to upload a profile avatar.
 //
 // Issues a presigned upload policy for an avatar image (JPEG, PNG, or WebP; max 5 MB).
 //
-// Returns a wrapper object for the known response body format(s).
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with POST /me/avatar/upload-intent (the `UserRequestAvatarUploadIntent` operationId).
-func (c *ClientWithResponses) UserRequestAvatarUploadIntentWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*UserRequestAvatarUploadIntentResponse, error) {
-	rsp, err := c.UserRequestAvatarUploadIntent(ctx, reqEditors...)
+func (c *ClientWithResponses) UserRequestAvatarUploadIntentWithResponse(ctx context.Context, body UserRequestAvatarUploadIntentJSONRequestBody, reqEditors ...RequestEditorFn) (*UserRequestAvatarUploadIntentResponse, error) {
+	rsp, err := c.UserRequestAvatarUploadIntent(ctx, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}

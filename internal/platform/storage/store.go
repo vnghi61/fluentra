@@ -106,10 +106,25 @@ type Store interface {
 // MinIOStore implements Store using minio-go/v7.
 type MinIOStore struct {
 	client *minio.Client
+	// usePostPolicy decides whether PresignPut issues an S3 POST policy (MinIO,
+	// AWS S3) or a presigned PUT URL. Stores without POST policy support — most
+	// notably Cloudflare R2 — must set this false, otherwise the client's
+	// multipart POST is refused with a 400/501.
+	usePostPolicy bool
 }
 
-// NewMinIOStore creates a new storage facade instance.
-func NewMinIOStore(client *minio.Client) *MinIOStore { return &MinIOStore{client: client} }
+// NewMinIOStore creates a new storage facade instance. It defaults to S3 POST
+// policy uploads, which is the behaviour MinIO and AWS S3 support.
+func NewMinIOStore(client *minio.Client) *MinIOStore {
+	return &MinIOStore{client: client, usePostPolicy: true}
+}
+
+// NewMinIOStoreNoPostPolicy creates a storage facade that issues presigned PUT
+// URLs instead of POST policies. Use it for object stores that do not implement
+// S3 POST policy, such as Cloudflare R2.
+func NewMinIOStoreNoPostPolicy(client *minio.Client) *MinIOStore {
+	return &MinIOStore{client: client, usePostPolicy: false}
+}
 
 // Get retrieves an object stream from storage. The caller must close the stream.
 func (s *MinIOStore) Get(ctx context.Context, bucket, key string) (io.ReadCloser, error) {

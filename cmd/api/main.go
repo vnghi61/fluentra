@@ -67,10 +67,11 @@ type applicationConfig struct {
 		URL string `koanf:"url"`
 	} `koanf:"redis"`
 	Storage struct {
-		Endpoint  string `koanf:"endpoint"`
-		AccessKey string `koanf:"access_key"`
-		SecretKey string `koanf:"secret_key"`
-		UseSSL    bool   `koanf:"use_ssl"`
+		Endpoint      string `koanf:"endpoint"`
+		AccessKey     string `koanf:"access_key"`
+		SecretKey     string `koanf:"secret_key"`
+		UseSSL        bool   `koanf:"use_ssl"`
+		UsePostPolicy bool   `koanf:"use_post_policy"`
 	} `koanf:"s3"`
 	Telemetry struct {
 		Endpoint    string `koanf:"exporter_otlp_endpoint"`
@@ -250,7 +251,7 @@ func run(ctx context.Context) error {
 		Pool:        pool,
 		Cache:       cache.NewRedisCache[[]string](redisClient),
 		Limiter:     cache.NewRedisLimiter(redisClient),
-		Storage:     storage.NewMinIOStore(storageClient),
+		Storage:     newStorageStore(storageClient, cfg.Storage.UsePostPolicy),
 		Enqueuer:    jobClient,
 		Instruments: provider.Instruments(),
 		Env:         cfg.App.Environment,
@@ -363,6 +364,7 @@ func configOptions() config.Options {
 			"http.trusted_proxies":           "",
 			"cors.allowed_origins":           "",
 			"s3.use_ssl":                     false,
+			"s3.use_post_policy":             true,
 			"otel.exporter_otlp_endpoint":    defaultOTLPEndpoint,
 			"otel.service_name":              "fluentra-api",
 			"smtp.host":                      "localhost",
@@ -486,6 +488,16 @@ func splitList(value string) []string {
 // storageHost strips a URL scheme so an S3 endpoint documented as
 // `http://host:9000` reaches minio-go as `host:9000`.
 func storageHost(endpoint string) string { return grpcEndpoint(endpoint) }
+
+// newStorageStore builds the storage facade, choosing the constructor that
+// matches the store's capabilities. Object stores that do not implement S3 POST
+// policy (Cloudflare R2) must be configured with s3.use_post_policy=false.
+func newStorageStore(client *minio.Client, usePostPolicy bool) storage.Store {
+	if !usePostPolicy {
+		return storage.NewMinIOStoreNoPostPolicy(client)
+	}
+	return storage.NewMinIOStore(client)
+}
 
 type readinessCheck func(context.Context) error
 

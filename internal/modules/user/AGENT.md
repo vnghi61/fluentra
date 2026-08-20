@@ -10,7 +10,7 @@ tables: [users, profiles, user_preferences, learning_profiles, user_deletions, u
 depends_on: [storage, mailer, audit]
 depended_on_by: [auth, admin, learning, notification, subscription, gamification]
 spec_version: 1.0.0
-last_verified: 2026-08-09
+last_verified: 2026-08-20
 ---
 
 # user — AGENT.md

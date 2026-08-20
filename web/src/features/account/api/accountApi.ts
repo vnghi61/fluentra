@@ -52,10 +52,20 @@ export const accountApi = {
   },
 
   /** Request presigned upload intent for avatar */
-  async requestAvatarUploadIntent(): Promise<AvatarUploadIntent> {
-    return apiFetch<AvatarUploadIntent>("/api/v1/me/avatar/upload-intent", {
-      method: "POST",
-    });
+  async requestAvatarUploadIntent(
+    contentType?: string,
+  ): Promise<AvatarUploadIntent> {
+    return apiFetch<AvatarUploadIntent>(
+      "/api/v1/me/avatar/upload-intent",
+      contentType
+        ? {
+            method: "POST",
+            body: JSON.stringify({ content_type: contentType }),
+          }
+        : {
+            method: "POST",
+          },
+    );
   },
 
   /**
@@ -66,14 +76,32 @@ export const accountApi = {
     intent: AvatarUploadIntent,
     file: File,
   ): Promise<void> {
+    let uploadUrl = intent.upload_url;
+    // Map internal docker host to localhost if running in local dev browser
+    if (
+      typeof window !== "undefined" &&
+      (window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1") &&
+      uploadUrl.includes("//minio:9000")
+    ) {
+      uploadUrl = uploadUrl.replace("//minio:9000", "//localhost:9000");
+    }
+
     if (intent.method === "POST" && intent.form_data) {
       const formData = new FormData();
+      let hasContentType = false;
       Object.entries(intent.form_data).forEach(([key, value]) => {
+        if (key.toLowerCase() === "content-type") {
+          hasContentType = true;
+        }
         formData.append(key, value);
       });
+      if (!hasContentType && (intent.content_type || file.type)) {
+        formData.append("Content-Type", intent.content_type || file.type);
+      }
       formData.append(intent.file_field || "file", file);
 
-      const response = await fetch(intent.upload_url, {
+      const response = await fetch(uploadUrl, {
         method: "POST",
         body: formData,
       });
@@ -85,7 +113,7 @@ export const accountApi = {
       }
     } else {
       // Default / direct PUT upload
-      const response = await fetch(intent.upload_url, {
+      const response = await fetch(uploadUrl, {
         method: "PUT",
         body: file,
         headers: {

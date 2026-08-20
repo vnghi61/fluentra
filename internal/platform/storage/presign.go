@@ -8,13 +8,16 @@ import (
 	"github.com/minio/minio-go/v7"
 )
 
-// PresignPut issues a browser-uploadable form that S3 itself enforces.
+// PresignPut issues a browser-uploadable upload target that the store itself
+// enforces.
 //
-// It deliberately does not return a presigned PUT URL. A presigned PUT
-// constrains only the bucket, the key and the deadline: the client may send any
-// content type and any number of bytes, and the server finds out afterwards. A
-// POST policy carries the content type and a length range as signed
-// conditions, so MinIO rejects a mismatch before a single byte lands.
+// On S3-compatible stores that support it (MinIO, AWS S3) this returns a
+// presigned POST policy: the policy carries the content type and a length range
+// as signed conditions, so the store rejects a mismatch before a single byte
+// lands. Cloudflare R2 does not implement S3 POST policies and only accepts a
+// presigned PUT URL, so when the store is configured with post_policy disabled
+// (see NewMinIOStoreNoPostPolicy) a presigned PUT is returned instead and
+// enforcement of size and type is deferred to VerifyUpload.
 func (s *MinIOStore) PresignPut(
 	ctx context.Context, bucket, key, contentType string, maxBytes int64, expiry time.Duration,
 ) (UploadIntent, error) {
@@ -51,6 +54,25 @@ func (s *MinIOStore) PresignPut(
 
 	ctx, span := tracer.Start(ctx, "storage.PresignPut")
 	defer span.End()
+
+	// Stores that do not support S3 POST policy (Cloudflare R2) receive a
+	// presigned PUT URL instead; MinIO and AWS S3 use the POST policy below.
+	if !s.usePostPolicy {
+		uploadURL, err := s.client.PresignedPutObject(ctx, bucket, key, expiry)
+		if err != nil {
+			return UploadIntent{}, fmt.Errorf("presign put (no post policy): %w", err)
+		}
+		return UploadIntent{
+			URL:         uploadURL.String(),
+			Method:      "PUT",
+			FormData:    nil,
+			FileField:   "",
+			ObjectKey:   key,
+			ExpiresAt:   expiresAt,
+			MaxBytes:    maxBytes,
+			ContentType: contentType,
+		}, nil
+	}
 
 	uploadURL, formData, err := s.client.PresignedPostPolicy(ctx, policy)
 	if err != nil {

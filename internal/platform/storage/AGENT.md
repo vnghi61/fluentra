@@ -10,7 +10,7 @@ tables: []
 depends_on: [telemetry, job]
 depended_on_by: [user, content, media, speaking, writing, analytics, audit]
 spec_version: 1.0.0
-last_verified: 2026-08-06
+last_verified: 2026-08-20
 ---
 
 # storage — AGENT.md
