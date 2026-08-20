@@ -110,13 +110,6 @@ Replace preferences
 
 Get a presigned URL for an avatar upload
 
-Request body (optional):
-```json
-{ "content_type": "image/png" }
-```
-`content_type` is one of `image/jpeg` | `image/png` | `image/webp`; when omitted the
-server defaults to `image/jpeg`.
-
 | | |
 |---|---|
 | Permission | `self` |
