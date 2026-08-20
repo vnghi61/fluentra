@@ -7,10 +7,54 @@
  */
 @custom-variant dark (&:where(.dark, .dark *));
 
+@theme {
+  --color-primary: #2563eb;
+  --color-primary-fg: #ffffff;
+  --color-primary-hover: #1d4ed8;
+  /*
+   * The fill blue and the *text* blue cannot be the same value. #2563eb reads
+   * at 5.17:1 on the light surface but only 3.90:1 on the dark one — enough
+   * for a focus ring (3:1), not enough for a link (4.5:1). Lightening it for
+   * dark mode fixes the link and would break the button, because white on a
+   * lighter blue drops to 2.5:1. So the fill stays fixed and pairs with
+   * --color-primary-fg; anything drawn *on* a surface uses this instead.
+   */
+  --color-primary-accent: var(--primary-accent);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-surface-card: var(--surface-card);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+}
+
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
+  --surface: #ffffff;
+  --surface-muted: #f8fafc;
+  --surface-card: #ffffff;
+  --border: #e2e8f0;
+  --text: #0f172a;
+  --text-muted: #64748b;
+  --primary-accent: #2563eb;
+}
+
+.dark {
+  color-scheme: dark;
+  --surface: #020617;
+  --surface-muted: #0f172a;
+  --surface-card: #0b1120;
+  --border: #1e293b;
+  --text: #f8fafc;
+  --text-muted: #94a3b8;
+  --primary-accent: #60a5fa;
 }
 
 body {
-  @apply bg-white text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
+  background-color: var(--surface);
+  color: var(--text);
+  @apply antialiased;
 }
