@@ -999,6 +999,266 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/courses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List published courses with level filters.
+         * @description Returns catalogue summaries for published courses.
+         */
+        get: operations["listCourses"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/courses/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get course detail with units and lesson summaries.
+         * @description Returns one published course with its ordered units and each unit's lesson summaries, for the learner catalogue and course landing page.
+         */
+        get: operations["getCourseBySlug"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/lessons/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get lesson with activities and resolved content versions.
+         * @description Returns one lesson with its ordered activities and each activity's resolved content version, ready for the lesson renderer.
+         */
+        get: operations["getLessonById"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/courses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a course curriculum container.
+         * @description Creates a top-level course container in draft state.
+         */
+        post: operations["adminCreateCourse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/lessons/{id}/activities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update or reorder lesson activities.
+         * @description Replaces the ordered activity list of a lesson, used to assemble a lesson from published content versions.
+         */
+        put: operations["adminUpdateLessonActivities"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Browse published content with taxonomy filters.
+         * @description Returns published content versions, optionally filtered by kind and CEFR level, with cursor-free offset pagination for catalogue browsing.
+         */
+        get: operations["browsePublishedContent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/content/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch a published content version by item slug.
+         * @description Returns the current published version of a content item by its stable slug.
+         */
+        get: operations["getContentBySlug"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a draft content item.
+         * @description Creates a new content item with an initial draft version.
+         */
+        post: operations["adminCreateContent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/content/{id}/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update working draft of a content item.
+         * @description Updates the working draft, creating a new version when appropriate.
+         */
+        put: operations["adminUpdateDraft"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/content/{id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit working draft for editorial review.
+         * @description Moves the current draft to in_review, ready for an editor.
+         */
+        post: operations["adminSubmitContentForReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/content/{id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve or request changes on a submitted version.
+         * @description Records an editor's decision on a submitted version, moving it to approved or back to draft with comments.
+         */
+        post: operations["adminReviewContent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/content/{id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Publish an approved content version.
+         * @description Publishes the approved version, making it the learner-facing snapshot and emitting the content.published event.
+         */
+        post: operations["adminPublishContent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/content/{id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Archive a content item.
+         * @description Archives a content item so it is no longer learner-facing.
+         */
+        post: operations["adminArchiveContent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2024,6 +2284,236 @@ export interface components {
             expires_on: string;
             /** @example Second-generation streak calculation. */
             description: string;
+        };
+        /**
+         * @description CEFR proficiency level.
+         * @enum {string}
+         */
+        CEFRLevel: "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
+        /**
+         * @description Content lifecycle status.
+         * @enum {string}
+         */
+        AuthoringStatus: "draft" | "in_review" | "approved" | "published" | "archived";
+        /** @description Controlled taxonomy classification. */
+        TaxonomyTag: {
+            /** @example topic */
+            namespace: string;
+            /** @example environment */
+            code: string;
+            /** @example Environment & Climate */
+            label: string;
+        };
+        /** @description Attached media asset reference. */
+        MediaAssetSummary: {
+            /** Format: uuid */
+            id: string;
+            /** @example audio */
+            kind: string;
+            /** @example audio/words/environment-us.mp3 */
+            object_key: string;
+            /** @example 1200 */
+            duration_ms?: number | null;
+            /** @example ready */
+            status: string;
+        };
+        /** @description Immutable content version snapshot. */
+        ContentVersion: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            item_id: string;
+            /** @example 1 */
+            version: number;
+            /** @example vocab_word */
+            kind: string;
+            /** @description Skill-specific payload validated by kind schema. */
+            body: Record<string, never>;
+            cefr_level: components["schemas"]["CEFRLevel"];
+            status: components["schemas"]["AuthoringStatus"];
+            media_refs?: string[];
+            tags?: components["schemas"]["TaxonomyTag"][];
+            /** Format: date-time */
+            published_at?: string | null;
+        };
+        /** @description Stable identity for a piece of learning material. */
+        ContentItem: {
+            /** Format: uuid */
+            id: string;
+            /** @example vocab_word */
+            kind: string;
+            /** @example environment-n-1 */
+            slug: string;
+            /** Format: uuid */
+            current_version_id?: string | null;
+            status: components["schemas"]["AuthoringStatus"];
+            /** Format: uuid */
+            owner_id: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        ContentVersionList: {
+            items: components["schemas"]["ContentVersion"][];
+            total: number;
+        };
+        CreateContentItemRequest: {
+            /** @example vocab_word */
+            kind: string;
+            /** @example climate-change-reading-1 */
+            slug: string;
+            cefr_level: components["schemas"]["CEFRLevel"];
+            /** @description Initial payload for draft version. */
+            body: Record<string, never>;
+            tags?: string[];
+        };
+        UpdateDraftRequest: {
+            cefr_level?: components["schemas"]["CEFRLevel"];
+            body: Record<string, never>;
+            tags?: string[];
+        };
+        ReviewDecisionRequest: {
+            /** @enum {string} */
+            decision: "approved" | "changes_requested";
+            comments?: string | null;
+        };
+        CourseSummary: {
+            /** Format: uuid */
+            id: string;
+            /** @example ielts-foundation */
+            slug: string;
+            /** @example IELTS Foundation 5.0 - 6.5 */
+            title: string;
+            /** @example Core skills and vocabulary for IELTS academic preparation. */
+            description?: string;
+            /** @example B1 */
+            cefr_from: string;
+            /** @example B2 */
+            cefr_to: string;
+            /**
+             * @example published
+             * @enum {string}
+             */
+            status: "draft" | "published" | "archived";
+            /** @example 40 */
+            estimated_hours: number;
+        };
+        CourseList: {
+            courses: components["schemas"]["CourseSummary"][];
+        };
+        LessonActivity: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            lesson_id: string;
+            /** @example 1 */
+            position: number;
+            /** @example vocab_multiple_choice */
+            kind: string;
+            /** Format: uuid */
+            content_version_id: string;
+            /** @description Activity-specific configuration. */
+            config?: Record<string, never>;
+            /** @example 10 */
+            weight: number;
+            content?: components["schemas"]["ContentVersion"];
+        };
+        LessonSummary: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            unit_id: string;
+            /** @example 1 */
+            position: number;
+            /** @example Academic Word List - Topic 1 */
+            title: string;
+            /** @example vocabulary */
+            skill_focus: string;
+            /** @example 15 */
+            estimated_minutes: number;
+            /**
+             * @example published
+             * @enum {string}
+             */
+            status: "draft" | "published" | "archived";
+            /** @example false */
+            locked: boolean;
+            /** @example Complete Unit 1 Lesson 2 first */
+            lock_reason?: string | null;
+        };
+        CourseUnit: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            course_id: string;
+            /** @example 1 */
+            position: number;
+            /** @example Unit 1 - Everyday Campus Life */
+            title: string;
+            /** @example Vocabulary and functional grammar for university scenarios. */
+            description?: string;
+            lessons: components["schemas"]["LessonSummary"][];
+        };
+        CourseDetail: {
+            /** Format: uuid */
+            id: string;
+            /** @example ielts-foundation */
+            slug: string;
+            /** @example IELTS Foundation 5.0 - 6.5 */
+            title: string;
+            /** @example Comprehensive curriculum covering all 4 modules. */
+            description?: string;
+            /** @example B1 */
+            cefr_from: string;
+            /** @example B2 */
+            cefr_to: string;
+            /** @example published */
+            status: string;
+            /** @example 40 */
+            estimated_hours: number;
+            units: components["schemas"]["CourseUnit"][];
+        };
+        LessonDetail: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            unit_id: string;
+            /** @example 1 */
+            position: number;
+            /** @example Academic Word List - Topic 1 */
+            title: string;
+            /** @example vocabulary */
+            skill_focus: string;
+            /** @example 15 */
+            estimated_minutes: number;
+            /** @example published */
+            status: string;
+            activities: components["schemas"]["LessonActivity"][];
+        };
+        CreateCourseRequest: {
+            /** @example ielts-foundation */
+            slug: string;
+            /** @example IELTS Foundation */
+            title: string;
+            description?: string;
+            /** @example B1 */
+            cefr_from: string;
+            /** @example B2 */
+            cefr_to: string;
+            /** @example 40 */
+            estimated_hours: number;
+        };
+        ActivityInput: {
+            position: number;
+            kind: string;
+            /** Format: uuid */
+            content_version_id: string;
+            config?: Record<string, never>;
+            weight: number;
+        };
+        UpdateActivitiesRequest: {
+            activities: components["schemas"]["ActivityInput"][];
         };
     };
     responses: {
@@ -4248,6 +4738,589 @@ export interface operations {
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationFailed"];
+        };
+    };
+    listCourses: {
+        parameters: {
+            query?: {
+                level?: components["schemas"]["CEFRLevel"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of available courses. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "courses": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *           "slug": "ielts-foundation",
+                     *           "title": "IELTS Foundation 5.0 - 6.5",
+                     *           "description": "Core skills and vocabulary for IELTS academic preparation.",
+                     *           "cefr_from": "B1",
+                     *           "cefr_to": "B2",
+                     *           "status": "published",
+                     *           "estimated_hours": 40
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["CourseList"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    getCourseBySlug: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Course detail. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "slug": "ielts-foundation",
+                     *       "title": "IELTS Foundation 5.0 - 6.5",
+                     *       "description": "Comprehensive curriculum covering all 4 modules.",
+                     *       "cefr_from": "B1",
+                     *       "cefr_to": "B2",
+                     *       "status": "published",
+                     *       "estimated_hours": 40,
+                     *       "units": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def012345679",
+                     *           "course_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *           "position": 1,
+                     *           "title": "Unit 1 - Everyday Campus Life",
+                     *           "description": "Vocabulary and functional grammar for university scenarios.",
+                     *           "lessons": [
+                     *             {
+                     *               "id": "0199a1c2-3d4e-7f80-9abc-def01234567a",
+                     *               "unit_id": "0199a1c2-3d4e-7f80-9abc-def012345679",
+                     *               "position": 1,
+                     *               "title": "Academic Word List - Topic 1",
+                     *               "skill_focus": "vocabulary",
+                     *               "estimated_minutes": 15,
+                     *               "status": "published",
+                     *               "locked": false
+                     *             }
+                     *           ]
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["CourseDetail"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getLessonById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Lesson with resolved activities. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def01234567a",
+                     *       "unit_id": "0199a1c2-3d4e-7f80-9abc-def012345679",
+                     *       "position": 1,
+                     *       "title": "Academic Word List - Topic 1",
+                     *       "skill_focus": "vocabulary",
+                     *       "estimated_minutes": 15,
+                     *       "status": "published",
+                     *       "activities": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def01234567b",
+                     *           "lesson_id": "0199a1c2-3d4e-7f80-9abc-def01234567a",
+                     *           "position": 1,
+                     *           "kind": "vocab_multiple_choice",
+                     *           "content_version_id": "0199a1c2-3d4e-7f80-9abc-def01234567c",
+                     *           "weight": 10
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["LessonDetail"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    adminCreateCourse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCourseRequest"];
+            };
+        };
+        responses: {
+            /** @description Course created. */
+            201: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "slug": "ielts-foundation",
+                     *       "title": "IELTS Foundation",
+                     *       "description": "Core skills and vocabulary for IELTS academic preparation.",
+                     *       "cefr_from": "B1",
+                     *       "cefr_to": "B2",
+                     *       "status": "draft",
+                     *       "estimated_hours": 40
+                     *     }
+                     */
+                    "application/json": components["schemas"]["CourseSummary"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    adminUpdateLessonActivities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateActivitiesRequest"];
+            };
+        };
+        responses: {
+            /** @description Activities updated. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def01234567a",
+                     *       "unit_id": "0199a1c2-3d4e-7f80-9abc-def012345679",
+                     *       "position": 1,
+                     *       "title": "Academic Word List - Topic 1",
+                     *       "skill_focus": "vocabulary",
+                     *       "estimated_minutes": 15,
+                     *       "status": "draft",
+                     *       "activities": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def01234567b",
+                     *           "lesson_id": "0199a1c2-3d4e-7f80-9abc-def01234567a",
+                     *           "position": 1,
+                     *           "kind": "vocab_multiple_choice",
+                     *           "content_version_id": "0199a1c2-3d4e-7f80-9abc-def01234567c",
+                     *           "weight": 10
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["LessonDetail"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    browsePublishedContent: {
+        parameters: {
+            query?: {
+                kind?: string;
+                cefr_level?: components["schemas"]["CEFRLevel"];
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Published content items. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def01234567c",
+                     *           "item_id": "0199a1c2-3d4e-7f80-9abc-def01234567d",
+                     *           "version": 1,
+                     *           "kind": "vocab_word",
+                     *           "body": {
+                     *             "word": "environment",
+                     *             "definition": "the natural world"
+                     *           },
+                     *           "cefr_level": "B1",
+                     *           "status": "published",
+                     *           "tags": []
+                     *         }
+                     *       ],
+                     *       "total": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ContentVersionList"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    getContentBySlug: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Published content version. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def01234567c",
+                     *       "item_id": "0199a1c2-3d4e-7f80-9abc-def01234567d",
+                     *       "version": 1,
+                     *       "kind": "vocab_word",
+                     *       "body": {
+                     *         "word": "environment",
+                     *         "definition": "the natural world"
+                     *       },
+                     *       "cefr_level": "B1",
+                     *       "status": "published",
+                     *       "tags": []
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ContentVersion"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    adminCreateContent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateContentItemRequest"];
+            };
+        };
+        responses: {
+            /** @description Draft content item created. */
+            201: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def01234567d",
+                     *       "kind": "vocab_word",
+                     *       "slug": "environment-n-1",
+                     *       "current_version_id": "0199a1c2-3d4e-7f80-9abc-def01234567c",
+                     *       "status": "draft",
+                     *       "owner_id": "0199a1c2-3d4e-7f80-9abc-def01234567e",
+                     *       "created_at": "2026-08-20T08:00:00Z",
+                     *       "updated_at": "2026-08-20T08:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ContentItem"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    adminUpdateDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description Draft updated. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def01234567c",
+                     *       "item_id": "0199a1c2-3d4e-7f80-9abc-def01234567d",
+                     *       "version": 2,
+                     *       "kind": "vocab_word",
+                     *       "body": {
+                     *         "word": "environment",
+                     *         "definition": "the natural world"
+                     *       },
+                     *       "cefr_level": "B1",
+                     *       "status": "draft",
+                     *       "tags": []
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ContentVersion"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    adminSubmitContentForReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Version submitted for review. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def01234567c",
+                     *       "item_id": "0199a1c2-3d4e-7f80-9abc-def01234567d",
+                     *       "version": 2,
+                     *       "kind": "vocab_word",
+                     *       "body": {
+                     *         "word": "environment",
+                     *         "definition": "the natural world"
+                     *       },
+                     *       "cefr_level": "B1",
+                     *       "status": "in_review",
+                     *       "tags": []
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ContentVersion"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    adminReviewContent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewDecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description Review decision recorded. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def01234567c",
+                     *       "item_id": "0199a1c2-3d4e-7f80-9abc-def01234567d",
+                     *       "version": 2,
+                     *       "kind": "vocab_word",
+                     *       "body": {
+                     *         "word": "environment",
+                     *         "definition": "the natural world"
+                     *       },
+                     *       "cefr_level": "B1",
+                     *       "status": "approved",
+                     *       "tags": []
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ContentVersion"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    adminPublishContent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Version published. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def01234567c",
+                     *       "item_id": "0199a1c2-3d4e-7f80-9abc-def01234567d",
+                     *       "version": 2,
+                     *       "kind": "vocab_word",
+                     *       "body": {
+                     *         "word": "environment",
+                     *         "definition": "the natural world"
+                     *       },
+                     *       "cefr_level": "B1",
+                     *       "status": "published",
+                     *       "published_at": "2026-08-20T09:00:00Z",
+                     *       "tags": []
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ContentVersion"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    adminArchiveContent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Item archived. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def01234567d",
+                     *       "kind": "vocab_word",
+                     *       "slug": "environment-n-1",
+                     *       "current_version_id": "0199a1c2-3d4e-7f80-9abc-def01234567c",
+                     *       "status": "archived",
+                     *       "owner_id": "0199a1c2-3d4e-7f80-9abc-def01234567e",
+                     *       "created_at": "2026-08-20T08:00:00Z",
+                     *       "updated_at": "2026-08-20T10:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ContentItem"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
 }

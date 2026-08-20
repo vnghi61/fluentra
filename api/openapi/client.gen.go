@@ -100,6 +100,99 @@ type ClientInterface interface {
 	// Corresponds with GET /admin/audit-logs (the `AuditSearchLogs` operationId).
 	AuditSearchLogs(ctx context.Context, params *AuditSearchLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AdminCreateContentWithBody Create a draft content item.
+	//
+	// Creates a new content item with an initial draft version.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /admin/content (the `AdminCreateContent` operationId).
+	AdminCreateContentWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminCreateContent Create a draft content item.
+	//
+	// Creates a new content item with an initial draft version.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /admin/content (the `AdminCreateContent` operationId).
+	AdminCreateContent(ctx context.Context, body AdminCreateContentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminArchiveContent Archive a content item.
+	//
+	// Archives a content item so it is no longer learner-facing.
+	//
+	// Corresponds with POST /admin/content/{id}/archive (the `AdminArchiveContent` operationId).
+	AdminArchiveContent(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminUpdateDraftWithBody Update working draft of a content item.
+	//
+	// Updates the working draft, creating a new version when appropriate.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /admin/content/{id}/draft (the `AdminUpdateDraft` operationId).
+	AdminUpdateDraftWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminUpdateDraft Update working draft of a content item.
+	//
+	// Updates the working draft, creating a new version when appropriate.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /admin/content/{id}/draft (the `AdminUpdateDraft` operationId).
+	AdminUpdateDraft(ctx context.Context, id openapi_types.UUID, body AdminUpdateDraftJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminPublishContent Publish an approved content version.
+	//
+	// Publishes the approved version, making it the learner-facing snapshot and emitting the content.published event.
+	//
+	// Corresponds with POST /admin/content/{id}/publish (the `AdminPublishContent` operationId).
+	AdminPublishContent(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminReviewContentWithBody Approve or request changes on a submitted version.
+	//
+	// Records an editor's decision on a submitted version, moving it to approved or back to draft with comments.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /admin/content/{id}/review (the `AdminReviewContent` operationId).
+	AdminReviewContentWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminReviewContent Approve or request changes on a submitted version.
+	//
+	// Records an editor's decision on a submitted version, moving it to approved or back to draft with comments.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /admin/content/{id}/review (the `AdminReviewContent` operationId).
+	AdminReviewContent(ctx context.Context, id openapi_types.UUID, body AdminReviewContentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminSubmitContentForReview Submit working draft for editorial review.
+	//
+	// Moves the current draft to in_review, ready for an editor.
+	//
+	// Corresponds with POST /admin/content/{id}/submit (the `AdminSubmitContentForReview` operationId).
+	AdminSubmitContentForReview(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminCreateCourseWithBody Create a course curriculum container.
+	//
+	// Creates a top-level course container in draft state.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /admin/courses (the `AdminCreateCourse` operationId).
+	AdminCreateCourseWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminCreateCourse Create a course curriculum container.
+	//
+	// Creates a top-level course container in draft state.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /admin/courses (the `AdminCreateCourse` operationId).
+	AdminCreateCourse(ctx context.Context, body AdminCreateCourseJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AdminListFlags List all feature flags.
 	//
 	// Returns every flag, unpaginated. The set is small by design, and an administrator needs the whole of it to see which flags are past their `expires_on` and should have been deleted.
@@ -153,6 +246,24 @@ type ClientInterface interface {
 	//
 	// Corresponds with PUT /admin/flags/{key} (the `AdminUpdateFlag` operationId).
 	AdminUpdateFlag(ctx context.Context, key string, body AdminUpdateFlagJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminUpdateLessonActivitiesWithBody Update or reorder lesson activities.
+	//
+	// Replaces the ordered activity list of a lesson, used to assemble a lesson from published content versions.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /admin/lessons/{id}/activities (the `AdminUpdateLessonActivities` operationId).
+	AdminUpdateLessonActivitiesWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminUpdateLessonActivities Update or reorder lesson activities.
+	//
+	// Replaces the ordered activity list of a lesson, used to assemble a lesson from published content versions.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /admin/lessons/{id}/activities (the `AdminUpdateLessonActivities` operationId).
+	AdminUpdateLessonActivities(ctx context.Context, id openapi_types.UUID, body AdminUpdateLessonActivitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RbacListRoles List roles and the permissions they grant.
 	//
@@ -619,12 +730,47 @@ type ClientInterface interface {
 	// Corresponds with DELETE /auth/sessions/{id} (the `AuthRevokeSession` operationId).
 	AuthRevokeSession(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// BrowsePublishedContent Browse published content with taxonomy filters.
+	//
+	// Returns published content versions, optionally filtered by kind and CEFR level, with cursor-free offset pagination for catalogue browsing.
+	//
+	// Corresponds with GET /content (the `BrowsePublishedContent` operationId).
+	BrowsePublishedContent(ctx context.Context, params *BrowsePublishedContentParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetContentBySlug Fetch a published content version by item slug.
+	//
+	// Returns the current published version of a content item by its stable slug.
+	//
+	// Corresponds with GET /content/{slug} (the `GetContentBySlug` operationId).
+	GetContentBySlug(ctx context.Context, slug string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListCourses List published courses with level filters.
+	//
+	// Returns catalogue summaries for published courses.
+	//
+	// Corresponds with GET /courses (the `ListCourses` operationId).
+	ListCourses(ctx context.Context, params *ListCoursesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetCourseBySlug Get course detail with units and lesson summaries.
+	//
+	// Returns one published course with its ordered units and each unit's lesson summaries, for the learner catalogue and course landing page.
+	//
+	// Corresponds with GET /courses/{slug} (the `GetCourseBySlug` operationId).
+	GetCourseBySlug(ctx context.Context, slug string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// SystemHealth Check process liveness.
 	//
 	// Returns success when the API process is able to serve requests.
 	//
 	// Corresponds with GET /health (the `SystemHealth` operationId).
 	SystemHealth(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetLessonById Get lesson with activities and resolved content versions.
+	//
+	// Returns one lesson with its ordered activities and each activity's resolved content version, ready for the lesson renderer.
+	//
+	// Corresponds with GET /lessons/{id} (the `GetLessonById` operationId).
+	GetLessonById(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UserRequestDeletion Request account deletion (GDPR Article 17).
 	//
@@ -795,6 +941,209 @@ func (c *Client) AuditSearchLogs(ctx context.Context, params *AuditSearchLogsPar
 	return c.Client.Do(req)
 }
 
+// AdminCreateContentWithBody Create a draft content item.
+//
+// Creates a new content item with an initial draft version.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /admin/content (the `AdminCreateContent` operationId).
+func (c *Client) AdminCreateContentWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminCreateContentRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminCreateContent Create a draft content item.
+//
+// Creates a new content item with an initial draft version.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /admin/content (the `AdminCreateContent` operationId).
+func (c *Client) AdminCreateContent(ctx context.Context, body AdminCreateContentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminCreateContentRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminArchiveContent Archive a content item.
+//
+// Archives a content item so it is no longer learner-facing.
+//
+// Corresponds with POST /admin/content/{id}/archive (the `AdminArchiveContent` operationId).
+func (c *Client) AdminArchiveContent(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminArchiveContentRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminUpdateDraftWithBody Update working draft of a content item.
+//
+// Updates the working draft, creating a new version when appropriate.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /admin/content/{id}/draft (the `AdminUpdateDraft` operationId).
+func (c *Client) AdminUpdateDraftWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminUpdateDraftRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminUpdateDraft Update working draft of a content item.
+//
+// Updates the working draft, creating a new version when appropriate.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /admin/content/{id}/draft (the `AdminUpdateDraft` operationId).
+func (c *Client) AdminUpdateDraft(ctx context.Context, id openapi_types.UUID, body AdminUpdateDraftJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminUpdateDraftRequest(c.Server, id, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminPublishContent Publish an approved content version.
+//
+// Publishes the approved version, making it the learner-facing snapshot and emitting the content.published event.
+//
+// Corresponds with POST /admin/content/{id}/publish (the `AdminPublishContent` operationId).
+func (c *Client) AdminPublishContent(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminPublishContentRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminReviewContentWithBody Approve or request changes on a submitted version.
+//
+// Records an editor's decision on a submitted version, moving it to approved or back to draft with comments.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /admin/content/{id}/review (the `AdminReviewContent` operationId).
+func (c *Client) AdminReviewContentWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminReviewContentRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminReviewContent Approve or request changes on a submitted version.
+//
+// Records an editor's decision on a submitted version, moving it to approved or back to draft with comments.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /admin/content/{id}/review (the `AdminReviewContent` operationId).
+func (c *Client) AdminReviewContent(ctx context.Context, id openapi_types.UUID, body AdminReviewContentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminReviewContentRequest(c.Server, id, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminSubmitContentForReview Submit working draft for editorial review.
+//
+// Moves the current draft to in_review, ready for an editor.
+//
+// Corresponds with POST /admin/content/{id}/submit (the `AdminSubmitContentForReview` operationId).
+func (c *Client) AdminSubmitContentForReview(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminSubmitContentForReviewRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminCreateCourseWithBody Create a course curriculum container.
+//
+// Creates a top-level course container in draft state.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /admin/courses (the `AdminCreateCourse` operationId).
+func (c *Client) AdminCreateCourseWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminCreateCourseRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminCreateCourse Create a course curriculum container.
+//
+// Creates a top-level course container in draft state.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /admin/courses (the `AdminCreateCourse` operationId).
+func (c *Client) AdminCreateCourse(ctx context.Context, body AdminCreateCourseJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminCreateCourseRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // AdminListFlags List all feature flags.
 //
 // Returns every flag, unpaginated. The set is small by design, and an administrator needs the whole of it to see which flags are past their `expires_on` and should have been deleted.
@@ -899,6 +1248,44 @@ func (c *Client) AdminUpdateFlagWithBody(ctx context.Context, key string, conten
 // Corresponds with PUT /admin/flags/{key} (the `AdminUpdateFlag` operationId).
 func (c *Client) AdminUpdateFlag(ctx context.Context, key string, body AdminUpdateFlagJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAdminUpdateFlagRequest(c.Server, key, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminUpdateLessonActivitiesWithBody Update or reorder lesson activities.
+//
+// Replaces the ordered activity list of a lesson, used to assemble a lesson from published content versions.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /admin/lessons/{id}/activities (the `AdminUpdateLessonActivities` operationId).
+func (c *Client) AdminUpdateLessonActivitiesWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminUpdateLessonActivitiesRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminUpdateLessonActivities Update or reorder lesson activities.
+//
+// Replaces the ordered activity list of a lesson, used to assemble a lesson from published content versions.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /admin/lessons/{id}/activities (the `AdminUpdateLessonActivities` operationId).
+func (c *Client) AdminUpdateLessonActivities(ctx context.Context, id openapi_types.UUID, body AdminUpdateLessonActivitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminUpdateLessonActivitiesRequest(c.Server, id, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1784,6 +2171,74 @@ func (c *Client) AuthRevokeSession(ctx context.Context, id openapi_types.UUID, r
 	return c.Client.Do(req)
 }
 
+// BrowsePublishedContent Browse published content with taxonomy filters.
+//
+// Returns published content versions, optionally filtered by kind and CEFR level, with cursor-free offset pagination for catalogue browsing.
+//
+// Corresponds with GET /content (the `BrowsePublishedContent` operationId).
+func (c *Client) BrowsePublishedContent(ctx context.Context, params *BrowsePublishedContentParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBrowsePublishedContentRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetContentBySlug Fetch a published content version by item slug.
+//
+// Returns the current published version of a content item by its stable slug.
+//
+// Corresponds with GET /content/{slug} (the `GetContentBySlug` operationId).
+func (c *Client) GetContentBySlug(ctx context.Context, slug string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetContentBySlugRequest(c.Server, slug)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListCourses List published courses with level filters.
+//
+// Returns catalogue summaries for published courses.
+//
+// Corresponds with GET /courses (the `ListCourses` operationId).
+func (c *Client) ListCourses(ctx context.Context, params *ListCoursesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListCoursesRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetCourseBySlug Get course detail with units and lesson summaries.
+//
+// Returns one published course with its ordered units and each unit's lesson summaries, for the learner catalogue and course landing page.
+//
+// Corresponds with GET /courses/{slug} (the `GetCourseBySlug` operationId).
+func (c *Client) GetCourseBySlug(ctx context.Context, slug string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetCourseBySlugRequest(c.Server, slug)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // SystemHealth Check process liveness.
 //
 // Returns success when the API process is able to serve requests.
@@ -1791,6 +2246,23 @@ func (c *Client) AuthRevokeSession(ctx context.Context, id openapi_types.UUID, r
 // Corresponds with GET /health (the `SystemHealth` operationId).
 func (c *Client) SystemHealth(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSystemHealthRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetLessonById Get lesson with activities and resolved content versions.
+//
+// Returns one lesson with its ordered activities and each activity's resolved content version, ready for the lesson renderer.
+//
+// Corresponds with GET /lessons/{id} (the `GetLessonById` operationId).
+func (c *Client) GetLessonById(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetLessonByIdRequest(c.Server, id)
 	if err != nil {
 		return nil, err
 	}
@@ -2278,6 +2750,282 @@ func NewAuditSearchLogsRequest(server string, params *AuditSearchLogsParams) (*h
 	return req, nil
 }
 
+// NewAdminCreateContentRequest calls the generic AdminCreateContent builder with application/json body
+func NewAdminCreateContentRequest(server string, body AdminCreateContentJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAdminCreateContentRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewAdminCreateContentRequestWithBody constructs an http.Request for the AdminCreateContent method, with any body, and a specified content type
+func NewAdminCreateContentRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/content")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewAdminArchiveContentRequest constructs an http.Request for the AdminArchiveContent method
+func NewAdminArchiveContentRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/content/%s/archive", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAdminUpdateDraftRequest calls the generic AdminUpdateDraft builder with application/json body
+func NewAdminUpdateDraftRequest(server string, id openapi_types.UUID, body AdminUpdateDraftJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAdminUpdateDraftRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewAdminUpdateDraftRequestWithBody constructs an http.Request for the AdminUpdateDraft method, with any body, and a specified content type
+func NewAdminUpdateDraftRequestWithBody(server string, id openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/content/%s/draft", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewAdminPublishContentRequest constructs an http.Request for the AdminPublishContent method
+func NewAdminPublishContentRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/content/%s/publish", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAdminReviewContentRequest calls the generic AdminReviewContent builder with application/json body
+func NewAdminReviewContentRequest(server string, id openapi_types.UUID, body AdminReviewContentJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAdminReviewContentRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewAdminReviewContentRequestWithBody constructs an http.Request for the AdminReviewContent method, with any body, and a specified content type
+func NewAdminReviewContentRequestWithBody(server string, id openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/content/%s/review", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewAdminSubmitContentForReviewRequest constructs an http.Request for the AdminSubmitContentForReview method
+func NewAdminSubmitContentForReviewRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/content/%s/submit", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAdminCreateCourseRequest calls the generic AdminCreateCourse builder with application/json body
+func NewAdminCreateCourseRequest(server string, body AdminCreateCourseJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAdminCreateCourseRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewAdminCreateCourseRequestWithBody constructs an http.Request for the AdminCreateCourse method, with any body, and a specified content type
+func NewAdminCreateCourseRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/courses")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewAdminListFlagsRequest constructs an http.Request for the AdminListFlags method
 func NewAdminListFlagsRequest(server string) (*http.Request, error) {
 	var err error
@@ -2407,6 +3155,53 @@ func NewAdminUpdateFlagRequestWithBody(server string, key string, contentType st
 	}
 
 	operationPath := fmt.Sprintf("/admin/flags/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewAdminUpdateLessonActivitiesRequest calls the generic AdminUpdateLessonActivities builder with application/json body
+func NewAdminUpdateLessonActivitiesRequest(server string, id openapi_types.UUID, body AdminUpdateLessonActivitiesJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAdminUpdateLessonActivitiesRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewAdminUpdateLessonActivitiesRequestWithBody constructs an http.Request for the AdminUpdateLessonActivities method, with any body, and a specified content type
+func NewAdminUpdateLessonActivitiesRequestWithBody(server string, id openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/lessons/%s/activities", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -3672,6 +4467,218 @@ func NewAuthRevokeSessionRequest(server string, id openapi_types.UUID) (*http.Re
 	return req, nil
 }
 
+// NewBrowsePublishedContentRequest constructs an http.Request for the BrowsePublishedContent method
+func NewBrowsePublishedContentRequest(server string, params *BrowsePublishedContentParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/content")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Kind != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "kind", *params.Kind, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.CefrLevel != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cefr_level", *params.CefrLevel, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "offset", *params.Offset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetContentBySlugRequest constructs an http.Request for the GetContentBySlug method
+func NewGetContentBySlugRequest(server string, slug string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "slug", slug, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/content/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListCoursesRequest constructs an http.Request for the ListCourses method
+func NewListCoursesRequest(server string, params *ListCoursesParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/courses")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Level != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "level", *params.Level, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetCourseBySlugRequest constructs an http.Request for the GetCourseBySlug method
+func NewGetCourseBySlugRequest(server string, slug string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "slug", slug, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/courses/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewSystemHealthRequest constructs an http.Request for the SystemHealth method
 func NewSystemHealthRequest(server string) (*http.Request, error) {
 	var err error
@@ -3682,6 +4689,40 @@ func NewSystemHealthRequest(server string) (*http.Request, error) {
 	}
 
 	operationPath := fmt.Sprintf("/health")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetLessonByIdRequest constructs an http.Request for the GetLessonById method
+func NewGetLessonByIdRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/lessons/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -4225,6 +5266,105 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /admin/audit-logs (the `AuditSearchLogs` operationId).
 	AuditSearchLogsWithResponse(ctx context.Context, params *AuditSearchLogsParams, reqEditors ...RequestEditorFn) (*AuditSearchLogsResponse, error)
 
+	// AdminCreateContentWithBodyWithResponse Create a draft content item.
+	//
+	// Creates a new content item with an initial draft version.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/content (the `AdminCreateContent` operationId).
+	AdminCreateContentWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminCreateContentResponse, error)
+
+	// AdminCreateContentWithResponse Create a draft content item.
+	//
+	// Creates a new content item with an initial draft version.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/content (the `AdminCreateContent` operationId).
+	AdminCreateContentWithResponse(ctx context.Context, body AdminCreateContentJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminCreateContentResponse, error)
+
+	// AdminArchiveContentWithResponse Archive a content item.
+	//
+	// Archives a content item so it is no longer learner-facing.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/content/{id}/archive (the `AdminArchiveContent` operationId).
+	AdminArchiveContentWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*AdminArchiveContentResponse, error)
+
+	// AdminUpdateDraftWithBodyWithResponse Update working draft of a content item.
+	//
+	// Updates the working draft, creating a new version when appropriate.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /admin/content/{id}/draft (the `AdminUpdateDraft` operationId).
+	AdminUpdateDraftWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminUpdateDraftResponse, error)
+
+	// AdminUpdateDraftWithResponse Update working draft of a content item.
+	//
+	// Updates the working draft, creating a new version when appropriate.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /admin/content/{id}/draft (the `AdminUpdateDraft` operationId).
+	AdminUpdateDraftWithResponse(ctx context.Context, id openapi_types.UUID, body AdminUpdateDraftJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminUpdateDraftResponse, error)
+
+	// AdminPublishContentWithResponse Publish an approved content version.
+	//
+	// Publishes the approved version, making it the learner-facing snapshot and emitting the content.published event.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/content/{id}/publish (the `AdminPublishContent` operationId).
+	AdminPublishContentWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*AdminPublishContentResponse, error)
+
+	// AdminReviewContentWithBodyWithResponse Approve or request changes on a submitted version.
+	//
+	// Records an editor's decision on a submitted version, moving it to approved or back to draft with comments.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/content/{id}/review (the `AdminReviewContent` operationId).
+	AdminReviewContentWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminReviewContentResponse, error)
+
+	// AdminReviewContentWithResponse Approve or request changes on a submitted version.
+	//
+	// Records an editor's decision on a submitted version, moving it to approved or back to draft with comments.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/content/{id}/review (the `AdminReviewContent` operationId).
+	AdminReviewContentWithResponse(ctx context.Context, id openapi_types.UUID, body AdminReviewContentJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminReviewContentResponse, error)
+
+	// AdminSubmitContentForReviewWithResponse Submit working draft for editorial review.
+	//
+	// Moves the current draft to in_review, ready for an editor.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/content/{id}/submit (the `AdminSubmitContentForReview` operationId).
+	AdminSubmitContentForReviewWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*AdminSubmitContentForReviewResponse, error)
+
+	// AdminCreateCourseWithBodyWithResponse Create a course curriculum container.
+	//
+	// Creates a top-level course container in draft state.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/courses (the `AdminCreateCourse` operationId).
+	AdminCreateCourseWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminCreateCourseResponse, error)
+
+	// AdminCreateCourseWithResponse Create a course curriculum container.
+	//
+	// Creates a top-level course container in draft state.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/courses (the `AdminCreateCourse` operationId).
+	AdminCreateCourseWithResponse(ctx context.Context, body AdminCreateCourseJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminCreateCourseResponse, error)
+
 	// AdminListFlagsWithResponse List all feature flags.
 	//
 	// Returns every flag, unpaginated. The set is small by design, and an administrator needs the whole of it to see which flags are past their `expires_on` and should have been deleted.
@@ -4282,6 +5422,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with PUT /admin/flags/{key} (the `AdminUpdateFlag` operationId).
 	AdminUpdateFlagWithResponse(ctx context.Context, key string, body AdminUpdateFlagJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminUpdateFlagResponse, error)
+
+	// AdminUpdateLessonActivitiesWithBodyWithResponse Update or reorder lesson activities.
+	//
+	// Replaces the ordered activity list of a lesson, used to assemble a lesson from published content versions.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /admin/lessons/{id}/activities (the `AdminUpdateLessonActivities` operationId).
+	AdminUpdateLessonActivitiesWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminUpdateLessonActivitiesResponse, error)
+
+	// AdminUpdateLessonActivitiesWithResponse Update or reorder lesson activities.
+	//
+	// Replaces the ordered activity list of a lesson, used to assemble a lesson from published content versions.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /admin/lessons/{id}/activities (the `AdminUpdateLessonActivities` operationId).
+	AdminUpdateLessonActivitiesWithResponse(ctx context.Context, id openapi_types.UUID, body AdminUpdateLessonActivitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminUpdateLessonActivitiesResponse, error)
 
 	// RbacListRolesWithResponse List roles and the permissions they grant.
 	//
@@ -4778,6 +5936,42 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with DELETE /auth/sessions/{id} (the `AuthRevokeSession` operationId).
 	AuthRevokeSessionWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*AuthRevokeSessionResponse, error)
 
+	// BrowsePublishedContentWithResponse Browse published content with taxonomy filters.
+	//
+	// Returns published content versions, optionally filtered by kind and CEFR level, with cursor-free offset pagination for catalogue browsing.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /content (the `BrowsePublishedContent` operationId).
+	BrowsePublishedContentWithResponse(ctx context.Context, params *BrowsePublishedContentParams, reqEditors ...RequestEditorFn) (*BrowsePublishedContentResponse, error)
+
+	// GetContentBySlugWithResponse Fetch a published content version by item slug.
+	//
+	// Returns the current published version of a content item by its stable slug.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /content/{slug} (the `GetContentBySlug` operationId).
+	GetContentBySlugWithResponse(ctx context.Context, slug string, reqEditors ...RequestEditorFn) (*GetContentBySlugResponse, error)
+
+	// ListCoursesWithResponse List published courses with level filters.
+	//
+	// Returns catalogue summaries for published courses.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /courses (the `ListCourses` operationId).
+	ListCoursesWithResponse(ctx context.Context, params *ListCoursesParams, reqEditors ...RequestEditorFn) (*ListCoursesResponse, error)
+
+	// GetCourseBySlugWithResponse Get course detail with units and lesson summaries.
+	//
+	// Returns one published course with its ordered units and each unit's lesson summaries, for the learner catalogue and course landing page.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /courses/{slug} (the `GetCourseBySlug` operationId).
+	GetCourseBySlugWithResponse(ctx context.Context, slug string, reqEditors ...RequestEditorFn) (*GetCourseBySlugResponse, error)
+
 	// SystemHealthWithResponse Check process liveness.
 	//
 	// Returns success when the API process is able to serve requests.
@@ -4786,6 +5980,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /health (the `SystemHealth` operationId).
 	SystemHealthWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*SystemHealthResponse, error)
+
+	// GetLessonByIdWithResponse Get lesson with activities and resolved content versions.
+	//
+	// Returns one lesson with its ordered activities and each activity's resolved content version, ready for the lesson renderer.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /lessons/{id} (the `GetLessonById` operationId).
+	GetLessonByIdWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetLessonByIdResponse, error)
 
 	// UserRequestDeletionWithResponse Request account deletion (GDPR Article 17).
 	//
@@ -5029,6 +6232,503 @@ func (r AuditSearchLogsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r AuditSearchLogsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AdminCreateContentResponse201Headers the declared response headers of an HTTP 201 response for AdminCreateContent
+type AdminCreateContentResponse201Headers struct {
+	XRequestId *string
+}
+
+type AdminCreateContentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *ContentItem
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *AdminCreateContentResponse201Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r AdminCreateContentResponse) GetJSON201() *ContentItem {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r AdminCreateContentResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AdminCreateContentResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminCreateContentResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AdminCreateContentResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminCreateContentResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminCreateContentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminCreateContentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminCreateContentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AdminArchiveContentResponse200Headers the declared response headers of an HTTP 200 response for AdminArchiveContent
+type AdminArchiveContentResponse200Headers struct {
+	XRequestId *string
+}
+
+type AdminArchiveContentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ContentItem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AdminArchiveContentResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AdminArchiveContentResponse) GetJSON200() *ContentItem {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminArchiveContentResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AdminArchiveContentResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AdminArchiveContentResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminArchiveContentResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminArchiveContentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminArchiveContentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminArchiveContentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AdminUpdateDraftResponse200Headers the declared response headers of an HTTP 200 response for AdminUpdateDraft
+type AdminUpdateDraftResponse200Headers struct {
+	XRequestId *string
+}
+
+type AdminUpdateDraftResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ContentVersion
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AdminUpdateDraftResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AdminUpdateDraftResponse) GetJSON200() *ContentVersion {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r AdminUpdateDraftResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminUpdateDraftResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AdminUpdateDraftResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminUpdateDraftResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminUpdateDraftResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminUpdateDraftResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminUpdateDraftResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AdminPublishContentResponse200Headers the declared response headers of an HTTP 200 response for AdminPublishContent
+type AdminPublishContentResponse200Headers struct {
+	XRequestId *string
+}
+
+type AdminPublishContentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ContentVersion
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AdminPublishContentResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AdminPublishContentResponse) GetJSON200() *ContentVersion {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminPublishContentResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AdminPublishContentResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AdminPublishContentResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminPublishContentResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminPublishContentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminPublishContentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminPublishContentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AdminReviewContentResponse200Headers the declared response headers of an HTTP 200 response for AdminReviewContent
+type AdminReviewContentResponse200Headers struct {
+	XRequestId *string
+}
+
+type AdminReviewContentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ContentVersion
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AdminReviewContentResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AdminReviewContentResponse) GetJSON200() *ContentVersion {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r AdminReviewContentResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminReviewContentResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AdminReviewContentResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AdminReviewContentResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminReviewContentResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminReviewContentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminReviewContentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminReviewContentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AdminSubmitContentForReviewResponse200Headers the declared response headers of an HTTP 200 response for AdminSubmitContentForReview
+type AdminSubmitContentForReviewResponse200Headers struct {
+	XRequestId *string
+}
+
+type AdminSubmitContentForReviewResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ContentVersion
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AdminSubmitContentForReviewResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AdminSubmitContentForReviewResponse) GetJSON200() *ContentVersion {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminSubmitContentForReviewResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AdminSubmitContentForReviewResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AdminSubmitContentForReviewResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminSubmitContentForReviewResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminSubmitContentForReviewResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminSubmitContentForReviewResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminSubmitContentForReviewResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AdminCreateCourseResponse201Headers the declared response headers of an HTTP 201 response for AdminCreateCourse
+type AdminCreateCourseResponse201Headers struct {
+	XRequestId *string
+}
+
+type AdminCreateCourseResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *CourseSummary
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *AdminCreateCourseResponse201Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r AdminCreateCourseResponse) GetJSON201() *CourseSummary {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r AdminCreateCourseResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AdminCreateCourseResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminCreateCourseResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminCreateCourseResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminCreateCourseResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminCreateCourseResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminCreateCourseResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -5305,6 +7005,82 @@ func (r AdminUpdateFlagResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r AdminUpdateFlagResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AdminUpdateLessonActivitiesResponse200Headers the declared response headers of an HTTP 200 response for AdminUpdateLessonActivities
+type AdminUpdateLessonActivitiesResponse200Headers struct {
+	XRequestId *string
+}
+
+type AdminUpdateLessonActivitiesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *LessonDetail
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AdminUpdateLessonActivitiesResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AdminUpdateLessonActivitiesResponse) GetJSON200() *LessonDetail {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r AdminUpdateLessonActivitiesResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AdminUpdateLessonActivitiesResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminUpdateLessonActivitiesResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AdminUpdateLessonActivitiesResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminUpdateLessonActivitiesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminUpdateLessonActivitiesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminUpdateLessonActivitiesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminUpdateLessonActivitiesResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -7498,6 +9274,282 @@ func (r AuthRevokeSessionResponse) ContentType() string {
 	return ""
 }
 
+// BrowsePublishedContentResponse200Headers the declared response headers of an HTTP 200 response for BrowsePublishedContent
+type BrowsePublishedContentResponse200Headers struct {
+	XRequestId *string
+}
+
+type BrowsePublishedContentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ContentVersionList
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *BrowsePublishedContentResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r BrowsePublishedContentResponse) GetJSON200() *ContentVersionList {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r BrowsePublishedContentResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r BrowsePublishedContentResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r BrowsePublishedContentResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetBody returns the raw response body bytes
+func (r BrowsePublishedContentResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r BrowsePublishedContentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r BrowsePublishedContentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r BrowsePublishedContentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GetContentBySlugResponse200Headers the declared response headers of an HTTP 200 response for GetContentBySlug
+type GetContentBySlugResponse200Headers struct {
+	XRequestId *string
+}
+
+type GetContentBySlugResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ContentVersion
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetContentBySlugResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetContentBySlugResponse) GetJSON200() *ContentVersion {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetContentBySlugResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r GetContentBySlugResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GetContentBySlugResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetContentBySlugResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetContentBySlugResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetContentBySlugResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetContentBySlugResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ListCoursesResponse200Headers the declared response headers of an HTTP 200 response for ListCourses
+type ListCoursesResponse200Headers struct {
+	XRequestId *string
+}
+
+type ListCoursesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *CourseList
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ListCoursesResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListCoursesResponse) GetJSON200() *CourseList {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r ListCoursesResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ListCoursesResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r ListCoursesResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetBody returns the raw response body bytes
+func (r ListCoursesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListCoursesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListCoursesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListCoursesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GetCourseBySlugResponse200Headers the declared response headers of an HTTP 200 response for GetCourseBySlug
+type GetCourseBySlugResponse200Headers struct {
+	XRequestId *string
+}
+
+type GetCourseBySlugResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *CourseDetail
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetCourseBySlugResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetCourseBySlugResponse) GetJSON200() *CourseDetail {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetCourseBySlugResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r GetCourseBySlugResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GetCourseBySlugResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetCourseBySlugResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetCourseBySlugResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetCourseBySlugResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetCourseBySlugResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // SystemHealthResponse200Headers the declared response headers of an HTTP 200 response for SystemHealth
 type SystemHealthResponse200Headers struct {
 	XRequestId *string
@@ -7540,6 +9592,75 @@ func (r SystemHealthResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r SystemHealthResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GetLessonByIdResponse200Headers the declared response headers of an HTTP 200 response for GetLessonById
+type GetLessonByIdResponse200Headers struct {
+	XRequestId *string
+}
+
+type GetLessonByIdResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *LessonDetail
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetLessonByIdResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetLessonByIdResponse) GetJSON200() *LessonDetail {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetLessonByIdResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r GetLessonByIdResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GetLessonByIdResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetLessonByIdResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetLessonByIdResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetLessonByIdResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetLessonByIdResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -8517,6 +10638,171 @@ func (c *ClientWithResponses) AuditSearchLogsWithResponse(ctx context.Context, p
 	return ParseAuditSearchLogsResponse(rsp)
 }
 
+// AdminCreateContentWithBodyWithResponse Create a draft content item.
+//
+// Creates a new content item with an initial draft version.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/content (the `AdminCreateContent` operationId).
+func (c *ClientWithResponses) AdminCreateContentWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminCreateContentResponse, error) {
+	rsp, err := c.AdminCreateContentWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminCreateContentResponse(rsp)
+}
+
+// AdminCreateContentWithResponse Create a draft content item.
+//
+// Creates a new content item with an initial draft version.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/content (the `AdminCreateContent` operationId).
+func (c *ClientWithResponses) AdminCreateContentWithResponse(ctx context.Context, body AdminCreateContentJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminCreateContentResponse, error) {
+	rsp, err := c.AdminCreateContent(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminCreateContentResponse(rsp)
+}
+
+// AdminArchiveContentWithResponse Archive a content item.
+//
+// Archives a content item so it is no longer learner-facing.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/content/{id}/archive (the `AdminArchiveContent` operationId).
+func (c *ClientWithResponses) AdminArchiveContentWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*AdminArchiveContentResponse, error) {
+	rsp, err := c.AdminArchiveContent(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminArchiveContentResponse(rsp)
+}
+
+// AdminUpdateDraftWithBodyWithResponse Update working draft of a content item.
+//
+// Updates the working draft, creating a new version when appropriate.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /admin/content/{id}/draft (the `AdminUpdateDraft` operationId).
+func (c *ClientWithResponses) AdminUpdateDraftWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminUpdateDraftResponse, error) {
+	rsp, err := c.AdminUpdateDraftWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminUpdateDraftResponse(rsp)
+}
+
+// AdminUpdateDraftWithResponse Update working draft of a content item.
+//
+// Updates the working draft, creating a new version when appropriate.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /admin/content/{id}/draft (the `AdminUpdateDraft` operationId).
+func (c *ClientWithResponses) AdminUpdateDraftWithResponse(ctx context.Context, id openapi_types.UUID, body AdminUpdateDraftJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminUpdateDraftResponse, error) {
+	rsp, err := c.AdminUpdateDraft(ctx, id, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminUpdateDraftResponse(rsp)
+}
+
+// AdminPublishContentWithResponse Publish an approved content version.
+//
+// Publishes the approved version, making it the learner-facing snapshot and emitting the content.published event.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/content/{id}/publish (the `AdminPublishContent` operationId).
+func (c *ClientWithResponses) AdminPublishContentWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*AdminPublishContentResponse, error) {
+	rsp, err := c.AdminPublishContent(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminPublishContentResponse(rsp)
+}
+
+// AdminReviewContentWithBodyWithResponse Approve or request changes on a submitted version.
+//
+// Records an editor's decision on a submitted version, moving it to approved or back to draft with comments.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/content/{id}/review (the `AdminReviewContent` operationId).
+func (c *ClientWithResponses) AdminReviewContentWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminReviewContentResponse, error) {
+	rsp, err := c.AdminReviewContentWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminReviewContentResponse(rsp)
+}
+
+// AdminReviewContentWithResponse Approve or request changes on a submitted version.
+//
+// Records an editor's decision on a submitted version, moving it to approved or back to draft with comments.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/content/{id}/review (the `AdminReviewContent` operationId).
+func (c *ClientWithResponses) AdminReviewContentWithResponse(ctx context.Context, id openapi_types.UUID, body AdminReviewContentJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminReviewContentResponse, error) {
+	rsp, err := c.AdminReviewContent(ctx, id, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminReviewContentResponse(rsp)
+}
+
+// AdminSubmitContentForReviewWithResponse Submit working draft for editorial review.
+//
+// Moves the current draft to in_review, ready for an editor.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/content/{id}/submit (the `AdminSubmitContentForReview` operationId).
+func (c *ClientWithResponses) AdminSubmitContentForReviewWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*AdminSubmitContentForReviewResponse, error) {
+	rsp, err := c.AdminSubmitContentForReview(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminSubmitContentForReviewResponse(rsp)
+}
+
+// AdminCreateCourseWithBodyWithResponse Create a course curriculum container.
+//
+// Creates a top-level course container in draft state.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/courses (the `AdminCreateCourse` operationId).
+func (c *ClientWithResponses) AdminCreateCourseWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminCreateCourseResponse, error) {
+	rsp, err := c.AdminCreateCourseWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminCreateCourseResponse(rsp)
+}
+
+// AdminCreateCourseWithResponse Create a course curriculum container.
+//
+// Creates a top-level course container in draft state.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/courses (the `AdminCreateCourse` operationId).
+func (c *ClientWithResponses) AdminCreateCourseWithResponse(ctx context.Context, body AdminCreateCourseJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminCreateCourseResponse, error) {
+	rsp, err := c.AdminCreateCourse(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminCreateCourseResponse(rsp)
+}
+
 // AdminListFlagsWithResponse List all feature flags.
 //
 // Returns every flag, unpaginated. The set is small by design, and an administrator needs the whole of it to see which flags are past their `expires_on` and should have been deleted.
@@ -8609,6 +10895,36 @@ func (c *ClientWithResponses) AdminUpdateFlagWithResponse(ctx context.Context, k
 		return nil, err
 	}
 	return ParseAdminUpdateFlagResponse(rsp)
+}
+
+// AdminUpdateLessonActivitiesWithBodyWithResponse Update or reorder lesson activities.
+//
+// Replaces the ordered activity list of a lesson, used to assemble a lesson from published content versions.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /admin/lessons/{id}/activities (the `AdminUpdateLessonActivities` operationId).
+func (c *ClientWithResponses) AdminUpdateLessonActivitiesWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminUpdateLessonActivitiesResponse, error) {
+	rsp, err := c.AdminUpdateLessonActivitiesWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminUpdateLessonActivitiesResponse(rsp)
+}
+
+// AdminUpdateLessonActivitiesWithResponse Update or reorder lesson activities.
+//
+// Replaces the ordered activity list of a lesson, used to assemble a lesson from published content versions.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /admin/lessons/{id}/activities (the `AdminUpdateLessonActivities` operationId).
+func (c *ClientWithResponses) AdminUpdateLessonActivitiesWithResponse(ctx context.Context, id openapi_types.UUID, body AdminUpdateLessonActivitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminUpdateLessonActivitiesResponse, error) {
+	rsp, err := c.AdminUpdateLessonActivities(ctx, id, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminUpdateLessonActivitiesResponse(rsp)
 }
 
 // RbacListRolesWithResponse List roles and the permissions they grant.
@@ -9352,6 +11668,66 @@ func (c *ClientWithResponses) AuthRevokeSessionWithResponse(ctx context.Context,
 	return ParseAuthRevokeSessionResponse(rsp)
 }
 
+// BrowsePublishedContentWithResponse Browse published content with taxonomy filters.
+//
+// Returns published content versions, optionally filtered by kind and CEFR level, with cursor-free offset pagination for catalogue browsing.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /content (the `BrowsePublishedContent` operationId).
+func (c *ClientWithResponses) BrowsePublishedContentWithResponse(ctx context.Context, params *BrowsePublishedContentParams, reqEditors ...RequestEditorFn) (*BrowsePublishedContentResponse, error) {
+	rsp, err := c.BrowsePublishedContent(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBrowsePublishedContentResponse(rsp)
+}
+
+// GetContentBySlugWithResponse Fetch a published content version by item slug.
+//
+// Returns the current published version of a content item by its stable slug.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /content/{slug} (the `GetContentBySlug` operationId).
+func (c *ClientWithResponses) GetContentBySlugWithResponse(ctx context.Context, slug string, reqEditors ...RequestEditorFn) (*GetContentBySlugResponse, error) {
+	rsp, err := c.GetContentBySlug(ctx, slug, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetContentBySlugResponse(rsp)
+}
+
+// ListCoursesWithResponse List published courses with level filters.
+//
+// Returns catalogue summaries for published courses.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /courses (the `ListCourses` operationId).
+func (c *ClientWithResponses) ListCoursesWithResponse(ctx context.Context, params *ListCoursesParams, reqEditors ...RequestEditorFn) (*ListCoursesResponse, error) {
+	rsp, err := c.ListCourses(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListCoursesResponse(rsp)
+}
+
+// GetCourseBySlugWithResponse Get course detail with units and lesson summaries.
+//
+// Returns one published course with its ordered units and each unit's lesson summaries, for the learner catalogue and course landing page.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /courses/{slug} (the `GetCourseBySlug` operationId).
+func (c *ClientWithResponses) GetCourseBySlugWithResponse(ctx context.Context, slug string, reqEditors ...RequestEditorFn) (*GetCourseBySlugResponse, error) {
+	rsp, err := c.GetCourseBySlug(ctx, slug, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetCourseBySlugResponse(rsp)
+}
+
 // SystemHealthWithResponse Check process liveness.
 //
 // Returns success when the API process is able to serve requests.
@@ -9365,6 +11741,21 @@ func (c *ClientWithResponses) SystemHealthWithResponse(ctx context.Context, reqE
 		return nil, err
 	}
 	return ParseSystemHealthResponse(rsp)
+}
+
+// GetLessonByIdWithResponse Get lesson with activities and resolved content versions.
+//
+// Returns one lesson with its ordered activities and each activity's resolved content version, ready for the lesson renderer.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /lessons/{id} (the `GetLessonById` operationId).
+func (c *ClientWithResponses) GetLessonByIdWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetLessonByIdResponse, error) {
+	rsp, err := c.GetLessonById(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetLessonByIdResponse(rsp)
 }
 
 // UserRequestDeletionWithResponse Request account deletion (GDPR Article 17).
@@ -9719,6 +12110,440 @@ func ParseAuditSearchLogsResponse(rsp *http.Response) (*AuditSearchLogsResponse,
 	return response, nil
 }
 
+// ParseAdminCreateContentResponse parses an HTTP response from a AdminCreateContentWithResponse call
+func ParseAdminCreateContentResponse(rsp *http.Response) (*AdminCreateContentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminCreateContentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest ContentItem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers AdminCreateContentResponse201Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers201 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAdminArchiveContentResponse parses an HTTP response from a AdminArchiveContentWithResponse call
+func ParseAdminArchiveContentResponse(rsp *http.Response) (*AdminArchiveContentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminArchiveContentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ContentItem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AdminArchiveContentResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAdminUpdateDraftResponse parses an HTTP response from a AdminUpdateDraftWithResponse call
+func ParseAdminUpdateDraftResponse(rsp *http.Response) (*AdminUpdateDraftResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminUpdateDraftResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ContentVersion
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AdminUpdateDraftResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAdminPublishContentResponse parses an HTTP response from a AdminPublishContentWithResponse call
+func ParseAdminPublishContentResponse(rsp *http.Response) (*AdminPublishContentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminPublishContentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ContentVersion
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AdminPublishContentResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAdminReviewContentResponse parses an HTTP response from a AdminReviewContentWithResponse call
+func ParseAdminReviewContentResponse(rsp *http.Response) (*AdminReviewContentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminReviewContentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ContentVersion
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AdminReviewContentResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAdminSubmitContentForReviewResponse parses an HTTP response from a AdminSubmitContentForReviewWithResponse call
+func ParseAdminSubmitContentForReviewResponse(rsp *http.Response) (*AdminSubmitContentForReviewResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminSubmitContentForReviewResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ContentVersion
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AdminSubmitContentForReviewResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAdminCreateCourseResponse parses an HTTP response from a AdminCreateCourseWithResponse call
+func ParseAdminCreateCourseResponse(rsp *http.Response) (*AdminCreateCourseResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminCreateCourseResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest CourseSummary
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers AdminCreateCourseResponse201Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers201 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseAdminListFlagsResponse parses an HTTP response from a AdminListFlagsWithResponse call
 func ParseAdminListFlagsResponse(rsp *http.Response) (*AdminListFlagsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -9949,6 +12774,73 @@ func ParseAdminUpdateFlagResponse(rsp *http.Response) (*AdminUpdateFlagResponse,
 	switch {
 	case rsp.StatusCode == 200:
 		var headers AdminUpdateFlagResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAdminUpdateLessonActivitiesResponse parses an HTTP response from a AdminUpdateLessonActivitiesWithResponse call
+func ParseAdminUpdateLessonActivitiesResponse(rsp *http.Response) (*AdminUpdateLessonActivitiesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminUpdateLessonActivitiesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LessonDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AdminUpdateLessonActivitiesResponse200Headers
 		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
 			var value string
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
@@ -12275,6 +15167,246 @@ func ParseAuthRevokeSessionResponse(rsp *http.Response) (*AuthRevokeSessionRespo
 	return response, nil
 }
 
+// ParseBrowsePublishedContentResponse parses an HTTP response from a BrowsePublishedContentWithResponse call
+func ParseBrowsePublishedContentResponse(rsp *http.Response) (*BrowsePublishedContentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &BrowsePublishedContentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ContentVersionList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers BrowsePublishedContentResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGetContentBySlugResponse parses an HTTP response from a GetContentBySlugWithResponse call
+func ParseGetContentBySlugResponse(rsp *http.Response) (*GetContentBySlugResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetContentBySlugResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ContentVersion
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetContentBySlugResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseListCoursesResponse parses an HTTP response from a ListCoursesWithResponse call
+func ParseListCoursesResponse(rsp *http.Response) (*ListCoursesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListCoursesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CourseList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ListCoursesResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGetCourseBySlugResponse parses an HTTP response from a GetCourseBySlugWithResponse call
+func ParseGetCourseBySlugResponse(rsp *http.Response) (*GetCourseBySlugResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetCourseBySlugResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CourseDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetCourseBySlugResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseSystemHealthResponse parses an HTTP response from a SystemHealthWithResponse call
 func ParseSystemHealthResponse(rsp *http.Response) (*SystemHealthResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -12301,6 +15433,66 @@ func ParseSystemHealthResponse(rsp *http.Response) (*SystemHealthResponse, error
 	switch {
 	case rsp.StatusCode == 200:
 		var headers SystemHealthResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGetLessonByIdResponse parses an HTTP response from a GetLessonByIdWithResponse call
+func ParseGetLessonByIdResponse(rsp *http.Response) (*GetLessonByIdResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetLessonByIdResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LessonDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetLessonByIdResponse200Headers
 		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
 			var value string
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {

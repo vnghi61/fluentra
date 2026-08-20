@@ -1,0 +1,234 @@
+CourseSummary:
+  type: object
+  required: [id, slug, title, cefr_from, cefr_to, status, estimated_hours]
+  properties:
+    id:
+      type: string
+      format: uuid
+    slug:
+      type: string
+      example: ielts-foundation
+    title:
+      type: string
+      example: IELTS Foundation 5.0 - 6.5
+    description:
+      type: string
+      example: Core skills and vocabulary for IELTS academic preparation.
+    cefr_from:
+      type: string
+      example: B1
+    cefr_to:
+      type: string
+      example: B2
+    status:
+      type: string
+      enum: [draft, published, archived]
+      example: published
+    estimated_hours:
+      type: integer
+      example: 40
+
+CourseList:
+  type: object
+  required: [courses]
+  properties:
+    courses:
+      type: array
+      items:
+        $ref: '#/CourseSummary'
+
+LessonActivity:
+  type: object
+  required: [id, lesson_id, position, kind, content_version_id, weight]
+  properties:
+    id:
+      type: string
+      format: uuid
+    lesson_id:
+      type: string
+      format: uuid
+    position:
+      type: integer
+      example: 1
+    kind:
+      type: string
+      example: vocab_multiple_choice
+    content_version_id:
+      type: string
+      format: uuid
+    config:
+      type: object
+      description: Activity-specific configuration.
+    weight:
+      type: integer
+      example: 10
+    content:
+      $ref: './content.yaml#/ContentVersion'
+
+LessonSummary:
+  type: object
+  required: [id, unit_id, position, title, skill_focus, estimated_minutes, status, locked]
+  properties:
+    id:
+      type: string
+      format: uuid
+    unit_id:
+      type: string
+      format: uuid
+    position:
+      type: integer
+      example: 1
+    title:
+      type: string
+      example: Academic Word List - Topic 1
+    skill_focus:
+      type: string
+      example: vocabulary
+    estimated_minutes:
+      type: integer
+      example: 15
+    status:
+      type: string
+      enum: [draft, published, archived]
+      example: published
+    locked:
+      type: boolean
+      example: false
+    lock_reason:
+      type: string
+      nullable: true
+      example: Complete Unit 1 Lesson 2 first
+
+CourseUnit:
+  type: object
+  required: [id, course_id, position, title, lessons]
+  properties:
+    id:
+      type: string
+      format: uuid
+    course_id:
+      type: string
+      format: uuid
+    position:
+      type: integer
+      example: 1
+    title:
+      type: string
+      example: Unit 1 - Everyday Campus Life
+    description:
+      type: string
+      example: Vocabulary and functional grammar for university scenarios.
+    lessons:
+      type: array
+      items:
+        $ref: '#/LessonSummary'
+
+CourseDetail:
+  type: object
+  required: [id, slug, title, cefr_from, cefr_to, status, estimated_hours, units]
+  properties:
+    id:
+      type: string
+      format: uuid
+    slug:
+      type: string
+      example: ielts-foundation
+    title:
+      type: string
+      example: IELTS Foundation 5.0 - 6.5
+    description:
+      type: string
+      example: Comprehensive curriculum covering all 4 modules.
+    cefr_from:
+      type: string
+      example: B1
+    cefr_to:
+      type: string
+      example: B2
+    status:
+      type: string
+      example: published
+    estimated_hours:
+      type: integer
+      example: 40
+    units:
+      type: array
+      items:
+        $ref: '#/CourseUnit'
+
+LessonDetail:
+  type: object
+  required: [id, unit_id, position, title, skill_focus, estimated_minutes, status, activities]
+  properties:
+    id:
+      type: string
+      format: uuid
+    unit_id:
+      type: string
+      format: uuid
+    position:
+      type: integer
+      example: 1
+    title:
+      type: string
+      example: Academic Word List - Topic 1
+    skill_focus:
+      type: string
+      example: vocabulary
+    estimated_minutes:
+      type: integer
+      example: 15
+    status:
+      type: string
+      example: published
+    activities:
+      type: array
+      items:
+        $ref: '#/LessonActivity'
+
+CreateCourseRequest:
+  type: object
+  required: [slug, title, cefr_from, cefr_to, estimated_hours]
+  properties:
+    slug:
+      type: string
+      example: ielts-foundation
+    title:
+      type: string
+      example: IELTS Foundation
+    description:
+      type: string
+    cefr_from:
+      type: string
+      example: B1
+    cefr_to:
+      type: string
+      example: B2
+    estimated_hours:
+      type: integer
+      example: 40
+
+ActivityInput:
+  type: object
+  required: [position, kind, content_version_id, weight]
+  properties:
+    position:
+      type: integer
+    kind:
+      type: string
+    content_version_id:
+      type: string
+      format: uuid
+    config:
+      type: object
+    weight:
+      type: integer
+
+UpdateActivitiesRequest:
+  type: object
+  required: [activities]
+  properties:
+    activities:
+      type: array
+      items:
+        $ref: '#/ActivityInput'

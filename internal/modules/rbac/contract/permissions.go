@@ -42,6 +42,19 @@ const (
 	PermModerationAct  Permission = "moderation.act"
 	PermSystemFlags    Permission = "system.flags"
 	PermSystemJobs     Permission = "system.jobs"
+
+	// content reading, authoring & publishing
+	//
+	// content.read.published gates published courses, lessons and content
+	// versions. It is in the catalogue and held by admin; who else holds it is
+	// open — see db/migrations/rbac/1700000180 and WP7 task P7.5. Declaring it
+	// here is what lets a handler name it without a bare string.
+	PermContentReadPublished Permission = "content.read.published"
+
+	PermContentCreate  Permission = "content.create"
+	PermContentEdit    Permission = "content.edit"
+	PermContentReview  Permission = "content.review"
+	PermContentPublish Permission = "content.publish"
 )
 
 // All is every permission this build knows about. An integration test compares
@@ -54,6 +67,8 @@ func All() []Permission {
 		PermAuditRead, PermAuditExport, PermAuditManage,
 		PermAdminDashboard, PermModerationRead, PermModerationAct,
 		PermSystemFlags, PermSystemJobs,
+		PermContentReadPublished,
+		PermContentCreate, PermContentEdit, PermContentReview, PermContentPublish,
 	}
 }
 

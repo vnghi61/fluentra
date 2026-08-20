@@ -10,7 +10,7 @@ tables: [content_items, content_versions, media_assets, taxonomies, content_tags
 depends_on: [storage, search, audit, ai, media]
 depended_on_by: [lesson, learning, vocabulary, grammar, reading, listening, speaking, writing, questionbank]
 spec_version: 1.0.0
-last_verified: 2026-08-06
+last_verified: 2026-08-20
 ---
 
 # content — AGENT.md

@@ -10,7 +10,7 @@ tables: [courses, course_units, lessons, activities, lesson_prerequisites]
 depends_on: [content, cache]
 depended_on_by: [learning, admin, search]
 spec_version: 1.0.0
-last_verified: 2026-08-06
+last_verified: 2026-08-20
 ---
 
 # lesson — AGENT.md

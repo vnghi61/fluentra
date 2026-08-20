@@ -10,7 +10,7 @@ tables: [roles, permissions, role_permissions, user_roles]
 depends_on: [cache, audit]
 depended_on_by: [auth, admin, content, questionbank, exam, user]
 spec_version: 1.0.0
-last_verified: 2026-08-10
+last_verified: 2026-08-20
 ---
 
 # rbac — AGENT.md
@@ -104,6 +104,22 @@ Migrations: `db/migrations/rbac/` · Queries: `db/queries/rbac/`
 
 All four tables, plus the reference data.
 
+`1700000021` added `user.reinstate` and `user.manage_sessions`. `1700000180`
+added the Phase 2 content permissions — `content.read.published`,
+`content.create`, `content.edit`, `content.review`, `content.publish` —
+backing the `/courses`, `/lessons/{id}`, `/content/*` reads and the
+`/admin/content/*`, `/admin/courses`, `/admin/lessons/*` writes declared in
+P7.1.
+
+`content.read.published` is in the catalogue and **granted to `admin` only**.
+Six module `AGENT.md` files name it on published-content reads, but
+1700000020 gave the learner role no named permissions and
+`TestAdminHoldsEverythingAndLearnerHoldsNothing` asserts that. Granting it to
+`user` inside a contract-only task would overturn a tested decision by
+accident, so the permission exists and **who else holds it is an open question
+for P7.5**, the task that writes the guard. Meanwhile the five read endpoints
+require authentication rather than being open to anyone with the URL.
+
 **The roles, the permission catalogue and the admin mapping are in the migration, not in
 `db/seeds/rbac.sql`.** Authorization is deny-by-default, so a database with an empty catalogue is
 one where every administrative operation is refused and nobody can grant themselves the ability
@@ -112,8 +128,9 @@ does the part that genuinely is development data: giving a local account the adm
 
 `admin` holds every permission, expressed as a `CROSS JOIN` rather than a list — so a permission
 added by a later migration is granted without this one having to be edited, and the two cannot
-drift apart. `user` holds none: reading your own profile is not a named permission, it is what the
-`/me` routes mean.
+drift apart. `user` held none until Phase 2: reading your own profile is not a named permission,
+it is what the `/me` routes mean — and it still holds none. The paragraph above says what that
+means for `content.read.published`.
 
 ## 6. HTTP endpoints
 

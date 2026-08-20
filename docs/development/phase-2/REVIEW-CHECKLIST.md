@@ -57,6 +57,10 @@ Check these before anything else. Each is a mistake that Phase 3 cannot route ar
 
 - [ ] Migration is reversible, and the down was actually run
 - [ ] Every foreign key has an index
+- [ ] **No cross-schema foreign key except `→ core.users(id)`** (DB4, ADR-0004). Phase 2
+      creates `learn`, `content` and `skill` side by side, so a column pointing at
+      `content.content_versions` from a `learn` table is the shape to watch for. Nothing in
+      CI checks this — `go-arch-lint` reads imports, not migrations
 - [ ] No `SELECT *`; no filtering in Go what SQL should have filtered — this is the version
       of the bug that passes tests and leaks in production
 - [ ] Query count is bounded on read paths that a screen calls on every open. Assert it in

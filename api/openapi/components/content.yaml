@@ -1,0 +1,168 @@
+CEFRLevel:
+  type: string
+  enum: [A1, A2, B1, B2, C1, C2]
+  description: CEFR proficiency level.
+
+AuthoringStatus:
+  type: string
+  enum: [draft, in_review, approved, published, archived]
+  description: Content lifecycle status.
+
+TaxonomyTag:
+  type: object
+  description: Controlled taxonomy classification.
+  required: [namespace, code, label]
+  properties:
+    namespace:
+      type: string
+      example: topic
+    code:
+      type: string
+      example: environment
+    label:
+      type: string
+      example: Environment & Climate
+
+MediaAssetSummary:
+  type: object
+  description: Attached media asset reference.
+  required: [id, kind, object_key, status]
+  properties:
+    id:
+      type: string
+      format: uuid
+    kind:
+      type: string
+      example: audio
+    object_key:
+      type: string
+      example: audio/words/environment-us.mp3
+    duration_ms:
+      type: integer
+      nullable: true
+      example: 1200
+    status:
+      type: string
+      example: ready
+
+ContentVersion:
+  type: object
+  description: Immutable content version snapshot.
+  required: [id, item_id, version, kind, body, cefr_level, status]
+  properties:
+    id:
+      type: string
+      format: uuid
+    item_id:
+      type: string
+      format: uuid
+    version:
+      type: integer
+      example: 1
+    kind:
+      type: string
+      example: vocab_word
+    body:
+      type: object
+      description: Skill-specific payload validated by kind schema.
+    cefr_level:
+      $ref: '#/CEFRLevel'
+    status:
+      $ref: '#/AuthoringStatus'
+    media_refs:
+      type: array
+      items:
+        type: string
+    tags:
+      type: array
+      items:
+        $ref: '#/TaxonomyTag'
+    published_at:
+      type: string
+      format: date-time
+      nullable: true
+
+ContentItem:
+  type: object
+  description: Stable identity for a piece of learning material.
+  required: [id, kind, slug, status, owner_id, created_at, updated_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+    kind:
+      type: string
+      example: vocab_word
+    slug:
+      type: string
+      example: environment-n-1
+    current_version_id:
+      type: string
+      format: uuid
+      nullable: true
+    status:
+      $ref: '#/AuthoringStatus'
+    owner_id:
+      type: string
+      format: uuid
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+
+ContentVersionList:
+  type: object
+  required: [items, total]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/ContentVersion'
+    total:
+      type: integer
+
+CreateContentItemRequest:
+  type: object
+  required: [kind, slug, cefr_level, body]
+  properties:
+    kind:
+      type: string
+      example: vocab_word
+    slug:
+      type: string
+      example: climate-change-reading-1
+    cefr_level:
+      $ref: '#/CEFRLevel'
+    body:
+      type: object
+      description: Initial payload for draft version.
+    tags:
+      type: array
+      items:
+        type: string
+
+UpdateDraftRequest:
+  type: object
+  required: [body]
+  properties:
+    cefr_level:
+      $ref: '#/CEFRLevel'
+    body:
+      type: object
+    tags:
+      type: array
+      items:
+        type: string
+
+ReviewDecisionRequest:
+  type: object
+  required: [decision]
+  properties:
+    decision:
+      type: string
+      enum: [approved, changes_requested]
+    comments:
+      type: string
+      nullable: true
