@@ -70,6 +70,7 @@ type applicationConfig struct {
 		Endpoint      string `koanf:"endpoint"`
 		AccessKey     string `koanf:"access_key"`
 		SecretKey     string `koanf:"secret_key"`
+		Region        string `koanf:"region"`
 		UseSSL        bool   `koanf:"use_ssl"`
 		UsePostPolicy bool   `koanf:"use_post_policy"`
 	} `koanf:"s3"`
@@ -208,6 +209,7 @@ func run(ctx context.Context) error {
 	storageClient, err := minio.New(storageHost(cfg.Storage.Endpoint), &minio.Options{
 		Creds:  credentials.NewStaticV4(cfg.Storage.AccessKey, cfg.Storage.SecretKey, ""),
 		Secure: cfg.Storage.UseSSL,
+		Region: cfg.Storage.Region,
 	})
 	if err != nil {
 		_ = redisClient.Close()
@@ -365,6 +367,7 @@ func configOptions() config.Options {
 			"cors.allowed_origins":           "",
 			"s3.use_ssl":                     false,
 			"s3.use_post_policy":             true,
+			"s3.region":                      "us-east-1",
 			"otel.exporter_otlp_endpoint":    defaultOTLPEndpoint,
 			"otel.service_name":              "fluentra-api",
 			"smtp.host":                      "localhost",
