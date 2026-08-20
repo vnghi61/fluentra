@@ -34,7 +34,20 @@ export function GoogleButton({
     try {
       const { authorization_url } = await authApi.googleStart(redirectTo);
 
-      // Attempt to open a popup window
+      const isMobile =
+        typeof window !== "undefined" &&
+        (window.innerWidth < 768 ||
+          /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+            navigator.userAgent,
+          ));
+
+      // On mobile devices, use direct redirect rather than popup
+      if (isMobile) {
+        window.location.href = authorization_url;
+        return;
+      }
+
+      // Attempt to open a popup window for desktop
       const width = 500;
       const height = 600;
       const left = window.screenX + (window.outerWidth - width) / 2;

@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -377,6 +378,27 @@ func (e UserStatus) Valid() bool {
 	case PendingDeletion:
 		return true
 	case Suspended:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UserRequestAvatarUploadIntentJSONBodyContentType.
+const (
+	Imagejpeg UserRequestAvatarUploadIntentJSONBodyContentType = "image/jpeg"
+	Imagepng  UserRequestAvatarUploadIntentJSONBodyContentType = "image/png"
+	Imagewebp UserRequestAvatarUploadIntentJSONBodyContentType = "image/webp"
+)
+
+// Valid indicates whether the value is a known member of the UserRequestAvatarUploadIntentJSONBodyContentType enum.
+func (e UserRequestAvatarUploadIntentJSONBodyContentType) Valid() bool {
+	switch e {
+	case Imagejpeg:
+		return true
+	case Imagepng:
+		return true
+	case Imagewebp:
 		return true
 	default:
 		return false
@@ -1274,6 +1296,14 @@ type AuthGoogleStartParams struct {
 	RedirectTo *string `form:"redirect_to,omitempty" json:"redirect_to,omitempty"`
 }
 
+// UserRequestAvatarUploadIntentJSONBody defines parameters for UserRequestAvatarUploadIntent.
+type UserRequestAvatarUploadIntentJSONBody struct {
+	ContentType *UserRequestAvatarUploadIntentJSONBodyContentType `json:"content_type,omitempty"`
+}
+
+// UserRequestAvatarUploadIntentJSONBodyContentType defines parameters for UserRequestAvatarUploadIntent.
+type UserRequestAvatarUploadIntentJSONBodyContentType string
+
 // AdminCreateFlagJSONRequestBody defines body for AdminCreateFlag for application/json ContentType.
 type AdminCreateFlagJSONRequestBody = CreateFeatureFlagRequest
 
@@ -1324,6 +1354,9 @@ type UserUpdateMeJSONRequestBody = UpdateMeRequest
 
 // UserConfirmAvatarJSONRequestBody defines body for UserConfirmAvatar for application/json ContentType.
 type UserConfirmAvatarJSONRequestBody = ConfirmAvatarRequest
+
+// UserRequestAvatarUploadIntentJSONRequestBody defines body for UserRequestAvatarUploadIntent for application/json ContentType.
+type UserRequestAvatarUploadIntentJSONRequestBody UserRequestAvatarUploadIntentJSONBody
 
 // UserReplaceMyPreferencesJSONRequestBody defines body for UserReplaceMyPreferences for application/json ContentType.
 type UserReplaceMyPreferencesJSONRequestBody = ReplacePreferencesRequest
@@ -6735,6 +6768,7 @@ func (response UserConfirmAvatar422ApplicationProblemPlusJSONResponse) VisitUser
 }
 
 type UserRequestAvatarUploadIntentRequestObject struct {
+	Body *UserRequestAvatarUploadIntentJSONRequestBody
 }
 
 type UserRequestAvatarUploadIntentResponseObject interface {
@@ -8657,6 +8691,16 @@ func (sh *strictHandler) UserConfirmAvatar(w http.ResponseWriter, r *http.Reques
 func (sh *strictHandler) UserRequestAvatarUploadIntent(w http.ResponseWriter, r *http.Request) {
 	var request UserRequestAvatarUploadIntentRequestObject
 
+	var body UserRequestAvatarUploadIntentJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if !errors.Is(err, io.EOF) {
+			sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+			return
+		}
+	} else {
+		request.Body = &body
+	}
+
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.UserRequestAvatarUploadIntent(ctx, request.(UserRequestAvatarUploadIntentRequestObject))
 	}
@@ -9354,38 +9398,40 @@ var swaggerSpec = []string{
 	"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",
-	"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",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

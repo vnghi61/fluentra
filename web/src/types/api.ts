@@ -3310,7 +3310,23 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        /** @description Optional MIME type the client intends to upload. When omitted the server falls back to image/jpeg. Must be image/jpeg, image/png or image/webp. */
+        requestBody?: {
+            content: {
+                /**
+                 * @example {
+                 *       "content_type": "image/png"
+                 *     }
+                 */
+                "application/json": {
+                    /**
+                     * @example image/png
+                     * @enum {string}
+                     */
+                    content_type?: "image/jpeg" | "image/png" | "image/webp";
+                };
+            };
+        };
         responses: {
             /** @description Upload intent generated. */
             200: {

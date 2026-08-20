@@ -12,8 +12,13 @@ export function OAuthCallbackPage(): React.JSX.Element {
   const [error, setError] = React.useState<string | null>(null);
   const [errorCode, setErrorCode] = React.useState<string | null>(null);
 
+  const calledRef = React.useRef(false);
+
   React.useEffect(() => {
     async function processCallback() {
+      if (calledRef.current) return;
+      calledRef.current = true;
+
       const urlParams = new URLSearchParams(window.location.search);
       const code = urlParams.get("code");
       const state = urlParams.get("state");
@@ -43,6 +48,10 @@ export function OAuthCallbackPage(): React.JSX.Element {
               window.location.origin,
             );
             window.close();
+            // Fallback in case window.close() is prevented by browser policy
+            setTimeout(() => {
+              void navigate({ to: "/" });
+            }, 600);
             return;
           } catch {
             // If postMessage fails, proceed with standard navigation

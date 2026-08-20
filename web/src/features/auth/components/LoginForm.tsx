@@ -73,8 +73,10 @@ export function LoginForm({ onSuccess }: LoginFormProps): React.JSX.Element {
       <GoogleButton onError={(msg) => setServerError(msg)} />
 
       <div className="relative flex items-center justify-center">
-        <div className="w-full border-t border-slate-800" />
-        <span className="bg-slate-900 px-3 text-xs uppercase tracking-wider text-slate-500">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-slate-800" />
+        </div>
+        <span className="relative bg-slate-900 px-3 text-xs uppercase tracking-wider text-slate-500">
           Or continue with email
         </span>
       </div>

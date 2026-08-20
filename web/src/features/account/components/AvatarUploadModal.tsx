@@ -52,8 +52,10 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
     setError(null);
 
     try {
-      // 1. Request presigned intent from API
-      const intent = await accountApi.requestAvatarUploadIntent();
+      // 1. Request presigned intent from API with matching content type
+      const intent = await accountApi.requestAvatarUploadIntent(
+        selectedFile.type,
+      );
 
       // 2. Upload bytes directly to storage (MinIO/S3), completely bypassing API
       await accountApi.uploadAvatarDirect(intent, selectedFile);

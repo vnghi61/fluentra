@@ -171,7 +171,10 @@ export const forgotPasswordRoute = createRoute({
 
 export const oauthCallbackRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/auth/callback/google",
+  // Matches OAUTH_GOOGLE_REDIRECT_URL in .env.example / .env.prod. The path
+  // Google returns the code to must be a route the SPA owns, or the callback
+  // renders a 404 and the single-use state expires before it is ever spent.
+  path: "/auth/google/callback",
   component: OAuthCallbackPage,
 });
 

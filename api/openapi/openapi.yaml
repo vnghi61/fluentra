@@ -1256,6 +1256,23 @@ paths:
         Issues a presigned upload policy for an avatar image (JPEG, PNG, or
         WebP; max 5 MB).
       x-permission: self
+      requestBody:
+        required: false
+        description: >-
+          Optional MIME type the client intends to upload. When omitted the
+          server falls back to image/jpeg. Must be image/jpeg, image/png or
+          image/webp.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content_type:
+                  type: string
+                  enum: [image/jpeg, image/png, image/webp]
+                  example: image/png
+            example:
+              content_type: image/png
       responses:
         '200':
           description: Upload intent generated.
