@@ -24,19 +24,19 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref,
   ) => {
     const baseStyles =
-      "inline-flex items-center justify-center font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 select-none cursor-pointer rounded-lg";
+      "inline-flex items-center justify-center font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:pointer-events-none disabled:opacity-50 select-none cursor-pointer rounded-lg";
 
     const variantStyles = {
       primary:
-        "bg-indigo-600 text-white hover:bg-indigo-700 active:bg-indigo-800 shadow-sm",
+        "bg-primary text-primary-fg hover:bg-primary-hover active:bg-primary-hover shadow-sm",
       secondary:
-        "bg-slate-800 text-slate-100 hover:bg-slate-700 active:bg-slate-600 border border-slate-700",
+        "bg-surface-muted text-text hover:bg-surface border border-border",
       outline:
-        "border border-slate-700 bg-transparent text-slate-200 hover:bg-slate-800 active:bg-slate-700",
+        "border border-border bg-transparent text-text hover:bg-surface-muted",
       ghost:
-        "bg-transparent text-slate-300 hover:bg-slate-800 hover:text-slate-100",
+        "bg-transparent text-primary-accent hover:bg-surface-muted hover:text-primary-accent",
       destructive:
-        "bg-rose-600 text-white hover:bg-rose-700 active:bg-rose-800 shadow-sm",
+        "bg-danger-fill text-primary-fg hover:bg-danger-fill-hover shadow-sm",
     };
 
     const sizeStyles = {

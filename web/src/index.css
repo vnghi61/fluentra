@@ -28,7 +28,16 @@
   --color-text-muted: var(--text-muted);
   --color-success: #22c55e;
   --color-warning: #f59e0b;
+  /*
+   * The danger *fill* and the danger *accent* cannot be the same value.
+   * #ef4444 reads at 5.36:1 on the dark surface (fine for error text) but only
+   * 3.76:1 against white — white text on the destructive button would fail
+   * WCAG AA. The fill stays darker and pairs with --color-primary-fg; anything
+   * drawn *on* a surface keeps using --color-danger.
+   */
   --color-danger: #ef4444;
+  --color-danger-fill: #dc2626;
+  --color-danger-fill-hover: #b91c1c;
 }
 
 :root {
@@ -36,7 +45,7 @@
   --surface: #ffffff;
   --surface-muted: #f8fafc;
   --surface-card: #ffffff;
-  --border: #e2e8f0;
+  --border: #64748b;
   --text: #0f172a;
   --text-muted: #64748b;
   --primary-accent: #2563eb;
@@ -47,7 +56,7 @@
   --surface: #020617;
   --surface-muted: #0f172a;
   --surface-card: #0b1120;
-  --border: #1e293b;
+  --border: #94a3b8;
   --text: #f8fafc;
   --text-muted: #94a3b8;
   --primary-accent: #60a5fa;

@@ -119,6 +119,8 @@ describe("Design System Tokens (P6.1)", () => {
       "color-success",
       "color-warning",
       "color-danger",
+      "color-danger-fill",
+      "color-danger-fill-hover",
     ]) {
       expect(theme.has(name), `@theme must declare --${name}`).toBe(true);
     }
