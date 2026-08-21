@@ -33,16 +33,33 @@ Definition of Done and the bundle rule are there and are not repeated here.
 Verified 2026-08-20. Do not re-derive this; do check it is still true.
 
 ```
-web/src/index.css                 16 lines. @import "tailwindcss", @custom-variant dark, a body rule.
-                                  No token layer. No tailwind.config.js — and there must not be one.
+web/src/index.css                 @theme tokens (P6.1), @custom-variant dark, per-mode :root/.dark.
+                                  No tailwind.config.js — and there must not be one.
+web/src/test/tokens.test.ts       parses index.css and asserts the contrast of every pair (P6.1)
 web/src/components/ui/            button, checkbox, form, input, label, otp-input
+                                  — still on hardcoded indigo/slate. That is P6.2.
 web/src/components/layout/        AppShell.tsx  (one file)
 web/src/features/                 auth, account, admin — each api/ components/ model/ index.ts
 web/src/app/router.tsx            routes declared in code, lazy via lazyRouteComponent
 web/src/routes/                   HomePage.tsx (a trace-proof harness), PracticePage.tsx
 web/src/i18n/                     en.json, vi.json
-initial bundle                    166.4 kB gzipped of a 200 kB budget
+initial bundle                    166.6 kB gzipped of a 200 kB budget
 ```
+
+**P6.1 is done.** The tokens it left you, and the one that is not obvious:
+
+| Token | Use it for |
+|---|---|
+| `--color-primary` · `--color-primary-fg` · `--color-primary-hover` | the button **fill** and its own foreground. Fixed across both themes |
+| `--color-primary-accent` | anything drawn **on a surface** — links, active nav, inline icons. Per-mode |
+| `--color-surface` · `-muted` · `-card` · `--color-border` · `--color-text` · `-muted` | per-mode, via a `var(--x)` redirect |
+| `--color-success` · `--color-warning` · `--color-danger` | fixed |
+
+The two blues are not interchangeable and the split is the whole reason P6.1
+needed a second token: `#2563eb` is 5.17:1 on the light surface but **3.90:1** on
+the dark one — fine for a focus ring, a WCAG failure for a link. Using
+`--color-primary` for text in dark mode reintroduces exactly the bug P6.2 exists
+to remove.
 
 **Tailwind v4 defines tokens in CSS, with `@theme`. It does not read `tailwind.config.js`.**
 An agent working from Tailwind v3 memory will create that file, the build will ignore it in
@@ -72,7 +89,7 @@ built-ins. If you find yourself writing `module.exports = { theme: ...`, stop.
 | **Do** | Replace every hardcoded `indigo-*`, `slate-*` and `rose-*` class with a semantic token. **Light mode is currently broken and this task fixes it, it does not preserve it.** `button.tsx` has `outline: "… text-slate-200"` and `ghost: "… text-slate-300"` with no `dark:` prefix, on a `bg-white` body: roughly 1.3:1, a shipped WCAG failure. `secondary` is a dark-theme button rendered on a light page. Every variant must be legible in both themes. |
 | **Acceptance** | `grep -rE "indigo-\|slate-[0-9]" web/src/components/ui/` returns nothing. A test computes the contrast ratio of every button variant against its background in both themes and asserts ≥ 4.5:1 for text, ≥ 3:1 for borders and focus rings. **Phase 1's 39 E2E tests still pass** — they exercise every auth screen and are the regression net for this task. |
 | **Tests** | `contrast.test.ts` — table-driven over `variant × theme`. Not a snapshot test; a snapshot would happily record the broken colour. |
-| **Trap** | The focus ring is `focus-visible:ring-indigo-500` today. It becomes `--color-primary`, and primary blue on a blue-tinted surface can fall under 3:1 — check the ring, not just the text. |
+| **Trap** | The focus ring is `focus-visible:ring-indigo-500` today. It becomes `--color-primary` — the ring may, because it only needs 3:1. **Text may not.** Link and ghost-button text takes `--color-primary-accent`; `--color-primary` as text is 3.90:1 on the dark surface, which is the failure this work package exists to remove. `contrast.test.ts` extends `tokens.test.ts`, it does not replace it. |
 
 ## P6.3 — The four primitives the shell and dashboard need `S`
 
