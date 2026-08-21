@@ -47,14 +47,14 @@ export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
             className={cn(
               // The hit area is 44×44 even though the visual box is 20×20: the
               // clickable element, not the visual, is the touch target (R1).
-              "flex size-11 items-center justify-center rounded-lg cursor-pointer peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-500 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-slate-950",
+              "flex size-11 items-center justify-center rounded-lg cursor-pointer peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-surface",
               disabled && "cursor-not-allowed",
             )}
           >
             <span
               className={cn(
-                "flex h-5 w-5 items-center justify-center rounded-md border border-slate-700 bg-slate-900/80 transition-all",
-                checked && "bg-indigo-600 border-indigo-600 text-white",
+                "flex h-5 w-5 items-center justify-center rounded-md border border-border bg-surface transition-all",
+                checked && "bg-primary border-primary text-primary-fg",
                 disabled && "opacity-50 cursor-not-allowed",
                 className,
               )}
@@ -67,7 +67,7 @@ export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
           <label
             htmlFor={inputId}
             className={cn(
-              "text-sm font-medium text-slate-300 cursor-pointer select-none",
+              "text-sm font-medium text-text cursor-pointer select-none",
               disabled && "opacity-50 cursor-not-allowed",
             )}
           >
