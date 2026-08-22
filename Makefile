@@ -224,11 +224,16 @@ cover: ## Coverage report
 # does. Raise it when coverage rises; never lower it to make a build pass.
 #
 # Raised from 45.0 when the gate started measuring hand-written code only (see
-# cover-gate). Over that set, `main` reads 61.6% and this branch 67.2%. The
-# ratchet sits under both rather than just under the higher one: pinning it to
-# a single branch's figure makes the next task fail on its first commit for
+# cover-gate). Over that set, `main` read 61.6% and the branch of the day 67.2%.
+# The ratchet sits under both rather than just under the higher one: pinning it
+# to a single branch's figure makes the next task fail on its first commit for
 # reasons that have nothing to do with its tests.
-COVERAGE_MIN ?= 60.0
+#
+# Raised again from 60.0 when cover-check gained -coverpkg. The flag does not
+# add tests, it stops discarding the ones that exist, so every branch's figure
+# moved at once: measured against postgres 17 and redis 7.4, `main` reads 71.4%
+# and feat/content-module 72.8%. Same rule, so the ratchet sits under both.
+COVERAGE_MIN ?= 70.0
 
 # -coverpkg=./... is what makes the integration suite count. Without it each
 # test binary instruments only its own package, so a module_integration_test.go
