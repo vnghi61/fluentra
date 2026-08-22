@@ -114,11 +114,15 @@ describe("Design System Tokens (P6.1)", () => {
       "color-surface-muted",
       "color-surface-card",
       "color-border",
+      "color-border-subtle",
       "color-text",
       "color-text-muted",
       "color-success",
       "color-warning",
       "color-danger",
+      "color-success-accent",
+      "color-warning-accent",
+      "color-danger-accent",
       "color-danger-fill",
       "color-danger-fill-hover",
     ]) {
@@ -132,9 +136,13 @@ describe("Design System Tokens (P6.1)", () => {
       "surface-muted",
       "surface-card",
       "border",
+      "border-subtle",
       "text",
       "text-muted",
       "primary-accent",
+      "success-accent",
+      "warning-accent",
+      "danger-accent",
     ]) {
       expect(light.has(name), `:root must define --${name}`).toBe(true);
       expect(dark.has(name), `.dark must define --${name}`).toBe(true);
@@ -154,9 +162,13 @@ describe("Design System Tokens (P6.1)", () => {
       "color-surface-muted",
       "color-surface-card",
       "color-border",
+      "color-border-subtle",
       "color-text",
       "color-text-muted",
       "color-primary-accent",
+      "color-success-accent",
+      "color-warning-accent",
+      "color-danger-accent",
     ]) {
       expect(
         theme.get(token),
