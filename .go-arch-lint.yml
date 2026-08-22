@@ -120,6 +120,7 @@ components:
   g_rbac:        { in: generated/rbac/sqlc }
   g_audit:       { in: generated/audit/sqlc }
   g_admin:       { in: generated/admin/sqlc }
+  g_content:     { in: generated/content/sqlc }
 
   # platform capabilities
   p_telemetry:   { in: platform/telemetry/** }
@@ -253,6 +254,7 @@ deps:
   g_rbac:      { anyVendorDeps: true }
   g_audit:     { anyVendorDeps: true }
   g_admin:     { anyVendorDeps: true }
+  g_content:   { anyVendorDeps: true }
 
   # A platform capability exists to wrap a vendor SDK, so each may import one.
   # Business modules deliberately may not: they reach external systems through
