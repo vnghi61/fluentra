@@ -4985,7 +4985,9 @@ export interface operations {
             query?: {
                 kind?: string;
                 cefr_level?: components["schemas"]["CEFRLevel"];
+                /** @description Maximum versions to return. */
                 limit?: number;
+                /** @description Versions to skip before the page starts. */
                 offset?: number;
             };
             header?: never;
