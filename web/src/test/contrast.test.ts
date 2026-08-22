@@ -4,7 +4,7 @@ import { createElement } from "react";
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { Badge } from "@/components/ui/badge";
+import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Button, type ButtonProps } from "@/components/ui/button";
 
 const indexCss = readFileSync(
@@ -69,8 +69,6 @@ function contrast(a: string, b: string): number {
   const lo = Math.min(la, lb);
   return (hi + 0.05) / (lo + 0.05);
 }
-
-
 
 describe("UI Primitives Contrast Verification (P6.2)", () => {
   const theme = customProperties(block(indexCss, "@theme"));
@@ -263,7 +261,10 @@ describe("UI Primitives Contrast Verification (P6.2)", () => {
             ),
           );
           const button = container.querySelector("button");
-          expect(button, `${variant} variant renders a <button>`).not.toBeNull();
+          expect(
+            button,
+            `${variant} variant renders a <button>`,
+          ).not.toBeNull();
           // A full-class match, not a substring: `bg-danger-fill` is a prefix of
           // `hover:bg-danger-fill-hover`, so a naive toContain would pass a
           // broken base fill. Split on whitespace and compare whole classes.
@@ -346,7 +347,11 @@ describe("UI Primitives Contrast Verification (P6.2)", () => {
           `${mode} mode: control border must differ from subtle hairline border`,
         ).not.toBe(borderSubtle);
         // Subtle must be strictly weaker (closer to surface) than control border
-        for (const bgToken of ["color-surface", "color-surface-card", "color-surface-muted"]) {
+        for (const bgToken of [
+          "color-surface",
+          "color-surface-card",
+          "color-surface-muted",
+        ]) {
           const bg = resolve(bgToken, vars);
           const controlRatio = contrast(borderControl, bg);
           const subtleRatio = contrast(borderSubtle, bg);
@@ -364,17 +369,57 @@ describe("UI Primitives Contrast Verification (P6.2)", () => {
     // measured fg on the underlying surface. The previous primary/10 tint gave
     // 4.49:1 (just under AA) because the tinted bg inches toward the fg hue.
     const badgeVariants = [
-      { variant: "primary", fgToken: "color-primary-accent", bgToken: "color-surface-card" },
-      { variant: "primary", fgToken: "color-primary-accent", bgToken: "color-surface" },
-      { variant: "secondary", fgToken: "color-text-muted", bgToken: "color-surface-muted" },
-      { variant: "outline", fgToken: "color-text", bgToken: "color-surface-card" },
+      {
+        variant: "primary",
+        fgToken: "color-primary-accent",
+        bgToken: "color-surface-card",
+      },
+      {
+        variant: "primary",
+        fgToken: "color-primary-accent",
+        bgToken: "color-surface",
+      },
+      {
+        variant: "secondary",
+        fgToken: "color-text-muted",
+        bgToken: "color-surface-muted",
+      },
+      {
+        variant: "outline",
+        fgToken: "color-text",
+        bgToken: "color-surface-card",
+      },
       { variant: "outline", fgToken: "color-text", bgToken: "color-surface" },
-      { variant: "success", fgToken: "color-success-accent", bgToken: "color-surface-card" },
-      { variant: "success", fgToken: "color-success-accent", bgToken: "color-surface" },
-      { variant: "warning", fgToken: "color-warning-accent", bgToken: "color-surface-card" },
-      { variant: "warning", fgToken: "color-warning-accent", bgToken: "color-surface" },
-      { variant: "danger", fgToken: "color-danger-accent", bgToken: "color-surface-card" },
-      { variant: "danger", fgToken: "color-danger-accent", bgToken: "color-surface" },
+      {
+        variant: "success",
+        fgToken: "color-success-accent",
+        bgToken: "color-surface-card",
+      },
+      {
+        variant: "success",
+        fgToken: "color-success-accent",
+        bgToken: "color-surface",
+      },
+      {
+        variant: "warning",
+        fgToken: "color-warning-accent",
+        bgToken: "color-surface-card",
+      },
+      {
+        variant: "warning",
+        fgToken: "color-warning-accent",
+        bgToken: "color-surface",
+      },
+      {
+        variant: "danger",
+        fgToken: "color-danger-accent",
+        bgToken: "color-surface-card",
+      },
+      {
+        variant: "danger",
+        fgToken: "color-danger-accent",
+        bgToken: "color-surface",
+      },
     ] as const;
 
     for (const { variant, fgToken, bgToken } of badgeVariants) {
@@ -393,7 +438,7 @@ describe("UI Primitives Contrast Verification (P6.2)", () => {
   });
 
   describe("Badge variants reference the verified tokens (component-level)", () => {
-    const badgeVariantClasses: Record<string, readonly string[]> = {
+    const badgeVariantClasses: Record<BadgeVariant, readonly string[]> = {
       primary: ["text-primary-accent", "border-primary/20"],
       secondary: ["bg-surface-muted", "text-text-muted"],
       outline: ["text-text", "border-border-subtle"],
@@ -402,18 +447,19 @@ describe("UI Primitives Contrast Verification (P6.2)", () => {
       danger: ["text-danger-accent", "border-danger/20"],
     };
 
-    for (const [variant, tokens] of Object.entries(badgeVariantClasses)) {
+    const entries = Object.entries(badgeVariantClasses) as [
+      BadgeVariant,
+      readonly string[],
+    ][];
+
+    for (const [variant, tokens] of entries) {
       for (const token of tokens) {
         it(`renders ${variant} with the ${token} class`, () => {
           const { container } = render(
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            createElement(Badge, { variant: variant as any, "data-testid": `badge-${variant}` } as any, variant.toUpperCase()),
+            createElement(Badge, { variant }, variant.toUpperCase()),
           );
-          const badge = container.querySelector(`[data-testid="badge-${variant}"]`);
-          expect(
-            badge,
-            `${variant} variant renders a <span>`,
-          ).not.toBeNull();
+          const badge = container.querySelector("span");
+          expect(badge, `${variant} variant renders a <span>`).not.toBeNull();
           const classes = new Set(badge!.className.split(/\s+/));
           expect(
             classes.has(token),

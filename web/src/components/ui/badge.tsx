@@ -1,19 +1,17 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
+/** The semantic status a badge reports. Exported so callers and tests can
+ * enumerate the set without restating it. */
+export type BadgeVariant =
+  "primary" | "secondary" | "outline" | "success" | "warning" | "danger";
+
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
-  variant?:
-    | "primary"
-    | "secondary"
-    | "outline"
-    | "success"
-    | "warning"
-    | "danger"
-    | undefined;
+  variant?: BadgeVariant | undefined;
   icon?: React.ReactNode | undefined;
 }
 
-export const badgeVariants = {
+export const badgeVariants: Record<BadgeVariant, string> = {
   primary: "border-primary/20 bg-transparent text-primary-accent",
   secondary: "border-border-subtle bg-surface-muted text-text-muted",
   outline: "border-border-subtle bg-transparent text-text",
