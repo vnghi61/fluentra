@@ -77,11 +77,9 @@ func (h *Handler) AdminRoutes(router chi.Router) {
 
 func (h *Handler) browse(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	if h.guard != nil {
-		if err := h.guard.Require(ctx, PermContentReadPublished); err != nil {
-			httpx.WriteProblem(w, r, err)
-			return
-		}
+	if err := h.guard.Require(ctx, PermContentReadPublished); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
 	}
 
 	filter := contract.BrowseFilter{}
@@ -121,11 +119,9 @@ func (h *Handler) browse(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) getBySlug(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	if h.guard != nil {
-		if err := h.guard.Require(ctx, PermContentReadPublished); err != nil {
-			httpx.WriteProblem(w, r, err)
-			return
-		}
+	if err := h.guard.Require(ctx, PermContentReadPublished); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
 	}
 
 	slug := chi.URLParam(r, "slug")
@@ -145,11 +141,9 @@ func (h *Handler) getBySlug(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) createItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	if h.guard != nil {
-		if err := h.guard.Require(ctx, PermContentCreate); err != nil {
-			httpx.WriteProblem(w, r, err)
-			return
-		}
+	if err := h.guard.Require(ctx, PermContentCreate); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
 	}
 
 	actor, ok := httpx.ActorFrom(ctx)
@@ -181,11 +175,9 @@ func (h *Handler) createItem(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) updateDraft(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	if h.guard != nil {
-		if err := h.guard.Require(ctx, PermContentEdit); err != nil {
-			httpx.WriteProblem(w, r, err)
-			return
-		}
+	if err := h.guard.Require(ctx, PermContentEdit); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
 	}
 
 	actor, ok := httpx.ActorFrom(ctx)
@@ -222,11 +214,9 @@ func (h *Handler) updateDraft(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) submitForReview(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	if h.guard != nil {
-		if err := h.guard.Require(ctx, PermContentEdit); err != nil {
-			httpx.WriteProblem(w, r, err)
-			return
-		}
+	if err := h.guard.Require(ctx, PermContentEdit); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
 	}
 
 	actor, ok := httpx.ActorFrom(ctx)
@@ -253,11 +243,9 @@ func (h *Handler) submitForReview(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) review(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	if h.guard != nil {
-		if err := h.guard.Require(ctx, PermContentReview); err != nil {
-			httpx.WriteProblem(w, r, err)
-			return
-		}
+	if err := h.guard.Require(ctx, PermContentReview); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
 	}
 
 	actor, ok := httpx.ActorFrom(ctx)
@@ -299,11 +287,9 @@ func (h *Handler) review(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) publish(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	if h.guard != nil {
-		if err := h.guard.Require(ctx, PermContentPublish); err != nil {
-			httpx.WriteProblem(w, r, err)
-			return
-		}
+	if err := h.guard.Require(ctx, PermContentPublish); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
 	}
 
 	actor, ok := httpx.ActorFrom(ctx)
@@ -330,11 +316,9 @@ func (h *Handler) publish(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) archive(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	if h.guard != nil {
-		if err := h.guard.Require(ctx, PermContentPublish); err != nil {
-			httpx.WriteProblem(w, r, err)
-			return
-		}
+	if err := h.guard.Require(ctx, PermContentPublish); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
 	}
 
 	actor, ok := httpx.ActorFrom(ctx)
@@ -358,5 +342,3 @@ func (h *Handler) archive(w http.ResponseWriter, r *http.Request) {
 
 	httpx.WriteJSON(w, r, http.StatusOK, toContentItemResponse(item))
 }
-
-

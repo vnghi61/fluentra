@@ -11,6 +11,12 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/content/domain"
 )
 
+const (
+	testKind      = "vocab_word"
+	testObjectKey = "audio/a.mp3"
+	testTagCode   = "greetings"
+)
+
 func TestToDomainItem(t *testing.T) {
 	t.Parallel()
 	id := uuid.New()
@@ -19,7 +25,7 @@ func TestToDomainItem(t *testing.T) {
 	verID := uuid.New()
 	row := sqlc.ContentContentItem{
 		ID:               id,
-		Kind:             "vocab_word",
+		Kind:             testKind,
 		Slug:             "hello-world",
 		CurrentVersionID: &verID,
 		Status:           "draft",
@@ -44,20 +50,21 @@ func TestToDomainVersion(t *testing.T) {
 	pubAt := now
 	body := json.RawMessage(`{"word":"hello"}`)
 	row := sqlc.ContentContentVersion{
-		ID:        id,
-		ItemID:    itemID,
-		Version:   2,
-		Kind:      "vocab_word",
-		Body:      []byte(body),
-		CefrLevel: "B1",
-		Status:    "published",
-		MediaRefs: []string{"audio/a.mp3"},
+		ID:          id,
+		ItemID:      itemID,
+		Version:     2,
+		Kind:        testKind,
+		Body:        []byte(body),
+		CefrLevel:   "B1",
+		Status:      "published",
+		MediaRefs:   []string{testObjectKey},
 		PublishedAt: &pubAt,
-		CreatedAt: now,
-		UpdatedAt: now,
+		CreatedAt:   now,
+		UpdatedAt:   now,
 	}
 	got := toDomainVersion(row)
-	if got.ID != id || got.ItemID != itemID || got.Version != 2 || got.CEFRLevel != "B1" || got.Status != domain.StatusPublished {
+	if got.ID != id || got.ItemID != itemID || got.Version != 2 ||
+		got.CEFRLevel != "B1" || got.Status != domain.StatusPublished {
 		t.Errorf("toDomainVersion mismatch: %+v", got)
 	}
 	if string(got.Body) != string(body) {
@@ -71,16 +78,16 @@ func TestToContractVersion(t *testing.T) {
 	itemID := uuid.New()
 	now := time.Now().UTC()
 	v := domain.Version{
-		ID:        id,
-		ItemID:    itemID,
-		Version:   1,
-		Kind:      "vocab_word",
-		Body:      json.RawMessage(`{}`),
-		CEFRLevel: "A1",
-		Status:    domain.StatusPublished,
+		ID:          id,
+		ItemID:      itemID,
+		Version:     1,
+		Kind:        testKind,
+		Body:        json.RawMessage(`{}`),
+		CEFRLevel:   "A1",
+		Status:      domain.StatusPublished,
 		PublishedAt: &now,
 	}
-	tags := []string{"greetings", "topic-a"}
+	tags := []string{testTagCode, "topic-a"}
 	c := ToContractVersion(v, tags)
 	if c.ID != id || c.CEFRLevel != "A1" || len(c.Tags) != 2 {
 		t.Errorf("ToContractVersion mismatch: %+v", c)
@@ -102,19 +109,19 @@ func TestToDomainMediaAsset(t *testing.T) {
 	sz := int64(1024)
 	mt := "audio/mpeg"
 	row := sqlc.ContentMediaAsset{
-		ID:        id,
-		ObjectKey: "audio/a.mp3",
-		Kind:      "audio",
+		ID:         id,
+		ObjectKey:  testObjectKey,
+		Kind:       "audio",
 		DurationMs: &dur,
-		Checksum: &cs,
-		Status:    "ready",
-		ByteSize: &sz,
-		MimeType: &mt,
-		CreatedAt: now,
-		UpdatedAt: now,
+		Checksum:   &cs,
+		Status:     "ready",
+		ByteSize:   &sz,
+		MimeType:   &mt,
+		CreatedAt:  now,
+		UpdatedAt:  now,
 	}
 	got := toDomainMediaAsset(row)
-	if got.ObjectKey != "audio/a.mp3" || got.Status != domain.MediaStatusReady {
+	if got.ObjectKey != testObjectKey || got.Status != domain.MediaStatusReady {
 		t.Errorf("toDomainMediaAsset mismatch: %+v", got)
 	}
 }
@@ -126,13 +133,13 @@ func TestToDomainTaxonomyAndReview(t *testing.T) {
 	taxRow := sqlc.ContentTaxonomy{
 		ID:        id,
 		Namespace: "topic",
-		Code:      "greetings",
+		Code:      testTagCode,
 		Label:     "Greetings",
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
 	tax := toDomainTaxonomy(taxRow)
-	if tax.Code != "greetings" {
+	if tax.Code != testTagCode {
 		t.Errorf("toDomainTaxonomy: %+v", tax)
 	}
 	verID := uuid.New()

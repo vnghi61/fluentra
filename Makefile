@@ -230,8 +230,15 @@ cover: ## Coverage report
 # reasons that have nothing to do with its tests.
 COVERAGE_MIN ?= 60.0
 
+# -coverpkg=./... is what makes the integration suite count. Without it each
+# test binary instruments only its own package, so a module_integration_test.go
+# in package `content_test` credits `modules/content` and nothing else — the
+# repository layer it drives through the whole authoring workflow reads 0%
+# forever, and no amount of integration testing can move it. The flag only ever
+# adds attribution to blocks that are already in the profile, so the total can
+# rise but never fall; the cost is that every test binary links the whole tree.
 cover-check: ## Run the integration suite for coverage, then gate on it
-	go test -tags=integration -coverprofile=coverage.out -covermode=atomic ./... > /dev/null
+	go test -tags=integration -coverpkg=./... -coverprofile=coverage.out -covermode=atomic ./... > /dev/null
 	$(MAKE) cover-gate
 
 # cover-gate evaluates an existing coverage.out without re-running anything, so

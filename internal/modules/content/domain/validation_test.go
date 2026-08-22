@@ -8,6 +8,9 @@ import (
 	"github.com/fluentra/fluentra/internal/shared/apperr"
 )
 
+// codeInvalidSlug is the apperr code ValidateSlug returns for every bad shape.
+const codeInvalidSlug = "INVALID_SLUG"
+
 func TestValidateSlug(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -18,12 +21,12 @@ func TestValidateSlug(t *testing.T) {
 		{"hello-world", false, ""},
 		{"a", false, ""},
 		{"hello-world-123", false, ""},
-		{"", true, "INVALID_SLUG"},
-		{"Hello-World", true, "INVALID_SLUG"},
-		{"hello_world", true, "INVALID_SLUG"},
-		{"hello--world", true, "INVALID_SLUG"},
-		{"-hello", true, "INVALID_SLUG"},
-		{"hello-", true, "INVALID_SLUG"},
+		{"", true, codeInvalidSlug},
+		{"Hello-World", true, codeInvalidSlug},
+		{"hello_world", true, codeInvalidSlug},
+		{"hello--world", true, codeInvalidSlug},
+		{"-hello", true, codeInvalidSlug},
+		{"hello-", true, codeInvalidSlug},
 	}
 	for _, tc := range cases {
 		t.Run(tc.slug, func(t *testing.T) {
