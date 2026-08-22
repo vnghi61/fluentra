@@ -1,7 +1,10 @@
 import React, { useState } from "react";
 import { Flag, Shield, Users } from "lucide-react";
 import { AdminUserList, AdminFeatureFlags } from "@/features/admin";
-import { PERMISSIONS, usePermissions } from "@/features/admin/model/permissions";
+import {
+  PERMISSIONS,
+  usePermissions,
+} from "@/features/admin/model/permissions";
 
 type AdminTab = "users" | "flags";
 
@@ -43,7 +46,8 @@ export function AdminPage(): React.JSX.Element {
           Platform Administration
         </h1>
         <p className="text-sm text-slate-400">
-          Manage platform learners, enforce moderation, and configure system feature flags.
+          Manage platform learners, enforce moderation, and configure system
+          feature flags.
         </p>
       </header>
 

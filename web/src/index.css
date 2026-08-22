@@ -23,7 +23,6 @@
   --color-surface: var(--surface);
   --color-surface-muted: var(--surface-muted);
   --color-surface-card: var(--surface-card);
-  --color-border: var(--border);
   --color-text: var(--text);
   --color-text-muted: var(--text-muted);
   --color-success: #22c55e;
@@ -38,6 +37,27 @@
   --color-danger: #ef4444;
   --color-danger-fill: #dc2626;
   --color-danger-fill-hover: #b91c1c;
+  /*
+   * Same split as primary/primary-accent, per semantic colour: the base
+   * success/warning/danger values are fills and indicators; the *-accent
+   * values are what text on a surface uses. #22c55e is 2.28:1 and #f59e0b
+   * 2.15:1 on white — neither can carry text, and #ef4444 sits at 3.76:1,
+   * under the 4.5:1 a small status label needs. The accents are per-mode:
+   * darkened for light surfaces, lightened for dark ones.
+   */
+  --color-success-accent: var(--success-accent);
+  --color-warning-accent: var(--warning-accent);
+  --color-danger-accent: var(--danger-accent);
+  /*
+   * Two borders, two jobs. --color-border is for anything that marks an
+   * interactive control — inputs, checkboxes, outline buttons — and must
+   * hold 3:1 against its surface (WCAG 1.4.11), which is why P6.2 raised it
+   * to slate-500-ish values. --color-border-subtle is decoration only: card
+   * edges, dividers, hairlines around static containers. It carries no
+   * contrast duty and painting a control with it would fail 1.4.11.
+   */
+  --color-border: var(--border);
+  --color-border-subtle: var(--border-subtle);
 }
 
 :root {
@@ -46,9 +66,13 @@
   --surface-muted: #f8fafc;
   --surface-card: #ffffff;
   --border: #64748b;
+  --border-subtle: #e2e8f0;
   --text: #0f172a;
   --text-muted: #64748b;
   --primary-accent: #2563eb;
+  --success-accent: #15803d;
+  --warning-accent: #b45309;
+  --danger-accent: #b91c1c;
 }
 
 .dark {
@@ -57,9 +81,13 @@
   --surface-muted: #0f172a;
   --surface-card: #0b1120;
   --border: #94a3b8;
+  --border-subtle: #1e293b;
   --text: #f8fafc;
   --text-muted: #94a3b8;
   --primary-accent: #60a5fa;
+  --success-accent: #34d399;
+  --warning-accent: #fbbf24;
+  --danger-accent: #f87171;
 }
 
 body {

@@ -12,10 +12,7 @@ import {
   User,
   X,
 } from "lucide-react";
-import {
-  adminApi,
-  type AdminUserDetail,
-} from "../api/adminApi";
+import { adminApi, type AdminUserDetail } from "../api/adminApi";
 import { AdminActionReasonModal } from "./AdminActionReasonModal";
 import { PERMISSIONS, usePermissions } from "../model/permissions";
 import { Button } from "@/components/ui/button";
@@ -34,7 +31,9 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
   const [detail, setDetail] = useState<AdminUserDetail | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [actionType, setActionType] = useState<"suspend" | "reinstate" | "revoke_sessions" | null>(null);
+  const [actionType, setActionType] = useState<
+    "suspend" | "reinstate" | "revoke_sessions" | null
+  >(null);
 
   // Suspend, reinstate and session revocation are three separate permissions
   // (user.suspend, user.reinstate, user.manage_sessions), so an administrator
@@ -131,7 +130,8 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
               <div className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-3.5 py-2.5 text-xs text-indigo-300 flex items-center gap-2">
                 <Shield className="h-4 w-4 shrink-0 text-indigo-400" />
                 <span>
-                  This account profile read was logged to the security audit trail (<code>admin.user_viewed</code>).
+                  This account profile read was logged to the security audit
+                  trail (<code>admin.user_viewed</code>).
                 </span>
               </div>
 
@@ -158,8 +158,8 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
                         detail.status === "active"
                           ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
                           : detail.status === "suspended"
-                          ? "bg-rose-500/10 text-rose-400 border-rose-500/20"
-                          : "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                            ? "bg-rose-500/10 text-rose-400 border-rose-500/20"
+                            : "bg-amber-500/10 text-amber-400 border-amber-500/20"
                       }`}
                     >
                       {detail.status}
@@ -176,7 +176,9 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
               <div className="grid grid-cols-2 gap-4 text-xs">
                 <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-3 space-y-1">
                   <span className="text-slate-400">User ID</span>
-                  <p className="font-mono text-slate-200 truncate">{detail.id}</p>
+                  <p className="font-mono text-slate-200 truncate">
+                    {detail.id}
+                  </p>
                 </div>
                 <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-3 space-y-1">
                   <span className="text-slate-400">Language / Locale</span>
@@ -204,7 +206,8 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
                   Administrative Controls
                 </h4>
                 <div className="flex flex-wrap gap-3">
-                  {detail.status === "active" && can(PERMISSIONS.userSuspend) ? (
+                  {detail.status === "active" &&
+                  can(PERMISSIONS.userSuspend) ? (
                     <Button
                       type="button"
                       variant="destructive"
@@ -253,22 +256,22 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
             actionType === "suspend"
               ? "Suspend Account"
               : actionType === "reinstate"
-              ? "Reinstate Account"
-              : "Revoke Active Sessions"
+                ? "Reinstate Account"
+                : "Revoke Active Sessions"
           }
           description={
             actionType === "suspend"
               ? "Suspending will immediately block login and terminate all active sessions."
               : actionType === "reinstate"
-              ? "Reinstating restores full account access. Active sessions are not restored."
-              : "Signs the user out of all active devices without changing account status."
+                ? "Reinstating restores full account access. Active sessions are not restored."
+                : "Signs the user out of all active devices without changing account status."
           }
           actionButtonLabel={
             actionType === "suspend"
               ? "Confirm Suspension"
               : actionType === "reinstate"
-              ? "Confirm Reinstatement"
-              : "Revoke All Sessions"
+                ? "Confirm Reinstatement"
+                : "Revoke All Sessions"
           }
           variant={actionType === "suspend" ? "destructive" : "primary"}
           onClose={() => setActionType(null)}

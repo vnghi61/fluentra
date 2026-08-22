@@ -94,7 +94,11 @@ describe("Admin Shell & Operations", () => {
         const body = (await request.json()) as { reason: string };
         if (!body.reason || body.reason.trim().length < 10) {
           return HttpResponse.json(
-            { code: "VALIDATION_FAILED", message: "Reason too short", status: 422 },
+            {
+              code: "VALIDATION_FAILED",
+              message: "Reason too short",
+              status: 422,
+            },
             { status: 422 },
           );
         }
@@ -238,7 +242,9 @@ describe("Admin Shell & Operations", () => {
     await user.click(screen.getByRole("button", { name: /Inspect/i }));
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /Suspend User/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Suspend User/i }),
+      ).toBeInTheDocument();
     });
 
     await user.click(screen.getByRole("button", { name: /Suspend User/i }));
@@ -246,14 +252,18 @@ describe("Admin Shell & Operations", () => {
     expect(screen.getByText("Suspend Account")).toBeInTheDocument();
 
     const textarea = screen.getByPlaceholderText(/State the justification/i);
-    const confirmBtn = screen.getByRole("button", { name: /Confirm Suspension/i });
+    const confirmBtn = screen.getByRole("button", {
+      name: /Confirm Suspension/i,
+    });
 
     // Try too short reason (e.g. "spam")
     await user.type(textarea, "spam");
     await user.click(confirmBtn);
 
     await waitFor(() => {
-      expect(screen.getByText(/Reason must be at least 10 characters/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Reason must be at least 10 characters/i),
+      ).toBeInTheDocument();
     });
 
     // Type valid reason >= 10 chars
@@ -292,18 +302,24 @@ describe("Admin Shell & Operations", () => {
     await user.click(screen.getByRole("button", { name: /Inspect/i }));
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /Suspend User/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Suspend User/i }),
+      ).toBeInTheDocument();
     });
 
     await user.click(screen.getByRole("button", { name: /Suspend User/i }));
 
     const textarea = screen.getByPlaceholderText(/State the justification/i);
     await user.type(textarea, "Attempting self suspension test");
-    await user.click(screen.getByRole("button", { name: /Confirm Suspension/i }));
+    await user.click(
+      screen.getByRole("button", { name: /Confirm Suspension/i }),
+    );
 
     await waitFor(() => {
       expect(
-        screen.getByText(/Self-administration is forbidden: you cannot suspend/i),
+        screen.getByText(
+          /Self-administration is forbidden: you cannot suspend/i,
+        ),
       ).toBeInTheDocument();
     });
   });
@@ -314,7 +330,9 @@ describe("Admin Shell & Operations", () => {
 
     await waitFor(() => {
       expect(screen.getByText("streaks_v2")).toBeInTheDocument();
-      expect(screen.getByText("Second-generation streak calculation")).toBeInTheDocument();
+      expect(
+        screen.getByText("Second-generation streak calculation"),
+      ).toBeInTheDocument();
       expect(screen.getByText("25%")).toBeInTheDocument();
     });
 
@@ -323,7 +341,10 @@ describe("Admin Shell & Operations", () => {
     expect(screen.getByText("Create Feature Flag")).toBeInTheDocument();
 
     await user.type(screen.getByLabelText(/Flag Identifier Key/i), "audio_v2");
-    await user.type(screen.getByLabelText(/Description/i), "Audio engine overhaul");
+    await user.type(
+      screen.getByLabelText(/Description/i),
+      "Audio engine overhaul",
+    );
     await user.click(screen.getByRole("button", { name: "Save Feature Flag" }));
 
     await waitFor(() => {
@@ -356,7 +377,10 @@ describe("Admin permission gating", () => {
   it("offers nothing when the permission read fails", async () => {
     server.use(
       http.get("/api/v1/me/permissions", () =>
-        HttpResponse.json({ title: "Server error", status: 500 }, { status: 500 }),
+        HttpResponse.json(
+          { title: "Server error", status: 500 },
+          { status: 500 },
+        ),
       ),
     );
 

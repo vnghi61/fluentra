@@ -38,6 +38,7 @@ export default tseslint.config(
       'import/resolver': {
         typescript: { project: './tsconfig.app.json' },
       },
+      'boundaries/legacy-warnings': false,
       'boundaries/include': ['src/**/*'],
       // The composition root and the ambient type declaration belong to no
       // slice, exactly like cmd/ on the Go side: their whole job is to wire
@@ -67,8 +68,8 @@ export default tseslint.config(
       // Direction is one-way: app composes routes/pages, pages use features,
       // features use components/api/stores/lib.
       'boundaries/no-unknown-files': 'error',
-      'boundaries/no-unknown': 'error',
-      'boundaries/element-types': [
+      'boundaries/no-unknown-dependencies': 'error',
+      'boundaries/dependencies': [
         'error',
         {
           default: 'disallow',
