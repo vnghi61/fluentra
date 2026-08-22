@@ -27,3 +27,9 @@ RETURNING id, object_key, kind, duration_ms, checksum, status, byte_size, mime_t
 -- name: DeleteMediaAsset :exec
 DELETE FROM content.media_assets
 WHERE id = $1;
+
+-- name: GetMediaAssetsByObjectKeys :many
+SELECT id, object_key, kind, duration_ms, checksum, status, byte_size, mime_type, created_at, updated_at
+FROM content.media_assets
+WHERE object_key = ANY (@object_keys::text[]);
+

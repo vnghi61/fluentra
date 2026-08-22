@@ -13,3 +13,5 @@ the whole codebase before making a change.
 
 Read: `AGENT.md` → `MODULE_INDEX.md` → the one module's `AGENT.md` → the recipe in
 `docs/guides/` → the 2–4 source files the module doc points at. That is the whole procedure.
+
+Always adhere to the skills policy in `.agents/rules/skills.md` alongside the global skill catalog (`~/.gemini/antigravity/skills`).

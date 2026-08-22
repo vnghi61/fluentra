@@ -200,7 +200,11 @@ components:
   m_admin_service:    { in: modules/admin/service }
   m_admin_http:       { in: modules/admin/transport/http }
   m_notification:  { in: modules/notification/** }
-  m_content:       { in: modules/content/** }
+  m_content:            { in: modules/content }
+  m_content_domain:     { in: modules/content/domain }
+  m_content_repository: { in: modules/content/repository }
+  m_content_service:    { in: modules/content/service }
+  m_content_http:       { in: modules/content/transport/http }
   m_lesson:        { in: modules/lesson/** }
   m_learning:      { in: modules/learning/** }
   m_srs:           { in: modules/srs/** }
@@ -350,8 +354,11 @@ deps:
   m_admin:            { mayDependOn: [m_admin_domain, m_admin_repository, m_admin_service, m_admin_http, c_admin, c_user, c_auth, c_audit, p_job] }
   m_notification: { mayDependOn: [p_mailer, p_job, p_cache, p_telemetry, c_user] }
 
-  # learning
-  m_content:      { mayDependOn: [p_storage, p_search, p_ai, p_media, p_cache, p_telemetry, c_audit] }
+  # content, by layer
+  m_content_repository: { mayDependOn: [m_content_domain, c_content, g_content] }
+  m_content_service:    { mayDependOn: [m_content_domain, c_content] }
+  m_content_http:       { mayDependOn: [m_content_domain, m_content_service, c_content] }
+  m_content:            { mayDependOn: [m_content_domain, m_content_repository, m_content_service, m_content_http, c_content] }
   m_lesson:       { mayDependOn: [p_cache, p_telemetry, c_content] }
   m_learning:     { mayDependOn: [p_cache, p_job, p_telemetry, c_lesson, c_content, c_srs] }
   m_srs:          { mayDependOn: [p_cache, p_job, p_telemetry, c_content] }

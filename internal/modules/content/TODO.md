@@ -39,17 +39,18 @@ Completed work is recorded here instead.
 | Task | Done | What landed |
 |---|---|---|
 | P7.2 | 2026-08-21 | The six tables in schema `content`, with the authoring, review and media status enums; `content_versions` frozen after publish by `trg_content_versions_immutable`; every foreign key indexed and pointing only inside `content` or at `core.users` (DB4); sqlc queries including the batched `GetManyContentVersionsByIDs`; a reversible down; integration tests covering immutability, every check constraint, both unique constraints, FK index coverage and the down migration |
+| P7.3 | 2026-08-22 | Authoring state machine with pure domain transitions (5x5 matrix test); service layer enforcing BR-CONTENT-03 (self-approval forbidden) and BR-CONTENT-04 (media readiness verification before publish); outbox event emission for content.published and content.archived; archive-mid-session retrieval preservation; batched Reader.GetManyVersions with query count assertion; HTTP learner routes (/content) and admin authoring routes (/admin/content); full integration test suite |
 
 ## Carried into P7.3
 
-- [ ] **`media_refs` cannot be a foreign key, so publish has to check it.**
+- [x] **`media_refs` cannot be a foreign key, so publish has to check it.**
       `content_versions.media_refs` is `text[]` and a Postgres array carries no referential
       constraint. Nothing stops a version being published while it points at a
       `media_assets` row still `pending` — the learner would open a lesson whose audio does
       not exist yet. The publish service must resolve every `object_key` in `media_refs` and
       refuse while any referenced asset is not `ready`, with a test that proves an
       unprocessed asset blocks publishing.
-- [ ] **Archiving is an item-level action, and the reads have to know that.**
+- [x] **Archiving is an item-level action, and the reads have to know that.**
       See `DECISIONS.md`: a published version's `status` never changes, so a query filtered
       only on `content_versions.status = 'published'` still returns archived material.
       Every learner-facing read joins `content_items` and filters there too.
