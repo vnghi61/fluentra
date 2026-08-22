@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"math"
 	"testing"
 
 	"github.com/google/uuid"
@@ -124,21 +125,73 @@ func TestBrowseReturnsOnlyPublishedAndHonoursFilters(t *testing.T) {
 	}
 }
 
+// TestBrowseClampsPagingArguments asserts on what the repository was handed,
+// not just on what Browse returned. limit and offset arrive from strconv.Atoi
+// over the query string, so an unclamped value reaches SQL as a page size of
+// two billion, or wraps negative on the way into int32.
 func TestBrowseClampsPagingArguments(t *testing.T) {
 	t.Parallel()
-	svc, _, _ := setupService()
-	ctx := context.Background()
 
-	publishItem(ctx, t, svc, uuid.New(), uuid.New(), "paging-item")
-
-	// Limit 0 falls back to the default page size and a negative offset to 0;
-	// neither may reach the repository as-is.
-	versions, total, err := svc.Browse(ctx, contract.BrowseFilter{Limit: 0, Offset: -5})
-	if err != nil {
-		t.Fatalf("Browse: %v", err)
+	cases := []struct {
+		name       string
+		filter     contract.BrowseFilter
+		wantLimit  int32
+		wantOffset int32
+	}{
+		{
+			name:       "omitted falls back to the documented default",
+			filter:     contract.BrowseFilter{},
+			wantLimit:  domain.DefaultLimit,
+			wantOffset: 0,
+		},
+		{
+			name:       "negative offset floors at zero",
+			filter:     contract.BrowseFilter{Limit: 0, Offset: -5},
+			wantLimit:  domain.DefaultLimit,
+			wantOffset: 0,
+		},
+		{
+			name:       "a page size in range is passed through",
+			filter:     contract.BrowseFilter{Limit: 50, Offset: 40},
+			wantLimit:  50,
+			wantOffset: 40,
+		},
+		{
+			name:       "an oversized page is capped at the spec maximum",
+			filter:     contract.BrowseFilter{Limit: 2_000_000_000},
+			wantLimit:  domain.MaxLimit,
+			wantOffset: 0,
+		},
+		{
+			name:       "a page size that would wrap int32 is capped, not truncated",
+			filter:     contract.BrowseFilter{Limit: math.MaxUint32 + 2},
+			wantLimit:  domain.MaxLimit,
+			wantOffset: 0,
+		},
+		{
+			name:       "an offset that would wrap int32 is capped, not negated",
+			filter:     contract.BrowseFilter{Offset: math.MaxInt32 + 100},
+			wantLimit:  domain.DefaultLimit,
+			wantOffset: math.MaxInt32,
+		},
 	}
-	if len(versions) != 1 || total != 1 {
-		t.Fatalf("Browse returned %d/%d, want 1/1", len(versions), total)
+
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+			svc, repo, _ := setupService()
+			ctx := context.Background()
+
+			if _, _, err := svc.Browse(ctx, testCase.filter); err != nil {
+				t.Fatalf("Browse: %v", err)
+			}
+			if repo.lastLimit != testCase.wantLimit {
+				t.Errorf("repository got limit %d, want %d", repo.lastLimit, testCase.wantLimit)
+			}
+			if repo.lastOffset != testCase.wantOffset {
+				t.Errorf("repository got offset %d, want %d", repo.lastOffset, testCase.wantOffset)
+			}
+		})
 	}
 }
 

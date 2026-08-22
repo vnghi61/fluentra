@@ -28,6 +28,11 @@ type fakeRepo struct {
 	reviews     map[uuid.UUID]domain.Review
 	tags        map[uuid.UUID][]domain.TaxonomyTag
 	queriesRun  int
+
+	// what the last BrowsePublishedVersions call was given, so a test can
+	// assert the clamp reaches the query rather than stopping at the service.
+	lastLimit  int32
+	lastOffset int32
 }
 
 func newFakeRepo() *fakeRepo {
@@ -292,8 +297,17 @@ func (f *fakeRepo) GetPublishedVersionBySlug(_ context.Context, slug string) (do
 func (f *fakeRepo) BrowsePublishedVersions(
 	_ context.Context,
 	kind, cefrLevel *string,
-	_, _ int32,
+	limit, offset int32,
 ) ([]domain.Version, error) {
+	f.lastLimit = limit
+	f.lastOffset = offset
+	return f.published(kind, cefrLevel), nil
+}
+
+// published is the filter both the browse and the count share. CountPublished-
+// Versions goes through it rather than through BrowsePublishedVersions so that
+// the recorded paging arguments stay the ones Browse actually asked for.
+func (f *fakeRepo) published(kind, cefrLevel *string) []domain.Version {
 	var list []domain.Version
 	for _, it := range f.items {
 		if it.Status != domain.StatusPublished || it.CurrentVersionID == nil {
@@ -311,12 +325,11 @@ func (f *fakeRepo) BrowsePublishedVersions(
 		}
 		list = append(list, v)
 	}
-	return list, nil
+	return list
 }
 
-func (f *fakeRepo) CountPublishedVersions(ctx context.Context, kind, cefrLevel *string) (int64, error) {
-	list, _ := f.BrowsePublishedVersions(ctx, kind, cefrLevel, 100, 0)
-	return int64(len(list)), nil
+func (f *fakeRepo) CountPublishedVersions(_ context.Context, kind, cefrLevel *string) (int64, error) {
+	return int64(len(f.published(kind, cefrLevel))), nil
 }
 
 func (f *fakeRepo) GetMediaAssetByObjectKey(_ context.Context, objectKey string) (domain.MediaAsset, error) {

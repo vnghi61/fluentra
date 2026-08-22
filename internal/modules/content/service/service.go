@@ -221,16 +221,11 @@ func (s *Service) GetManyVersions(ctx context.Context, ids []uuid.UUID) (map[uui
 
 // Browse lists published content versions according to filter parameters.
 func (s *Service) Browse(ctx context.Context, filter contract.BrowseFilter) ([]*contract.Version, int, error) {
-	// #nosec G115 -- limit and offset from user filters are bounded within positive int32 ranges
-	limit := int32(filter.Limit)
-	if limit <= 0 {
-		limit = 20
-	}
-	// #nosec G115 -- limit and offset from user filters are bounded within positive int32 ranges
-	offset := int32(filter.Offset)
-	if offset < 0 {
-		offset = 0
-	}
+	// Clamped in int space before the narrowing conversion: both values reach
+	// here straight from strconv.Atoi over the query string, so neither is
+	// known to fit int32 until the domain has bounded it.
+	limit := domain.NormaliseLimit(filter.Limit)
+	offset := domain.NormaliseOffset(filter.Offset)
 
 	versions, err := s.repo.BrowsePublishedVersions(ctx, filter.Kind, filter.CEFRLevel, limit, offset)
 	if err != nil {
