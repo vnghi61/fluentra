@@ -35,7 +35,6 @@ Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR
 | `POST` | `/api/v1/admin/content/{id}/review` | `content.review` | Approve or request changes |
 | `POST` | `/api/v1/admin/content/{id}/publish` | `content.publish` | Publish the approved version |
 | `POST` | `/api/v1/admin/content/{id}/archive` | `content.publish` | Archive |
-| `POST` | `/api/v1/admin/content/{id}/estimate-level` | `content.edit` | AI-suggested CEFR level for the author to confirm |
 <!-- END GENERATED: api-summary -->
 
 ## Endpoint detail
@@ -120,16 +119,6 @@ Archive
 | Permission | `content.publish` |
 | Success | 200 |
 | Errors | `CONTENT_IN_USE` |
-
-### `POST /api/v1/admin/content/{id}/estimate-level`
-
-AI-suggested CEFR level for the author to confirm
-
-| | |
-|---|---|
-| Permission | `content.edit` |
-| Success | 200 |
-| Errors | standard set |
 
 <!-- END GENERATED: api-detail -->
 

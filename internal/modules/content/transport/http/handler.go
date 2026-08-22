@@ -39,7 +39,6 @@ type ContentService interface {
 	Review(ctx context.Context, reviewerID, itemID uuid.UUID, req service.ReviewDecisionRequest) (domain.Version, error)
 	Publish(ctx context.Context, actorID, itemID uuid.UUID) (domain.Version, error)
 	Archive(ctx context.Context, actorID, itemID uuid.UUID) (domain.Item, error)
-	EstimateLevel(ctx context.Context, actorID, itemID uuid.UUID) (string, error)
 }
 
 // Handler serves HTTP endpoints for the content module.
@@ -48,12 +47,16 @@ type Handler struct {
 	guard   Guard
 }
 
-// NewHandler constructs a new Handler.
-func NewHandler(service ContentService, guard Guard) *Handler {
+// NewHandler constructs a new Handler. It fails closed if guard is nil
+// so admin authoring endpoints cannot be left unprotected by accident.
+func NewHandler(service ContentService, guard Guard) (*Handler, error) {
+	if guard == nil {
+		return nil, apperr.New(apperr.Internal, "GUARD_REQUIRED", "authorization guard is required for content handlers")
+	}
 	return &Handler{
 		service: service,
 		guard:   guard,
-	}
+	}, nil
 }
 
 // Routes mounts learner-facing content endpoints under the authenticated router.
@@ -70,7 +73,6 @@ func (h *Handler) AdminRoutes(router chi.Router) {
 	router.Post("/admin/content/{id}/review", h.review)
 	router.Post("/admin/content/{id}/publish", h.publish)
 	router.Post("/admin/content/{id}/archive", h.archive)
-	router.Post("/admin/content/{id}/estimate-level", h.estimateLevel)
 }
 
 func (h *Handler) browse(w http.ResponseWriter, r *http.Request) {
@@ -357,33 +359,4 @@ func (h *Handler) archive(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, r, http.StatusOK, toContentItemResponse(item))
 }
 
-func (h *Handler) estimateLevel(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	if h.guard != nil {
-		if err := h.guard.Require(ctx, PermContentEdit); err != nil {
-			httpx.WriteProblem(w, r, err)
-			return
-		}
-	}
 
-	actor, ok := httpx.ActorFrom(ctx)
-	if !ok {
-		httpx.WriteProblem(w, r, apperr.New(apperr.Unauthenticated, "UNAUTHENTICATED", "Authentication required."))
-		return
-	}
-
-	idStr := chi.URLParam(r, "id")
-	itemID, err := uuid.Parse(idStr)
-	if err != nil {
-		httpx.WriteProblem(w, r, apperr.New(apperr.Validation, "INVALID_ID", "Invalid content item ID."))
-		return
-	}
-
-	level, err := h.service.EstimateLevel(ctx, actor.UserID, itemID)
-	if err != nil {
-		httpx.WriteProblem(w, r, err)
-		return
-	}
-
-	httpx.WriteJSON(w, r, http.StatusOK, EstimateLevelResponse{EstimatedLevel: level})
-}

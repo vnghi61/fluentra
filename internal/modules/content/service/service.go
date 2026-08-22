@@ -824,22 +824,6 @@ func (s *Service) Archive(ctx context.Context, actorID, itemID uuid.UUID) (domai
 	return archivedItem, nil
 }
 
-// EstimateLevel provides an AI-suggested CEFR level for authoring assistance.
-func (s *Service) EstimateLevel(ctx context.Context, actorID, itemID uuid.UUID) (string, error) {
-	_ = actorID
-	_, err := s.repo.GetItemByID(ctx, itemID)
-	if err != nil {
-		return "", err
-	}
-
-	draftVersion, err := s.repo.GetDraftVersionByItemID(ctx, itemID)
-	if err == nil && draftVersion.CEFRLevel != "" {
-		return draftVersion.CEFRLevel, nil
-	}
-
-	return domain.CEFRB1, nil
-}
-
 // GetItemByID returns a content item by ID.
 func (s *Service) GetItemByID(ctx context.Context, id uuid.UUID) (domain.Item, error) {
 	return s.repo.GetItemByID(ctx, id)

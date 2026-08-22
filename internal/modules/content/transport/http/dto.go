@@ -72,11 +72,6 @@ type ReviewDecisionRequest struct {
 	Comments *string `json:"comments,omitempty"`
 }
 
-// EstimateLevelResponse payload returned by AI level estimation.
-type EstimateLevelResponse struct {
-	EstimatedLevel string `json:"estimated_level"`
-}
-
 func toContentItemResponse(item domain.Item) ContentItemResponse {
 	return ContentItemResponse{
 		ID:               item.ID,

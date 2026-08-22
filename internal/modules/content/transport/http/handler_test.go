@@ -41,9 +41,8 @@ type mockContentService struct {
 		reviewerID, itemID uuid.UUID,
 		req service.ReviewDecisionRequest,
 	) (domain.Version, error)
-	publishFn       func(ctx context.Context, actorID, itemID uuid.UUID) (domain.Version, error)
-	archiveFn       func(ctx context.Context, actorID, itemID uuid.UUID) (domain.Item, error)
-	estimateLevelFn func(ctx context.Context, actorID, itemID uuid.UUID) (string, error)
+	publishFn func(ctx context.Context, actorID, itemID uuid.UUID) (domain.Version, error)
+	archiveFn func(ctx context.Context, actorID, itemID uuid.UUID) (domain.Item, error)
 }
 
 func (m *mockContentService) GetPublishedVersionBySlug(ctx context.Context, slug string) (*contract.Version, error) {
@@ -117,13 +116,6 @@ func (m *mockContentService) Archive(ctx context.Context, actorID, itemID uuid.U
 	return domain.Item{}, nil
 }
 
-func (m *mockContentService) EstimateLevel(ctx context.Context, actorID, itemID uuid.UUID) (string, error) {
-	if m.estimateLevelFn != nil {
-		return m.estimateLevelFn(ctx, actorID, itemID)
-	}
-	return "B1", nil
-}
-
 type mockGuard struct {
 	deniedPermission string
 }
@@ -137,7 +129,10 @@ func (g *mockGuard) Require(_ context.Context, permission string) error {
 
 func setupTestRouter(svc contenthttp.ContentService, guard contenthttp.Guard) http.Handler {
 	r := chi.NewRouter()
-	h := contenthttp.NewHandler(svc, guard)
+	h, err := contenthttp.NewHandler(svc, guard)
+	if err != nil {
+		panic(err)
+	}
 	h.Routes(r)
 	h.AdminRoutes(r)
 	return r

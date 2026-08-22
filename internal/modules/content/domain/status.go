@@ -48,6 +48,22 @@ func (s AuthoringStatus) String() string {
 
 // legalTransitions defines the explicit state machine transition matrix.
 // Key is the current status; value is the set of permissible target statuses.
+//
+// This single table covers both content_items.status and content_versions.status,
+// but the two entities do not share the same legal moves. The DB enforces the
+// difference: trg_content_versions_immutable refuses every UPDATE on a published
+// version row, so version rows can never transition at all once published.
+//
+//   - draft → draft, draft → in_review, in_review → approved/draft,
+//     approved → published/draft are valid for both items and versions.
+//   - published → published is idempotent publish and is valid for both, but
+//     version-level immutability means it is a no-op in the DB.
+//   - published → archived is valid for items only; Version.ValidateTransition
+//     would return true here but the trigger blocks it at the version row level.
+//     Archive is an item-level action (sets content_items.status).
+//
+// Callers that transition a version should treat published → archived as illegal
+// even though the map says otherwise; callers that transition an item may use it.
 var legalTransitions = map[AuthoringStatus]map[AuthoringStatus]bool{
 	StatusDraft: {
 		StatusDraft:    true, // Editing draft
@@ -62,8 +78,8 @@ var legalTransitions = map[AuthoringStatus]map[AuthoringStatus]bool{
 		StatusDraft:     true, // Retract/edit approved draft
 	},
 	StatusPublished: {
-		StatusPublished: true, // Idempotent publish
-		StatusArchived:  true, // Archive item
+		StatusPublished: true, // Idempotent publish (item and version)
+		StatusArchived:  true, // Archive item only — version rows are immutable
 	},
 	StatusArchived: {}, // Terminal state: no moves permitted
 }

@@ -421,6 +421,7 @@ func (f *fakeRepo) ClearTagsForContentItem(_ context.Context, itemID uuid.UUID) 
 }
 
 func (f *fakeRepo) ListTagsForContentItem(_ context.Context, _ uuid.UUID) ([]domain.Taxonomy, error) {
+	f.queriesRun++
 	return nil, nil
 }
 
@@ -428,6 +429,7 @@ func (f *fakeRepo) ListTagsForContentItems(
 	_ context.Context,
 	_ []uuid.UUID,
 ) (map[uuid.UUID][]domain.TaxonomyTag, error) {
+	f.queriesRun++
 	return f.tags, nil
 }
 
@@ -693,7 +695,10 @@ func TestGetManyVersionsSingleQuery(t *testing.T) {
 	if len(result) != 3 {
 		t.Errorf("got %d versions, want 3", len(result))
 	}
-	if repo.queriesRun != 1 {
-		t.Errorf("queriesRun = %d, want exactly 1", repo.queriesRun)
+	// GetManyVersions must issue exactly 2 queries: versions + batch tags.
+	// A naive N+1 loop over ListTagsForContentItem would be N+1 and is now
+	// caught because the singular method also increments queriesRun.
+	if repo.queriesRun != 2 {
+		t.Errorf("queriesRun = %d, want exactly 2 (versions + batch tags)", repo.queriesRun)
 	}
 }

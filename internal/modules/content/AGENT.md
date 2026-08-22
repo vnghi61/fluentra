@@ -128,7 +128,6 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | `POST` | `/api/v1/admin/content/{id}/review` | `content.review` | Approve or request changes |
 | `POST` | `/api/v1/admin/content/{id}/publish` | `content.publish` | Publish the approved version |
 | `POST` | `/api/v1/admin/content/{id}/archive` | `content.publish` | Archive |
-| `POST` | `/api/v1/admin/content/{id}/estimate-level` | `content.edit` | AI-suggested CEFR level for the author to confirm |
 <!-- END GENERATED: endpoints -->
 
 ## 7. Folder map

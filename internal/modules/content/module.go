@@ -53,7 +53,10 @@ func New(deps Deps) *Module {
 		NewID:  func() uuid.UUID { return uuid.Must(uuid.NewV7()) },
 	})
 
-	handler := contenthttp.NewHandler(svc, deps.Guard)
+	handler, err := contenthttp.NewHandler(svc, deps.Guard)
+	if err != nil {
+		panic(err)
+	}
 
 	return &Module{
 		service: svc,

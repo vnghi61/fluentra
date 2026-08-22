@@ -55,6 +55,14 @@ Completed work is recorded here instead.
       only on `content_versions.status = 'published'` still returns archived material.
       Every learner-facing read joins `content_items` and filters there too.
 
+## Carried into P7.4
+
+- [ ] **BR-CONTENT-05 `ErrContentInUse` is dead code.** Declared in `domain/errors.go` but never returned. Archive does not check whether a published lesson still references the version. Either wire `lesson` contract `IsVersionInUse` into `Archive` (blocked → 409 `CONTENT_IN_USE`) or remove the error and document why archiving is unconditionally allowed in Phase 2.
+- [ ] **BR-CONTENT-04 `media_refs` has no API surface.** DTOs `CreateContentItemRequest` and `UpdateDraftRequest` (and their service structs) carry no `media_refs`/`tags` that reaches `content_versions.media_refs`; every create/update passes `[]string{}`. `verifyMediaAssetsReady` is therefore unreachable except via direct DB insert. Decide in P7.4 whether authoring UI supplies media_refs (add field to DTOs, validate object_key shape, and add test that publish blocks on non-ready asset supplied via API) or defer with rationale.
+- [ ] **Heavier — decide before P7.4 builds on it: `current_version_id` semantics.** `createNewDraftFromPublished` sets `current_version_id` to the new draft and `item.status` to `draft`. Consequences: Archive emits `content.archived{version_id: draft}`; an item that was published but has an open draft cannot be archived (`ValidateTransition(draft, archived)` → 409); consumer of `content.published` reads `current_version_id` assuming "live" version. Proposal: `current_version_id` tracks the live (published) version only; draft ID lives elsewhere, or item has `published_version_id` + `draft_version_id`.
+- [ ] **Heavier — decide before P7.4: BR-CONTENT-03 wrong subject.** `Review` checks `item.OwnerID == reviewerID`, but the author of the version under review is not necessarily the item owner (version 2 may be written by someone else). Correct subject is the version's author — requires `created_by` on `content_versions` (or `content_reviews` history). Also blocks `changes_requested` by owner with 403, though self-requesting changes is harmless.
+- [ ] **Heavier — decide before P7.4: `actorID` is discarded.** `_ = actorID` in `Publish`, `Archive`, `UpdateDraft`, `SubmitForReview`. No audit trail for who published/archived. Module declares `depends_on: [audit]`; P7.4 should thread actor through to `audit.Log` or outbox payload, or document why audit is intentionally not wired in Phase 2.
+
 ## Deferred (deliberately not doing yet)
 
 <!-- BEGIN GENERATED: todo-deferred -->

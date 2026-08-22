@@ -13,4 +13,3 @@ Do not duplicate content here.
 4. API changes start in `api/openapi/openapi.yaml`. Schema changes start in `db/migrations/<module>/`.
 5. Errors use `shared/apperr`; SQL lives in `db/queries/`; prompts live in `docs/prompts/`.
 6. Run `make check` before you finish, and update the module's `AGENT.md` and `TODO.md`.
-7. Enforce all global and workspace skills defined in `.agents/rules/skills.md` (`golang-patterns`, `typescript-best-practices`, `docker-patterns`, `security-review`, `ui-ux-pro-max`, etc.).
