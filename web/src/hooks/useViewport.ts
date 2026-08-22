@@ -45,7 +45,9 @@ function getViewportDimensions(): ViewportState {
 }
 
 export function useViewport(): ViewportState {
-  const [viewport, setViewport] = useState<ViewportState>(getViewportDimensions);
+  const [viewport, setViewport] = useState<ViewportState>(
+    getViewportDimensions,
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") return;

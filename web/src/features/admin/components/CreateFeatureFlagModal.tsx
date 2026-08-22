@@ -38,7 +38,9 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
     formState: { errors },
     reset,
   } = useForm<CreateFeatureFlagFormValues>({
-    resolver: (zodResolver as (schema: unknown) => never)(createFeatureFlagSchema),
+    resolver: (zodResolver as (schema: unknown) => never)(
+      createFeatureFlagSchema,
+    ),
     defaultValues: {
       key: "",
       description: "",
@@ -140,7 +142,9 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
               aria-invalid={!!errors.description}
             />
             {errors.description && (
-              <p className="text-xs text-rose-400">{errors.description.message}</p>
+              <p className="text-xs text-rose-400">
+                {errors.description.message}
+              </p>
             )}
           </div>
 
@@ -168,7 +172,9 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
                 aria-invalid={!!errors.expires_on}
               />
               {errors.expires_on && (
-                <p className="text-xs text-rose-400">{errors.expires_on.message}</p>
+                <p className="text-xs text-rose-400">
+                  {errors.expires_on.message}
+                </p>
               )}
             </div>
           </div>
@@ -185,7 +191,9 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
               aria-invalid={!!errors.rollout_percent}
             />
             {errors.rollout_percent && (
-              <p className="text-xs text-rose-400">{errors.rollout_percent.message}</p>
+              <p className="text-xs text-rose-400">
+                {errors.rollout_percent.message}
+              </p>
             )}
           </div>
 
@@ -202,7 +210,10 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
                 />
               )}
             />
-            <Label htmlFor="flag-enabled" className="text-sm font-medium cursor-pointer">
+            <Label
+              htmlFor="flag-enabled"
+              className="text-sm font-medium cursor-pointer"
+            >
               Enable immediately on creation
             </Label>
           </div>

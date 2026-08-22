@@ -84,14 +84,23 @@ describe("the error catalogue against the server's own codes", () => {
       "OTP_RESEND_TOO_SOON",
       "OTP_ISSUE_LIMIT_REACHED",
     ]) {
-      expect(serverErrorCodes(), `${code} is not a server code`).toContain(code);
-      expect(ERROR_MESSAGES[code], `${code} has no catalogue entry`).toBeTruthy();
+      expect(serverErrorCodes(), `${code} is not a server code`).toContain(
+        code,
+      );
+      expect(
+        ERROR_MESSAGES[code],
+        `${code} has no catalogue entry`,
+      ).toBeTruthy();
     }
   });
 
   it("falls back to the title for a code it does not know", () => {
     expect(
-      getErrorMessage({ title: "Rate limited", status: 429, code: "NOT_A_CODE" }),
+      getErrorMessage({
+        title: "Rate limited",
+        status: 429,
+        code: "NOT_A_CODE",
+      }),
     ).toBe("Rate limited");
   });
 });

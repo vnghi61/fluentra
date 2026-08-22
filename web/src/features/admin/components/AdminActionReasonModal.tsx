@@ -38,7 +38,9 @@ export const AdminActionReasonModal: React.FC<AdminActionReasonModalProps> = ({
     formState: { errors },
     reset,
   } = useForm<AdminActionReasonFormValues>({
-    resolver: (zodResolver as (schema: unknown) => never)(adminActionReasonSchema),
+    resolver: (zodResolver as (schema: unknown) => never)(
+      adminActionReasonSchema,
+    ),
     defaultValues: {
       reason: "",
     },
@@ -148,11 +150,7 @@ export const AdminActionReasonModal: React.FC<AdminActionReasonModalProps> = ({
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              variant={variant}
-              disabled={isSubmitting}
-            >
+            <Button type="submit" variant={variant} disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

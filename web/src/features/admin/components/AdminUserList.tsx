@@ -14,10 +14,7 @@ import {
   Users,
   AlertCircle,
 } from "lucide-react";
-import {
-  adminApi,
-  type AdminUserSummary,
-} from "../api/adminApi";
+import { adminApi, type AdminUserSummary } from "../api/adminApi";
 import { AdminUserDetailModal } from "./AdminUserDetailModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,9 +34,13 @@ export const AdminUserList: React.FC = () => {
   const [selectedStatus, setSelectedStatus] = useState<UserStatus | "">("");
 
   // Cursor Pagination state
-  const [currentCursor, setCurrentCursor] = useState<string | undefined>(undefined);
+  const [currentCursor, setCurrentCursor] = useState<string | undefined>(
+    undefined,
+  );
   const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
-  const [cursorHistory, setCursorHistory] = useState<(string | undefined)[]>([]);
+  const [cursorHistory, setCursorHistory] = useState<(string | undefined)[]>(
+    [],
+  );
 
   // Selected user for details modal
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -153,8 +154,8 @@ export const AdminUserList: React.FC = () => {
                 status === "active"
                   ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
                   : status === "suspended"
-                  ? "bg-rose-500/10 text-rose-400 border-rose-500/20"
-                  : "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                    ? "bg-rose-500/10 text-rose-400 border-rose-500/20"
+                    : "bg-amber-500/10 text-amber-400 border-amber-500/20"
               }`}
             >
               {status}
@@ -200,7 +201,10 @@ export const AdminUserList: React.FC = () => {
     <div className="space-y-6">
       {/* Search & Filter Header */}
       <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 space-y-4">
-        <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row gap-3">
+        <form
+          onSubmit={handleSearchSubmit}
+          className="flex flex-col sm:flex-row gap-3"
+        >
           <div className="relative flex-1">
             <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
             <Input
@@ -213,7 +217,9 @@ export const AdminUserList: React.FC = () => {
 
           <select
             value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value as UserStatus | "")}
+            onChange={(e) =>
+              setSelectedStatus(e.target.value as UserStatus | "")
+            }
             className="h-11 min-h-[44px] rounded-lg border border-slate-800 bg-slate-900 px-3 text-base md:text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             <option value="">All Statuses</option>
@@ -246,7 +252,9 @@ export const AdminUserList: React.FC = () => {
         ) : users.length === 0 ? (
           <div className="flex min-h-[250px] flex-col items-center justify-center p-8 text-center space-y-2">
             <Users className="h-8 w-8 text-slate-500" />
-            <p className="text-sm font-medium text-slate-300">No learners found</p>
+            <p className="text-sm font-medium text-slate-300">
+              No learners found
+            </p>
             <p className="text-xs text-slate-500">
               Try adjusting your search query or filters.
             </p>
@@ -300,7 +308,8 @@ export const AdminUserList: React.FC = () => {
         {/* Cursor Pagination Footer */}
         <div className="flex items-center justify-between border-t border-slate-800 px-4 py-3 bg-slate-950/40 text-xs text-slate-400">
           <div>
-            Showing <strong className="text-slate-200">{users.length}</strong> learner(s)
+            Showing <strong className="text-slate-200">{users.length}</strong>{" "}
+            learner(s)
           </div>
 
           <div className="flex items-center gap-2">

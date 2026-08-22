@@ -14,10 +14,7 @@ import {
   Trash2,
   User,
 } from "lucide-react";
-import {
-  adminApi,
-  type FeatureFlag,
-} from "../api/adminApi";
+import { adminApi, type FeatureFlag } from "../api/adminApi";
 import { CreateFeatureFlagModal } from "./CreateFeatureFlagModal";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -51,7 +48,10 @@ export const AdminFeatureFlags: React.FC = () => {
     void fetchFlags();
   }, []);
 
-  const handleToggleEnabled = async (flag: FeatureFlag, newEnabled: boolean) => {
+  const handleToggleEnabled = async (
+    flag: FeatureFlag,
+    newEnabled: boolean,
+  ) => {
     setUpdatingKey(flag.key);
     try {
       const updated = await adminApi.updateFlag(flag.key, {
@@ -82,7 +82,9 @@ export const AdminFeatureFlags: React.FC = () => {
       setFlags((prev) => prev.map((f) => (f.key === flag.key ? updated : f)));
     } catch (err: unknown) {
       setError(
-        err instanceof Error ? err.message : "Failed to update rollout percentage.",
+        err instanceof Error
+          ? err.message
+          : "Failed to update rollout percentage.",
       );
     } finally {
       setUpdatingKey(null);
@@ -90,7 +92,9 @@ export const AdminFeatureFlags: React.FC = () => {
   };
 
   const handleDelete = async (key: string) => {
-    if (!confirm(`Are you sure you want to permanently delete flag "${key}"?`)) {
+    if (
+      !confirm(`Are you sure you want to permanently delete flag "${key}"?`)
+    ) {
       return;
     }
 
@@ -241,7 +245,8 @@ export const AdminFeatureFlags: React.FC = () => {
             Feature Flags & Rollouts
           </h3>
           <p className="text-xs text-slate-400">
-            Control dynamic system feature switches, percentage rollouts, and owner assignments.
+            Control dynamic system feature switches, percentage rollouts, and
+            owner assignments.
           </p>
         </div>
 
@@ -271,7 +276,9 @@ export const AdminFeatureFlags: React.FC = () => {
         ) : flags.length === 0 ? (
           <div className="flex min-h-[200px] flex-col items-center justify-center p-8 text-center space-y-2">
             <Flag className="h-8 w-8 text-slate-500" />
-            <p className="text-sm font-medium text-slate-300">No feature flags configured</p>
+            <p className="text-sm font-medium text-slate-300">
+              No feature flags configured
+            </p>
             <p className="text-xs text-slate-500">
               Create a feature flag to control rollouts.
             </p>

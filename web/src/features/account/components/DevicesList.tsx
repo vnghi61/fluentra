@@ -196,8 +196,8 @@ export const DevicesList: React.FC<DevicesListProps> = ({ onLoggedOut }) => {
                 </strong>
               ) : (
                 <span>
-                  This device will stop being signed in. The device you are using
-                  now is unaffected.
+                  This device will stop being signed in. The device you are
+                  using now is unaffected.
                 </span>
               )}
             </div>
