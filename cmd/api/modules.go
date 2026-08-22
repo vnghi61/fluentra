@@ -13,6 +13,7 @@ import (
 	authdomain "github.com/fluentra/fluentra/internal/modules/auth/domain"
 	authservice "github.com/fluentra/fluentra/internal/modules/auth/service"
 	"github.com/fluentra/fluentra/internal/modules/auth/service/oauth/google"
+	"github.com/fluentra/fluentra/internal/modules/content"
 	"github.com/fluentra/fluentra/internal/modules/rbac"
 	rbaccontract "github.com/fluentra/fluentra/internal/modules/rbac/contract"
 	"github.com/fluentra/fluentra/internal/modules/user"
@@ -27,11 +28,12 @@ import (
 // identity is WP1+WP2+WP4 assembled: the modules that know who a caller is and what
 // they may do, and the record of what they did.
 type identity struct {
-	audit *audit.Module
-	rbac  *rbac.Module
-	user  *user.Module
-	auth  *auth.Module
-	admin *admin.Module
+	audit   *audit.Module
+	rbac    *rbac.Module
+	user    *user.Module
+	auth    *auth.Module
+	admin   *admin.Module
+	content *content.Module
 
 	rateLimit *httpx.RateLimiter
 }
@@ -168,6 +170,11 @@ func newIdentity(deps identityDeps) *identity {
 		Guard:          lazyGuard{of: assembled},
 	})
 
+	assembled.content = content.New(content.Deps{
+		Pool:  deps.Pool,
+		Guard: lazyGuard{of: assembled},
+	})
+
 	return assembled
 }
 
@@ -211,11 +218,13 @@ func (i *identity) Routes(api chi.Router) {
 		i.user.Routes(authenticated)
 		i.rbac.Routes(authenticated)
 		i.auth.Routes(authenticated)
+		i.content.Routes(authenticated)
 
 		authenticated.Group(func(admin chi.Router) {
 			admin.Use(i.rbac.AdminOnly())
 			i.audit.Routes(admin)
 			i.admin.Routes(admin)
+			i.content.AdminRoutes(admin)
 		})
 	})
 }
@@ -231,6 +240,7 @@ type lazyGuard struct{ of *identity }
 
 var _ audit.Guard = lazyGuard{}
 var _ admin.Guard = lazyGuard{}
+var _ content.Guard = lazyGuard{}
 
 func (g lazyGuard) Require(ctx context.Context, permission string) error {
 	return g.authorizer().Require(ctx, rbaccontract.Permission(permission))

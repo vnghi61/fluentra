@@ -113,6 +113,43 @@ func (q *Queries) GetMediaAssetByObjectKey(ctx context.Context, objectKey string
 	return i, err
 }
 
+const getMediaAssetsByObjectKeys = `-- name: GetMediaAssetsByObjectKeys :many
+SELECT id, object_key, kind, duration_ms, checksum, status, byte_size, mime_type, created_at, updated_at
+FROM content.media_assets
+WHERE object_key = ANY ($1::text[])
+`
+
+func (q *Queries) GetMediaAssetsByObjectKeys(ctx context.Context, objectKeys []string) ([]ContentMediaAsset, error) {
+	rows, err := q.db.Query(ctx, getMediaAssetsByObjectKeys, objectKeys)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ContentMediaAsset
+	for rows.Next() {
+		var i ContentMediaAsset
+		if err := rows.Scan(
+			&i.ID,
+			&i.ObjectKey,
+			&i.Kind,
+			&i.DurationMs,
+			&i.Checksum,
+			&i.Status,
+			&i.ByteSize,
+			&i.MimeType,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateMediaAssetStatus = `-- name: UpdateMediaAssetStatus :one
 UPDATE content.media_assets
 SET status = $2,

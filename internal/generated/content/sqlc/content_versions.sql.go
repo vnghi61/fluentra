@@ -12,6 +12,84 @@ import (
 	"github.com/google/uuid"
 )
 
+const browsePublishedContentVersions = `-- name: BrowsePublishedContentVersions :many
+SELECT v.id, v.item_id, v.version, v.kind, v.body, v.cefr_level, v.status, v.media_refs, v.published_at, v.created_at, v.updated_at
+FROM content.content_versions v
+JOIN content.content_items i ON i.id = v.item_id
+WHERE i.status = 'published'
+  AND v.status = 'published'
+  AND ($3::text IS NULL OR v.kind = $3)
+  AND ($4::text IS NULL OR v.cefr_level = $4)
+ORDER BY v.published_at DESC, v.id DESC
+LIMIT $1 OFFSET $2
+`
+
+type BrowsePublishedContentVersionsParams struct {
+	Limit     int32
+	Offset    int32
+	Kind      *string
+	CefrLevel *string
+}
+
+func (q *Queries) BrowsePublishedContentVersions(ctx context.Context, arg BrowsePublishedContentVersionsParams) ([]ContentContentVersion, error) {
+	rows, err := q.db.Query(ctx, browsePublishedContentVersions,
+		arg.Limit,
+		arg.Offset,
+		arg.Kind,
+		arg.CefrLevel,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ContentContentVersion
+	for rows.Next() {
+		var i ContentContentVersion
+		if err := rows.Scan(
+			&i.ID,
+			&i.ItemID,
+			&i.Version,
+			&i.Kind,
+			&i.Body,
+			&i.CefrLevel,
+			&i.Status,
+			&i.MediaRefs,
+			&i.PublishedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const countPublishedContentVersions = `-- name: CountPublishedContentVersions :one
+SELECT COUNT(*)::bigint
+FROM content.content_versions v
+JOIN content.content_items i ON i.id = v.item_id
+WHERE i.status = 'published'
+  AND v.status = 'published'
+  AND ($1::text IS NULL OR v.kind = $1)
+  AND ($2::text IS NULL OR v.cefr_level = $2)
+`
+
+type CountPublishedContentVersionsParams struct {
+	Kind      *string
+	CefrLevel *string
+}
+
+func (q *Queries) CountPublishedContentVersions(ctx context.Context, arg CountPublishedContentVersionsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countPublishedContentVersions, arg.Kind, arg.CefrLevel)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const createContentVersion = `-- name: CreateContentVersion :one
 INSERT INTO content.content_versions (id, item_id, version, kind, body, cefr_level, status, media_refs, published_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -114,6 +192,33 @@ func (q *Queries) GetContentVersionByItemAndVersion(ctx context.Context, arg Get
 	return i, err
 }
 
+const getDraftVersionByItemID = `-- name: GetDraftVersionByItemID :one
+SELECT id, item_id, version, kind, body, cefr_level, status, media_refs, published_at, created_at, updated_at
+FROM content.content_versions
+WHERE item_id = $1 AND status IN ('draft', 'in_review', 'approved')
+ORDER BY version DESC
+LIMIT 1
+`
+
+func (q *Queries) GetDraftVersionByItemID(ctx context.Context, itemID uuid.UUID) (ContentContentVersion, error) {
+	row := q.db.QueryRow(ctx, getDraftVersionByItemID, itemID)
+	var i ContentContentVersion
+	err := row.Scan(
+		&i.ID,
+		&i.ItemID,
+		&i.Version,
+		&i.Kind,
+		&i.Body,
+		&i.CefrLevel,
+		&i.Status,
+		&i.MediaRefs,
+		&i.PublishedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getLatestVersionNumberByItemID = `-- name: GetLatestVersionNumberByItemID :one
 SELECT COALESCE(MAX(version), 0)::integer AS latest_version
 FROM content.content_versions
@@ -164,6 +269,34 @@ func (q *Queries) GetManyContentVersionsByIDs(ctx context.Context, ids []uuid.UU
 		return nil, err
 	}
 	return items, nil
+}
+
+const getPublishedVersionBySlug = `-- name: GetPublishedVersionBySlug :one
+SELECT v.id, v.item_id, v.version, v.kind, v.body, v.cefr_level, v.status, v.media_refs, v.published_at, v.created_at, v.updated_at
+FROM content.content_versions v
+JOIN content.content_items i ON i.id = v.item_id
+WHERE i.slug = $1
+  AND i.status = 'published'
+  AND v.status = 'published'
+`
+
+func (q *Queries) GetPublishedVersionBySlug(ctx context.Context, slug string) (ContentContentVersion, error) {
+	row := q.db.QueryRow(ctx, getPublishedVersionBySlug, slug)
+	var i ContentContentVersion
+	err := row.Scan(
+		&i.ID,
+		&i.ItemID,
+		&i.Version,
+		&i.Kind,
+		&i.Body,
+		&i.CefrLevel,
+		&i.Status,
+		&i.MediaRefs,
+		&i.PublishedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const listContentVersionsByItemID = `-- name: ListContentVersionsByItemID :many

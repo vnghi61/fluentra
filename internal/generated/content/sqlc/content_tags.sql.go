@@ -7,6 +7,7 @@ package sqlc
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -82,6 +83,54 @@ func (q *Queries) ListTagsForContentItem(ctx context.Context, itemID uuid.UUID) 
 	for rows.Next() {
 		var i ContentTaxonomy
 		if err := rows.Scan(
+			&i.ID,
+			&i.Namespace,
+			&i.Code,
+			&i.Label,
+			&i.ParentID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTagsForContentItems = `-- name: ListTagsForContentItems :many
+SELECT ct.item_id, t.id, t.namespace, t.code, t.label, t.parent_id, t.created_at, t.updated_at
+FROM content.content_tags ct
+JOIN content.taxonomies t ON t.id = ct.taxonomy_id
+WHERE ct.item_id = ANY ($1::uuid[])
+ORDER BY t.namespace, t.code
+`
+
+type ListTagsForContentItemsRow struct {
+	ItemID    uuid.UUID
+	ID        uuid.UUID
+	Namespace string
+	Code      string
+	Label     string
+	ParentID  *uuid.UUID
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+func (q *Queries) ListTagsForContentItems(ctx context.Context, itemIds []uuid.UUID) ([]ListTagsForContentItemsRow, error) {
+	rows, err := q.db.Query(ctx, listTagsForContentItems, itemIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTagsForContentItemsRow
+	for rows.Next() {
+		var i ListTagsForContentItemsRow
+		if err := rows.Scan(
+			&i.ItemID,
 			&i.ID,
 			&i.Namespace,
 			&i.Code,

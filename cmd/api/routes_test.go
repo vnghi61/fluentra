@@ -60,9 +60,10 @@ func TestEveryPhaseOneOperationIsMounted(t *testing.T) {
 
 	// Which module owns the route, for the failure message.
 	const (
-		ownerUser  = "user"
-		ownerRBAC  = "rbac"
-		ownerAudit = "audit"
+		ownerUser    = "user"
+		ownerRBAC    = "rbac"
+		ownerAudit   = "audit"
+		ownerContent = "content"
 	)
 
 	cases := []struct {
@@ -82,6 +83,15 @@ func TestEveryPhaseOneOperationIsMounted(t *testing.T) {
 		{http.MethodGet, "/api/v1/admin/audit-logs", ownerAudit},
 		{http.MethodGet, "/api/v1/admin/security-events", ownerAudit},
 		{http.MethodPost, "/api/v1/admin/security-events/" + someone + "/resolve", ownerAudit},
+		{http.MethodGet, "/api/v1/content", ownerContent},
+		{http.MethodGet, "/api/v1/content/sample-slug", ownerContent},
+		{http.MethodPost, "/api/v1/admin/content", ownerContent},
+		{http.MethodPut, "/api/v1/admin/content/" + someone + "/draft", ownerContent},
+		{http.MethodPost, "/api/v1/admin/content/" + someone + "/submit", ownerContent},
+		{http.MethodPost, "/api/v1/admin/content/" + someone + "/review", ownerContent},
+		{http.MethodPost, "/api/v1/admin/content/" + someone + "/publish", ownerContent},
+		{http.MethodPost, "/api/v1/admin/content/" + someone + "/archive", ownerContent},
+		{http.MethodPost, "/api/v1/admin/content/" + someone + "/estimate-level", ownerContent},
 	}
 
 	for _, testCase := range cases {
