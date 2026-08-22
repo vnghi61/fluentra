@@ -35,6 +35,7 @@ var pool *pgxpool.Pool
 func TestMain(m *testing.M) {
 	base := os.Getenv("TEST_DATABASE_URL")
 	if base == "" {
+		// #nosec G101 -- the compose stack's local credentials, not a secret
 		base = "postgres://fluentra:fluentra@localhost:5432/fluentra?sslmode=disable"
 	}
 
@@ -131,11 +132,88 @@ func replaceDatabase(dsn, database string) (string, error) {
 
 type allowAllGuard struct{}
 
-func (allowAllGuard) Require(ctx context.Context, permission string) error { return nil }
+func (allowAllGuard) Require(_ context.Context, _ string) error { return nil }
 
-func resetTables(t *testing.T) {
+const roleAdmin = "admin"
+
+// call drives one request through the module's router. actor is uuid.Nil for a
+// learner request, which carries no authenticated actor; body is nil for the
+// state-change endpoints, which take no payload.
+func call(
+	ctx context.Context,
+	t *testing.T,
+	router http.Handler,
+	method, target string,
+	body any,
+	actor uuid.UUID,
+) *httptest.ResponseRecorder {
 	t.Helper()
-	ctx := context.Background()
+
+	var reader *bytes.Reader
+	if body != nil {
+		encoded, err := json.Marshal(body)
+		if err != nil {
+			t.Fatalf("marshal %s %s body: %v", method, target, err)
+		}
+		reader = bytes.NewReader(encoded)
+	} else {
+		reader = bytes.NewReader(nil)
+	}
+
+	requestCtx := ctx
+	if actor != uuid.Nil {
+		requestCtx = httpx.WithActor(ctx, httpx.Actor{UserID: actor, Role: roleAdmin})
+	}
+	req := httptest.NewRequest(method, target, reader).WithContext(requestCtx)
+
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	return rec
+}
+
+// reviewPayload is the body POST /admin/content/{id}/review takes. It exists so
+// the two field names are written once.
+func reviewPayload(decision, comments string) map[string]any {
+	return map[string]any{"decision": decision, "comments": comments}
+}
+
+// wantStatus fails with the response body, which is where the problem code is.
+func wantStatus(t *testing.T, rec *httptest.ResponseRecorder, want int, step string) {
+	t.Helper()
+	if rec.Code != want {
+		t.Fatalf("%s: status %d, want %d: %s", step, rec.Code, want, rec.Body.String())
+	}
+}
+
+func mustExec(ctx context.Context, t *testing.T, sql string, args ...any) {
+	t.Helper()
+	if _, err := pool.Exec(ctx, sql, args...); err != nil {
+		t.Fatalf("exec %q: %v", sql, err)
+	}
+}
+
+// seedUser satisfies the core.users foreign key content_items.owner_id points at.
+func seedUser(ctx context.Context, t *testing.T, id uuid.UUID, email string) {
+	t.Helper()
+	mustExec(ctx, t,
+		"INSERT INTO core.users (id, email) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING",
+		id, email)
+}
+
+func outboxEvents(ctx context.Context, t *testing.T, event string) int {
+	t.Helper()
+	var count int
+	err := pool.QueryRow(ctx,
+		"SELECT COUNT(*) FROM ops.outbox_events WHERE aggregate = 'content' AND event = $1",
+		event).Scan(&count)
+	if err != nil {
+		t.Fatalf("count %s outbox events: %v", event, err)
+	}
+	return count
+}
+
+func resetTables(ctx context.Context, t *testing.T) {
+	t.Helper()
 	queries := []string{
 		"TRUNCATE TABLE ops.outbox_events CASCADE",
 		"TRUNCATE TABLE content.content_reviews CASCADE",
@@ -152,254 +230,202 @@ func resetTables(t *testing.T) {
 	}
 }
 
-func TestAuthoringLifecycle_Integration(t *testing.T) {
-	resetTables(t)
-	ctx := context.Background()
+const lifecycleSlug = "photosynthesis-item"
 
-	authorID := uuid.MustParse("018f0000-0000-7000-8000-000000000001")
-	reviewerID := uuid.MustParse("018f0000-0000-7000-8000-000000000002")
+// authoringFixture is the module under test together with the two people who
+// drive it. BR-CONTENT-03 needs an author and a reviewer who are not the same
+// person, so both exist from the start.
+type authoringFixture struct {
+	mod        *content.Module
+	router     http.Handler
+	authorID   uuid.UUID
+	reviewerID uuid.UUID
+	itemID     uuid.UUID
+}
 
-	// Ensure core.users exists for FK
-	_, _ = pool.Exec(ctx, "INSERT INTO core.users (id, email) VALUES ($1, 'author@fluentra.test') ON CONFLICT (id) DO NOTHING", authorID)
-	_, _ = pool.Exec(ctx, "INSERT INTO core.users (id, email) VALUES ($1, 'reviewer@fluentra.test') ON CONFLICT (id) DO NOTHING", reviewerID)
+func newAuthoringFixture(ctx context.Context, t *testing.T) *authoringFixture {
+	t.Helper()
+	resetTables(ctx, t)
 
-	// Prepopulate taxonomy
-	taxID := uuid.MustParse("018f0000-0000-7000-8000-000000000099")
-	_, err := pool.Exec(ctx, "INSERT INTO content.taxonomies (id, namespace, code, label) VALUES ($1, 'topic', 'science', 'Science')", taxID)
-	if err != nil {
-		t.Fatalf("insert taxonomy: %v", err)
+	fixture := &authoringFixture{
+		authorID:   uuid.MustParse("018f0000-0000-7000-8000-000000000001"),
+		reviewerID: uuid.MustParse("018f0000-0000-7000-8000-000000000002"),
 	}
+	seedUser(ctx, t, fixture.authorID, "author@fluentra.test")
+	seedUser(ctx, t, fixture.reviewerID, "reviewer@fluentra.test")
 
-	fixedTime := time.Date(2026, 8, 22, 10, 0, 0, 0, time.UTC)
-	mod := content.New(content.Deps{
+	mustExec(ctx, t,
+		"INSERT INTO content.taxonomies (id, namespace, code, label) VALUES ($1, 'topic', 'science', 'Science')",
+		uuid.MustParse("018f0000-0000-7000-8000-000000000099"))
+
+	fixture.mod = content.New(content.Deps{
 		Pool:  pool,
-		Clock: clock.NewFake(fixedTime),
+		Clock: clock.NewFake(time.Date(2026, 8, 22, 10, 0, 0, 0, time.UTC)),
 		Guard: allowAllGuard{},
 	})
 
 	router := chi.NewRouter()
-	mod.Routes(router)
-	mod.AdminRoutes(router)
+	fixture.mod.Routes(router)
+	fixture.mod.AdminRoutes(router)
+	fixture.router = router
 
-	// 1. Create content item (draft)
-	createReq := map[string]any{
+	return fixture
+}
+
+// createDraft covers steps 1 and 2: a new item starts as a draft, and editing
+// that draft while it is still a draft edits it in place.
+func (f *authoringFixture) createDraft(ctx context.Context, t *testing.T) {
+	t.Helper()
+
+	rec := call(ctx, t, f.router, http.MethodPost, "/admin/content", map[string]any{
 		"kind":       "vocab_word",
-		"slug":       "photosynthesis-item",
+		"slug":       lifecycleSlug,
 		"cefr_level": "B2",
 		"body":       map[string]any{"word": "photosynthesis", "def": "process by plants"},
 		"tags":       []string{"science"},
-	}
-	createBody, _ := json.Marshal(createReq)
+	}, f.authorID)
+	wantStatus(t, rec, http.StatusCreated, "create item")
 
-	req := httptest.NewRequest(http.MethodPost, "/admin/content", bytes.NewReader(createBody))
-	req = req.WithContext(httpx.WithActor(req.Context(), httpx.Actor{UserID: authorID, Role: "admin"}))
-	rec := httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusCreated {
-		t.Fatalf("create item failed with status %d: %s", rec.Code, rec.Body.String())
+	var item struct {
+		ID     uuid.UUID `json:"id"`
+		Status string    `json:"status"`
 	}
-
-	var itemResp struct {
-		ID               uuid.UUID  `json:"id"`
-		Kind             string     `json:"kind"`
-		Slug             string     `json:"slug"`
-		CurrentVersionID *uuid.UUID `json:"current_version_id"`
-		Status           string     `json:"status"`
-	}
-	if err := json.Unmarshal(rec.Body.Bytes(), &itemResp); err != nil {
+	if err := json.Unmarshal(rec.Body.Bytes(), &item); err != nil {
 		t.Fatalf("unmarshal create item response: %v", err)
 	}
-	if itemResp.Status != "draft" {
-		t.Errorf("status = %q, want draft", itemResp.Status)
+	if item.Status != "draft" {
+		t.Errorf("status = %q, want draft", item.Status)
 	}
-	itemID := itemResp.ID
+	f.itemID = item.ID
 
-	// 2. Update draft
-	updateReq := map[string]any{
+	rec = call(ctx, t, f.router, http.MethodPut, f.path("draft"), map[string]any{
 		"cefr_level": "C1",
 		"body":       map[string]any{"word": "photosynthesis", "def": "updated definition"},
-	}
-	updateBody, _ := json.Marshal(updateReq)
-	req = httptest.NewRequest(http.MethodPut, fmt.Sprintf("/admin/content/%s/draft", itemID), bytes.NewReader(updateBody))
-	req = req.WithContext(httpx.WithActor(req.Context(), httpx.Actor{UserID: authorID, Role: "admin"}))
-	rec = httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
+	}, f.authorID)
+	wantStatus(t, rec, http.StatusOK, "update draft")
+}
 
-	if rec.Code != http.StatusOK {
-		t.Fatalf("update draft failed with status %d: %s", rec.Code, rec.Body.String())
-	}
+// reviewCycle covers steps 3 to 7: submit, the self-approval refusal, changes
+// requested, resubmit, and finally an approval by someone else.
+func (f *authoringFixture) reviewCycle(ctx context.Context, t *testing.T) {
+	t.Helper()
 
-	// 3. Submit for review
-	req = httptest.NewRequest(http.MethodPost, fmt.Sprintf("/admin/content/%s/submit", itemID), nil)
-	req = req.WithContext(httpx.WithActor(req.Context(), httpx.Actor{UserID: authorID, Role: "admin"}))
-	rec = httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
+	rec := call(ctx, t, f.router, http.MethodPost, f.path("submit"), nil, f.authorID)
+	wantStatus(t, rec, http.StatusOK, "submit for review")
 
-	if rec.Code != http.StatusOK {
-		t.Fatalf("submit for review failed with status %d: %s", rec.Code, rec.Body.String())
-	}
+	// BR-CONTENT-03: the author may not approve their own version.
+	rec = call(ctx, t, f.router, http.MethodPost, f.path("review"),
+		reviewPayload("approved", "looks great to myself"), f.authorID)
+	wantStatus(t, rec, http.StatusForbidden, "self-approval")
 
-	// 4. BR-CONTENT-03 Self-approval rejection
-	reviewReq := map[string]any{
-		"decision": "approved",
-		"comments": "looks great to myself",
-	}
-	reviewBody, _ := json.Marshal(reviewReq)
-	req = httptest.NewRequest(http.MethodPost, fmt.Sprintf("/admin/content/%s/review", itemID), bytes.NewReader(reviewBody))
-	req = req.WithContext(httpx.WithActor(req.Context(), httpx.Actor{UserID: authorID, Role: "admin"}))
-	rec = httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusForbidden {
-		t.Fatalf("expected 403 Forbidden for self-approval, got %d: %s", rec.Code, rec.Body.String())
-	}
 	var prob apperr.Problem
-	_ = json.Unmarshal(rec.Body.Bytes(), &prob)
+	if err := json.Unmarshal(rec.Body.Bytes(), &prob); err != nil {
+		t.Fatalf("unmarshal problem: %v", err)
+	}
 	if prob.Code != "SELF_APPROVAL_FORBIDDEN" {
 		t.Errorf("problem code = %q, want SELF_APPROVAL_FORBIDDEN", prob.Code)
 	}
 
-	// 5. Reviewer requests changes
-	reviewReq["decision"] = "changes_requested"
-	reviewReq["comments"] = "please fix definition"
-	reviewBody, _ = json.Marshal(reviewReq)
-	req = httptest.NewRequest(http.MethodPost, fmt.Sprintf("/admin/content/%s/review", itemID), bytes.NewReader(reviewBody))
-	req = req.WithContext(httpx.WithActor(req.Context(), httpx.Actor{UserID: reviewerID, Role: "admin"}))
-	rec = httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
+	rec = call(ctx, t, f.router, http.MethodPost, f.path("review"),
+		reviewPayload("changes_requested", "please fix definition"), f.reviewerID)
+	wantStatus(t, rec, http.StatusOK, "changes requested")
 
-	if rec.Code != http.StatusOK {
-		t.Fatalf("review changes_requested failed with status %d: %s", rec.Code, rec.Body.String())
+	rec = call(ctx, t, f.router, http.MethodPost, f.path("submit"), nil, f.authorID)
+	wantStatus(t, rec, http.StatusOK, "resubmit")
+
+	rec = call(ctx, t, f.router, http.MethodPost, f.path("review"),
+		reviewPayload("approved", "definition reads well now"), f.reviewerID)
+	wantStatus(t, rec, http.StatusOK, "approve")
+}
+
+// publishGatedOnMedia covers steps 8 and 9 and returns the published version id.
+// media_refs is written straight to the row because the authoring API has no
+// field for it yet — see the P7.4 note in content/TODO.md.
+func (f *authoringFixture) publishGatedOnMedia(ctx context.Context, t *testing.T) uuid.UUID {
+	t.Helper()
+
+	const mediaKey = "audio/words/photosynthesis.mp3"
+	mustExec(ctx, t,
+		"INSERT INTO content.media_assets (id, object_key, kind, status) VALUES ($1, $2, 'audio', 'pending')",
+		uuid.New(), mediaKey)
+	mustExec(ctx, t,
+		"UPDATE content.content_versions SET media_refs = ARRAY[$1] WHERE item_id = $2",
+		mediaKey, f.itemID)
+
+	// BR-CONTENT-04: publishing is blocked while the asset is still pending.
+	rec := call(ctx, t, f.router, http.MethodPost, f.path("publish"), nil, f.authorID)
+	wantStatus(t, rec, http.StatusConflict, "publish with pending media")
+
+	mustExec(ctx, t,
+		"UPDATE content.media_assets SET status = 'ready' WHERE object_key = $1", mediaKey)
+
+	rec = call(ctx, t, f.router, http.MethodPost, f.path("publish"), nil, f.authorID)
+	wantStatus(t, rec, http.StatusOK, "publish")
+
+	var version struct {
+		ID     uuid.UUID `json:"id"`
+		Status string    `json:"status"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &version); err != nil {
+		t.Fatalf("unmarshal published version: %v", err)
+	}
+	if version.Status != "published" {
+		t.Errorf("version status = %q, want published", version.Status)
+	}
+	if got := outboxEvents(ctx, t, "published"); got != 1 {
+		t.Fatalf("content.published outbox events = %d, want 1", got)
 	}
 
-	// 6. Author resubmits
-	req = httptest.NewRequest(http.MethodPost, fmt.Sprintf("/admin/content/%s/submit", itemID), nil)
-	req = req.WithContext(httpx.WithActor(req.Context(), httpx.Actor{UserID: authorID, Role: "admin"}))
-	rec = httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("resubmit failed with status %d: %s", rec.Code, rec.Body.String())
+	return version.ID
+}
+
+// archiveAndCheckMidSession covers steps 10 to 12, and step 12 is the whole
+// point of the archive decision: a learner who already holds a version id keeps
+// reading it, while discovery stops returning the item.
+func (f *authoringFixture) archiveAndCheckMidSession(ctx context.Context, t *testing.T, versionID uuid.UUID) {
+	t.Helper()
+
+	rec := call(ctx, t, f.router, http.MethodGet, "/content/"+lifecycleSlug, nil, uuid.Nil)
+	wantStatus(t, rec, http.StatusOK, "learner discovery before archive")
+
+	rec = call(ctx, t, f.router, http.MethodPost, f.path("archive"), nil, f.authorID)
+	wantStatus(t, rec, http.StatusOK, "archive item")
+
+	if got := outboxEvents(ctx, t, "archived"); got != 1 {
+		t.Fatalf("content.archived outbox events = %d, want 1", got)
 	}
 
-	// 7. Reviewer approves
-	reviewReq["decision"] = "approved"
-	reviewBody, _ = json.Marshal(reviewReq)
-	req = httptest.NewRequest(http.MethodPost, fmt.Sprintf("/admin/content/%s/review", itemID), bytes.NewReader(reviewBody))
-	req = req.WithContext(httpx.WithActor(req.Context(), httpx.Actor{UserID: reviewerID, Role: "admin"}))
-	rec = httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusOK {
-		t.Fatalf("review approve failed with status %d: %s", rec.Code, rec.Body.String())
-	}
-
-	// 8. BR-CONTENT-04 Check: Add pending media asset ref directly to draft version
-	mediaKey := "audio/words/photosynthesis.mp3"
-	_, err = pool.Exec(ctx, "INSERT INTO content.media_assets (id, object_key, kind, status) VALUES ($1, $2, 'audio', 'pending')", uuid.New(), mediaKey)
+	version, err := f.mod.Reader().GetVersion(ctx, versionID)
 	if err != nil {
-		t.Fatalf("insert pending media asset: %v", err)
+		t.Fatalf("GetVersion on an archived item's version: %v", err)
+	}
+	if version.ID != versionID {
+		t.Errorf("resolved version id = %v, want %v", version.ID, versionID)
 	}
 
-	_, err = pool.Exec(ctx, "UPDATE content.content_versions SET media_refs = ARRAY[$1] WHERE item_id = $2", mediaKey, itemID)
-	if err != nil {
-		t.Fatalf("update version media_refs: %v", err)
-	}
+	rec = call(ctx, t, f.router, http.MethodGet, "/content/"+lifecycleSlug, nil, uuid.Nil)
+	wantStatus(t, rec, http.StatusNotFound, "learner discovery after archive")
+}
 
-	// Attempt publish -> should fail with MEDIA_NOT_READY
-	req = httptest.NewRequest(http.MethodPost, fmt.Sprintf("/admin/content/%s/publish", itemID), nil)
-	req = req.WithContext(httpx.WithActor(req.Context(), httpx.Actor{UserID: authorID, Role: "admin"}))
-	rec = httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
+func (f *authoringFixture) path(action string) string {
+	return fmt.Sprintf("/admin/content/%s/%s", f.itemID, action)
+}
 
-	if rec.Code != http.StatusConflict {
-		t.Fatalf("expected 409 Conflict for non-ready media publish, got %d: %s", rec.Code, rec.Body.String())
-	}
+// TestAuthoringLifecycle_Integration walks one item from draft to archived
+// through the HTTP surface, against the real schema and its triggers.
+func TestAuthoringLifecycle_Integration(t *testing.T) {
+	ctx := context.Background()
 
-	// Mark media as ready
-	_, err = pool.Exec(ctx, "UPDATE content.media_assets SET status = 'ready' WHERE object_key = $1", mediaKey)
-	if err != nil {
-		t.Fatalf("mark media ready: %v", err)
-	}
-
-	// 9. Publish succeeds
-	req = httptest.NewRequest(http.MethodPost, fmt.Sprintf("/admin/content/%s/publish", itemID), nil)
-	req = req.WithContext(httpx.WithActor(req.Context(), httpx.Actor{UserID: authorID, Role: "admin"}))
-	rec = httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusOK {
-		t.Fatalf("publish failed with status %d: %s", rec.Code, rec.Body.String())
-	}
-
-	var pubVerResp struct {
-		ID          uuid.UUID `json:"id"`
-		Status      string    `json:"status"`
-		PublishedAt string    `json:"published_at"`
-	}
-	if err := json.Unmarshal(rec.Body.Bytes(), &pubVerResp); err != nil {
-		t.Fatalf("unmarshal pub ver response: %v", err)
-	}
-	if pubVerResp.Status != "published" {
-		t.Errorf("version status = %q, want published", pubVerResp.Status)
-	}
-
-	// Verify outbox has content.published
-	var outboxCount int
-	err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM ops.outbox_events WHERE aggregate = 'content' AND event = 'published'").Scan(&outboxCount)
-	if err != nil || outboxCount != 1 {
-		t.Fatalf("expected 1 content.published outbox event, got %d (err: %v)", outboxCount, err)
-	}
-
-	// 10. Learner discovery
-	req = httptest.NewRequest(http.MethodGet, "/content/photosynthesis-item", nil)
-	rec = httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusOK {
-		t.Fatalf("learner get by slug failed: %d: %s", rec.Code, rec.Body.String())
-	}
-
-	// 11. Archive item
-	req = httptest.NewRequest(http.MethodPost, fmt.Sprintf("/admin/content/%s/archive", itemID), nil)
-	req = req.WithContext(httpx.WithActor(req.Context(), httpx.Actor{UserID: authorID, Role: "admin"}))
-	rec = httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusOK {
-		t.Fatalf("archive item failed: %d: %s", rec.Code, rec.Body.String())
-	}
-
-	// Verify outbox has content.archived
-	err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM ops.outbox_events WHERE aggregate = 'content' AND event = 'archived'").Scan(&outboxCount)
-	if err != nil || outboxCount != 1 {
-		t.Fatalf("expected 1 content.archived outbox event, got %d (err: %v)", outboxCount, err)
-	}
-
-	// 12. Archive-mid-session check:
-	// Direct GetVersion by ID still succeeds (does NOT 404)
-	reader := mod.Reader()
-	v, err := reader.GetVersion(ctx, pubVerResp.ID)
-	if err != nil {
-		t.Fatalf("direct GetVersion on archived item failed: %v", err)
-	}
-	if v.ID != pubVerResp.ID {
-		t.Errorf("resolved version ID = %v, want %v", v.ID, pubVerResp.ID)
-	}
-
-	// Discovery by slug fails (404)
-	req = httptest.NewRequest(http.MethodGet, "/content/photosynthesis-item", nil)
-	rec = httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusNotFound {
-		t.Fatalf("expected 404 for archived item discovery, got %d", rec.Code)
-	}
+	fixture := newAuthoringFixture(ctx, t)
+	fixture.createDraft(ctx, t)
+	fixture.reviewCycle(ctx, t)
+	versionID := fixture.publishGatedOnMedia(ctx, t)
+	fixture.archiveAndCheckMidSession(ctx, t, versionID)
 }
 
 func TestGetManyVersionsSingleQuery_Integration(t *testing.T) {
-	resetTables(t)
 	ctx := context.Background()
+	resetTables(ctx, t)
 
 	mod := content.New(content.Deps{
 		Pool:  pool,
@@ -409,7 +435,7 @@ func TestGetManyVersionsSingleQuery_Integration(t *testing.T) {
 
 	// Insert 5 published items & versions
 	authorID := uuid.MustParse("018f0000-0000-7000-8000-000000000001")
-	_, _ = pool.Exec(ctx, "INSERT INTO core.users (id, email) VALUES ($1, 'author@fluentra.test') ON CONFLICT (id) DO NOTHING", authorID)
+	seedUser(ctx, t, authorID, "author@fluentra.test")
 	var versionIDs []uuid.UUID
 
 	for i := 1; i <= 5; i++ {
