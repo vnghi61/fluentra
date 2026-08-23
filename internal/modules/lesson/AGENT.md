@@ -113,6 +113,7 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | `GET` | `/api/v1/lessons/{id}` | `content.read.published` | Lesson with its activities and resolved content |
 | `POST` | `/api/v1/admin/courses` | `content.create` | Create a course |
 | `PUT` | `/api/v1/admin/lessons/{id}/activities` | `content.edit` | Reorder or replace the activity list |
+| `POST` | `/api/v1/admin/lessons/{id}/publish` | `content.publish` | Publish an approved lesson |
 <!-- END GENERATED: endpoints -->
 
 ## 7. Folder map

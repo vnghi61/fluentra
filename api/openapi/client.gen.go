@@ -265,6 +265,13 @@ type ClientInterface interface {
 	// Corresponds with PUT /admin/lessons/{id}/activities (the `AdminUpdateLessonActivities` operationId).
 	AdminUpdateLessonActivities(ctx context.Context, id openapi_types.UUID, body AdminUpdateLessonActivitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AdminPublishLesson Publish an approved lesson.
+	//
+	// Validates that all activities point to published content versions (BR-LESSON-02) and that the activity list is non-empty, flips the lesson status to published, and emits the lesson.published event. Estimated duration is recalculated when the activity list changes (PUT /admin/lessons/{id}/activities), not here. Publishing a lesson that is already published is a no-op that returns it unchanged.
+	//
+	// Corresponds with POST /admin/lessons/{id}/publish (the `AdminPublishLesson` operationId).
+	AdminPublishLesson(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// RbacListRoles List roles and the permissions they grant.
 	//
 	// The catalogue is small and fixed, so it is returned whole rather than paginated.
@@ -1286,6 +1293,23 @@ func (c *Client) AdminUpdateLessonActivitiesWithBody(ctx context.Context, id ope
 // Corresponds with PUT /admin/lessons/{id}/activities (the `AdminUpdateLessonActivities` operationId).
 func (c *Client) AdminUpdateLessonActivities(ctx context.Context, id openapi_types.UUID, body AdminUpdateLessonActivitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAdminUpdateLessonActivitiesRequest(c.Server, id, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminPublishLesson Publish an approved lesson.
+//
+// Validates that all activities point to published content versions (BR-LESSON-02) and that the activity list is non-empty, flips the lesson status to published, and emits the lesson.published event. Estimated duration is recalculated when the activity list changes (PUT /admin/lessons/{id}/activities), not here. Publishing a lesson that is already published is a no-op that returns it unchanged.
+//
+// Corresponds with POST /admin/lessons/{id}/publish (the `AdminPublishLesson` operationId).
+func (c *Client) AdminPublishLesson(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminPublishLessonRequest(c.Server, id)
 	if err != nil {
 		return nil, err
 	}
@@ -3217,6 +3241,40 @@ func NewAdminUpdateLessonActivitiesRequestWithBody(server string, id openapi_typ
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewAdminPublishLessonRequest constructs an http.Request for the AdminPublishLesson method
+func NewAdminPublishLessonRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/lessons/%s/publish", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -5465,6 +5523,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with PUT /admin/lessons/{id}/activities (the `AdminUpdateLessonActivities` operationId).
 	AdminUpdateLessonActivitiesWithResponse(ctx context.Context, id openapi_types.UUID, body AdminUpdateLessonActivitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminUpdateLessonActivitiesResponse, error)
 
+	// AdminPublishLessonWithResponse Publish an approved lesson.
+	//
+	// Validates that all activities point to published content versions (BR-LESSON-02) and that the activity list is non-empty, flips the lesson status to published, and emits the lesson.published event. Estimated duration is recalculated when the activity list changes (PUT /admin/lessons/{id}/activities), not here. Publishing a lesson that is already published is a no-op that returns it unchanged.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/lessons/{id}/publish (the `AdminPublishLesson` operationId).
+	AdminPublishLessonWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*AdminPublishLessonResponse, error)
+
 	// RbacListRolesWithResponse List roles and the permissions they grant.
 	//
 	// The catalogue is small and fixed, so it is returned whole rather than paginated.
@@ -7105,6 +7172,96 @@ func (r AdminUpdateLessonActivitiesResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r AdminUpdateLessonActivitiesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AdminPublishLessonResponse200Headers the declared response headers of an HTTP 200 response for AdminPublishLesson
+type AdminPublishLessonResponse200Headers struct {
+	XRequestId *string
+}
+
+type AdminPublishLessonResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *LessonDetail
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AdminPublishLessonResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AdminPublishLessonResponse) GetJSON200() *LessonDetail {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r AdminPublishLessonResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AdminPublishLessonResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminPublishLessonResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AdminPublishLessonResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AdminPublishLessonResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AdminPublishLessonResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminPublishLessonResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminPublishLessonResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminPublishLessonResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminPublishLessonResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -10951,6 +11108,21 @@ func (c *ClientWithResponses) AdminUpdateLessonActivitiesWithResponse(ctx contex
 	return ParseAdminUpdateLessonActivitiesResponse(rsp)
 }
 
+// AdminPublishLessonWithResponse Publish an approved lesson.
+//
+// Validates that all activities point to published content versions (BR-LESSON-02) and that the activity list is non-empty, flips the lesson status to published, and emits the lesson.published event. Estimated duration is recalculated when the activity list changes (PUT /admin/lessons/{id}/activities), not here. Publishing a lesson that is already published is a no-op that returns it unchanged.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/lessons/{id}/publish (the `AdminPublishLesson` operationId).
+func (c *ClientWithResponses) AdminPublishLessonWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*AdminPublishLessonResponse, error) {
+	rsp, err := c.AdminPublishLesson(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminPublishLessonResponse(rsp)
+}
+
 // RbacListRolesWithResponse List roles and the permissions they grant.
 //
 // The catalogue is small and fixed, so it is returned whole rather than paginated.
@@ -12865,6 +13037,87 @@ func ParseAdminUpdateLessonActivitiesResponse(rsp *http.Response) (*AdminUpdateL
 	switch {
 	case rsp.StatusCode == 200:
 		var headers AdminUpdateLessonActivitiesResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAdminPublishLessonResponse parses an HTTP response from a AdminPublishLessonWithResponse call
+func ParseAdminPublishLessonResponse(rsp *http.Response) (*AdminPublishLessonResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminPublishLessonResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LessonDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AdminPublishLessonResponse200Headers
 		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
 			var value string
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
