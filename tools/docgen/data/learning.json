@@ -194,7 +194,8 @@
       { "method": "GET", "path": "/api/v1/courses/{slug}", "permission": "content.read.published", "purpose": "Course with units and lesson summaries", "success": "200" },
       { "method": "GET", "path": "/api/v1/lessons/{id}", "permission": "content.read.published", "purpose": "Lesson with its activities and resolved content", "success": "200", "errors": ["LESSON_LOCKED"] },
       { "method": "POST", "path": "/api/v1/admin/courses", "permission": "content.create", "purpose": "Create a course", "success": "201" },
-      { "method": "PUT", "path": "/api/v1/admin/lessons/{id}/activities", "permission": "content.edit", "purpose": "Reorder or replace the activity list", "success": "200" }
+      { "method": "PUT", "path": "/api/v1/admin/lessons/{id}/activities", "permission": "content.edit", "purpose": "Reorder or replace the activity list", "success": "200", "errors": ["EMPTY_ACTIVITIES", "TOO_MANY_ACTIVITIES", "INVALID_WEIGHT", "INVALID_POSITION", "INVALID_ACTIVITY_KIND"] },
+      { "method": "POST", "path": "/api/v1/admin/lessons/{id}/publish", "permission": "content.publish", "purpose": "Publish an approved lesson", "success": "200", "errors": ["ACTIVITY_CONTENT_UNPUBLISHED", "EMPTY_ACTIVITIES"] }
     ],
     "contract": [
       { "kind": "interface", "name": "lesson.Reader", "purpose": "`GetLesson`, `ListLessons`, `NextLesson` — used heavily by `learning`" },
@@ -254,7 +255,9 @@
     "decisions": [
       { "question": "Bind activities to items or versions?", "choice": "Versions", "why": "A learner's attempt must be interpretable against exactly what they saw; item binding would let a republish change the meaning of past results" },
       { "question": "Where do unlocking rules live?", "choice": "Defined here, evaluated by `learning`", "why": "The rule is structural (a property of the curriculum); the state is personal (a property of the learner). Splitting them keeps both modules honest" },
-      { "question": "Are the course and lesson reads public?", "choice": "No — signed in, with `content.read.published`", "why": "A lesson response carries its activities and their resolved content versions, so an anonymous `/lessons/{id}` publishes the whole course and removes the surface Phase 4 attaches entitlements to. The `user` role holds the read permission; writing courses and reordering activities stays with `admin`" }
+      { "question": "Are the course and lesson reads public?", "choice": "No — signed in, with `content.read.published`", "why": "A lesson response carries its activities and their resolved content versions, so an anonymous `/lessons/{id}` publishes the whole course and removes the surface Phase 4 attaches entitlements to. The `user` role holds the read permission; writing courses and reordering activities stays with `admin`" },
+      { "question": "How to invalidate the catalogue cache without wildcards?", "choice": "Generation counter in Redis", "why": "The catalogue key has one hash per level/limit/offset permutation. Storing a generation counter in Redis and bumping it on publish invalidates all filter combinations instantly without an expensive SCAN in the request path (P7.5 Trap 1)" },
+      { "question": "When does cache invalidation take place relative to publish?", "choice": "Synchronously in service post-commit, plus outbox event backstop", "why": "Outbox events reach subscribers through `cmd/worker`, so an event-only invalidation leaves a window in which an author reloads the course and still sees the pre-publish tree. `PublishLesson` therefore deletes the keys itself once the transaction commits; Redis is shared, so that delete is visible to every process immediately. A `lesson.published` consumer in the worker repeats it as the backstop for a delete that failed while Redis was unreachable — a failed delete only warns, it never fails the publish (P7.5 Traps 2 and 3)" }
     ],
     "todo": [
       { "title": "Phase 2", "items": [

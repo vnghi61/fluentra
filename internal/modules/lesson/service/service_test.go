@@ -16,7 +16,8 @@ import (
 )
 
 const (
-	kindQuiz = "quiz"
+	kindQuiz          = "quiz"
+	codeInvalidWeight = "INVALID_WEIGHT"
 )
 
 type staticUnlocker struct {
@@ -55,7 +56,7 @@ func lockFixture(lessonID, unitID, courseID uuid.UUID) (*contract.Lesson, *contr
 		ID:       unitID,
 		CourseID: courseID,
 		Position: 1,
-		Title:    "Unit 1",
+		Title:    titleUnit1,
 	}
 
 	course := &contract.Course{
@@ -239,7 +240,7 @@ func TestService_PublishLesson_BR_LESSON_02(t *testing.T) {
 		}
 		contentReader := &countingContentReader{
 			versions: map[uuid.UUID]*contentcontract.Version{
-				vPublishedID: {ID: vPublishedID, Status: "published"},
+				vPublishedID: {ID: vPublishedID, Status: statusPublished, Kind: kindQuiz, CEFRLevel: "B1"},
 			},
 		}
 
@@ -252,8 +253,8 @@ func TestService_PublishLesson_BR_LESSON_02(t *testing.T) {
 		if err != nil {
 			t.Fatalf("PublishLesson: %v", err)
 		}
-		if res.Status != "published" {
-			t.Errorf("expected published status, got %s", res.Status)
+		if res.Status != statusPublished {
+			t.Errorf("status = %q, want published", res.Status)
 		}
 	})
 }
@@ -306,7 +307,7 @@ func TestService_UpdateActivitiesAndRecalculateDuration_BR_LESSON_06(t *testing.
 	})
 
 	inputs := []domain.ActivityInput{
-		{Position: 1, Kind: "quiz", ContentVersionID: uuid.New(), Weight: 2},
+		{Position: 1, Kind: kindQuiz, ContentVersionID: uuid.New(), Weight: 2},
 		{Position: 2, Kind: "gap_fill", ContentVersionID: uuid.New(), Weight: 3},
 	}
 
@@ -346,5 +347,58 @@ func TestService_NextLesson(t *testing.T) {
 	}
 	if next.ID != l1.ID {
 		t.Errorf("expected first lesson %v, got %v", l1.ID, next.ID)
+	}
+}
+
+// UpdateActivities is the only path an unbounded integer reaches the int32
+// duration through. The spec now bounds it; these prove the handler side does
+// too, because a schema no router enforces changes nothing.
+func TestService_UpdateActivities_RejectsUnboundedInput(t *testing.T) {
+	t.Parallel()
+
+	tooMany := make([]domain.ActivityInput, domain.MaxActivitiesPerLesson+1)
+	for i := range tooMany {
+		tooMany[i] = domain.ActivityInput{Position: i + 1, Kind: kindQuiz, Weight: 1}
+	}
+
+	cases := []struct {
+		name  string
+		input []domain.ActivityInput
+		want  string
+	}{
+		{
+			name:  "weight above the ceiling",
+			input: []domain.ActivityInput{{Position: 1, Kind: kindQuiz, Weight: domain.MaxActivityWeight + 1}},
+			want:  codeInvalidWeight,
+		},
+		{
+			name:  "weight that would overflow the duration",
+			input: []domain.ActivityInput{{Position: 1, Kind: kindQuiz, Weight: 1 << 30}},
+			want:  codeInvalidWeight,
+		},
+		{
+			name:  "negative weight",
+			input: []domain.ActivityInput{{Position: 1, Kind: kindQuiz, Weight: -1}},
+			want:  codeInvalidWeight,
+		},
+		{
+			name:  "more activities than a lesson may carry",
+			input: tooMany,
+			want:  "TOO_MANY_ACTIVITIES",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			svc := service.New(service.Deps{Repo: &fakeLessonRepo{}})
+			_, err := svc.UpdateActivities(context.Background(), uuid.New(), uuid.New(), tc.input)
+
+			var appErr *apperr.Error
+			if !errors.As(err, &appErr) || appErr.Code != tc.want {
+				t.Errorf("got %v, want %s", err, tc.want)
+			}
+		})
 	}
 }

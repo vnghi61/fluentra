@@ -18,6 +18,9 @@ import (
 const (
 	statusDraft     = "draft"
 	statusPublished = "published"
+	statusArchived  = "archived"
+	testEnv         = "test"
+	kindVocab       = "vocab"
 )
 
 const (
@@ -180,11 +183,6 @@ func (f *fakeLessonRepo) GetUnitByID(_ context.Context, id uuid.UUID) (*contract
 			return u, nil
 		}
 	}
-	return &contract.Unit{ID: id, CourseID: uuid.New()}, nil
-}
-
-func (f *fakeLessonRepo) CreateUnit(_ context.Context, _ service.CreateUnitParams) (*contract.Unit, error) {
-	f.queryCounter.Add(1)
 	return nil, nil
 }
 
@@ -201,16 +199,6 @@ func (f *fakeLessonRepo) ListLessonsByUnitID(_ context.Context, _ uuid.UUID) ([]
 func (f *fakeLessonRepo) ListLessonsByCourseID(_ context.Context, _ uuid.UUID) ([]*contract.Lesson, error) {
 	f.queryCounter.Add(1)
 	return []*contract.Lesson{f.lesson}, nil
-}
-
-func (f *fakeLessonRepo) CreateLesson(_ context.Context, _ service.CreateLessonParams) (*contract.Lesson, error) {
-	f.queryCounter.Add(1)
-	return nil, nil
-}
-
-func (f *fakeLessonRepo) UpdateLesson(_ context.Context, _ service.UpdateLessonParams) (*contract.Lesson, error) {
-	f.queryCounter.Add(1)
-	return nil, nil
 }
 
 func (f *fakeLessonRepo) UpdateLessonStatus(_ context.Context, _ uuid.UUID, status string) (*contract.Lesson, error) {
@@ -283,6 +271,19 @@ func (f *fakeLessonRepo) AddPrerequisite(_ context.Context, lessonID, requiresID
 		RequiresLessonID: requiresID,
 	})
 	return nil
+}
+
+func (f *fakeLessonRepo) ListLessonIDsByContentVersionID(
+	_ context.Context, versionID uuid.UUID,
+) ([]uuid.UUID, error) {
+	f.queryCounter.Add(1)
+	var ids []uuid.UUID
+	for _, a := range f.activities {
+		if a.ContentVersionID == versionID {
+			ids = append(ids, a.LessonID)
+		}
+	}
+	return ids, nil
 }
 
 func (f *fakeLessonRepo) WithTx(_ pgx.Tx) service.Repository {

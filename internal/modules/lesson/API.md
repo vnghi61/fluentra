@@ -32,6 +32,7 @@ Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR
 | `GET` | `/api/v1/lessons/{id}` | `content.read.published` | Lesson with its activities and resolved content |
 | `POST` | `/api/v1/admin/courses` | `content.create` | Create a course |
 | `PUT` | `/api/v1/admin/lessons/{id}/activities` | `content.edit` | Reorder or replace the activity list |
+| `POST` | `/api/v1/admin/lessons/{id}/publish` | `content.publish` | Publish an approved lesson |
 <!-- END GENERATED: api-summary -->
 
 ## Endpoint detail
@@ -85,7 +86,17 @@ Reorder or replace the activity list
 |---|---|
 | Permission | `content.edit` |
 | Success | 200 |
-| Errors | standard set |
+| Errors | `EMPTY_ACTIVITIES`, `TOO_MANY_ACTIVITIES`, `INVALID_WEIGHT`, `INVALID_POSITION`, `INVALID_ACTIVITY_KIND` |
+
+### `POST /api/v1/admin/lessons/{id}/publish`
+
+Publish an approved lesson
+
+| | |
+|---|---|
+| Permission | `content.publish` |
+| Success | 200 |
+| Errors | `ACTIVITY_CONTENT_UNPUBLISHED`, `EMPTY_ACTIVITIES` |
 
 <!-- END GENERATED: api-detail -->
 

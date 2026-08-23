@@ -15,6 +15,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/auth/service/oauth/google"
 	"github.com/fluentra/fluentra/internal/modules/content"
 	"github.com/fluentra/fluentra/internal/modules/lesson"
+	lessonservice "github.com/fluentra/fluentra/internal/modules/lesson/service"
 	"github.com/fluentra/fluentra/internal/modules/rbac"
 	rbaccontract "github.com/fluentra/fluentra/internal/modules/rbac/contract"
 	"github.com/fluentra/fluentra/internal/modules/user"
@@ -24,6 +25,7 @@ import (
 	"github.com/fluentra/fluentra/internal/platform/storage"
 	"github.com/fluentra/fluentra/internal/platform/telemetry"
 	"github.com/fluentra/fluentra/internal/shared/httpx"
+	"github.com/redis/go-redis/v9"
 )
 
 // identity is WP1+WP2+WP4 assembled: the modules that know who a caller is and what
@@ -43,6 +45,7 @@ type identity struct {
 // identityDeps are the infrastructure the modules are built over.
 type identityDeps struct {
 	Pool       *pgxpool.Pool
+	Redis      redis.Cmdable
 	Cache      rbac.PermissionCache
 	Limiter    cache.Limiter
 	Storage    storage.Store
@@ -179,11 +182,25 @@ func newIdentity(deps identityDeps) *identity {
 
 	assembled.lesson = lesson.New(lesson.Deps{
 		Pool:    deps.Pool,
+		Caches:  newLessonCaches(deps.Redis),
 		Guard:   lazyGuard{of: assembled},
 		Content: assembled.content.Reader(),
+		Env:     deps.Env,
 	})
 
 	return assembled
+}
+
+func newLessonCaches(client redis.Cmdable) lessonservice.LessonCaches {
+	if client == nil {
+		return lessonservice.LessonCaches{}
+	}
+	return lessonservice.LessonCaches{
+		Detail:    cache.NewRedisCache[*lessonservice.LessonDetailDTO](client),
+		Tree:      cache.NewRedisCache[*lessonservice.CourseTreeData](client),
+		Catalogue: cache.NewRedisCache[*lessonservice.CatalogueData](client),
+		Gen:       cache.NewRedisCache[int64](client),
+	}
 }
 
 // Routes mounts every module's operations under the caller's router.

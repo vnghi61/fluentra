@@ -105,6 +105,24 @@ func (f *fakeLessonService) UpdateActivities(
 	return acts, nil
 }
 
+func (f *fakeLessonService) PublishLesson(
+	_ context.Context, _, lessonID uuid.UUID,
+) (*service.LessonDetailDTO, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	return &service.LessonDetailDTO{
+		ID:               lessonID,
+		UnitID:           uuid.New(),
+		Position:         1,
+		Title:            "Published Lesson",
+		SkillFocus:       "vocabulary",
+		EstimatedMinutes: 15,
+		Status:           statusPublished,
+		Activities:       []service.LessonActivityDTO{},
+	}, nil
+}
+
 func TestHandler_FailClosedGuard(t *testing.T) {
 	_, err := lessonhttp.NewHandler(&fakeLessonService{}, nil)
 	if err == nil {
@@ -140,7 +158,7 @@ func TestHandler_ListCourses(t *testing.T) {
 				Title:          "IELTS Core",
 				CEFRFrom:       "B1",
 				CEFRTo:         "B2",
-				Status:         "published",
+				Status:         statusPublished,
 				EstimatedHours: 40,
 			},
 		},

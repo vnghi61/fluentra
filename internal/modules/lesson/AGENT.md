@@ -113,6 +113,7 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | `GET` | `/api/v1/lessons/{id}` | `content.read.published` | Lesson with its activities and resolved content |
 | `POST` | `/api/v1/admin/courses` | `content.create` | Create a course |
 | `PUT` | `/api/v1/admin/lessons/{id}/activities` | `content.edit` | Reorder or replace the activity list |
+| `POST` | `/api/v1/admin/lessons/{id}/publish` | `content.publish` | Publish an approved lesson |
 <!-- END GENERATED: endpoints -->
 
 ## 7. Folder map
@@ -189,8 +190,24 @@ _No deviations from the global standard._
 
 | Key | TTL | Invalidated by |
 |---|---|---|
-| `fluentra:{env}:lesson:detail:{lesson_id}:v1` | 1 h | `lesson.published`, structure edit |
-| `fluentra:{env}:lesson:catalogue:{filter_hash}:v1` | 15 min | Any publish |
+| `fluentra:{env}:lesson:detail:{lesson_id}:v1` | 1 h | `lesson.published`, an activities write, `content.archived` |
+| `fluentra:{env}:lesson:tree:{slug}:v1` | 1 h | `lesson.published`, an activities write |
+| `fluentra:{env}:lesson:catalogue:{filter_hash}:v1` | 15 min | A generation bump (see below) |
+| `fluentra:{env}:lesson:catalogue:generation:v1` | 24 h | Written, never deleted |
+
+`{filter_hash}` is `g{generation}_{level}_{limit}_{offset}`. `Cache.Delete` takes
+explicit keys and the catalogue has one per filter combination, so a publish bumps the
+generation counter instead: every key of the previous generation becomes unreachable at
+once and Redis evicts it on TTL. The counter is read with `Get`, never `GetOrLoad` — a
+read that writes back could land its `generation = 1` after a concurrent publish wrote
+`generation = 2`.
+
+The tree key holds only the static hierarchy. Per-learner lock state is evaluated on
+every request against the cached tree, so two learners never share a lock verdict.
+
+Reads go through `Cache[T].GetOrLoad`, which falls through to the loader when Redis is
+unreachable; an invalidation that fails is logged and does not fail the publish. Both
+the API and the worker hold these caches, and they point at the same Redis.
 
 ### Error codes owned by this module
 
@@ -199,6 +216,9 @@ _No deviations from the global standard._
 | `LESSON_LOCKED` | 403 | Prerequisites not met |
 | `PREREQUISITE_CYCLE` | 422 | The proposed graph contains a cycle |
 | `ACTIVITY_CONTENT_UNPUBLISHED` | 409 | Cannot publish a lesson pointing at draft content |
+| `EMPTY_ACTIVITIES` | 422 | A lesson must carry at least one activity |
+| `TOO_MANY_ACTIVITIES` | 422 | More activities than `MaxActivitiesPerLesson` |
+| `INVALID_WEIGHT` | 422 | Activity weight outside 0..100 |
 
 ## 13. Testing
 

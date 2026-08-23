@@ -1099,6 +1099,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/lessons/{id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Publish an approved lesson.
+         * @description Validates that all activities point to published content versions (BR-LESSON-02) and that the activity list is non-empty, flips the lesson status to published, and emits the lesson.published event. Estimated duration is recalculated when the activity list changes (PUT /admin/lessons/{id}/activities), not here. Publishing a lesson that is already published is a no-op that returns it unchanged.
+         */
+        post: operations["adminPublishLesson"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/content": {
         parameters: {
             query?: never;
@@ -4983,6 +5003,56 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    adminPublishLesson: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Lesson published. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def01234567a",
+                     *       "unit_id": "0199a1c2-3d4e-7f80-9abc-def012345679",
+                     *       "position": 1,
+                     *       "title": "Academic Word List - Topic 1",
+                     *       "skill_focus": "vocabulary",
+                     *       "estimated_minutes": 15,
+                     *       "status": "published",
+                     *       "activities": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def01234567b",
+                     *           "lesson_id": "0199a1c2-3d4e-7f80-9abc-def01234567a",
+                     *           "position": 1,
+                     *           "kind": "vocab_multiple_choice",
+                     *           "content_version_id": "0199a1c2-3d4e-7f80-9abc-def01234567c",
+                     *           "weight": 10
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["LessonDetail"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
         };
     };
     browsePublishedContent: {

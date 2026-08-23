@@ -2517,6 +2517,63 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+  /admin/lessons/{id}/publish:
+    post:
+      tags: [lesson]
+      operationId: adminPublishLesson
+      summary: Publish an approved lesson.
+      description: >-
+        Validates that all activities point to published content versions
+        (BR-LESSON-02) and that the activity list is non-empty, flips the
+        lesson status to published, and emits the lesson.published event.
+        Estimated duration is recalculated when the activity list changes
+        (PUT /admin/lessons/{id}/activities), not here. Publishing a lesson
+        that is already published is a no-op that returns it unchanged.
+      x-permission: content.publish
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Lesson published.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LessonDetail'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def01234567a
+                unit_id: 0199a1c2-3d4e-7f80-9abc-def012345679
+                position: 1
+                title: Academic Word List - Topic 1
+                skill_focus: vocabulary
+                estimated_minutes: 15
+                status: published
+                activities:
+                  - id: 0199a1c2-3d4e-7f80-9abc-def01234567b
+                    lesson_id: 0199a1c2-3d4e-7f80-9abc-def01234567a
+                    position: 1
+                    kind: vocab_multiple_choice
+                    content_version_id: 0199a1c2-3d4e-7f80-9abc-def01234567c
+                    weight: 10
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
   /content:
     get:
       tags: [content]

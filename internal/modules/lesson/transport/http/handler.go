@@ -20,6 +20,7 @@ const (
 	PermContentReadPublished = "content.read.published"
 	PermContentCreate        = "content.create"
 	PermContentEdit          = "content.edit"
+	PermContentPublish       = "content.publish"
 )
 
 // Guard is the authorization interface required by lesson handlers.
@@ -36,6 +37,7 @@ type LessonService interface {
 	UpdateActivities(
 		ctx context.Context, actorID, lessonID uuid.UUID, activities []domain.ActivityInput,
 	) ([]contract.Activity, error)
+	PublishLesson(ctx context.Context, actorID, lessonID uuid.UUID) (*service.LessonDetailDTO, error)
 }
 
 // Handler serves HTTP endpoints for the lesson module.
@@ -66,6 +68,7 @@ func (h *Handler) Routes(router chi.Router) {
 func (h *Handler) AdminRoutes(router chi.Router) {
 	router.Post("/admin/courses", h.createCourse)
 	router.Put("/admin/lessons/{id}/activities", h.updateActivities)
+	router.Post("/admin/lessons/{id}/publish", h.publishLesson)
 }
 
 func (h *Handler) listCourses(w http.ResponseWriter, r *http.Request) {
@@ -270,5 +273,57 @@ func (h *Handler) updateActivities(w http.ResponseWriter, r *http.Request) {
 
 	httpx.WriteJSON(w, r, http.StatusOK, UpdateActivitiesResponse{
 		Activities: acts,
+	})
+}
+
+func (h *Handler) publishLesson(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if err := h.guard.Require(ctx, PermContentPublish); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	actor, ok := httpx.ActorFrom(ctx)
+	if !ok {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Unauthenticated, "UNAUTHENTICATED", "Authentication required."))
+		return
+	}
+
+	idStr := chi.URLParam(r, "id")
+	lessonID, err := uuid.Parse(idStr)
+	if err != nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Validation, "INVALID_ID", "Invalid lesson ID."))
+		return
+	}
+
+	published, err := h.service.PublishLesson(ctx, actor.UserID, lessonID)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	acts := make([]LessonActivityResponse, len(published.Activities))
+	for i, a := range published.Activities {
+		acts[i] = LessonActivityResponse{
+			ID:               a.ID,
+			LessonID:         a.LessonID,
+			Position:         a.Position,
+			Kind:             a.Kind,
+			ContentVersionID: a.ContentVersionID,
+			Config:           a.Config,
+			Weight:           a.Weight,
+			Content:          a.Content,
+		}
+	}
+
+	httpx.WriteJSON(w, r, http.StatusOK, LessonDetailResponse{
+		ID:               published.ID,
+		UnitID:           published.UnitID,
+		Position:         published.Position,
+		Title:            published.Title,
+		SkillFocus:       published.SkillFocus,
+		EstimatedMinutes: published.EstimatedMinutes,
+		Status:           published.Status,
+		Activities:       acts,
 	})
 }

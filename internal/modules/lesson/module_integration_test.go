@@ -32,7 +32,10 @@ import (
 
 const moduleDatabase = "fluentra_lesson_module_test"
 
-var pool *pgxpool.Pool
+var (
+	pool      *pgxpool.Pool
+	moduleDSN string
+)
 
 func TestMain(m *testing.M) {
 	base := os.Getenv("TEST_DATABASE_URL")
@@ -59,6 +62,7 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 	pool = created
+	moduleDSN = dsn
 
 	code := m.Run()
 
@@ -162,10 +166,11 @@ func (r *integrationContentReader) Browse(
 }
 
 const (
-	roleUser        = "user"
-	roleAdmin       = "admin"
-	statusPublished = "published"
-	skillVocabulary = "vocabulary"
+	roleUser           = "user"
+	roleAdmin          = "admin"
+	statusPublished    = "published"
+	skillVocabulary    = "vocabulary"
+	kindMultipleChoice = "multiple_choice"
 )
 
 func TestLessonLifecycle_Integration(t *testing.T) {
@@ -182,7 +187,7 @@ func TestLessonLifecycle_Integration(t *testing.T) {
 
 	contentReader := &integrationContentReader{
 		versions: map[uuid.UUID]*contentcontract.Version{
-			v1ID: {ID: v1ID, Kind: "multiple_choice", Status: statusPublished},
+			v1ID: {ID: v1ID, Kind: kindMultipleChoice, Status: statusPublished},
 			v2ID: {ID: v2ID, Kind: "gap_fill", Status: statusPublished},
 		},
 	}
@@ -260,14 +265,16 @@ func TestLessonLifecycle_Integration(t *testing.T) {
 	}
 	lessonID := lesson.ID.String()
 
-	// A second lesson so the ordered reads have something to order.
-	if _, err := repo.CreateLesson(ctx, repository.CreateLessonParams{
+	// A second lesson, left in draft: the published-only reads below have
+	// nothing to prove unless something is deliberately unpublished.
+	lesson2, err := repo.CreateLesson(ctx, repository.CreateLessonParams{
 		UnitID:     unit.ID,
 		Position:   2,
 		Title:      "Lesson 2: Vocabulary Practice",
 		SkillFocus: skillVocabulary,
 		Status:     "draft",
-	}); err != nil {
+	})
+	if err != nil {
 		t.Fatalf("create second lesson: %v", err)
 	}
 
@@ -308,7 +315,7 @@ func TestLessonLifecycle_Integration(t *testing.T) {
 	// 3. Update activities via Admin endpoint
 	actReq := lessonhttp.UpdateActivitiesRequest{
 		Activities: []lessonhttp.ActivityInput{
-			{Position: 1, Kind: "multiple_choice", ContentVersionID: v1ID, Weight: 2},
+			{Position: 1, Kind: kindMultipleChoice, ContentVersionID: v1ID, Weight: 2},
 			{Position: 2, Kind: "gap_fill", ContentVersionID: v2ID, Weight: 3},
 		},
 	}
@@ -322,61 +329,121 @@ func TestLessonLifecycle_Integration(t *testing.T) {
 		t.Fatalf("update activities status = %d, want 200. Body: %s", putRec.Code, putRec.Body.String())
 	}
 
-	// 4. Verify Catalogue & Details
-	testLearnerEndpoints(ctx, t, router, learnerID, lessonID, v1ID)
+	// 4. Publish the draft lesson through the admin endpoint this task added.
+	publishSecondLesson(ctx, t, router, adminID, lesson2.ID, v1ID)
+
+	// 5. Verify Catalogue & Details
+	testLearnerEndpoints(ctx, t, router, learnerID, lessonID, lesson2.ID, v1ID)
+}
+
+// publishSecondLesson drives POST /admin/lessons/{id}/publish, first against a
+// lesson with no activities at all. That 422 is the half of the publish guard an
+// end-to-end run can reach here: the fake content reader holds only published
+// versions, so the 409 for draft content is proved in the service suite instead.
+func publishSecondLesson(
+	ctx context.Context, t *testing.T, router chi.Router, adminID, lesson2ID, v1ID uuid.UUID,
+) {
+	t.Helper()
+
+	publish := func(label string, want int) {
+		req := httptest.NewRequest(http.MethodPost, "/admin/lessons/"+lesson2ID.String()+"/publish", nil)
+		req = req.WithContext(httpx.WithActor(ctx, httpx.Actor{UserID: adminID, Role: roleAdmin}))
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		if rec.Code != want {
+			t.Fatalf("%s = %d, want %d. Body: %s", label, rec.Code, want, rec.Body.String())
+		}
+	}
+
+	publish("publish a lesson with no activities", http.StatusUnprocessableEntity)
+
+	act2Req := lessonhttp.UpdateActivitiesRequest{
+		Activities: []lessonhttp.ActivityInput{
+			{Position: 1, Kind: kindMultipleChoice, ContentVersionID: v1ID, Weight: 2},
+		},
+	}
+	act2Body, _ := json.Marshal(act2Req)
+	put2Req := httptest.NewRequest(
+		http.MethodPut, "/admin/lessons/"+lesson2ID.String()+"/activities", bytes.NewReader(act2Body))
+	put2Req = put2Req.WithContext(httpx.WithActor(ctx, httpx.Actor{UserID: adminID, Role: roleAdmin}))
+	put2Rec := httptest.NewRecorder()
+	router.ServeHTTP(put2Rec, put2Req)
+	if put2Rec.Code != http.StatusOK {
+		t.Fatalf("update lesson 2 activities = %d, want 200. Body: %s", put2Rec.Code, put2Rec.Body.String())
+	}
+
+	publish("publish lesson 2", http.StatusOK)
+	// Publishing twice is a no-op, not a conflict: the admin UI retries.
+	publish("re-publish lesson 2", http.StatusOK)
 }
 
 func testLearnerEndpoints(
-	ctx context.Context, t *testing.T, router chi.Router, learnerID uuid.UUID, lessonID string, v1ID uuid.UUID,
+	ctx context.Context, t *testing.T, router chi.Router,
+	learnerID uuid.UUID, lessonID string, lesson2ID, v1ID uuid.UUID,
 ) {
-	// 4. Get Course Catalogue (GET /courses)
-	getCatReq := httptest.NewRequest(http.MethodGet, "/courses", nil)
-	getCatReq = getCatReq.WithContext(httpx.WithActor(ctx, httpx.Actor{UserID: learnerID, Role: roleUser}))
-	getCatRec := httptest.NewRecorder()
-	router.ServeHTTP(getCatRec, getCatReq)
+	learnerGet := func(path string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		req = req.WithContext(httpx.WithActor(ctx, httpx.Actor{UserID: learnerID, Role: roleUser}))
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		return rec
+	}
 
-	if getCatRec.Code != http.StatusOK {
-		t.Fatalf("get courses status = %d, want 200. Body: %s", getCatRec.Code, getCatRec.Body.String())
+	assertCatalogue(t, learnerGet("/courses"))
+	assertCourseTree(t, learnerGet("/courses/ielts-integration-course"), lesson2ID)
+	assertLessonDetail(t, learnerGet("/lessons/"+lessonID), v1ID)
+}
+
+func assertCatalogue(t *testing.T, rec *httptest.ResponseRecorder) {
+	t.Helper()
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("get courses status = %d, want 200. Body: %s", rec.Code, rec.Body.String())
 	}
 
 	var catResp lessonhttp.CourseListResponse
-	if err := json.Unmarshal(getCatRec.Body.Bytes(), &catResp); err != nil {
+	if err := json.Unmarshal(rec.Body.Bytes(), &catResp); err != nil {
 		t.Fatalf("unmarshal catalogue: %v", err)
 	}
 	if len(catResp.Courses) == 0 {
 		t.Fatal("catalogue empty; expected at least 1 course")
 	}
+}
 
-	// 5. Get Course Detail (GET /courses/{slug})
-	getCourseReq := httptest.NewRequest(http.MethodGet, "/courses/ielts-integration-course", nil)
-	getCourseReq = getCourseReq.WithContext(httpx.WithActor(ctx, httpx.Actor{UserID: learnerID, Role: roleUser}))
-	getCourseRec := httptest.NewRecorder()
-	router.ServeHTTP(getCourseRec, getCourseReq)
+func assertCourseTree(t *testing.T, rec *httptest.ResponseRecorder, lesson2ID uuid.UUID) {
+	t.Helper()
 
-	if getCourseRec.Code != http.StatusOK {
-		t.Fatalf("get course detail status = %d, want 200. Body: %s", getCourseRec.Code, getCourseRec.Body.String())
+	if rec.Code != http.StatusOK {
+		t.Fatalf("get course detail status = %d, want 200. Body: %s", rec.Code, rec.Body.String())
 	}
 
 	var detailResp lessonhttp.CourseDetailResponse
-	if err := json.Unmarshal(getCourseRec.Body.Bytes(), &detailResp); err != nil {
+	if err := json.Unmarshal(rec.Body.Bytes(), &detailResp); err != nil {
 		t.Fatalf("unmarshal course detail: %v", err)
 	}
-	if len(detailResp.Units) != 1 || len(detailResp.Units[0].Lessons) != 1 {
+	// Both lessons are published by now, the second through the endpoint this
+	// task added, so the tree carries two.
+	if len(detailResp.Units) != 1 || len(detailResp.Units[0].Lessons) != 2 {
 		t.Fatalf("unexpected course detail units/lessons: %+v", detailResp)
 	}
 
-	// 6. Get Lesson Detail (GET /lessons/{id})
-	getLessonReq := httptest.NewRequest(http.MethodGet, "/lessons/"+lessonID, nil)
-	getLessonReq = getLessonReq.WithContext(httpx.WithActor(ctx, httpx.Actor{UserID: learnerID, Role: roleUser}))
-	getLessonRec := httptest.NewRecorder()
-	router.ServeHTTP(getLessonRec, getLessonReq)
+	for _, l := range detailResp.Units[0].Lessons {
+		if l.ID == lesson2ID {
+			return
+		}
+	}
+	t.Errorf("the lesson published through the API is missing from the course tree")
+}
 
-	if getLessonRec.Code != http.StatusOK {
-		t.Fatalf("get lesson detail status = %d, want 200. Body: %s", getLessonRec.Code, getLessonRec.Body.String())
+func assertLessonDetail(t *testing.T, rec *httptest.ResponseRecorder, v1ID uuid.UUID) {
+	t.Helper()
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("get lesson detail status = %d, want 200. Body: %s", rec.Code, rec.Body.String())
 	}
 
 	var lessonDetail lessonhttp.LessonDetailResponse
-	if err := json.Unmarshal(getLessonRec.Body.Bytes(), &lessonDetail); err != nil {
+	if err := json.Unmarshal(rec.Body.Bytes(), &lessonDetail); err != nil {
 		t.Fatalf("unmarshal lesson detail: %v", err)
 	}
 	if len(lessonDetail.Activities) != 2 {

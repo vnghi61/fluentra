@@ -19,7 +19,16 @@ export interface Learner {
 }
 
 export function newLearner(tag: string): Learner {
-  const unique = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  // Letters, not base-36. The suffix ends up in the display name, which every
+  // mail template prints above the code, and a suffix that happens to be six
+  // digits is indistinguishable from an OTP to anything reading the body.
+  // extractOtpCode no longer depends on that, but a fixture that cannot look
+  // like a code is one less thing for the next reader to rule out.
+  const suffix = Array.from(
+    randomBytes(6),
+    (byte) => "abcdefghijkmnpqrstuvwxyz"[byte % 24],
+  ).join("");
+  const unique = `${Date.now()}-${suffix}`;
   return {
     email: `learner-${tag}-${unique}@example.com`,
     password: newPassword(),
