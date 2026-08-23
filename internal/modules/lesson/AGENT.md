@@ -216,6 +216,9 @@ the API and the worker hold these caches, and they point at the same Redis.
 | `LESSON_LOCKED` | 403 | Prerequisites not met |
 | `PREREQUISITE_CYCLE` | 422 | The proposed graph contains a cycle |
 | `ACTIVITY_CONTENT_UNPUBLISHED` | 409 | Cannot publish a lesson pointing at draft content |
+| `EMPTY_ACTIVITIES` | 422 | A lesson must carry at least one activity |
+| `TOO_MANY_ACTIVITIES` | 422 | More activities than `MaxActivitiesPerLesson` |
+| `INVALID_WEIGHT` | 422 | Activity weight outside 0..100 |
 
 ## 13. Testing
 

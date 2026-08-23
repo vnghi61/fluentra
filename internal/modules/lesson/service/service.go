@@ -657,6 +657,9 @@ func (s *Service) UpdateActivities(
 	if len(activities) == 0 {
 		return nil, domain.ErrEmptyActivities
 	}
+	if len(activities) > domain.MaxActivitiesPerLesson {
+		return nil, domain.ErrTooManyActivities
+	}
 
 	for i, act := range activities {
 		if !domain.IsValidPosition(act.Position) || act.Position != i+1 {
@@ -664,6 +667,9 @@ func (s *Service) UpdateActivities(
 		}
 		if !domain.IsValidActivityKind(act.Kind) {
 			return nil, domain.ErrInvalidActivityKind
+		}
+		if !domain.IsValidWeight(act.Weight) {
+			return nil, domain.ErrInvalidWeight
 		}
 	}
 

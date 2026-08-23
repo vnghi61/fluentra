@@ -16,7 +16,8 @@ import (
 )
 
 const (
-	kindQuiz = "quiz"
+	kindQuiz          = "quiz"
+	codeInvalidWeight = "INVALID_WEIGHT"
 )
 
 type staticUnlocker struct {
@@ -346,5 +347,58 @@ func TestService_NextLesson(t *testing.T) {
 	}
 	if next.ID != l1.ID {
 		t.Errorf("expected first lesson %v, got %v", l1.ID, next.ID)
+	}
+}
+
+// UpdateActivities is the only path an unbounded integer reaches the int32
+// duration through. The spec now bounds it; these prove the handler side does
+// too, because a schema no router enforces changes nothing.
+func TestService_UpdateActivities_RejectsUnboundedInput(t *testing.T) {
+	t.Parallel()
+
+	tooMany := make([]domain.ActivityInput, domain.MaxActivitiesPerLesson+1)
+	for i := range tooMany {
+		tooMany[i] = domain.ActivityInput{Position: i + 1, Kind: kindQuiz, Weight: 1}
+	}
+
+	cases := []struct {
+		name  string
+		input []domain.ActivityInput
+		want  string
+	}{
+		{
+			name:  "weight above the ceiling",
+			input: []domain.ActivityInput{{Position: 1, Kind: kindQuiz, Weight: domain.MaxActivityWeight + 1}},
+			want:  codeInvalidWeight,
+		},
+		{
+			name:  "weight that would overflow the duration",
+			input: []domain.ActivityInput{{Position: 1, Kind: kindQuiz, Weight: 1 << 30}},
+			want:  codeInvalidWeight,
+		},
+		{
+			name:  "negative weight",
+			input: []domain.ActivityInput{{Position: 1, Kind: kindQuiz, Weight: -1}},
+			want:  codeInvalidWeight,
+		},
+		{
+			name:  "more activities than a lesson may carry",
+			input: tooMany,
+			want:  "TOO_MANY_ACTIVITIES",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			svc := service.New(service.Deps{Repo: &fakeLessonRepo{}})
+			_, err := svc.UpdateActivities(context.Background(), uuid.New(), uuid.New(), tc.input)
+
+			var appErr *apperr.Error
+			if !errors.As(err, &appErr) || appErr.Code != tc.want {
+				t.Errorf("got %v, want %s", err, tc.want)
+			}
+		})
 	}
 }

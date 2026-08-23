@@ -46,6 +46,16 @@ var (
 	// ErrEmptyActivities is returned when an update request provides an empty activity list.
 	ErrEmptyActivities = apperr.New(apperr.Validation, "EMPTY_ACTIVITIES", "Lesson activities cannot be empty.")
 
+	// ErrTooManyActivities is returned when an update request carries more
+	// activities than MaxActivitiesPerLesson.
+	ErrTooManyActivities = apperr.New(
+		apperr.Validation, "TOO_MANY_ACTIVITIES", "A lesson may not carry more than 100 activities.",
+	)
+
+	// ErrInvalidWeight is returned when an activity weight is outside the
+	// 0..100 range the spec declares.
+	ErrInvalidWeight = apperr.New(apperr.Validation, "INVALID_WEIGHT", "Weight must be between 0 and 100.")
+
 	// ErrInvalidStatus is returned when status is not draft, published, or archived.
 	ErrInvalidStatus = apperr.New(apperr.Validation, "INVALID_STATUS", "Invalid status.")
 
