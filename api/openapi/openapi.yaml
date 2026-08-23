@@ -2276,8 +2276,26 @@ paths:
         - name: level
           in: query
           required: false
+          description: Return only courses whose CEFR range covers this level.
           schema:
             $ref: '#/components/schemas/CEFRLevel'
+        - name: limit
+          in: query
+          required: false
+          description: Maximum courses to return.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          required: false
+          description: Courses to skip before the page starts.
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
       responses:
         '200':
           description: List of available courses.

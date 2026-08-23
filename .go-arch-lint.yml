@@ -121,6 +121,7 @@ components:
   g_audit:       { in: generated/audit/sqlc }
   g_admin:       { in: generated/admin/sqlc }
   g_content:     { in: generated/content/sqlc }
+  g_lesson:      { in: generated/lesson/sqlc }
 
   # platform capabilities
   p_telemetry:   { in: platform/telemetry/** }
@@ -205,7 +206,11 @@ components:
   m_content_repository: { in: modules/content/repository }
   m_content_service:    { in: modules/content/service }
   m_content_http:       { in: modules/content/transport/http }
-  m_lesson:        { in: modules/lesson/** }
+  m_lesson:            { in: modules/lesson }
+  m_lesson_domain:     { in: modules/lesson/domain }
+  m_lesson_repository: { in: modules/lesson/repository }
+  m_lesson_service:    { in: modules/lesson/service }
+  m_lesson_http:       { in: modules/lesson/transport/http }
   m_learning:      { in: modules/learning/** }
   m_srs:           { in: modules/srs/** }
   m_vocabulary:    { in: modules/vocabulary/** }
@@ -259,6 +264,7 @@ deps:
   g_audit:     { anyVendorDeps: true }
   g_admin:     { anyVendorDeps: true }
   g_content:   { anyVendorDeps: true }
+  g_lesson:    { anyVendorDeps: true }
 
   # A platform capability exists to wrap a vendor SDK, so each may import one.
   # Business modules deliberately may not: they reach external systems through
@@ -359,7 +365,11 @@ deps:
   m_content_service:    { mayDependOn: [m_content_domain, c_content] }
   m_content_http:       { mayDependOn: [m_content_domain, m_content_service, c_content] }
   m_content:            { mayDependOn: [m_content_domain, m_content_repository, m_content_service, m_content_http, c_content] }
-  m_lesson:       { mayDependOn: [p_cache, p_telemetry, c_content] }
+  # lesson, by layer
+  m_lesson_repository: { mayDependOn: [m_lesson_domain, c_lesson, g_lesson] }
+  m_lesson_service:    { mayDependOn: [m_lesson_domain, c_lesson, c_content] }
+  m_lesson_http:       { mayDependOn: [m_lesson_domain, m_lesson_service, c_lesson, c_content] }
+  m_lesson:            { mayDependOn: [m_lesson_domain, m_lesson_repository, m_lesson_service, m_lesson_http, c_lesson, c_content] }
   m_learning:     { mayDependOn: [p_cache, p_job, p_telemetry, c_lesson, c_content, c_srs] }
   m_srs:          { mayDependOn: [p_cache, p_job, p_telemetry, c_content] }
   m_vocabulary:   { mayDependOn: [p_cache, p_media, p_ai, p_search, p_telemetry, c_content, c_srs, c_learning] }

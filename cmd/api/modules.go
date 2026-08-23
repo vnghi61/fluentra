@@ -14,6 +14,7 @@ import (
 	authservice "github.com/fluentra/fluentra/internal/modules/auth/service"
 	"github.com/fluentra/fluentra/internal/modules/auth/service/oauth/google"
 	"github.com/fluentra/fluentra/internal/modules/content"
+	"github.com/fluentra/fluentra/internal/modules/lesson"
 	"github.com/fluentra/fluentra/internal/modules/rbac"
 	rbaccontract "github.com/fluentra/fluentra/internal/modules/rbac/contract"
 	"github.com/fluentra/fluentra/internal/modules/user"
@@ -34,6 +35,7 @@ type identity struct {
 	auth    *auth.Module
 	admin   *admin.Module
 	content *content.Module
+	lesson  *lesson.Module
 
 	rateLimit *httpx.RateLimiter
 }
@@ -175,6 +177,12 @@ func newIdentity(deps identityDeps) *identity {
 		Guard: lazyGuard{of: assembled},
 	})
 
+	assembled.lesson = lesson.New(lesson.Deps{
+		Pool:    deps.Pool,
+		Guard:   lazyGuard{of: assembled},
+		Content: assembled.content.Reader(),
+	})
+
 	return assembled
 }
 
@@ -219,12 +227,14 @@ func (i *identity) Routes(api chi.Router) {
 		i.rbac.Routes(authenticated)
 		i.auth.Routes(authenticated)
 		i.content.Routes(authenticated)
+		i.lesson.Routes(authenticated)
 
 		authenticated.Group(func(admin chi.Router) {
 			admin.Use(i.rbac.AdminOnly())
 			i.audit.Routes(admin)
 			i.admin.Routes(admin)
 			i.content.AdminRoutes(admin)
+			i.lesson.AdminRoutes(admin)
 		})
 	})
 }
@@ -241,6 +251,7 @@ type lazyGuard struct{ of *identity }
 var _ audit.Guard = lazyGuard{}
 var _ admin.Guard = lazyGuard{}
 var _ content.Guard = lazyGuard{}
+var _ lesson.Guard = lazyGuard{}
 
 func (g lazyGuard) Require(ctx context.Context, permission string) error {
 	return g.authorizer().Require(ctx, rbaccontract.Permission(permission))

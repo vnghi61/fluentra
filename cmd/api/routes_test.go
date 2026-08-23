@@ -64,6 +64,7 @@ func TestEveryPhaseOneOperationIsMounted(t *testing.T) {
 		ownerRBAC    = "rbac"
 		ownerAudit   = "audit"
 		ownerContent = "content"
+		ownerLesson  = "lesson"
 	)
 
 	cases := []struct {
@@ -91,7 +92,14 @@ func TestEveryPhaseOneOperationIsMounted(t *testing.T) {
 		{http.MethodPost, "/api/v1/admin/content/" + someone + "/review", ownerContent},
 		{http.MethodPost, "/api/v1/admin/content/" + someone + "/publish", ownerContent},
 		{http.MethodPost, "/api/v1/admin/content/" + someone + "/archive", ownerContent},
-		{http.MethodPost, "/api/v1/admin/content/" + someone + "/estimate-level", ownerContent},
+		// The three learner-facing lesson routes are the ones this test can
+		// really check: they sit outside /admin, so a 404 here means the route
+		// is genuinely unmounted rather than swallowed by rbac's catch-all.
+		{http.MethodGet, "/api/v1/courses", ownerLesson},
+		{http.MethodGet, "/api/v1/courses/sample-slug", ownerLesson},
+		{http.MethodGet, "/api/v1/lessons/" + someone, ownerLesson},
+		{http.MethodPost, "/api/v1/admin/courses", ownerLesson},
+		{http.MethodPut, "/api/v1/admin/lessons/" + someone + "/activities", ownerLesson},
 	}
 
 	for _, testCase := range cases {
