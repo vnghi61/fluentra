@@ -2,7 +2,7 @@
 module: lesson
 tier: learning
 group: modules
-status: PLANNED
+status: READY
 phase: 2
 owner: "@learning-team"
 schema: learn
@@ -10,7 +10,7 @@ tables: [courses, course_units, lessons, activities, lesson_prerequisites]
 depends_on: [content, cache]
 depended_on_by: [learning, admin, search]
 spec_version: 1.0.0
-last_verified: 2026-08-20
+last_verified: 2026-08-23
 ---
 
 # lesson — AGENT.md
@@ -25,7 +25,7 @@ last_verified: 2026-08-20
 | Path | `internal/modules/lesson` |
 | Schema | `learn` |
 | Delivery phase | 2 |
-| Status | **PLANNED** |
+| Status | **READY** |
 | Owner | @learning-team |
 
 ---

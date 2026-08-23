@@ -4743,7 +4743,12 @@ export interface operations {
     listCourses: {
         parameters: {
             query?: {
+                /** @description Return only courses whose CEFR range covers this level. */
                 level?: components["schemas"]["CEFRLevel"];
+                /** @description Maximum courses to return. */
+                limit?: number;
+                /** @description Courses to skip before the page starts. */
+                offset?: number;
             };
             header?: never;
             path?: never;

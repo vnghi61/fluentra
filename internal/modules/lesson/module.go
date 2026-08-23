@@ -1,0 +1,168 @@
+package lesson
+
+import (
+	"context"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	contentcontract "github.com/fluentra/fluentra/internal/modules/content/contract"
+	"github.com/fluentra/fluentra/internal/modules/lesson/contract"
+	"github.com/fluentra/fluentra/internal/modules/lesson/repository"
+	"github.com/fluentra/fluentra/internal/modules/lesson/service"
+	lessonhttp "github.com/fluentra/fluentra/internal/modules/lesson/transport/http"
+	"github.com/fluentra/fluentra/internal/shared/clock"
+	"github.com/fluentra/fluentra/internal/shared/outbox"
+)
+
+// Guard is the authorization interface required by the module.
+type Guard = lessonhttp.Guard
+
+// Deps are the dependencies supplied by the composition root.
+type Deps struct {
+	Pool     *pgxpool.Pool
+	Clock    clock.Clock
+	Guard    Guard
+	Content  contentcontract.Reader
+	Unlocker service.UnlockChecker
+}
+
+// Module is the lesson module, assembled. It is the only symbol cmd/ imports.
+type Module struct {
+	service *service.Service
+	handler *lessonhttp.Handler
+}
+
+// New wires the lesson module.
+func New(deps Deps) *Module {
+	timekeeper := deps.Clock
+	if timekeeper == nil {
+		timekeeper = clock.Real{}
+	}
+
+	repo := repository.New(deps.Pool)
+	repoAdapter := repositoryAdapter{Repository: repo}
+
+	events := outboxWriter{Writer: outbox.NewWriter()}
+
+	svc := service.New(service.Deps{
+		Pool:     deps.Pool,
+		Repo:     repoAdapter,
+		Content:  deps.Content,
+		Unlocker: deps.Unlocker,
+		Events:   events,
+		Clock:    timekeeper,
+		NewID:    func() uuid.UUID { return uuid.Must(uuid.NewV7()) },
+	})
+
+	handler, err := lessonhttp.NewHandler(svc, deps.Guard)
+	if err != nil {
+		panic(err)
+	}
+
+	return &Module{
+		service: svc,
+		handler: handler,
+	}
+}
+
+// Reader returns the public read contract implementation for other modules.
+func (m *Module) Reader() contract.Reader {
+	return m.service
+}
+
+// Service returns the underlying service instance.
+func (m *Module) Service() *service.Service {
+	return m.service
+}
+
+// Routes mounts learner-facing lesson routes on router.
+func (m *Module) Routes(router chi.Router) {
+	m.handler.Routes(router)
+}
+
+// AdminRoutes mounts back-office / authoring lesson routes on admin router.
+func (m *Module) AdminRoutes(admin chi.Router) {
+	m.handler.AdminRoutes(admin)
+}
+
+// repositoryAdapter bridges repository to service.Repository interface.
+type repositoryAdapter struct {
+	*repository.Repository
+}
+
+func (a repositoryAdapter) WithTx(tx pgx.Tx) service.Repository {
+	return repositoryAdapter{Repository: a.Repository.WithTx(tx)}
+}
+
+func (a repositoryAdapter) CreateCourse(
+	ctx context.Context, params service.CreateCourseParams,
+) (*contract.Course, error) {
+	return a.Repository.CreateCourse(ctx, repository.CreateCourseParams{
+		Slug:           params.Slug,
+		Title:          params.Title,
+		Description:    params.Description,
+		CEFRFrom:       params.CEFRFrom,
+		CEFRTo:         params.CEFRTo,
+		Status:         params.Status,
+		EstimatedHours: params.EstimatedHours,
+	})
+}
+
+func (a repositoryAdapter) ListPrerequisitesByLessonID(
+	ctx context.Context, lessonID uuid.UUID,
+) ([]service.PrerequisiteItem, error) {
+	items, err := a.Repository.ListPrerequisitesByLessonID(ctx, lessonID)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]service.PrerequisiteItem, len(items))
+	for i, it := range items {
+		res[i] = service.PrerequisiteItem{
+			LessonID:            it.LessonID,
+			RequiresLessonID:    it.RequiresLessonID,
+			MinScore:            it.MinScore,
+			RequiresLessonTitle: it.RequiresLessonTitle,
+		}
+	}
+	return res, nil
+}
+
+func (a repositoryAdapter) ListPrerequisitesForLessons(
+	ctx context.Context, lessonIDs []uuid.UUID,
+) ([]service.PrerequisiteItem, error) {
+	items, err := a.Repository.ListPrerequisitesForLessons(ctx, lessonIDs)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]service.PrerequisiteItem, len(items))
+	for i, it := range items {
+		res[i] = service.PrerequisiteItem{
+			LessonID:            it.LessonID,
+			RequiresLessonID:    it.RequiresLessonID,
+			MinScore:            it.MinScore,
+			RequiresLessonTitle: it.RequiresLessonTitle,
+		}
+	}
+	return res, nil
+}
+
+// outboxWriter adapts shared/outbox to the service's EventWriter.
+type outboxWriter struct {
+	*outbox.Writer
+}
+
+func (w outboxWriter) Write(
+	ctx context.Context, tx service.OutboxTx, aggregate, event string, payload any,
+) (uuid.UUID, error) {
+	return w.Writer.Write(ctx, outboxTx{tx}, aggregate, event, payload)
+}
+
+type outboxTx struct{ inner service.OutboxTx }
+
+func (t outboxTx) Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error) {
+	return t.inner.Exec(ctx, sql, arguments...)
+}
