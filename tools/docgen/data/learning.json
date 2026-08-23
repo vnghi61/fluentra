@@ -194,7 +194,7 @@
       { "method": "GET", "path": "/api/v1/courses/{slug}", "permission": "content.read.published", "purpose": "Course with units and lesson summaries", "success": "200" },
       { "method": "GET", "path": "/api/v1/lessons/{id}", "permission": "content.read.published", "purpose": "Lesson with its activities and resolved content", "success": "200", "errors": ["LESSON_LOCKED"] },
       { "method": "POST", "path": "/api/v1/admin/courses", "permission": "content.create", "purpose": "Create a course", "success": "201" },
-      { "method": "PUT", "path": "/api/v1/admin/lessons/{id}/activities", "permission": "content.edit", "purpose": "Reorder or replace the activity list", "success": "200" },
+      { "method": "PUT", "path": "/api/v1/admin/lessons/{id}/activities", "permission": "content.edit", "purpose": "Reorder or replace the activity list", "success": "200", "errors": ["EMPTY_ACTIVITIES", "TOO_MANY_ACTIVITIES", "INVALID_WEIGHT", "INVALID_POSITION", "INVALID_ACTIVITY_KIND"] },
       { "method": "POST", "path": "/api/v1/admin/lessons/{id}/publish", "permission": "content.publish", "purpose": "Publish an approved lesson", "success": "200", "errors": ["ACTIVITY_CONTENT_UNPUBLISHED", "EMPTY_ACTIVITIES"] }
     ],
     "contract": [

@@ -208,14 +208,21 @@ CreateCourseRequest:
       type: integer
       example: 40
 
+# The bounds below are enforced in the domain as well as declared here: the
+# handlers are hand-written, so an unenforced schema is a comment. `weight`
+# feeds the int32 estimated_minutes column, which an unbounded integer overflows.
 ActivityInput:
   type: object
   required: [position, kind, content_version_id, weight]
   properties:
     position:
       type: integer
+      minimum: 1
+      maximum: 100
     kind:
       type: string
+      minLength: 1
+      maxLength: 50
     content_version_id:
       type: string
       format: uuid
@@ -223,6 +230,8 @@ ActivityInput:
       type: object
     weight:
       type: integer
+      minimum: 0
+      maximum: 100
 
 UpdateActivitiesRequest:
   type: object
@@ -230,5 +239,7 @@ UpdateActivitiesRequest:
   properties:
     activities:
       type: array
+      minItems: 1
+      maxItems: 100
       items:
         $ref: '#/ActivityInput'

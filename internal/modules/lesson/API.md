@@ -86,7 +86,7 @@ Reorder or replace the activity list
 |---|---|
 | Permission | `content.edit` |
 | Success | 200 |
-| Errors | standard set |
+| Errors | `EMPTY_ACTIVITIES`, `TOO_MANY_ACTIVITIES`, `INVALID_WEIGHT`, `INVALID_POSITION`, `INVALID_ACTIVITY_KIND` |
 
 ### `POST /api/v1/admin/lessons/{id}/publish`
 
