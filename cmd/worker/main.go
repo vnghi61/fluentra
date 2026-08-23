@@ -23,8 +23,11 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/audit"
 	"github.com/fluentra/fluentra/internal/modules/auth"
 	authservice "github.com/fluentra/fluentra/internal/modules/auth/service"
+	"github.com/fluentra/fluentra/internal/modules/lesson"
+	lessonservice "github.com/fluentra/fluentra/internal/modules/lesson/service"
 	"github.com/fluentra/fluentra/internal/modules/rbac"
 	"github.com/fluentra/fluentra/internal/modules/user"
+	"github.com/fluentra/fluentra/internal/platform/cache"
 	"github.com/fluentra/fluentra/internal/platform/job"
 	"github.com/fluentra/fluentra/internal/platform/mailer"
 	"github.com/fluentra/fluentra/internal/platform/storage"
@@ -259,7 +262,7 @@ func run(ctx context.Context) error {
 	cron.Register(outboxPruner.CronJob())
 
 	workers := river.NewWorkers()
-	if err := startModules(ctx, pool, bus, cron, storageStore, workers, cfg); err != nil {
+	if err := startModules(ctx, pool, redisClient, bus, cron, storageStore, workers, cfg); err != nil {
 		return err
 	}
 
@@ -330,7 +333,8 @@ func run(ctx context.Context) error {
 // startModules builds the business modules this binary works for, subscribes
 // their event consumers, and hands their scheduled work to the cron scheduler.
 func startModules(
-	ctx context.Context, pool *pgxpool.Pool, bus *eventbus.InProcessBus, cron *job.CronScheduler,
+	ctx context.Context, pool *pgxpool.Pool, redisClient redis.Cmdable,
+	bus *eventbus.InProcessBus, cron *job.CronScheduler,
 	storageStore storage.Store, workers *river.Workers,
 	cfg workerConfig,
 ) error {
@@ -355,6 +359,17 @@ func startModules(
 	})
 
 	if err := rbacModule.Subscribe(bus); err != nil {
+		return err
+	}
+
+	lessonModule := lesson.New(lesson.Deps{
+		Pool:   pool,
+		Guard:  workerGuard{},
+		Caches: newLessonCaches(redisClient),
+		Env:    cfg.App.Environment,
+	})
+
+	if err := lessonModule.Subscribe(bus); err != nil {
 		return err
 	}
 
@@ -518,3 +533,19 @@ func queueNames(queues map[string]int) []string {
 type readinessCheck func(context.Context) error
 
 func (check readinessCheck) Check(ctx context.Context) error { return check(ctx) }
+
+type workerGuard struct{}
+
+func (workerGuard) Require(_ context.Context, _ string) error { return nil }
+
+func newLessonCaches(client redis.Cmdable) lessonservice.LessonCaches {
+	if client == nil {
+		return lessonservice.LessonCaches{}
+	}
+	return lessonservice.LessonCaches{
+		Detail:    cache.NewRedisCache[*lessonservice.LessonDetailDTO](client),
+		Tree:      cache.NewRedisCache[*lessonservice.CourseTreeData](client),
+		Catalogue: cache.NewRedisCache[*lessonservice.CatalogueData](client),
+		Gen:       cache.NewRedisCache[int64](client),
+	}
+}

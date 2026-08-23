@@ -5,7 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -15,8 +17,18 @@ import (
 	contentcontract "github.com/fluentra/fluentra/internal/modules/content/contract"
 	"github.com/fluentra/fluentra/internal/modules/lesson/contract"
 	"github.com/fluentra/fluentra/internal/modules/lesson/domain"
+	"github.com/fluentra/fluentra/internal/platform/cache"
 	"github.com/fluentra/fluentra/internal/shared/clock"
 	"github.com/fluentra/fluentra/internal/shared/dbx"
+)
+
+const (
+	detailTTL    = 1 * time.Hour
+	treeTTL      = 1 * time.Hour
+	catalogueTTL = 15 * time.Minute
+	genTTL       = 24 * time.Hour
+
+	cacheVersion = 1
 )
 
 // UnlockChecker answers whether a learner has met a lesson's prerequisites.
@@ -37,39 +49,12 @@ type CreateCourseParams struct {
 	EstimatedHours int
 }
 
-// CreateUnitParams holds data to create a unit in the repository.
-type CreateUnitParams struct {
-	CourseID    uuid.UUID
-	Position    int
-	Title       string
-	Description string
-}
-
-// CreateLessonParams holds data to create a lesson in the repository.
-type CreateLessonParams struct {
-	UnitID           uuid.UUID
-	Position         int
-	Title            string
-	SkillFocus       string
-	EstimatedMinutes int
-	Status           string
-}
-
-// UpdateLessonParams holds data to update a lesson.
-type UpdateLessonParams struct {
-	ID               uuid.UUID
-	Title            string
-	SkillFocus       string
-	EstimatedMinutes int
-	Status           string
-}
-
 // PrerequisiteItem models a prerequisite link with descriptive fields for lock reason.
 type PrerequisiteItem struct {
-	LessonID            uuid.UUID
-	RequiresLessonID    uuid.UUID
-	MinScore            int
-	RequiresLessonTitle string
+	LessonID            uuid.UUID `json:"lesson_id"`
+	RequiresLessonID    uuid.UUID `json:"requires_lesson_id"`
+	MinScore            int       `json:"min_score"`
+	RequiresLessonTitle string    `json:"requires_lesson_title"`
 }
 
 // Repository defines data access methods required by the lesson service.
@@ -91,6 +76,7 @@ type Repository interface {
 	UpdateLessonDuration(ctx context.Context, id uuid.UUID, minutes int32) error
 	ListActivitiesByLessonID(ctx context.Context, lessonID uuid.UUID) ([]contract.Activity, error)
 	ListActivitiesByLessonIDs(ctx context.Context, lessonIDs []uuid.UUID) ([]contract.Activity, error)
+	ListLessonIDsByContentVersionID(ctx context.Context, versionID uuid.UUID) ([]uuid.UUID, error)
 	ReplaceActivities(
 		ctx context.Context, lessonID uuid.UUID, activities []domain.ActivityInput,
 	) ([]contract.Activity, error)
@@ -111,6 +97,14 @@ type EventWriter interface {
 	Write(ctx context.Context, tx OutboxTx, aggregate, event string, payload any) (uuid.UUID, error)
 }
 
+// LessonCaches holds typed cache clients for the lesson service.
+type LessonCaches struct {
+	Detail    cache.Cache[*LessonDetailDTO]
+	Tree      cache.Cache[*CourseTreeData]
+	Catalogue cache.Cache[*CatalogueData]
+	Gen       cache.Cache[int64]
+}
+
 // Deps carries dependencies for constructing the lesson Service.
 type Deps struct {
 	Pool     *pgxpool.Pool
@@ -118,8 +112,10 @@ type Deps struct {
 	Content  contentcontract.Reader
 	Unlocker UnlockChecker
 	Events   EventWriter
+	Caches   LessonCaches
 	Clock    clock.Clock
 	NewID    func() uuid.UUID
+	Env      string
 }
 
 // Service orchestrates curriculum and lesson use cases.
@@ -129,8 +125,10 @@ type Service struct {
 	content  contentcontract.Reader
 	unlocker UnlockChecker
 	events   EventWriter
+	caches   LessonCaches
 	clock    clock.Clock
 	newID    func() uuid.UUID
+	env      string
 }
 
 // New creates a new lesson Service.
@@ -143,6 +141,10 @@ func New(deps Deps) *Service {
 	if idGen == nil {
 		idGen = func() uuid.UUID { return uuid.Must(uuid.NewV7()) }
 	}
+	env := deps.Env
+	if env == "" {
+		env = "unknown"
+	}
 
 	return &Service{
 		pool:     deps.Pool,
@@ -150,8 +152,10 @@ func New(deps Deps) *Service {
 		content:  deps.Content,
 		unlocker: deps.Unlocker,
 		events:   deps.Events,
+		caches:   deps.Caches,
 		clock:    clk,
 		newID:    idGen,
+		env:      env,
 	}
 }
 
@@ -203,6 +207,40 @@ type CourseDetailDTO struct {
 	Units          []CourseUnitDTO `json:"units"`
 }
 
+// LessonTreeData models a lesson node in the static cached course tree.
+type LessonTreeData struct {
+	ID               uuid.UUID          `json:"id"`
+	UnitID           uuid.UUID          `json:"unit_id"`
+	Position         int                `json:"position"`
+	Title            string             `json:"title"`
+	SkillFocus       string             `json:"skill_focus"`
+	EstimatedMinutes int                `json:"estimated_minutes"`
+	Status           string             `json:"status"`
+	Prereqs          []PrerequisiteItem `json:"prereqs"`
+}
+
+// UnitTreeData models a unit node in the static cached course tree.
+type UnitTreeData struct {
+	ID          uuid.UUID        `json:"id"`
+	CourseID    uuid.UUID        `json:"course_id"`
+	Position    int              `json:"position"`
+	Title       string           `json:"title"`
+	Description string           `json:"description"`
+	Lessons     []LessonTreeData `json:"lessons"`
+}
+
+// CourseTreeData models the static hierarchy of a course.
+type CourseTreeData struct {
+	Course CourseSummaryDTO `json:"course"`
+	Units  []UnitTreeData   `json:"units"`
+}
+
+// CatalogueData holds cached catalogue items and count.
+type CatalogueData struct {
+	Courses []CourseSummaryDTO `json:"courses"`
+	Total   int64              `json:"total"`
+}
+
 // LessonActivityDTO matches OpenAPI LessonActivity schema.
 type LessonActivityDTO struct {
 	ID               uuid.UUID                `json:"id"`
@@ -237,7 +275,40 @@ type CreateCourseInput struct {
 	EstimatedHours int
 }
 
-// ListCourses returns paginated published courses.
+// CreateCourse handles creating a new course in draft status.
+//
+// Units and lessons have no equivalent here on purpose: P7.5 §3 leaves whether
+// P11.1's seed calls the repository directly or the spec grows routes to the
+// task that has the requirement.
+func (s *Service) CreateCourse(
+	ctx context.Context, _ uuid.UUID, input CreateCourseInput,
+) (*contract.Course, error) {
+	if !domain.IsValidCEFRLevel(input.CEFRFrom) || !domain.IsValidCEFRLevel(input.CEFRTo) {
+		return nil, domain.ErrInvalidCEFRLevel
+	}
+	if !domain.IsValidSlug(input.Slug) {
+		return nil, domain.ErrInvalidSlug
+	}
+	if !domain.IsValidTitle(input.Title) {
+		return nil, domain.ErrInvalidTitle
+	}
+
+	course, err := s.repo.CreateCourse(ctx, CreateCourseParams{
+		Slug:           input.Slug,
+		Title:          input.Title,
+		Description:    input.Description,
+		CEFRFrom:       input.CEFRFrom,
+		CEFRTo:         input.CEFRTo,
+		Status:         "draft",
+		EstimatedHours: input.EstimatedHours,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return course, nil
+}
+
+// ListCourses returns paginated published courses through the cache.
 func (s *Service) ListCourses(
 	ctx context.Context, level *string, limit, offset int,
 ) ([]CourseSummaryDTO, int64, error) {
@@ -245,82 +316,201 @@ func (s *Service) ListCourses(
 		return nil, 0, domain.ErrInvalidCEFRLevel.WithInternal("level query parameter must be one of A1..C2")
 	}
 
-	// Clamped in int space before the narrowing conversion. Both values arrive
-	// from strconv.Atoi over the query string, so neither is known to fit int32
-	// until the domain has bounded it.
 	normLimit := domain.NormaliseLimit(limit)
 	normOffset := domain.NormaliseOffset(offset)
 
-	courses, err := s.repo.ListPublishedCourses(ctx, level, normLimit, normOffset)
-	if err != nil {
-		return nil, 0, err
+	levelKey := "all"
+	if level != nil {
+		levelKey = *level
 	}
 
-	total, err := s.repo.CountPublishedCourses(ctx, level)
-	if err != nil {
-		return nil, 0, err
-	}
+	gen := s.getCatalogueGeneration(ctx)
+	filterHash := fmt.Sprintf("g%d_%s_%d_%d", gen, levelKey, normLimit, normOffset)
+	catKey := cache.Key(s.env, "lesson", "catalogue", filterHash, cacheVersion)
 
-	dtos := make([]CourseSummaryDTO, len(courses))
-	for i, c := range courses {
-		dtos[i] = CourseSummaryDTO{
-			ID:             c.ID,
-			Slug:           c.Slug,
-			Title:          c.Title,
-			Description:    c.Description,
-			CEFRFrom:       c.CEFRFrom,
-			CEFRTo:         c.CEFRTo,
-			Status:         c.Status,
-			EstimatedHours: c.EstimatedHours,
+	loader := func(loadCtx context.Context) (*CatalogueData, error) {
+		courses, err := s.repo.ListPublishedCourses(loadCtx, level, normLimit, normOffset)
+		if err != nil {
+			return nil, err
 		}
+
+		total, err := s.repo.CountPublishedCourses(loadCtx, level)
+		if err != nil {
+			return nil, err
+		}
+
+		dtos := make([]CourseSummaryDTO, len(courses))
+		for i, c := range courses {
+			dtos[i] = CourseSummaryDTO{
+				ID:             c.ID,
+				Slug:           c.Slug,
+				Title:          c.Title,
+				Description:    c.Description,
+				CEFRFrom:       c.CEFRFrom,
+				CEFRTo:         c.CEFRTo,
+				Status:         c.Status,
+				EstimatedHours: c.EstimatedHours,
+			}
+		}
+
+		return &CatalogueData{
+			Courses: dtos,
+			Total:   total,
+		}, nil
 	}
 
-	return dtos, total, nil
+	var data *CatalogueData
+	var err error
+	if s.caches.Catalogue == nil {
+		data, err = loader(ctx)
+	} else {
+		data, err = s.caches.Catalogue.GetOrLoad(ctx, catKey, catalogueTTL, loader)
+	}
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return data.Courses, data.Total, nil
+}
+
+func (s *Service) catalogueGenerationKey() string {
+	return cache.Key(s.env, "lesson", "catalogue", "generation", cacheVersion)
+}
+
+// getCatalogueGeneration reads the counter folded into every catalogue key.
+//
+// It reads with Get rather than GetOrLoad on purpose. GetOrLoad writes the
+// loaded value back asynchronously, so a read that missed could land its
+// `generation = 1` write *after* a concurrent publish had already written
+// `generation = 2` — resurrecting the pre-publish catalogue keys for the rest
+// of their TTL. A read that never writes cannot lose that race.
+//
+// A miss and an outage are both answered with 1: the catalogue stays readable
+// when Redis is down (Trap 3), and the 15 minute TTL bounds the staleness.
+func (s *Service) getCatalogueGeneration(ctx context.Context) int64 {
+	if s.caches.Gen == nil {
+		return 1
+	}
+	gen, err := s.caches.Gen.Get(ctx, s.catalogueGenerationKey())
+	if err != nil || gen < 1 {
+		return 1
+	}
+	return gen
+}
+
+// bumpCatalogueGeneration makes every catalogue key of the previous generation
+// unreachable at once (Trap 1). Two publishes racing here can settle on the
+// same new value, which is harmless: the invariant this needs is only that the
+// generation differs from the one the cached keys were written under.
+func (s *Service) bumpCatalogueGeneration(ctx context.Context) {
+	if s.caches.Gen == nil {
+		return
+	}
+	current := s.getCatalogueGeneration(ctx)
+	if err := s.caches.Gen.Set(ctx, s.catalogueGenerationKey(), current+1, genTTL); err != nil {
+		slog.WarnContext(ctx, "failed to bump catalogue generation counter", "error", err)
+	}
 }
 
 // GetCourseDetail returns full course curriculum hierarchy with unlock evaluations.
 func (s *Service) GetCourseDetail(ctx context.Context, slug string, userID uuid.UUID) (*CourseDetailDTO, error) {
-	// Published-only in SQL, not filtered in Go afterwards: a draft course must
-	// be a 404 to a learner, and the version of this bug that filters after the
-	// select is the one that passes tests and leaks in production.
-	course, err := s.repo.GetPublishedCourseBySlug(ctx, slug)
+	treeKey := cache.Key(s.env, "lesson", "tree", slug, cacheVersion)
+
+	tree, err := s.loadCourseTree(ctx, treeKey, slug)
 	if err != nil {
 		return nil, err
 	}
 
-	units, err := s.repo.ListUnitsByCourseID(ctx, course.ID)
-	if err != nil {
-		return nil, err
+	unitDTOs := make([]CourseUnitDTO, len(tree.Units))
+	for i, u := range tree.Units {
+		lessonDTOs := make([]LessonSummaryDTO, len(u.Lessons))
+		for j, l := range u.Lessons {
+			locked, lockReason, evalErr := s.evaluateLock(ctx, userID, l.ID, l.Prereqs)
+			if evalErr != nil {
+				return nil, evalErr
+			}
+			lessonDTOs[j] = LessonSummaryDTO{
+				ID:               l.ID,
+				UnitID:           l.UnitID,
+				Position:         l.Position,
+				Title:            l.Title,
+				SkillFocus:       l.SkillFocus,
+				EstimatedMinutes: l.EstimatedMinutes,
+				Status:           l.Status,
+				Locked:           locked,
+				LockReason:       lockReason,
+			}
+		}
+		unitDTOs[i] = CourseUnitDTO{
+			ID:          u.ID,
+			CourseID:    u.CourseID,
+			Position:    u.Position,
+			Title:       u.Title,
+			Description: u.Description,
+			Lessons:     lessonDTOs,
+		}
 	}
 
-	lessons, err := s.repo.ListPublishedLessonsByCourseID(ctx, course.ID)
-	if err != nil {
-		return nil, err
+	return &CourseDetailDTO{
+		ID:             tree.Course.ID,
+		Slug:           tree.Course.Slug,
+		Title:          tree.Course.Title,
+		Description:    tree.Course.Description,
+		CEFRFrom:       tree.Course.CEFRFrom,
+		CEFRTo:         tree.Course.CEFRTo,
+		Status:         tree.Course.Status,
+		EstimatedHours: tree.Course.EstimatedHours,
+		Units:          unitDTOs,
+	}, nil
+}
+
+func (s *Service) loadCourseTree(ctx context.Context, treeKey, slug string) (*CourseTreeData, error) {
+	loader := func(loadCtx context.Context) (*CourseTreeData, error) {
+		course, err := s.repo.GetPublishedCourseBySlug(loadCtx, slug)
+		if err != nil {
+			return nil, err
+		}
+
+		units, err := s.repo.ListUnitsByCourseID(loadCtx, course.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		lessons, err := s.repo.ListPublishedLessonsByCourseID(loadCtx, course.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		lessonIDs := make([]uuid.UUID, len(lessons))
+		for i, l := range lessons {
+			lessonIDs[i] = l.ID
+		}
+
+		prereqs, err := s.repo.ListPrerequisitesForLessons(loadCtx, lessonIDs)
+		if err != nil {
+			return nil, err
+		}
+
+		return s.assembleTreeData(course, units, lessons, prereqs), nil
 	}
 
-	lessonIDs := make([]uuid.UUID, len(lessons))
-	for i, l := range lessons {
-		lessonIDs[i] = l.ID
+	if s.caches.Tree == nil {
+		return loader(ctx)
 	}
+	return s.caches.Tree.GetOrLoad(ctx, treeKey, treeTTL, loader)
+}
 
-	prereqs, err := s.repo.ListPrerequisitesForLessons(ctx, lessonIDs)
-	if err != nil {
-		return nil, err
-	}
-
+func (s *Service) assembleTreeData(
+	course *contract.Course, units []*contract.Unit, lessons []*contract.Lesson, prereqs []PrerequisiteItem,
+) *CourseTreeData {
 	prereqMap := make(map[uuid.UUID][]PrerequisiteItem)
 	for _, p := range prereqs {
 		prereqMap[p.LessonID] = append(prereqMap[p.LessonID], p)
 	}
 
-	// Group lessons by unit
-	unitLessons := make(map[uuid.UUID][]LessonSummaryDTO)
+	unitLessons := make(map[uuid.UUID][]LessonTreeData)
 	for _, l := range lessons {
-		locked, lockReason, err := s.evaluateLock(ctx, userID, l.ID, prereqMap[l.ID])
-		if err != nil {
-			return nil, err
-		}
-		unitLessons[l.UnitID] = append(unitLessons[l.UnitID], LessonSummaryDTO{
+		unitLessons[l.UnitID] = append(unitLessons[l.UnitID], LessonTreeData{
 			ID:               l.ID,
 			UnitID:           l.UnitID,
 			Position:         l.Position,
@@ -328,49 +518,43 @@ func (s *Service) GetCourseDetail(ctx context.Context, slug string, userID uuid.
 			SkillFocus:       l.SkillFocus,
 			EstimatedMinutes: l.EstimatedMinutes,
 			Status:           l.Status,
-			Locked:           locked,
-			LockReason:       lockReason,
+			Prereqs:          prereqMap[l.ID],
 		})
 	}
 
-	unitDTOs := make([]CourseUnitDTO, len(units))
+	unitTrees := make([]UnitTreeData, len(units))
 	for i, u := range units {
-		unitDTOs[i] = CourseUnitDTO{
+		uLessons := unitLessons[u.ID]
+		if uLessons == nil {
+			uLessons = []LessonTreeData{}
+		}
+		unitTrees[i] = UnitTreeData{
 			ID:          u.ID,
 			CourseID:    u.CourseID,
 			Position:    u.Position,
 			Title:       u.Title,
 			Description: u.Description,
-			Lessons:     unitLessons[u.ID],
-		}
-		if unitDTOs[i].Lessons == nil {
-			unitDTOs[i].Lessons = []LessonSummaryDTO{}
+			Lessons:     uLessons,
 		}
 	}
 
-	return &CourseDetailDTO{
-		ID:             course.ID,
-		Slug:           course.Slug,
-		Title:          course.Title,
-		Description:    course.Description,
-		CEFRFrom:       course.CEFRFrom,
-		CEFRTo:         course.CEFRTo,
-		Status:         course.Status,
-		EstimatedHours: course.EstimatedHours,
-		Units:          unitDTOs,
-	}, nil
+	return &CourseTreeData{
+		Course: CourseSummaryDTO{
+			ID:             course.ID,
+			Slug:           course.Slug,
+			Title:          course.Title,
+			Description:    course.Description,
+			CEFRFrom:       course.CEFRFrom,
+			CEFRTo:         course.CEFRTo,
+			Status:         course.Status,
+			EstimatedHours: course.EstimatedHours,
+		},
+		Units: unitTrees,
+	}
 }
 
-// GetLessonDetail returns the lesson with activities and resolved content versions in 1 query (Trap 4).
+// GetLessonDetail returns the lesson with activities and resolved content versions.
 func (s *Service) GetLessonDetail(ctx context.Context, lessonID, userID uuid.UUID) (*LessonDetailDTO, error) {
-	// Published-only, and the query also requires the owning course to be
-	// published — see GetPublishedLessonByID.
-	lesson, err := s.repo.GetPublishedLessonByID(ctx, lessonID)
-	if err != nil {
-		return nil, err
-	}
-
-	// Evaluate lock
 	prereqs, err := s.repo.ListPrerequisitesByLessonID(ctx, lessonID)
 	if err != nil {
 		return nil, err
@@ -381,11 +565,6 @@ func (s *Service) GetLessonDetail(ctx context.Context, lessonID, userID uuid.UUI
 		return nil, err
 	}
 	if locked {
-		// WithMeta, not fmt.Errorf("%w: ...") — httpx.WriteProblem runs the error
-		// through apperr.Wrap, which returns the *apperr.Error it finds and
-		// discards the wrapper text entirely. The reason has to travel on the
-		// error itself to reach the client, and Problem.meta is where this API
-		// already puts structured detail.
 		reason := "Prerequisites not met."
 		if lockReason != nil {
 			reason = *lockReason
@@ -393,94 +572,85 @@ func (s *Service) GetLessonDetail(ctx context.Context, lessonID, userID uuid.UUI
 		return nil, domain.ErrLessonLocked.WithMeta("lock_reason", reason)
 	}
 
-	activities, err := s.repo.ListActivitiesByLessonID(ctx, lessonID)
-	if err != nil {
-		return nil, err
-	}
-
-	// Resolve content versions in ONE batch query (Trap 4)
-	versionIDs := make([]uuid.UUID, 0, len(activities))
-	for _, act := range activities {
-		if act.ContentVersionID != uuid.Nil {
-			versionIDs = append(versionIDs, act.ContentVersionID)
-		}
-	}
-
-	var versions map[uuid.UUID]*contentcontract.Version
-	if len(versionIDs) > 0 && s.content != nil {
-		var err error
-		versions, err = s.content.GetManyVersions(ctx, versionIDs)
-		if err != nil {
-			return nil, fmt.Errorf("resolve activity content versions: %w", err)
-		}
-	}
-
-	actDTOs := make([]LessonActivityDTO, len(activities))
-	for i, act := range activities {
-		var ver *contentcontract.Version
-		if versions != nil {
-			ver = versions[act.ContentVersionID]
-		}
-		actDTOs[i] = LessonActivityDTO{
-			ID:               act.ID,
-			LessonID:         act.LessonID,
-			Position:         act.Position,
-			Kind:             act.Kind,
-			ContentVersionID: act.ContentVersionID,
-			Config:           act.Config,
-			Weight:           act.Weight,
-			Content:          ver,
-		}
-	}
-
-	return &LessonDetailDTO{
-		ID:               lesson.ID,
-		UnitID:           lesson.UnitID,
-		Position:         lesson.Position,
-		Title:            lesson.Title,
-		SkillFocus:       lesson.SkillFocus,
-		EstimatedMinutes: lesson.EstimatedMinutes,
-		Status:           lesson.Status,
-		Activities:       actDTOs,
-	}, nil
+	detailKey := cache.Key(s.env, "lesson", "detail", lessonID.String(), cacheVersion)
+	return s.loadLessonDetail(ctx, detailKey, lessonID)
 }
 
-// CreateCourse implements admin course creation.
-func (s *Service) CreateCourse(ctx context.Context, _ uuid.UUID, input CreateCourseInput) (*contract.Course, error) {
-	if !domain.IsValidSlug(input.Slug) {
-		return nil, domain.ErrInvalidSlug
-	}
-	if !domain.IsValidCEFRLevel(input.CEFRFrom) || !domain.IsValidCEFRLevel(input.CEFRTo) {
-		return nil, domain.ErrInvalidCEFRLevel
-	}
-	if !domain.IsValidTitle(input.Title) {
-		return nil, domain.ErrInvalidTitle
+func (s *Service) loadLessonDetail(
+	ctx context.Context, detailKey string, lessonID uuid.UUID,
+) (*LessonDetailDTO, error) {
+	loader := func(loadCtx context.Context) (*LessonDetailDTO, error) {
+		lesson, lErr := s.repo.GetPublishedLessonByID(loadCtx, lessonID)
+		if lErr != nil {
+			return nil, lErr
+		}
+
+		activities, aErr := s.repo.ListActivitiesByLessonID(loadCtx, lessonID)
+		if aErr != nil {
+			return nil, aErr
+		}
+
+		versionIDs := make([]uuid.UUID, 0, len(activities))
+		for _, act := range activities {
+			if act.ContentVersionID != uuid.Nil {
+				versionIDs = append(versionIDs, act.ContentVersionID)
+			}
+		}
+
+		var versions map[uuid.UUID]*contentcontract.Version
+		if len(versionIDs) > 0 && s.content != nil {
+			var vErr error
+			versions, vErr = s.content.GetManyVersions(loadCtx, versionIDs)
+			if vErr != nil {
+				return nil, fmt.Errorf("resolve activity content versions: %w", vErr)
+			}
+		}
+
+		actDTOs := make([]LessonActivityDTO, len(activities))
+		for i, act := range activities {
+			actDTOs[i] = LessonActivityDTO{
+				ID:               act.ID,
+				LessonID:         act.LessonID,
+				Position:         act.Position,
+				Kind:             act.Kind,
+				ContentVersionID: act.ContentVersionID,
+				Config:           act.Config,
+				Weight:           act.Weight,
+				Content:          versions[act.ContentVersionID],
+			}
+		}
+
+		return &LessonDetailDTO{
+			ID:               lesson.ID,
+			UnitID:           lesson.UnitID,
+			Position:         lesson.Position,
+			Title:            lesson.Title,
+			SkillFocus:       lesson.SkillFocus,
+			EstimatedMinutes: lesson.EstimatedMinutes,
+			Status:           lesson.Status,
+			Activities:       actDTOs,
+		}, nil
 	}
 
-	return s.repo.CreateCourse(ctx, CreateCourseParams{
-		Slug:           input.Slug,
-		Title:          input.Title,
-		Description:    input.Description,
-		CEFRFrom:       input.CEFRFrom,
-		CEFRTo:         input.CEFRTo,
-		Status:         "draft",
-		EstimatedHours: input.EstimatedHours,
-	})
+	if s.caches.Detail == nil {
+		return loader(ctx)
+	}
+	return s.caches.Detail.GetOrLoad(ctx, detailKey, detailTTL, loader)
 }
 
-// execTx runs fn in a serializable transaction if pool is present, or directly on repo in unit tests.
 func (s *Service) execTx(
 	ctx context.Context, fn func(ctx context.Context, txRepo Repository, tx OutboxTx) error,
 ) error {
 	if s.pool == nil {
 		return fn(ctx, s.repo, nil)
 	}
-	return dbx.InTx(ctx, s.pool, func(ctx context.Context, tx pgx.Tx) error {
-		return fn(ctx, s.repo.WithTx(tx), tx)
+	return dbx.InTx(ctx, s.pool, func(txCtx context.Context, tx pgx.Tx) error {
+		txRepo := s.repo.WithTx(tx)
+		return fn(txCtx, txRepo, tx)
 	})
 }
 
-// UpdateActivities reorders/replaces the activity list for a lesson and recalculates duration (BR-LESSON-06).
+// UpdateActivities replaces the activities for a lesson, enforcing BR-LESSON-04 & BR-LESSON-06.
 func (s *Service) UpdateActivities(
 	ctx context.Context, _, lessonID uuid.UUID, activities []domain.ActivityInput,
 ) ([]contract.Activity, error) {
@@ -488,41 +658,36 @@ func (s *Service) UpdateActivities(
 		return nil, domain.ErrEmptyActivities
 	}
 
-	// Validate positions continuous 1..N and non-empty content_version_id
-	posSeen := make(map[int]bool)
-	estimates := make([]domain.ActivityEstimate, len(activities))
 	for i, act := range activities {
-		if act.Position <= 0 || posSeen[act.Position] {
+		if !domain.IsValidPosition(act.Position) || act.Position != i+1 {
 			return nil, domain.ErrInvalidPosition
 		}
-		posSeen[act.Position] = true
-		if act.ContentVersionID == uuid.Nil {
-			return nil, domain.ErrInvalidPosition
-		}
-		if len(act.Kind) == 0 {
+		if !domain.IsValidActivityKind(act.Kind) {
 			return nil, domain.ErrInvalidActivityKind
 		}
-		estimates[i] = domain.ActivityEstimate{Weight: act.Weight}
 	}
 
 	var result []contract.Activity
 	err := s.execTx(ctx, func(ctx context.Context, txRepo Repository, _ OutboxTx) error {
-		updated, err := txRepo.ReplaceActivities(ctx, lessonID, activities)
+		replaced, err := txRepo.ReplaceActivities(ctx, lessonID, activities)
 		if err != nil {
 			return err
 		}
-		result = updated
+		result = replaced
 
-		// Recalculate duration (BR-LESSON-06)
-		newDuration := domain.CalculateLessonDuration(estimates)
-		if err := txRepo.UpdateLessonDuration(ctx, lessonID, int32(newDuration)); err != nil { //nolint:gosec // bounded
-			return err
-		}
-
-		return nil
+		durMinutes := domain.CalculateLessonDuration(activities)
+		return txRepo.UpdateLessonDuration(ctx, lessonID, durMinutes)
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	lesson, err := s.repo.GetLessonByID(ctx, lessonID)
+	if err == nil && lesson != nil {
+		unit, uErr := s.repo.GetUnitByID(ctx, lesson.UnitID)
+		if uErr == nil && unit != nil {
+			s.invalidateLessonCaches(ctx, lessonID, unit.CourseID)
+		}
 	}
 
 	return result, nil
@@ -552,7 +717,7 @@ func (s *Service) validateActivityVersions(ctx context.Context, activities []con
 func (s *Service) writePublishedEvent(
 	ctx context.Context, txRepo Repository, tx OutboxTx, lesson *contract.Lesson,
 ) error {
-	if s.events == nil || tx == nil {
+	if s.events == nil {
 		return nil
 	}
 	unit, err := txRepo.GetUnitByID(ctx, lesson.UnitID)
@@ -572,13 +737,13 @@ func (s *Service) writePublishedEvent(
 }
 
 // PublishLesson enforces BR-LESSON-02 (all activity content versions must be published and not archived).
-func (s *Service) PublishLesson(ctx context.Context, _, lessonID uuid.UUID) (*contract.Lesson, error) {
+func (s *Service) PublishLesson(ctx context.Context, _, lessonID uuid.UUID) (*LessonDetailDTO, error) {
 	lesson, err := s.repo.GetLessonByID(ctx, lessonID)
 	if err != nil {
 		return nil, err
 	}
 	if lesson.Status == "published" {
-		return lesson, nil
+		return s.buildPublishedLessonDetail(ctx, lesson)
 	}
 
 	activities, err := s.repo.ListActivitiesByLessonID(ctx, lessonID)
@@ -595,9 +760,9 @@ func (s *Service) PublishLesson(ctx context.Context, _, lessonID uuid.UUID) (*co
 
 	var publishedLesson *contract.Lesson
 	err = s.execTx(ctx, func(ctx context.Context, txRepo Repository, tx OutboxTx) error {
-		updated, err := txRepo.UpdateLessonStatus(ctx, lessonID, "published")
-		if err != nil {
-			return err
+		updated, uErr := txRepo.UpdateLessonStatus(ctx, lessonID, "published")
+		if uErr != nil {
+			return uErr
 		}
 		publishedLesson = updated
 		return s.writePublishedEvent(ctx, txRepo, tx, lesson)
@@ -606,7 +771,130 @@ func (s *Service) PublishLesson(ctx context.Context, _, lessonID uuid.UUID) (*co
 		return nil, err
 	}
 
-	return publishedLesson, nil
+	unit, uErr := s.repo.GetUnitByID(ctx, lesson.UnitID)
+	if uErr == nil && unit != nil {
+		s.invalidateOnPublish(ctx, lessonID, unit.CourseID)
+	}
+
+	return s.buildPublishedLessonDetail(ctx, publishedLesson)
+}
+
+func (s *Service) buildPublishedLessonDetail(
+	ctx context.Context, lesson *contract.Lesson,
+) (*LessonDetailDTO, error) {
+	activities, err := s.repo.ListActivitiesByLessonID(ctx, lesson.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	versionIDs := make([]uuid.UUID, 0, len(activities))
+	for _, act := range activities {
+		if act.ContentVersionID != uuid.Nil {
+			versionIDs = append(versionIDs, act.ContentVersionID)
+		}
+	}
+
+	var versions map[uuid.UUID]*contentcontract.Version
+	if len(versionIDs) > 0 && s.content != nil {
+		var vErr error
+		versions, vErr = s.content.GetManyVersions(ctx, versionIDs)
+		if vErr != nil {
+			return nil, fmt.Errorf("resolve activity content versions: %w", vErr)
+		}
+	}
+
+	actDTOs := make([]LessonActivityDTO, len(activities))
+	for i, act := range activities {
+		actDTOs[i] = LessonActivityDTO{
+			ID:               act.ID,
+			LessonID:         act.LessonID,
+			Position:         act.Position,
+			Kind:             act.Kind,
+			ContentVersionID: act.ContentVersionID,
+			Config:           act.Config,
+			Weight:           act.Weight,
+			Content:          versions[act.ContentVersionID],
+		}
+	}
+
+	return &LessonDetailDTO{
+		ID:               lesson.ID,
+		UnitID:           lesson.UnitID,
+		Position:         lesson.Position,
+		Title:            lesson.Title,
+		SkillFocus:       lesson.SkillFocus,
+		EstimatedMinutes: lesson.EstimatedMinutes,
+		Status:           lesson.Status,
+		Activities:       actDTOs,
+	}, nil
+}
+
+// invalidateLessonCaches drops the two keys a lesson's own content can stale:
+// its detail, and the tree of the course carrying it. It deliberately does not
+// touch the catalogue — a course summary carries no lesson, so an activities
+// write cannot change it, and bumping the generation there would throw away
+// every cached catalogue page for nothing.
+func (s *Service) invalidateLessonCaches(ctx context.Context, lessonID, courseID uuid.UUID) {
+	if s.caches.Detail != nil {
+		detailKey := cache.Key(s.env, "lesson", "detail", lessonID.String(), cacheVersion)
+		if err := s.caches.Detail.Delete(ctx, detailKey); err != nil {
+			slog.WarnContext(ctx, "failed to invalidate lesson detail cache",
+				"lesson_id", lessonID, "error", err)
+		}
+	}
+
+	if s.caches.Tree != nil && courseID != uuid.Nil {
+		course, err := s.repo.GetCourseByID(ctx, courseID)
+		if err == nil && course != nil {
+			treeKey := cache.Key(s.env, "lesson", "tree", course.Slug, cacheVersion)
+			if err := s.caches.Tree.Delete(ctx, treeKey); err != nil {
+				slog.WarnContext(ctx, "failed to invalidate course tree cache",
+					"slug", course.Slug, "error", err)
+			}
+		}
+	}
+}
+
+// invalidateOnPublish adds the catalogue to invalidateLessonCaches. Publishing
+// is the one write that can change which courses the catalogue should list.
+func (s *Service) invalidateOnPublish(ctx context.Context, lessonID, courseID uuid.UUID) {
+	s.invalidateLessonCaches(ctx, lessonID, courseID)
+	s.bumpCatalogueGeneration(ctx)
+}
+
+// HandleLessonPublished re-applies the invalidation a publish already performed
+// in the process that served the request. It is the backstop the recorded
+// decision names: a synchronous Delete that failed while Redis was briefly
+// unreachable is only logged, so the publish still returns 200 (Trap 3), and
+// this consumer clears the keys once the outbox event is dispatched. Bumping
+// the catalogue generation a second time is harmless — it only has to differ
+// from the generation the cached keys were written under.
+func (s *Service) HandleLessonPublished(ctx context.Context, lessonID, courseID uuid.UUID) error {
+	s.invalidateOnPublish(ctx, lessonID, courseID)
+	return nil
+}
+
+// HandleContentArchived invalidates detail caches for all lessons referencing the archived content version.
+func (s *Service) HandleContentArchived(ctx context.Context, versionID uuid.UUID) error {
+	lessonIDs, err := s.repo.ListLessonIDsByContentVersionID(ctx, versionID)
+	if err != nil {
+		return err
+	}
+
+	if s.caches.Detail != nil && len(lessonIDs) > 0 {
+		keys := make([]string, len(lessonIDs))
+		for i, id := range lessonIDs {
+			keys[i] = cache.Key(s.env, "lesson", "detail", id.String(), cacheVersion)
+		}
+		if err := s.caches.Detail.Delete(ctx, keys...); err != nil {
+			slog.WarnContext(ctx, "failed to invalidate lesson detail caches on content archive",
+				"version_id", versionID, "error", err)
+		}
+	}
+
+	slog.InfoContext(ctx, "invalidated lesson caches for archived content version",
+		"version_id", versionID, "lessons_count", len(lessonIDs))
+	return nil
 }
 
 // AddPrerequisite adds a prerequisite relationship, enforcing DAG cycle detection (BR-LESSON-03).
@@ -614,9 +902,6 @@ func (s *Service) AddPrerequisite(ctx context.Context, _, lessonID, requiresLess
 	if lessonID == requiresLessonID {
 		return domain.ErrPrerequisiteCycle
 	}
-	// Bounded here rather than annotated away below. ck_lesson_prerequisites_min_score
-	// would reject 4294967346, but int32() truncates it to 50 first and the
-	// database never sees the value the caller sent.
 	if minScore < 0 || minScore > 100 {
 		return domain.ErrInvalidMinScore
 	}
@@ -681,16 +966,6 @@ func (s *Service) NextLesson(
 	return lessons[0], nil
 }
 
-// evaluateLock reports whether a lesson is locked for this learner, and the
-// sentence the API hands the client when it is.
-//
-// A nil unlocker means learner progress does not exist yet: `learning` is WP8,
-// and until it lands nothing can answer "has this learner finished the
-// prerequisite". Reporting every lesson unlocked is the documented behaviour
-// (see lesson/DECISIONS.md) and the one that lets P11.1's seed data and WP10's
-// screens walk a course. Locking by default is not the safe choice here — it is
-// not a security boundary, it is curriculum pacing, and it would make every
-// lesson after the first unreachable for the whole of Phase 2.
 func (s *Service) evaluateLock(
 	ctx context.Context, userID, lessonID uuid.UUID, prereqs []PrerequisiteItem,
 ) (bool, *string, error) {
@@ -703,8 +978,6 @@ func (s *Service) evaluateLock(
 
 	unlocked, err := s.unlocker.IsUnlocked(ctx, userID, lessonID)
 	if err != nil {
-		// Not swallowed into "locked": a learning outage is a 500, not a
-		// curriculum decision the learner should read as a locked lesson.
 		return false, nil, fmt.Errorf("check unlock state for lesson %s: %w", lessonID, err)
 	}
 	if unlocked {
@@ -715,13 +988,6 @@ func (s *Service) evaluateLock(
 	return true, &reason, nil
 }
 
-// lockReasonFor names every prerequisite, not the first one.
-//
-// UnlockChecker answers with a bool, so this module cannot know *which*
-// prerequisite is the unmet one. Naming prereqs[0] out of three would send a
-// learner to a lesson they may already have finished; listing all of them is
-// the honest sentence the bool supports. BR-LESSON-07 puts the rule here and
-// the learner state in `learning`, and this is where that split lands.
 func lockReasonFor(prereqs []PrerequisiteItem) string {
 	titles := make([]string, 0, len(prereqs))
 	for _, p := range prereqs {

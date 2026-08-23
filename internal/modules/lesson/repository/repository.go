@@ -449,6 +449,20 @@ func (r *Repository) AddPrerequisite(ctx context.Context, lessonID, requiresID u
 	return nil
 }
 
+// ListLessonIDsByContentVersionID returns unique lesson IDs that contain activities using the content version.
+func (r *Repository) ListLessonIDsByContentVersionID(
+	ctx context.Context, versionID uuid.UUID,
+) ([]uuid.UUID, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	rows, err := r.queries.ListLessonIDsByContentVersionID(ctx, versionID)
+	if err != nil {
+		return nil, mapPgError(err)
+	}
+	return rows, nil
+}
+
 func mapPgError(err error) error {
 	if err == nil {
 		return nil

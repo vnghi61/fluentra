@@ -25,3 +25,9 @@ INSERT INTO learn.activities (
 ) VALUES (
     $1, $2, $3, $4, $5, $6
 ) RETURNING *;
+
+-- name: ListLessonIDsByContentVersionID :many
+SELECT DISTINCT lesson_id
+FROM learn.activities
+WHERE content_version_id = $1;
+

@@ -2,6 +2,8 @@ package lesson
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -15,6 +17,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/lesson/service"
 	lessonhttp "github.com/fluentra/fluentra/internal/modules/lesson/transport/http"
 	"github.com/fluentra/fluentra/internal/shared/clock"
+	"github.com/fluentra/fluentra/internal/shared/eventbus"
 	"github.com/fluentra/fluentra/internal/shared/outbox"
 )
 
@@ -24,10 +27,12 @@ type Guard = lessonhttp.Guard
 // Deps are the dependencies supplied by the composition root.
 type Deps struct {
 	Pool     *pgxpool.Pool
+	Caches   service.LessonCaches
 	Clock    clock.Clock
 	Guard    Guard
 	Content  contentcontract.Reader
 	Unlocker service.UnlockChecker
+	Env      string
 }
 
 // Module is the lesson module, assembled. It is the only symbol cmd/ imports.
@@ -54,8 +59,10 @@ func New(deps Deps) *Module {
 		Content:  deps.Content,
 		Unlocker: deps.Unlocker,
 		Events:   events,
+		Caches:   deps.Caches,
 		Clock:    timekeeper,
 		NewID:    func() uuid.UUID { return uuid.Must(uuid.NewV7()) },
+		Env:      deps.Env,
 	})
 
 	handler, err := lessonhttp.NewHandler(svc, deps.Guard)
@@ -81,12 +88,51 @@ func (m *Module) Service() *service.Service {
 
 // Routes mounts learner-facing lesson routes on router.
 func (m *Module) Routes(router chi.Router) {
-	m.handler.Routes(router)
+	if m.handler != nil {
+		m.handler.Routes(router)
+	}
 }
 
 // AdminRoutes mounts back-office / authoring lesson routes on admin router.
 func (m *Module) AdminRoutes(admin chi.Router) {
-	m.handler.AdminRoutes(admin)
+	if m.handler != nil {
+		m.handler.AdminRoutes(admin)
+	}
+}
+
+// Subscribe registers event consumers this module runs in the background.
+func (m *Module) Subscribe(bus eventbus.EventBus) error {
+	if err := bus.Subscribe(contentcontract.EventContentArchived, m.handleContentArchived); err != nil {
+		return fmt.Errorf("subscribe lesson consumer to %s: %w", contentcontract.EventContentArchived, err)
+	}
+	if err := bus.Subscribe(contract.EventLessonPublished, m.handleLessonPublished); err != nil {
+		return fmt.Errorf("subscribe lesson consumer to %s: %w", contract.EventLessonPublished, err)
+	}
+	return nil
+}
+
+func (m *Module) handleContentArchived(ctx context.Context, msg eventbus.Message) error {
+	var payload contentcontract.Archived
+	if err := json.Unmarshal(msg.Payload, &payload); err != nil {
+		return fmt.Errorf("decode %s payload: %w", contentcontract.EventContentArchived, err)
+	}
+	if payload.VersionID == uuid.Nil {
+		return nil
+	}
+	return m.service.HandleContentArchived(ctx, payload.VersionID)
+}
+
+// handleLessonPublished is the backstop for the invalidation PublishLesson
+// already ran synchronously; see service.HandleLessonPublished.
+func (m *Module) handleLessonPublished(ctx context.Context, msg eventbus.Message) error {
+	var payload contract.Published
+	if err := json.Unmarshal(msg.Payload, &payload); err != nil {
+		return fmt.Errorf("decode %s payload: %w", contract.EventLessonPublished, err)
+	}
+	if payload.LessonID == uuid.Nil {
+		return nil
+	}
+	return m.service.HandleLessonPublished(ctx, payload.LessonID, payload.CourseID)
 }
 
 // repositoryAdapter bridges repository to service.Repository interface.
@@ -148,6 +194,12 @@ func (a repositoryAdapter) ListPrerequisitesForLessons(
 		}
 	}
 	return res, nil
+}
+
+func (a repositoryAdapter) ListLessonIDsByContentVersionID(
+	ctx context.Context, versionID uuid.UUID,
+) ([]uuid.UUID, error) {
+	return a.Repository.ListLessonIDsByContentVersionID(ctx, versionID)
 }
 
 // outboxWriter adapts shared/outbox to the service's EventWriter.

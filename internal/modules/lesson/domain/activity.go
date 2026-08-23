@@ -14,3 +14,13 @@ type ActivityInput struct {
 	Config           json.RawMessage `json:"config"`
 	Weight           int             `json:"weight"`
 }
+
+// IsValidPosition checks if position is a positive integer.
+func IsValidPosition(pos int) bool {
+	return pos >= 1
+}
+
+// IsValidActivityKind checks if activity kind is non-empty and bounded.
+func IsValidActivityKind(kind string) bool {
+	return len(kind) >= 1 && len(kind) <= 50
+}

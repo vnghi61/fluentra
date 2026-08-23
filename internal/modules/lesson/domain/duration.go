@@ -8,19 +8,19 @@ type ActivityEstimate struct {
 // CalculateLessonDuration recalculates the estimated duration in minutes for a lesson
 // based on its activities (BR-LESSON-06). Each activity contribution is proportional to its weight,
 // with a minimum baseline per activity.
-func CalculateLessonDuration(activities []ActivityEstimate) int {
+func CalculateLessonDuration(activities []ActivityInput) int32 {
 	if len(activities) == 0 {
 		return 0
 	}
 
-	totalMinutes := 0
+	var totalMinutes int32
 	for _, act := range activities {
 		weight := act.Weight
 		if weight <= 0 {
 			weight = 1
 		}
 		// Baseline estimate: 2 minutes per weight unit
-		totalMinutes += weight * 2
+		totalMinutes += int32(weight) * 2
 	}
 
 	return totalMinutes

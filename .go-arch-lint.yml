@@ -367,7 +367,7 @@ deps:
   m_content:            { mayDependOn: [m_content_domain, m_content_repository, m_content_service, m_content_http, c_content] }
   # lesson, by layer
   m_lesson_repository: { mayDependOn: [m_lesson_domain, c_lesson, g_lesson] }
-  m_lesson_service:    { mayDependOn: [m_lesson_domain, c_lesson, c_content] }
+  m_lesson_service:    { mayDependOn: [m_lesson_domain, c_lesson, c_content, p_cache] }
   m_lesson_http:       { mayDependOn: [m_lesson_domain, m_lesson_service, c_lesson, c_content] }
   m_lesson:            { mayDependOn: [m_lesson_domain, m_lesson_repository, m_lesson_service, m_lesson_http, c_lesson, c_content] }
   m_learning:     { mayDependOn: [p_cache, p_job, p_telemetry, c_lesson, c_content, c_srs] }

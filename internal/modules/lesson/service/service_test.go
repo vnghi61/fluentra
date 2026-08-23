@@ -55,7 +55,7 @@ func lockFixture(lessonID, unitID, courseID uuid.UUID) (*contract.Lesson, *contr
 		ID:       unitID,
 		CourseID: courseID,
 		Position: 1,
-		Title:    "Unit 1",
+		Title:    titleUnit1,
 	}
 
 	course := &contract.Course{
@@ -239,7 +239,7 @@ func TestService_PublishLesson_BR_LESSON_02(t *testing.T) {
 		}
 		contentReader := &countingContentReader{
 			versions: map[uuid.UUID]*contentcontract.Version{
-				vPublishedID: {ID: vPublishedID, Status: "published"},
+				vPublishedID: {ID: vPublishedID, Status: statusPublished, Kind: kindQuiz, CEFRLevel: "B1"},
 			},
 		}
 
@@ -252,8 +252,8 @@ func TestService_PublishLesson_BR_LESSON_02(t *testing.T) {
 		if err != nil {
 			t.Fatalf("PublishLesson: %v", err)
 		}
-		if res.Status != "published" {
-			t.Errorf("expected published status, got %s", res.Status)
+		if res.Status != statusPublished {
+			t.Errorf("status = %q, want published", res.Status)
 		}
 	})
 }
@@ -306,7 +306,7 @@ func TestService_UpdateActivitiesAndRecalculateDuration_BR_LESSON_06(t *testing.
 	})
 
 	inputs := []domain.ActivityInput{
-		{Position: 1, Kind: "quiz", ContentVersionID: uuid.New(), Weight: 2},
+		{Position: 1, Kind: kindQuiz, ContentVersionID: uuid.New(), Weight: 2},
 		{Position: 2, Kind: "gap_fill", ContentVersionID: uuid.New(), Weight: 3},
 	}
 

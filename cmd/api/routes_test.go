@@ -100,6 +100,7 @@ func TestEveryPhaseOneOperationIsMounted(t *testing.T) {
 		{http.MethodGet, "/api/v1/lessons/" + someone, ownerLesson},
 		{http.MethodPost, "/api/v1/admin/courses", ownerLesson},
 		{http.MethodPut, "/api/v1/admin/lessons/" + someone + "/activities", ownerLesson},
+		{http.MethodPost, "/api/v1/admin/lessons/" + someone + "/publish", ownerLesson},
 	}
 
 	for _, testCase := range cases {

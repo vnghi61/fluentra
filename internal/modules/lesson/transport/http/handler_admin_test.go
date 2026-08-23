@@ -66,6 +66,24 @@ func (a *adminLessonService) UpdateActivities(
 	return acts, nil
 }
 
+func (a *adminLessonService) PublishLesson(
+	_ context.Context, _, lessonID uuid.UUID,
+) (*service.LessonDetailDTO, error) {
+	if a.err != nil {
+		return nil, a.err
+	}
+	return &service.LessonDetailDTO{
+		ID:               lessonID,
+		UnitID:           uuid.New(),
+		Position:         1,
+		Title:            "Published Lesson",
+		SkillFocus:       "listening",
+		EstimatedMinutes: 20,
+		Status:           statusPublished,
+		Activities:       []service.LessonActivityDTO{},
+	}, nil
+}
+
 func withActor(req *http.Request, userID uuid.UUID, role string) *http.Request {
 	actor := httpx.Actor{
 		UserID: userID,
@@ -163,4 +181,102 @@ func TestHandler_AdminUpdateLessonActivities(t *testing.T) {
 	if len(resp.Activities) != 1 || resp.Activities[0].LessonID != lessonID {
 		t.Errorf("unexpected activities in response: %+v", resp)
 	}
+}
+
+func TestHandler_AdminPublishLesson(t *testing.T) {
+	svc := &adminLessonService{}
+	handler, err := lessonhttp.NewHandler(svc, allowGuard{})
+	if err != nil {
+		t.Fatalf("NewHandler: %v", err)
+	}
+
+	r := chi.NewRouter()
+	handler.AdminRoutes(r)
+
+	adminID := uuid.New()
+	lessonID := uuid.New()
+
+	t.Run("unauthenticated rejected", func(t *testing.T) {
+		url := "/admin/lessons/" + lessonID.String() + "/publish"
+		req := httptest.NewRequest(http.MethodPost, url, nil)
+		rec := httptest.NewRecorder()
+		r.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusUnauthorized {
+			t.Errorf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
+		}
+	})
+
+	t.Run("invalid uuid rejected with 422", func(t *testing.T) {
+		url := "/admin/lessons/invalid-uuid/publish"
+		req := httptest.NewRequest(http.MethodPost, url, nil)
+		req = withActor(req, adminID, "admin")
+		rec := httptest.NewRecorder()
+		r.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusUnprocessableEntity {
+			t.Errorf("status = %d, want %d", rec.Code, http.StatusUnprocessableEntity)
+		}
+	})
+
+	t.Run("forbidden when guard rejects", func(t *testing.T) {
+		denyHandler, dErr := lessonhttp.NewHandler(svc, denyGuard{})
+		if dErr != nil {
+			t.Fatalf("NewHandler: %v", dErr)
+		}
+		denyRouter := chi.NewRouter()
+		denyHandler.AdminRoutes(denyRouter)
+
+		url := "/admin/lessons/" + lessonID.String() + "/publish"
+		req := httptest.NewRequest(http.MethodPost, url, nil)
+		req = withActor(req, adminID, "admin")
+		rec := httptest.NewRecorder()
+		denyRouter.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusForbidden {
+			t.Errorf("status = %d, want %d", rec.Code, http.StatusForbidden)
+		}
+	})
+
+	t.Run("conflict when activity content is unpublished", func(t *testing.T) {
+		failingSvc := &adminLessonService{
+			fakeLessonService: fakeLessonService{err: domain.ErrActivityContentUnpublished},
+		}
+		failHandler, fErr := lessonhttp.NewHandler(failingSvc, allowGuard{})
+		if fErr != nil {
+			t.Fatalf("NewHandler: %v", fErr)
+		}
+		failRouter := chi.NewRouter()
+		failHandler.AdminRoutes(failRouter)
+
+		url := "/admin/lessons/" + lessonID.String() + "/publish"
+		req := httptest.NewRequest(http.MethodPost, url, nil)
+		req = withActor(req, adminID, "admin")
+		rec := httptest.NewRecorder()
+		failRouter.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusConflict {
+			t.Errorf("status = %d, want %d", rec.Code, http.StatusConflict)
+		}
+	})
+
+	t.Run("successful publish returns 200 with LessonDetailResponse", func(t *testing.T) {
+		url := "/admin/lessons/" + lessonID.String() + "/publish"
+		req := httptest.NewRequest(http.MethodPost, url, nil)
+		req = withActor(req, adminID, "admin")
+		rec := httptest.NewRecorder()
+		r.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+		}
+
+		var resp lessonhttp.LessonDetailResponse
+		if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if resp.ID != lessonID || resp.Status != statusPublished {
+			t.Errorf("unexpected published lesson: %+v", resp)
+		}
+	})
 }

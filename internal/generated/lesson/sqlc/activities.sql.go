@@ -140,3 +140,29 @@ func (q *Queries) ListActivitiesByLessonIDs(ctx context.Context, dollar_1 []uuid
 	}
 	return items, nil
 }
+
+const listLessonIDsByContentVersionID = `-- name: ListLessonIDsByContentVersionID :many
+SELECT DISTINCT lesson_id
+FROM learn.activities
+WHERE content_version_id = $1
+`
+
+func (q *Queries) ListLessonIDsByContentVersionID(ctx context.Context, contentVersionID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listLessonIDsByContentVersionID, contentVersionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var lesson_id uuid.UUID
+		if err := rows.Scan(&lesson_id); err != nil {
+			return nil, err
+		}
+		items = append(items, lesson_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

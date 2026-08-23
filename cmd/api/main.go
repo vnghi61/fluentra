@@ -251,6 +251,7 @@ func run(ctx context.Context) error {
 
 	modules := newIdentity(identityDeps{
 		Pool:        pool,
+		Redis:       redisClient,
 		Cache:       cache.NewRedisCache[[]string](redisClient),
 		Limiter:     cache.NewRedisLimiter(redisClient),
 		Storage:     newStorageStore(storageClient, cfg.Storage.UsePostPolicy),
