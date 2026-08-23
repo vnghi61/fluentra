@@ -101,12 +101,34 @@ export async function waitForEmail(
   throw new Error(`Timeout waiting for email sent to ${toEmail} after ${timeoutMs}ms`);
 }
 
+/**
+ * The six digits a verification or reset mail states after its label.
+ *
+ * Anchored on the label rather than on "the first six digits in the body".
+ * Every template greets the recipient by display name before it states the
+ * code, and `newLearner` builds that display name from a random base-36 suffix
+ * which comes out all digits about once in two thousand learners. When it does,
+ * a bare `\b\d{6}\b` returns the learner's own name: the helper typed 157304
+ * into the OTP boxes, the screen answered "The code you entered is incorrect",
+ * and the failure landed on whichever journey drew the unlucky suffix — on a
+ * branch that had not touched auth at all.
+ *
+ * All four templates that carry a code write `... is: {{.Code}}` (`... là:` in
+ * Vietnamese), with the HTML part wrapping the code in a tag.
+ */
+const OTP_AFTER_LABEL = /(?:is|là)\s*:\s*(?:<[^>]*>\s*)*(\d{6})\b/i;
+
 export function extractOtpCode(content: string): string {
-  const match = content.match(/\b(\d{6})\b/);
-  if (!match || !match[1]) {
-    throw new Error(`Could not extract 6-digit OTP code from email content: ${content}`);
+  const labelled = content.match(OTP_AFTER_LABEL);
+  if (labelled?.[1]) {
+    return labelled[1];
   }
-  return match[1];
+
+  // A template that stops saying "is:" fails loudly here rather than quietly
+  // going back to matching the greeting.
+  throw new Error(
+    `Could not extract a labelled 6-digit OTP code from email content: ${content}`,
+  );
 }
 
 export function extractResetUrl(content: string): string {
