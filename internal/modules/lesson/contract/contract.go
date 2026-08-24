@@ -73,10 +73,20 @@ type ActivityHierarchy struct {
 	LessonSkillFocus string          `json:"lesson_skill_focus"`
 }
 
+// PrerequisiteItem models a prerequisite link with descriptive fields for lock reason.
+type PrerequisiteItem struct {
+	LessonID            uuid.UUID `json:"lesson_id"`
+	RequiresLessonID    uuid.UUID `json:"requires_lesson_id"`
+	MinScore            int       `json:"min_score"`
+	RequiresLessonTitle string    `json:"requires_lesson_title"`
+}
+
 // Reader provides access to course hierarchy and lesson activities.
 type Reader interface {
 	GetLesson(ctx context.Context, id uuid.UUID) (*Lesson, error)
 	ListLessons(ctx context.Context, unitID uuid.UUID) ([]*Lesson, error)
+	ListUnitsByCourseID(ctx context.Context, courseID uuid.UUID) ([]*Unit, error)
+	ListPrerequisitesForLessons(ctx context.Context, lessonIDs []uuid.UUID) ([]PrerequisiteItem, error)
 	NextLesson(ctx context.Context, courseID uuid.UUID, currentLessonID *uuid.UUID) (*Lesson, error)
 	ResolveActivity(ctx context.Context, activityID uuid.UUID) (*ActivityHierarchy, error)
 }

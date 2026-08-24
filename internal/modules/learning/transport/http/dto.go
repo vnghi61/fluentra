@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/fluentra/fluentra/internal/modules/learning/domain"
 	"github.com/fluentra/fluentra/internal/modules/learning/service"
 )
 
@@ -80,5 +81,57 @@ func toAttemptDetailResponse(dto *service.AttemptDetailDTO) AttemptDetailRespons
 		DurationMs:  dto.DurationMs,
 		StartedAt:   dto.StartedAt,
 		CompletedAt: dto.CompletedAt,
+	}
+}
+
+// EnrollmentResponse matches OpenAPI Enrollment schema.
+type EnrollmentResponse struct {
+	ID          uuid.UUID  `json:"id"`
+	UserID      uuid.UUID  `json:"user_id"`
+	CourseID    uuid.UUID  `json:"course_id"`
+	Status      string     `json:"status"`
+	StartedAt   time.Time  `json:"started_at"`
+	CompletedAt *time.Time `json:"completed_at,omitempty"`
+}
+
+func toEnrollmentResponse(e *domain.Enrollment) EnrollmentResponse {
+	return EnrollmentResponse{
+		ID:          e.ID,
+		UserID:      e.UserID,
+		CourseID:    e.CourseID,
+		Status:      e.Status,
+		StartedAt:   e.StartedAt,
+		CompletedAt: e.CompletedAt,
+	}
+}
+
+// StartSessionRequest matches OpenAPI StartSessionRequest schema.
+type StartSessionRequest struct {
+	Metadata json.RawMessage `json:"metadata,omitempty"`
+}
+
+// CompleteSessionRequest matches OpenAPI CompleteSessionRequest schema.
+type CompleteSessionRequest struct {
+	ActivitiesCompleted *int `json:"activities_completed,omitempty"`
+}
+
+// LearningSessionResponse matches OpenAPI LearningSession schema.
+type LearningSessionResponse struct {
+	ID                  uuid.UUID  `json:"id"`
+	UserID              uuid.UUID  `json:"user_id"`
+	StartedAt           time.Time  `json:"started_at"`
+	EndedAt             *time.Time `json:"ended_at,omitempty"`
+	ActivitiesCompleted int        `json:"activities_completed"`
+	Minutes             int        `json:"minutes"`
+}
+
+func toLearningSessionResponse(s *domain.LearningSession) LearningSessionResponse {
+	return LearningSessionResponse{
+		ID:                  s.ID,
+		UserID:              s.UserID,
+		StartedAt:           s.StartedAt,
+		EndedAt:             s.EndedAt,
+		ActivitiesCompleted: s.ActivitiesCompleted,
+		Minutes:             s.Minutes,
 	}
 }

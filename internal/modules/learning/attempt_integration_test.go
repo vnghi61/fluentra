@@ -166,6 +166,27 @@ func (s stubLessonReader) NextLesson(
 	return nil, nil
 }
 
+// The course is one unit, and that unit is the one the activity belongs to, so
+// completing it completes the course — which is what makes a single submit
+// publish all three events now that rollupCourse asks for every unit rather than
+// for the last lesson.
+func (s stubLessonReader) ListUnitsByCourseID(
+	_ context.Context, courseID uuid.UUID,
+) ([]*lessoncontract.Unit, error) {
+	if s.hierarchy == nil {
+		return nil, nil
+	}
+	return []*lessoncontract.Unit{{ID: s.hierarchy.UnitID, CourseID: courseID}}, nil
+}
+
+// No prerequisites: this suite is about the attempt lifecycle, and unlocking has
+// its own tests in the service package.
+func (s stubLessonReader) ListPrerequisitesForLessons(
+	_ context.Context, _ []uuid.UUID,
+) ([]lessoncontract.PrerequisiteItem, error) {
+	return nil, nil
+}
+
 func (s stubLessonReader) ResolveActivity(
 	_ context.Context, _ uuid.UUID,
 ) (*lessoncontract.ActivityHierarchy, error) {
@@ -317,6 +338,13 @@ func newAttemptFixtureWithBarrier(t *testing.T, callers int) *attemptFixture {
 		Events: outboxAdapter{Writer: outbox.NewWriter()},
 		Lesson: reader,
 	})
+
+	// StartAttempt refuses an activity in a course the learner has not enrolled
+	// in, so the fixture enrols them. Doing it through the service rather than
+	// with raw SQL keeps the enrolment row exactly what the product writes.
+	if _, err := svc.Enroll(ctx, userID, courseID); err != nil {
+		t.Fatalf("enrol learner: %v", err)
+	}
 
 	return &attemptFixture{
 		svc:      svc,

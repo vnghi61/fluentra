@@ -139,6 +139,11 @@ INSERT INTO learn.learning_sessions (user_id, started_at, metadata)
 VALUES ($1, $2, $3)
 RETURNING id, user_id, started_at, ended_at, activities_completed, minutes, metadata, created_at, updated_at;
 
+-- name: GetLearningSessionByID :one
+SELECT id, user_id, started_at, ended_at, activities_completed, minutes, metadata, created_at, updated_at
+FROM learn.learning_sessions
+WHERE id = $1;
+
 -- name: CompleteLearningSession :one
 UPDATE learn.learning_sessions
 SET ended_at = $2,

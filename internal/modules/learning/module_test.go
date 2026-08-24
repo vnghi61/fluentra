@@ -110,6 +110,18 @@ func TestModule_RotatePartitions_NilPool(t *testing.T) {
 	}
 }
 
+func TestModule_Accessors(t *testing.T) {
+	mod := learning.New(learning.Deps{
+		Guard: dummyGuard{},
+	})
+	if mod.ProgressReader() == nil {
+		t.Errorf("ProgressReader() should not be nil")
+	}
+	if mod.UnlockChecker() == nil {
+		t.Errorf("UnlockChecker() should not be nil")
+	}
+}
+
 type dummyGrader struct{}
 
 func (dummyGrader) Grade(_ context.Context, _ contract.GradeRequest) (contract.GradeResult, error) {

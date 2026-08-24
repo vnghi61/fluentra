@@ -392,6 +392,29 @@ func (q *Queries) GetLatestPlacementResult(ctx context.Context, userID uuid.UUID
 	return i, err
 }
 
+const getLearningSessionByID = `-- name: GetLearningSessionByID :one
+SELECT id, user_id, started_at, ended_at, activities_completed, minutes, metadata, created_at, updated_at
+FROM learn.learning_sessions
+WHERE id = $1
+`
+
+func (q *Queries) GetLearningSessionByID(ctx context.Context, id uuid.UUID) (LearnLearningSession, error) {
+	row := q.db.QueryRow(ctx, getLearningSessionByID, id)
+	var i LearnLearningSession
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.StartedAt,
+		&i.EndedAt,
+		&i.ActivitiesCompleted,
+		&i.Minutes,
+		&i.Metadata,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getProgressByUserScope = `-- name: GetProgressByUserScope :one
 SELECT id, user_id, scope, scope_id, status, score, completed_at, created_at, updated_at
 FROM learn.progress

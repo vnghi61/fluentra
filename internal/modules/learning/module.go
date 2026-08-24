@@ -132,6 +132,16 @@ func (m *Module) Grader(kind string) (contract.ExerciseGrader, bool) {
 	return m.graders.Get(kind)
 }
 
+// ProgressReader returns the public ProgressReader contract implementation.
+func (m *Module) ProgressReader() contract.ProgressReader {
+	return m.service
+}
+
+// UnlockChecker returns the public UnlockChecker contract implementation.
+func (m *Module) UnlockChecker() contract.UnlockChecker {
+	return m.service
+}
+
 // Routes mounts learner-facing attempt endpoints under the authenticated router.
 func (m *Module) Routes(router chi.Router) {
 	if m.handler != nil {

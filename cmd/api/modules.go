@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 
@@ -183,11 +185,12 @@ func newIdentity(deps identityDeps) *identity {
 	})
 
 	assembled.lesson = lesson.New(lesson.Deps{
-		Pool:    deps.Pool,
-		Caches:  newLessonCaches(deps.Redis),
-		Guard:   lazyGuard{of: assembled},
-		Content: assembled.content.Reader(),
-		Env:     deps.Env,
+		Pool:     deps.Pool,
+		Caches:   newLessonCaches(deps.Redis),
+		Guard:    lazyGuard{of: assembled},
+		Content:  assembled.content.Reader(),
+		Unlocker: lazyUnlocker{of: assembled},
+		Env:      deps.Env,
 	})
 
 	assembled.learning = learning.New(learning.Deps{
@@ -285,6 +288,25 @@ func (g lazyGuard) Require(ctx context.Context, permission string) error {
 }
 
 func (g lazyGuard) authorizer() rbaccontract.Authorizer { return g.of.rbac.Authorizer() }
+
+// lazyUnlocker adapts learning's batched UnlockChecker to lesson's consumer interface,
+// resolving it when unlock checks run rather than on construction (P8.4 Trap 1).
+type lazyUnlocker struct{ of *identity }
+
+var _ lessonservice.UnlockChecker = lazyUnlocker{}
+
+func (u lazyUnlocker) IsUnlocked(
+	ctx context.Context, userID uuid.UUID, lessonIDs []uuid.UUID,
+) (map[uuid.UUID]bool, error) {
+	if u.of.learning == nil {
+		// Not a silent pass: a nil map here would read as "every lesson locked"
+		// in GetCourseDetail, and a nil error would hide the wiring fault that
+		// caused it. The composition root always builds learning, so this is a
+		// programming error, and it says so.
+		return nil, fmt.Errorf("learning module is not assembled")
+	}
+	return u.of.learning.UnlockChecker().IsUnlocked(ctx, userID, lessonIDs)
+}
 
 // rateLimiterAdapter bridges platform/cache's limiter to the one httpx declares.
 //

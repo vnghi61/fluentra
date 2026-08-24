@@ -247,8 +247,8 @@ func TestEvaluateLockWithoutLearningReportsUnlocked(t *testing.T) {
 
 type failingUnlocker struct{ err error }
 
-func (f failingUnlocker) IsUnlocked(_ context.Context, _, _ uuid.UUID) (bool, error) {
-	return false, f.err
+func (f failingUnlocker) IsUnlocked(_ context.Context, _ uuid.UUID, _ []uuid.UUID) (map[uuid.UUID]bool, error) {
+	return nil, f.err
 }
 
 // TestEvaluateLockPropagatesUnlockerFailure keeps a learning outage a 500. Read

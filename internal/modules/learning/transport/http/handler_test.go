@@ -32,12 +32,18 @@ func (f fakeGuard) Require(_ context.Context, _ string) error {
 }
 
 type fakeLearningService struct {
-	startDTO  *service.StartAttemptDTO
-	startErr  error
-	submitDTO *service.SubmitAttemptResultDTO
-	submitErr error
-	getDTO    *service.AttemptDetailDTO
-	getErr    error
+	startDTO     *service.StartAttemptDTO
+	startErr     error
+	submitDTO    *service.SubmitAttemptResultDTO
+	submitErr    error
+	getDTO       *service.AttemptDetailDTO
+	getErr       error
+	enrollDTO    *domain.Enrollment
+	enrollErr    error
+	startSessDTO *domain.LearningSession
+	startSessErr error
+	compSessDTO  *domain.LearningSession
+	compSessErr  error
 }
 
 func (f *fakeLearningService) StartAttempt(_ context.Context, _, _ uuid.UUID) (*service.StartAttemptDTO, error) {
@@ -52,6 +58,22 @@ func (f *fakeLearningService) SubmitAttempt(
 
 func (f *fakeLearningService) GetAttempt(_ context.Context, _, _ uuid.UUID) (*service.AttemptDetailDTO, error) {
 	return f.getDTO, f.getErr
+}
+
+func (f *fakeLearningService) Enroll(_ context.Context, _, _ uuid.UUID) (*domain.Enrollment, error) {
+	return f.enrollDTO, f.enrollErr
+}
+
+func (f *fakeLearningService) StartSession(
+	_ context.Context, _ uuid.UUID, _ json.RawMessage,
+) (*domain.LearningSession, error) {
+	return f.startSessDTO, f.startSessErr
+}
+
+func (f *fakeLearningService) CompleteSession(
+	_ context.Context, _, _ uuid.UUID, _ *int,
+) (*domain.LearningSession, error) {
+	return f.compSessDTO, f.compSessErr
 }
 
 func withActor(r *http.Request, userID uuid.UUID) *http.Request {
@@ -373,5 +395,202 @@ func TestHandler_InvalidUUIDsAndBadBodies(t *testing.T) {
 	router.ServeHTTP(rec, req)
 	if rec.Code != http.StatusUnauthorized {
 		t.Errorf("expected 401, got %d", rec.Code)
+	}
+}
+
+func TestHandler_Enroll(t *testing.T) {
+	courseID := uuid.New()
+	userID := uuid.New()
+	now := time.Now().UTC()
+
+	svc := &fakeLearningService{
+		enrollDTO: &domain.Enrollment{
+			ID:        uuid.New(),
+			UserID:    userID,
+			CourseID:  courseID,
+			Status:    domain.StatusEnrollmentActive,
+			StartedAt: now,
+		},
+	}
+	router, _ := setupTestRouter(svc)
+
+	// 1. Success 201
+	req := httptest.NewRequest(http.MethodPost, "/courses/"+courseID.String()+"/enroll", nil)
+	req = withActor(req, userID)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d", rec.Code)
+	}
+
+	var resp learninghttp.EnrollmentResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
+	if resp.CourseID != courseID || resp.Status != domain.StatusEnrollmentActive {
+		t.Errorf("unexpected enrollment resp: %+v", resp)
+	}
+
+	// 2. Unauthorized 401
+	req = httptest.NewRequest(http.MethodPost, "/courses/"+courseID.String()+"/enroll", nil)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("expected 401, got %d", rec.Code)
+	}
+
+	// 3. Invalid UUID 400
+	req = httptest.NewRequest(http.MethodPost, "/courses/invalid-id/enroll", nil)
+	req = withActor(req, userID)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest && rec.Code != http.StatusUnprocessableEntity {
+		t.Errorf("expected 400 or 422, got %d", rec.Code)
+	}
+
+	// 4. Duplicate conflict 409
+	svcConflict := &fakeLearningService{
+		enrollErr: domain.ErrAlreadyEnrolled,
+	}
+	routerConflict, _ := setupTestRouter(svcConflict)
+	req = httptest.NewRequest(http.MethodPost, "/courses/"+courseID.String()+"/enroll", nil)
+	req = withActor(req, userID)
+	rec = httptest.NewRecorder()
+	routerConflict.ServeHTTP(rec, req)
+	if rec.Code != http.StatusConflict {
+		t.Errorf("expected 409 conflict, got %d", rec.Code)
+	}
+}
+
+func TestHandler_Sessions(t *testing.T) {
+	userID := uuid.New()
+	sessID := uuid.New()
+	now := time.Now().UTC()
+
+	svc := &fakeLearningService{
+		startSessDTO: &domain.LearningSession{
+			ID:                  sessID,
+			UserID:              userID,
+			StartedAt:           now,
+			ActivitiesCompleted: 0,
+			Minutes:             0,
+		},
+		compSessDTO: &domain.LearningSession{
+			ID:                  sessID,
+			UserID:              userID,
+			StartedAt:           now,
+			EndedAt:             &now,
+			ActivitiesCompleted: 3,
+			Minutes:             15,
+		},
+	}
+	router, _ := setupTestRouter(svc)
+
+	// 1. POST /me/sessions 201
+	req := httptest.NewRequest(http.MethodPost, "/me/sessions", bytes.NewReader([]byte(`{"metadata":{"app":"web"}}`)))
+	req = withActor(req, userID)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d", rec.Code)
+	}
+
+	var startResp learninghttp.LearningSessionResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &startResp); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
+	if startResp.ID != sessID {
+		t.Errorf("got session ID %s, want %s", startResp.ID, sessID)
+	}
+
+	// 2. POST /me/sessions/{id}/complete 200
+	req = httptest.NewRequest(
+		http.MethodPost, "/me/sessions/"+sessID.String()+"/complete",
+		bytes.NewReader([]byte(`{"activities_completed":3}`)),
+	)
+	req = withActor(req, userID)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rec.Code)
+	}
+
+	var compResp learninghttp.LearningSessionResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &compResp); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
+	if compResp.Minutes != 15 || compResp.ActivitiesCompleted != 3 {
+		t.Errorf("unexpected complete resp: %+v", compResp)
+	}
+
+	// 3. Complete unowned / not found 404
+	svc404 := &fakeLearningService{
+		compSessErr: domain.ErrSessionNotFound,
+	}
+	router404, _ := setupTestRouter(svc404)
+	req = httptest.NewRequest(http.MethodPost, "/me/sessions/"+sessID.String()+"/complete", nil)
+	req = withActor(req, userID)
+	rec = httptest.NewRecorder()
+	router404.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("expected 404, got %d", rec.Code)
+	}
+}
+
+func TestHandler_SessionBadRequests(t *testing.T) {
+	userID := uuid.New()
+	sessID := uuid.New()
+
+	// A body that is not JSON is a 4xx from the handler, before the service runs.
+	svc := &fakeLearningService{}
+	router, _ := setupTestRouter(svc)
+
+	req := httptest.NewRequest(http.MethodPost, "/me/sessions", bytes.NewReader([]byte(`{`)))
+	req = withActor(req, userID)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code < 400 || rec.Code >= 500 {
+		t.Errorf("malformed start body: got %d, want a 4xx", rec.Code)
+	}
+
+	req = httptest.NewRequest(
+		http.MethodPost, "/me/sessions/"+sessID.String()+"/complete", bytes.NewReader([]byte(`{`)),
+	)
+	req = withActor(req, userID)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code < 400 || rec.Code >= 500 {
+		t.Errorf("malformed complete body: got %d, want a 4xx", rec.Code)
+	}
+
+	// An id that is not a UUID never reaches the service either.
+	req = httptest.NewRequest(http.MethodPost, "/me/sessions/not-a-uuid/complete", nil)
+	req = withActor(req, userID)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code < 400 || rec.Code >= 500 {
+		t.Errorf("malformed session id: got %d, want a 4xx", rec.Code)
+	}
+
+	// A negative activity count is the service's validation error, rendered as 422.
+	svcInvalid := &fakeLearningService{compSessErr: domain.ErrInvalidActivityCount}
+	routerInvalid, _ := setupTestRouter(svcInvalid)
+	req = httptest.NewRequest(
+		http.MethodPost, "/me/sessions/"+sessID.String()+"/complete",
+		bytes.NewReader([]byte(`{"activities_completed":-1}`)),
+	)
+	req = withActor(req, userID)
+	rec = httptest.NewRecorder()
+	routerInvalid.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnprocessableEntity && rec.Code != http.StatusBadRequest {
+		t.Errorf("negative activity count: got %d, want 422 or 400", rec.Code)
+	}
+
+	// Starting a session is 401 without an actor.
+	req = httptest.NewRequest(http.MethodPost, "/me/sessions", nil)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("anonymous start: got %d, want 401", rec.Code)
 	}
 }

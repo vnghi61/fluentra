@@ -48,7 +48,7 @@ Enrol
 |---|---|
 | Permission | `self` |
 | Success | 201 |
-| Errors | `ALREADY_ENROLLED` |
+| Errors | `ALREADY_ENROLLED`, `COURSE_NOT_FOUND` |
 
 ### `GET /api/v1/me/dashboard`
 
@@ -78,7 +78,7 @@ Start an attempt
 |---|---|
 | Permission | `self` |
 | Success | 201 |
-| Errors | `LESSON_LOCKED`, `ACTIVITY_ALREADY_COMPLETED` |
+| Errors | `NOT_ENROLLED`, `LESSON_LOCKED`, `ACTIVITY_ALREADY_COMPLETED` |
 
 ### `POST /api/v1/attempts/{id}/submit`
 
@@ -119,7 +119,7 @@ End a session
 |---|---|
 | Permission | `self` |
 | Success | 200 |
-| Errors | standard set |
+| Errors | `SESSION_NOT_FOUND`, `INVALID_ACTIVITY_COUNT` |
 
 <!-- END GENERATED: api-detail -->
 
@@ -138,6 +138,11 @@ End a session
 | `IDEMPOTENCY_CONFLICT` | 409 | A different `Idempotency-Key` was presented for an attempt already claimed — a conflict, not a retry |
 | `INVALID_IDEMPOTENCY_KEY` | 422 | `Idempotency-Key` header missing or not a UUID |
 | `UNSUPPORTED_ACTIVITY_KIND` | 422 | No grader is registered for the activity kind. The kinds a deployment declares are validated at boot, so reaching this means the data asked for a kind that was never declared — one request fails, not the process |
+| `NOT_ENROLLED` | 403 | The learner has no active enrolment in the course the activity belongs to — its own code, because “enrol first” and “not your attempt” ask the client for different things |
+| `COURSE_NOT_FOUND` | 404 | Enrolment named a course that does not exist — mapped from the `fk_enrollments_course` violation, because `learn.courses` belongs to `lesson` |
+| `SESSION_NOT_FOUND` | 404 | No such learning session, or it belongs to another learner — an id is not an authorisation |
+| `INVALID_ACTIVITY_COUNT` | 422 | `activities_completed` was negative |
+| `INVALID_DURATION` | 422 | A session would end before it started |
 <!-- END GENERATED: api-errors -->
 
 ## Rate limits

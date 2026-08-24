@@ -27,6 +27,11 @@ type LearningService interface {
 		ctx context.Context, userID, attemptID, idempotencyKey uuid.UUID, response json.RawMessage,
 	) (*service.SubmitAttemptResultDTO, error)
 	GetAttempt(ctx context.Context, userID, attemptID uuid.UUID) (*service.AttemptDetailDTO, error)
+	Enroll(ctx context.Context, userID, courseID uuid.UUID) (*domain.Enrollment, error)
+	StartSession(ctx context.Context, userID uuid.UUID, metadata json.RawMessage) (*domain.LearningSession, error)
+	CompleteSession(
+		ctx context.Context, userID, sessionID uuid.UUID, activitiesCompleted *int,
+	) (*domain.LearningSession, error)
 }
 
 // Handler serves HTTP endpoints for attempts.
@@ -48,9 +53,93 @@ func NewHandler(service LearningService, guard Guard) (*Handler, error) {
 
 // Routes mounts the attempt lifecycle endpoints on the router.
 func (h *Handler) Routes(router chi.Router) {
+	router.Post("/courses/{id}/enroll", h.enroll)
 	router.Post("/activities/{id}/attempts", h.startAttempt)
 	router.Post("/attempts/{id}/submit", h.submitAttempt)
 	router.Get("/attempts/{id}", h.getAttempt)
+	router.Post("/me/sessions", h.startSession)
+	router.Post("/me/sessions/{id}/complete", h.completeSession)
+}
+
+func (h *Handler) enroll(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	actor, ok := httpx.ActorFrom(ctx)
+	if !ok || actor.UserID == uuid.Nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Unauthenticated, "UNAUTHORIZED", "Authentication required"))
+		return
+	}
+
+	courseIDStr := chi.URLParam(r, "id")
+	courseID, err := uuid.Parse(courseIDStr)
+	if err != nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Validation, "INVALID_ID", "Invalid course ID format"))
+		return
+	}
+
+	enrollment, err := h.service.Enroll(ctx, actor.UserID, courseID)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	httpx.WriteJSON(w, r, http.StatusCreated, toEnrollmentResponse(enrollment))
+}
+
+func (h *Handler) startSession(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	actor, ok := httpx.ActorFrom(ctx)
+	if !ok || actor.UserID == uuid.Nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Unauthenticated, "UNAUTHORIZED", "Authentication required"))
+		return
+	}
+
+	var req StartSessionRequest
+	if r.Body != nil && r.ContentLength > 0 {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			httpx.WriteProblem(w, r, apperr.New(apperr.Validation, "INVALID_REQUEST_BODY", "Failed to parse request body"))
+			return
+		}
+	}
+
+	sess, err := h.service.StartSession(ctx, actor.UserID, req.Metadata)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	httpx.WriteJSON(w, r, http.StatusCreated, toLearningSessionResponse(sess))
+}
+
+func (h *Handler) completeSession(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	actor, ok := httpx.ActorFrom(ctx)
+	if !ok || actor.UserID == uuid.Nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Unauthenticated, "UNAUTHORIZED", "Authentication required"))
+		return
+	}
+
+	sessionIDStr := chi.URLParam(r, "id")
+	sessionID, err := uuid.Parse(sessionIDStr)
+	if err != nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Validation, "INVALID_ID", "Invalid session ID format"))
+		return
+	}
+
+	var req CompleteSessionRequest
+	if r.Body != nil && r.ContentLength > 0 {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			httpx.WriteProblem(w, r, apperr.New(apperr.Validation, "INVALID_REQUEST_BODY", "Failed to parse request body"))
+			return
+		}
+	}
+
+	sess, err := h.service.CompleteSession(ctx, actor.UserID, sessionID, req.ActivitiesCompleted)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	httpx.WriteJSON(w, r, http.StatusOK, toLearningSessionResponse(sess))
 }
 
 func (h *Handler) startAttempt(w http.ResponseWriter, r *http.Request) {

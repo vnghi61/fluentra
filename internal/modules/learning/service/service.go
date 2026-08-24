@@ -37,6 +37,39 @@ type Repository interface {
 	ListProgressByUserScopeAndIDs(
 		ctx context.Context, userID uuid.UUID, scope string, scopeIDs []uuid.UUID,
 	) ([]repository.ProgressDTO, error)
+	ListProgressByUserAndScope(
+		ctx context.Context, userID uuid.UUID, scope string, limit int32,
+	) ([]repository.ProgressDTO, error)
+	GetEnrollmentByUserCourse(
+		ctx context.Context, userID, courseID uuid.UUID,
+	) (*domain.Enrollment, error)
+	ListEnrollmentsByUser(
+		ctx context.Context, userID uuid.UUID, limit int32,
+	) ([]domain.Enrollment, error)
+	CreateEnrollment(
+		ctx context.Context, userID, courseID uuid.UUID, status string, startedAt time.Time,
+	) (*domain.Enrollment, error)
+	UpdateEnrollmentStatus(
+		ctx context.Context, userID, courseID uuid.UUID, status string, completedAt *time.Time,
+	) (*domain.Enrollment, error)
+	CreateLearningSession(
+		ctx context.Context, userID uuid.UUID, startedAt time.Time, metadata json.RawMessage,
+	) (*domain.LearningSession, error)
+	GetLearningSessionByID(
+		ctx context.Context, id uuid.UUID,
+	) (*domain.LearningSession, error)
+	CompleteLearningSession(
+		ctx context.Context, id uuid.UUID, endedAt time.Time, activitiesCompleted, minutes int32,
+	) (*domain.LearningSession, error)
+	GetSkillMastery(
+		ctx context.Context, userID uuid.UUID, skill string,
+	) (*domain.SkillMastery, error)
+	ListSkillMasteryByUser(
+		ctx context.Context, userID uuid.UUID,
+	) ([]domain.SkillMastery, error)
+	UpsertSkillMastery(
+		ctx context.Context, userID uuid.UUID, skill, level string, confidence float64,
+	) (*domain.SkillMastery, error)
 	// WithTx returns this repository bound to tx. It returns the interface, not
 	// the concrete struct: returning *repository.Repository dropped every
 	// decorator the service had been given the moment the grading transaction
@@ -138,8 +171,31 @@ func New(deps Deps) *Service {
 func (s *Service) StartAttempt(ctx context.Context, userID, activityID uuid.UUID) (*StartAttemptDTO, error) {
 	// 1. Resolve activity existence and structural position (Trap 1)
 	// Proves the activity exists before an attempt row is written against it.
-	if _, err := s.resolveActivityHierarchy(ctx, activityID); err != nil {
+	activity, err := s.resolveActivityHierarchy(ctx, activityID)
+	if err != nil {
 		return nil, err
+	}
+
+	// 2. Check course enrollment (Trap 6: do not auto-enroll, reject if not enrolled)
+	if activity.CourseID != uuid.Nil {
+		enrollment, err := s.repo.GetEnrollmentByUserCourse(ctx, userID, activity.CourseID)
+		if err != nil {
+			return nil, fmt.Errorf("check enrollment: %w", err)
+		}
+		if enrollment == nil || !enrollment.IsActive() {
+			return nil, domain.ErrNotEnrolled
+		}
+	}
+
+	// 3. Check lesson unlock status (Trap 6)
+	if activity.LessonID != uuid.Nil {
+		unlockedMap, err := s.IsUnlocked(ctx, userID, []uuid.UUID{activity.LessonID})
+		if err != nil {
+			return nil, fmt.Errorf("check lesson unlocking: %w", err)
+		}
+		if unlockedMap != nil && !unlockedMap[activity.LessonID] {
+			return nil, domain.ErrLessonLocked
+		}
 	}
 
 	attemptID, err := s.newID()
@@ -478,7 +534,41 @@ func (s *Service) executeRollupTx(
 		}
 	}
 
+	// 4. Update incremental skill mastery if focus is a valid skill (Trap 4)
+	if err := updateSkillMastery(
+		ctx, repo, userID, activity.LessonSkillFocus, gradeResult.Score, gradeResult.MaxScore,
+	); err != nil {
+		return err
+	}
+
 	return s.rollupLessonAndAbove(ctx, tx, repo, userID, activity, now)
+}
+
+// updateSkillMastery folds one attempt score into the learner's estimate for the
+// lesson's skill.
+//
+// An unrecognised skill focus is skipped, not an error: learn.skill_mastery.skill
+// is a CHECK over six values while learn.lessons.skill_focus is free text, so a
+// content author's spelling would otherwise abort the grading transaction and
+// fail the learner's submission (Trap 4). A read that genuinely fails is still
+// returned — inside a transaction the next statement would fail anyway, and with
+// a message that names nothing.
+func updateSkillMastery(
+	ctx context.Context, repo Repository, userID uuid.UUID, skillFocus string, score, maxScore int,
+) error {
+	normSkill, ok := domain.NormalizeSkill(skillFocus)
+	if !ok {
+		return nil
+	}
+	existing, err := repo.GetSkillMastery(ctx, userID, normSkill)
+	if err != nil {
+		return fmt.Errorf("get skill mastery %s: %w", normSkill, err)
+	}
+	level, confidence, _ := domain.EstimateMastery(existing, percentageOf(score, maxScore))
+	if _, err := repo.UpsertSkillMastery(ctx, userID, normSkill, level, confidence); err != nil {
+		return fmt.Errorf("upsert skill mastery %s: %w", normSkill, err)
+	}
+	return nil
 }
 
 func calculateCompletedScore(totalCount int, progress []repository.ProgressDTO) (bool, int32) {
@@ -620,40 +710,62 @@ func (s *Service) rollupCourse(
 	repo Repository,
 	userID uuid.UUID,
 	activity *lessoncontract.ActivityHierarchy,
-	avgUnitScore int32,
+	_ int32,
 	now time.Time,
 ) error {
-	if activity.CourseID == uuid.Nil {
+	if activity.CourseID == uuid.Nil || s.lesson == nil {
 		return nil
 	}
 
-	nextLesson, err := s.lesson.NextLesson(ctx, activity.CourseID, &activity.LessonID)
+	units, err := s.lesson.ListUnitsByCourseID(ctx, activity.CourseID)
 	if err != nil {
-		return fmt.Errorf("next lesson for course %s: %w", activity.CourseID, err)
+		return fmt.Errorf("list course units %s: %w", activity.CourseID, err)
+	}
+	if len(units) == 0 {
+		return nil
 	}
 
-	if nextLesson == nil {
-		_, err = repo.UpsertProgress(ctx, repository.UpsertProgressParams{
-			UserID:      userID,
-			Scope:       "course",
-			ScopeID:     activity.CourseID,
-			Status:      domain.ProgressCompleted,
-			Score:       &avgUnitScore,
-			CompletedAt: &now,
-		})
-		if err != nil {
-			return fmt.Errorf("upsert course progress: %w", err)
-		}
+	unitIDs := make([]uuid.UUID, len(units))
+	for i, u := range units {
+		unitIDs[i] = u.ID
+	}
 
-		if s.events != nil {
-			courseEvent := contract.CourseCompleted{
-				UserID:     userID,
-				CourseID:   activity.CourseID,
-				OccurredAt: now,
-			}
-			if _, err := s.events.Write(ctx, tx, contract.Aggregate, contract.EventCourseCompleted, courseEvent); err != nil {
-				return fmt.Errorf("write course.completed event: %w", err)
-			}
+	unitProgress, err := repo.ListProgressByUserScopeAndIDs(ctx, userID, "unit", unitIDs)
+	if err != nil {
+		return fmt.Errorf("list unit progress for course %s: %w", activity.CourseID, err)
+	}
+
+	completed, avgCourseScore := calculateCompletedScore(len(units), unitProgress)
+	if !completed {
+		return nil
+	}
+
+	_, err = repo.UpsertProgress(ctx, repository.UpsertProgressParams{
+		UserID:      userID,
+		Scope:       "course",
+		ScopeID:     activity.CourseID,
+		Status:      domain.ProgressCompleted,
+		Score:       &avgCourseScore,
+		CompletedAt: &now,
+	})
+	if err != nil {
+		return fmt.Errorf("upsert course progress: %w", err)
+	}
+
+	// Update enrollment to completed in the same transaction (Trap 3)
+	_, err = repo.UpdateEnrollmentStatus(ctx, userID, activity.CourseID, domain.StatusEnrollmentCompleted, &now)
+	if err != nil {
+		return fmt.Errorf("update enrollment status: %w", err)
+	}
+
+	if s.events != nil {
+		courseEvent := contract.CourseCompleted{
+			UserID:     userID,
+			CourseID:   activity.CourseID,
+			OccurredAt: now,
+		}
+		if _, err := s.events.Write(ctx, tx, contract.Aggregate, contract.EventCourseCompleted, courseEvent); err != nil {
+			return fmt.Errorf("write course.completed event: %w", err)
 		}
 	}
 
@@ -747,4 +859,430 @@ type noopTx struct{}
 
 func (noopTx) Exec(context.Context, string, ...any) (pgconn.CommandTag, error) {
 	return pgconn.CommandTag{}, nil
+}
+
+// Enroll registers a user into a course.
+func (s *Service) Enroll(ctx context.Context, userID, courseID uuid.UUID) (*domain.Enrollment, error) {
+	existing, err := s.repo.GetEnrollmentByUserCourse(ctx, userID, courseID)
+	if err != nil {
+		return nil, fmt.Errorf("get enrollment: %w", err)
+	}
+	if existing != nil {
+		return nil, domain.ErrAlreadyEnrolled
+	}
+
+	now := s.clock.Now().UTC()
+	enrollment, err := s.repo.CreateEnrollment(ctx, userID, courseID, domain.StatusEnrollmentActive, now)
+	if err != nil {
+		return nil, fmt.Errorf("create enrollment: %w", err)
+	}
+	return enrollment, nil
+}
+
+// IsUnlocked answers whether a learner has met prerequisites for a batch of lessons.
+// Implements contract.UnlockChecker.
+func (s *Service) IsUnlocked(
+	ctx context.Context, userID uuid.UUID, lessonIDs []uuid.UUID,
+) (map[uuid.UUID]bool, error) {
+	if len(lessonIDs) == 0 {
+		return map[uuid.UUID]bool{}, nil
+	}
+	if s.lesson == nil {
+		return nil, fmt.Errorf("lesson reader not configured")
+	}
+
+	prereqs, err := s.lesson.ListPrerequisitesForLessons(ctx, lessonIDs)
+	if err != nil {
+		return nil, fmt.Errorf("list prerequisites: %w", err)
+	}
+
+	prereqsByLesson := make(map[uuid.UUID][]lessoncontract.PrerequisiteItem)
+	reqLessonIDs := make([]uuid.UUID, 0, len(prereqs))
+	for _, p := range prereqs {
+		prereqsByLesson[p.LessonID] = append(prereqsByLesson[p.LessonID], p)
+		reqLessonIDs = append(reqLessonIDs, p.RequiresLessonID)
+	}
+
+	progressMap := make(map[uuid.UUID]repository.ProgressDTO)
+	if len(reqLessonIDs) > 0 && userID != uuid.Nil {
+		progressList, err := s.repo.ListProgressByUserScopeAndIDs(ctx, userID, "lesson", reqLessonIDs)
+		if err != nil {
+			return nil, fmt.Errorf("list prerequisite progress: %w", err)
+		}
+		for _, prog := range progressList {
+			progressMap[prog.ScopeID] = prog
+		}
+	}
+
+	result := make(map[uuid.UUID]bool, len(lessonIDs))
+	for _, id := range lessonIDs {
+		reqs := prereqsByLesson[id]
+		switch {
+		case len(reqs) == 0:
+			result[id] = true
+		case userID == uuid.Nil:
+			result[id] = false
+		default:
+			result[id] = prerequisitesMet(reqs, progressMap)
+		}
+	}
+
+	return result, nil
+}
+
+// prerequisitesMet reports whether every prerequisite is complete and scored at
+// or above its min_score. The score half is not optional: a prerequisite carries
+// a threshold, and a checker that reads only the status unlocks a lesson for a
+// learner who failed the one before it.
+func prerequisitesMet(
+	reqs []lessoncontract.PrerequisiteItem, progress map[uuid.UUID]repository.ProgressDTO,
+) bool {
+	for _, req := range reqs {
+		prog, ok := progress[req.RequiresLessonID]
+		if !ok || prog.Status != domain.ProgressCompleted {
+			return false
+		}
+		if req.MinScore > 0 && (prog.Score == nil || int(*prog.Score) < req.MinScore) {
+			return false
+		}
+	}
+	return true
+}
+
+// ProgressOf returns all progress records for a given user and scope.
+// Implements contract.ProgressReader.
+func (s *Service) ProgressOf(
+	ctx context.Context, userID uuid.UUID, scope contract.ProgressScope,
+) ([]contract.Progress, error) {
+	dtos, err := s.repo.ListProgressByUserAndScope(ctx, userID, string(scope), progressScanLimit)
+	if err != nil {
+		return nil, fmt.Errorf("list progress of %s: %w", scope, err)
+	}
+	out := make([]contract.Progress, len(dtos))
+	for i, d := range dtos {
+		var sc *int
+		if d.Score != nil {
+			sInt := int(*d.Score)
+			sc = &sInt
+		}
+		out[i] = contract.Progress{
+			UserID:      d.UserID,
+			Scope:       contract.ProgressScope(d.Scope),
+			ScopeID:     d.ScopeID,
+			Status:      d.Status,
+			Score:       sc,
+			CompletedAt: d.CompletedAt,
+		}
+	}
+	return out, nil
+}
+
+// Scope-scan limits. Progress rows are one per activity, lesson, unit and
+// course a learner has touched, so a bound is needed; these are high enough that
+// no Phase 2 learner reaches them and low enough that a corrupt row count cannot
+// pull the whole table into memory.
+const (
+	progressScanLimit   int32 = 1000
+	enrollmentScanLimit int32 = 50
+)
+
+// NextActivity resolves the single activity the learner should do now.
+//
+// The three states are the contract, not a convenience: DashboardResponse.state
+// is not_started | in_progress | completed, and a learner who has started nothing
+// gets an explicit state rather than null or a 404 (Trap 5).
+//
+// The reads it issues are bounded by the number of units in the course, not the
+// number of lessons: this is the endpoint every app open hits, and P8.5 has to be
+// able to assert a query count over it.
+func (s *Service) NextActivity(ctx context.Context, userID uuid.UUID) (*domain.NextActivityResolution, error) {
+	if s.lesson == nil {
+		return nil, fmt.Errorf("lesson reader not configured")
+	}
+
+	active, state, err := s.activeEnrollment(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if active == nil {
+		return &domain.NextActivityResolution{State: state}, nil
+	}
+
+	lessons, err := s.courseLessonsInOrder(ctx, active.CourseID)
+	if err != nil {
+		return nil, err
+	}
+	if len(lessons) == 0 {
+		return &domain.NextActivityResolution{State: domain.StateCompleted}, nil
+	}
+
+	completedLessons, err := s.completedScopeIDs(ctx, userID, string(contract.ScopeLesson))
+	if err != nil {
+		return nil, err
+	}
+
+	var target *lessoncontract.Lesson
+	for _, l := range lessons {
+		if l != nil && !completedLessons[l.ID] {
+			target = l
+			break
+		}
+	}
+	if target == nil {
+		return &domain.NextActivityResolution{State: domain.StateCompleted}, nil
+	}
+
+	return s.nextActivityInLesson(ctx, userID, active.CourseID, target.ID)
+}
+
+// activeEnrollment returns the learner's first active enrolment, or nil with the
+// state that answers for its absence: no enrolment at all is not_started, and
+// enrolments that have all been completed or dropped is completed.
+func (s *Service) activeEnrollment(
+	ctx context.Context, userID uuid.UUID,
+) (*domain.Enrollment, string, error) {
+	enrollments, err := s.repo.ListEnrollmentsByUser(ctx, userID, enrollmentScanLimit)
+	if err != nil {
+		return nil, "", fmt.Errorf("list enrollments: %w", err)
+	}
+	if len(enrollments) == 0 {
+		return nil, domain.StateNotStarted, nil
+	}
+	for i := range enrollments {
+		if enrollments[i].IsActive() {
+			return &enrollments[i], domain.StateInProgress, nil
+		}
+	}
+	return nil, domain.StateCompleted, nil
+}
+
+// courseLessonsInOrder lists a course's lessons in unit-then-position order.
+//
+// One read per unit, not one per lesson: walking the course with NextLesson costs
+// a call for every lesson already finished, which is the N+1 the batched
+// UnlockChecker exists to avoid, on the same page. A course whose units cannot be
+// listed falls back to a single NextLesson call rather than to nothing.
+func (s *Service) courseLessonsInOrder(
+	ctx context.Context, courseID uuid.UUID,
+) ([]*lessoncontract.Lesson, error) {
+	units, err := s.lesson.ListUnitsByCourseID(ctx, courseID)
+	if err != nil {
+		return nil, fmt.Errorf("list course units %s: %w", courseID, err)
+	}
+	if len(units) == 0 {
+		first, firstErr := s.lesson.NextLesson(ctx, courseID, nil)
+		if firstErr != nil {
+			return nil, fmt.Errorf("find first lesson of course %s: %w", courseID, firstErr)
+		}
+		if first == nil {
+			return nil, nil
+		}
+		return []*lessoncontract.Lesson{first}, nil
+	}
+
+	var ordered []*lessoncontract.Lesson
+	for _, u := range units {
+		if u == nil {
+			continue
+		}
+		unitLessons, listErr := s.lesson.ListLessons(ctx, u.ID)
+		if listErr != nil {
+			return nil, fmt.Errorf("list lessons of unit %s: %w", u.ID, listErr)
+		}
+		ordered = append(ordered, unitLessons...)
+	}
+	return ordered, nil
+}
+
+// completedScopeIDs reads the learner's completed rows for one progress scope.
+func (s *Service) completedScopeIDs(
+	ctx context.Context, userID uuid.UUID, scope string,
+) (map[uuid.UUID]bool, error) {
+	rows, err := s.repo.ListProgressByUserAndScope(ctx, userID, scope, progressScanLimit)
+	if err != nil {
+		return nil, fmt.Errorf("list %s progress: %w", scope, err)
+	}
+	completed := make(map[uuid.UUID]bool, len(rows))
+	for _, row := range rows {
+		if row.Status == domain.ProgressCompleted {
+			completed[row.ScopeID] = true
+		}
+	}
+	return completed, nil
+}
+
+// nextActivityInLesson picks the first activity of a lesson the learner has not
+// completed. Title and estimated minutes come from the lesson: learn.activities
+// has no title column, and the spec's example is a lesson name (Trap 5).
+func (s *Service) nextActivityInLesson(
+	ctx context.Context, userID, courseID, lessonID uuid.UUID,
+) (*domain.NextActivityResolution, error) {
+	lessonDetail, err := s.lesson.GetLesson(ctx, lessonID)
+	if err != nil {
+		return nil, fmt.Errorf("get lesson %s: %w", lessonID, err)
+	}
+	if lessonDetail == nil || len(lessonDetail.Activities) == 0 {
+		return &domain.NextActivityResolution{State: domain.StateInProgress}, nil
+	}
+
+	actIDs := make([]uuid.UUID, len(lessonDetail.Activities))
+	for i, a := range lessonDetail.Activities {
+		actIDs[i] = a.ID
+	}
+	actProgress, err := s.repo.ListProgressByUserScopeAndIDs(
+		ctx, userID, string(contract.ScopeActivity), actIDs,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list activity progress: %w", err)
+	}
+	completedActs := make(map[uuid.UUID]bool, len(actProgress))
+	for _, ap := range actProgress {
+		if ap.Status == domain.ProgressCompleted {
+			completedActs[ap.ScopeID] = true
+		}
+	}
+
+	for _, a := range lessonDetail.Activities {
+		if completedActs[a.ID] {
+			continue
+		}
+		estMins := lessonDetail.EstimatedMinutes
+		return &domain.NextActivityResolution{
+			State: domain.StateInProgress,
+			NextActivity: &domain.NextActivity{
+				ActivityID:       a.ID,
+				LessonID:         lessonDetail.ID,
+				UnitID:           lessonDetail.UnitID,
+				CourseID:         courseID,
+				Title:            lessonDetail.Title,
+				Kind:             a.Kind,
+				Skill:            lessonDetail.SkillFocus,
+				EstimatedMinutes: &estMins,
+			},
+		}, nil
+	}
+
+	return &domain.NextActivityResolution{State: domain.StateInProgress}, nil
+}
+
+// StartSession initiates a new study session.
+func (s *Service) StartSession(
+	ctx context.Context, userID uuid.UUID, metadata json.RawMessage,
+) (*domain.LearningSession, error) {
+	now := s.clock.Now().UTC()
+	return s.repo.CreateLearningSession(ctx, userID, now, metadata)
+}
+
+// CompleteSession finalizes a study session, calculating server-side minutes and emitting an event.
+//
+// The duration is computed here and never read from the request: a client-supplied
+// number of minutes is the same class of mistake as a client-supplied score
+// (BR-LEARNING-01). `activities_completed` is in the spec's request body, so it is
+// accepted, but a negative count is rejected before the CHECK constraint sees it.
+func (s *Service) CompleteSession(
+	ctx context.Context, userID, sessionID uuid.UUID, activitiesCompleted *int,
+) (*domain.LearningSession, error) {
+	if activitiesCompleted != nil && *activitiesCompleted < 0 {
+		return nil, domain.ErrInvalidActivityCount
+	}
+
+	session, err := s.repo.GetLearningSessionByID(ctx, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	if session == nil || session.UserID != userID {
+		// Another learner's session is a 404 (Trap 6). An id is not an authorisation.
+		return nil, domain.ErrSessionNotFound
+	}
+	if session.IsCompleted() {
+		return session, nil
+	}
+
+	now := s.clock.Now().UTC()
+	if now.Before(session.StartedAt) {
+		return nil, domain.ErrInvalidDuration
+	}
+
+	minutes := safeCount(int(now.Sub(session.StartedAt).Minutes()))
+
+	actCount := session.ActivitiesCompleted
+	if activitiesCompleted != nil {
+		actCount = *activitiesCompleted
+	}
+
+	event := contract.SessionCompleted{
+		UserID:     userID,
+		SessionID:  sessionID,
+		Minutes:    int(minutes),
+		Activities: actCount,
+		OccurredAt: now,
+	}
+
+	var completed *domain.LearningSession
+	finish := func(txCtx context.Context, tx OutboxTx, repo Repository) error {
+		var updateErr error
+		completed, updateErr = repo.CompleteLearningSession(
+			txCtx, sessionID, now, safeCount(actCount), minutes,
+		)
+		if updateErr != nil {
+			return updateErr
+		}
+		if s.events == nil {
+			return nil
+		}
+		if _, err := s.events.Write(
+			txCtx, tx, contract.Aggregate, contract.EventLearningSessionCompleted, event,
+		); err != nil {
+			return fmt.Errorf("write learning.session_completed event: %w", err)
+		}
+		return nil
+	}
+
+	if s.pool == nil {
+		// No pool: the unit suite drives the same path against fakes, exactly as
+		// completeSynchronousGrading does, so the outbox write stays reachable.
+		if err := finish(ctx, noopTx{}, s.repo); err != nil {
+			return nil, err
+		}
+		return completed, nil
+	}
+
+	if txErr := dbx.InTx(ctx, s.pool, func(txCtx context.Context, tx pgx.Tx) error {
+		return finish(txCtx, tx, s.repo.WithTx(tx))
+	}); txErr != nil {
+		return nil, fmt.Errorf("commit session completion transaction: %w", txErr)
+	}
+	return completed, nil
+}
+
+// percentageOf turns a grader's score into the 0-100 figure the CEFR bands are
+// defined over. A grader is free to mark out of 10 or out of 40 — GradeResult
+// carries MaxScore precisely because the scale is the grader's choice — and
+// feeding a raw 8-out-of-10 to the estimator would read as an A1.
+func percentageOf(score, maxScore int) float64 {
+	if maxScore <= 0 {
+		return float64(score)
+	}
+	pct := float64(score) / float64(maxScore) * 100
+	if pct < 0 {
+		return 0
+	}
+	if pct > 100 {
+		return 100
+	}
+	return pct
+}
+
+// safeCount clamps a non-negative count into int32, the width both
+// learning_sessions.activities_completed and .minutes are declared at.
+// The clamp is the same habit as safeScore and safeDurationMs above, and it is
+// there so no //nolint has to be.
+func safeCount(v int) int32 {
+	if v < 0 {
+		return 0
+	}
+	if v > math.MaxInt32 {
+		return math.MaxInt32
+	}
+	return int32(v)
 }

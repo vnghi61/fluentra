@@ -286,8 +286,14 @@ type dynamicUnlocker struct {
 	unlockedUsers map[uuid.UUID]bool
 }
 
-func (d *dynamicUnlocker) IsUnlocked(_ context.Context, userID, _ uuid.UUID) (bool, error) {
-	return d.unlockedUsers[userID], nil
+func (d *dynamicUnlocker) IsUnlocked(
+	_ context.Context, userID uuid.UUID, lessonIDs []uuid.UUID,
+) (map[uuid.UUID]bool, error) {
+	res := make(map[uuid.UUID]bool, len(lessonIDs))
+	for _, id := range lessonIDs {
+		res[id] = d.unlockedUsers[userID]
+	}
+	return res, nil
 }
 
 func TestCache_CatalogueGenerationCounter_Invalidation(t *testing.T) {

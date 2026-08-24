@@ -5,11 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/fluentra/fluentra/internal/generated/learning/sqlc"
 	"github.com/fluentra/fluentra/internal/modules/learning/domain"
@@ -250,6 +253,267 @@ func (r *Repository) ListProgressByUserScopeAndIDs(
 	return out, nil
 }
 
+// ListProgressByUserAndScope retrieves progress rows for a user within a specific scope.
+func (r *Repository) ListProgressByUserAndScope(
+	ctx context.Context, userID uuid.UUID, scope string, limit int32,
+) ([]ProgressDTO, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	rows, err := r.queries.ListProgressByUserAndScope(ctx, sqlc.ListProgressByUserAndScopeParams{
+		UserID: userID,
+		Scope:  scope,
+		Limit:  limit,
+	})
+	if err != nil {
+		return nil, mapPgError(err)
+	}
+	out := make([]ProgressDTO, len(rows))
+	for i, row := range rows {
+		p := toProgressDTO(row)
+		if p != nil {
+			out[i] = *p
+		}
+	}
+	return out, nil
+}
+
+// ListProgressByUser retrieves recent progress rows for a user across all scopes.
+func (r *Repository) ListProgressByUser(
+	ctx context.Context, userID uuid.UUID, limit int32,
+) ([]ProgressDTO, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	rows, err := r.queries.ListProgressByUser(ctx, sqlc.ListProgressByUserParams{
+		UserID: userID,
+		Limit:  limit,
+	})
+	if err != nil {
+		return nil, mapPgError(err)
+	}
+	out := make([]ProgressDTO, len(rows))
+	for i, row := range rows {
+		p := toProgressDTO(row)
+		if p != nil {
+			out[i] = *p
+		}
+	}
+	return out, nil
+}
+
+// GetEnrollmentByUserCourse retrieves an enrollment for a user in a course.
+func (r *Repository) GetEnrollmentByUserCourse(
+	ctx context.Context, userID, courseID uuid.UUID,
+) (*domain.Enrollment, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	row, err := r.queries.GetEnrollmentByUserCourse(ctx, sqlc.GetEnrollmentByUserCourseParams{
+		UserID:   userID,
+		CourseID: courseID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, mapPgError(err)
+	}
+	return toDomainEnrollment(row), nil
+}
+
+// ListEnrollmentsByUser retrieves all enrollments for a user.
+func (r *Repository) ListEnrollmentsByUser(
+	ctx context.Context, userID uuid.UUID, limit int32,
+) ([]domain.Enrollment, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	rows, err := r.queries.ListEnrollmentsByUser(ctx, sqlc.ListEnrollmentsByUserParams{
+		UserID: userID,
+		Limit:  limit,
+	})
+	if err != nil {
+		return nil, mapPgError(err)
+	}
+	out := make([]domain.Enrollment, len(rows))
+	for i, row := range rows {
+		out[i] = *toDomainEnrollment(row)
+	}
+	return out, nil
+}
+
+// CreateEnrollment inserts a new enrollment row.
+func (r *Repository) CreateEnrollment(
+	ctx context.Context, userID, courseID uuid.UUID, status string, startedAt time.Time,
+) (*domain.Enrollment, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	row, err := r.queries.CreateEnrollment(ctx, sqlc.CreateEnrollmentParams{
+		UserID:    userID,
+		CourseID:  courseID,
+		Status:    status,
+		StartedAt: startedAt,
+	})
+	if err != nil {
+		return nil, mapPgError(err)
+	}
+	return toDomainEnrollment(row), nil
+}
+
+// UpdateEnrollmentStatus updates enrollment status and completion timestamp.
+func (r *Repository) UpdateEnrollmentStatus(
+	ctx context.Context, userID, courseID uuid.UUID, status string, completedAt *time.Time,
+) (*domain.Enrollment, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	row, err := r.queries.UpdateEnrollmentStatus(ctx, sqlc.UpdateEnrollmentStatusParams{
+		UserID:      userID,
+		CourseID:    courseID,
+		Status:      status,
+		CompletedAt: completedAt,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, mapPgError(err)
+	}
+	return toDomainEnrollment(row), nil
+}
+
+// CreateLearningSession inserts a new learning session row.
+func (r *Repository) CreateLearningSession(
+	ctx context.Context, userID uuid.UUID, startedAt time.Time, metadata json.RawMessage,
+) (*domain.LearningSession, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	var metaBytes []byte
+	if len(metadata) > 0 {
+		metaBytes = []byte(metadata)
+	}
+	row, err := r.queries.CreateLearningSession(ctx, sqlc.CreateLearningSessionParams{
+		UserID:    userID,
+		StartedAt: startedAt,
+		Metadata:  metaBytes,
+	})
+	if err != nil {
+		return nil, mapPgError(err)
+	}
+	return toDomainSession(row), nil
+}
+
+// GetLearningSessionByID retrieves a learning session by ID.
+func (r *Repository) GetLearningSessionByID(
+	ctx context.Context, id uuid.UUID,
+) (*domain.LearningSession, error) {
+	if r.queries == nil {
+		return nil, domain.ErrSessionNotFound
+	}
+	row, err := r.queries.GetLearningSessionByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrSessionNotFound
+		}
+		return nil, mapPgError(err)
+	}
+	return toDomainSession(row), nil
+}
+
+// CompleteLearningSession updates a learning session upon completion.
+func (r *Repository) CompleteLearningSession(
+	ctx context.Context, id uuid.UUID, endedAt time.Time, activitiesCompleted, minutes int32,
+) (*domain.LearningSession, error) {
+	if r.queries == nil {
+		return nil, domain.ErrSessionNotFound
+	}
+	row, err := r.queries.CompleteLearningSession(ctx, sqlc.CompleteLearningSessionParams{
+		ID:                  id,
+		EndedAt:             &endedAt,
+		ActivitiesCompleted: activitiesCompleted,
+		Minutes:             minutes,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrSessionNotFound
+		}
+		return nil, mapPgError(err)
+	}
+	return toDomainSession(row), nil
+}
+
+// GetSkillMastery retrieves a skill mastery estimate for a user and skill.
+func (r *Repository) GetSkillMastery(
+	ctx context.Context, userID uuid.UUID, skill string,
+) (*domain.SkillMastery, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	row, err := r.queries.GetSkillMastery(ctx, sqlc.GetSkillMasteryParams{
+		UserID: userID,
+		Skill:  skill,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, mapPgError(err)
+	}
+	return toDomainSkillMastery(row), nil
+}
+
+// ListSkillMasteryByUser retrieves all skill mastery records for a user.
+func (r *Repository) ListSkillMasteryByUser(
+	ctx context.Context, userID uuid.UUID,
+) ([]domain.SkillMastery, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	rows, err := r.queries.ListSkillMasteryByUser(ctx, userID)
+	if err != nil {
+		return nil, mapPgError(err)
+	}
+	out := make([]domain.SkillMastery, len(rows))
+	for i, row := range rows {
+		m := toDomainSkillMastery(row)
+		if m != nil {
+			out[i] = *m
+		}
+	}
+	return out, nil
+}
+
+// UpsertSkillMastery creates or updates a skill mastery record.
+func (r *Repository) UpsertSkillMastery(
+	ctx context.Context, userID uuid.UUID, skill, level string, confidence float64,
+) (*domain.SkillMastery, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	// confidence is numeric(5,2) with a 0..1 CHECK behind it, so the value is
+	// formatted to two places here rather than left to the driver. A Scan that
+	// fails would leave the numeric NULL and break a NOT NULL column, so the
+	// error is returned instead of dropped.
+	var conf pgtype.Numeric
+	if err := conf.Scan(strconv.FormatFloat(confidence, 'f', 2, 64)); err != nil {
+		return nil, fmt.Errorf("encode confidence %v: %w", confidence, err)
+	}
+
+	row, err := r.queries.UpsertSkillMastery(ctx, sqlc.UpsertSkillMasteryParams{
+		UserID:     userID,
+		Skill:      skill,
+		Level:      level,
+		Confidence: conf,
+	})
+	if err != nil {
+		return nil, mapPgError(err)
+	}
+	return toDomainSkillMastery(row), nil
+}
+
 func toDomainAttempt(row sqlc.LearnAttempt) *domain.Attempt {
 	var keyStr *string
 	if row.IdempotencyKey != nil {
@@ -285,6 +549,49 @@ func toDomainAttempt(row sqlc.LearnAttempt) *domain.Attempt {
 	}
 }
 
+func toDomainEnrollment(row sqlc.LearnEnrollment) *domain.Enrollment {
+	return &domain.Enrollment{
+		ID:          row.ID,
+		UserID:      row.UserID,
+		CourseID:    row.CourseID,
+		Status:      row.Status,
+		StartedAt:   row.StartedAt,
+		CompletedAt: row.CompletedAt,
+		CreatedAt:   row.CreatedAt,
+		UpdatedAt:   row.UpdatedAt,
+	}
+}
+
+func toDomainSession(row sqlc.LearnLearningSession) *domain.LearningSession {
+	return &domain.LearningSession{
+		ID:                  row.ID,
+		UserID:              row.UserID,
+		StartedAt:           row.StartedAt,
+		EndedAt:             row.EndedAt,
+		ActivitiesCompleted: int(row.ActivitiesCompleted),
+		Minutes:             int(row.Minutes),
+		Metadata:            json.RawMessage(row.Metadata),
+		CreatedAt:           row.CreatedAt,
+		UpdatedAt:           row.UpdatedAt,
+	}
+}
+
+func toDomainSkillMastery(row sqlc.LearnSkillMastery) *domain.SkillMastery {
+	var conf float64
+	if f, err := row.Confidence.Float64Value(); err == nil && f.Valid {
+		conf = f.Float64
+	}
+	return &domain.SkillMastery{
+		ID:         row.ID,
+		UserID:     row.UserID,
+		Skill:      row.Skill,
+		Level:      row.Level,
+		Confidence: conf,
+		UpdatedAt:  row.UpdatedAt,
+		CreatedAt:  row.CreatedAt,
+	}
+}
+
 func toProgressDTO(row sqlc.LearnProgress) *ProgressDTO {
 	var score *float64
 	if row.Score != nil {
@@ -312,11 +619,25 @@ func mapPgError(err error) error {
 	if errors.As(err, &pgErr) {
 		switch pgErr.Code {
 		case "23505": // unique_violation
-			return domain.ErrIdempotencyConflict
+			switch pgErr.ConstraintName {
+			case "uq_enrollments_user_course":
+				return domain.ErrAlreadyEnrolled
+			default:
+				return domain.ErrIdempotencyConflict
+			}
+		case "23503": // foreign_key_violation
+			// Enrolling in a course id that does not exist is a 404, not the 500 a
+			// raw constraint error would produce. learn.courses belongs to `lesson`,
+			// so the foreign key is the only thing this module can ask.
+			if pgErr.ConstraintName == "fk_enrollments_course" {
+				return domain.ErrCourseNotFound
+			}
 		case "23514": // check_violation
 			switch pgErr.ConstraintName {
-			case "ck_attempts_status":
+			case "ck_attempts_status", "ck_enrollments_status":
 				return domain.ErrInvalidStatus
+			case "ck_learning_sessions_ended_after_started":
+				return domain.ErrInvalidDuration
 			}
 		}
 	}
