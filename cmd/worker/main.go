@@ -23,6 +23,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/audit"
 	"github.com/fluentra/fluentra/internal/modules/auth"
 	authservice "github.com/fluentra/fluentra/internal/modules/auth/service"
+	"github.com/fluentra/fluentra/internal/modules/learning"
 	"github.com/fluentra/fluentra/internal/modules/lesson"
 	lessonservice "github.com/fluentra/fluentra/internal/modules/lesson/service"
 	"github.com/fluentra/fluentra/internal/modules/rbac"
@@ -371,6 +372,19 @@ func startModules(
 
 	if err := lessonModule.Subscribe(bus); err != nil {
 		return err
+	}
+
+	learningModule := learning.New(learning.Deps{
+		Pool: pool,
+	})
+
+	for _, scheduled := range learningModule.CronJobs() {
+		cron.Register(scheduled)
+	}
+
+	if err := learningModule.RotatePartitions(ctx); err != nil {
+		slog.ErrorContext(ctx, "could not rotate learning partitions at start-up; the scheduled job will retry",
+			"error", err)
 	}
 
 	renderer, err := mailer.NewRenderer(nil, nil)

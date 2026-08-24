@@ -122,6 +122,7 @@ components:
   g_admin:       { in: generated/admin/sqlc }
   g_content:     { in: generated/content/sqlc }
   g_lesson:      { in: generated/lesson/sqlc }
+  g_learning:    { in: generated/learning/sqlc }
 
   # platform capabilities
   p_telemetry:   { in: platform/telemetry/** }
@@ -265,6 +266,7 @@ deps:
   g_admin:     { anyVendorDeps: true }
   g_content:   { anyVendorDeps: true }
   g_lesson:    { anyVendorDeps: true }
+  g_learning:  { anyVendorDeps: true }
 
   # A platform capability exists to wrap a vendor SDK, so each may import one.
   # Business modules deliberately may not: they reach external systems through
@@ -370,7 +372,7 @@ deps:
   m_lesson_service:    { mayDependOn: [m_lesson_domain, c_lesson, c_content, p_cache] }
   m_lesson_http:       { mayDependOn: [m_lesson_domain, m_lesson_service, c_lesson, c_content] }
   m_lesson:            { mayDependOn: [m_lesson_domain, m_lesson_repository, m_lesson_service, m_lesson_http, c_lesson, c_content] }
-  m_learning:     { mayDependOn: [p_cache, p_job, p_telemetry, c_lesson, c_content, c_srs] }
+  m_learning:     { mayDependOn: [p_cache, p_job, p_telemetry, c_lesson, c_content, c_srs, g_learning] }
   m_srs:          { mayDependOn: [p_cache, p_job, p_telemetry, c_content] }
   m_vocabulary:   { mayDependOn: [p_cache, p_media, p_ai, p_search, p_telemetry, c_content, c_srs, c_learning] }
   m_grammar:      { mayDependOn: [p_cache, p_ai, p_telemetry, c_content, c_srs, c_learning] }
