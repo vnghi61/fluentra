@@ -24,8 +24,14 @@ type staticUnlocker struct {
 	unlocked bool
 }
 
-func (s staticUnlocker) IsUnlocked(_ context.Context, _, _ uuid.UUID) (bool, error) {
-	return s.unlocked, nil
+func (s staticUnlocker) IsUnlocked(
+	_ context.Context, _ uuid.UUID, lessonIDs []uuid.UUID,
+) (map[uuid.UUID]bool, error) {
+	res := make(map[uuid.UUID]bool, len(lessonIDs))
+	for _, id := range lessonIDs {
+		res[id] = s.unlocked
+	}
+	return res, nil
 }
 
 func lockFixtureIDs() (lessonID, reqLessonID, courseID, unitID, userID uuid.UUID) {

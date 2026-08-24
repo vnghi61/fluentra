@@ -35,7 +35,7 @@ const (
 // learning implements it; lesson only calls it, so the interface is declared
 // here rather than imported, and lesson does not depend on learning (Trap 2).
 type UnlockChecker interface {
-	IsUnlocked(ctx context.Context, userID, lessonID uuid.UUID) (bool, error)
+	IsUnlocked(ctx context.Context, userID uuid.UUID, lessonIDs []uuid.UUID) (map[uuid.UUID]bool, error)
 }
 
 // CreateCourseParams holds data to create a course in the repository.
@@ -50,12 +50,7 @@ type CreateCourseParams struct {
 }
 
 // PrerequisiteItem models a prerequisite link with descriptive fields for lock reason.
-type PrerequisiteItem struct {
-	LessonID            uuid.UUID `json:"lesson_id"`
-	RequiresLessonID    uuid.UUID `json:"requires_lesson_id"`
-	MinScore            int       `json:"min_score"`
-	RequiresLessonTitle string    `json:"requires_lesson_title"`
-}
+type PrerequisiteItem = contract.PrerequisiteItem
 
 // Repository defines data access methods required by the lesson service.
 type Repository interface {
@@ -422,13 +417,40 @@ func (s *Service) GetCourseDetail(ctx context.Context, slug string, userID uuid.
 		return nil, err
 	}
 
+	// Batch evaluate unlocking for all lessons with prerequisites
+	var lessonsToCheck []uuid.UUID
+	for _, u := range tree.Units {
+		for _, l := range u.Lessons {
+			if len(l.Prereqs) > 0 {
+				lessonsToCheck = append(lessonsToCheck, l.ID)
+			}
+		}
+	}
+
+	var unlockedMap map[uuid.UUID]bool
+	if len(lessonsToCheck) > 0 && s.unlocker != nil && userID != uuid.Nil {
+		var unlockErr error
+		unlockedMap, unlockErr = s.unlocker.IsUnlocked(ctx, userID, lessonsToCheck)
+		if unlockErr != nil {
+			return nil, fmt.Errorf("check unlock states: %w", unlockErr)
+		}
+	}
+
 	unitDTOs := make([]CourseUnitDTO, len(tree.Units))
 	for i, u := range tree.Units {
 		lessonDTOs := make([]LessonSummaryDTO, len(u.Lessons))
 		for j, l := range u.Lessons {
-			locked, lockReason, evalErr := s.evaluateLock(ctx, userID, l.ID, l.Prereqs)
-			if evalErr != nil {
-				return nil, evalErr
+			locked := false
+			var lockReason *string
+			if len(l.Prereqs) > 0 {
+				if s.unlocker != nil && userID != uuid.Nil {
+					unlocked := unlockedMap[l.ID]
+					if !unlocked {
+						locked = true
+						reason := lockReasonFor(l.Prereqs)
+						lockReason = &reason
+					}
+				}
 			}
 			lessonDTOs[j] = LessonSummaryDTO{
 				ID:               l.ID,
@@ -980,6 +1002,20 @@ func (s *Service) ResolveActivity(
 	return s.repo.ResolveActivity(ctx, activityID)
 }
 
+// ListPrerequisitesForLessons implements contract.Reader.
+func (s *Service) ListPrerequisitesForLessons(
+	ctx context.Context, lessonIDs []uuid.UUID,
+) ([]contract.PrerequisiteItem, error) {
+	return s.repo.ListPrerequisitesForLessons(ctx, lessonIDs)
+}
+
+// ListUnitsByCourseID implements contract.Reader.
+func (s *Service) ListUnitsByCourseID(
+	ctx context.Context, courseID uuid.UUID,
+) ([]*contract.Unit, error) {
+	return s.repo.ListUnitsByCourseID(ctx, courseID)
+}
+
 func (s *Service) evaluateLock(
 	ctx context.Context, userID, lessonID uuid.UUID, prereqs []PrerequisiteItem,
 ) (bool, *string, error) {
@@ -990,11 +1026,11 @@ func (s *Service) evaluateLock(
 		return false, nil, nil
 	}
 
-	unlocked, err := s.unlocker.IsUnlocked(ctx, userID, lessonID)
+	unlockedMap, err := s.unlocker.IsUnlocked(ctx, userID, []uuid.UUID{lessonID})
 	if err != nil {
 		return false, nil, fmt.Errorf("check unlock state for lesson %s: %w", lessonID, err)
 	}
-	if unlocked {
+	if unlockedMap != nil && unlockedMap[lessonID] {
 		return false, nil, nil
 	}
 

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"math"
 	"reflect"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -26,12 +27,18 @@ import (
 const (
 	testKindQuiz        = "quiz"
 	testStatusCompleted = "completed"
+	testScopeLesson     = "lesson"
+	testScopeActivity   = "activity"
+	testSkillReading    = "reading"
 )
 
 type fakeLearningRepo struct {
 	mu           sync.Mutex
 	attempts     map[uuid.UUID]*domain.Attempt
 	progress     map[string]*repository.ProgressDTO
+	enrollments  map[string]*domain.Enrollment
+	sessions     map[uuid.UUID]*domain.LearningSession
+	mastery      map[string]*domain.SkillMastery
 	claimErr     error
 	queryCounter atomic.Int64
 	// afterGet lets a test order itself against the reads the service makes,
@@ -41,13 +48,24 @@ type fakeLearningRepo struct {
 
 func newFakeRepo() *fakeLearningRepo {
 	return &fakeLearningRepo{
-		attempts: make(map[uuid.UUID]*domain.Attempt),
-		progress: make(map[string]*repository.ProgressDTO),
+		attempts:    make(map[uuid.UUID]*domain.Attempt),
+		progress:    make(map[string]*repository.ProgressDTO),
+		enrollments: make(map[string]*domain.Enrollment),
+		sessions:    make(map[uuid.UUID]*domain.LearningSession),
+		mastery:     make(map[string]*domain.SkillMastery),
 	}
 }
 
 func progressKey(userID uuid.UUID, scope string, scopeID uuid.UUID) string {
 	return userID.String() + ":" + scope + ":" + scopeID.String()
+}
+
+func enrollmentKey(userID, courseID uuid.UUID) string {
+	return userID.String() + ":" + courseID.String()
+}
+
+func masteryKey(userID uuid.UUID, skill string) string {
+	return userID.String() + ":" + skill
 }
 
 func (f *fakeLearningRepo) CreateAttempt(
@@ -231,20 +249,264 @@ func (f *fakeLearningRepo) ListProgressByUserScopeAndIDs(
 	return out, nil
 }
 
+func (f *fakeLearningRepo) ListProgressByUserAndScope(
+	_ context.Context, userID uuid.UUID, scope string, _ int32,
+) ([]repository.ProgressDTO, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.queryCounter.Add(1)
+
+	prefix := userID.String() + ":" + scope + ":"
+	var out []repository.ProgressDTO
+	for k, p := range f.progress {
+		if strings.HasPrefix(k, prefix) {
+			out = append(out, *p)
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeLearningRepo) ListProgressByUser(
+	_ context.Context, userID uuid.UUID, _ int32,
+) ([]repository.ProgressDTO, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.queryCounter.Add(1)
+
+	prefix := userID.String() + ":"
+	var out []repository.ProgressDTO
+	for k, p := range f.progress {
+		if strings.HasPrefix(k, prefix) {
+			out = append(out, *p)
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeLearningRepo) GetEnrollmentByUserCourse(
+	_ context.Context, userID, courseID uuid.UUID,
+) (*domain.Enrollment, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.queryCounter.Add(1)
+
+	e, ok := f.enrollments[enrollmentKey(userID, courseID)]
+	if !ok {
+		return nil, nil
+	}
+	copied := *e
+	return &copied, nil
+}
+
+func (f *fakeLearningRepo) ListEnrollmentsByUser(
+	_ context.Context, userID uuid.UUID, _ int32,
+) ([]domain.Enrollment, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.queryCounter.Add(1)
+
+	var out []domain.Enrollment
+	for _, e := range f.enrollments {
+		if e.UserID == userID {
+			out = append(out, *e)
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeLearningRepo) CreateEnrollment(
+	_ context.Context, userID, courseID uuid.UUID, status string, startedAt time.Time,
+) (*domain.Enrollment, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.queryCounter.Add(1)
+
+	k := enrollmentKey(userID, courseID)
+	if _, exists := f.enrollments[k]; exists {
+		return nil, domain.ErrAlreadyEnrolled
+	}
+
+	e := &domain.Enrollment{
+		ID:        uuid.New(),
+		UserID:    userID,
+		CourseID:  courseID,
+		Status:    status,
+		StartedAt: startedAt,
+		CreatedAt: startedAt,
+		UpdatedAt: startedAt,
+	}
+	f.enrollments[k] = e
+	copied := *e
+	return &copied, nil
+}
+
+func (f *fakeLearningRepo) UpdateEnrollmentStatus(
+	_ context.Context, userID, courseID uuid.UUID, status string, completedAt *time.Time,
+) (*domain.Enrollment, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.queryCounter.Add(1)
+
+	k := enrollmentKey(userID, courseID)
+	e, ok := f.enrollments[k]
+	if !ok {
+		return nil, nil
+	}
+	e.Status = status
+	e.CompletedAt = completedAt
+	e.UpdatedAt = time.Now().UTC()
+	copied := *e
+	return &copied, nil
+}
+
+func (f *fakeLearningRepo) CreateLearningSession(
+	_ context.Context, userID uuid.UUID, startedAt time.Time, metadata json.RawMessage,
+) (*domain.LearningSession, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.queryCounter.Add(1)
+
+	s := &domain.LearningSession{
+		ID:                  uuid.New(),
+		UserID:              userID,
+		StartedAt:           startedAt,
+		ActivitiesCompleted: 0,
+		Minutes:             0,
+		Metadata:            metadata,
+		CreatedAt:           startedAt,
+		UpdatedAt:           startedAt,
+	}
+	f.sessions[s.ID] = s
+	copied := *s
+	return &copied, nil
+}
+
+func (f *fakeLearningRepo) GetLearningSessionByID(
+	_ context.Context, id uuid.UUID,
+) (*domain.LearningSession, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.queryCounter.Add(1)
+
+	s, ok := f.sessions[id]
+	if !ok {
+		return nil, domain.ErrSessionNotFound
+	}
+	copied := *s
+	return &copied, nil
+}
+
+func (f *fakeLearningRepo) CompleteLearningSession(
+	_ context.Context, id uuid.UUID, endedAt time.Time, activitiesCompleted, minutes int32,
+) (*domain.LearningSession, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.queryCounter.Add(1)
+
+	s, ok := f.sessions[id]
+	if !ok {
+		return nil, domain.ErrSessionNotFound
+	}
+	s.EndedAt = &endedAt
+	s.ActivitiesCompleted = int(activitiesCompleted)
+	s.Minutes = int(minutes)
+	s.UpdatedAt = time.Now().UTC()
+	copied := *s
+	return &copied, nil
+}
+
+func (f *fakeLearningRepo) GetSkillMastery(
+	_ context.Context, userID uuid.UUID, skill string,
+) (*domain.SkillMastery, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.queryCounter.Add(1)
+
+	m, ok := f.mastery[masteryKey(userID, skill)]
+	if !ok {
+		return nil, nil
+	}
+	copied := *m
+	return &copied, nil
+}
+
+func (f *fakeLearningRepo) ListSkillMasteryByUser(
+	_ context.Context, userID uuid.UUID,
+) ([]domain.SkillMastery, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.queryCounter.Add(1)
+
+	var out []domain.SkillMastery
+	for _, m := range f.mastery {
+		if m.UserID == userID {
+			out = append(out, *m)
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeLearningRepo) UpsertSkillMastery(
+	_ context.Context, userID uuid.UUID, skill, level string, confidence float64,
+) (*domain.SkillMastery, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.queryCounter.Add(1)
+
+	k := masteryKey(userID, skill)
+	m := &domain.SkillMastery{
+		ID:         uuid.New(),
+		UserID:     userID,
+		Skill:      skill,
+		Level:      level,
+		Confidence: confidence,
+		UpdatedAt:  time.Now().UTC(),
+		CreatedAt:  time.Now().UTC(),
+	}
+	f.mastery[k] = m
+	copied := *m
+	return &copied, nil
+}
+
 func (f *fakeLearningRepo) WithTx(_ pgx.Tx) service.Repository {
-	return nil
+	return f
 }
 
 type fakeLessonReader struct {
-	hierarchy  map[uuid.UUID]*lessoncontract.ActivityHierarchy
-	lessons    map[uuid.UUID]*lessoncontract.Lesson
-	unitLesson map[uuid.UUID][]*lessoncontract.Lesson
-	nextLesson *lessoncontract.Lesson
+	// calls counts reads per method, so a test can assert what resolving one
+	// answer costs rather than only what it returns. The dashboard is opened on
+	// every app start and P8.5 has to hold a query budget over it.
+	callMu        sync.Mutex
+	calls         map[string]int
+	hierarchy     map[uuid.UUID]*lessoncontract.ActivityHierarchy
+	lessons       map[uuid.UUID]*lessoncontract.Lesson
+	unitLesson    map[uuid.UUID][]*lessoncontract.Lesson
+	courseUnits   map[uuid.UUID][]*lessoncontract.Unit
+	courseLessons map[uuid.UUID][]*lessoncontract.Lesson
+	prereqs       map[uuid.UUID][]lessoncontract.PrerequisiteItem
+	nextLesson    *lessoncontract.Lesson
+	listUnitsErr  error
+}
+
+func (r *fakeLessonReader) record(method string) {
+	r.callMu.Lock()
+	defer r.callMu.Unlock()
+	if r.calls == nil {
+		r.calls = map[string]int{}
+	}
+	r.calls[method]++
+}
+
+func (r *fakeLessonReader) callCount(method string) int {
+	r.callMu.Lock()
+	defer r.callMu.Unlock()
+	return r.calls[method]
 }
 
 func (r *fakeLessonReader) ResolveActivity(
 	_ context.Context, activityID uuid.UUID,
 ) (*lessoncontract.ActivityHierarchy, error) {
+	r.record("ResolveActivity")
 	if h, ok := r.hierarchy[activityID]; ok {
 		return h, nil
 	}
@@ -252,6 +514,7 @@ func (r *fakeLessonReader) ResolveActivity(
 }
 
 func (r *fakeLessonReader) GetLesson(_ context.Context, id uuid.UUID) (*lessoncontract.Lesson, error) {
+	r.record("GetLesson")
 	if l, ok := r.lessons[id]; ok {
 		return l, nil
 	}
@@ -259,14 +522,56 @@ func (r *fakeLessonReader) GetLesson(_ context.Context, id uuid.UUID) (*lessonco
 }
 
 func (r *fakeLessonReader) ListLessons(_ context.Context, unitID uuid.UUID) ([]*lessoncontract.Lesson, error) {
+	r.record("ListLessons")
 	if ls, ok := r.unitLesson[unitID]; ok {
 		return ls, nil
 	}
 	return nil, nil
 }
 
-func (r *fakeLessonReader) NextLesson(_ context.Context, _ uuid.UUID, _ *uuid.UUID) (*lessoncontract.Lesson, error) {
-	return r.nextLesson, nil
+func (r *fakeLessonReader) ListUnitsByCourseID(_ context.Context, courseID uuid.UUID) ([]*lessoncontract.Unit, error) {
+	r.record("ListUnitsByCourseID")
+	if r.listUnitsErr != nil {
+		return nil, r.listUnitsErr
+	}
+	if us, ok := r.courseUnits[courseID]; ok {
+		return us, nil
+	}
+	return nil, nil
+}
+
+func (r *fakeLessonReader) ListPrerequisitesForLessons(
+	_ context.Context, lessonIDs []uuid.UUID,
+) ([]lessoncontract.PrerequisiteItem, error) {
+	r.record("ListPrerequisitesForLessons")
+	var out []lessoncontract.PrerequisiteItem
+	for _, id := range lessonIDs {
+		if ps, ok := r.prereqs[id]; ok {
+			out = append(out, ps...)
+		}
+	}
+	return out, nil
+}
+
+func (r *fakeLessonReader) NextLesson(
+	_ context.Context, courseID uuid.UUID, currentID *uuid.UUID,
+) (*lessoncontract.Lesson, error) {
+	r.record("NextLesson")
+	if cls, ok := r.courseLessons[courseID]; ok && len(cls) > 0 {
+		if currentID == nil {
+			return cls[0], nil
+		}
+		for i, l := range cls {
+			if l.ID == *currentID && i+1 < len(cls) {
+				return cls[i+1], nil
+			}
+		}
+		return nil, nil
+	}
+	if currentID == nil {
+		return r.nextLesson, nil
+	}
+	return nil, nil
 }
 
 type fakeEventWriter struct {
@@ -290,9 +595,13 @@ func (w *fakeEventWriter) recorded() []string {
 func setupTestService() (*service.Service, *fakeLearningRepo, *fakeLessonReader, *domain.GraderRegistry) {
 	repo := newFakeRepo()
 	reader := &fakeLessonReader{
-		hierarchy:  make(map[uuid.UUID]*lessoncontract.ActivityHierarchy),
-		lessons:    make(map[uuid.UUID]*lessoncontract.Lesson),
-		unitLesson: make(map[uuid.UUID][]*lessoncontract.Lesson),
+		calls:         map[string]int{},
+		hierarchy:     make(map[uuid.UUID]*lessoncontract.ActivityHierarchy),
+		lessons:       make(map[uuid.UUID]*lessoncontract.Lesson),
+		unitLesson:    make(map[uuid.UUID][]*lessoncontract.Lesson),
+		courseUnits:   make(map[uuid.UUID][]*lessoncontract.Unit),
+		courseLessons: make(map[uuid.UUID][]*lessoncontract.Lesson),
+		prereqs:       make(map[uuid.UUID][]lessoncontract.PrerequisiteItem),
 	}
 	graders := domain.NewGraderRegistry()
 	_ = graders.Register(testKindQuiz, domain.NewFakeGrader())
@@ -344,11 +653,15 @@ func TestStartAttempt_ActivityNotFound(t *testing.T) {
 }
 
 func TestSubmitAttempt_SynchronousGrading(t *testing.T) {
-	svc, _, reader, _ := setupTestService()
+	svc, repo, reader, _ := setupTestService()
 	activityID := uuid.New()
 	lessonID := uuid.New()
 	unitID := uuid.New()
 	courseID := uuid.New()
+	userID := uuid.New()
+
+	_, _ = repo.CreateEnrollment(context.Background(), userID, courseID, domain.StatusEnrollmentActive, time.Now().UTC())
+	reader.courseUnits[courseID] = []*lessoncontract.Unit{{ID: unitID, CourseID: courseID}}
 
 	reader.hierarchy[activityID] = &lessoncontract.ActivityHierarchy{
 		ActivityID: activityID,
@@ -363,7 +676,6 @@ func TestSubmitAttempt_SynchronousGrading(t *testing.T) {
 	}
 	reader.unitLesson[unitID] = []*lessoncontract.Lesson{{ID: lessonID}}
 
-	userID := uuid.New()
 	startRes, err := svc.StartAttempt(context.Background(), userID, activityID)
 	if err != nil {
 		t.Fatalf("StartAttempt: %v", err)
@@ -626,9 +938,11 @@ func runRollupTestCase(t *testing.T, tc rollupBoundaryCase) {
 	t.Helper()
 	repo := newFakeRepo()
 	reader := &fakeLessonReader{
-		hierarchy:  make(map[uuid.UUID]*lessoncontract.ActivityHierarchy),
-		lessons:    make(map[uuid.UUID]*lessoncontract.Lesson),
-		unitLesson: make(map[uuid.UUID][]*lessoncontract.Lesson),
+		hierarchy:   make(map[uuid.UUID]*lessoncontract.ActivityHierarchy),
+		lessons:     make(map[uuid.UUID]*lessoncontract.Lesson),
+		unitLesson:  make(map[uuid.UUID][]*lessoncontract.Lesson),
+		courseUnits: make(map[uuid.UUID][]*lessoncontract.Unit),
+		prereqs:     make(map[uuid.UUID][]lessoncontract.PrerequisiteItem),
 	}
 	graders := domain.NewGraderRegistry()
 	_ = graders.Register(testKindQuiz, domain.NewFakeGrader())
@@ -644,10 +958,22 @@ func runRollupTestCase(t *testing.T, tc rollupBoundaryCase) {
 	}
 
 	now := time.Now().UTC()
+	_, _ = repo.CreateEnrollment(context.Background(), userID, courseID, domain.StatusEnrollmentActive, now)
+
+	if tc.isLastLessonInCourse {
+		reader.courseUnits[courseID] = []*lessoncontract.Unit{{ID: unitID, CourseID: courseID}}
+	} else {
+		otherUnitID := uuid.New()
+		reader.courseUnits[courseID] = []*lessoncontract.Unit{
+			{ID: unitID, CourseID: courseID},
+			{ID: otherUnitID, CourseID: courseID},
+		}
+	}
+
 	score100 := int32(100)
 	for i := 0; i < tc.completedActivities; i++ {
 		_, _ = repo.UpsertProgress(context.Background(), repository.UpsertProgressParams{
-			UserID: userID, Scope: "activity", ScopeID: activities[i].ID, Status: testStatusCompleted,
+			UserID: userID, Scope: testScopeActivity, ScopeID: activities[i].ID, Status: testStatusCompleted,
 			Score: &score100, CompletedAt: &now,
 		})
 	}
@@ -663,7 +989,7 @@ func runRollupTestCase(t *testing.T, tc rollupBoundaryCase) {
 
 	for i := 0; i < tc.completedLessons; i++ {
 		_, _ = repo.UpsertProgress(context.Background(), repository.UpsertProgressParams{
-			UserID: userID, Scope: "lesson", ScopeID: unitLessons[i+1].ID, Status: testStatusCompleted,
+			UserID: userID, Scope: testScopeLesson, ScopeID: unitLessons[i+1].ID, Status: testStatusCompleted,
 			Score: &score100, CompletedAt: &now,
 		})
 	}
