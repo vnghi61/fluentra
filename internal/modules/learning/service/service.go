@@ -185,7 +185,7 @@ func (s *Service) SubmitAttempt(
 		return nil, domain.ErrUnauthorizedAttemptAccess
 	}
 
-	if earlyResult, err := s.checkEarlySubmissionState(attempt, idempotencyKey); err != nil || earlyResult != nil {
+	if earlyResult, err := s.checkEarlySubmissionState(ctx, attempt, idempotencyKey); err != nil || earlyResult != nil {
 		return earlyResult, err
 	}
 
@@ -194,9 +194,13 @@ func (s *Service) SubmitAttempt(
 		return nil, err
 	}
 	if !claimed {
-		// A concurrent copy of this same submission won the claim. Return what
-		// that attempt is, and do not grade it again.
-		return s.buildStoredSubmissionResult(current), nil
+		// A concurrent copy of this same submission won the claim. Wait for it to
+		// commit, return what it stored, and do not grade it again.
+		settled, waitErr := s.awaitSettledAttempt(ctx, current)
+		if waitErr != nil {
+			return nil, waitErr
+		}
+		return s.buildStoredSubmissionResult(settled), nil
 	}
 
 	activity, err := s.resolveActivityHierarchy(ctx, attempt.ActivityID)
@@ -234,16 +238,63 @@ func (s *Service) SubmitAttempt(
 }
 
 func (s *Service) checkEarlySubmissionState(
-	attempt *domain.Attempt, idempotencyKey uuid.UUID,
+	ctx context.Context, attempt *domain.Attempt, idempotencyKey uuid.UUID,
 ) (*SubmitAttemptResultDTO, error) {
-	if attempt.IsGraded() || attempt.IsGrading() {
-		if attempt.IdempotencyKey != nil && *attempt.IdempotencyKey == idempotencyKey.String() {
-			return s.buildStoredSubmissionResult(attempt), nil
-		}
+	if !attempt.IsGraded() && !attempt.IsGrading() {
+		return nil, nil
+	}
+	if attempt.IdempotencyKey == nil || *attempt.IdempotencyKey != idempotencyKey.String() {
 		return nil, domain.ErrAlreadyGraded
 	}
 
-	return nil, nil
+	settled, err := s.awaitSettledAttempt(ctx, attempt)
+	if err != nil {
+		return nil, err
+	}
+	return s.buildStoredSubmissionResult(settled), nil
+}
+
+// How long a duplicate submission waits for the caller holding the claim to
+// commit. Short, because the transaction it waits on is one grade and one
+// rollup; bounded, because a genuinely asynchronous grader never settles here.
+const (
+	claimSettleAttempts = 40
+	claimSettleInterval = 5 * time.Millisecond
+)
+
+// awaitSettledAttempt re-reads an attempt another caller is grading right now,
+// until it leaves `grading`.
+//
+// The loser of the claim cannot see the winner's work: the grade, the rollup and
+// the status change are one transaction, so until it commits the loser reads the
+// row as the claim left it — `grading`, with no score. Answering from that read
+// hands back a 202 for an attempt a synchronous grader is finishing microseconds
+// later, and the two callers of one submission get different bodies. P8.3 §6
+// asks for the same body twice.
+//
+// The wait is bounded and the timeout is not an error: a grader that really is
+// asynchronous leaves the attempt in `grading` for as long as its job takes, and
+// 202 is the right answer then.
+func (s *Service) awaitSettledAttempt(
+	ctx context.Context, attempt *domain.Attempt,
+) (*domain.Attempt, error) {
+	latest := attempt
+	for range claimSettleAttempts {
+		if !latest.IsGrading() {
+			return latest, nil
+		}
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(claimSettleInterval):
+		}
+		fresh, err := s.repo.GetAttemptByID(ctx, attempt.ID)
+		if err != nil {
+			return nil, err
+		}
+		latest = fresh
+	}
+	return latest, nil
 }
 
 // claimAttempt takes exclusive ownership of the grading transition.

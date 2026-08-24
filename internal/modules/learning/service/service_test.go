@@ -34,6 +34,9 @@ type fakeLearningRepo struct {
 	progress     map[string]*repository.ProgressDTO
 	claimErr     error
 	queryCounter atomic.Int64
+	// afterGet lets a test order itself against the reads the service makes,
+	// rather than against how fast a goroutine happens to run. Called under mu.
+	afterGet func(*domain.Attempt)
 }
 
 func newFakeRepo() *fakeLearningRepo {
@@ -85,7 +88,7 @@ func (f *fakeLearningRepo) CreateAttempt(
 		Status:         params.Status,
 	}
 	f.attempts[params.ID] = att
-	return att, nil
+	return cloneAttempt(att), nil
 }
 
 func (f *fakeLearningRepo) GetAttemptByID(_ context.Context, id uuid.UUID) (*domain.Attempt, error) {
@@ -97,7 +100,23 @@ func (f *fakeLearningRepo) GetAttemptByID(_ context.Context, id uuid.UUID) (*dom
 	if !ok {
 		return nil, domain.ErrAttemptNotFound
 	}
-	return att, nil
+	if f.afterGet != nil {
+		f.afterGet(att)
+	}
+	return cloneAttempt(att), nil
+}
+
+// cloneAttempt is what makes this fake behave like the repository it stands in
+// for. The real one scans a fresh struct out of every row, so no two callers
+// ever hold the same attempt; handing back the stored pointer let one goroutine
+// read Status while another wrote it, under a mutex that only ever guarded the
+// map.
+func cloneAttempt(att *domain.Attempt) *domain.Attempt {
+	if att == nil {
+		return nil
+	}
+	copied := *att
+	return &copied
 }
 
 func (f *fakeLearningRepo) ClaimAttemptForGrading(
@@ -124,7 +143,7 @@ func (f *fakeLearningRepo) ClaimAttemptForGrading(
 	att.IdempotencyKey = &keyStr
 	att.Response = params.Response
 	att.UpdatedAt = time.Now().UTC()
-	return att, nil
+	return cloneAttempt(att), nil
 }
 
 func (f *fakeLearningRepo) UpdateAttemptStatus(
@@ -251,12 +270,21 @@ func (r *fakeLessonReader) NextLesson(_ context.Context, _ uuid.UUID, _ *uuid.UU
 }
 
 type fakeEventWriter struct {
+	mu     sync.Mutex
 	events []string
 }
 
 func (w *fakeEventWriter) Write(_ context.Context, _ service.OutboxTx, _, event string, _ any) (uuid.UUID, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
 	w.events = append(w.events, event)
 	return uuid.New(), nil
+}
+
+func (w *fakeEventWriter) recorded() []string {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return append([]string(nil), w.events...)
 }
 
 func setupTestService() (*service.Service, *fakeLearningRepo, *fakeLessonReader, *domain.GraderRegistry) {
@@ -677,7 +705,7 @@ func verifyRollupEvents(t *testing.T, events *fakeEventWriter, tc rollupBoundary
 
 	count := func(name string) int {
 		n := 0
-		for _, e := range events.events {
+		for _, e := range events.recorded() {
 			if e == name {
 				n++
 			}
@@ -774,13 +802,34 @@ func TestSubmitAttempt_ConcurrentDoubleSubmitRace(t *testing.T) {
 
 	wg.Wait()
 
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		if errs[i] != nil {
-			t.Errorf("caller %d got error: %v", i, errs[i])
+			t.Fatalf("caller %d got error: %v", i, errs[i])
 		}
-		if results[i] == nil || results[i].Status != domain.StatusGraded || *results[i].Score != 100 {
+		if results[i] == nil {
+			t.Fatalf("caller %d got no result", i)
+		}
+		if results[i].Status != domain.StatusGraded || results[i].Score == nil || *results[i].Score != 100 {
 			t.Errorf("caller %d got invalid result: %+v", i, results[i])
 		}
+		if results[i].Async {
+			// The loser used to answer 202 here: it read the row back while the
+			// winner's transaction was still open, saw `grading`, and reported an
+			// asynchronous grade for a synchronous grader.
+			t.Errorf("caller %d was told the grade is asynchronous", i)
+		}
+	}
+
+	// P8.3 §6: the same response body twice, not a fresh grade. Everything the
+	// attempt row stores has to match; `feedback` is the one field it does not
+	// store, and DECISIONS.md records why the replay leaves it null.
+	won, replayed := results[0], results[1]
+	if won.AttemptID != replayed.AttemptID ||
+		won.Status != replayed.Status ||
+		*won.Score != *replayed.Score ||
+		*won.MaxScore != *replayed.MaxScore ||
+		*won.Correct != *replayed.Correct {
+		t.Errorf("the two callers of one submission got different bodies: %+v vs %+v", won, replayed)
 	}
 }
 
@@ -993,5 +1042,121 @@ func TestGetAttempt_GradedReportsStoredScoreAndNoFeedback(t *testing.T) {
 	}
 	if detail.Feedback != nil {
 		t.Errorf("feedback = %q; learn.attempts stores no prose to read back", *detail.Feedback)
+	}
+}
+
+// gateGrader parks inside Grade until it is released, so a test can hold an
+// attempt in `grading` for as long as it needs.
+type gateGrader struct {
+	started chan struct{}
+	release chan struct{}
+	once    sync.Once
+}
+
+func newGateGrader() *gateGrader {
+	return &gateGrader{started: make(chan struct{}), release: make(chan struct{})}
+}
+
+func (g *gateGrader) Grade(_ context.Context, _ contract.GradeRequest) (contract.GradeResult, error) {
+	g.once.Do(func() { close(g.started) })
+	<-g.release
+	return contract.GradeResult{Score: 90, MaxScore: 100, Correct: true, Feedback: "ok"}, nil
+}
+
+// The window the broad race test only reaches by luck: a duplicate submission
+// arrives while the caller holding the claim is still inside the grader, so the
+// row it reads says `grading` and carries no score.
+//
+// Answering from that read is what CI caught — the duplicate was told its grade
+// was asynchronous, for an activity whose grader is synchronous, and the two
+// callers of one submission got different bodies. Shorten the wait in
+// awaitSettledAttempt to zero iterations and this fails on the Async assertion.
+func TestSubmitAttempt_DuplicateWaitsForTheClaimHolder(t *testing.T) {
+	repo := newFakeRepo()
+	reader := &fakeLessonReader{
+		hierarchy:  make(map[uuid.UUID]*lessoncontract.ActivityHierarchy),
+		lessons:    make(map[uuid.UUID]*lessoncontract.Lesson),
+		unitLesson: make(map[uuid.UUID][]*lessoncontract.Lesson),
+	}
+	activityID := uuid.New()
+	reader.hierarchy[activityID] = &lessoncontract.ActivityHierarchy{ActivityID: activityID, Kind: testKindQuiz}
+
+	grader := newGateGrader()
+	graders := domain.NewGraderRegistry()
+	if err := graders.Register(testKindQuiz, grader); err != nil {
+		t.Fatalf("register grader: %v", err)
+	}
+
+	svc := service.New(service.Deps{
+		Repo: repo, Lesson: reader, Graders: graders, Events: &fakeEventWriter{},
+		Clock: clock.NewFake(time.Date(2026, 8, 24, 9, 0, 0, 0, time.UTC)),
+	})
+
+	ctx := context.Background()
+	userID := uuid.New()
+	started, err := svc.StartAttempt(ctx, userID, activityID)
+	if err != nil {
+		t.Fatalf("StartAttempt: %v", err)
+	}
+
+	key := uuid.New()
+	type outcome struct {
+		res *service.SubmitAttemptResultDTO
+		err error
+	}
+	winner := make(chan outcome, 1)
+	go func() {
+		res, submitErr := svc.SubmitAttempt(ctx, userID, started.AttemptID, key, json.RawMessage(`{}`))
+		winner <- outcome{res, submitErr}
+	}()
+
+	// The winner is now parked inside the grader and the attempt is `grading`.
+	<-grader.started
+
+	// Signalled the moment a caller reads the attempt back while it says
+	// `grading` — the exact window this test exists to open.
+	sawGrading := make(chan struct{}, 1)
+	repo.afterGet = func(att *domain.Attempt) {
+		if att.Status == domain.StatusGrading {
+			select {
+			case sawGrading <- struct{}{}:
+			default:
+			}
+		}
+	}
+
+	duplicate := make(chan outcome, 1)
+	go func() {
+		res, submitErr := svc.SubmitAttempt(ctx, userID, started.AttemptID, key, json.RawMessage(`{}`))
+		duplicate <- outcome{res, submitErr}
+	}()
+
+	// Only once the duplicate has actually read the half-finished row does the
+	// winner get to finish. Releasing earlier lets the winner commit first and
+	// the window never opens.
+	<-sawGrading
+	close(grader.release)
+
+	won := <-winner
+	dup := <-duplicate
+	if won.err != nil {
+		t.Fatalf("the claim holder failed: %v", won.err)
+	}
+	if dup.err != nil {
+		t.Fatalf("the duplicate failed: %v", dup.err)
+	}
+
+	if dup.res.Async {
+		t.Error("the duplicate was told a synchronous grade is asynchronous")
+	}
+	if dup.res.Status != domain.StatusGraded {
+		t.Errorf("the duplicate saw status %q, want graded", dup.res.Status)
+	}
+	if dup.res.Score == nil || *dup.res.Score != 90 {
+		t.Errorf("the duplicate got score %v, want the stored 90", dup.res.Score)
+	}
+	if won.res.Status != dup.res.Status ||
+		won.res.Score == nil || dup.res.Score == nil || *won.res.Score != *dup.res.Score {
+		t.Errorf("different bodies for one submission: %+v vs %+v", won.res, dup.res)
 	}
 }
