@@ -28,14 +28,13 @@ Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR
 | Method | Path | Permission | Purpose |
 |---|---|---|---|
 | `POST` | `/api/v1/courses/{id}/enroll` | `self` | Enrol |
-| `GET` | `/api/v1/me/dashboard` | `self` | Today's plan, streak, due reviews, continue-where-you-left-off |
+| `GET` | `/api/v1/me/dashboard` | `self` | Today's plan, due reviews, continue-where-you-left-off |
 | `GET` | `/api/v1/me/progress` | `self` | Progress across courses and skills |
 | `POST` | `/api/v1/activities/{id}/attempts` | `self` | Start an attempt |
 | `POST` | `/api/v1/attempts/{id}/submit` | `self` | Submit a response for grading |
 | `GET` | `/api/v1/attempts/{id}` | `self` | Attempt state and result |
 | `POST` | `/api/v1/me/sessions` | `self` | Start a study session |
 | `POST` | `/api/v1/me/sessions/{id}/complete` | `self` | End a session |
-| `POST` | `/api/v1/me/placement` | `self` | Start the placement test |
 <!-- END GENERATED: api-summary -->
 
 ## Endpoint detail
@@ -53,7 +52,7 @@ Enrol
 
 ### `GET /api/v1/me/dashboard`
 
-Today's plan, streak, due reviews, continue-where-you-left-off
+Today's plan, due reviews, continue-where-you-left-off
 
 | | |
 |---|---|
@@ -120,16 +119,6 @@ End a session
 |---|---|
 | Permission | `self` |
 | Success | 200 |
-| Errors | standard set |
-
-### `POST /api/v1/me/placement`
-
-Start the placement test
-
-| | |
-|---|---|
-| Permission | `self` |
-| Success | 201 |
 | Errors | standard set |
 
 <!-- END GENERATED: api-detail -->
