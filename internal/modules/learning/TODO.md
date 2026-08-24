@@ -50,6 +50,7 @@ Completed work is recorded here instead.
 | Task | Done | What landed |
 |---|---|---|
 | P8.1 | 2026-08-24 | Contract types in `internal/modules/learning/contract/contract.go` (`ExerciseGrader`, `GradeResult`, `ProgressReader`, batched `UnlockChecker`, `ReviewItem`, `GradeRequest`, and 5 published event payloads); OpenAPI 3.1 surface with 8 paths, `Idempotency-Key` header parameter on attempt submit, component schemas in `api/openapi/components/learning.yaml` expressing both new-learner dashboard states and async grading results; generated Go server/client interfaces and TypeScript API types. |
+| P8.2 | 2026-08-24 | Database schema in `db/migrations/learning/1700000210_create_learning_tables.sql` for the 6 `learn` tables (`enrollments`, `progress`, `attempts` with monthly range partitioning, `learning_sessions`, `placement_results`, `skill_mastery`); partition management function `learn.ensure_partitions`; `ClaimAttemptForGrading`, the conditional claim that makes submission idempotent without a unique index the partitioning forbids; sqlc queries and generated Go code; worker cron job and start-up partition rotation wired in `cmd/worker/main.go` with advisory lock `1_700_000_210`; architecture lint boundaries configured; full schema integration test suite in `db/migrations/learning/schema_integration_test.go`. |
 
 ## Deferred (deliberately not doing yet)
 
