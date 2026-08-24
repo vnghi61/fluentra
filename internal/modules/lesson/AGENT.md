@@ -73,8 +73,9 @@ Other modules may import **only** `internal/modules/lesson/contract`.
 <!-- BEGIN GENERATED: contract -->
 | Kind | Name | Purpose |
 |---|---|---|
-| interface | `lesson.Reader` | `GetLesson`, `ListLessons`, `NextLesson` — used heavily by `learning` |
+| interface | `lesson.Reader` | `GetLesson`, `ListLessons`, `NextLesson`, `ResolveActivity` — used heavily by `learning` |
 | struct | `lesson.Activity` | `{ID, Kind, ContentVersionID, Config, Weight}` |
+| struct | `lesson.ActivityHierarchy` | `{ActivityID, LessonID, UnitID, CourseID, Kind, ContentVersionID, Config, Weight, LessonSkillFocus}` — single-call structural resolution for activity attempts (P8.3 Trap 1) |
 
 ### Events
 

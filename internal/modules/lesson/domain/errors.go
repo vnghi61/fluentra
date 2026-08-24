@@ -15,6 +15,9 @@ var (
 	// ErrLessonNotFound is returned when a lesson does not exist.
 	ErrLessonNotFound = apperr.New(apperr.NotFound, "LESSON_NOT_FOUND", "The lesson was not found.")
 
+	// ErrActivityNotFound is returned when an activity does not exist.
+	ErrActivityNotFound = apperr.New(apperr.NotFound, "ACTIVITY_NOT_FOUND", "The activity was not found.")
+
 	// ErrLessonLocked is returned when a learner attempts to access a lesson
 	// before completing its prerequisites (BR-LESSON-07).
 	ErrLessonLocked = apperr.New(apperr.Forbidden, "LESSON_LOCKED", "Prerequisites not met.")

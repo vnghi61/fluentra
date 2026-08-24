@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/fluentra/fluentra/internal/modules/admin"
 	"github.com/fluentra/fluentra/internal/modules/audit"
@@ -14,6 +15,7 @@ import (
 	authservice "github.com/fluentra/fluentra/internal/modules/auth/service"
 	"github.com/fluentra/fluentra/internal/modules/auth/service/oauth/google"
 	"github.com/fluentra/fluentra/internal/modules/content"
+	"github.com/fluentra/fluentra/internal/modules/learning"
 	"github.com/fluentra/fluentra/internal/modules/lesson"
 	lessonservice "github.com/fluentra/fluentra/internal/modules/lesson/service"
 	"github.com/fluentra/fluentra/internal/modules/rbac"
@@ -25,19 +27,19 @@ import (
 	"github.com/fluentra/fluentra/internal/platform/storage"
 	"github.com/fluentra/fluentra/internal/platform/telemetry"
 	"github.com/fluentra/fluentra/internal/shared/httpx"
-	"github.com/redis/go-redis/v9"
 )
 
 // identity is WP1+WP2+WP4 assembled: the modules that know who a caller is and what
 // they may do, and the record of what they did.
 type identity struct {
-	audit   *audit.Module
-	rbac    *rbac.Module
-	user    *user.Module
-	auth    *auth.Module
-	admin   *admin.Module
-	content *content.Module
-	lesson  *lesson.Module
+	audit    *audit.Module
+	rbac     *rbac.Module
+	user     *user.Module
+	auth     *auth.Module
+	admin    *admin.Module
+	content  *content.Module
+	lesson   *lesson.Module
+	learning *learning.Module
 
 	rateLimit *httpx.RateLimiter
 }
@@ -188,6 +190,12 @@ func newIdentity(deps identityDeps) *identity {
 		Env:     deps.Env,
 	})
 
+	assembled.learning = learning.New(learning.Deps{
+		Pool:   deps.Pool,
+		Guard:  lazyGuard{of: assembled},
+		Lesson: assembled.lesson.Reader(),
+	})
+
 	return assembled
 }
 
@@ -245,6 +253,7 @@ func (i *identity) Routes(api chi.Router) {
 		i.auth.Routes(authenticated)
 		i.content.Routes(authenticated)
 		i.lesson.Routes(authenticated)
+		i.learning.Routes(authenticated)
 
 		authenticated.Group(func(admin chi.Router) {
 			admin.Use(i.rbac.AdminOnly())
@@ -269,6 +278,7 @@ var _ audit.Guard = lazyGuard{}
 var _ admin.Guard = lazyGuard{}
 var _ content.Guard = lazyGuard{}
 var _ lesson.Guard = lazyGuard{}
+var _ learning.Guard = lazyGuard{}
 
 func (g lazyGuard) Require(ctx context.Context, permission string) error {
 	return g.authorizer().Require(ctx, rbaccontract.Permission(permission))

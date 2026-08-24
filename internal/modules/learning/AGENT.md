@@ -245,7 +245,12 @@ _No deviations from the global standard._
 | `LESSON_LOCKED` | 403 | Prerequisites not met |
 | `ACTIVITY_ALREADY_COMPLETED` | 409 | Re-submission not allowed for this activity kind |
 | `ATTEMPT_EXPIRED` | 409 | Time limit exceeded |
-| `GRADER_NOT_REGISTERED` | 500 | Activity kind has no grader — a configuration bug |
+| `ATTEMPT_NOT_FOUND` | 404 | No such attempt |
+| `FORBIDDEN` | 403 | The attempt belongs to another learner — an idempotency key is not an authorisation token |
+| `ALREADY_GRADED` | 409 | The attempt has left `in_progress` and a fresh submission cannot claim it |
+| `IDEMPOTENCY_CONFLICT` | 409 | A different `Idempotency-Key` was presented for an attempt already claimed — a conflict, not a retry |
+| `INVALID_IDEMPOTENCY_KEY` | 422 | `Idempotency-Key` header missing or not a UUID |
+| `UNSUPPORTED_ACTIVITY_KIND` | 422 | No grader is registered for the activity kind. The kinds a deployment declares are validated at boot, so reaching this means the data asked for a kind that was never declared — one request fails, not the process |
 
 ## 13. Testing
 

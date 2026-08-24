@@ -358,3 +358,72 @@ func TestPublishLessonIsIdempotent(t *testing.T) {
 		t.Errorf("got %v, want the already-published lesson", got)
 	}
 }
+
+// TestResolveActivityReturnsHierarchy verifies that ResolveActivity resolves
+// an activity's structural path in one call (Trap 1).
+func TestResolveActivityReturnsHierarchy(t *testing.T) {
+	t.Parallel()
+
+	activityID := uuid.New()
+	lessonID := uuid.New()
+	unitID := uuid.New()
+	courseID := uuid.New()
+	versionID := uuid.New()
+
+	repo := &fakeLessonRepo{
+		unit:   &contract.Unit{ID: unitID, CourseID: courseID},
+		lesson: &contract.Lesson{ID: lessonID, UnitID: unitID, SkillFocus: "reading"},
+		activities: []contract.Activity{{
+			ID:               activityID,
+			LessonID:         lessonID,
+			Position:         1,
+			Kind:             "quiz",
+			ContentVersionID: versionID,
+			Config:           json.RawMessage(`{"shuffle":true}`),
+			Weight:           5,
+		}},
+	}
+	svc := service.New(service.Deps{Repo: repo})
+
+	hierarchy, err := svc.ResolveActivity(context.Background(), activityID)
+	if err != nil {
+		t.Fatalf("ResolveActivity: %v", err)
+	}
+	if hierarchy == nil {
+		t.Fatal("expected non-nil hierarchy")
+	}
+	if hierarchy.ActivityID != activityID {
+		t.Errorf("got ActivityID %s, want %s", hierarchy.ActivityID, activityID)
+	}
+	if hierarchy.LessonID != lessonID {
+		t.Errorf("got LessonID %s, want %s", hierarchy.LessonID, lessonID)
+	}
+	if hierarchy.UnitID != unitID {
+		t.Errorf("got UnitID %s, want %s", hierarchy.UnitID, unitID)
+	}
+	if hierarchy.CourseID != courseID {
+		t.Errorf("got CourseID %s, want %s", hierarchy.CourseID, courseID)
+	}
+	if hierarchy.Kind != "quiz" {
+		t.Errorf("got Kind %s, want quiz", hierarchy.Kind)
+	}
+	if hierarchy.ContentVersionID != versionID {
+		t.Errorf("got ContentVersionID %s, want %s", hierarchy.ContentVersionID, versionID)
+	}
+	if hierarchy.Weight != 5 {
+		t.Errorf("got Weight %d, want 5", hierarchy.Weight)
+	}
+	if hierarchy.LessonSkillFocus != "reading" {
+		t.Errorf("got LessonSkillFocus %s, want reading", hierarchy.LessonSkillFocus)
+	}
+}
+
+func TestResolveActivityNotFound(t *testing.T) {
+	t.Parallel()
+
+	repo := &fakeLessonRepo{}
+	svc := service.New(service.Deps{Repo: repo})
+
+	_, err := svc.ResolveActivity(context.Background(), uuid.New())
+	wantCode(t, err, "ACTIVITY_NOT_FOUND")
+}

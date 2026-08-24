@@ -84,6 +84,7 @@ type Repository interface {
 	ListPrerequisitesForLessons(ctx context.Context, lessonIDs []uuid.UUID) ([]PrerequisiteItem, error)
 	ListAllPrerequisitesInCourse(ctx context.Context, courseID uuid.UUID) ([]domain.PrerequisiteEdge, error)
 	AddPrerequisite(ctx context.Context, lessonID, requiresID uuid.UUID, minScore int32) error
+	ResolveActivity(ctx context.Context, activityID uuid.UUID) (*contract.ActivityHierarchy, error)
 	WithTx(tx pgx.Tx) Repository
 }
 
@@ -970,6 +971,13 @@ func (s *Service) NextLesson(
 	}
 
 	return lessons[0], nil
+}
+
+// ResolveActivity implements contract.Reader.
+func (s *Service) ResolveActivity(
+	ctx context.Context, activityID uuid.UUID,
+) (*contract.ActivityHierarchy, error) {
+	return s.repo.ResolveActivity(ctx, activityID)
 }
 
 func (s *Service) evaluateLock(
