@@ -41,6 +41,8 @@ type Deps struct {
 	Lesson        lessoncontract.Reader
 	Graders       map[string]contract.ExerciseGrader
 	DeclaredKinds []string
+	Caches        service.LearningCaches
+	Env           string
 }
 
 // Module represents the learning module, assembled.
@@ -104,6 +106,8 @@ func New(deps Deps) *Module {
 		Graders: registry,
 		Events:  events,
 		Clock:   timekeeper,
+		Caches:  deps.Caches,
+		Env:     deps.Env,
 	})
 
 	var handler *learninghttp.Handler

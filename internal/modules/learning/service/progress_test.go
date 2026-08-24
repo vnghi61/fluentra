@@ -276,10 +276,10 @@ func TestMastery_IncrementalEstimation(t *testing.T) {
 	reader.courseUnits[courseID] = []*lessoncontract.Unit{{ID: unitID, CourseID: courseID}}
 	reader.hierarchy[actID] = &lessoncontract.ActivityHierarchy{
 		ActivityID: actID, LessonID: lessonID, UnitID: unitID, CourseID: courseID,
-		Kind: testKindQuiz, LessonSkillFocus: "grammar",
+		Kind: testKindQuiz, LessonSkillFocus: testSkillGrammar,
 	}
 	reader.lessons[lessonID] = &lessoncontract.Lesson{
-		ID: lessonID, UnitID: unitID, SkillFocus: "grammar", Activities: []lessoncontract.Activity{{ID: actID}},
+		ID: lessonID, UnitID: unitID, SkillFocus: testSkillGrammar, Activities: []lessoncontract.Activity{{ID: actID}},
 	}
 	reader.unitLesson[unitID] = []*lessoncontract.Lesson{{ID: lessonID}}
 
@@ -293,7 +293,7 @@ func TestMastery_IncrementalEstimation(t *testing.T) {
 		t.Fatalf("SubmitAttempt: %v", err)
 	}
 
-	mastery, err := repo.GetSkillMastery(ctx, userID, "grammar")
+	mastery, err := repo.GetSkillMastery(ctx, userID, testSkillGrammar)
 	if err != nil {
 		t.Fatalf("GetSkillMastery: %v", err)
 	}

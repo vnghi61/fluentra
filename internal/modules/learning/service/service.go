@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"math"
 	"time"
 
@@ -18,8 +19,15 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/learning/domain"
 	"github.com/fluentra/fluentra/internal/modules/learning/repository"
 	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
+	"github.com/fluentra/fluentra/internal/platform/cache"
 	"github.com/fluentra/fluentra/internal/shared/clock"
 	"github.com/fluentra/fluentra/internal/shared/dbx"
+)
+
+const (
+	cacheVersion = 1
+	dashboardTTL = 2 * time.Minute
+	progressTTL  = 5 * time.Minute
 )
 
 // Repository defines data access methods required by the learning service.
@@ -122,6 +130,12 @@ type AttemptDetailDTO struct {
 	CompletedAt *time.Time      `json:"completed_at,omitempty"`
 }
 
+// LearningCaches holds typed cache clients for the learning service.
+type LearningCaches struct {
+	Dashboard cache.Cache[*domain.DashboardData]
+	Progress  cache.Cache[*domain.ProgressData]
+}
+
 // Deps holds dependencies for constructing the learning service.
 type Deps struct {
 	Pool    *pgxpool.Pool
@@ -131,6 +145,8 @@ type Deps struct {
 	Events  EventWriter
 	Clock   clock.Clock
 	NewID   func() (uuid.UUID, error)
+	Caches  LearningCaches
+	Env     string
 }
 
 // Service coordinates attempt execution, grading, progress rollups, and event emission.
@@ -142,6 +158,8 @@ type Service struct {
 	events  EventWriter
 	clock   clock.Clock
 	newID   func() (uuid.UUID, error)
+	caches  LearningCaches
+	env     string
 }
 
 // New constructs a new Service.
@@ -164,6 +182,8 @@ func New(deps Deps) *Service {
 		events:  deps.Events,
 		clock:   clk,
 		newID:   idGen,
+		caches:  deps.Caches,
+		env:     deps.Env,
 	}
 }
 
@@ -463,6 +483,8 @@ func (s *Service) completeSynchronousGrading(
 			return nil, fmt.Errorf("roll up attempt %s: %w", attempt.ID, rollupErr)
 		}
 	}
+
+	s.invalidateLearningCaches(ctx, userID)
 
 	score := gradeResult.Score
 	maxScore := gradeResult.MaxScore
@@ -876,6 +898,7 @@ func (s *Service) Enroll(ctx context.Context, userID, courseID uuid.UUID) (*doma
 	if err != nil {
 		return nil, fmt.Errorf("create enrollment: %w", err)
 	}
+	s.invalidateLearningCaches(ctx, userID)
 	return enrollment, nil
 }
 
@@ -1244,6 +1267,7 @@ func (s *Service) CompleteSession(
 		if err := finish(ctx, noopTx{}, s.repo); err != nil {
 			return nil, err
 		}
+		s.invalidateLearningCaches(ctx, userID)
 		return completed, nil
 	}
 
@@ -1252,6 +1276,7 @@ func (s *Service) CompleteSession(
 	}); txErr != nil {
 		return nil, fmt.Errorf("commit session completion transaction: %w", txErr)
 	}
+	s.invalidateLearningCaches(ctx, userID)
 	return completed, nil
 }
 
@@ -1285,4 +1310,236 @@ func safeCount(v int) int32 {
 		return math.MaxInt32
 	}
 	return int32(v)
+}
+
+// Dashboard returns aggregated dashboard state for the learner.
+func (s *Service) Dashboard(ctx context.Context, userID uuid.UUID) (*domain.DashboardData, error) {
+	if s.caches.Dashboard != nil && s.env != "" && userID != uuid.Nil {
+		key := cache.Key(s.env, "learning", "dashboard", userID.String(), cacheVersion)
+		loader := func(lCtx context.Context) (*domain.DashboardData, error) {
+			return s.loadDashboard(lCtx, userID)
+		}
+		return s.caches.Dashboard.GetOrLoad(ctx, key, dashboardTTL, loader)
+	}
+	return s.loadDashboard(ctx, userID)
+}
+
+func (s *Service) loadDashboard(ctx context.Context, userID uuid.UUID) (*domain.DashboardData, error) {
+	res, err := s.NextActivity(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("resolve next activity: %w", err)
+	}
+
+	masteries, err := s.repo.ListSkillMasteryByUser(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list skill mastery: %w", err)
+	}
+	if masteries == nil {
+		masteries = []domain.SkillMastery{}
+	}
+
+	data := &domain.DashboardData{
+		State:           res.State,
+		NextActivity:    res.NextActivity,
+		DueReviewsCount: 0, // Filled in by WP9 (srs)
+		SkillMastery:    masteries,
+	}
+	return data, nil
+}
+
+// Progress returns rolled-up progress across enrolled courses and estimated skill masteries.
+func (s *Service) Progress(ctx context.Context, userID uuid.UUID) (*domain.ProgressData, error) {
+	if s.caches.Progress != nil && s.env != "" && userID != uuid.Nil {
+		key := cache.Key(s.env, "learning", "progress", userID.String(), cacheVersion)
+		loader := func(lCtx context.Context) (*domain.ProgressData, error) {
+			return s.loadProgress(lCtx, userID)
+		}
+		return s.caches.Progress.GetOrLoad(ctx, key, progressTTL, loader)
+	}
+	return s.loadProgress(ctx, userID)
+}
+
+func (s *Service) loadProgress(ctx context.Context, userID uuid.UUID) (*domain.ProgressData, error) {
+	// The same bound next-activity resolution uses. Two limits for one learner's
+	// enrolments would mean the dashboard and the progress page disagree about
+	// which courses exist the day somebody enrols in more than the smaller one.
+	enrollments, err := s.repo.ListEnrollmentsByUser(ctx, userID, enrollmentScanLimit)
+	if err != nil {
+		return nil, fmt.Errorf("list enrollments: %w", err)
+	}
+
+	masteries, err := s.repo.ListSkillMasteryByUser(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list skill mastery: %w", err)
+	}
+	if masteries == nil {
+		masteries = []domain.SkillMastery{}
+	}
+
+	if len(enrollments) == 0 {
+		return &domain.ProgressData{
+			Courses: []domain.CourseProgressData{},
+			Skills:  masteries,
+		}, nil
+	}
+
+	courseIDs := make([]uuid.UUID, len(enrollments))
+	for i, e := range enrollments {
+		courseIDs[i] = e.CourseID
+	}
+
+	// One read per fact, none of them per course: the activity ids of every
+	// enrolled course, the learner's completed activities among them, and the
+	// course-scope progress rows. Four reads answer for a learner in one course
+	// or in forty (Trap 1).
+	courseActs, err := s.courseActivityIDs(ctx, courseIDs)
+	if err != nil {
+		return nil, err
+	}
+	completedActs, err := s.completedActivities(ctx, userID, courseActs)
+	if err != nil {
+		return nil, err
+	}
+	courseProgress, err := s.courseProgressRows(ctx, userID, courseIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	coursesData := make([]domain.CourseProgressData, len(enrollments))
+	for i, enr := range enrollments {
+		coursesData[i] = courseProgressOf(enr, courseActs[enr.CourseID], completedActs, courseProgress)
+	}
+
+	return &domain.ProgressData{
+		Courses: coursesData,
+		Skills:  masteries,
+	}, nil
+}
+
+// courseActivityIDs asks `lesson` for the activity ids of every course at once.
+// `learn.progress` cannot attribute an activity to a course on its own, and this
+// module may not read `learn.activities` (Trap 1).
+func (s *Service) courseActivityIDs(
+	ctx context.Context, courseIDs []uuid.UUID,
+) (map[uuid.UUID][]uuid.UUID, error) {
+	if s.lesson == nil {
+		return map[uuid.UUID][]uuid.UUID{}, nil
+	}
+	acts, err := s.lesson.ListActivitiesByCourseIDs(ctx, courseIDs)
+	if err != nil {
+		return nil, fmt.Errorf("list activities for courses: %w", err)
+	}
+	if acts == nil {
+		return map[uuid.UUID][]uuid.UUID{}, nil
+	}
+	return acts, nil
+}
+
+// completedActivities reads the learner's activity-scope progress for every
+// activity in the given courses, in one query.
+func (s *Service) completedActivities(
+	ctx context.Context, userID uuid.UUID, courseActs map[uuid.UUID][]uuid.UUID,
+) (map[uuid.UUID]bool, error) {
+	var allActivityIDs []uuid.UUID
+	for _, ids := range courseActs {
+		allActivityIDs = append(allActivityIDs, ids...)
+	}
+	completed := make(map[uuid.UUID]bool, len(allActivityIDs))
+	if len(allActivityIDs) == 0 {
+		return completed, nil
+	}
+
+	rows, err := s.repo.ListProgressByUserScopeAndIDs(
+		ctx, userID, string(contract.ScopeActivity), allActivityIDs,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list activity progress: %w", err)
+	}
+	for _, row := range rows {
+		if row.Status == domain.ProgressCompleted {
+			completed[row.ScopeID] = true
+		}
+	}
+	return completed, nil
+}
+
+// courseProgressRows reads the course-scope progress rows, which carry the score
+// and the completion timestamp the rollup wrote.
+func (s *Service) courseProgressRows(
+	ctx context.Context, userID uuid.UUID, courseIDs []uuid.UUID,
+) (map[uuid.UUID]repository.ProgressDTO, error) {
+	rows, err := s.repo.ListProgressByUserScopeAndIDs(
+		ctx, userID, string(contract.ScopeCourse), courseIDs,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list course progress: %w", err)
+	}
+	byCourse := make(map[uuid.UUID]repository.ProgressDTO, len(rows))
+	for _, row := range rows {
+		byCourse[row.ScopeID] = row
+	}
+	return byCourse, nil
+}
+
+// courseProgressOf assembles one course's row of the response.
+//
+// The status is the learner's progress through the course, not the enrolment's
+// own status: `not_started`, `in_progress` and `completed` answer "how far am
+// I", while an enrolment is `active` or `completed` (Trap 5).
+func courseProgressOf(
+	enrollment domain.Enrollment,
+	activityIDs []uuid.UUID,
+	completedActs map[uuid.UUID]bool,
+	courseProgress map[uuid.UUID]repository.ProgressDTO,
+) domain.CourseProgressData {
+	total := len(activityIDs)
+	completed := 0
+	for _, id := range activityIDs {
+		if completedActs[id] {
+			completed++
+		}
+	}
+
+	var score *int
+	var completedAt *time.Time
+	if row, ok := courseProgress[enrollment.CourseID]; ok {
+		if row.Score != nil {
+			rounded := int(*row.Score)
+			score = &rounded
+		}
+		completedAt = row.CompletedAt
+	}
+	if completedAt == nil && enrollment.IsCompleted() {
+		completedAt = enrollment.CompletedAt
+	}
+
+	return domain.CourseProgressData{
+		CourseID:            enrollment.CourseID,
+		Status:              domain.DeriveCourseProgressStatus(completed, total, enrollment.IsCompleted()),
+		CompletedActivities: completed,
+		TotalActivities:     total,
+		Percentage:          domain.CalculatePercentage(completed, total),
+		Score:               score,
+		CompletedAt:         completedAt,
+	}
+}
+
+func (s *Service) invalidateLearningCaches(ctx context.Context, userID uuid.UUID) {
+	if s.env == "" || userID == uuid.Nil {
+		return
+	}
+	if s.caches.Dashboard != nil {
+		dashboardKey := cache.Key(s.env, "learning", "dashboard", userID.String(), cacheVersion)
+		if err := s.caches.Dashboard.Delete(ctx, dashboardKey); err != nil {
+			slog.WarnContext(ctx, "failed to invalidate learner dashboard cache",
+				"user_id", userID, "error", err)
+		}
+	}
+	if s.caches.Progress != nil {
+		progressKey := cache.Key(s.env, "learning", "progress", userID.String(), cacheVersion)
+		if err := s.caches.Progress.Delete(ctx, progressKey); err != nil {
+			slog.WarnContext(ctx, "failed to invalidate learner progress cache",
+				"user_id", userID, "error", err)
+		}
+	}
 }

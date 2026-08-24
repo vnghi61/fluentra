@@ -30,6 +30,7 @@ const (
 	testScopeLesson     = "lesson"
 	testScopeActivity   = "activity"
 	testSkillReading    = "reading"
+	testSkillGrammar    = "grammar"
 )
 
 type fakeLearningRepo struct {
@@ -483,6 +484,7 @@ type fakeLessonReader struct {
 	unitLesson    map[uuid.UUID][]*lessoncontract.Lesson
 	courseUnits   map[uuid.UUID][]*lessoncontract.Unit
 	courseLessons map[uuid.UUID][]*lessoncontract.Lesson
+	courseActs    map[uuid.UUID][]uuid.UUID
 	prereqs       map[uuid.UUID][]lessoncontract.PrerequisiteItem
 	nextLesson    *lessoncontract.Lesson
 	listUnitsErr  error
@@ -553,6 +555,21 @@ func (r *fakeLessonReader) ListPrerequisitesForLessons(
 	return out, nil
 }
 
+func (r *fakeLessonReader) ListActivitiesByCourseIDs(
+	_ context.Context, courseIDs []uuid.UUID,
+) (map[uuid.UUID][]uuid.UUID, error) {
+	r.record("ListActivitiesByCourseIDs")
+	res := make(map[uuid.UUID][]uuid.UUID)
+	for _, id := range courseIDs {
+		if acts, ok := r.courseActs[id]; ok {
+			res[id] = acts
+		} else {
+			res[id] = []uuid.UUID{}
+		}
+	}
+	return res, nil
+}
+
 func (r *fakeLessonReader) NextLesson(
 	_ context.Context, courseID uuid.UUID, currentID *uuid.UUID,
 ) (*lessoncontract.Lesson, error) {
@@ -601,6 +618,7 @@ func setupTestService() (*service.Service, *fakeLearningRepo, *fakeLessonReader,
 		unitLesson:    make(map[uuid.UUID][]*lessoncontract.Lesson),
 		courseUnits:   make(map[uuid.UUID][]*lessoncontract.Unit),
 		courseLessons: make(map[uuid.UUID][]*lessoncontract.Lesson),
+		courseActs:    make(map[uuid.UUID][]uuid.UUID),
 		prereqs:       make(map[uuid.UUID][]lessoncontract.PrerequisiteItem),
 	}
 	graders := domain.NewGraderRegistry()

@@ -324,6 +324,24 @@ func (f *fakeLessonRepo) ResolveActivity(_ context.Context, activityID uuid.UUID
 	return nil, domain.ErrActivityNotFound
 }
 
+func (f *fakeLessonRepo) ListCourseActivityIDs(
+	_ context.Context, courseIDs []uuid.UUID,
+) (map[uuid.UUID][]uuid.UUID, error) {
+	f.queryCounter.Add(1)
+	res := make(map[uuid.UUID][]uuid.UUID)
+	for _, id := range courseIDs {
+		res[id] = make([]uuid.UUID, 0)
+	}
+	for _, a := range f.activities {
+		if f.unit != nil {
+			if _, ok := res[f.unit.CourseID]; ok {
+				res[f.unit.CourseID] = append(res[f.unit.CourseID], a.ID)
+			}
+		}
+	}
+	return res, nil
+}
+
 func (f *fakeLessonRepo) WithTx(_ pgx.Tx) service.Repository {
 	return f
 }

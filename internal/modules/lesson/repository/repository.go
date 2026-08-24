@@ -490,6 +490,27 @@ func (r *Repository) ResolveActivity(
 	}, nil
 }
 
+// ListCourseActivityIDs retrieves all activity IDs for the given courses, mapped by course ID.
+func (r *Repository) ListCourseActivityIDs(
+	ctx context.Context, courseIDs []uuid.UUID,
+) (map[uuid.UUID][]uuid.UUID, error) {
+	if r.queries == nil || len(courseIDs) == 0 {
+		return make(map[uuid.UUID][]uuid.UUID), nil
+	}
+	rows, err := r.queries.ListCourseActivityIDs(ctx, courseIDs)
+	if err != nil {
+		return nil, mapPgError(err)
+	}
+	result := make(map[uuid.UUID][]uuid.UUID)
+	for _, id := range courseIDs {
+		result[id] = make([]uuid.UUID, 0)
+	}
+	for _, row := range rows {
+		result[row.CourseID] = append(result[row.CourseID], row.ActivityID)
+	}
+	return result, nil
+}
+
 func mapPgError(err error) error {
 	if err == nil {
 		return nil

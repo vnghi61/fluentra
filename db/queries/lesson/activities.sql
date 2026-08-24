@@ -47,3 +47,10 @@ JOIN learn.lessons l ON l.id = a.lesson_id
 JOIN learn.course_units u ON u.id = l.unit_id
 WHERE a.id = $1;
 
+-- name: ListCourseActivityIDs :many
+SELECT u.course_id, a.id AS activity_id
+FROM learn.activities a
+JOIN learn.lessons l ON l.id = a.lesson_id
+JOIN learn.course_units u ON u.id = l.unit_id
+WHERE u.course_id = ANY($1::uuid[])
+ORDER BY u.course_id, u.position ASC, l.position ASC, a.position ASC;

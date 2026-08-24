@@ -186,6 +186,13 @@ func TestErrorPredicates(t *testing.T) {
 	if domain.IsSessionNotFound(apperr.New(apperr.NotFound, "OTHER_NOT_FOUND", "other")) {
 		t.Errorf("IsSessionNotFound false positive")
 	}
+
+	if !domain.IsCourseNotFound(domain.ErrCourseNotFound) {
+		t.Errorf("IsCourseNotFound failed on ErrCourseNotFound")
+	}
+	if domain.IsCourseNotFound(errors.New("other")) {
+		t.Errorf("IsCourseNotFound false positive")
+	}
 }
 
 // TestEstimateMastery_RecentPerformanceDominates is BR-LEARNING-09's actual
@@ -221,5 +228,45 @@ func TestEstimateMastery_RecentPerformanceDominates(t *testing.T) {
 	}
 	if current.Confidence <= 0.20 {
 		t.Errorf("got confidence %v; it should have grown over 13 attempts", current.Confidence)
+	}
+}
+
+func TestCalculatePercentage(t *testing.T) {
+	cases := []struct {
+		completed int
+		total     int
+		want      int
+	}{
+		{0, 0, 0},
+		{0, 10, 0},
+		{-1, 10, 0},
+		{5, 0, 0},
+		{12, 40, 30},
+		{1, 3, 33},
+		{39, 40, 97},
+		{40, 40, 100},
+		{50, 40, 100},
+	}
+
+	for _, tc := range cases {
+		got := domain.CalculatePercentage(tc.completed, tc.total)
+		if got != tc.want {
+			t.Errorf("CalculatePercentage(%d, %d) = %d, want %d", tc.completed, tc.total, got, tc.want)
+		}
+	}
+}
+
+func TestDeriveCourseProgressStatus(t *testing.T) {
+	if s := domain.DeriveCourseProgressStatus(0, 10, false); s != domain.CourseProgressNotStarted {
+		t.Errorf("got status %s, want not_started", s)
+	}
+	if s := domain.DeriveCourseProgressStatus(5, 10, false); s != domain.CourseProgressInProgress {
+		t.Errorf("got status %s, want in_progress", s)
+	}
+	if s := domain.DeriveCourseProgressStatus(10, 10, false); s != domain.CourseProgressCompleted {
+		t.Errorf("got status %s, want completed", s)
+	}
+	if s := domain.DeriveCourseProgressStatus(0, 0, true); s != domain.CourseProgressCompleted {
+		t.Errorf("got status %s for enrollment completed, want completed", s)
 	}
 }

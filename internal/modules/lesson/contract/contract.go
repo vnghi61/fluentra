@@ -87,6 +87,7 @@ type Reader interface {
 	ListLessons(ctx context.Context, unitID uuid.UUID) ([]*Lesson, error)
 	ListUnitsByCourseID(ctx context.Context, courseID uuid.UUID) ([]*Unit, error)
 	ListPrerequisitesForLessons(ctx context.Context, lessonIDs []uuid.UUID) ([]PrerequisiteItem, error)
+	ListActivitiesByCourseIDs(ctx context.Context, courseIDs []uuid.UUID) (map[uuid.UUID][]uuid.UUID, error)
 	NextLesson(ctx context.Context, courseID uuid.UUID, currentLessonID *uuid.UUID) (*Lesson, error)
 	ResolveActivity(ctx context.Context, activityID uuid.UUID) (*ActivityHierarchy, error)
 }
