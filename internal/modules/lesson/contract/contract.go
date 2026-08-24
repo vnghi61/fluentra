@@ -60,11 +60,25 @@ type Lesson struct {
 	Activities       []Activity `json:"activities,omitempty"`
 }
 
+// ActivityHierarchy contains the structural path and metadata of an activity.
+type ActivityHierarchy struct {
+	ActivityID       uuid.UUID       `json:"activity_id"`
+	LessonID         uuid.UUID       `json:"lesson_id"`
+	UnitID           uuid.UUID       `json:"unit_id"`
+	CourseID         uuid.UUID       `json:"course_id"`
+	Kind             string          `json:"kind"`
+	ContentVersionID uuid.UUID       `json:"content_version_id"`
+	Config           json.RawMessage `json:"config"`
+	Weight           int             `json:"weight"`
+	LessonSkillFocus string          `json:"lesson_skill_focus"`
+}
+
 // Reader provides access to course hierarchy and lesson activities.
 type Reader interface {
 	GetLesson(ctx context.Context, id uuid.UUID) (*Lesson, error)
 	ListLessons(ctx context.Context, unitID uuid.UUID) ([]*Lesson, error)
 	NextLesson(ctx context.Context, courseID uuid.UUID, currentLessonID *uuid.UUID) (*Lesson, error)
+	ResolveActivity(ctx context.Context, activityID uuid.UUID) (*ActivityHierarchy, error)
 }
 
 // Published is emitted when a lesson is published.

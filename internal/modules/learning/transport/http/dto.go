@@ -1,0 +1,84 @@
+package http
+
+import (
+	"encoding/json"
+	"time"
+
+	"github.com/google/uuid"
+
+	"github.com/fluentra/fluentra/internal/modules/learning/service"
+)
+
+// StartAttemptResponse matches the OpenAPI schema for POST /activities/{id}/attempts.
+type StartAttemptResponse struct {
+	AttemptID  uuid.UUID `json:"attempt_id"`
+	ActivityID uuid.UUID `json:"activity_id"`
+	Status     string    `json:"status"`
+	StartedAt  time.Time `json:"started_at"`
+}
+
+// SubmitAttemptRequest matches the OpenAPI schema for POST /attempts/{id}/submit request body.
+type SubmitAttemptRequest struct {
+	Response json.RawMessage `json:"response"`
+}
+
+// SubmitAttemptResponse matches the OpenAPI schema for POST /attempts/{id}/submit (200 & 202).
+type SubmitAttemptResponse struct {
+	AttemptID uuid.UUID `json:"attempt_id"`
+	Status    string    `json:"status"`
+	Score     *int      `json:"score"`
+	MaxScore  *int      `json:"max_score"`
+	Correct   *bool     `json:"correct"`
+	Feedback  *string   `json:"feedback"`
+}
+
+// AttemptDetailResponse matches the OpenAPI schema for GET /attempts/{id}.
+type AttemptDetailResponse struct {
+	ID          uuid.UUID       `json:"id"`
+	ActivityID  uuid.UUID       `json:"activity_id"`
+	UserID      uuid.UUID       `json:"user_id"`
+	Status      string          `json:"status"`
+	Response    json.RawMessage `json:"response,omitempty"`
+	Score       *int            `json:"score,omitempty"`
+	MaxScore    *int            `json:"max_score,omitempty"`
+	Feedback    *string         `json:"feedback,omitempty"`
+	DurationMs  *int64          `json:"duration_ms,omitempty"`
+	StartedAt   time.Time       `json:"started_at"`
+	CompletedAt *time.Time      `json:"completed_at,omitempty"`
+}
+
+func toStartAttemptResponse(dto *service.StartAttemptDTO) StartAttemptResponse {
+	return StartAttemptResponse{
+		AttemptID:  dto.AttemptID,
+		ActivityID: dto.ActivityID,
+		Status:     dto.Status,
+		StartedAt:  dto.StartedAt,
+	}
+}
+
+func toSubmitAttemptResponse(dto *service.SubmitAttemptResultDTO) SubmitAttemptResponse {
+	return SubmitAttemptResponse{
+		AttemptID: dto.AttemptID,
+		Status:    dto.Status,
+		Score:     dto.Score,
+		MaxScore:  dto.MaxScore,
+		Correct:   dto.Correct,
+		Feedback:  dto.Feedback,
+	}
+}
+
+func toAttemptDetailResponse(dto *service.AttemptDetailDTO) AttemptDetailResponse {
+	return AttemptDetailResponse{
+		ID:          dto.ID,
+		ActivityID:  dto.ActivityID,
+		UserID:      dto.UserID,
+		Status:      dto.Status,
+		Response:    dto.Response,
+		Score:       dto.Score,
+		MaxScore:    dto.MaxScore,
+		Feedback:    dto.Feedback,
+		DurationMs:  dto.DurationMs,
+		StartedAt:   dto.StartedAt,
+		CompletedAt: dto.CompletedAt,
+	}
+}

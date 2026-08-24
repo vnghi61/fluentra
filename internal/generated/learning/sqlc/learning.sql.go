@@ -624,6 +624,48 @@ func (q *Queries) ListProgressByUserAndScope(ctx context.Context, arg ListProgre
 	return items, nil
 }
 
+const listProgressByUserScopeAndIDs = `-- name: ListProgressByUserScopeAndIDs :many
+SELECT id, user_id, scope, scope_id, status, score, completed_at, created_at, updated_at
+FROM learn.progress
+WHERE user_id = $1 AND scope = $2 AND scope_id = ANY($3::uuid[])
+`
+
+type ListProgressByUserScopeAndIDsParams struct {
+	UserID   uuid.UUID
+	Scope    string
+	ScopeIds []uuid.UUID
+}
+
+func (q *Queries) ListProgressByUserScopeAndIDs(ctx context.Context, arg ListProgressByUserScopeAndIDsParams) ([]LearnProgress, error) {
+	rows, err := q.db.Query(ctx, listProgressByUserScopeAndIDs, arg.UserID, arg.Scope, arg.ScopeIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []LearnProgress
+	for rows.Next() {
+		var i LearnProgress
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Scope,
+			&i.ScopeID,
+			&i.Status,
+			&i.Score,
+			&i.CompletedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSkillMasteryByUser = `-- name: ListSkillMasteryByUser :many
 SELECT id, user_id, skill, level, confidence, updated_at, created_at
 FROM learn.skill_mastery
@@ -765,6 +807,51 @@ type UpdateProgressParams struct {
 
 func (q *Queries) UpdateProgress(ctx context.Context, arg UpdateProgressParams) (LearnProgress, error) {
 	row := q.db.QueryRow(ctx, updateProgress,
+		arg.UserID,
+		arg.Scope,
+		arg.ScopeID,
+		arg.Status,
+		arg.Score,
+		arg.CompletedAt,
+	)
+	var i LearnProgress
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Scope,
+		&i.ScopeID,
+		&i.Status,
+		&i.Score,
+		&i.CompletedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const upsertProgress = `-- name: UpsertProgress :one
+INSERT INTO learn.progress (user_id, scope, scope_id, status, score, completed_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, now())
+ON CONFLICT (user_id, scope, scope_id)
+DO UPDATE SET
+    status = EXCLUDED.status,
+    score = EXCLUDED.score,
+    completed_at = EXCLUDED.completed_at,
+    updated_at = now()
+RETURNING id, user_id, scope, scope_id, status, score, completed_at, created_at, updated_at
+`
+
+type UpsertProgressParams struct {
+	UserID      uuid.UUID
+	Scope       string
+	ScopeID     uuid.UUID
+	Status      string
+	Score       *int32
+	CompletedAt *time.Time
+}
+
+func (q *Queries) UpsertProgress(ctx context.Context, arg UpsertProgressParams) (LearnProgress, error) {
+	row := q.db.QueryRow(ctx, upsertProgress,
 		arg.UserID,
 		arg.Scope,
 		arg.ScopeID,

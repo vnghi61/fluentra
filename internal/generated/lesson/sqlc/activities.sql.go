@@ -166,3 +166,49 @@ func (q *Queries) ListLessonIDsByContentVersionID(ctx context.Context, contentVe
 	}
 	return items, nil
 }
+
+const resolveActivityHierarchy = `-- name: ResolveActivityHierarchy :one
+SELECT
+    a.id AS activity_id,
+    a.lesson_id,
+    a.kind AS activity_kind,
+    a.content_version_id,
+    a.config AS activity_config,
+    a.weight AS activity_weight,
+    l.unit_id,
+    l.skill_focus AS lesson_skill_focus,
+    u.course_id
+FROM learn.activities a
+JOIN learn.lessons l ON l.id = a.lesson_id
+JOIN learn.course_units u ON u.id = l.unit_id
+WHERE a.id = $1
+`
+
+type ResolveActivityHierarchyRow struct {
+	ActivityID       uuid.UUID
+	LessonID         uuid.UUID
+	ActivityKind     string
+	ContentVersionID uuid.UUID
+	ActivityConfig   []byte
+	ActivityWeight   int32
+	UnitID           uuid.UUID
+	LessonSkillFocus string
+	CourseID         uuid.UUID
+}
+
+func (q *Queries) ResolveActivityHierarchy(ctx context.Context, id uuid.UUID) (ResolveActivityHierarchyRow, error) {
+	row := q.db.QueryRow(ctx, resolveActivityHierarchy, id)
+	var i ResolveActivityHierarchyRow
+	err := row.Scan(
+		&i.ActivityID,
+		&i.LessonID,
+		&i.ActivityKind,
+		&i.ContentVersionID,
+		&i.ActivityConfig,
+		&i.ActivityWeight,
+		&i.UnitID,
+		&i.LessonSkillFocus,
+		&i.CourseID,
+	)
+	return i, err
+}

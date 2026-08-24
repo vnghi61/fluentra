@@ -212,7 +212,11 @@ components:
   m_lesson_repository: { in: modules/lesson/repository }
   m_lesson_service:    { in: modules/lesson/service }
   m_lesson_http:       { in: modules/lesson/transport/http }
-  m_learning:      { in: modules/learning/** }
+  m_learning:            { in: modules/learning }
+  m_learning_domain:     { in: modules/learning/domain }
+  m_learning_repository: { in: modules/learning/repository }
+  m_learning_service:    { in: modules/learning/service }
+  m_learning_http:       { in: modules/learning/transport/http }
   m_srs:           { in: modules/srs/** }
   m_vocabulary:    { in: modules/vocabulary/** }
   m_grammar:       { in: modules/grammar/** }
@@ -372,7 +376,16 @@ deps:
   m_lesson_service:    { mayDependOn: [m_lesson_domain, c_lesson, c_content, p_cache] }
   m_lesson_http:       { mayDependOn: [m_lesson_domain, m_lesson_service, c_lesson, c_content] }
   m_lesson:            { mayDependOn: [m_lesson_domain, m_lesson_repository, m_lesson_service, m_lesson_http, c_lesson, c_content] }
-  m_learning:     { mayDependOn: [p_cache, p_job, p_telemetry, c_lesson, c_content, c_srs, g_learning] }
+  # learning, split by layer once it grew layers. P8.3's brief says the module is
+  # one component and to inherit that; it stopped being possible the moment the
+  # module had more than one package, because `modules/learning/**` makes every
+  # package its own import target and a component may not name itself in
+  # mayDependOn. Every other module here with real code is split the same way.
+  m_learning_domain:     { mayDependOn: [c_learning] }
+  m_learning_repository: { mayDependOn: [m_learning_domain, c_learning, g_learning] }
+  m_learning_service:    { mayDependOn: [m_learning_domain, m_learning_repository, c_learning, c_lesson, p_cache, p_job] }
+  m_learning_http:       { mayDependOn: [m_learning_domain, m_learning_service, c_learning] }
+  m_learning:            { mayDependOn: [m_learning_domain, m_learning_repository, m_learning_service, m_learning_http, c_learning, c_lesson, c_content, c_srs, g_learning, p_cache, p_job, p_telemetry] }
   m_srs:          { mayDependOn: [p_cache, p_job, p_telemetry, c_content] }
   m_vocabulary:   { mayDependOn: [p_cache, p_media, p_ai, p_search, p_telemetry, c_content, c_srs, c_learning] }
   m_grammar:      { mayDependOn: [p_cache, p_ai, p_telemetry, c_content, c_srs, c_learning] }

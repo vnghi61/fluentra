@@ -56,6 +56,22 @@ SET status = $4,
 WHERE user_id = $1 AND scope = $2 AND scope_id = $3
 RETURNING id, user_id, scope, scope_id, status, score, completed_at, created_at, updated_at;
 
+-- name: UpsertProgress :one
+INSERT INTO learn.progress (user_id, scope, scope_id, status, score, completed_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, now())
+ON CONFLICT (user_id, scope, scope_id)
+DO UPDATE SET
+    status = EXCLUDED.status,
+    score = EXCLUDED.score,
+    completed_at = EXCLUDED.completed_at,
+    updated_at = now()
+RETURNING id, user_id, scope, scope_id, status, score, completed_at, created_at, updated_at;
+
+-- name: ListProgressByUserScopeAndIDs :many
+SELECT id, user_id, scope, scope_id, status, score, completed_at, created_at, updated_at
+FROM learn.progress
+WHERE user_id = $1 AND scope = $2 AND scope_id = ANY(@scope_ids::uuid[]);
+
 -- name: CreateAttempt :one
 INSERT INTO learn.attempts (
     id, created_at, user_id, activity_id, idempotency_key,

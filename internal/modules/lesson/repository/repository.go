@@ -463,6 +463,33 @@ func (r *Repository) ListLessonIDsByContentVersionID(
 	return rows, nil
 }
 
+// ResolveActivity returns the full hierarchy and metadata for an activity.
+func (r *Repository) ResolveActivity(
+	ctx context.Context, activityID uuid.UUID,
+) (*contract.ActivityHierarchy, error) {
+	if r.queries == nil {
+		return nil, domain.ErrActivityNotFound
+	}
+	row, err := r.queries.ResolveActivityHierarchy(ctx, activityID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrActivityNotFound
+		}
+		return nil, mapPgError(err)
+	}
+	return &contract.ActivityHierarchy{
+		ActivityID:       row.ActivityID,
+		LessonID:         row.LessonID,
+		UnitID:           row.UnitID,
+		CourseID:         row.CourseID,
+		Kind:             row.ActivityKind,
+		ContentVersionID: row.ContentVersionID,
+		Config:           row.ActivityConfig,
+		Weight:           int(row.ActivityWeight),
+		LessonSkillFocus: row.LessonSkillFocus,
+	}, nil
+}
+
 func mapPgError(err error) error {
 	if err == nil {
 		return nil

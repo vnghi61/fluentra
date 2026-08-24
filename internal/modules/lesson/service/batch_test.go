@@ -68,6 +68,8 @@ func (c *countingContentReader) Browse(
 // fakeLessonRepo implements service.Repository for unit tests.
 type fakeLessonRepo struct {
 	lesson       *contract.Lesson
+	unit         *contract.Unit
+	hierarchy    *contract.ActivityHierarchy
 	activities   []contract.Activity
 	prereqs      []service.PrerequisiteItem
 	courses      []*contract.Course
@@ -284,6 +286,42 @@ func (f *fakeLessonRepo) ListLessonIDsByContentVersionID(
 		}
 	}
 	return ids, nil
+}
+
+func (f *fakeLessonRepo) ResolveActivity(_ context.Context, activityID uuid.UUID) (*contract.ActivityHierarchy, error) {
+	f.queryCounter.Add(1)
+	if f.hierarchy != nil {
+		if f.hierarchy.ActivityID == activityID {
+			return f.hierarchy, nil
+		}
+		return nil, domain.ErrActivityNotFound
+	}
+	for _, a := range f.activities {
+		if a.ID == activityID {
+			unitID := uuid.Nil
+			courseID := uuid.Nil
+			if f.unit != nil {
+				unitID = f.unit.ID
+				courseID = f.unit.CourseID
+			}
+			skillFocus := ""
+			if f.lesson != nil {
+				skillFocus = f.lesson.SkillFocus
+			}
+			return &contract.ActivityHierarchy{
+				ActivityID:       a.ID,
+				LessonID:         a.LessonID,
+				UnitID:           unitID,
+				CourseID:         courseID,
+				Kind:             a.Kind,
+				ContentVersionID: a.ContentVersionID,
+				Config:           a.Config,
+				Weight:           a.Weight,
+				LessonSkillFocus: skillFocus,
+			}, nil
+		}
+	}
+	return nil, domain.ErrActivityNotFound
 }
 
 func (f *fakeLessonRepo) WithTx(_ pgx.Tx) service.Repository {
