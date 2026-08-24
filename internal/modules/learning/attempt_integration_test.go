@@ -179,6 +179,21 @@ func (s stubLessonReader) ListUnitsByCourseID(
 	return []*lessoncontract.Unit{{ID: s.hierarchy.UnitID, CourseID: courseID}}, nil
 }
 
+// The course is one activity, in the lesson this stub describes, so the progress
+// endpoint over this fixture reports 1 of 1.
+func (s stubLessonReader) ListActivitiesByCourseIDs(
+	_ context.Context, courseIDs []uuid.UUID,
+) (map[uuid.UUID][]uuid.UUID, error) {
+	out := make(map[uuid.UUID][]uuid.UUID, len(courseIDs))
+	for _, id := range courseIDs {
+		out[id] = nil
+		if s.hierarchy != nil && s.hierarchy.CourseID == id {
+			out[id] = []uuid.UUID{s.hierarchy.ActivityID}
+		}
+	}
+	return out, nil
+}
+
 // No prerequisites: this suite is about the attempt lifecycle, and unlocking has
 // its own tests in the service package.
 func (s stubLessonReader) ListPrerequisitesForLessons(

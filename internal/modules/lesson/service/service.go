@@ -80,6 +80,7 @@ type Repository interface {
 	ListAllPrerequisitesInCourse(ctx context.Context, courseID uuid.UUID) ([]domain.PrerequisiteEdge, error)
 	AddPrerequisite(ctx context.Context, lessonID, requiresID uuid.UUID, minScore int32) error
 	ResolveActivity(ctx context.Context, activityID uuid.UUID) (*contract.ActivityHierarchy, error)
+	ListCourseActivityIDs(ctx context.Context, courseIDs []uuid.UUID) (map[uuid.UUID][]uuid.UUID, error)
 	WithTx(tx pgx.Tx) Repository
 }
 
@@ -1014,6 +1015,13 @@ func (s *Service) ListUnitsByCourseID(
 	ctx context.Context, courseID uuid.UUID,
 ) ([]*contract.Unit, error) {
 	return s.repo.ListUnitsByCourseID(ctx, courseID)
+}
+
+// ListActivitiesByCourseIDs implements contract.Reader.
+func (s *Service) ListActivitiesByCourseIDs(
+	ctx context.Context, courseIDs []uuid.UUID,
+) (map[uuid.UUID][]uuid.UUID, error) {
+	return s.repo.ListCourseActivityIDs(ctx, courseIDs)
 }
 
 func (s *Service) evaluateLock(

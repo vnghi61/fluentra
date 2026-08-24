@@ -10,7 +10,7 @@ tables: [courses, course_units, lessons, activities, lesson_prerequisites]
 depends_on: [content, cache]
 depended_on_by: [learning, admin, search]
 spec_version: 1.0.0
-last_verified: 2026-08-24
+last_verified: 2026-08-25
 ---
 
 # lesson — AGENT.md
@@ -73,7 +73,7 @@ Other modules may import **only** `internal/modules/lesson/contract`.
 <!-- BEGIN GENERATED: contract -->
 | Kind | Name | Purpose |
 |---|---|---|
-| interface | `lesson.Reader` | `GetLesson`, `ListLessons`, `NextLesson`, `ResolveActivity` — used heavily by `learning` |
+| interface | `lesson.Reader` | `GetLesson`, `ListLessons`, `NextLesson`, `ResolveActivity`, `ListActivitiesByCourseIDs` — used heavily by `learning` |
 | struct | `lesson.Activity` | `{ID, Kind, ContentVersionID, Config, Weight}` |
 | struct | `lesson.ActivityHierarchy` | `{ActivityID, LessonID, UnitID, CourseID, Kind, ContentVersionID, Config, Weight, LessonSkillFocus}` — single-call structural resolution for activity attempts (P8.3 Trap 1) |
 

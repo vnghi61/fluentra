@@ -32,6 +32,8 @@ type LearningService interface {
 	CompleteSession(
 		ctx context.Context, userID, sessionID uuid.UUID, activitiesCompleted *int,
 	) (*domain.LearningSession, error)
+	Dashboard(ctx context.Context, userID uuid.UUID) (*domain.DashboardData, error)
+	Progress(ctx context.Context, userID uuid.UUID) (*domain.ProgressData, error)
 }
 
 // Handler serves HTTP endpoints for attempts.
@@ -53,6 +55,8 @@ func NewHandler(service LearningService, guard Guard) (*Handler, error) {
 
 // Routes mounts the attempt lifecycle endpoints on the router.
 func (h *Handler) Routes(router chi.Router) {
+	router.Get("/me/dashboard", h.getDashboard)
+	router.Get("/me/progress", h.getProgress)
 	router.Post("/courses/{id}/enroll", h.enroll)
 	router.Post("/activities/{id}/attempts", h.startAttempt)
 	router.Post("/attempts/{id}/submit", h.submitAttempt)
@@ -238,4 +242,38 @@ func (h *Handler) getAttempt(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httpx.WriteJSON(w, r, http.StatusOK, toAttemptDetailResponse(dto))
+}
+
+func (h *Handler) getDashboard(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	actor, ok := httpx.ActorFrom(ctx)
+	if !ok || actor.UserID == uuid.Nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Unauthenticated, "UNAUTHORIZED", "Authentication required"))
+		return
+	}
+
+	data, err := h.service.Dashboard(ctx, actor.UserID)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	httpx.WriteJSON(w, r, http.StatusOK, toDashboardResponse(data))
+}
+
+func (h *Handler) getProgress(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	actor, ok := httpx.ActorFrom(ctx)
+	if !ok || actor.UserID == uuid.Nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Unauthenticated, "UNAUTHORIZED", "Authentication required"))
+		return
+	}
+
+	data, err := h.service.Progress(ctx, actor.UserID)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	httpx.WriteJSON(w, r, http.StatusOK, toProgressResponse(data))
 }

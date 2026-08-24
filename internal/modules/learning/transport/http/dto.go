@@ -135,3 +135,109 @@ func toLearningSessionResponse(s *domain.LearningSession) LearningSessionRespons
 		Minutes:             s.Minutes,
 	}
 }
+
+// SkillMasteryResponse matches OpenAPI SkillMastery schema.
+type SkillMasteryResponse struct {
+	Skill      string    `json:"skill"`
+	Level      string    `json:"level"`
+	Confidence float64   `json:"confidence"`
+	UpdatedAt  time.Time `json:"updated_at"`
+}
+
+// NextActivityResponse matches OpenAPI NextActivity schema.
+type NextActivityResponse struct {
+	ActivityID       uuid.UUID `json:"activity_id"`
+	LessonID         uuid.UUID `json:"lesson_id"`
+	UnitID           uuid.UUID `json:"unit_id"`
+	CourseID         uuid.UUID `json:"course_id"`
+	Title            string    `json:"title"`
+	Kind             string    `json:"kind"`
+	Skill            string    `json:"skill"`
+	EstimatedMinutes *int      `json:"estimated_minutes,omitempty"`
+}
+
+// DashboardResponse matches OpenAPI DashboardResponse schema.
+type DashboardResponse struct {
+	State           string                 `json:"state"`
+	NextActivity    *NextActivityResponse  `json:"next_activity,omitempty"`
+	DueReviewsCount int                    `json:"due_reviews_count"`
+	SkillMastery    []SkillMasteryResponse `json:"skill_mastery"`
+}
+
+// CourseProgressResponse matches OpenAPI CourseProgress schema.
+type CourseProgressResponse struct {
+	CourseID            uuid.UUID  `json:"course_id"`
+	Status              string     `json:"status"`
+	CompletedActivities int        `json:"completed_activities"`
+	TotalActivities     int        `json:"total_activities"`
+	Percentage          int        `json:"percentage"`
+	Score               *int       `json:"score,omitempty"`
+	CompletedAt         *time.Time `json:"completed_at,omitempty"`
+}
+
+// ProgressResponse matches OpenAPI ProgressResponse schema.
+type ProgressResponse struct {
+	Courses []CourseProgressResponse `json:"courses"`
+	Skills  []SkillMasteryResponse   `json:"skills"`
+}
+
+func toSkillMasteryResponse(m domain.SkillMastery) SkillMasteryResponse {
+	return SkillMasteryResponse{
+		Skill:      m.Skill,
+		Level:      m.Level,
+		Confidence: m.Confidence,
+		UpdatedAt:  m.UpdatedAt,
+	}
+}
+
+func toNextActivityResponse(a *domain.NextActivity) *NextActivityResponse {
+	if a == nil {
+		return nil
+	}
+	return &NextActivityResponse{
+		ActivityID:       a.ActivityID,
+		LessonID:         a.LessonID,
+		UnitID:           a.UnitID,
+		CourseID:         a.CourseID,
+		Title:            a.Title,
+		Kind:             a.Kind,
+		Skill:            a.Skill,
+		EstimatedMinutes: a.EstimatedMinutes,
+	}
+}
+
+func toDashboardResponse(d *domain.DashboardData) DashboardResponse {
+	masteries := make([]SkillMasteryResponse, len(d.SkillMastery))
+	for i, m := range d.SkillMastery {
+		masteries[i] = toSkillMasteryResponse(m)
+	}
+	return DashboardResponse{
+		State:           d.State,
+		NextActivity:    toNextActivityResponse(d.NextActivity),
+		DueReviewsCount: d.DueReviewsCount,
+		SkillMastery:    masteries,
+	}
+}
+
+func toProgressResponse(p *domain.ProgressData) ProgressResponse {
+	courses := make([]CourseProgressResponse, len(p.Courses))
+	for i, c := range p.Courses {
+		courses[i] = CourseProgressResponse{
+			CourseID:            c.CourseID,
+			Status:              c.Status,
+			CompletedActivities: c.CompletedActivities,
+			TotalActivities:     c.TotalActivities,
+			Percentage:          c.Percentage,
+			Score:               c.Score,
+			CompletedAt:         c.CompletedAt,
+		}
+	}
+	skills := make([]SkillMasteryResponse, len(p.Skills))
+	for i, s := range p.Skills {
+		skills[i] = toSkillMasteryResponse(s)
+	}
+	return ProgressResponse{
+		Courses: courses,
+		Skills:  skills,
+	}
+}

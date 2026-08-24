@@ -141,6 +141,40 @@ func (q *Queries) ListActivitiesByLessonIDs(ctx context.Context, dollar_1 []uuid
 	return items, nil
 }
 
+const listCourseActivityIDs = `-- name: ListCourseActivityIDs :many
+SELECT u.course_id, a.id AS activity_id
+FROM learn.activities a
+JOIN learn.lessons l ON l.id = a.lesson_id
+JOIN learn.course_units u ON u.id = l.unit_id
+WHERE u.course_id = ANY($1::uuid[])
+ORDER BY u.course_id, u.position ASC, l.position ASC, a.position ASC
+`
+
+type ListCourseActivityIDsRow struct {
+	CourseID   uuid.UUID
+	ActivityID uuid.UUID
+}
+
+func (q *Queries) ListCourseActivityIDs(ctx context.Context, dollar_1 []uuid.UUID) ([]ListCourseActivityIDsRow, error) {
+	rows, err := q.db.Query(ctx, listCourseActivityIDs, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCourseActivityIDsRow
+	for rows.Next() {
+		var i ListCourseActivityIDsRow
+		if err := rows.Scan(&i.CourseID, &i.ActivityID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listLessonIDsByContentVersionID = `-- name: ListLessonIDsByContentVersionID :many
 SELECT DISTINCT lesson_id
 FROM learn.activities

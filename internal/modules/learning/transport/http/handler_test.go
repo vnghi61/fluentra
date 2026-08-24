@@ -44,6 +44,10 @@ type fakeLearningService struct {
 	startSessErr error
 	compSessDTO  *domain.LearningSession
 	compSessErr  error
+	dashDTO      *domain.DashboardData
+	dashErr      error
+	progDTO      *domain.ProgressData
+	progErr      error
 }
 
 func (f *fakeLearningService) StartAttempt(_ context.Context, _, _ uuid.UUID) (*service.StartAttemptDTO, error) {
@@ -76,6 +80,20 @@ func (f *fakeLearningService) CompleteSession(
 	return f.compSessDTO, f.compSessErr
 }
 
+func (f *fakeLearningService) Dashboard(_ context.Context, _ uuid.UUID) (*domain.DashboardData, error) {
+	return f.dashDTO, f.dashErr
+}
+
+func (f *fakeLearningService) Progress(_ context.Context, _ uuid.UUID) (*domain.ProgressData, error) {
+	return f.progDTO, f.progErr
+}
+
+const (
+	testStateInProgress = "in_progress"
+	testStateCompleted  = "completed"
+	testSkillGrammar    = "grammar"
+)
+
 func withActor(r *http.Request, userID uuid.UUID) *http.Request {
 	actor := httpx.Actor{
 		UserID: userID,
@@ -103,7 +121,7 @@ func TestHandler_StartAttempt_Success(t *testing.T) {
 		startDTO: &service.StartAttemptDTO{
 			AttemptID:  attemptID,
 			ActivityID: activityID,
-			Status:     "in_progress",
+			Status:     testStateInProgress,
 			StartedAt:  now,
 		},
 	}
@@ -592,5 +610,312 @@ func TestHandler_SessionBadRequests(t *testing.T) {
 	router.ServeHTTP(rec, req)
 	if rec.Code != http.StatusUnauthorized {
 		t.Errorf("anonymous start: got %d, want 401", rec.Code)
+	}
+}
+
+func TestHandler_GetDashboard_NotStarted(t *testing.T) {
+	userID := uuid.New()
+	svc := &fakeLearningService{
+		dashDTO: &domain.DashboardData{
+			State:           domain.DashboardStateNotStarted,
+			NextActivity:    nil,
+			DueReviewsCount: 0,
+			SkillMastery:    []domain.SkillMastery{},
+		},
+	}
+	router, err := setupTestRouter(svc)
+	if err != nil {
+		t.Fatalf("setup router: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/me/dashboard", nil)
+	req = withActor(req, userID)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+
+	body := rec.Body.String()
+	var raw map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &raw); err != nil {
+		t.Fatalf("unmarshal json: %v", err)
+	}
+
+	if raw["state"] != "not_started" {
+		t.Errorf("state = %v, want not_started", raw["state"])
+	}
+	if _, ok := raw["next_activity"]; ok {
+		t.Errorf("next_activity must be omitted in not_started state: body=%s", body)
+	}
+	if due, ok := raw["due_reviews_count"].(float64); !ok || due != 0 {
+		t.Errorf("due_reviews_count = %v, want 0", raw["due_reviews_count"])
+	}
+	sm, ok := raw["skill_mastery"].([]any)
+	if !ok || sm == nil {
+		t.Errorf("skill_mastery must be empty array [], not null: body=%s", body)
+	}
+}
+
+func TestHandler_GetDashboard_InProgress(t *testing.T) {
+	userID := uuid.New()
+	actID := uuid.New()
+	lessonID := uuid.New()
+	unitID := uuid.New()
+	courseID := uuid.New()
+	estMin := 15
+
+	svc := &fakeLearningService{
+		dashDTO: &domain.DashboardData{
+			State: domain.DashboardStateInProgress,
+			NextActivity: &domain.NextActivity{
+				ActivityID:       actID,
+				LessonID:         lessonID,
+				UnitID:           unitID,
+				CourseID:         courseID,
+				Title:            "Present Tense Quiz",
+				Kind:             "quiz",
+				Skill:            testSkillGrammar,
+				EstimatedMinutes: &estMin,
+			},
+			DueReviewsCount: 0,
+			SkillMastery: []domain.SkillMastery{
+				{
+					Skill:      testSkillGrammar,
+					Level:      "B1",
+					Confidence: 0.65,
+					UpdatedAt:  time.Date(2026, 8, 24, 10, 0, 0, 0, time.UTC),
+				},
+			},
+		},
+	}
+	router, _ := setupTestRouter(svc)
+
+	req := httptest.NewRequest(http.MethodGet, "/me/dashboard", nil)
+	req = withActor(req, userID)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+
+	var resp learninghttp.DashboardResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal json: %v", err)
+	}
+
+	if resp.State != testStateInProgress {
+		t.Errorf("state = %s, want in_progress", resp.State)
+	}
+	if resp.NextActivity == nil {
+		t.Fatalf("expected next_activity to be populated")
+	}
+	if resp.NextActivity.ActivityID != actID || resp.NextActivity.Title != "Present Tense Quiz" {
+		t.Errorf("unexpected next_activity: %+v", resp.NextActivity)
+	}
+	if len(resp.SkillMastery) != 1 || resp.SkillMastery[0].Skill != testSkillGrammar {
+		t.Errorf("unexpected skill_mastery: %+v", resp.SkillMastery)
+	}
+}
+
+func TestHandler_GetDashboard_Completed(t *testing.T) {
+	userID := uuid.New()
+	svc := &fakeLearningService{
+		dashDTO: &domain.DashboardData{
+			State:           domain.DashboardStateCompleted,
+			NextActivity:    nil,
+			DueReviewsCount: 0,
+			SkillMastery:    []domain.SkillMastery{},
+		},
+	}
+	router, _ := setupTestRouter(svc)
+
+	req := httptest.NewRequest(http.MethodGet, "/me/dashboard", nil)
+	req = withActor(req, userID)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+
+	var raw map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &raw); err != nil {
+		t.Fatalf("unmarshal json: %v", err)
+	}
+	if raw["state"] != testStateCompleted {
+		t.Errorf("state = %v, want completed", raw["state"])
+	}
+	if _, ok := raw["next_activity"]; ok {
+		t.Errorf("next_activity must be omitted in completed state")
+	}
+}
+
+func TestHandler_GetDashboard_Unauthorized(t *testing.T) {
+	svc := &fakeLearningService{}
+	router, _ := setupTestRouter(svc)
+
+	req := httptest.NewRequest(http.MethodGet, "/me/dashboard", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want 401", rec.Code)
+	}
+}
+
+func TestHandler_GetDashboard_ServiceError(t *testing.T) {
+	userID := uuid.New()
+	svc := &fakeLearningService{
+		dashErr: errors.New("db error"),
+	}
+	router, _ := setupTestRouter(svc)
+
+	req := httptest.NewRequest(http.MethodGet, "/me/dashboard", nil)
+	req = withActor(req, userID)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want 500", rec.Code)
+	}
+}
+
+func TestHandler_GetProgress_Success(t *testing.T) {
+	userID := uuid.New()
+	courseID1 := uuid.New()
+	courseID2 := uuid.New()
+	completedAt := time.Date(2026, 8, 24, 11, 0, 0, 0, time.UTC)
+	score := 95
+
+	svc := &fakeLearningService{
+		progDTO: &domain.ProgressData{
+			Courses: []domain.CourseProgressData{
+				{
+					CourseID:            courseID1,
+					Status:              testStateInProgress,
+					CompletedActivities: 5,
+					TotalActivities:     10,
+					Percentage:          50,
+					Score:               nil,
+					CompletedAt:         nil,
+				},
+				{
+					CourseID:            courseID2,
+					Status:              testStateCompleted,
+					CompletedActivities: 20,
+					TotalActivities:     20,
+					Percentage:          100,
+					Score:               &score,
+					CompletedAt:         &completedAt,
+				},
+			},
+			Skills: []domain.SkillMastery{
+				{
+					Skill:      "vocabulary",
+					Level:      "A2",
+					Confidence: 0.50,
+					UpdatedAt:  time.Date(2026, 8, 24, 9, 0, 0, 0, time.UTC),
+				},
+			},
+		},
+	}
+	router, _ := setupTestRouter(svc)
+
+	req := httptest.NewRequest(http.MethodGet, "/me/progress", nil)
+	req = withActor(req, userID)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+
+	var resp learninghttp.ProgressResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal json: %v", err)
+	}
+
+	if len(resp.Courses) != 2 {
+		t.Fatalf("got %d courses, want 2", len(resp.Courses))
+	}
+	if resp.Courses[0].Percentage != 50 || resp.Courses[0].Status != testStateInProgress {
+		t.Errorf("course 0 mismatch: %+v", resp.Courses[0])
+	}
+	if resp.Courses[1].Percentage != 100 || resp.Courses[1].Status != testStateCompleted {
+		t.Errorf("course 1 mismatch: %+v", resp.Courses[1])
+	}
+	if resp.Courses[1].Score == nil || *resp.Courses[1].Score != 95 {
+		t.Errorf("course 1 score mismatch: %+v", resp.Courses[1].Score)
+	}
+	if len(resp.Skills) != 1 || resp.Skills[0].Skill != "vocabulary" {
+		t.Errorf("skills mismatch: %+v", resp.Skills)
+	}
+}
+
+func TestHandler_GetProgress_Empty(t *testing.T) {
+	userID := uuid.New()
+	svc := &fakeLearningService{
+		progDTO: &domain.ProgressData{
+			Courses: []domain.CourseProgressData{},
+			Skills:  []domain.SkillMastery{},
+		},
+	}
+	router, _ := setupTestRouter(svc)
+
+	req := httptest.NewRequest(http.MethodGet, "/me/progress", nil)
+	req = withActor(req, userID)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+
+	body := rec.Body.String()
+	var raw map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &raw); err != nil {
+		t.Fatalf("unmarshal json: %v", err)
+	}
+
+	courses, ok := raw["courses"].([]any)
+	if !ok || courses == nil {
+		t.Errorf("courses must be empty array [], not null: body=%s", body)
+	}
+	skills, ok := raw["skills"].([]any)
+	if !ok || skills == nil {
+		t.Errorf("skills must be empty array [], not null: body=%s", body)
+	}
+}
+
+func TestHandler_GetProgress_Unauthorized(t *testing.T) {
+	svc := &fakeLearningService{}
+	router, _ := setupTestRouter(svc)
+
+	req := httptest.NewRequest(http.MethodGet, "/me/progress", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want 401", rec.Code)
+	}
+}
+
+func TestHandler_GetProgress_ServiceError(t *testing.T) {
+	userID := uuid.New()
+	svc := &fakeLearningService{
+		progErr: errors.New("database failure"),
+	}
+	router, _ := setupTestRouter(svc)
+
+	req := httptest.NewRequest(http.MethodGet, "/me/progress", nil)
+	req = withActor(req, userID)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want 500", rec.Code)
 	}
 }

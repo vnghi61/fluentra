@@ -10,7 +10,7 @@ tables: [enrollments, progress, attempts, learning_sessions, placement_results, 
 depends_on: [lesson, content, srs, cache, job]
 depended_on_by: [gamification, analytics, admin, exam, vocabulary, grammar, reading, listening, speaking, writing]
 spec_version: 1.0.0
-last_verified: 2026-08-24
+last_verified: 2026-08-25
 ---
 
 # learning — AGENT.md
@@ -233,9 +233,17 @@ _No deviations from the global standard._
 
 | Key | TTL | Invalidated by |
 |---|---|---|
-| `fluentra:{env}:learning:dashboard:{user_id}:v1` | 2 min | Any completion event |
-| `fluentra:{env}:learning:progress:{user_id}:{course_id}:v1` | 5 min | `activity.completed` |
-| `fluentra:{env}:learning:unlock:{user_id}:{lesson_id}:v1` | 10 min | `lesson.completed` |
+| `fluentra:{env}:learning:dashboard:{user_id}:v1` | 2 min | A graded submission, an enrolment, a completed session |
+| `fluentra:{env}:learning:progress:{user_id}:v1` | 5 min | The same three |
+
+Both keys are per learner, not per course: `GET /me/progress` answers for every enrolled
+course in one response, so a key per course would have to be reassembled from N entries to
+serve one request. Invalidation happens **after** the transaction commits and a failed delete
+is logged rather than returned — a Redis outage must not fail a submit. One staleness window
+survives that: `Cache.GetOrLoad` writes its loaded value back on a goroutine, so a read that
+began before a concurrent submit can land ahead of the delete, and the TTL is what clears it.
+
+The per-lesson unlock cache this table used to name is deferred; see `TODO.md`.
 
 ### Error codes owned by this module
 

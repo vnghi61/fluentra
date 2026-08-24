@@ -18,6 +18,8 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/auth/service/oauth/google"
 	"github.com/fluentra/fluentra/internal/modules/content"
 	"github.com/fluentra/fluentra/internal/modules/learning"
+	learningdomain "github.com/fluentra/fluentra/internal/modules/learning/domain"
+	learningservice "github.com/fluentra/fluentra/internal/modules/learning/service"
 	"github.com/fluentra/fluentra/internal/modules/lesson"
 	lessonservice "github.com/fluentra/fluentra/internal/modules/lesson/service"
 	"github.com/fluentra/fluentra/internal/modules/rbac"
@@ -195,11 +197,23 @@ func newIdentity(deps identityDeps) *identity {
 
 	assembled.learning = learning.New(learning.Deps{
 		Pool:   deps.Pool,
+		Caches: newLearningCaches(deps.Redis),
 		Guard:  lazyGuard{of: assembled},
 		Lesson: assembled.lesson.Reader(),
+		Env:    deps.Env,
 	})
 
 	return assembled
+}
+
+func newLearningCaches(client redis.Cmdable) learningservice.LearningCaches {
+	if client == nil {
+		return learningservice.LearningCaches{}
+	}
+	return learningservice.LearningCaches{
+		Dashboard: cache.NewRedisCache[*learningdomain.DashboardData](client),
+		Progress:  cache.NewRedisCache[*learningdomain.ProgressData](client),
+	}
 }
 
 func newLessonCaches(client redis.Cmdable) lessonservice.LessonCaches {
