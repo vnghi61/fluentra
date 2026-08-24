@@ -46,10 +46,24 @@ rules:
           then: {}
           else:
             required: [x-permission]
+  # OpenAPI offers two spellings, and they are mutually exclusive: `example` for
+  # one, `examples` for a named map. This rule wants a media type a client or a
+  # mock can be built from and does not care which supplies it.
+  #
+  # It named only `example` until a response had more than one state worth
+  # showing — the learner dashboard renders differently for someone who has
+  # started nothing, and that is the *common* case during the alpha. A rule that
+  # accepts only the singular form does not merely reject the map; it quietly
+  # requires every multi-state response in the API to document one state and
+  # leave the others to be discovered by whoever builds the client.
   fluentra-response-example:
-    description: Every concrete response media type supplies an example for clients and mocks.
+    description: Every concrete response media type supplies an example or examples for clients and mocks.
     severity: error
     given: $.paths[*][get,put,post,delete,options,head,patch,trace].responses.*.content.*
     then:
-      field: example
-      function: defined
+      function: schema
+      functionOptions:
+        schema:
+          anyOf:
+            - required: [example]
+            - required: [examples]

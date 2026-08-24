@@ -68,6 +68,9 @@ tags:
   - name: lesson
     description: >-
       Courses, units, lessons, and activity sequencing.
+  - name: learning
+    description: >-
+      Enrolment, progress, learning sessions, and the exercise engine.
 security:
   - BearerAuth: []
 paths:
@@ -2930,6 +2933,387 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+  /courses/{id}/enroll:
+    post:
+      tags: [learning]
+      operationId: enrollCourse
+      summary: Enrol in a course.
+      description: Enrols the authenticated learner into the specified course.
+      x-permission: self
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '201':
+          description: Enrolment created.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Enrollment'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def012345680
+                user_id: 0199a1c2-3d4e-7f80-9abc-def01234567e
+                course_id: 0199a1c2-3d4e-7f80-9abc-def012345678
+                status: active
+                started_at: '2026-08-24T09:00:00Z'
+                completed_at: null
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /me/dashboard:
+    get:
+      tags: [learning]
+      operationId: getDashboard
+      summary: Get learner dashboard state.
+      description: >-
+        Returns current learner plan, resume/next activity (or explicit not_started state),
+        due review count, and per-skill mastery.
+      x-permission: self
+      responses:
+        '200':
+          description: Learner dashboard state.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardResponse'
+              examples:
+                notStarted:
+                  summary: A learner who has enrolled in nothing yet.
+                  description: >-
+                    The common case during the alpha, and the one the client
+                    renders as its empty state. `state` carries it explicitly and
+                    `next_activity` is absent — never null, and never a 404.
+                  value:
+                    state: not_started
+                    due_reviews_count: 0
+                    skill_mastery: []
+                inProgress:
+                  summary: A learner with an activity to resume.
+                  value:
+                    state: in_progress
+                    next_activity:
+                      activity_id: 0199a1c2-3d4e-7f80-9abc-def01234567b
+                      lesson_id: 0199a1c2-3d4e-7f80-9abc-def01234567a
+                      unit_id: 0199a1c2-3d4e-7f80-9abc-def012345679
+                      course_id: 0199a1c2-3d4e-7f80-9abc-def012345678
+                      title: Academic Word List - Topic 1
+                      kind: vocab_multiple_choice
+                      skill: vocabulary
+                      estimated_minutes: 5
+                    due_reviews_count: 0
+                    skill_mastery:
+                      - skill: vocabulary
+                        level: B1
+                        confidence: 0.85
+                        updated_at: '2026-08-24T09:00:00Z'
+                completed:
+                  summary: A learner who has finished everything they enrolled in.
+                  value:
+                    state: completed
+                    due_reviews_count: 0
+                    skill_mastery:
+                      - skill: vocabulary
+                        level: B2
+                        confidence: 0.91
+                        updated_at: '2026-08-24T09:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /me/progress:
+    get:
+      tags: [learning]
+      operationId: getProgress
+      summary: Get learner overall progress.
+      description: Returns rolled-up progress across enrolled courses and estimated skill masteries.
+      x-permission: self
+      responses:
+        '200':
+          description: Overall learner progress.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgressResponse'
+              example:
+                courses:
+                  - course_id: 0199a1c2-3d4e-7f80-9abc-def012345678
+                    status: in_progress
+                    completed_activities: 12
+                    total_activities: 40
+                    percentage: 30
+                    score: 88
+                    completed_at: null
+                skills:
+                  - skill: vocabulary
+                    level: B1
+                    confidence: 0.85
+                    updated_at: '2026-08-24T09:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /activities/{id}/attempts:
+    post:
+      tags: [learning]
+      operationId: startAttempt
+      summary: Start an activity attempt.
+      description: >-
+        Verifies unlocking prerequisites and starts a new in-progress attempt for
+        an activity.
+      x-permission: self
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '201':
+          description: Attempt started.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StartAttemptResult'
+              example:
+                attempt_id: 0199a1c2-3d4e-7f80-9abc-def012345681
+                activity_id: 0199a1c2-3d4e-7f80-9abc-def01234567b
+                status: in_progress
+                started_at: '2026-08-24T09:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /attempts/{id}/submit:
+    post:
+      tags: [learning]
+      operationId: submitAttempt
+      summary: Submit an attempt for grading.
+      description: >-
+        Submits a learner response for grading. Requires an Idempotency-Key header.
+        Synchronous grading returns 200 with score and feedback; asynchronous grading
+        returns 202 with attempt status grading.
+      x-permission: self
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitAttemptRequest'
+            example:
+              response:
+                selected_option_id: 0199a1c2-3d4e-7f80-9abc-def01234567f
+      responses:
+        '200':
+          description: Attempt graded synchronously or existing result returned.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmitAttemptResult'
+              example:
+                attempt_id: 0199a1c2-3d4e-7f80-9abc-def012345681
+                status: graded
+                score: 100
+                max_score: 100
+                correct: true
+                feedback: Correct! Well done.
+        '202':
+          description: Attempt accepted for asynchronous grading.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmitAttemptResult'
+              example:
+                attempt_id: 0199a1c2-3d4e-7f80-9abc-def012345681
+                status: grading
+                score: null
+                max_score: null
+                correct: null
+                feedback: null
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /attempts/{id}:
+    get:
+      tags: [learning]
+      operationId: getAttempt
+      summary: Read attempt state and result.
+      description: Returns attempt status, response payload, and grading result.
+      x-permission: self
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Attempt detail.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttemptDetail'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def012345681
+                activity_id: 0199a1c2-3d4e-7f80-9abc-def01234567b
+                user_id: 0199a1c2-3d4e-7f80-9abc-def01234567e
+                status: graded
+                response:
+                  selected_option_id: 0199a1c2-3d4e-7f80-9abc-def01234567f
+                score: 100
+                max_score: 100
+                feedback: Correct! Well done.
+                duration_ms: 15000
+                started_at: '2026-08-24T09:00:00Z'
+                completed_at: '2026-08-24T09:00:15Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /me/sessions:
+    post:
+      tags: [learning]
+      operationId: startLearningSession
+      summary: Start a study session.
+      description: Records the beginning of an active learner study session.
+      x-permission: self
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartSessionRequest'
+            example: {}
+      responses:
+        '201':
+          description: Session started.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LearningSession'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def012345682
+                user_id: 0199a1c2-3d4e-7f80-9abc-def01234567e
+                started_at: '2026-08-24T09:00:00Z'
+                ended_at: null
+                activities_completed: 0
+                minutes: 0
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /me/sessions/{id}/complete:
+    post:
+      tags: [learning]
+      operationId: completeLearningSession
+      summary: Complete a study session.
+      description: Closes an active study session and publishes the learning.session_completed event.
+      x-permission: self
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteSessionRequest'
+            example:
+              activities_completed: 3
+      responses:
+        '200':
+          description: Session completed.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LearningSession'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def012345682
+                user_id: 0199a1c2-3d4e-7f80-9abc-def01234567e
+                started_at: '2026-08-24T09:00:00Z'
+                ended_at: '2026-08-24T09:25:00Z'
+                activities_completed: 3
+                minutes: 25
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
 components:
   securitySchemes:
     BearerAuth:
@@ -2942,6 +3326,16 @@ components:
       in: cookie
       name: refresh_token
       description: A rotating refresh token supplied only to the refresh operation.
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: UUIDv7 idempotency key to prevent duplicate attempt submission.
+      schema:
+        type: string
+        format: uuid
+      example: 0199a1c2-3d4e-7f80-9abc-def012345683
   schemas:
     Problem:
       $ref: ./components/errors.yaml#/Problem
@@ -3113,6 +3507,32 @@ components:
       $ref: ./components/lesson.yaml#/ActivityInput
     UpdateActivitiesRequest:
       $ref: ./components/lesson.yaml#/UpdateActivitiesRequest
+    Enrollment:
+      $ref: ./components/learning.yaml#/Enrollment
+    SkillMastery:
+      $ref: ./components/learning.yaml#/SkillMastery
+    NextActivity:
+      $ref: ./components/learning.yaml#/NextActivity
+    DashboardResponse:
+      $ref: ./components/learning.yaml#/DashboardResponse
+    CourseProgress:
+      $ref: ./components/learning.yaml#/CourseProgress
+    ProgressResponse:
+      $ref: ./components/learning.yaml#/ProgressResponse
+    StartAttemptResult:
+      $ref: ./components/learning.yaml#/StartAttemptResult
+    SubmitAttemptRequest:
+      $ref: ./components/learning.yaml#/SubmitAttemptRequest
+    SubmitAttemptResult:
+      $ref: ./components/learning.yaml#/SubmitAttemptResult
+    AttemptDetail:
+      $ref: ./components/learning.yaml#/AttemptDetail
+    StartSessionRequest:
+      $ref: ./components/learning.yaml#/StartSessionRequest
+    LearningSession:
+      $ref: ./components/learning.yaml#/LearningSession
+    CompleteSessionRequest:
+      $ref: ./components/learning.yaml#/CompleteSessionRequest
   headers:
     X-Request-Id:
       $ref: ./components/headers.yaml#/X-Request-Id

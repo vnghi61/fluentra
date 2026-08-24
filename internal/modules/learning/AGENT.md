@@ -10,7 +10,7 @@ tables: [enrollments, progress, attempts, learning_sessions, placement_results, 
 depends_on: [lesson, content, srs, cache, job]
 depended_on_by: [gamification, analytics, admin, exam, vocabulary, grammar, reading, listening, speaking, writing]
 spec_version: 1.0.0
-last_verified: 2026-08-06
+last_verified: 2026-08-24
 ---
 
 # learning — AGENT.md
@@ -79,9 +79,9 @@ Other modules may import **only** `internal/modules/learning/contract`.
 | Kind | Name | Purpose |
 |---|---|---|
 | interface | `learning.ExerciseGrader` | `Grade(ctx, GradeRequest) (GradeResult, error)` — **implemented by every skill module**, registered by activity kind |
-| struct | `learning.GradeResult` | `{Score, MaxScore, Correct, Feedback, Async, ReviewItems}` — `ReviewItems` is what feeds `srs` |
+| struct | `learning.GradeResult` | `{Score, MaxScore, Correct, Feedback, Async, ReviewItems}` — `ReviewItem` is a `learning` type, not an `srs` one, so a grader in any skill module can return it |
 | interface | `learning.ProgressReader` | `ProgressOf(ctx, userID, scope)` — used by `gamification`, `admin`, `analytics` |
-| interface | `learning.UnlockChecker` | `IsUnlocked(ctx, userID, lessonID)` — used by `lesson` |
+| interface | `learning.UnlockChecker` | `IsUnlocked(ctx, userID, lessonIDs)` — used by `lesson` (batched to prevent N+1 queries) |
 
 ### Events
 
@@ -128,14 +128,13 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | Method | Path | Permission | Purpose |
 |---|---|---|---|
 | `POST` | `/api/v1/courses/{id}/enroll` | `self` | Enrol |
-| `GET` | `/api/v1/me/dashboard` | `self` | Today's plan, streak, due reviews, continue-where-you-left-off |
+| `GET` | `/api/v1/me/dashboard` | `self` | Today's plan, due reviews, continue-where-you-left-off |
 | `GET` | `/api/v1/me/progress` | `self` | Progress across courses and skills |
 | `POST` | `/api/v1/activities/{id}/attempts` | `self` | Start an attempt |
 | `POST` | `/api/v1/attempts/{id}/submit` | `self` | Submit a response for grading |
 | `GET` | `/api/v1/attempts/{id}` | `self` | Attempt state and result |
 | `POST` | `/api/v1/me/sessions` | `self` | Start a study session |
 | `POST` | `/api/v1/me/sessions/{id}/complete` | `self` | End a session |
-| `POST` | `/api/v1/me/placement` | `self` | Start the placement test |
 <!-- END GENERATED: endpoints -->
 
 ## 7. Folder map

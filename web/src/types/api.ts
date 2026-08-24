@@ -1279,6 +1279,166 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/courses/{id}/enroll": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Enrol in a course.
+         * @description Enrols the authenticated learner into the specified course.
+         */
+        post: operations["enrollCourse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get learner dashboard state.
+         * @description Returns current learner plan, resume/next activity (or explicit not_started state), due review count, and per-skill mastery.
+         */
+        get: operations["getDashboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get learner overall progress.
+         * @description Returns rolled-up progress across enrolled courses and estimated skill masteries.
+         */
+        get: operations["getProgress"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/activities/{id}/attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start an activity attempt.
+         * @description Verifies unlocking prerequisites and starts a new in-progress attempt for an activity.
+         */
+        post: operations["startAttempt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/attempts/{id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit an attempt for grading.
+         * @description Submits a learner response for grading. Requires an Idempotency-Key header. Synchronous grading returns 200 with score and feedback; asynchronous grading returns 202 with attempt status grading.
+         */
+        post: operations["submitAttempt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/attempts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read attempt state and result.
+         * @description Returns attempt status, response payload, and grading result.
+         */
+        get: operations["getAttempt"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start a study session.
+         * @description Records the beginning of an active learner study session.
+         */
+        post: operations["startLearningSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/sessions/{id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete a study session.
+         * @description Closes an active study session and publishes the learning.session_completed event.
+         */
+        post: operations["completeLearningSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2535,6 +2695,210 @@ export interface components {
         UpdateActivitiesRequest: {
             activities: components["schemas"]["ActivityInput"][];
         };
+        Enrollment: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            user_id: string;
+            /** Format: uuid */
+            course_id: string;
+            /**
+             * @example active
+             * @enum {string}
+             */
+            status: "active" | "completed" | "paused";
+            /**
+             * Format: date-time
+             * @example 2026-08-24T09:00:00Z
+             */
+            started_at: string;
+            /**
+             * Format: date-time
+             * @example null
+             */
+            completed_at?: string | null;
+        };
+        SkillMastery: {
+            /**
+             * @example vocabulary
+             * @enum {string}
+             */
+            skill: "vocabulary" | "grammar" | "reading" | "listening" | "speaking" | "writing";
+            /** @example B1 */
+            level: string;
+            /**
+             * Format: float
+             * @example 0.85
+             */
+            confidence: number;
+            /**
+             * Format: date-time
+             * @example 2026-08-24T09:00:00Z
+             */
+            updated_at: string;
+        };
+        NextActivity: {
+            /** Format: uuid */
+            activity_id: string;
+            /** Format: uuid */
+            lesson_id: string;
+            /** Format: uuid */
+            unit_id: string;
+            /** Format: uuid */
+            course_id: string;
+            /** @example Academic Word List - Topic 1 */
+            title: string;
+            /** @example vocab_multiple_choice */
+            kind: string;
+            /** @example vocabulary */
+            skill: string;
+            /** @example 5 */
+            estimated_minutes?: number;
+        };
+        DashboardResponse: {
+            /**
+             * @description Learner state indicating current progress level.
+             * @example in_progress
+             * @enum {string}
+             */
+            state: "not_started" | "in_progress" | "completed";
+            next_activity?: components["schemas"]["NextActivity"];
+            /**
+             * @description Number of SRS review cards due today.
+             * @example 0
+             */
+            due_reviews_count: number;
+            skill_mastery: components["schemas"]["SkillMastery"][];
+        };
+        CourseProgress: {
+            /** Format: uuid */
+            course_id: string;
+            /**
+             * @example in_progress
+             * @enum {string}
+             */
+            status: "not_started" | "in_progress" | "completed";
+            /** @example 12 */
+            completed_activities: number;
+            /** @example 40 */
+            total_activities: number;
+            /** @example 30 */
+            percentage: number;
+            /** @example 88 */
+            score?: number | null;
+            /**
+             * Format: date-time
+             * @example null
+             */
+            completed_at?: string | null;
+        };
+        ProgressResponse: {
+            courses: components["schemas"]["CourseProgress"][];
+            skills: components["schemas"]["SkillMastery"][];
+        };
+        StartAttemptResult: {
+            /** Format: uuid */
+            attempt_id: string;
+            /** Format: uuid */
+            activity_id: string;
+            /**
+             * @example in_progress
+             * @enum {string}
+             */
+            status: "in_progress";
+            /**
+             * Format: date-time
+             * @example 2026-08-24T09:00:00Z
+             */
+            started_at: string;
+        };
+        SubmitAttemptRequest: {
+            /**
+             * @description Activity response payload (structure depends on activity kind).
+             * @example {
+             *       "selected_option_id": "0199a1c2-3d4e-7f80-9abc-def01234567f"
+             *     }
+             */
+            response: Record<string, never>;
+        };
+        SubmitAttemptResult: {
+            /** Format: uuid */
+            attempt_id: string;
+            /**
+             * @example graded
+             * @enum {string}
+             */
+            status: "graded" | "grading" | "failed";
+            /** @example 100 */
+            score?: number | null;
+            /** @example 100 */
+            max_score?: number | null;
+            /** @example true */
+            correct?: boolean | null;
+            /** @example Correct! Well done. */
+            feedback?: string | null;
+        };
+        AttemptDetail: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            activity_id: string;
+            /** Format: uuid */
+            user_id: string;
+            /**
+             * @example graded
+             * @enum {string}
+             */
+            status: "in_progress" | "grading" | "graded" | "failed";
+            /** @description Submitted response payload. */
+            response?: Record<string, never> | null;
+            /** @example 90 */
+            score?: number | null;
+            /** @example 100 */
+            max_score?: number | null;
+            /** @example Good comprehension of the reading passage. */
+            feedback?: string | null;
+            /** @example 45000 */
+            duration_ms?: number | null;
+            /**
+             * Format: date-time
+             * @example 2026-08-24T09:00:00Z
+             */
+            started_at: string;
+            /**
+             * Format: date-time
+             * @example 2026-08-24T09:01:00Z
+             */
+            completed_at?: string | null;
+        };
+        StartSessionRequest: {
+            /** @description Optional client session context. */
+            metadata?: Record<string, never>;
+        };
+        LearningSession: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            user_id: string;
+            /**
+             * Format: date-time
+             * @example 2026-08-24T09:00:00Z
+             */
+            started_at: string;
+            /**
+             * Format: date-time
+             * @example null
+             */
+            ended_at?: string | null;
+            /** @example 0 */
+            activities_completed: number;
+            /** @example 0 */
+            minutes: number;
+        };
+        CompleteSessionRequest: {
+            /** @example 3 */
+            activities_completed?: number | null;
+        };
     };
     responses: {
         /** @description The request is malformed or has an invalid cursor. */
@@ -2725,7 +3089,13 @@ export interface components {
             };
         };
     };
-    parameters: never;
+    parameters: {
+        /**
+         * @description UUIDv7 idempotency key to prevent duplicate attempt submission.
+         * @example 0199a1c2-3d4e-7f80-9abc-def012345683
+         */
+        IdempotencyKey: string;
+    };
     requestBodies: never;
     headers: {
         /**
@@ -5395,6 +5765,354 @@ export interface operations {
                     "application/json": components["schemas"]["ContentItem"];
                 };
             };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    enrollCourse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Enrolment created. */
+            201: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345680",
+                     *       "user_id": "0199a1c2-3d4e-7f80-9abc-def01234567e",
+                     *       "course_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "status": "active",
+                     *       "started_at": "2026-08-24T09:00:00Z",
+                     *       "completed_at": null
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Enrollment"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getDashboard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Learner dashboard state. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    getProgress: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Overall learner progress. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "courses": [
+                     *         {
+                     *           "course_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *           "status": "in_progress",
+                     *           "completed_activities": 12,
+                     *           "total_activities": 40,
+                     *           "percentage": 30,
+                     *           "score": 88,
+                     *           "completed_at": null
+                     *         }
+                     *       ],
+                     *       "skills": [
+                     *         {
+                     *           "skill": "vocabulary",
+                     *           "level": "B1",
+                     *           "confidence": 0.85,
+                     *           "updated_at": "2026-08-24T09:00:00Z"
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ProgressResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    startAttempt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Attempt started. */
+            201: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "attempt_id": "0199a1c2-3d4e-7f80-9abc-def012345681",
+                     *       "activity_id": "0199a1c2-3d4e-7f80-9abc-def01234567b",
+                     *       "status": "in_progress",
+                     *       "started_at": "2026-08-24T09:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["StartAttemptResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    submitAttempt: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description UUIDv7 idempotency key to prevent duplicate attempt submission.
+                 * @example 0199a1c2-3d4e-7f80-9abc-def012345683
+                 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "response": {
+                 *         "selected_option_id": "0199a1c2-3d4e-7f80-9abc-def01234567f"
+                 *       }
+                 *     }
+                 */
+                "application/json": components["schemas"]["SubmitAttemptRequest"];
+            };
+        };
+        responses: {
+            /** @description Attempt graded synchronously or existing result returned. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "attempt_id": "0199a1c2-3d4e-7f80-9abc-def012345681",
+                     *       "status": "graded",
+                     *       "score": 100,
+                     *       "max_score": 100,
+                     *       "correct": true,
+                     *       "feedback": "Correct! Well done."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SubmitAttemptResult"];
+                };
+            };
+            /** @description Attempt accepted for asynchronous grading. */
+            202: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "attempt_id": "0199a1c2-3d4e-7f80-9abc-def012345681",
+                     *       "status": "grading",
+                     *       "score": null,
+                     *       "max_score": null,
+                     *       "correct": null,
+                     *       "feedback": null
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SubmitAttemptResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    getAttempt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Attempt detail. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345681",
+                     *       "activity_id": "0199a1c2-3d4e-7f80-9abc-def01234567b",
+                     *       "user_id": "0199a1c2-3d4e-7f80-9abc-def01234567e",
+                     *       "status": "graded",
+                     *       "response": {
+                     *         "selected_option_id": "0199a1c2-3d4e-7f80-9abc-def01234567f"
+                     *       },
+                     *       "score": 100,
+                     *       "max_score": 100,
+                     *       "feedback": "Correct! Well done.",
+                     *       "duration_ms": 15000,
+                     *       "started_at": "2026-08-24T09:00:00Z",
+                     *       "completed_at": "2026-08-24T09:00:15Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["AttemptDetail"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    startLearningSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                /** @example {} */
+                "application/json": components["schemas"]["StartSessionRequest"];
+            };
+        };
+        responses: {
+            /** @description Session started. */
+            201: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345682",
+                     *       "user_id": "0199a1c2-3d4e-7f80-9abc-def01234567e",
+                     *       "started_at": "2026-08-24T09:00:00Z",
+                     *       "ended_at": null,
+                     *       "activities_completed": 0,
+                     *       "minutes": 0
+                     *     }
+                     */
+                    "application/json": components["schemas"]["LearningSession"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    completeLearningSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                /**
+                 * @example {
+                 *       "activities_completed": 3
+                 *     }
+                 */
+                "application/json": components["schemas"]["CompleteSessionRequest"];
+            };
+        };
+        responses: {
+            /** @description Session completed. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345682",
+                     *       "user_id": "0199a1c2-3d4e-7f80-9abc-def01234567e",
+                     *       "started_at": "2026-08-24T09:00:00Z",
+                     *       "ended_at": "2026-08-24T09:25:00Z",
+                     *       "activities_completed": 3,
+                     *       "minutes": 25
+                     *     }
+                     */
+                    "application/json": components["schemas"]["LearningSession"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];

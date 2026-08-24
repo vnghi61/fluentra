@@ -91,6 +91,13 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 // The interface specification for the client above.
 type ClientInterface interface {
 
+	// StartAttempt Start an activity attempt.
+	//
+	// Verifies unlocking prerequisites and starts a new in-progress attempt for an activity.
+	//
+	// Corresponds with POST /activities/{id}/attempts (the `StartAttempt` operationId).
+	StartAttempt(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AuditSearchLogs Search the audit trail.
 	//
 	// Returns audit entries newest first, within a bounded time window.
@@ -410,6 +417,31 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /admin/users/{id}/suspend (the `AdminSuspendUser` operationId).
 	AdminSuspendUser(ctx context.Context, id openapi_types.UUID, body AdminSuspendUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetAttempt Read attempt state and result.
+	//
+	// Returns attempt status, response payload, and grading result.
+	//
+	// Corresponds with GET /attempts/{id} (the `GetAttempt` operationId).
+	GetAttempt(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SubmitAttemptWithBody Submit an attempt for grading.
+	//
+	// Submits a learner response for grading. Requires an Idempotency-Key header. Synchronous grading returns 200 with score and feedback; asynchronous grading returns 202 with attempt status grading.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /attempts/{id}/submit (the `SubmitAttempt` operationId).
+	SubmitAttemptWithBody(ctx context.Context, id openapi_types.UUID, params *SubmitAttemptParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SubmitAttempt Submit an attempt for grading.
+	//
+	// Submits a learner response for grading. Requires an Idempotency-Key header. Synchronous grading returns 200 with score and feedback; asynchronous grading returns 202 with attempt status grading.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /attempts/{id}/submit (the `SubmitAttempt` operationId).
+	SubmitAttempt(ctx context.Context, id openapi_types.UUID, params *SubmitAttemptParams, body SubmitAttemptJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// AuthResendChallenge Send a new code for a challenge.
 	//
@@ -758,6 +790,13 @@ type ClientInterface interface {
 	// Corresponds with GET /courses (the `ListCourses` operationId).
 	ListCourses(ctx context.Context, params *ListCoursesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// EnrollCourse Enrol in a course.
+	//
+	// Enrols the authenticated learner into the specified course.
+	//
+	// Corresponds with POST /courses/{id}/enroll (the `EnrollCourse` operationId).
+	EnrollCourse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetCourseBySlug Get course detail with units and lesson summaries.
 	//
 	// Returns one published course with its ordered units and each unit's lesson summaries, for the learner catalogue and course landing page.
@@ -847,6 +886,13 @@ type ClientInterface interface {
 	// Corresponds with POST /me/avatar/upload-intent (the `UserRequestAvatarUploadIntent` operationId).
 	UserRequestAvatarUploadIntent(ctx context.Context, body UserRequestAvatarUploadIntentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetDashboard Get learner dashboard state.
+	//
+	// Returns current learner plan, resume/next activity (or explicit not_started state), due review count, and per-skill mastery.
+	//
+	// Corresponds with GET /me/dashboard (the `GetDashboard` operationId).
+	GetDashboard(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// UserCancelDeletion Cancel a pending account deletion request.
 	//
 	// Cancels the active pending deletion request during the 30-day grace period and restores the account to active status.
@@ -907,6 +953,49 @@ type ClientInterface interface {
 	// Corresponds with PUT /me/preferences (the `UserReplaceMyPreferences` operationId).
 	UserReplaceMyPreferences(ctx context.Context, body UserReplaceMyPreferencesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetProgress Get learner overall progress.
+	//
+	// Returns rolled-up progress across enrolled courses and estimated skill masteries.
+	//
+	// Corresponds with GET /me/progress (the `GetProgress` operationId).
+	GetProgress(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StartLearningSessionWithBody Start a study session.
+	//
+	// Records the beginning of an active learner study session.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /me/sessions (the `StartLearningSession` operationId).
+	StartLearningSessionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StartLearningSession Start a study session.
+	//
+	// Records the beginning of an active learner study session.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /me/sessions (the `StartLearningSession` operationId).
+	StartLearningSession(ctx context.Context, body StartLearningSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CompleteLearningSessionWithBody Complete a study session.
+	//
+	// Closes an active study session and publishes the learning.session_completed event.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /me/sessions/{id}/complete (the `CompleteLearningSession` operationId).
+	CompleteLearningSessionWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CompleteLearningSession Complete a study session.
+	//
+	// Closes an active study session and publishes the learning.session_completed event.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /me/sessions/{id}/complete (the `CompleteLearningSession` operationId).
+	CompleteLearningSession(ctx context.Context, id openapi_types.UUID, body CompleteLearningSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// SystemPing Check API dependency connectivity.
 	//
 	// Performs lightweight PostgreSQL and Redis checks for the trace proof.
@@ -927,6 +1016,23 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /version (the `SystemVersion` operationId).
 	SystemVersion(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+// StartAttempt Start an activity attempt.
+//
+// Verifies unlocking prerequisites and starts a new in-progress attempt for an activity.
+//
+// Corresponds with POST /activities/{id}/attempts (the `StartAttempt` operationId).
+func (c *Client) StartAttempt(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStartAttemptRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 // AuditSearchLogs Search the audit trail.
@@ -1609,6 +1715,61 @@ func (c *Client) AdminSuspendUser(ctx context.Context, id openapi_types.UUID, bo
 	return c.Client.Do(req)
 }
 
+// GetAttempt Read attempt state and result.
+//
+// Returns attempt status, response payload, and grading result.
+//
+// Corresponds with GET /attempts/{id} (the `GetAttempt` operationId).
+func (c *Client) GetAttempt(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetAttemptRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SubmitAttemptWithBody Submit an attempt for grading.
+//
+// Submits a learner response for grading. Requires an Idempotency-Key header. Synchronous grading returns 200 with score and feedback; asynchronous grading returns 202 with attempt status grading.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /attempts/{id}/submit (the `SubmitAttempt` operationId).
+func (c *Client) SubmitAttemptWithBody(ctx context.Context, id openapi_types.UUID, params *SubmitAttemptParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSubmitAttemptRequestWithBody(c.Server, id, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SubmitAttempt Submit an attempt for grading.
+//
+// Submits a learner response for grading. Requires an Idempotency-Key header. Synchronous grading returns 200 with score and feedback; asynchronous grading returns 202 with attempt status grading.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /attempts/{id}/submit (the `SubmitAttempt` operationId).
+func (c *Client) SubmitAttempt(ctx context.Context, id openapi_types.UUID, params *SubmitAttemptParams, body SubmitAttemptJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSubmitAttemptRequest(c.Server, id, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // AuthResendChallenge Send a new code for a challenge.
 //
 // Replaces the code and clears the attempt count. It does **not** extend `expires_at`: resending gives the learner a fresh code, not an indefinitely valid challenge.
@@ -2246,6 +2407,23 @@ func (c *Client) ListCourses(ctx context.Context, params *ListCoursesParams, req
 	return c.Client.Do(req)
 }
 
+// EnrollCourse Enrol in a course.
+//
+// Enrols the authenticated learner into the specified course.
+//
+// Corresponds with POST /courses/{id}/enroll (the `EnrollCourse` operationId).
+func (c *Client) EnrollCourse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewEnrollCourseRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // GetCourseBySlug Get course detail with units and lesson summaries.
 //
 // Returns one published course with its ordered units and each unit's lesson summaries, for the learner catalogue and course landing page.
@@ -2445,6 +2623,23 @@ func (c *Client) UserRequestAvatarUploadIntent(ctx context.Context, body UserReq
 	return c.Client.Do(req)
 }
 
+// GetDashboard Get learner dashboard state.
+//
+// Returns current learner plan, resume/next activity (or explicit not_started state), due review count, and per-skill mastery.
+//
+// Corresponds with GET /me/dashboard (the `GetDashboard` operationId).
+func (c *Client) GetDashboard(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetDashboardRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // UserCancelDeletion Cancel a pending account deletion request.
 //
 // Cancels the active pending deletion request during the 30-day grace period and restores the account to active status.
@@ -2585,6 +2780,99 @@ func (c *Client) UserReplaceMyPreferences(ctx context.Context, body UserReplaceM
 	return c.Client.Do(req)
 }
 
+// GetProgress Get learner overall progress.
+//
+// Returns rolled-up progress across enrolled courses and estimated skill masteries.
+//
+// Corresponds with GET /me/progress (the `GetProgress` operationId).
+func (c *Client) GetProgress(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetProgressRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StartLearningSessionWithBody Start a study session.
+//
+// Records the beginning of an active learner study session.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /me/sessions (the `StartLearningSession` operationId).
+func (c *Client) StartLearningSessionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStartLearningSessionRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StartLearningSession Start a study session.
+//
+// Records the beginning of an active learner study session.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /me/sessions (the `StartLearningSession` operationId).
+func (c *Client) StartLearningSession(ctx context.Context, body StartLearningSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStartLearningSessionRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CompleteLearningSessionWithBody Complete a study session.
+//
+// Closes an active study session and publishes the learning.session_completed event.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /me/sessions/{id}/complete (the `CompleteLearningSession` operationId).
+func (c *Client) CompleteLearningSessionWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCompleteLearningSessionRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CompleteLearningSession Complete a study session.
+//
+// Closes an active study session and publishes the learning.session_completed event.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /me/sessions/{id}/complete (the `CompleteLearningSession` operationId).
+func (c *Client) CompleteLearningSession(ctx context.Context, id openapi_types.UUID, body CompleteLearningSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCompleteLearningSessionRequest(c.Server, id, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // SystemPing Check API dependency connectivity.
 //
 // Performs lightweight PostgreSQL and Redis checks for the trace proof.
@@ -2634,6 +2922,40 @@ func (c *Client) SystemVersion(ctx context.Context, reqEditors ...RequestEditorF
 		return nil, err
 	}
 	return c.Client.Do(req)
+}
+
+// NewStartAttemptRequest constructs an http.Request for the StartAttempt method
+func NewStartAttemptRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/activities/%s/attempts", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
 }
 
 // NewAuditSearchLogsRequest constructs an http.Request for the AuditSearchLogs method
@@ -3880,6 +4202,100 @@ func NewAdminSuspendUserRequestWithBody(server string, id openapi_types.UUID, co
 	return req, nil
 }
 
+// NewGetAttemptRequest constructs an http.Request for the GetAttempt method
+func NewGetAttemptRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/attempts/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSubmitAttemptRequest calls the generic SubmitAttempt builder with application/json body
+func NewSubmitAttemptRequest(server string, id openapi_types.UUID, params *SubmitAttemptParams, body SubmitAttemptJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSubmitAttemptRequestWithBody(server, id, params, "application/json", bodyReader)
+}
+
+// NewSubmitAttemptRequestWithBody constructs an http.Request for the SubmitAttempt method, with any body, and a specified content type
+func NewSubmitAttemptRequestWithBody(server string, id openapi_types.UUID, params *SubmitAttemptParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/attempts/%s/submit", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: "uuid"})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("Idempotency-Key", headerParam0)
+
+	}
+
+	return req, nil
+}
+
 // NewAuthResendChallengeRequest constructs an http.Request for the AuthResendChallenge method
 func NewAuthResendChallengeRequest(server string, id openapi_types.UUID) (*http.Request, error) {
 	var err error
@@ -4727,6 +5143,40 @@ func NewListCoursesRequest(server string, params *ListCoursesParams) (*http.Requ
 	return req, nil
 }
 
+// NewEnrollCourseRequest constructs an http.Request for the EnrollCourse method
+func NewEnrollCourseRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/courses/%s/enroll", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetCourseBySlugRequest constructs an http.Request for the GetCourseBySlug method
 func NewGetCourseBySlugRequest(server string, slug string) (*http.Request, error) {
 	var err error
@@ -4996,6 +5446,33 @@ func NewUserRequestAvatarUploadIntentRequestWithBody(server string, contentType 
 	return req, nil
 }
 
+// NewGetDashboardRequest constructs an http.Request for the GetDashboard method
+func NewGetDashboardRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/dashboard")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewUserCancelDeletionRequest constructs an http.Request for the UserCancelDeletion method
 func NewUserCancelDeletionRequest(server string) (*http.Request, error) {
 	var err error
@@ -5212,6 +5689,120 @@ func NewUserReplaceMyPreferencesRequestWithBody(server string, contentType strin
 	return req, nil
 }
 
+// NewGetProgressRequest constructs an http.Request for the GetProgress method
+func NewGetProgressRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/progress")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewStartLearningSessionRequest calls the generic StartLearningSession builder with application/json body
+func NewStartLearningSessionRequest(server string, body StartLearningSessionJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewStartLearningSessionRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewStartLearningSessionRequestWithBody constructs an http.Request for the StartLearningSession method, with any body, and a specified content type
+func NewStartLearningSessionRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/sessions")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCompleteLearningSessionRequest calls the generic CompleteLearningSession builder with application/json body
+func NewCompleteLearningSessionRequest(server string, id openapi_types.UUID, body CompleteLearningSessionJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCompleteLearningSessionRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewCompleteLearningSessionRequestWithBody constructs an http.Request for the CompleteLearningSession method, with any body, and a specified content type
+func NewCompleteLearningSessionRequestWithBody(server string, id openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/sessions/%s/complete", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewSystemPingRequest constructs an http.Request for the SystemPing method
 func NewSystemPingRequest(server string) (*http.Request, error) {
 	var err error
@@ -5336,6 +5927,15 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
+
+	// StartAttemptWithResponse Start an activity attempt.
+	//
+	// Verifies unlocking prerequisites and starts a new in-progress attempt for an activity.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /activities/{id}/attempts (the `StartAttempt` operationId).
+	StartAttemptWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*StartAttemptResponse, error)
 
 	// AuditSearchLogsWithResponse Search the audit trail.
 	//
@@ -5680,6 +6280,33 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /admin/users/{id}/suspend (the `AdminSuspendUser` operationId).
 	AdminSuspendUserWithResponse(ctx context.Context, id openapi_types.UUID, body AdminSuspendUserJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminSuspendUserResponse, error)
+
+	// GetAttemptWithResponse Read attempt state and result.
+	//
+	// Returns attempt status, response payload, and grading result.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /attempts/{id} (the `GetAttempt` operationId).
+	GetAttemptWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetAttemptResponse, error)
+
+	// SubmitAttemptWithBodyWithResponse Submit an attempt for grading.
+	//
+	// Submits a learner response for grading. Requires an Idempotency-Key header. Synchronous grading returns 200 with score and feedback; asynchronous grading returns 202 with attempt status grading.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /attempts/{id}/submit (the `SubmitAttempt` operationId).
+	SubmitAttemptWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, params *SubmitAttemptParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SubmitAttemptResponse, error)
+
+	// SubmitAttemptWithResponse Submit an attempt for grading.
+	//
+	// Submits a learner response for grading. Requires an Idempotency-Key header. Synchronous grading returns 200 with score and feedback; asynchronous grading returns 202 with attempt status grading.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /attempts/{id}/submit (the `SubmitAttempt` operationId).
+	SubmitAttemptWithResponse(ctx context.Context, id openapi_types.UUID, params *SubmitAttemptParams, body SubmitAttemptJSONRequestBody, reqEditors ...RequestEditorFn) (*SubmitAttemptResponse, error)
 
 	// AuthResendChallengeWithResponse Send a new code for a challenge.
 	//
@@ -6054,6 +6681,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /courses (the `ListCourses` operationId).
 	ListCoursesWithResponse(ctx context.Context, params *ListCoursesParams, reqEditors ...RequestEditorFn) (*ListCoursesResponse, error)
 
+	// EnrollCourseWithResponse Enrol in a course.
+	//
+	// Enrols the authenticated learner into the specified course.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /courses/{id}/enroll (the `EnrollCourse` operationId).
+	EnrollCourseWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*EnrollCourseResponse, error)
+
 	// GetCourseBySlugWithResponse Get course detail with units and lesson summaries.
 	//
 	// Returns one published course with its ordered units and each unit's lesson summaries, for the learner catalogue and course landing page.
@@ -6153,6 +6789,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /me/avatar/upload-intent (the `UserRequestAvatarUploadIntent` operationId).
 	UserRequestAvatarUploadIntentWithResponse(ctx context.Context, body UserRequestAvatarUploadIntentJSONRequestBody, reqEditors ...RequestEditorFn) (*UserRequestAvatarUploadIntentResponse, error)
 
+	// GetDashboardWithResponse Get learner dashboard state.
+	//
+	// Returns current learner plan, resume/next activity (or explicit not_started state), due review count, and per-skill mastery.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /me/dashboard (the `GetDashboard` operationId).
+	GetDashboardWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetDashboardResponse, error)
+
 	// UserCancelDeletionWithResponse Cancel a pending account deletion request.
 	//
 	// Cancels the active pending deletion request during the 30-day grace period and restores the account to active status.
@@ -6225,6 +6870,51 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with PUT /me/preferences (the `UserReplaceMyPreferences` operationId).
 	UserReplaceMyPreferencesWithResponse(ctx context.Context, body UserReplaceMyPreferencesJSONRequestBody, reqEditors ...RequestEditorFn) (*UserReplaceMyPreferencesResponse, error)
 
+	// GetProgressWithResponse Get learner overall progress.
+	//
+	// Returns rolled-up progress across enrolled courses and estimated skill masteries.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /me/progress (the `GetProgress` operationId).
+	GetProgressWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetProgressResponse, error)
+
+	// StartLearningSessionWithBodyWithResponse Start a study session.
+	//
+	// Records the beginning of an active learner study session.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /me/sessions (the `StartLearningSession` operationId).
+	StartLearningSessionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StartLearningSessionResponse, error)
+
+	// StartLearningSessionWithResponse Start a study session.
+	//
+	// Records the beginning of an active learner study session.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /me/sessions (the `StartLearningSession` operationId).
+	StartLearningSessionWithResponse(ctx context.Context, body StartLearningSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*StartLearningSessionResponse, error)
+
+	// CompleteLearningSessionWithBodyWithResponse Complete a study session.
+	//
+	// Closes an active study session and publishes the learning.session_completed event.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /me/sessions/{id}/complete (the `CompleteLearningSession` operationId).
+	CompleteLearningSessionWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CompleteLearningSessionResponse, error)
+
+	// CompleteLearningSessionWithResponse Complete a study session.
+	//
+	// Closes an active study session and publishes the learning.session_completed event.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /me/sessions/{id}/complete (the `CompleteLearningSession` operationId).
+	CompleteLearningSessionWithResponse(ctx context.Context, id openapi_types.UUID, body CompleteLearningSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*CompleteLearningSessionResponse, error)
+
 	// SystemPingWithResponse Check API dependency connectivity.
 	//
 	// Performs lightweight PostgreSQL and Redis checks for the trace proof.
@@ -6251,6 +6941,89 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /version (the `SystemVersion` operationId).
 	SystemVersionWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*SystemVersionResponse, error)
+}
+
+// StartAttemptResponse201Headers the declared response headers of an HTTP 201 response for StartAttempt
+type StartAttemptResponse201Headers struct {
+	XRequestId *string
+}
+
+type StartAttemptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *StartAttemptResult
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *StartAttemptResponse201Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r StartAttemptResponse) GetJSON201() *StartAttemptResult {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r StartAttemptResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r StartAttemptResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r StartAttemptResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r StartAttemptResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r StartAttemptResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r StartAttemptResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StartAttemptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StartAttemptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StartAttemptResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 // AuditSearchLogsResponse200Headers the declared response headers of an HTTP 200 response for AuditSearchLogs
@@ -8014,6 +8787,179 @@ func (r AdminSuspendUserResponse) ContentType() string {
 	return ""
 }
 
+// GetAttemptResponse200Headers the declared response headers of an HTTP 200 response for GetAttempt
+type GetAttemptResponse200Headers struct {
+	XRequestId *string
+}
+
+type GetAttemptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AttemptDetail
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetAttemptResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetAttemptResponse) GetJSON200() *AttemptDetail {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetAttemptResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r GetAttemptResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GetAttemptResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetAttemptResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetAttemptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetAttemptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetAttemptResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// SubmitAttemptResponse200Headers the declared response headers of an HTTP 200 response for SubmitAttempt
+type SubmitAttemptResponse200Headers struct {
+	XRequestId *string
+}
+
+// SubmitAttemptResponse202Headers the declared response headers of an HTTP 202 response for SubmitAttempt
+type SubmitAttemptResponse202Headers struct {
+	XRequestId *string
+}
+
+type SubmitAttemptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SubmitAttemptResult
+	// JSON202 the response for an HTTP 202 `application/json` response
+	JSON202 *SubmitAttemptResult
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *SubmitAttemptResponse200Headers
+	// Headers202 the parsed response headers for an HTTP 202 response
+	Headers202 *SubmitAttemptResponse202Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SubmitAttemptResponse) GetJSON200() *SubmitAttemptResult {
+	return r.JSON200
+}
+
+// GetJSON202 returns the response for an HTTP 202 `application/json` response
+func (r SubmitAttemptResponse) GetJSON202() *SubmitAttemptResult {
+	return r.JSON202
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r SubmitAttemptResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r SubmitAttemptResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r SubmitAttemptResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r SubmitAttemptResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r SubmitAttemptResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r SubmitAttemptResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r SubmitAttemptResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SubmitAttemptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SubmitAttemptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SubmitAttemptResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // AuthResendChallengeResponse200Headers the declared response headers of an HTTP 200 response for AuthResendChallenge
 type AuthResendChallengeResponse200Headers struct {
 	XRequestId *string
@@ -9662,6 +10608,89 @@ func (r ListCoursesResponse) ContentType() string {
 	return ""
 }
 
+// EnrollCourseResponse201Headers the declared response headers of an HTTP 201 response for EnrollCourse
+type EnrollCourseResponse201Headers struct {
+	XRequestId *string
+}
+
+type EnrollCourseResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *Enrollment
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *EnrollCourseResponse201Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r EnrollCourseResponse) GetJSON201() *Enrollment {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r EnrollCourseResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r EnrollCourseResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r EnrollCourseResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r EnrollCourseResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r EnrollCourseResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r EnrollCourseResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r EnrollCourseResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r EnrollCourseResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r EnrollCourseResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // GetCourseBySlugResponse200Headers the declared response headers of an HTTP 200 response for GetCourseBySlug
 type GetCourseBySlugResponse200Headers struct {
 	XRequestId *string
@@ -10196,6 +11225,68 @@ func (r UserRequestAvatarUploadIntentResponse) ContentType() string {
 	return ""
 }
 
+// GetDashboardResponse200Headers the declared response headers of an HTTP 200 response for GetDashboard
+type GetDashboardResponse200Headers struct {
+	XRequestId *string
+}
+
+type GetDashboardResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *DashboardResponse
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetDashboardResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetDashboardResponse) GetJSON200() *DashboardResponse {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetDashboardResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r GetDashboardResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetBody returns the raw response body bytes
+func (r GetDashboardResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetDashboardResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetDashboardResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetDashboardResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // UserCancelDeletionResponse200Headers the declared response headers of an HTTP 200 response for UserCancelDeletion
 type UserCancelDeletionResponse200Headers struct {
 	XRequestId *string
@@ -10644,6 +11735,220 @@ func (r UserReplaceMyPreferencesResponse) ContentType() string {
 	return ""
 }
 
+// GetProgressResponse200Headers the declared response headers of an HTTP 200 response for GetProgress
+type GetProgressResponse200Headers struct {
+	XRequestId *string
+}
+
+type GetProgressResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ProgressResponse
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetProgressResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetProgressResponse) GetJSON200() *ProgressResponse {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetProgressResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r GetProgressResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetBody returns the raw response body bytes
+func (r GetProgressResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetProgressResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetProgressResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetProgressResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// StartLearningSessionResponse201Headers the declared response headers of an HTTP 201 response for StartLearningSession
+type StartLearningSessionResponse201Headers struct {
+	XRequestId *string
+}
+
+type StartLearningSessionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *LearningSession
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *StartLearningSessionResponse201Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r StartLearningSessionResponse) GetJSON201() *LearningSession {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r StartLearningSessionResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r StartLearningSessionResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r StartLearningSessionResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetBody returns the raw response body bytes
+func (r StartLearningSessionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StartLearningSessionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StartLearningSessionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StartLearningSessionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// CompleteLearningSessionResponse200Headers the declared response headers of an HTTP 200 response for CompleteLearningSession
+type CompleteLearningSessionResponse200Headers struct {
+	XRequestId *string
+}
+
+type CompleteLearningSessionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *LearningSession
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *CompleteLearningSessionResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CompleteLearningSessionResponse) GetJSON200() *LearningSession {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r CompleteLearningSessionResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r CompleteLearningSessionResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r CompleteLearningSessionResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r CompleteLearningSessionResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r CompleteLearningSessionResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r CompleteLearningSessionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CompleteLearningSessionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CompleteLearningSessionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CompleteLearningSessionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // SystemPingResponse200Headers the declared response headers of an HTTP 200 response for SystemPing
 type SystemPingResponse200Headers struct {
 	XRequestId *string
@@ -10800,6 +12105,21 @@ func (r SystemVersionResponse) ContentType() string {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
 	return ""
+}
+
+// StartAttemptWithResponse Start an activity attempt.
+//
+// Verifies unlocking prerequisites and starts a new in-progress attempt for an activity.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /activities/{id}/attempts (the `StartAttempt` operationId).
+func (c *ClientWithResponses) StartAttemptWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*StartAttemptResponse, error) {
+	rsp, err := c.StartAttempt(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStartAttemptResponse(rsp)
 }
 
 // AuditSearchLogsWithResponse Search the audit trail.
@@ -11362,6 +12682,51 @@ func (c *ClientWithResponses) AdminSuspendUserWithResponse(ctx context.Context, 
 	return ParseAdminSuspendUserResponse(rsp)
 }
 
+// GetAttemptWithResponse Read attempt state and result.
+//
+// Returns attempt status, response payload, and grading result.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /attempts/{id} (the `GetAttempt` operationId).
+func (c *ClientWithResponses) GetAttemptWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetAttemptResponse, error) {
+	rsp, err := c.GetAttempt(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAttemptResponse(rsp)
+}
+
+// SubmitAttemptWithBodyWithResponse Submit an attempt for grading.
+//
+// Submits a learner response for grading. Requires an Idempotency-Key header. Synchronous grading returns 200 with score and feedback; asynchronous grading returns 202 with attempt status grading.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /attempts/{id}/submit (the `SubmitAttempt` operationId).
+func (c *ClientWithResponses) SubmitAttemptWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, params *SubmitAttemptParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SubmitAttemptResponse, error) {
+	rsp, err := c.SubmitAttemptWithBody(ctx, id, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSubmitAttemptResponse(rsp)
+}
+
+// SubmitAttemptWithResponse Submit an attempt for grading.
+//
+// Submits a learner response for grading. Requires an Idempotency-Key header. Synchronous grading returns 200 with score and feedback; asynchronous grading returns 202 with attempt status grading.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /attempts/{id}/submit (the `SubmitAttempt` operationId).
+func (c *ClientWithResponses) SubmitAttemptWithResponse(ctx context.Context, id openapi_types.UUID, params *SubmitAttemptParams, body SubmitAttemptJSONRequestBody, reqEditors ...RequestEditorFn) (*SubmitAttemptResponse, error) {
+	rsp, err := c.SubmitAttempt(ctx, id, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSubmitAttemptResponse(rsp)
+}
+
 // AuthResendChallengeWithResponse Send a new code for a challenge.
 //
 // Replaces the code and clears the attempt count. It does **not** extend `expires_at`: resending gives the learner a fresh code, not an indefinitely valid challenge.
@@ -11909,6 +13274,21 @@ func (c *ClientWithResponses) ListCoursesWithResponse(ctx context.Context, param
 	return ParseListCoursesResponse(rsp)
 }
 
+// EnrollCourseWithResponse Enrol in a course.
+//
+// Enrols the authenticated learner into the specified course.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /courses/{id}/enroll (the `EnrollCourse` operationId).
+func (c *ClientWithResponses) EnrollCourseWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*EnrollCourseResponse, error) {
+	rsp, err := c.EnrollCourse(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEnrollCourseResponse(rsp)
+}
+
 // GetCourseBySlugWithResponse Get course detail with units and lesson summaries.
 //
 // Returns one published course with its ordered units and each unit's lesson summaries, for the learner catalogue and course landing page.
@@ -12074,6 +13454,21 @@ func (c *ClientWithResponses) UserRequestAvatarUploadIntentWithResponse(ctx cont
 	return ParseUserRequestAvatarUploadIntentResponse(rsp)
 }
 
+// GetDashboardWithResponse Get learner dashboard state.
+//
+// Returns current learner plan, resume/next activity (or explicit not_started state), due review count, and per-skill mastery.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /me/dashboard (the `GetDashboard` operationId).
+func (c *ClientWithResponses) GetDashboardWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetDashboardResponse, error) {
+	rsp, err := c.GetDashboard(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetDashboardResponse(rsp)
+}
+
 // UserCancelDeletionWithResponse Cancel a pending account deletion request.
 //
 // Cancels the active pending deletion request during the 30-day grace period and restores the account to active status.
@@ -12194,6 +13589,81 @@ func (c *ClientWithResponses) UserReplaceMyPreferencesWithResponse(ctx context.C
 	return ParseUserReplaceMyPreferencesResponse(rsp)
 }
 
+// GetProgressWithResponse Get learner overall progress.
+//
+// Returns rolled-up progress across enrolled courses and estimated skill masteries.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /me/progress (the `GetProgress` operationId).
+func (c *ClientWithResponses) GetProgressWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetProgressResponse, error) {
+	rsp, err := c.GetProgress(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetProgressResponse(rsp)
+}
+
+// StartLearningSessionWithBodyWithResponse Start a study session.
+//
+// Records the beginning of an active learner study session.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /me/sessions (the `StartLearningSession` operationId).
+func (c *ClientWithResponses) StartLearningSessionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StartLearningSessionResponse, error) {
+	rsp, err := c.StartLearningSessionWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStartLearningSessionResponse(rsp)
+}
+
+// StartLearningSessionWithResponse Start a study session.
+//
+// Records the beginning of an active learner study session.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /me/sessions (the `StartLearningSession` operationId).
+func (c *ClientWithResponses) StartLearningSessionWithResponse(ctx context.Context, body StartLearningSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*StartLearningSessionResponse, error) {
+	rsp, err := c.StartLearningSession(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStartLearningSessionResponse(rsp)
+}
+
+// CompleteLearningSessionWithBodyWithResponse Complete a study session.
+//
+// Closes an active study session and publishes the learning.session_completed event.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /me/sessions/{id}/complete (the `CompleteLearningSession` operationId).
+func (c *ClientWithResponses) CompleteLearningSessionWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CompleteLearningSessionResponse, error) {
+	rsp, err := c.CompleteLearningSessionWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCompleteLearningSessionResponse(rsp)
+}
+
+// CompleteLearningSessionWithResponse Complete a study session.
+//
+// Closes an active study session and publishes the learning.session_completed event.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /me/sessions/{id}/complete (the `CompleteLearningSession` operationId).
+func (c *ClientWithResponses) CompleteLearningSessionWithResponse(ctx context.Context, id openapi_types.UUID, body CompleteLearningSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*CompleteLearningSessionResponse, error) {
+	rsp, err := c.CompleteLearningSession(ctx, id, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCompleteLearningSessionResponse(rsp)
+}
+
 // SystemPingWithResponse Check API dependency connectivity.
 //
 // Performs lightweight PostgreSQL and Redis checks for the trace proof.
@@ -12237,6 +13707,80 @@ func (c *ClientWithResponses) SystemVersionWithResponse(ctx context.Context, req
 		return nil, err
 	}
 	return ParseSystemVersionResponse(rsp)
+}
+
+// ParseStartAttemptResponse parses an HTTP response from a StartAttemptWithResponse call
+func ParseStartAttemptResponse(rsp *http.Response) (*StartAttemptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StartAttemptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest StartAttemptResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers StartAttemptResponse201Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers201 = &headers
+	}
+
+	return response, nil
 }
 
 // ParseAuditSearchLogsResponse parses an HTTP response from a AuditSearchLogsWithResponse call
@@ -13782,6 +15326,164 @@ func ParseAdminSuspendUserResponse(rsp *http.Response) (*AdminSuspendUserRespons
 			headers.XRequestId = &value
 		}
 		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGetAttemptResponse parses an HTTP response from a GetAttemptWithResponse call
+func ParseGetAttemptResponse(rsp *http.Response) (*GetAttemptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetAttemptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AttemptDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetAttemptResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseSubmitAttemptResponse parses an HTTP response from a SubmitAttemptWithResponse call
+func ParseSubmitAttemptResponse(rsp *http.Response) (*SubmitAttemptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SubmitAttemptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SubmitAttemptResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest SubmitAttemptResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers SubmitAttemptResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 202:
+		var headers SubmitAttemptResponse202Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers202 = &headers
 	}
 
 	return response, nil
@@ -15624,6 +17326,80 @@ func ParseListCoursesResponse(rsp *http.Response) (*ListCoursesResponse, error) 
 	return response, nil
 }
 
+// ParseEnrollCourseResponse parses an HTTP response from a EnrollCourseWithResponse call
+func ParseEnrollCourseResponse(rsp *http.Response) (*EnrollCourseResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &EnrollCourseResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest Enrollment
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers EnrollCourseResponse201Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers201 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseGetCourseBySlugResponse parses an HTTP response from a GetCourseBySlugWithResponse call
 func ParseGetCourseBySlugResponse(rsp *http.Response) (*GetCourseBySlugResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -16107,6 +17883,59 @@ func ParseUserRequestAvatarUploadIntentResponse(rsp *http.Response) (*UserReques
 	return response, nil
 }
 
+// ParseGetDashboardResponse parses an HTTP response from a GetDashboardWithResponse call
+func ParseGetDashboardResponse(rsp *http.Response) (*GetDashboardResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetDashboardResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DashboardResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetDashboardResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseUserCancelDeletionResponse parses an HTTP response from a UserCancelDeletionWithResponse call
 func ParseUserCancelDeletionResponse(rsp *http.Response) (*UserCancelDeletionResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -16479,6 +18308,193 @@ func ParseUserReplaceMyPreferencesResponse(rsp *http.Response) (*UserReplaceMyPr
 	switch {
 	case rsp.StatusCode == 200:
 		var headers UserReplaceMyPreferencesResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGetProgressResponse parses an HTTP response from a GetProgressWithResponse call
+func ParseGetProgressResponse(rsp *http.Response) (*GetProgressResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetProgressResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ProgressResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetProgressResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseStartLearningSessionResponse parses an HTTP response from a StartLearningSessionWithResponse call
+func ParseStartLearningSessionResponse(rsp *http.Response) (*StartLearningSessionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StartLearningSessionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest LearningSession
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers StartLearningSessionResponse201Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers201 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseCompleteLearningSessionResponse parses an HTTP response from a CompleteLearningSessionWithResponse call
+func ParseCompleteLearningSessionResponse(rsp *http.Response) (*CompleteLearningSessionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CompleteLearningSessionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LearningSession
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers CompleteLearningSessionResponse200Headers
 		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
 			var value string
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {

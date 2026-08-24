@@ -10,7 +10,7 @@ tables: [enrollments, progress, attempts, learning_sessions, placement_results, 
 depends_on: [lesson, content, srs, cache, job]
 depended_on_by: [gamification, analytics, admin, exam, vocabulary, grammar, reading, listening, speaking, writing]
 spec_version: 1.0.0
-last_verified: 2026-08-06
+last_verified: 2026-08-24
 ---
 
 # learning — TODO
@@ -40,6 +40,16 @@ agent knows what is already handled and what is deliberately deferred.
 - [ ] Adaptive placement test
 - [ ] Personalised path generation from placement plus mastery
 <!-- END GENERATED: todo -->
+
+## Progress
+
+The list above is generated from `tools/docgen/data/learning.json`, so its checkboxes cannot be
+ticked by hand — `make docs` rewrites the block and `make docs-check` fails until it matches.
+Completed work is recorded here instead.
+
+| Task | Done | What landed |
+|---|---|---|
+| P8.1 | 2026-08-24 | Contract types in `internal/modules/learning/contract/contract.go` (`ExerciseGrader`, `GradeResult`, `ProgressReader`, batched `UnlockChecker`, `ReviewItem`, `GradeRequest`, and 5 published event payloads); OpenAPI 3.1 surface with 8 paths, `Idempotency-Key` header parameter on attempt submit, component schemas in `api/openapi/components/learning.yaml` expressing both new-learner dashboard states and async grading results; generated Go server/client interfaces and TypeScript API types. |
 
 ## Deferred (deliberately not doing yet)
 

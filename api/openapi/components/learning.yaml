@@ -1,0 +1,283 @@
+Enrollment:
+  type: object
+  required: [id, user_id, course_id, status, started_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+    user_id:
+      type: string
+      format: uuid
+    course_id:
+      type: string
+      format: uuid
+    status:
+      type: string
+      enum: [active, completed, paused]
+      example: active
+    started_at:
+      type: string
+      format: date-time
+      example: '2026-08-24T09:00:00Z'
+    completed_at:
+      type: string
+      format: date-time
+      nullable: true
+      example: null
+
+SkillMastery:
+  type: object
+  required: [skill, level, confidence, updated_at]
+  properties:
+    skill:
+      type: string
+      enum: [vocabulary, grammar, reading, listening, speaking, writing]
+      example: vocabulary
+    level:
+      type: string
+      example: B1
+    confidence:
+      type: number
+      format: float
+      example: 0.85
+    updated_at:
+      type: string
+      format: date-time
+      example: '2026-08-24T09:00:00Z'
+
+NextActivity:
+  type: object
+  required: [activity_id, lesson_id, unit_id, course_id, title, kind, skill]
+  properties:
+    activity_id:
+      type: string
+      format: uuid
+    lesson_id:
+      type: string
+      format: uuid
+    unit_id:
+      type: string
+      format: uuid
+    course_id:
+      type: string
+      format: uuid
+    title:
+      type: string
+      example: Academic Word List - Topic 1
+    kind:
+      type: string
+      example: vocab_multiple_choice
+    skill:
+      type: string
+      example: vocabulary
+    estimated_minutes:
+      type: integer
+      example: 5
+
+DashboardResponse:
+  type: object
+  required: [state, due_reviews_count, skill_mastery]
+  properties:
+    state:
+      type: string
+      enum: [not_started, in_progress, completed]
+      description: Learner state indicating current progress level.
+      example: in_progress
+    next_activity:
+      $ref: '#/NextActivity'
+    due_reviews_count:
+      type: integer
+      description: Number of SRS review cards due today.
+      example: 0
+    skill_mastery:
+      type: array
+      items:
+        $ref: '#/SkillMastery'
+
+CourseProgress:
+  type: object
+  required: [course_id, status, completed_activities, total_activities, percentage]
+  properties:
+    course_id:
+      type: string
+      format: uuid
+    status:
+      type: string
+      enum: [not_started, in_progress, completed]
+      example: in_progress
+    completed_activities:
+      type: integer
+      example: 12
+    total_activities:
+      type: integer
+      example: 40
+    percentage:
+      type: integer
+      example: 30
+    score:
+      type: integer
+      nullable: true
+      example: 88
+    completed_at:
+      type: string
+      format: date-time
+      nullable: true
+      example: null
+
+ProgressResponse:
+  type: object
+  required: [courses, skills]
+  properties:
+    courses:
+      type: array
+      items:
+        $ref: '#/CourseProgress'
+    skills:
+      type: array
+      items:
+        $ref: '#/SkillMastery'
+
+StartAttemptResult:
+  type: object
+  required: [attempt_id, activity_id, status, started_at]
+  properties:
+    attempt_id:
+      type: string
+      format: uuid
+    activity_id:
+      type: string
+      format: uuid
+    status:
+      type: string
+      enum: [in_progress]
+      example: in_progress
+    started_at:
+      type: string
+      format: date-time
+      example: '2026-08-24T09:00:00Z'
+
+SubmitAttemptRequest:
+  type: object
+  required: [response]
+  properties:
+    response:
+      type: object
+      description: Activity response payload (structure depends on activity kind).
+      example:
+        selected_option_id: 0199a1c2-3d4e-7f80-9abc-def01234567f
+
+SubmitAttemptResult:
+  type: object
+  required: [attempt_id, status]
+  properties:
+    attempt_id:
+      type: string
+      format: uuid
+    status:
+      type: string
+      enum: [graded, grading, failed]
+      example: graded
+    score:
+      type: integer
+      nullable: true
+      example: 100
+    max_score:
+      type: integer
+      nullable: true
+      example: 100
+    correct:
+      type: boolean
+      nullable: true
+      example: true
+    feedback:
+      type: string
+      nullable: true
+      example: Correct! Well done.
+
+AttemptDetail:
+  type: object
+  required: [id, activity_id, user_id, status, started_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+    activity_id:
+      type: string
+      format: uuid
+    user_id:
+      type: string
+      format: uuid
+    status:
+      type: string
+      enum: [in_progress, grading, graded, failed]
+      example: graded
+    response:
+      type: object
+      nullable: true
+      description: Submitted response payload.
+    score:
+      type: integer
+      nullable: true
+      example: 90
+    max_score:
+      type: integer
+      nullable: true
+      example: 100
+    feedback:
+      type: string
+      nullable: true
+      example: Good comprehension of the reading passage.
+    duration_ms:
+      type: integer
+      nullable: true
+      example: 45000
+    started_at:
+      type: string
+      format: date-time
+      example: '2026-08-24T09:00:00Z'
+    completed_at:
+      type: string
+      format: date-time
+      nullable: true
+      example: '2026-08-24T09:01:00Z'
+
+StartSessionRequest:
+  type: object
+  properties:
+    metadata:
+      type: object
+      description: Optional client session context.
+
+LearningSession:
+  type: object
+  required: [id, user_id, started_at, activities_completed, minutes]
+  properties:
+    id:
+      type: string
+      format: uuid
+    user_id:
+      type: string
+      format: uuid
+    started_at:
+      type: string
+      format: date-time
+      example: '2026-08-24T09:00:00Z'
+    ended_at:
+      type: string
+      format: date-time
+      nullable: true
+      example: null
+    activities_completed:
+      type: integer
+      example: 0
+    minutes:
+      type: integer
+      example: 0
+
+CompleteSessionRequest:
+  type: object
+  properties:
+    activities_completed:
+      type: integer
+      nullable: true
+      example: 3

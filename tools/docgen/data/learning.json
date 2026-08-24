@@ -322,20 +322,19 @@
     ],
     "endpoints": [
       { "method": "POST", "path": "/api/v1/courses/{id}/enroll", "permission": "self", "purpose": "Enrol", "success": "201", "errors": ["ALREADY_ENROLLED"] },
-      { "method": "GET", "path": "/api/v1/me/dashboard", "permission": "self", "purpose": "Today's plan, streak, due reviews, continue-where-you-left-off", "success": "200" },
+      { "method": "GET", "path": "/api/v1/me/dashboard", "permission": "self", "purpose": "Today's plan, due reviews, continue-where-you-left-off", "success": "200" },
       { "method": "GET", "path": "/api/v1/me/progress", "permission": "self", "purpose": "Progress across courses and skills", "success": "200" },
       { "method": "POST", "path": "/api/v1/activities/{id}/attempts", "permission": "self", "purpose": "Start an attempt", "success": "201", "errors": ["LESSON_LOCKED", "ACTIVITY_ALREADY_COMPLETED"] },
       { "method": "POST", "path": "/api/v1/attempts/{id}/submit", "permission": "self", "purpose": "Submit a response for grading", "success": "200", "errors": ["ATTEMPT_EXPIRED", "VALIDATION_FAILED"], "notes": "Requires an `Idempotency-Key`. Returns 202 when the grader is asynchronous." },
       { "method": "GET", "path": "/api/v1/attempts/{id}", "permission": "self", "purpose": "Attempt state and result", "success": "200" },
       { "method": "POST", "path": "/api/v1/me/sessions", "permission": "self", "purpose": "Start a study session", "success": "201" },
-      { "method": "POST", "path": "/api/v1/me/sessions/{id}/complete", "permission": "self", "purpose": "End a session", "success": "200" },
-      { "method": "POST", "path": "/api/v1/me/placement", "permission": "self", "purpose": "Start the placement test", "success": "201" }
+      { "method": "POST", "path": "/api/v1/me/sessions/{id}/complete", "permission": "self", "purpose": "End a session", "success": "200" }
     ],
     "contract": [
       { "kind": "interface", "name": "learning.ExerciseGrader", "purpose": "`Grade(ctx, GradeRequest) (GradeResult, error)` — **implemented by every skill module**, registered by activity kind" },
-      { "kind": "struct", "name": "learning.GradeResult", "purpose": "`{Score, MaxScore, Correct, Feedback, Async, ReviewItems}` — `ReviewItems` is what feeds `srs`" },
+      { "kind": "struct", "name": "learning.GradeResult", "purpose": "`{Score, MaxScore, Correct, Feedback, Async, ReviewItems}` — `ReviewItem` is a `learning` type, not an `srs` one, so a grader in any skill module can return it" },
       { "kind": "interface", "name": "learning.ProgressReader", "purpose": "`ProgressOf(ctx, userID, scope)` — used by `gamification`, `admin`, `analytics`" },
-      { "kind": "interface", "name": "learning.UnlockChecker", "purpose": "`IsUnlocked(ctx, userID, lessonID)` — used by `lesson`" }
+      { "kind": "interface", "name": "learning.UnlockChecker", "purpose": "`IsUnlocked(ctx, userID, lessonIDs)` — used by `lesson` (batched to prevent N+1 queries)" }
     ],
     "events": {
       "publishes": [
@@ -437,7 +436,10 @@
     "decisions": [
       { "question": "One engine or per-skill flows?", "choice": "One engine, pluggable graders", "why": "Attempt lifecycle, idempotency, progress rollup and event emission are identical across skills; only scoring differs. Six copies would drift and each would need its own idempotency bug fixed separately" },
       { "question": "Where do review items come from?", "choice": "The grader returns them", "why": "Only the grader knows what was actually tested; `srs` should not have to reverse-engineer that from a score" },
-      { "question": "Server-side scoring only?", "choice": "Yes, without exception", "why": "Client-side scoring is trivially manipulable, and progress data that cannot be trusted is worthless for both the learner and analytics" }
+      { "question": "Server-side scoring only?", "choice": "Yes, without exception", "why": "Client-side scoring is trivially manipulable, and progress data that cannot be trusted is worthless for both the learner and analytics" },
+      { "question": "Where does the idempotency key travel on attempt submission?", "choice": "Required `Idempotency-Key` HTTP header with UUIDv7 format", "why": "ADR-0015 requires idempotent submission. Carrying it in the standard HTTP header makes it part of the formal OpenAPI contract rather than an internal backend detail, enabling clients to safely retry on network failure (P8.1 Trap 2)" },
+      { "question": "Single-lesson or batched lock checking in `UnlockChecker`?", "choice": "Batched (`IsUnlocked(ctx, userID, lessonIDs)` returning `map[uuid.UUID]bool`)", "why": "Rendering a course detail fetches lock status for all lessons in the course (e.g. 40 lessons). Batching avoids an N+1 call into learning and matches the pattern established by `content.Reader.GetManyVersions` (P8.1 Trap 3)" },
+      { "question": "What is the asynchronous attempt state called?", "choice": "`grading`", "why": "WP8 P8.3 calls it `pending` in prose. The wire name is `grading`, because the client shows \"being marked\" and `pending` is what an unsubmitted attempt would sound like. Recorded because a name that differs between the work package and the spec is found the day the handler is written (P8.1)" }, { "question": "Which module owns `ReviewItem` returned by `ExerciseGrader`?", "choice": "`learning` module in `internal/modules/learning/contract`", "why": "All six skill modules implement `ExerciseGrader` and return `GradeResult`. If `ReviewItem` came from `srs`, modules like reading/listening/speaking/writing would violate architecture boundary rules by depending on `c_srs`. Boundary mapping to `srs` occurs in `learning` service (P8.1 Trap 1)" }
     ],
     "adrs": [{ "id": "ADR-0015", "file": "ADR-0015-content-exercise-core.md", "title": "Shared content + exercise engine" }],
     "openQuestions": ["Do we move to item response theory for mastery in Phase 5, and what would it require from `questionbank`?"],
