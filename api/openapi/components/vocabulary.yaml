@@ -1,0 +1,315 @@
+WordSense:
+  type: object
+  required: [id, word_id, definition]
+  properties:
+    id:
+      type: string
+      format: uuid
+    word_id:
+      type: string
+      format: uuid
+    definition:
+      type: string
+      example: An institution where people deposit and borrow money.
+    register:
+      type: string
+      example: formal
+      nullable: true
+    domain:
+      type: string
+      example: finance
+      nullable: true
+    definition_vi:
+      type: string
+      nullable: true
+      example: Ngân hàng.
+    # An example is an object, not a string: the app is bilingual, so every
+    # sentence carries its Vietnamese rendering and, eventually, its audio.
+    examples:
+      type: array
+      items:
+        $ref: '#/ExampleSentence'
+    content_version_id:
+      type: string
+      format: uuid
+      nullable: true
+    created_at:
+      type: string
+      format: date-time
+    audio_url:
+      type: string
+      format: uri
+      nullable: true
+      example: https://cdn.fluentra.com/audio/vocab/bank-sense1.mp3
+
+WordDetail:
+  type: object
+  required: [id, lemma, pos, cefr_level, senses]
+  properties:
+    id:
+      type: string
+      format: uuid
+    lemma:
+      type: string
+      example: bank
+    pos:
+      type: string
+      example: noun
+    cefr_level:
+      type: string
+      example: A1
+    frequency_rank:
+      type: integer
+      example: 450
+      nullable: true
+    ipa:
+      type: string
+      example: /bæŋk/
+      nullable: true
+    senses:
+      type: array
+      items:
+        $ref: '#/WordSense'
+
+# uq_words_lemma_pos means a lemma is not unique on its own: "bank" is a noun and
+# a verb, and a lookup has to return both or silently drop one of them.
+WordLookupResponse:
+  type: object
+  required: [words]
+  properties:
+    words:
+      type: array
+      items:
+        $ref: '#/WordDetail'
+
+WordSummary:
+  type: object
+  required: [id, lemma, pos, cefr_level]
+  properties:
+    id:
+      type: string
+      format: uuid
+    lemma:
+      type: string
+      example: bank
+    pos:
+      type: string
+      example: noun
+    cefr_level:
+      type: string
+      example: A1
+    ipa:
+      type: string
+      example: /bæŋk/
+      nullable: true
+
+WordSearchResponse:
+  type: object
+  required: [results, total]
+  properties:
+    results:
+      type: array
+      items:
+        $ref: '#/WordSummary'
+    total:
+      type: integer
+      example: 1
+
+Deck:
+  type: object
+  required: [id, slug, name, is_public, item_count, created_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+    owner_id:
+      type: string
+      format: uuid
+      nullable: true
+    slug:
+      type: string
+      example: ielts-academic-vocab
+    name:
+      type: string
+      example: IELTS Academic Vocabulary
+    is_public:
+      type: boolean
+      example: true
+    item_count:
+      type: integer
+      example: 50
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+      nullable: true
+
+DeckListResponse:
+  type: object
+  required: [decks]
+  properties:
+    decks:
+      type: array
+      items:
+        $ref: '#/Deck'
+
+ExampleSentence:
+  type: object
+  required: [sentence]
+  properties:
+    sentence:
+      type: string
+      example: She withdrew $100 from the bank.
+    sentence_vi:
+      type: string
+      nullable: true
+      example: Cô ấy rút 100 đô la từ ngân hàng.
+    audio_url:
+      type: string
+      format: uri
+      nullable: true
+
+DeckItem:
+  type: object
+  required: [sense_id, word_id, lemma, pos, cefr_level, definition, examples, added_at]
+  properties:
+    sense_id:
+      type: string
+      format: uuid
+    word_id:
+      type: string
+      format: uuid
+    lemma:
+      type: string
+      example: meticulous
+    pos:
+      type: string
+      example: adjective
+    cefr_level:
+      type: string
+      enum: [A1, A2, B1, B2, C1, C2]
+      example: B2
+    ipa:
+      type: string
+      nullable: true
+      example: /məˈtɪkjələs/
+    audio_url:
+      type: string
+      format: uri
+      nullable: true
+    definition:
+      type: string
+      example: Showing great attention to detail.
+    definition_vi:
+      type: string
+      nullable: true
+      example: Tỉ mỉ, cẩn thận.
+    examples:
+      type: array
+      items:
+        $ref: '#/ExampleSentence'
+    added_at:
+      type: string
+      format: date-time
+
+DeckWordsResponse:
+  type: object
+  required: [items]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/DeckItem'
+
+CreateDeckRequest:
+  type: object
+  required: [name]
+  properties:
+    name:
+      type: string
+      minLength: 1
+      maxLength: 100
+      example: My Travel Vocabulary
+    is_public:
+      type: boolean
+      default: false
+
+AddWordToDeckRequest:
+  type: object
+  required: [word_sense_id]
+  properties:
+    word_sense_id:
+      type: string
+      format: uuid
+
+UserWordState:
+  type: object
+  required: [user_id, word_sense_id, status, first_seen_at]
+  properties:
+    user_id:
+      type: string
+      format: uuid
+    word_sense_id:
+      type: string
+      format: uuid
+    status:
+      type: string
+      enum: [new, learning, known, ignored]
+      example: known
+    first_seen_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+      nullable: true
+
+UpdateWordStateRequest:
+  type: object
+  required: [status]
+  properties:
+    status:
+      type: string
+      enum: [known, ignored, learning]
+      example: known
+
+SenseInput:
+  type: object
+  required: [definition]
+  properties:
+    definition:
+      type: string
+    register:
+      type: string
+    domain:
+      type: string
+    examples:
+      type: array
+      items:
+        type: string
+
+CreateWordRequest:
+  type: object
+  required: [lemma, pos, cefr_level, senses]
+  properties:
+    lemma:
+      type: string
+      example: articulate
+    pos:
+      type: string
+      example: verb
+    cefr_level:
+      type: string
+      example: C1
+    frequency_rank:
+      type: integer
+      example: 4500
+    ipa:
+      type: string
+      example: /ɑːˈtɪk.jə.leɪt/
+    senses:
+      type: array
+      items:
+        $ref: '#/SenseInput'

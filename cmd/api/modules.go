@@ -18,13 +18,17 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/auth/service/oauth/google"
 	"github.com/fluentra/fluentra/internal/modules/content"
 	"github.com/fluentra/fluentra/internal/modules/learning"
+	learningcontract "github.com/fluentra/fluentra/internal/modules/learning/contract"
 	learningdomain "github.com/fluentra/fluentra/internal/modules/learning/domain"
 	learningservice "github.com/fluentra/fluentra/internal/modules/learning/service"
 	"github.com/fluentra/fluentra/internal/modules/lesson"
 	lessonservice "github.com/fluentra/fluentra/internal/modules/lesson/service"
 	"github.com/fluentra/fluentra/internal/modules/rbac"
 	rbaccontract "github.com/fluentra/fluentra/internal/modules/rbac/contract"
+	"github.com/fluentra/fluentra/internal/modules/srs"
+	srsservice "github.com/fluentra/fluentra/internal/modules/srs/service"
 	"github.com/fluentra/fluentra/internal/modules/user"
+	"github.com/fluentra/fluentra/internal/modules/vocabulary"
 	"github.com/fluentra/fluentra/internal/platform/cache"
 	"github.com/fluentra/fluentra/internal/platform/job"
 	"github.com/fluentra/fluentra/internal/platform/mailer"
@@ -36,14 +40,16 @@ import (
 // identity is WP1+WP2+WP4 assembled: the modules that know who a caller is and what
 // they may do, and the record of what they did.
 type identity struct {
-	audit    *audit.Module
-	rbac     *rbac.Module
-	user     *user.Module
-	auth     *auth.Module
-	admin    *admin.Module
-	content  *content.Module
-	lesson   *lesson.Module
-	learning *learning.Module
+	audit      *audit.Module
+	rbac       *rbac.Module
+	user       *user.Module
+	auth       *auth.Module
+	admin      *admin.Module
+	content    *content.Module
+	lesson     *lesson.Module
+	learning   *learning.Module
+	srs        *srs.Module
+	vocabulary *vocabulary.Module
 
 	rateLimit *httpx.RateLimiter
 }
@@ -195,15 +201,45 @@ func newIdentity(deps identityDeps) *identity {
 		Env:      deps.Env,
 	})
 
-	assembled.learning = learning.New(learning.Deps{
+	assembled.srs = srs.New(srs.Deps{
 		Pool:   deps.Pool,
-		Caches: newLearningCaches(deps.Redis),
+		Caches: newSRSCaches(deps.Redis),
 		Guard:  lazyGuard{of: assembled},
-		Lesson: assembled.lesson.Reader(),
+		Users:  assembled.user.Reader(),
 		Env:    deps.Env,
 	})
 
+	assembled.vocabulary = vocabulary.New(vocabulary.Deps{
+		Pool:    deps.Pool,
+		Guard:   lazyGuard{of: assembled},
+		Content: assembled.content.Reader(),
+		Reviews: assembled.srs.CardWriter(),
+	})
+
+	assembled.learning = learning.New(learning.Deps{
+		Pool:     deps.Pool,
+		Caches:   newLearningCaches(deps.Redis),
+		Guard:    lazyGuard{of: assembled},
+		Lesson:   assembled.lesson.Reader(),
+		SRSDue:   assembled.srs.QueueReader(),
+		SRSCards: assembled.srs.CardWriter(),
+		Graders: map[string]learningcontract.ExerciseGrader{
+			"vocabulary_quiz": assembled.vocabulary.Grader(),
+		},
+		DeclaredKinds: []string{"vocabulary_quiz"},
+		Env:           deps.Env,
+	})
+
 	return assembled
+}
+
+func newSRSCaches(client redis.Cmdable) srsservice.SRSCaches {
+	if client == nil {
+		return srsservice.SRSCaches{}
+	}
+	return srsservice.SRSCaches{
+		DueCount: cache.NewRedisCache[int](client),
+	}
 }
 
 func newLearningCaches(client redis.Cmdable) learningservice.LearningCaches {
@@ -271,6 +307,8 @@ func (i *identity) Routes(api chi.Router) {
 		i.content.Routes(authenticated)
 		i.lesson.Routes(authenticated)
 		i.learning.Routes(authenticated)
+		i.srs.Routes(authenticated)
+		i.vocabulary.Routes(authenticated)
 
 		authenticated.Group(func(admin chi.Router) {
 			admin.Use(i.rbac.AdminOnly())
@@ -278,6 +316,7 @@ func (i *identity) Routes(api chi.Router) {
 			i.admin.Routes(admin)
 			i.content.AdminRoutes(admin)
 			i.lesson.AdminRoutes(admin)
+			i.vocabulary.AdminRoutes(admin)
 		})
 	})
 }
@@ -296,6 +335,8 @@ var _ admin.Guard = lazyGuard{}
 var _ content.Guard = lazyGuard{}
 var _ lesson.Guard = lazyGuard{}
 var _ learning.Guard = lazyGuard{}
+var _ srs.Guard = lazyGuard{}
+var _ vocabulary.Guard = lazyGuard{}
 
 func (g lazyGuard) Require(ctx context.Context, permission string) error {
 	return g.authorizer().Require(ctx, rbaccontract.Permission(permission))

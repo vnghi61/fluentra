@@ -19,6 +19,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/learning/domain"
 	"github.com/fluentra/fluentra/internal/modules/learning/repository"
 	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
+	srscontract "github.com/fluentra/fluentra/internal/modules/srs/contract"
 	"github.com/fluentra/fluentra/internal/platform/cache"
 	"github.com/fluentra/fluentra/internal/shared/clock"
 	"github.com/fluentra/fluentra/internal/shared/dbx"
@@ -138,28 +139,32 @@ type LearningCaches struct {
 
 // Deps holds dependencies for constructing the learning service.
 type Deps struct {
-	Pool    *pgxpool.Pool
-	Repo    Repository
-	Lesson  lessoncontract.Reader
-	Graders *domain.GraderRegistry
-	Events  EventWriter
-	Clock   clock.Clock
-	NewID   func() (uuid.UUID, error)
-	Caches  LearningCaches
-	Env     string
+	Pool     *pgxpool.Pool
+	Repo     Repository
+	Lesson   lessoncontract.Reader
+	SRSDue   srscontract.QueueReader
+	SRSCards srscontract.CardWriter
+	Graders  *domain.GraderRegistry
+	Events   EventWriter
+	Clock    clock.Clock
+	NewID    func() (uuid.UUID, error)
+	Caches   LearningCaches
+	Env      string
 }
 
 // Service coordinates attempt execution, grading, progress rollups, and event emission.
 type Service struct {
-	pool    *pgxpool.Pool
-	repo    Repository
-	lesson  lessoncontract.Reader
-	graders *domain.GraderRegistry
-	events  EventWriter
-	clock   clock.Clock
-	newID   func() (uuid.UUID, error)
-	caches  LearningCaches
-	env     string
+	pool     *pgxpool.Pool
+	repo     Repository
+	lesson   lessoncontract.Reader
+	srsDue   srscontract.QueueReader
+	srsCards srscontract.CardWriter
+	graders  *domain.GraderRegistry
+	events   EventWriter
+	clock    clock.Clock
+	newID    func() (uuid.UUID, error)
+	caches   LearningCaches
+	env      string
 }
 
 // New constructs a new Service.
@@ -175,15 +180,17 @@ func New(deps Deps) *Service {
 		}
 	}
 	return &Service{
-		pool:    deps.Pool,
-		repo:    deps.Repo,
-		lesson:  deps.Lesson,
-		graders: deps.Graders,
-		events:  deps.Events,
-		clock:   clk,
-		newID:   idGen,
-		caches:  deps.Caches,
-		env:     deps.Env,
+		pool:     deps.Pool,
+		repo:     deps.Repo,
+		lesson:   deps.Lesson,
+		srsDue:   deps.SRSDue,
+		srsCards: deps.SRSCards,
+		graders:  deps.Graders,
+		events:   deps.Events,
+		clock:    clk,
+		newID:    idGen,
+		caches:   deps.Caches,
+		env:      deps.Env,
 	}
 }
 
@@ -481,6 +488,12 @@ func (s *Service) completeSynchronousGrading(
 			ctx, noopTx{}, s.repo, userID, attempt, activity, gradeResult, scoreInt, durationMs, graderName, now,
 		); rollupErr != nil {
 			return nil, fmt.Errorf("roll up attempt %s: %w", attempt.ID, rollupErr)
+		}
+	}
+
+	if s.srsCards != nil && len(gradeResult.ReviewItems) > 0 {
+		if err := s.srsCards.UpsertCards(ctx, userID, gradeResult.ReviewItems); err != nil {
+			slog.WarnContext(ctx, "failed to upsert srs review cards after grading", "user_id", userID, "error", err)
 		}
 	}
 
@@ -1338,10 +1351,19 @@ func (s *Service) loadDashboard(ctx context.Context, userID uuid.UUID) (*domain.
 		masteries = []domain.SkillMastery{}
 	}
 
+	dueCount := 0
+	if s.srsDue != nil {
+		if c, err := s.srsDue.DueCount(ctx, userID); err == nil {
+			dueCount = c
+		} else {
+			slog.WarnContext(ctx, "failed to get srs due count for dashboard", "user_id", userID, "error", err)
+		}
+	}
+
 	data := &domain.DashboardData{
 		State:           res.State,
 		NextActivity:    res.NextActivity,
-		DueReviewsCount: 0, // Filled in by WP9 (srs)
+		DueReviewsCount: dueCount,
 		SkillMastery:    masteries,
 	}
 	return data, nil

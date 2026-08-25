@@ -2,7 +2,7 @@
 module: vocabulary
 tier: learning
 group: modules
-status: PLANNED
+status: ACTIVE
 phase: 2
 owner: "@learning-team"
 schema: skill
@@ -10,7 +10,7 @@ tables: [words, word_senses, word_relations, decks, deck_items, user_word_state]
 depends_on: [content, srs, media, ai, search]
 depended_on_by: [learning, reading, writing, grammar]
 spec_version: 1.0.0
-last_verified: 2026-08-06
+last_verified: 2026-08-25
 ---
 
 # vocabulary — AGENT.md
@@ -25,7 +25,7 @@ last_verified: 2026-08-06
 | Path | `internal/modules/vocabulary` |
 | Schema | `skill` |
 | Delivery phase | 2 |
-| Status | **PLANNED** |
+| Status | **ACTIVE** |
 | Owner | @learning-team |
 
 ---
@@ -113,6 +113,7 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | `GET` | `/api/v1/vocabulary/search` | `content.read.published` | Search the dictionary |
 | `GET` | `/api/v1/vocabulary/decks` | `self` | The learner's decks plus curated ones |
 | `POST` | `/api/v1/vocabulary/decks` | `self` | Create a deck |
+| `GET` | `/api/v1/vocabulary/decks/{id}/words` | `self` | The word senses in a deck, with everything a flashcard renders |
 | `POST` | `/api/v1/vocabulary/decks/{id}/words` | `self` | Add a word sense to a deck |
 | `DELETE` | `/api/v1/vocabulary/decks/{id}/words/{sense_id}` | `self` | Remove |
 | `POST` | `/api/v1/vocabulary/words/{sense_id}/state` | `self` | Mark known or ignored |

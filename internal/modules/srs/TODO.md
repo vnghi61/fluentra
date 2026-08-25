@@ -2,15 +2,15 @@
 module: srs
 tier: learning
 group: modules
-status: PLANNED
+status: ACTIVE
 phase: 2
 owner: "@learning-team"
 schema: learn
 tables: [review_cards, review_logs, srs_params, review_daily_stats]
-depends_on: [cache, job, content]
+depends_on: [cache, job, content, user]
 depended_on_by: [learning, vocabulary, grammar, gamification, notification, analytics]
 spec_version: 1.0.0
-last_verified: 2026-08-06
+last_verified: 2026-08-25
 ---
 
 # srs — TODO
@@ -27,11 +27,12 @@ agent knows what is already handled and what is deliberately deferred.
 - [ ] Answer endpoint with rescheduling and event emission
 - [ ] Due-count caching with correct invalidation
 - [ ] Suspend, bury and reset
+- [ ] `GET /reviews/forecast`, bucketed by the learner local day
 - [ ] Review player in the web app
 
 ## Phase 3
 
-- [ ] Forecast and workload projection
+- [ ] Workload load-balancing across days
 - [ ] Heat map
 - [ ] `review.due_soon` reminder job
 

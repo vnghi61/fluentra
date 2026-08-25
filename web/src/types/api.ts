@@ -1439,6 +1439,267 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/reviews/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Build a review session from due cards.
+         * @description Returns due cards for the learner ordered by priority up to the daily limit.
+         */
+        get: operations["getReviewSession"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reviews/due-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Badge count of due review cards.
+         * @description Returns the total count of cards currently due for review.
+         */
+        get: operations["getReviewDueCount"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reviews/{card_id}/answer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record a grade and reschedule a card.
+         * @description Updates the card using FSRS algorithm and appends a review log entry.
+         */
+        post: operations["answerReviewCard"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reviews/session/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Close the review session.
+         * @description Records daily stats and emits session completed events.
+         */
+        post: operations["completeReviewSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reviews/{card_id}/suspend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stop scheduling this card.
+         * @description Excludes the card from future review sessions until unsuspended.
+         */
+        post: operations["suspendReviewCard"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reviews/{card_id}/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Treat card as new again.
+         * @description Resets repetitions and stability to initial state.
+         */
+        post: operations["resetReviewCard"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reviews/forecast": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Projected workload for the next 30 days.
+         * @description Forecast of due reviews over upcoming days.
+         */
+        get: operations["getReviewForecast"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vocabulary/words/{lemma}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dictionary lookup with senses, IPA, audio, examples. */
+        get: operations["getVocabularyWord"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vocabulary/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search the dictionary. */
+        get: operations["searchVocabulary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vocabulary/decks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The learner's decks plus curated ones. */
+        get: operations["listVocabularyDecks"];
+        put?: never;
+        /** Create a deck. */
+        post: operations["createVocabularyDeck"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vocabulary/decks/{id}/words": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The word senses in a deck, with everything a flashcard renders. */
+        get: operations["listDeckWords"];
+        put?: never;
+        /** Add a word sense to a deck. */
+        post: operations["addWordToDeck"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vocabulary/decks/{id}/words/{sense_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a word sense from a deck. */
+        delete: operations["removeWordFromDeck"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vocabulary/words/{sense_id}/state": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark known or ignored. */
+        post: operations["updateWordState"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/vocabulary/words": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a word entry. */
+        post: operations["adminCreateWord"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2898,6 +3159,262 @@ export interface components {
         CompleteSessionRequest: {
             /** @example 3 */
             activities_completed?: number | null;
+        };
+        /**
+         * @description FSRS recall evaluation grade.
+         * @example good
+         * @enum {string}
+         */
+        ReviewGrade: "again" | "hard" | "good" | "easy";
+        ReviewCard: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            user_id: string;
+            /** Format: uuid */
+            content_version_id: string;
+            /** @example vocabulary */
+            skill: string;
+            /**
+             * Format: double
+             * @example 2.45
+             */
+            stability: number;
+            /**
+             * Format: double
+             * @example 4.8
+             */
+            difficulty: number;
+            /** Format: date-time */
+            due_at: string;
+            /** @example 3 */
+            reps: number;
+            /** @example 0 */
+            lapses: number;
+            /**
+             * @example review
+             * @enum {string}
+             */
+            state: "new" | "learning" | "review" | "relearning";
+            /** Format: date-time */
+            suspended_at?: string | null;
+        };
+        DueCountResponse: {
+            /** @example 12 */
+            due_count: number;
+        };
+        ReviewSessionResponse: {
+            cards: components["schemas"]["ReviewCard"][];
+            /** @example 12 */
+            total_due?: number;
+        };
+        AnswerReviewRequest: {
+            grade: components["schemas"]["ReviewGrade"];
+            /** @example 4200 */
+            elapsed_ms?: number;
+        };
+        AnswerReviewResponse: {
+            card: components["schemas"]["ReviewCard"];
+            /** Format: date-time */
+            next_due_at: string;
+            /** @example 3 */
+            interval_days: number;
+        };
+        CompleteReviewSessionRequest: {
+            /** @example 10 */
+            reviewed?: number;
+            /** @example 8 */
+            correct?: number;
+        };
+        CompleteReviewSessionResult: {
+            /** @example 10 */
+            reviewed: number;
+            /** @example 8 */
+            correct: number;
+            /** @example 5 */
+            minutes: number;
+            /** Format: date-time */
+            completed_at: string;
+        };
+        ForecastItem: {
+            /**
+             * Format: date
+             * @example 2026-08-25
+             */
+            date: string;
+            /** @example 15 */
+            due_count: number;
+        };
+        ForecastResponse: {
+            days: components["schemas"]["ForecastItem"][];
+        };
+        WordSense: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            word_id: string;
+            /** @example An institution where people deposit and borrow money. */
+            definition: string;
+            /** @example formal */
+            register?: string | null;
+            /** @example finance */
+            domain?: string | null;
+            /** @example Ngân hàng. */
+            definition_vi?: string | null;
+            examples?: components["schemas"]["ExampleSentence"][];
+            /** Format: uuid */
+            content_version_id?: string | null;
+            /** Format: date-time */
+            created_at?: string;
+            /**
+             * Format: uri
+             * @example https://cdn.fluentra.com/audio/vocab/bank-sense1.mp3
+             */
+            audio_url?: string | null;
+        };
+        WordDetail: {
+            /** Format: uuid */
+            id: string;
+            /** @example bank */
+            lemma: string;
+            /** @example noun */
+            pos: string;
+            /** @example A1 */
+            cefr_level: string;
+            /** @example 450 */
+            frequency_rank?: number | null;
+            /** @example /bæŋk/ */
+            ipa?: string | null;
+            senses: components["schemas"]["WordSense"][];
+        };
+        WordLookupResponse: {
+            words: components["schemas"]["WordDetail"][];
+        };
+        WordSummary: {
+            /** Format: uuid */
+            id: string;
+            /** @example bank */
+            lemma: string;
+            /** @example noun */
+            pos: string;
+            /** @example A1 */
+            cefr_level: string;
+            /** @example /bæŋk/ */
+            ipa?: string | null;
+        };
+        WordSearchResponse: {
+            results: components["schemas"]["WordSummary"][];
+            /** @example 1 */
+            total: number;
+        };
+        Deck: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            owner_id?: string | null;
+            /** @example ielts-academic-vocab */
+            slug: string;
+            /** @example IELTS Academic Vocabulary */
+            name: string;
+            /** @example true */
+            is_public: boolean;
+            /** @example 50 */
+            item_count: number;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at?: string | null;
+        };
+        DeckListResponse: {
+            decks: components["schemas"]["Deck"][];
+        };
+        ExampleSentence: {
+            /** @example She withdrew $100 from the bank. */
+            sentence: string;
+            /** @example Cô ấy rút 100 đô la từ ngân hàng. */
+            sentence_vi?: string | null;
+            /** Format: uri */
+            audio_url?: string | null;
+        };
+        DeckItem: {
+            /** Format: uuid */
+            sense_id: string;
+            /** Format: uuid */
+            word_id: string;
+            /** @example meticulous */
+            lemma: string;
+            /** @example adjective */
+            pos: string;
+            /**
+             * @example B2
+             * @enum {string}
+             */
+            cefr_level: "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
+            /** @example /məˈtɪkjələs/ */
+            ipa?: string | null;
+            /** Format: uri */
+            audio_url?: string | null;
+            /** @example Showing great attention to detail. */
+            definition: string;
+            /** @example Tỉ mỉ, cẩn thận. */
+            definition_vi?: string | null;
+            examples: components["schemas"]["ExampleSentence"][];
+            /** Format: date-time */
+            added_at: string;
+        };
+        DeckWordsResponse: {
+            items: components["schemas"]["DeckItem"][];
+        };
+        CreateDeckRequest: {
+            /** @example My Travel Vocabulary */
+            name: string;
+            /** @default false */
+            is_public: boolean;
+        };
+        AddWordToDeckRequest: {
+            /** Format: uuid */
+            word_sense_id: string;
+        };
+        UserWordState: {
+            /** Format: uuid */
+            user_id: string;
+            /** Format: uuid */
+            word_sense_id: string;
+            /**
+             * @example known
+             * @enum {string}
+             */
+            status: "new" | "learning" | "known" | "ignored";
+            /** Format: date-time */
+            first_seen_at: string;
+            /** Format: date-time */
+            updated_at?: string | null;
+        };
+        UpdateWordStateRequest: {
+            /**
+             * @example known
+             * @enum {string}
+             */
+            status: "known" | "ignored" | "learning";
+        };
+        SenseInput: {
+            definition: string;
+            register?: string;
+            domain?: string;
+            examples?: string[];
+        };
+        CreateWordRequest: {
+            /** @example articulate */
+            lemma: string;
+            /** @example verb */
+            pos: string;
+            /** @example C1 */
+            cefr_level: string;
+            /** @example 4500 */
+            frequency_rank?: number;
+            /** @example /ɑːˈtɪk.jə.leɪt/ */
+            ipa?: string;
+            senses: components["schemas"]["SenseInput"][];
         };
     };
     responses: {
@@ -6116,6 +6633,438 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    getReviewSession: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Active review session cards. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewSessionResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    getReviewDueCount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Due cards count. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DueCountResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    answerReviewCard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                card_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnswerReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Card graded and rescheduled. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnswerReviewResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    completeReviewSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CompleteReviewSessionRequest"];
+            };
+        };
+        responses: {
+            /** @description Session completed summary. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompleteReviewSessionResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    suspendReviewCard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                card_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Card suspended. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewCard"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    resetReviewCard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                card_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Card reset. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewCard"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    getReviewForecast: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 30-day review forecast. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForecastResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    getVocabularyWord: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lemma: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every word entry sharing the lemma, one per part of speech. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WordLookupResponse"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    searchVocabulary: {
+        parameters: {
+            query: {
+                q: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Search results. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WordSearchResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    listVocabularyDecks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Decks list. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeckListResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    createVocabularyDeck: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDeckRequest"];
+            };
+        };
+        responses: {
+            /** @description Deck created. */
+            201: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Deck"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    listDeckWords: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The deck's word senses. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeckWordsResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    addWordToDeck: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddWordToDeckRequest"];
+            };
+        };
+        responses: {
+            /** @description Word added to deck. */
+            201: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    removeWordFromDeck: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                sense_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Word removed from deck. */
+            204: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    updateWordState: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sense_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateWordStateRequest"];
+            };
+        };
+        responses: {
+            /** @description Word state updated. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserWordState"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    adminCreateWord: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateWordRequest"];
+            };
+        };
+        responses: {
+            /** @description Word created. */
+            201: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WordDetail"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalServerError"];
         };
     };
 }

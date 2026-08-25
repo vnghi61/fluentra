@@ -18,6 +18,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/learning/service"
 	learninghttp "github.com/fluentra/fluentra/internal/modules/learning/transport/http"
 	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
+	srscontract "github.com/fluentra/fluentra/internal/modules/srs/contract"
 	"github.com/fluentra/fluentra/internal/platform/job"
 	"github.com/fluentra/fluentra/internal/shared/clock"
 	"github.com/fluentra/fluentra/internal/shared/outbox"
@@ -39,6 +40,8 @@ type Deps struct {
 	Clock         clock.Clock
 	Guard         Guard
 	Lesson        lessoncontract.Reader
+	SRSDue        srscontract.QueueReader
+	SRSCards      srscontract.CardWriter
 	Graders       map[string]contract.ExerciseGrader
 	DeclaredKinds []string
 	Caches        service.LearningCaches
@@ -100,14 +103,16 @@ func New(deps Deps) *Module {
 	events := outboxWriter{Writer: outbox.NewWriter()}
 
 	svc := service.New(service.Deps{
-		Pool:    deps.Pool,
-		Repo:    repo,
-		Lesson:  deps.Lesson,
-		Graders: registry,
-		Events:  events,
-		Clock:   timekeeper,
-		Caches:  deps.Caches,
-		Env:     deps.Env,
+		Pool:     deps.Pool,
+		Repo:     repo,
+		Lesson:   deps.Lesson,
+		SRSDue:   deps.SRSDue,
+		SRSCards: deps.SRSCards,
+		Graders:  registry,
+		Events:   events,
+		Clock:    timekeeper,
+		Caches:   deps.Caches,
+		Env:      deps.Env,
 	})
 
 	var handler *learninghttp.Handler

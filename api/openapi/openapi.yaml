@@ -71,6 +71,12 @@ tags:
   - name: learning
     description: >-
       Enrolment, progress, learning sessions, and the exercise engine.
+  - name: srs
+    description: >-
+      Spaced repetition review sessions, card answers, queue counts, and scheduling.
+  - name: vocabulary
+    description: >-
+      Words, senses, pronunciations, collocations, learner decks, and word state.
 security:
   - BearerAuth: []
 paths:
@@ -3314,6 +3320,475 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+  /reviews/session:
+    get:
+      tags: [srs]
+      operationId: getReviewSession
+      summary: Build a review session from due cards.
+      description: Returns due cards for the learner ordered by priority up to the daily limit.
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        '200':
+          description: Active review session cards.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewSessionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /reviews/due-count:
+    get:
+      tags: [srs]
+      operationId: getReviewDueCount
+      summary: Badge count of due review cards.
+      description: Returns the total count of cards currently due for review.
+      responses:
+        '200':
+          description: Due cards count.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DueCountResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /reviews/{card_id}/answer:
+    post:
+      tags: [srs]
+      operationId: answerReviewCard
+      summary: Record a grade and reschedule a card.
+      description: Updates the card using FSRS algorithm and appends a review log entry.
+      parameters:
+        - name: card_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnswerReviewRequest'
+      responses:
+        '200':
+          description: Card graded and rescheduled.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnswerReviewResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /reviews/session/complete:
+    post:
+      tags: [srs]
+      operationId: completeReviewSession
+      summary: Close the review session.
+      description: Records daily stats and emits session completed events.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteReviewSessionRequest'
+      responses:
+        '200':
+          description: Session completed summary.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompleteReviewSessionResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /reviews/{card_id}/suspend:
+    post:
+      tags: [srs]
+      operationId: suspendReviewCard
+      summary: Stop scheduling this card.
+      description: Excludes the card from future review sessions until unsuspended.
+      parameters:
+        - name: card_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Card suspended.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewCard'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /reviews/{card_id}/reset:
+    post:
+      tags: [srs]
+      operationId: resetReviewCard
+      summary: Treat card as new again.
+      description: Resets repetitions and stability to initial state.
+      parameters:
+        - name: card_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Card reset.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewCard'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /reviews/forecast:
+    get:
+      tags: [srs]
+      operationId: getReviewForecast
+      summary: Projected workload for the next 30 days.
+      description: Forecast of due reviews over upcoming days.
+      responses:
+        '200':
+          description: 30-day review forecast.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForecastResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /vocabulary/words/{lemma}:
+    get:
+      tags: [vocabulary]
+      operationId: getVocabularyWord
+      summary: Dictionary lookup with senses, IPA, audio, examples.
+      parameters:
+        - name: lemma
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Every word entry sharing the lemma, one per part of speech.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WordLookupResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /vocabulary/search:
+    get:
+      tags: [vocabulary]
+      operationId: searchVocabulary
+      summary: Search the dictionary.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Search results.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WordSearchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /vocabulary/decks:
+    get:
+      tags: [vocabulary]
+      operationId: listVocabularyDecks
+      summary: The learner's decks plus curated ones.
+      responses:
+        '200':
+          description: Decks list.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeckListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      tags: [vocabulary]
+      operationId: createVocabularyDeck
+      summary: Create a deck.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDeckRequest'
+      responses:
+        '201':
+          description: Deck created.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deck'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /vocabulary/decks/{id}/words:
+    get:
+      tags: [vocabulary]
+      operationId: listDeckWords
+      summary: The word senses in a deck, with everything a flashcard renders.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: The deck's word senses.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeckWordsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      tags: [vocabulary]
+      operationId: addWordToDeck
+      summary: Add a word sense to a deck.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddWordToDeckRequest'
+      responses:
+        '201':
+          description: Word added to deck.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /vocabulary/decks/{id}/words/{sense_id}:
+    delete:
+      tags: [vocabulary]
+      operationId: removeWordFromDeck
+      summary: Remove a word sense from a deck.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: sense_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Word removed from deck.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /vocabulary/words/{sense_id}/state:
+    post:
+      tags: [vocabulary]
+      operationId: updateWordState
+      summary: Mark known or ignored.
+      parameters:
+        - name: sense_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateWordStateRequest'
+      responses:
+        '200':
+          description: Word state updated.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserWordState'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /admin/vocabulary/words:
+    post:
+      tags: [vocabulary]
+      operationId: adminCreateWord
+      summary: Create a word entry.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWordRequest'
+      responses:
+        '201':
+          description: Word created.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WordDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 components:
   securitySchemes:
     BearerAuth:
@@ -3533,6 +4008,58 @@ components:
       $ref: ./components/learning.yaml#/LearningSession
     CompleteSessionRequest:
       $ref: ./components/learning.yaml#/CompleteSessionRequest
+    ReviewGrade:
+      $ref: ./components/srs.yaml#/ReviewGrade
+    ReviewCard:
+      $ref: ./components/srs.yaml#/ReviewCard
+    DueCountResponse:
+      $ref: ./components/srs.yaml#/DueCountResponse
+    ReviewSessionResponse:
+      $ref: ./components/srs.yaml#/ReviewSessionResponse
+    AnswerReviewRequest:
+      $ref: ./components/srs.yaml#/AnswerReviewRequest
+    AnswerReviewResponse:
+      $ref: ./components/srs.yaml#/AnswerReviewResponse
+    CompleteReviewSessionRequest:
+      $ref: ./components/srs.yaml#/CompleteReviewSessionRequest
+    CompleteReviewSessionResult:
+      $ref: ./components/srs.yaml#/CompleteReviewSessionResult
+    ForecastItem:
+      $ref: ./components/srs.yaml#/ForecastItem
+    ForecastResponse:
+      $ref: ./components/srs.yaml#/ForecastResponse
+    WordSense:
+      $ref: ./components/vocabulary.yaml#/WordSense
+    WordDetail:
+      $ref: ./components/vocabulary.yaml#/WordDetail
+    WordLookupResponse:
+      $ref: ./components/vocabulary.yaml#/WordLookupResponse
+    WordSummary:
+      $ref: ./components/vocabulary.yaml#/WordSummary
+    WordSearchResponse:
+      $ref: ./components/vocabulary.yaml#/WordSearchResponse
+    Deck:
+      $ref: ./components/vocabulary.yaml#/Deck
+    DeckListResponse:
+      $ref: ./components/vocabulary.yaml#/DeckListResponse
+    ExampleSentence:
+      $ref: ./components/vocabulary.yaml#/ExampleSentence
+    DeckItem:
+      $ref: ./components/vocabulary.yaml#/DeckItem
+    DeckWordsResponse:
+      $ref: ./components/vocabulary.yaml#/DeckWordsResponse
+    CreateDeckRequest:
+      $ref: ./components/vocabulary.yaml#/CreateDeckRequest
+    AddWordToDeckRequest:
+      $ref: ./components/vocabulary.yaml#/AddWordToDeckRequest
+    UserWordState:
+      $ref: ./components/vocabulary.yaml#/UserWordState
+    UpdateWordStateRequest:
+      $ref: ./components/vocabulary.yaml#/UpdateWordStateRequest
+    SenseInput:
+      $ref: ./components/vocabulary.yaml#/SenseInput
+    CreateWordRequest:
+      $ref: ./components/vocabulary.yaml#/CreateWordRequest
   headers:
     X-Request-Id:
       $ref: ./components/headers.yaml#/X-Request-Id

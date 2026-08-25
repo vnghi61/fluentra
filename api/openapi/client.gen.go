@@ -418,6 +418,20 @@ type ClientInterface interface {
 	// Corresponds with POST /admin/users/{id}/suspend (the `AdminSuspendUser` operationId).
 	AdminSuspendUser(ctx context.Context, id openapi_types.UUID, body AdminSuspendUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AdminCreateWordWithBody Create a word entry.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /admin/vocabulary/words (the `AdminCreateWord` operationId).
+	AdminCreateWordWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminCreateWord Create a word entry.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /admin/vocabulary/words (the `AdminCreateWord` operationId).
+	AdminCreateWord(ctx context.Context, body AdminCreateWordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetAttempt Read attempt state and result.
 	//
 	// Returns attempt status, response payload, and grading result.
@@ -1010,12 +1024,150 @@ type ClientInterface interface {
 	// Corresponds with GET /ready (the `SystemReady` operationId).
 	SystemReady(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetReviewDueCount Badge count of due review cards.
+	//
+	// Returns the total count of cards currently due for review.
+	//
+	// Corresponds with GET /reviews/due-count (the `GetReviewDueCount` operationId).
+	GetReviewDueCount(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetReviewForecast Projected workload for the next 30 days.
+	//
+	// Forecast of due reviews over upcoming days.
+	//
+	// Corresponds with GET /reviews/forecast (the `GetReviewForecast` operationId).
+	GetReviewForecast(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetReviewSession Build a review session from due cards.
+	//
+	// Returns due cards for the learner ordered by priority up to the daily limit.
+	//
+	// Corresponds with GET /reviews/session (the `GetReviewSession` operationId).
+	GetReviewSession(ctx context.Context, params *GetReviewSessionParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CompleteReviewSessionWithBody Close the review session.
+	//
+	// Records daily stats and emits session completed events.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /reviews/session/complete (the `CompleteReviewSession` operationId).
+	CompleteReviewSessionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CompleteReviewSession Close the review session.
+	//
+	// Records daily stats and emits session completed events.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /reviews/session/complete (the `CompleteReviewSession` operationId).
+	CompleteReviewSession(ctx context.Context, body CompleteReviewSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AnswerReviewCardWithBody Record a grade and reschedule a card.
+	//
+	// Updates the card using FSRS algorithm and appends a review log entry.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /reviews/{card_id}/answer (the `AnswerReviewCard` operationId).
+	AnswerReviewCardWithBody(ctx context.Context, cardId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AnswerReviewCard Record a grade and reschedule a card.
+	//
+	// Updates the card using FSRS algorithm and appends a review log entry.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /reviews/{card_id}/answer (the `AnswerReviewCard` operationId).
+	AnswerReviewCard(ctx context.Context, cardId openapi_types.UUID, body AnswerReviewCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ResetReviewCard Treat card as new again.
+	//
+	// Resets repetitions and stability to initial state.
+	//
+	// Corresponds with POST /reviews/{card_id}/reset (the `ResetReviewCard` operationId).
+	ResetReviewCard(ctx context.Context, cardId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SuspendReviewCard Stop scheduling this card.
+	//
+	// Excludes the card from future review sessions until unsuspended.
+	//
+	// Corresponds with POST /reviews/{card_id}/suspend (the `SuspendReviewCard` operationId).
+	SuspendReviewCard(ctx context.Context, cardId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// SystemVersion Read the deployed API version.
 	//
 	// Returns the version associated with the running API build.
 	//
 	// Corresponds with GET /version (the `SystemVersion` operationId).
 	SystemVersion(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListVocabularyDecks The learner's decks plus curated ones.
+	//
+	// Corresponds with GET /vocabulary/decks (the `ListVocabularyDecks` operationId).
+	ListVocabularyDecks(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateVocabularyDeckWithBody Create a deck.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /vocabulary/decks (the `CreateVocabularyDeck` operationId).
+	CreateVocabularyDeckWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateVocabularyDeck Create a deck.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /vocabulary/decks (the `CreateVocabularyDeck` operationId).
+	CreateVocabularyDeck(ctx context.Context, body CreateVocabularyDeckJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListDeckWords The word senses in a deck, with everything a flashcard renders.
+	//
+	// Corresponds with GET /vocabulary/decks/{id}/words (the `ListDeckWords` operationId).
+	ListDeckWords(ctx context.Context, id openapi_types.UUID, params *ListDeckWordsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AddWordToDeckWithBody Add a word sense to a deck.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /vocabulary/decks/{id}/words (the `AddWordToDeck` operationId).
+	AddWordToDeckWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AddWordToDeck Add a word sense to a deck.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /vocabulary/decks/{id}/words (the `AddWordToDeck` operationId).
+	AddWordToDeck(ctx context.Context, id openapi_types.UUID, body AddWordToDeckJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RemoveWordFromDeck Remove a word sense from a deck.
+	//
+	// Corresponds with DELETE /vocabulary/decks/{id}/words/{sense_id} (the `RemoveWordFromDeck` operationId).
+	RemoveWordFromDeck(ctx context.Context, id openapi_types.UUID, senseId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchVocabulary Search the dictionary.
+	//
+	// Corresponds with GET /vocabulary/search (the `SearchVocabulary` operationId).
+	SearchVocabulary(ctx context.Context, params *SearchVocabularyParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetVocabularyWord Dictionary lookup with senses, IPA, audio, examples.
+	//
+	// Corresponds with GET /vocabulary/words/{lemma} (the `GetVocabularyWord` operationId).
+	GetVocabularyWord(ctx context.Context, lemma string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateWordStateWithBody Mark known or ignored.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /vocabulary/words/{sense_id}/state (the `UpdateWordState` operationId).
+	UpdateWordStateWithBody(ctx context.Context, senseId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateWordState Mark known or ignored.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /vocabulary/words/{sense_id}/state (the `UpdateWordState` operationId).
+	UpdateWordState(ctx context.Context, senseId openapi_types.UUID, body UpdateWordStateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 // StartAttempt Start an activity attempt.
@@ -1705,6 +1857,40 @@ func (c *Client) AdminSuspendUserWithBody(ctx context.Context, id openapi_types.
 // Corresponds with POST /admin/users/{id}/suspend (the `AdminSuspendUser` operationId).
 func (c *Client) AdminSuspendUser(ctx context.Context, id openapi_types.UUID, body AdminSuspendUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAdminSuspendUserRequest(c.Server, id, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminCreateWordWithBody Create a word entry.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /admin/vocabulary/words (the `AdminCreateWord` operationId).
+func (c *Client) AdminCreateWordWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminCreateWordRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminCreateWord Create a word entry.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /admin/vocabulary/words (the `AdminCreateWord` operationId).
+func (c *Client) AdminCreateWord(ctx context.Context, body AdminCreateWordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminCreateWordRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2907,6 +3093,167 @@ func (c *Client) SystemReady(ctx context.Context, reqEditors ...RequestEditorFn)
 	return c.Client.Do(req)
 }
 
+// GetReviewDueCount Badge count of due review cards.
+//
+// Returns the total count of cards currently due for review.
+//
+// Corresponds with GET /reviews/due-count (the `GetReviewDueCount` operationId).
+func (c *Client) GetReviewDueCount(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetReviewDueCountRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetReviewForecast Projected workload for the next 30 days.
+//
+// Forecast of due reviews over upcoming days.
+//
+// Corresponds with GET /reviews/forecast (the `GetReviewForecast` operationId).
+func (c *Client) GetReviewForecast(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetReviewForecastRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetReviewSession Build a review session from due cards.
+//
+// Returns due cards for the learner ordered by priority up to the daily limit.
+//
+// Corresponds with GET /reviews/session (the `GetReviewSession` operationId).
+func (c *Client) GetReviewSession(ctx context.Context, params *GetReviewSessionParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetReviewSessionRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CompleteReviewSessionWithBody Close the review session.
+//
+// Records daily stats and emits session completed events.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /reviews/session/complete (the `CompleteReviewSession` operationId).
+func (c *Client) CompleteReviewSessionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCompleteReviewSessionRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CompleteReviewSession Close the review session.
+//
+// Records daily stats and emits session completed events.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /reviews/session/complete (the `CompleteReviewSession` operationId).
+func (c *Client) CompleteReviewSession(ctx context.Context, body CompleteReviewSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCompleteReviewSessionRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AnswerReviewCardWithBody Record a grade and reschedule a card.
+//
+// Updates the card using FSRS algorithm and appends a review log entry.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /reviews/{card_id}/answer (the `AnswerReviewCard` operationId).
+func (c *Client) AnswerReviewCardWithBody(ctx context.Context, cardId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAnswerReviewCardRequestWithBody(c.Server, cardId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AnswerReviewCard Record a grade and reschedule a card.
+//
+// Updates the card using FSRS algorithm and appends a review log entry.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /reviews/{card_id}/answer (the `AnswerReviewCard` operationId).
+func (c *Client) AnswerReviewCard(ctx context.Context, cardId openapi_types.UUID, body AnswerReviewCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAnswerReviewCardRequest(c.Server, cardId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ResetReviewCard Treat card as new again.
+//
+// Resets repetitions and stability to initial state.
+//
+// Corresponds with POST /reviews/{card_id}/reset (the `ResetReviewCard` operationId).
+func (c *Client) ResetReviewCard(ctx context.Context, cardId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewResetReviewCardRequest(c.Server, cardId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SuspendReviewCard Stop scheduling this card.
+//
+// Excludes the card from future review sessions until unsuspended.
+//
+// Corresponds with POST /reviews/{card_id}/suspend (the `SuspendReviewCard` operationId).
+func (c *Client) SuspendReviewCard(ctx context.Context, cardId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSuspendReviewCardRequest(c.Server, cardId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // SystemVersion Read the deployed API version.
 //
 // Returns the version associated with the running API build.
@@ -2914,6 +3261,183 @@ func (c *Client) SystemReady(ctx context.Context, reqEditors ...RequestEditorFn)
 // Corresponds with GET /version (the `SystemVersion` operationId).
 func (c *Client) SystemVersion(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSystemVersionRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListVocabularyDecks The learner's decks plus curated ones.
+//
+// Corresponds with GET /vocabulary/decks (the `ListVocabularyDecks` operationId).
+func (c *Client) ListVocabularyDecks(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListVocabularyDecksRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateVocabularyDeckWithBody Create a deck.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /vocabulary/decks (the `CreateVocabularyDeck` operationId).
+func (c *Client) CreateVocabularyDeckWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateVocabularyDeckRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateVocabularyDeck Create a deck.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /vocabulary/decks (the `CreateVocabularyDeck` operationId).
+func (c *Client) CreateVocabularyDeck(ctx context.Context, body CreateVocabularyDeckJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateVocabularyDeckRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListDeckWords The word senses in a deck, with everything a flashcard renders.
+//
+// Corresponds with GET /vocabulary/decks/{id}/words (the `ListDeckWords` operationId).
+func (c *Client) ListDeckWords(ctx context.Context, id openapi_types.UUID, params *ListDeckWordsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListDeckWordsRequest(c.Server, id, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AddWordToDeckWithBody Add a word sense to a deck.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /vocabulary/decks/{id}/words (the `AddWordToDeck` operationId).
+func (c *Client) AddWordToDeckWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddWordToDeckRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AddWordToDeck Add a word sense to a deck.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /vocabulary/decks/{id}/words (the `AddWordToDeck` operationId).
+func (c *Client) AddWordToDeck(ctx context.Context, id openapi_types.UUID, body AddWordToDeckJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddWordToDeckRequest(c.Server, id, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RemoveWordFromDeck Remove a word sense from a deck.
+//
+// Corresponds with DELETE /vocabulary/decks/{id}/words/{sense_id} (the `RemoveWordFromDeck` operationId).
+func (c *Client) RemoveWordFromDeck(ctx context.Context, id openapi_types.UUID, senseId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRemoveWordFromDeckRequest(c.Server, id, senseId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchVocabulary Search the dictionary.
+//
+// Corresponds with GET /vocabulary/search (the `SearchVocabulary` operationId).
+func (c *Client) SearchVocabulary(ctx context.Context, params *SearchVocabularyParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchVocabularyRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetVocabularyWord Dictionary lookup with senses, IPA, audio, examples.
+//
+// Corresponds with GET /vocabulary/words/{lemma} (the `GetVocabularyWord` operationId).
+func (c *Client) GetVocabularyWord(ctx context.Context, lemma string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetVocabularyWordRequest(c.Server, lemma)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateWordStateWithBody Mark known or ignored.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /vocabulary/words/{sense_id}/state (the `UpdateWordState` operationId).
+func (c *Client) UpdateWordStateWithBody(ctx context.Context, senseId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateWordStateRequestWithBody(c.Server, senseId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateWordState Mark known or ignored.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /vocabulary/words/{sense_id}/state (the `UpdateWordState` operationId).
+func (c *Client) UpdateWordState(ctx context.Context, senseId openapi_types.UUID, body UpdateWordStateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateWordStateRequest(c.Server, senseId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -4183,6 +4707,46 @@ func NewAdminSuspendUserRequestWithBody(server string, id openapi_types.UUID, co
 	}
 
 	operationPath := fmt.Sprintf("/admin/users/%s/suspend", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewAdminCreateWordRequest calls the generic AdminCreateWord builder with application/json body
+func NewAdminCreateWordRequest(server string, body AdminCreateWordJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAdminCreateWordRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewAdminCreateWordRequestWithBody constructs an http.Request for the AdminCreateWord method, with any body, and a specified content type
+func NewAdminCreateWordRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/vocabulary/words")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -5857,6 +6421,269 @@ func NewSystemReadyRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewGetReviewDueCountRequest constructs an http.Request for the GetReviewDueCount method
+func NewGetReviewDueCountRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/reviews/due-count")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetReviewForecastRequest constructs an http.Request for the GetReviewForecast method
+func NewGetReviewForecastRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/reviews/forecast")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetReviewSessionRequest constructs an http.Request for the GetReviewSession method
+func NewGetReviewSessionRequest(server string, params *GetReviewSessionParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/reviews/session")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCompleteReviewSessionRequest calls the generic CompleteReviewSession builder with application/json body
+func NewCompleteReviewSessionRequest(server string, body CompleteReviewSessionJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCompleteReviewSessionRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCompleteReviewSessionRequestWithBody constructs an http.Request for the CompleteReviewSession method, with any body, and a specified content type
+func NewCompleteReviewSessionRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/reviews/session/complete")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewAnswerReviewCardRequest calls the generic AnswerReviewCard builder with application/json body
+func NewAnswerReviewCardRequest(server string, cardId openapi_types.UUID, body AnswerReviewCardJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAnswerReviewCardRequestWithBody(server, cardId, "application/json", bodyReader)
+}
+
+// NewAnswerReviewCardRequestWithBody constructs an http.Request for the AnswerReviewCard method, with any body, and a specified content type
+func NewAnswerReviewCardRequestWithBody(server string, cardId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "card_id", cardId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/reviews/%s/answer", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewResetReviewCardRequest constructs an http.Request for the ResetReviewCard method
+func NewResetReviewCardRequest(server string, cardId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "card_id", cardId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/reviews/%s/reset", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSuspendReviewCardRequest constructs an http.Request for the SuspendReviewCard method
+func NewSuspendReviewCardRequest(server string, cardId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "card_id", cardId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/reviews/%s/suspend", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewSystemVersionRequest constructs an http.Request for the SystemVersion method
 func NewSystemVersionRequest(server string) (*http.Request, error) {
 	var err error
@@ -5880,6 +6707,377 @@ func NewSystemVersionRequest(server string) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewListVocabularyDecksRequest constructs an http.Request for the ListVocabularyDecks method
+func NewListVocabularyDecksRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/vocabulary/decks")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateVocabularyDeckRequest calls the generic CreateVocabularyDeck builder with application/json body
+func NewCreateVocabularyDeckRequest(server string, body CreateVocabularyDeckJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateVocabularyDeckRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateVocabularyDeckRequestWithBody constructs an http.Request for the CreateVocabularyDeck method, with any body, and a specified content type
+func NewCreateVocabularyDeckRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/vocabulary/decks")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListDeckWordsRequest constructs an http.Request for the ListDeckWords method
+func NewListDeckWordsRequest(server string, id openapi_types.UUID, params *ListDeckWordsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/vocabulary/decks/%s/words", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "offset", *params.Offset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAddWordToDeckRequest calls the generic AddWordToDeck builder with application/json body
+func NewAddWordToDeckRequest(server string, id openapi_types.UUID, body AddWordToDeckJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAddWordToDeckRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewAddWordToDeckRequestWithBody constructs an http.Request for the AddWordToDeck method, with any body, and a specified content type
+func NewAddWordToDeckRequestWithBody(server string, id openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/vocabulary/decks/%s/words", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewRemoveWordFromDeckRequest constructs an http.Request for the RemoveWordFromDeck method
+func NewRemoveWordFromDeckRequest(server string, id openapi_types.UUID, senseId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "sense_id", senseId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/vocabulary/decks/%s/words/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSearchVocabularyRequest constructs an http.Request for the SearchVocabulary method
+func NewSearchVocabularyRequest(server string, params *SearchVocabularyParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/vocabulary/search")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "q", params.Q, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetVocabularyWordRequest constructs an http.Request for the GetVocabularyWord method
+func NewGetVocabularyWordRequest(server string, lemma string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "lemma", lemma, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/vocabulary/words/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateWordStateRequest calls the generic UpdateWordState builder with application/json body
+func NewUpdateWordStateRequest(server string, senseId openapi_types.UUID, body UpdateWordStateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateWordStateRequestWithBody(server, senseId, "application/json", bodyReader)
+}
+
+// NewUpdateWordStateRequestWithBody constructs an http.Request for the UpdateWordState method, with any body, and a specified content type
+func NewUpdateWordStateRequestWithBody(server string, senseId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "sense_id", senseId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/vocabulary/words/%s/state", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -6280,6 +7478,20 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /admin/users/{id}/suspend (the `AdminSuspendUser` operationId).
 	AdminSuspendUserWithResponse(ctx context.Context, id openapi_types.UUID, body AdminSuspendUserJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminSuspendUserResponse, error)
+
+	// AdminCreateWordWithBodyWithResponse Create a word entry.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/vocabulary/words (the `AdminCreateWord` operationId).
+	AdminCreateWordWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminCreateWordResponse, error)
+
+	// AdminCreateWordWithResponse Create a word entry.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/vocabulary/words (the `AdminCreateWord` operationId).
+	AdminCreateWordWithResponse(ctx context.Context, body AdminCreateWordJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminCreateWordResponse, error)
 
 	// GetAttemptWithResponse Read attempt state and result.
 	//
@@ -6933,6 +8145,87 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /ready (the `SystemReady` operationId).
 	SystemReadyWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*SystemReadyResponse, error)
 
+	// GetReviewDueCountWithResponse Badge count of due review cards.
+	//
+	// Returns the total count of cards currently due for review.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /reviews/due-count (the `GetReviewDueCount` operationId).
+	GetReviewDueCountWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetReviewDueCountResponse, error)
+
+	// GetReviewForecastWithResponse Projected workload for the next 30 days.
+	//
+	// Forecast of due reviews over upcoming days.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /reviews/forecast (the `GetReviewForecast` operationId).
+	GetReviewForecastWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetReviewForecastResponse, error)
+
+	// GetReviewSessionWithResponse Build a review session from due cards.
+	//
+	// Returns due cards for the learner ordered by priority up to the daily limit.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /reviews/session (the `GetReviewSession` operationId).
+	GetReviewSessionWithResponse(ctx context.Context, params *GetReviewSessionParams, reqEditors ...RequestEditorFn) (*GetReviewSessionResponse, error)
+
+	// CompleteReviewSessionWithBodyWithResponse Close the review session.
+	//
+	// Records daily stats and emits session completed events.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /reviews/session/complete (the `CompleteReviewSession` operationId).
+	CompleteReviewSessionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CompleteReviewSessionResponse, error)
+
+	// CompleteReviewSessionWithResponse Close the review session.
+	//
+	// Records daily stats and emits session completed events.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /reviews/session/complete (the `CompleteReviewSession` operationId).
+	CompleteReviewSessionWithResponse(ctx context.Context, body CompleteReviewSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*CompleteReviewSessionResponse, error)
+
+	// AnswerReviewCardWithBodyWithResponse Record a grade and reschedule a card.
+	//
+	// Updates the card using FSRS algorithm and appends a review log entry.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /reviews/{card_id}/answer (the `AnswerReviewCard` operationId).
+	AnswerReviewCardWithBodyWithResponse(ctx context.Context, cardId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AnswerReviewCardResponse, error)
+
+	// AnswerReviewCardWithResponse Record a grade and reschedule a card.
+	//
+	// Updates the card using FSRS algorithm and appends a review log entry.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /reviews/{card_id}/answer (the `AnswerReviewCard` operationId).
+	AnswerReviewCardWithResponse(ctx context.Context, cardId openapi_types.UUID, body AnswerReviewCardJSONRequestBody, reqEditors ...RequestEditorFn) (*AnswerReviewCardResponse, error)
+
+	// ResetReviewCardWithResponse Treat card as new again.
+	//
+	// Resets repetitions and stability to initial state.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /reviews/{card_id}/reset (the `ResetReviewCard` operationId).
+	ResetReviewCardWithResponse(ctx context.Context, cardId openapi_types.UUID, reqEditors ...RequestEditorFn) (*ResetReviewCardResponse, error)
+
+	// SuspendReviewCardWithResponse Stop scheduling this card.
+	//
+	// Excludes the card from future review sessions until unsuspended.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /reviews/{card_id}/suspend (the `SuspendReviewCard` operationId).
+	SuspendReviewCardWithResponse(ctx context.Context, cardId openapi_types.UUID, reqEditors ...RequestEditorFn) (*SuspendReviewCardResponse, error)
+
 	// SystemVersionWithResponse Read the deployed API version.
 	//
 	// Returns the version associated with the running API build.
@@ -6941,6 +8234,83 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /version (the `SystemVersion` operationId).
 	SystemVersionWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*SystemVersionResponse, error)
+
+	// ListVocabularyDecksWithResponse The learner's decks plus curated ones.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /vocabulary/decks (the `ListVocabularyDecks` operationId).
+	ListVocabularyDecksWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListVocabularyDecksResponse, error)
+
+	// CreateVocabularyDeckWithBodyWithResponse Create a deck.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /vocabulary/decks (the `CreateVocabularyDeck` operationId).
+	CreateVocabularyDeckWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateVocabularyDeckResponse, error)
+
+	// CreateVocabularyDeckWithResponse Create a deck.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /vocabulary/decks (the `CreateVocabularyDeck` operationId).
+	CreateVocabularyDeckWithResponse(ctx context.Context, body CreateVocabularyDeckJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateVocabularyDeckResponse, error)
+
+	// ListDeckWordsWithResponse The word senses in a deck, with everything a flashcard renders.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /vocabulary/decks/{id}/words (the `ListDeckWords` operationId).
+	ListDeckWordsWithResponse(ctx context.Context, id openapi_types.UUID, params *ListDeckWordsParams, reqEditors ...RequestEditorFn) (*ListDeckWordsResponse, error)
+
+	// AddWordToDeckWithBodyWithResponse Add a word sense to a deck.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /vocabulary/decks/{id}/words (the `AddWordToDeck` operationId).
+	AddWordToDeckWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddWordToDeckResponse, error)
+
+	// AddWordToDeckWithResponse Add a word sense to a deck.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /vocabulary/decks/{id}/words (the `AddWordToDeck` operationId).
+	AddWordToDeckWithResponse(ctx context.Context, id openapi_types.UUID, body AddWordToDeckJSONRequestBody, reqEditors ...RequestEditorFn) (*AddWordToDeckResponse, error)
+
+	// RemoveWordFromDeckWithResponse Remove a word sense from a deck.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /vocabulary/decks/{id}/words/{sense_id} (the `RemoveWordFromDeck` operationId).
+	RemoveWordFromDeckWithResponse(ctx context.Context, id openapi_types.UUID, senseId openapi_types.UUID, reqEditors ...RequestEditorFn) (*RemoveWordFromDeckResponse, error)
+
+	// SearchVocabularyWithResponse Search the dictionary.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /vocabulary/search (the `SearchVocabulary` operationId).
+	SearchVocabularyWithResponse(ctx context.Context, params *SearchVocabularyParams, reqEditors ...RequestEditorFn) (*SearchVocabularyResponse, error)
+
+	// GetVocabularyWordWithResponse Dictionary lookup with senses, IPA, audio, examples.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /vocabulary/words/{lemma} (the `GetVocabularyWord` operationId).
+	GetVocabularyWordWithResponse(ctx context.Context, lemma string, reqEditors ...RequestEditorFn) (*GetVocabularyWordResponse, error)
+
+	// UpdateWordStateWithBodyWithResponse Mark known or ignored.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /vocabulary/words/{sense_id}/state (the `UpdateWordState` operationId).
+	UpdateWordStateWithBodyWithResponse(ctx context.Context, senseId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateWordStateResponse, error)
+
+	// UpdateWordStateWithResponse Mark known or ignored.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /vocabulary/words/{sense_id}/state (the `UpdateWordState` operationId).
+	UpdateWordStateWithResponse(ctx context.Context, senseId openapi_types.UUID, body UpdateWordStateJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateWordStateResponse, error)
 }
 
 // StartAttemptResponse201Headers the declared response headers of an HTTP 201 response for StartAttempt
@@ -8781,6 +10151,89 @@ func (r AdminSuspendUserResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r AdminSuspendUserResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AdminCreateWordResponse201Headers the declared response headers of an HTTP 201 response for AdminCreateWord
+type AdminCreateWordResponse201Headers struct {
+	XRequestId *string
+}
+
+type AdminCreateWordResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *WordDetail
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *AdminCreateWordResponse201Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r AdminCreateWordResponse) GetJSON201() *WordDetail {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r AdminCreateWordResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AdminCreateWordResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminCreateWordResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AdminCreateWordResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r AdminCreateWordResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminCreateWordResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminCreateWordResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminCreateWordResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminCreateWordResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -12059,6 +13512,489 @@ func (r SystemReadyResponse) ContentType() string {
 	return ""
 }
 
+// GetReviewDueCountResponse200Headers the declared response headers of an HTTP 200 response for GetReviewDueCount
+type GetReviewDueCountResponse200Headers struct {
+	XRequestId *string
+}
+
+type GetReviewDueCountResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *DueCountResponse
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetReviewDueCountResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetReviewDueCountResponse) GetJSON200() *DueCountResponse {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetReviewDueCountResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r GetReviewDueCountResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetReviewDueCountResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetReviewDueCountResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetReviewDueCountResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetReviewDueCountResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GetReviewForecastResponse200Headers the declared response headers of an HTTP 200 response for GetReviewForecast
+type GetReviewForecastResponse200Headers struct {
+	XRequestId *string
+}
+
+type GetReviewForecastResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ForecastResponse
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetReviewForecastResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetReviewForecastResponse) GetJSON200() *ForecastResponse {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetReviewForecastResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r GetReviewForecastResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetReviewForecastResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetReviewForecastResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetReviewForecastResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetReviewForecastResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GetReviewSessionResponse200Headers the declared response headers of an HTTP 200 response for GetReviewSession
+type GetReviewSessionResponse200Headers struct {
+	XRequestId *string
+}
+
+type GetReviewSessionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ReviewSessionResponse
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetReviewSessionResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetReviewSessionResponse) GetJSON200() *ReviewSessionResponse {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetReviewSessionResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r GetReviewSessionResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetReviewSessionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetReviewSessionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetReviewSessionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetReviewSessionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// CompleteReviewSessionResponse200Headers the declared response headers of an HTTP 200 response for CompleteReviewSession
+type CompleteReviewSessionResponse200Headers struct {
+	XRequestId *string
+}
+
+type CompleteReviewSessionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *CompleteReviewSessionResult
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *CompleteReviewSessionResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CompleteReviewSessionResponse) GetJSON200() *CompleteReviewSessionResult {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r CompleteReviewSessionResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r CompleteReviewSessionResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r CompleteReviewSessionResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CompleteReviewSessionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CompleteReviewSessionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CompleteReviewSessionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CompleteReviewSessionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AnswerReviewCardResponse200Headers the declared response headers of an HTTP 200 response for AnswerReviewCard
+type AnswerReviewCardResponse200Headers struct {
+	XRequestId *string
+}
+
+type AnswerReviewCardResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AnswerReviewResponse
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AnswerReviewCardResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AnswerReviewCardResponse) GetJSON200() *AnswerReviewResponse {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r AnswerReviewCardResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AnswerReviewCardResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AnswerReviewCardResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AnswerReviewCardResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AnswerReviewCardResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r AnswerReviewCardResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r AnswerReviewCardResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AnswerReviewCardResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AnswerReviewCardResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AnswerReviewCardResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ResetReviewCardResponse200Headers the declared response headers of an HTTP 200 response for ResetReviewCard
+type ResetReviewCardResponse200Headers struct {
+	XRequestId *string
+}
+
+type ResetReviewCardResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ReviewCard
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ResetReviewCardResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ResetReviewCardResponse) GetJSON200() *ReviewCard {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ResetReviewCardResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ResetReviewCardResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r ResetReviewCardResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ResetReviewCardResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ResetReviewCardResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ResetReviewCardResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ResetReviewCardResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// SuspendReviewCardResponse200Headers the declared response headers of an HTTP 200 response for SuspendReviewCard
+type SuspendReviewCardResponse200Headers struct {
+	XRequestId *string
+}
+
+type SuspendReviewCardResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ReviewCard
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *SuspendReviewCardResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SuspendReviewCardResponse) GetJSON200() *ReviewCard {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r SuspendReviewCardResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r SuspendReviewCardResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r SuspendReviewCardResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r SuspendReviewCardResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SuspendReviewCardResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SuspendReviewCardResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SuspendReviewCardResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // SystemVersionResponse200Headers the declared response headers of an HTTP 200 response for SystemVersion
 type SystemVersionResponse200Headers struct {
 	XRequestId *string
@@ -12101,6 +14037,551 @@ func (r SystemVersionResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r SystemVersionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ListVocabularyDecksResponse200Headers the declared response headers of an HTTP 200 response for ListVocabularyDecks
+type ListVocabularyDecksResponse200Headers struct {
+	XRequestId *string
+}
+
+type ListVocabularyDecksResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *DeckListResponse
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ListVocabularyDecksResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListVocabularyDecksResponse) GetJSON200() *DeckListResponse {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ListVocabularyDecksResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r ListVocabularyDecksResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ListVocabularyDecksResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListVocabularyDecksResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListVocabularyDecksResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListVocabularyDecksResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// CreateVocabularyDeckResponse201Headers the declared response headers of an HTTP 201 response for CreateVocabularyDeck
+type CreateVocabularyDeckResponse201Headers struct {
+	XRequestId *string
+}
+
+type CreateVocabularyDeckResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *Deck
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *CreateVocabularyDeckResponse201Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r CreateVocabularyDeckResponse) GetJSON201() *Deck {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r CreateVocabularyDeckResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r CreateVocabularyDeckResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r CreateVocabularyDeckResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r CreateVocabularyDeckResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateVocabularyDeckResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateVocabularyDeckResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateVocabularyDeckResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateVocabularyDeckResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ListDeckWordsResponse200Headers the declared response headers of an HTTP 200 response for ListDeckWords
+type ListDeckWordsResponse200Headers struct {
+	XRequestId *string
+}
+
+type ListDeckWordsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *DeckWordsResponse
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ListDeckWordsResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListDeckWordsResponse) GetJSON200() *DeckWordsResponse {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ListDeckWordsResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ListDeckWordsResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r ListDeckWordsResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ListDeckWordsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListDeckWordsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListDeckWordsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListDeckWordsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AddWordToDeckResponse201Headers the declared response headers of an HTTP 201 response for AddWordToDeck
+type AddWordToDeckResponse201Headers struct {
+	XRequestId *string
+}
+
+type AddWordToDeckResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *AddWordToDeckResponse201Headers
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r AddWordToDeckResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AddWordToDeckResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AddWordToDeckResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AddWordToDeckResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r AddWordToDeckResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r AddWordToDeckResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AddWordToDeckResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AddWordToDeckResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AddWordToDeckResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// RemoveWordFromDeckResponse204Headers the declared response headers of an HTTP 204 response for RemoveWordFromDeck
+type RemoveWordFromDeckResponse204Headers struct {
+	XRequestId *string
+}
+
+type RemoveWordFromDeckResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers204 the parsed response headers for an HTTP 204 response
+	Headers204 *RemoveWordFromDeckResponse204Headers
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r RemoveWordFromDeckResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r RemoveWordFromDeckResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r RemoveWordFromDeckResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r RemoveWordFromDeckResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RemoveWordFromDeckResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RemoveWordFromDeckResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RemoveWordFromDeckResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// SearchVocabularyResponse200Headers the declared response headers of an HTTP 200 response for SearchVocabulary
+type SearchVocabularyResponse200Headers struct {
+	XRequestId *string
+}
+
+type SearchVocabularyResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WordSearchResponse
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *SearchVocabularyResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SearchVocabularyResponse) GetJSON200() *WordSearchResponse {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r SearchVocabularyResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r SearchVocabularyResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r SearchVocabularyResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchVocabularyResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchVocabularyResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SearchVocabularyResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GetVocabularyWordResponse200Headers the declared response headers of an HTTP 200 response for GetVocabularyWord
+type GetVocabularyWordResponse200Headers struct {
+	XRequestId *string
+}
+
+type GetVocabularyWordResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WordLookupResponse
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetVocabularyWordResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetVocabularyWordResponse) GetJSON200() *WordLookupResponse {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GetVocabularyWordResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r GetVocabularyWordResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetVocabularyWordResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetVocabularyWordResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetVocabularyWordResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetVocabularyWordResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// UpdateWordStateResponse200Headers the declared response headers of an HTTP 200 response for UpdateWordState
+type UpdateWordStateResponse200Headers struct {
+	XRequestId *string
+}
+
+type UpdateWordStateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *UserWordState
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *UpdateWordStateResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateWordStateResponse) GetJSON200() *UserWordState {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r UpdateWordStateResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r UpdateWordStateResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r UpdateWordStateResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r UpdateWordStateResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateWordStateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateWordStateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateWordStateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateWordStateResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -12680,6 +15161,32 @@ func (c *ClientWithResponses) AdminSuspendUserWithResponse(ctx context.Context, 
 		return nil, err
 	}
 	return ParseAdminSuspendUserResponse(rsp)
+}
+
+// AdminCreateWordWithBodyWithResponse Create a word entry.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/vocabulary/words (the `AdminCreateWord` operationId).
+func (c *ClientWithResponses) AdminCreateWordWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminCreateWordResponse, error) {
+	rsp, err := c.AdminCreateWordWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminCreateWordResponse(rsp)
+}
+
+// AdminCreateWordWithResponse Create a word entry.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/vocabulary/words (the `AdminCreateWord` operationId).
+func (c *ClientWithResponses) AdminCreateWordWithResponse(ctx context.Context, body AdminCreateWordJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminCreateWordResponse, error) {
+	rsp, err := c.AdminCreateWord(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminCreateWordResponse(rsp)
 }
 
 // GetAttemptWithResponse Read attempt state and result.
@@ -13694,6 +16201,141 @@ func (c *ClientWithResponses) SystemReadyWithResponse(ctx context.Context, reqEd
 	return ParseSystemReadyResponse(rsp)
 }
 
+// GetReviewDueCountWithResponse Badge count of due review cards.
+//
+// Returns the total count of cards currently due for review.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /reviews/due-count (the `GetReviewDueCount` operationId).
+func (c *ClientWithResponses) GetReviewDueCountWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetReviewDueCountResponse, error) {
+	rsp, err := c.GetReviewDueCount(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetReviewDueCountResponse(rsp)
+}
+
+// GetReviewForecastWithResponse Projected workload for the next 30 days.
+//
+// Forecast of due reviews over upcoming days.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /reviews/forecast (the `GetReviewForecast` operationId).
+func (c *ClientWithResponses) GetReviewForecastWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetReviewForecastResponse, error) {
+	rsp, err := c.GetReviewForecast(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetReviewForecastResponse(rsp)
+}
+
+// GetReviewSessionWithResponse Build a review session from due cards.
+//
+// Returns due cards for the learner ordered by priority up to the daily limit.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /reviews/session (the `GetReviewSession` operationId).
+func (c *ClientWithResponses) GetReviewSessionWithResponse(ctx context.Context, params *GetReviewSessionParams, reqEditors ...RequestEditorFn) (*GetReviewSessionResponse, error) {
+	rsp, err := c.GetReviewSession(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetReviewSessionResponse(rsp)
+}
+
+// CompleteReviewSessionWithBodyWithResponse Close the review session.
+//
+// Records daily stats and emits session completed events.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /reviews/session/complete (the `CompleteReviewSession` operationId).
+func (c *ClientWithResponses) CompleteReviewSessionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CompleteReviewSessionResponse, error) {
+	rsp, err := c.CompleteReviewSessionWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCompleteReviewSessionResponse(rsp)
+}
+
+// CompleteReviewSessionWithResponse Close the review session.
+//
+// Records daily stats and emits session completed events.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /reviews/session/complete (the `CompleteReviewSession` operationId).
+func (c *ClientWithResponses) CompleteReviewSessionWithResponse(ctx context.Context, body CompleteReviewSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*CompleteReviewSessionResponse, error) {
+	rsp, err := c.CompleteReviewSession(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCompleteReviewSessionResponse(rsp)
+}
+
+// AnswerReviewCardWithBodyWithResponse Record a grade and reschedule a card.
+//
+// Updates the card using FSRS algorithm and appends a review log entry.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /reviews/{card_id}/answer (the `AnswerReviewCard` operationId).
+func (c *ClientWithResponses) AnswerReviewCardWithBodyWithResponse(ctx context.Context, cardId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AnswerReviewCardResponse, error) {
+	rsp, err := c.AnswerReviewCardWithBody(ctx, cardId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAnswerReviewCardResponse(rsp)
+}
+
+// AnswerReviewCardWithResponse Record a grade and reschedule a card.
+//
+// Updates the card using FSRS algorithm and appends a review log entry.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /reviews/{card_id}/answer (the `AnswerReviewCard` operationId).
+func (c *ClientWithResponses) AnswerReviewCardWithResponse(ctx context.Context, cardId openapi_types.UUID, body AnswerReviewCardJSONRequestBody, reqEditors ...RequestEditorFn) (*AnswerReviewCardResponse, error) {
+	rsp, err := c.AnswerReviewCard(ctx, cardId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAnswerReviewCardResponse(rsp)
+}
+
+// ResetReviewCardWithResponse Treat card as new again.
+//
+// Resets repetitions and stability to initial state.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /reviews/{card_id}/reset (the `ResetReviewCard` operationId).
+func (c *ClientWithResponses) ResetReviewCardWithResponse(ctx context.Context, cardId openapi_types.UUID, reqEditors ...RequestEditorFn) (*ResetReviewCardResponse, error) {
+	rsp, err := c.ResetReviewCard(ctx, cardId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseResetReviewCardResponse(rsp)
+}
+
+// SuspendReviewCardWithResponse Stop scheduling this card.
+//
+// Excludes the card from future review sessions until unsuspended.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /reviews/{card_id}/suspend (the `SuspendReviewCard` operationId).
+func (c *ClientWithResponses) SuspendReviewCardWithResponse(ctx context.Context, cardId openapi_types.UUID, reqEditors ...RequestEditorFn) (*SuspendReviewCardResponse, error) {
+	rsp, err := c.SuspendReviewCard(ctx, cardId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSuspendReviewCardResponse(rsp)
+}
+
 // SystemVersionWithResponse Read the deployed API version.
 //
 // Returns the version associated with the running API build.
@@ -13707,6 +16349,149 @@ func (c *ClientWithResponses) SystemVersionWithResponse(ctx context.Context, req
 		return nil, err
 	}
 	return ParseSystemVersionResponse(rsp)
+}
+
+// ListVocabularyDecksWithResponse The learner's decks plus curated ones.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /vocabulary/decks (the `ListVocabularyDecks` operationId).
+func (c *ClientWithResponses) ListVocabularyDecksWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListVocabularyDecksResponse, error) {
+	rsp, err := c.ListVocabularyDecks(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListVocabularyDecksResponse(rsp)
+}
+
+// CreateVocabularyDeckWithBodyWithResponse Create a deck.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /vocabulary/decks (the `CreateVocabularyDeck` operationId).
+func (c *ClientWithResponses) CreateVocabularyDeckWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateVocabularyDeckResponse, error) {
+	rsp, err := c.CreateVocabularyDeckWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateVocabularyDeckResponse(rsp)
+}
+
+// CreateVocabularyDeckWithResponse Create a deck.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /vocabulary/decks (the `CreateVocabularyDeck` operationId).
+func (c *ClientWithResponses) CreateVocabularyDeckWithResponse(ctx context.Context, body CreateVocabularyDeckJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateVocabularyDeckResponse, error) {
+	rsp, err := c.CreateVocabularyDeck(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateVocabularyDeckResponse(rsp)
+}
+
+// ListDeckWordsWithResponse The word senses in a deck, with everything a flashcard renders.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /vocabulary/decks/{id}/words (the `ListDeckWords` operationId).
+func (c *ClientWithResponses) ListDeckWordsWithResponse(ctx context.Context, id openapi_types.UUID, params *ListDeckWordsParams, reqEditors ...RequestEditorFn) (*ListDeckWordsResponse, error) {
+	rsp, err := c.ListDeckWords(ctx, id, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListDeckWordsResponse(rsp)
+}
+
+// AddWordToDeckWithBodyWithResponse Add a word sense to a deck.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /vocabulary/decks/{id}/words (the `AddWordToDeck` operationId).
+func (c *ClientWithResponses) AddWordToDeckWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddWordToDeckResponse, error) {
+	rsp, err := c.AddWordToDeckWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAddWordToDeckResponse(rsp)
+}
+
+// AddWordToDeckWithResponse Add a word sense to a deck.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /vocabulary/decks/{id}/words (the `AddWordToDeck` operationId).
+func (c *ClientWithResponses) AddWordToDeckWithResponse(ctx context.Context, id openapi_types.UUID, body AddWordToDeckJSONRequestBody, reqEditors ...RequestEditorFn) (*AddWordToDeckResponse, error) {
+	rsp, err := c.AddWordToDeck(ctx, id, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAddWordToDeckResponse(rsp)
+}
+
+// RemoveWordFromDeckWithResponse Remove a word sense from a deck.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /vocabulary/decks/{id}/words/{sense_id} (the `RemoveWordFromDeck` operationId).
+func (c *ClientWithResponses) RemoveWordFromDeckWithResponse(ctx context.Context, id openapi_types.UUID, senseId openapi_types.UUID, reqEditors ...RequestEditorFn) (*RemoveWordFromDeckResponse, error) {
+	rsp, err := c.RemoveWordFromDeck(ctx, id, senseId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRemoveWordFromDeckResponse(rsp)
+}
+
+// SearchVocabularyWithResponse Search the dictionary.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /vocabulary/search (the `SearchVocabulary` operationId).
+func (c *ClientWithResponses) SearchVocabularyWithResponse(ctx context.Context, params *SearchVocabularyParams, reqEditors ...RequestEditorFn) (*SearchVocabularyResponse, error) {
+	rsp, err := c.SearchVocabulary(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchVocabularyResponse(rsp)
+}
+
+// GetVocabularyWordWithResponse Dictionary lookup with senses, IPA, audio, examples.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /vocabulary/words/{lemma} (the `GetVocabularyWord` operationId).
+func (c *ClientWithResponses) GetVocabularyWordWithResponse(ctx context.Context, lemma string, reqEditors ...RequestEditorFn) (*GetVocabularyWordResponse, error) {
+	rsp, err := c.GetVocabularyWord(ctx, lemma, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetVocabularyWordResponse(rsp)
+}
+
+// UpdateWordStateWithBodyWithResponse Mark known or ignored.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /vocabulary/words/{sense_id}/state (the `UpdateWordState` operationId).
+func (c *ClientWithResponses) UpdateWordStateWithBodyWithResponse(ctx context.Context, senseId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateWordStateResponse, error) {
+	rsp, err := c.UpdateWordStateWithBody(ctx, senseId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateWordStateResponse(rsp)
+}
+
+// UpdateWordStateWithResponse Mark known or ignored.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /vocabulary/words/{sense_id}/state (the `UpdateWordState` operationId).
+func (c *ClientWithResponses) UpdateWordStateWithResponse(ctx context.Context, senseId openapi_types.UUID, body UpdateWordStateJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateWordStateResponse, error) {
+	rsp, err := c.UpdateWordState(ctx, senseId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateWordStateResponse(rsp)
 }
 
 // ParseStartAttemptResponse parses an HTTP response from a StartAttemptWithResponse call
@@ -15326,6 +18111,80 @@ func ParseAdminSuspendUserResponse(rsp *http.Response) (*AdminSuspendUserRespons
 			headers.XRequestId = &value
 		}
 		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAdminCreateWordResponse parses an HTTP response from a AdminCreateWordWithResponse call
+func ParseAdminCreateWordResponse(rsp *http.Response) (*AdminCreateWordResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminCreateWordResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest WordDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers AdminCreateWordResponse201Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers201 = &headers
 	}
 
 	return response, nil
@@ -18603,6 +21462,426 @@ func ParseSystemReadyResponse(rsp *http.Response) (*SystemReadyResponse, error) 
 	return response, nil
 }
 
+// ParseGetReviewDueCountResponse parses an HTTP response from a GetReviewDueCountWithResponse call
+func ParseGetReviewDueCountResponse(rsp *http.Response) (*GetReviewDueCountResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetReviewDueCountResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DueCountResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetReviewDueCountResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGetReviewForecastResponse parses an HTTP response from a GetReviewForecastWithResponse call
+func ParseGetReviewForecastResponse(rsp *http.Response) (*GetReviewForecastResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetReviewForecastResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ForecastResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetReviewForecastResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGetReviewSessionResponse parses an HTTP response from a GetReviewSessionWithResponse call
+func ParseGetReviewSessionResponse(rsp *http.Response) (*GetReviewSessionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetReviewSessionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ReviewSessionResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetReviewSessionResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseCompleteReviewSessionResponse parses an HTTP response from a CompleteReviewSessionWithResponse call
+func ParseCompleteReviewSessionResponse(rsp *http.Response) (*CompleteReviewSessionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CompleteReviewSessionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CompleteReviewSessionResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers CompleteReviewSessionResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAnswerReviewCardResponse parses an HTTP response from a AnswerReviewCardWithResponse call
+func ParseAnswerReviewCardResponse(rsp *http.Response) (*AnswerReviewCardResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AnswerReviewCardResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AnswerReviewResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AnswerReviewCardResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseResetReviewCardResponse parses an HTTP response from a ResetReviewCardWithResponse call
+func ParseResetReviewCardResponse(rsp *http.Response) (*ResetReviewCardResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ResetReviewCardResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ReviewCard
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ResetReviewCardResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseSuspendReviewCardResponse parses an HTTP response from a SuspendReviewCardWithResponse call
+func ParseSuspendReviewCardResponse(rsp *http.Response) (*SuspendReviewCardResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SuspendReviewCardResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ReviewCard
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers SuspendReviewCardResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseSystemVersionResponse parses an HTTP response from a SystemVersionWithResponse call
 func ParseSystemVersionResponse(rsp *http.Response) (*SystemVersionResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -18629,6 +21908,485 @@ func ParseSystemVersionResponse(rsp *http.Response) (*SystemVersionResponse, err
 	switch {
 	case rsp.StatusCode == 200:
 		var headers SystemVersionResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseListVocabularyDecksResponse parses an HTTP response from a ListVocabularyDecksWithResponse call
+func ParseListVocabularyDecksResponse(rsp *http.Response) (*ListVocabularyDecksResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListVocabularyDecksResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DeckListResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ListVocabularyDecksResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseCreateVocabularyDeckResponse parses an HTTP response from a CreateVocabularyDeckWithResponse call
+func ParseCreateVocabularyDeckResponse(rsp *http.Response) (*CreateVocabularyDeckResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateVocabularyDeckResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest Deck
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers CreateVocabularyDeckResponse201Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers201 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseListDeckWordsResponse parses an HTTP response from a ListDeckWordsWithResponse call
+func ParseListDeckWordsResponse(rsp *http.Response) (*ListDeckWordsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListDeckWordsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DeckWordsResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ListDeckWordsResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAddWordToDeckResponse parses an HTTP response from a AddWordToDeckWithResponse call
+func ParseAddWordToDeckResponse(rsp *http.Response) (*AddWordToDeckResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AddWordToDeckResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers AddWordToDeckResponse201Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers201 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseRemoveWordFromDeckResponse parses an HTTP response from a RemoveWordFromDeckWithResponse call
+func ParseRemoveWordFromDeckResponse(rsp *http.Response) (*RemoveWordFromDeckResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RemoveWordFromDeckResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		var headers RemoveWordFromDeckResponse204Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers204 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseSearchVocabularyResponse parses an HTTP response from a SearchVocabularyWithResponse call
+func ParseSearchVocabularyResponse(rsp *http.Response) (*SearchVocabularyResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchVocabularyResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WordSearchResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers SearchVocabularyResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGetVocabularyWordResponse parses an HTTP response from a GetVocabularyWordWithResponse call
+func ParseGetVocabularyWordResponse(rsp *http.Response) (*GetVocabularyWordResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetVocabularyWordResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WordLookupResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetVocabularyWordResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseUpdateWordStateResponse parses an HTTP response from a UpdateWordStateWithResponse call
+func ParseUpdateWordStateResponse(rsp *http.Response) (*UpdateWordStateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateWordStateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UserWordState
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers UpdateWordStateResponse200Headers
 		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
 			var value string
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {

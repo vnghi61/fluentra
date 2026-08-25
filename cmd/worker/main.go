@@ -27,6 +27,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/lesson"
 	lessonservice "github.com/fluentra/fluentra/internal/modules/lesson/service"
 	"github.com/fluentra/fluentra/internal/modules/rbac"
+	"github.com/fluentra/fluentra/internal/modules/srs"
 	"github.com/fluentra/fluentra/internal/modules/user"
 	"github.com/fluentra/fluentra/internal/platform/cache"
 	"github.com/fluentra/fluentra/internal/platform/job"
@@ -384,6 +385,19 @@ func startModules(
 
 	if err := learningModule.RotatePartitions(ctx); err != nil {
 		slog.ErrorContext(ctx, "could not rotate learning partitions at start-up; the scheduled job will retry",
+			"error", err)
+	}
+
+	srsModule := srs.New(srs.Deps{
+		Pool: pool,
+	})
+
+	for _, scheduled := range srsModule.CronJobs() {
+		cron.Register(scheduled)
+	}
+
+	if err := srsModule.RotatePartitions(ctx); err != nil {
+		slog.ErrorContext(ctx, "could not rotate srs partitions at start-up; the scheduled job will retry",
 			"error", err)
 	}
 

@@ -2,15 +2,15 @@
 module: srs
 tier: learning
 group: modules
-status: PLANNED
+status: ACTIVE
 phase: 2
 owner: "@learning-team"
 schema: learn
 tables: [review_cards, review_logs, srs_params, review_daily_stats]
-depends_on: [cache, job, content]
+depends_on: [cache, job, content, user]
 depended_on_by: [learning, vocabulary, grammar, gamification, notification, analytics]
 spec_version: 1.0.0
-last_verified: 2026-08-06
+last_verified: 2026-08-25
 ---
 
 # srs — AGENT.md
@@ -25,7 +25,7 @@ last_verified: 2026-08-06
 | Path | `internal/modules/srs` |
 | Schema | `learn` |
 | Delivery phase | 2 |
-| Status | **PLANNED** |
+| Status | **ACTIVE** |
 | Owner | @learning-team |
 
 ---
@@ -76,9 +76,8 @@ Other modules may import **only** `internal/modules/srs/contract`.
 <!-- BEGIN GENERATED: contract -->
 | Kind | Name | Purpose |
 |---|---|---|
-| interface | `srs.CardWriter` | `UpsertCards(ctx, userID, items)` — called by the exercise engine after grading |
+| interface | `srs.CardWriter` | `UpsertCards(ctx, userID, items)` after grading, and `SetCardsSuspended(ctx, userID, contentVersionIDs, suspended)` when a skill module learns the content is already known |
 | interface | `srs.QueueReader` | `DueCount`, `DueCards` — used by the dashboard and by `gamification` |
-| struct | `srs.ReviewItem` | `{ContentVersionID, Skill, InitialGrade}` |
 
 ### Events
 
@@ -146,9 +145,10 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 <!-- BEGIN GENERATED: related -->
 | Module | Direction | Why |
 |---|---|---|
-| [`cache`](../../platform/cache/AGENT.md) | → depends on | see its contract |
-| [`job`](../../platform/job/AGENT.md) | → depends on | see its contract |
-| [`content`](../../modules/content/AGENT.md) | → depends on | see its contract |
+| [`cache`](../../platform/cache/AGENT.md) | → depends on | Due-count caching |
+| [`job`](../../platform/job/AGENT.md) | → depends on | Daily partition rotation and stats aggregation |
+| [`content`](../../modules/content/AGENT.md) | → depends on | Word sense and lesson content versions |
+| [`user`](../../modules/user/AGENT.md) | → depends on | Learner timezone lookup for local midnight due queue boundaries |
 | [`learning`](../../modules/learning/AGENT.md) | ← used by | consumes this module's contract |
 | [`vocabulary`](../../modules/vocabulary/AGENT.md) | ← used by | consumes this module's contract |
 | [`grammar`](../../modules/grammar/AGENT.md) | ← used by | consumes this module's contract |

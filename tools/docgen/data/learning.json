@@ -551,9 +551,8 @@
       { "method": "GET", "path": "/api/v1/reviews/forecast", "permission": "self", "purpose": "Projected workload for the next 30 days", "success": "200" }
     ],
     "contract": [
-      { "kind": "interface", "name": "srs.CardWriter", "purpose": "`UpsertCards(ctx, userID, items)` — called by the exercise engine after grading" },
-      { "kind": "interface", "name": "srs.QueueReader", "purpose": "`DueCount`, `DueCards` — used by the dashboard and by `gamification`" },
-      { "kind": "struct", "name": "srs.ReviewItem", "purpose": "`{ContentVersionID, Skill, InitialGrade}`" }
+      { "kind": "interface", "name": "srs.CardWriter", "purpose": "`UpsertCards(ctx, userID, items)` after grading, and `SetCardsSuspended(ctx, userID, contentVersionIDs, suspended)` when a skill module learns the content is already known" },
+      { "kind": "interface", "name": "srs.QueueReader", "purpose": "`DueCount`, `DueCards` — used by the dashboard and by `gamification`" }
     ],
     "events": {
       "publishes": [
@@ -563,7 +562,13 @@
       ],
       "consumes": [{ "name": "content.archived", "reason": "Suspend cards whose content is gone" }, { "name": "user.deleted", "reason": "Delete cards and logs" }]
     },
-    "dependsOn": ["cache", "job", "content"],
+    "dependsOn": ["cache", "job", "content", "user"],
+    "dependsWhy": {
+      "cache": "Due-count caching",
+      "job": "Daily partition rotation and stats aggregation",
+      "content": "Word sense and lesson content versions",
+      "user": "Learner timezone lookup for local midnight due queue boundaries"
+    },
     "dependedOnBy": ["learning", "vocabulary", "grammar", "gamification", "notification", "analytics"],
     "rules": [
       "Scheduling is FSRS, implemented in `domain/` as pure functions with no I/O — it must be testable and provable without a database.",
@@ -635,7 +640,13 @@
     "decisions": [
       { "question": "FSRS or SM-2?", "choice": "FSRS", "why": "Explicit stability and difficulty modelling, published parameters, and materially fewer reviews for the same retention. SM-2 is simpler but leaves measurable learning value on the table (ADR-0016)" },
       { "question": "Four grades or six?", "choice": "Four", "why": "The algorithm is defined for four; more options increase learner hesitation without improving scheduling accuracy" },
-      { "question": "Cards reference versions or items?", "choice": "Versions", "why": "A card must test what the learner actually learned; if the content is revised, a new card is correct" }
+      { "question": "Cards reference versions or items?", "choice": "Versions", "why": "A card must test what the learner actually learned; if the content is revised, a new card is correct" },
+      { "question": "How does the dashboard learn the due count?", "choice": "learning injects srs.QueueReader", "why": "Keeps dashboard assembly consolidated inside learning while honoring architecture boundaries (P9.1 Decision 7.1)" },
+      { "question": "Who writes review cards, and in which transaction?", "choice": "Post-commit via contract call with outbox backstop", "why": "Avoids cross-module transaction coupling; activity.completed in outbox serves as replayable backstop (P9.1 Decision 7.2)" },
+      { "question": "Does answering a review immediately invalidate the dashboard cache?", "choice": "No, accept 2-minute staleness for alpha", "why": "Dashboard has 2-minute TTL; cross-module invalidation deferred to Phase 3 (P9.1 Decision 7.3)" },
+      { "question": "One ReviewItem struct or two?", "choice": "One struct owned by learning/contract", "why": "Used by all skill graders implementing ExerciseGrader without requiring c_srs dependencies across 6 skill modules (P9.1 Decision 7.4 / Trap 1)" },
+      { "question": "Is GET /reviews/forecast implemented in Phase 2?", "choice": "Implemented", "why": "P9.1 Decision 7.5 deferred it, and the deferral produced a handler answering 200 with an empty day list — a specced endpoint telling every learner they have nothing due. The grouped query is smaller than the workaround, buckets by the learner local day like the due queue, and no screen depends on it either way" },
+      { "question": "How does another module stop scheduling content a learner already knows?", "choice": "srs.CardWriter.SetCardsSuspended, through the contract", "why": "learn.review_cards belongs to srs. vocabulary marking a word known has to reach the due queue, and the alternative — a second suspension flag in skill.user_word_state that the due query would have to join — is the table duplication ADR-0015 exists to prevent" }
     ],
     "adrs": [{ "id": "ADR-0016", "file": "ADR-0016-srs-fsrs.md", "title": "FSRS instead of SM-2" }],
     "todo": [
@@ -646,9 +657,10 @@
         "Answer endpoint with rescheduling and event emission",
         "Due-count caching with correct invalidation",
         "Suspend, bury and reset",
+        "`GET /reviews/forecast`, bucketed by the learner local day",
         "Review player in the web app"
       ]},
-      { "title": "Phase 3", "items": ["Forecast and workload projection", "Heat map", "`review.due_soon` reminder job"] },
+      { "title": "Phase 3", "items": ["Workload load-balancing across days", "Heat map", "`review.due_soon` reminder job"] },
       { "title": "Phase 5", "items": ["Per-learner parameter optimisation from review logs"] }
     ],
     "future": ["Per-learner FSRS optimisation", "Load balancing to smooth daily workload", "Cross-skill interference modelling", "Offline review queue"],
@@ -694,6 +706,7 @@
       { "method": "GET", "path": "/api/v1/vocabulary/search", "permission": "content.read.published", "purpose": "Search the dictionary", "success": "200" },
       { "method": "GET", "path": "/api/v1/vocabulary/decks", "permission": "self", "purpose": "The learner's decks plus curated ones", "success": "200" },
       { "method": "POST", "path": "/api/v1/vocabulary/decks", "permission": "self", "purpose": "Create a deck", "success": "201", "errors": ["DECK_LIMIT_REACHED"] },
+      { "method": "GET", "path": "/api/v1/vocabulary/decks/{id}/words", "permission": "self", "purpose": "The word senses in a deck, with everything a flashcard renders", "success": "200" },
       { "method": "POST", "path": "/api/v1/vocabulary/decks/{id}/words", "permission": "self", "purpose": "Add a word sense to a deck", "success": "201", "errors": ["WORD_ALREADY_IN_DECK"] },
       { "method": "DELETE", "path": "/api/v1/vocabulary/decks/{id}/words/{sense_id}", "permission": "self", "purpose": "Remove", "success": "204" },
       { "method": "POST", "path": "/api/v1/vocabulary/words/{sense_id}/state", "permission": "self", "purpose": "Mark known or ignored", "success": "200" },
@@ -761,7 +774,9 @@
     ],
     "decisions": [
       { "question": "Lemma-level or sense-level learning?", "choice": "Sense-level", "why": "Conflating senses teaches the wrong thing and makes scheduling meaningless for polysemous words, which are precisely the difficult ones" },
-      { "question": "Generate example sentences at request time?", "choice": "No — generate at authoring time and review them", "why": "Latency, cost, and above all correctness: an unreviewed example can teach a wrong collocation to thousands of learners" }
+      { "question": "Generate example sentences at request time?", "choice": "No — generate at authoring time and review them", "why": "Latency, cost, and above all correctness: an unreviewed example can teach a wrong collocation to thousands of learners" },
+      { "question": "What does a grader do when the activity content carries no answer key?", "choice": "Return an error", "why": "The alternative that shipped first was to mark the learner correct. That inflates progress and schedules a review card for a word they may not know, silently and for everyone the broken content reaches. Unreadable content is a deployment fault and should look like one" },
+      { "question": "Where does a sense audio URL come from?", "choice": "Nowhere yet — `audio_url` is null", "why": "content.media_assets stores an object key, not a link, and turning one into something a browser can play needs a presigned URL reached through c_content. content.Reader exposes no media lookup, so the honest answer is null. The first version formatted `/api/v1/content/assets/{id}`, a path in no OpenAPI document, which would 404 in every flashcard" }
     ],
     "todo": [
       { "title": "Phase 2", "items": [
@@ -771,6 +786,7 @@
         "Recognition, recall, spelling and cloze graders",
         "Review item production feeding `srs`",
         "TTS pronunciation pre-generation",
+        "Audio URL resolution: `content.Reader` exposes no media-asset lookup, so `audio_url` is null. It needs a `c_content` method returning a playable link for a `content.media_assets` object key; do not format a URL in this module",
         "Seed dictionary of 2,000 A1–B1 senses"
       ]}
     ],

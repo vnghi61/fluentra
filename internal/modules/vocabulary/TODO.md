@@ -2,7 +2,7 @@
 module: vocabulary
 tier: learning
 group: modules
-status: PLANNED
+status: ACTIVE
 phase: 2
 owner: "@learning-team"
 schema: skill
@@ -10,7 +10,7 @@ tables: [words, word_senses, word_relations, decks, deck_items, user_word_state]
 depends_on: [content, srs, media, ai, search]
 depended_on_by: [learning, reading, writing, grammar]
 spec_version: 1.0.0
-last_verified: 2026-08-06
+last_verified: 2026-08-25
 ---
 
 # vocabulary — TODO
@@ -27,6 +27,7 @@ agent knows what is already handled and what is deliberately deferred.
 - [ ] Recognition, recall, spelling and cloze graders
 - [ ] Review item production feeding `srs`
 - [ ] TTS pronunciation pre-generation
+- [ ] Audio URL resolution: `content.Reader` exposes no media-asset lookup, so `audio_url` is null. It needs a `c_content` method returning a playable link for a `content.media_assets` object key; do not format a URL in this module
 - [ ] Seed dictionary of 2,000 A1–B1 senses
 <!-- END GENERATED: todo -->
 

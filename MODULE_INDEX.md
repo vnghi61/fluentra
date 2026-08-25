@@ -85,7 +85,7 @@ Legend — **Status**: `PLANNED` (spec only) · `IN_PROGRESS` · `DONE` · `DEPR
 | L1 | `content` | Canonical content model, versioning, publish workflow, taxonomy, media links, CEFR levelling | `content` | `content_items`, `content_versions`, `media_assets`, `taxonomies`, `content_tags` | storage, search, audit, ai | 2 | PLANNED |
 | L2 | `lesson` | Courses → units → lessons → activities; sequencing, prerequisites, unlocking | `learn` | `courses`, `course_units`, `lessons`, `activities`, `activity_content` | content, cache | 2 | PLANNED |
 | L3 | `learning` | Enrolment, progress, placement test, adaptive path, session tracking, exercise engine | `learn` | `enrollments`, `progress`, `attempts`, `learning_sessions`, `placement_results` | lesson, content, srs, all skill modules (contract) | 2 | PLANNED |
-| L4 | `srs` | FSRS scheduling, review cards, due queues, review logs, retention forecasting | `learn` | `review_cards`, `review_logs`, `srs_params` | cache, job | 2 | PLANNED |
+| L4 | `srs` | FSRS scheduling, review cards, due queues, review logs, retention forecasting | `learn` | `review_cards`, `review_logs`, `srs_params`, `review_daily_stats` | cache, job, content, user, learning (contract) | 2 | IN PROGRESS |
 | L5 | `vocabulary` | Words, senses, decks, collocations, word families, vocab exercises | `skill` | `words`, `word_senses`, `decks`, `deck_items`, `user_word_state` | content, srs, media, ai | 2 | PLANNED |
 | L6 | `grammar` | Grammar point taxonomy, rules, error tagging, gap-fill and transformation drills | `skill` | `grammar_points`, `grammar_rules`, `grammar_exercises`, `error_tags` | content, srs, ai | 3 | PLANNED |
 | L7 | `reading` | Passages, comprehension sets, span answers, reading speed, difficulty estimation | `skill` | `passages`, `passage_questions`, `reading_attempts` | content, questionbank | 3 | PLANNED |
@@ -148,6 +148,8 @@ graph BT
     LRN --> CNT
     LRN --> LSN & SRS
     SRS --> CNT
+    SRS --> USR
+    SRS --> LRN
     VOC & GRM --> SRS
     VOC & GRM & RDG & LIS & SPK & WRT --> CNT
     VOC & GRM & RDG & LIS & SPK & WRT & EXM --> LRN

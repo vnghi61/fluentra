@@ -31,6 +31,7 @@ Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR
 | `GET` | `/api/v1/vocabulary/search` | `content.read.published` | Search the dictionary |
 | `GET` | `/api/v1/vocabulary/decks` | `self` | The learner's decks plus curated ones |
 | `POST` | `/api/v1/vocabulary/decks` | `self` | Create a deck |
+| `GET` | `/api/v1/vocabulary/decks/{id}/words` | `self` | The word senses in a deck, with everything a flashcard renders |
 | `POST` | `/api/v1/vocabulary/decks/{id}/words` | `self` | Add a word sense to a deck |
 | `DELETE` | `/api/v1/vocabulary/decks/{id}/words/{sense_id}` | `self` | Remove |
 | `POST` | `/api/v1/vocabulary/words/{sense_id}/state` | `self` | Mark known or ignored |
@@ -79,6 +80,16 @@ Create a deck
 | Permission | `self` |
 | Success | 201 |
 | Errors | `DECK_LIMIT_REACHED` |
+
+### `GET /api/v1/vocabulary/decks/{id}/words`
+
+The word senses in a deck, with everything a flashcard renders
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
 
 ### `POST /api/v1/vocabulary/decks/{id}/words`
 
