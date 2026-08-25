@@ -18,6 +18,16 @@ Six files, one per work package, each sized to hand to a single agent in a singl
 | [WP10-learner-web.md](WP10-learner-web.md) | 5 | ~12 d | WP6 + contract tasks | frontend agent |
 | [WP11-seed-e2e-ship.md](WP11-seed-e2e-ship.md) | 4 | ~8 d | all (except P11.1) | either |
 
+The three work packages after WP8 each have an **implementation brief** beside the planning
+file above: [P9-srs-vocabulary.md](P9-srs-vocabulary.md),
+[P10-learner-web.md](P10-learner-web.md) and [P11-seed-e2e-ship.md](P11-seed-e2e-ship.md).
+One brief per work package, each covering all of its tasks, each still implemented one branch
+at a time in the order its table gives. The WP files keep the task rows and the estimates; the
+briefs carry the traps, the current state of the tree, and the acceptance criteria.
+
+Two of them run in parallel — P9 is backend, P10 is web against generated types — and P11.1,
+the content authoring, starts before either of them finishes.
+
 Context that applies to all of them:
 
 - [../phase-2-plan.md](../phase-2-plan.md) — scope, dependency graph, Definition of Done,

@@ -25,6 +25,8 @@ contract belongs in a repository-level ADR instead — see [`/DECISIONS.md`](../
 |---|---|---|
 | Lemma-level or sense-level learning? | Sense-level | Conflating senses teaches the wrong thing and makes scheduling meaningless for polysemous words, which are precisely the difficult ones |
 | Generate example sentences at request time? | No — generate at authoring time and review them | Latency, cost, and above all correctness: an unreviewed example can teach a wrong collocation to thousands of learners |
+| What does a grader do when the activity content carries no answer key? | Return an error | The alternative that shipped first was to mark the learner correct. That inflates progress and schedules a review card for a word they may not know, silently and for everyone the broken content reaches. Unreadable content is a deployment fault and should look like one |
+| Where does a sense audio URL come from? | Nowhere yet — `audio_url` is null | content.media_assets stores an object key, not a link, and turning one into something a browser can play needs a presigned URL reached through c_content. content.Reader exposes no media lookup, so the honest answer is null. The first version formatted `/api/v1/content/assets/{id}`, a path in no OpenAPI document, which would 404 in every flashcard |
 <!-- END GENERATED: decisions -->
 
 ## Related repository ADRs

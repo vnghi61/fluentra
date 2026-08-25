@@ -1,0 +1,141 @@
+ReviewGrade:
+  type: string
+  enum: [again, hard, good, easy]
+  description: FSRS recall evaluation grade.
+  example: good
+
+ReviewCard:
+  type: object
+  required: [id, user_id, content_version_id, skill, stability, difficulty, due_at, reps, lapses, state]
+  properties:
+    id:
+      type: string
+      format: uuid
+    user_id:
+      type: string
+      format: uuid
+    content_version_id:
+      type: string
+      format: uuid
+    skill:
+      type: string
+      example: vocabulary
+    stability:
+      type: number
+      format: double
+      example: 2.45
+    difficulty:
+      type: number
+      format: double
+      example: 4.80
+    due_at:
+      type: string
+      format: date-time
+    reps:
+      type: integer
+      example: 3
+    lapses:
+      type: integer
+      example: 0
+    state:
+      type: string
+      enum: [new, learning, review, relearning]
+      example: review
+    suspended_at:
+      type: string
+      format: date-time
+      nullable: true
+
+DueCountResponse:
+  type: object
+  required: [due_count]
+  properties:
+    due_count:
+      type: integer
+      example: 12
+
+ReviewSessionResponse:
+  type: object
+  required: [cards]
+  properties:
+    cards:
+      type: array
+      items:
+        $ref: '#/ReviewCard'
+    total_due:
+      type: integer
+      example: 12
+
+AnswerReviewRequest:
+  type: object
+  required: [grade]
+  properties:
+    grade:
+      $ref: '#/ReviewGrade'
+    elapsed_ms:
+      type: integer
+      minimum: 0
+      example: 4200
+
+AnswerReviewResponse:
+  type: object
+  required: [card, next_due_at, interval_days]
+  properties:
+    card:
+      $ref: '#/ReviewCard'
+    next_due_at:
+      type: string
+      format: date-time
+    interval_days:
+      type: integer
+      example: 3
+
+CompleteReviewSessionRequest:
+  type: object
+  properties:
+    reviewed:
+      type: integer
+      minimum: 0
+      example: 10
+    correct:
+      type: integer
+      minimum: 0
+      example: 8
+
+CompleteReviewSessionResult:
+  type: object
+  required: [reviewed, correct, minutes, completed_at]
+  properties:
+    reviewed:
+      type: integer
+      example: 10
+    correct:
+      type: integer
+      example: 8
+    minutes:
+      type: integer
+      example: 5
+    completed_at:
+      type: string
+      format: date-time
+
+ForecastItem:
+  type: object
+  required: [date, due_count]
+  properties:
+    date:
+      type: string
+      format: date
+      example: '2026-08-25'
+    due_count:
+      type: integer
+      example: 15
+
+ForecastResponse:
+  type: object
+  required: [days]
+  properties:
+    days:
+      type: array
+      items:
+        $ref: '#/ForecastItem'

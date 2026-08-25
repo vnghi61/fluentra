@@ -71,6 +71,12 @@ tags:
   - name: learning
     description: >-
       Enrolment, progress, learning sessions, and the exercise engine.
+  - name: srs
+    description: >-
+      Spaced repetition review sessions, card answers, queue counts, and scheduling.
+  - name: vocabulary
+    description: >-
+      Words, senses, pronunciations, collocations, learner decks, and word state.
 security:
   - BearerAuth: []
 paths:
@@ -3314,6 +3320,658 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+  /reviews/session:
+    get:
+      tags: [srs]
+      operationId: getReviewSession
+      summary: Build a review session from due cards.
+      description: Returns due cards for the learner ordered by priority up to the daily limit.
+      x-permission: self
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        '200':
+          description: Active review session cards.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewSessionResponse'
+              example:
+                cards:
+                  - id: 0199a1c2-3d4e-7f80-9abc-def012345678
+                    user_id: 0199a1c2-3d4e-7f80-9abc-def012345679
+                    content_version_id: 0199a1c2-3d4e-7f80-9abc-def01234567a
+                    skill: vocabulary
+                    stability: 8.4231
+                    difficulty: 5.1
+                    due_at: '2026-09-02T10:00:00Z'
+                    reps: 3
+                    lapses: 1
+                    state: review
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /reviews/due-count:
+    get:
+      tags: [srs]
+      operationId: getReviewDueCount
+      summary: Badge count of due review cards.
+      description: Returns the total count of cards currently due for review.
+      x-permission: self
+      responses:
+        '200':
+          description: Due cards count.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DueCountResponse'
+              example:
+                due_count: 12
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /reviews/{card_id}/answer:
+    post:
+      tags: [srs]
+      operationId: answerReviewCard
+      summary: Record a grade and reschedule a card.
+      description: Updates the card using FSRS algorithm and appends a review log entry.
+      x-permission: self
+      parameters:
+        - name: card_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnswerReviewRequest'
+      responses:
+        '200':
+          description: Card graded and rescheduled.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnswerReviewResponse'
+              example:
+                card:
+                  id: 0199a1c2-3d4e-7f80-9abc-def012345678
+                  user_id: 0199a1c2-3d4e-7f80-9abc-def012345679
+                  content_version_id: 0199a1c2-3d4e-7f80-9abc-def01234567a
+                  skill: vocabulary
+                  stability: 21.7
+                  difficulty: 4.9
+                  due_at: '2026-09-10T10:00:00Z'
+                  reps: 4
+                  lapses: 1
+                  state: review
+                next_due_at: '2026-09-10T10:00:00Z'
+                interval_days: 8
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /reviews/session/complete:
+    post:
+      tags: [srs]
+      operationId: completeReviewSession
+      summary: Close the review session.
+      description: Records daily stats and emits session completed events.
+      x-permission: self
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteReviewSessionRequest'
+      responses:
+        '200':
+          description: Session completed summary.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompleteReviewSessionResult'
+              example:
+                reviewed: 10
+                correct: 8
+                minutes: 4
+                completed_at: '2026-08-25T10:30:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /reviews/{card_id}/suspend:
+    post:
+      tags: [srs]
+      operationId: suspendReviewCard
+      summary: Stop scheduling this card.
+      description: Excludes the card from future review sessions until unsuspended.
+      x-permission: self
+      parameters:
+        - name: card_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Card suspended.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewCard'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def012345678
+                user_id: 0199a1c2-3d4e-7f80-9abc-def012345679
+                content_version_id: 0199a1c2-3d4e-7f80-9abc-def01234567a
+                skill: vocabulary
+                stability: 8.4231
+                difficulty: 5.1
+                due_at: '2026-09-02T10:00:00Z'
+                reps: 3
+                lapses: 1
+                state: review
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /reviews/{card_id}/reset:
+    post:
+      tags: [srs]
+      operationId: resetReviewCard
+      summary: Treat card as new again.
+      description: Resets repetitions and stability to initial state.
+      x-permission: self
+      parameters:
+        - name: card_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Card reset.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewCard'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def012345678
+                user_id: 0199a1c2-3d4e-7f80-9abc-def012345679
+                content_version_id: 0199a1c2-3d4e-7f80-9abc-def01234567a
+                skill: vocabulary
+                stability: 8.4231
+                difficulty: 5.1
+                due_at: '2026-09-02T10:00:00Z'
+                reps: 3
+                lapses: 1
+                state: review
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /reviews/forecast:
+    get:
+      tags: [srs]
+      operationId: getReviewForecast
+      summary: Projected workload for the next 30 days.
+      description: Forecast of due reviews over upcoming days.
+      x-permission: self
+      responses:
+        '200':
+          description: 30-day review forecast.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForecastResponse'
+              example:
+                days:
+                  - date: '2026-08-26'
+                    due_count: 15
+                  - date: '2026-08-27'
+                    due_count: 3
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /vocabulary/words/{lemma}:
+    get:
+      tags: [vocabulary]
+      operationId: getVocabularyWord
+      summary: Dictionary lookup with senses, IPA, audio, examples.
+      description: >-
+        Returns every word entry that shares the lemma — one per part of speech,
+        because `bank` is both a noun and a verb — each with its senses,
+        pronunciation and examples.
+      x-permission: content.read.published
+      parameters:
+        - name: lemma
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Every word entry sharing the lemma, one per part of speech.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WordLookupResponse'
+              example:
+                words:
+                  - id: 0199a1c2-3d4e-7f80-9abc-def01234567b
+                    lemma: bank
+                    pos: noun
+                    cefr_level: A2
+                    frequency_rank: 450
+                    ipa: /bæŋk/
+                    senses:
+                      - id: 0199a1c2-3d4e-7f80-9abc-def01234567c
+                        word_id: 0199a1c2-3d4e-7f80-9abc-def01234567b
+                        definition: An institution where people deposit and borrow money.
+                        definition_vi: Ngân hàng.
+                        examples:
+                          - sentence: She withdrew $100 from the bank.
+                            sentence_vi: Cô ấy rút 100 đô la từ ngân hàng.
+                        created_at: '2026-08-01T09:00:00Z'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /vocabulary/search:
+    get:
+      tags: [vocabulary]
+      operationId: searchVocabulary
+      summary: Search the dictionary.
+      description: >-
+        Prefix search over lemmas, ordered by frequency. Returns summaries rather
+        than full entries; `total` counts the whole result, not the page.
+      x-permission: content.read.published
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Search results.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WordSearchResponse'
+              example:
+                results:
+                  - id: 0199a1c2-3d4e-7f80-9abc-def01234567b
+                    lemma: bank
+                    pos: noun
+                    cefr_level: A2
+                    ipa: /bæŋk/
+                total: 2
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /vocabulary/decks:
+    get:
+      tags: [vocabulary]
+      operationId: listVocabularyDecks
+      summary: The learner's decks plus curated ones.
+      description: >-
+        Returns the decks the learner owns together with the public curated decks,
+        and nobody else's.
+      x-permission: self
+      responses:
+        '200':
+          description: Decks list.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeckListResponse'
+              example:
+                decks:
+                  - id: 0199a1c2-3d4e-7f80-9abc-def01234567d
+                    owner_id: 0199a1c2-3d4e-7f80-9abc-def012345679
+                    slug: ielts-academic-vocab
+                    name: IELTS Academic Vocabulary
+                    is_public: false
+                    item_count: 50
+                    created_at: '2026-08-01T09:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      tags: [vocabulary]
+      operationId: createVocabularyDeck
+      summary: Create a deck.
+      description: >-
+        Creates a deck owned by the caller. A learner may reuse a slug a curated
+        deck already took, because uniqueness is per owner.
+      x-permission: self
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDeckRequest'
+      responses:
+        '201':
+          description: Deck created.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deck'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def01234567d
+                owner_id: 0199a1c2-3d4e-7f80-9abc-def012345679
+                slug: ielts-academic-vocab
+                name: IELTS Academic Vocabulary
+                is_public: false
+                item_count: 0
+                created_at: '2026-08-01T09:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /vocabulary/decks/{id}/words:
+    get:
+      tags: [vocabulary]
+      operationId: listDeckWords
+      summary: The word senses in a deck, with everything a flashcard renders.
+      description: >-
+        Returns each sense in the deck with its lemma, part of speech, CEFR level,
+        pronunciation, definition and examples — the exact field set the review
+        card renders.
+      x-permission: self
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: The deck's word senses.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeckWordsResponse'
+              example:
+                items:
+                  - sense_id: 0199a1c2-3d4e-7f80-9abc-def01234567c
+                    word_id: 0199a1c2-3d4e-7f80-9abc-def01234567b
+                    lemma: meticulous
+                    pos: adjective
+                    cefr_level: B2
+                    ipa: /məˈtɪkjələs/
+                    definition: Showing great attention to detail.
+                    definition_vi: Tỉ mỉ, cẩn thận.
+                    examples:
+                      - sentence: She kept meticulous records of every transaction.
+                    added_at: '2026-08-20T09:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      tags: [vocabulary]
+      operationId: addWordToDeck
+      summary: Add a word sense to a deck.
+      description: >-
+        Adds one sense to the deck. Adding a sense the deck already holds is a
+        conflict, not a second row.
+      x-permission: self
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddWordToDeckRequest'
+      responses:
+        '201':
+          description: Word added to deck.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /vocabulary/decks/{id}/words/{sense_id}:
+    delete:
+      tags: [vocabulary]
+      operationId: removeWordFromDeck
+      summary: Remove a word sense from a deck.
+      description: >-
+        Removes one sense from the deck. Removing a sense the deck does not hold
+        succeeds, so the call is safe to retry.
+      x-permission: self
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: sense_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Word removed from deck.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /vocabulary/words/{sense_id}/state:
+    post:
+      tags: [vocabulary]
+      operationId: updateWordState
+      summary: Mark known or ignored.
+      description: >-
+        Sets the learner's status for a sense. `known` and `ignored` both stop the
+        sense being scheduled for review; moving back to `new` or `learning`
+        resumes it.
+      x-permission: self
+      parameters:
+        - name: sense_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateWordStateRequest'
+      responses:
+        '200':
+          description: Word state updated.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserWordState'
+              example:
+                user_id: 0199a1c2-3d4e-7f80-9abc-def012345679
+                word_sense_id: 0199a1c2-3d4e-7f80-9abc-def01234567c
+                status: known
+                first_seen_at: '2026-08-01T09:00:00Z'
+                updated_at: '2026-08-25T09:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /admin/vocabulary/words:
+    post:
+      tags: [vocabulary]
+      operationId: adminCreateWord
+      summary: Create a word entry.
+      description: >-
+        Creates or refreshes a dictionary entry and its senses. Re-importing an
+        existing lemma and part of speech updates it rather than duplicating it.
+      x-permission: content.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWordRequest'
+      responses:
+        '201':
+          description: Word created.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WordDetail'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def01234567b
+                lemma: meticulous
+                pos: adjective
+                cefr_level: B2
+                frequency_rank: 4821
+                ipa: /məˈtɪkjələs/
+                senses:
+                  - id: 0199a1c2-3d4e-7f80-9abc-def01234567c
+                    word_id: 0199a1c2-3d4e-7f80-9abc-def01234567b
+                    definition: Showing great attention to detail.
+                    definition_vi: Tỉ mỉ, cẩn thận.
+                    examples:
+                      - sentence: She kept meticulous records of every transaction.
+                    created_at: '2026-08-01T09:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 components:
   securitySchemes:
     BearerAuth:
@@ -3533,6 +4191,58 @@ components:
       $ref: ./components/learning.yaml#/LearningSession
     CompleteSessionRequest:
       $ref: ./components/learning.yaml#/CompleteSessionRequest
+    ReviewGrade:
+      $ref: ./components/srs.yaml#/ReviewGrade
+    ReviewCard:
+      $ref: ./components/srs.yaml#/ReviewCard
+    DueCountResponse:
+      $ref: ./components/srs.yaml#/DueCountResponse
+    ReviewSessionResponse:
+      $ref: ./components/srs.yaml#/ReviewSessionResponse
+    AnswerReviewRequest:
+      $ref: ./components/srs.yaml#/AnswerReviewRequest
+    AnswerReviewResponse:
+      $ref: ./components/srs.yaml#/AnswerReviewResponse
+    CompleteReviewSessionRequest:
+      $ref: ./components/srs.yaml#/CompleteReviewSessionRequest
+    CompleteReviewSessionResult:
+      $ref: ./components/srs.yaml#/CompleteReviewSessionResult
+    ForecastItem:
+      $ref: ./components/srs.yaml#/ForecastItem
+    ForecastResponse:
+      $ref: ./components/srs.yaml#/ForecastResponse
+    WordSense:
+      $ref: ./components/vocabulary.yaml#/WordSense
+    WordDetail:
+      $ref: ./components/vocabulary.yaml#/WordDetail
+    WordLookupResponse:
+      $ref: ./components/vocabulary.yaml#/WordLookupResponse
+    WordSummary:
+      $ref: ./components/vocabulary.yaml#/WordSummary
+    WordSearchResponse:
+      $ref: ./components/vocabulary.yaml#/WordSearchResponse
+    Deck:
+      $ref: ./components/vocabulary.yaml#/Deck
+    DeckListResponse:
+      $ref: ./components/vocabulary.yaml#/DeckListResponse
+    ExampleSentence:
+      $ref: ./components/vocabulary.yaml#/ExampleSentence
+    DeckItem:
+      $ref: ./components/vocabulary.yaml#/DeckItem
+    DeckWordsResponse:
+      $ref: ./components/vocabulary.yaml#/DeckWordsResponse
+    CreateDeckRequest:
+      $ref: ./components/vocabulary.yaml#/CreateDeckRequest
+    AddWordToDeckRequest:
+      $ref: ./components/vocabulary.yaml#/AddWordToDeckRequest
+    UserWordState:
+      $ref: ./components/vocabulary.yaml#/UserWordState
+    UpdateWordStateRequest:
+      $ref: ./components/vocabulary.yaml#/UpdateWordStateRequest
+    SenseInput:
+      $ref: ./components/vocabulary.yaml#/SenseInput
+    CreateWordRequest:
+      $ref: ./components/vocabulary.yaml#/CreateWordRequest
   headers:
     X-Request-Id:
       $ref: ./components/headers.yaml#/X-Request-Id
