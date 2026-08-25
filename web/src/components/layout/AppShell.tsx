@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "@tanstack/react-router";
 import { LogIn, LogOut, UserPlus } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export interface AppShellProps {
   children: React.ReactNode;
@@ -15,6 +16,8 @@ export const AppShell: React.FC<AppShellProps> = ({
   status = "idle",
   onLogout,
 }) => {
+  const { t } = useTranslation();
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col md:flex-row">
       {/* Desktop Sidebar Navigation */}
@@ -28,13 +31,25 @@ export const AppShell: React.FC<AppShellProps> = ({
               to="/"
               className="flex items-center h-11 px-4 rounded-lg text-slate-300 hover:bg-slate-800 min-h-[44px] transition-colors"
             >
-              Dashboard
+              {t("nav.dashboard")}
+            </Link>
+            <Link
+              to="/learn"
+              className="flex items-center h-11 px-4 rounded-lg text-slate-300 hover:bg-slate-800 min-h-[44px] transition-colors"
+            >
+              {t("nav.learn")}
             </Link>
             <Link
               to="/practice"
               className="flex items-center h-11 px-4 rounded-lg text-slate-300 hover:bg-slate-800 min-h-[44px] transition-colors"
             >
-              Practice
+              {t("nav.practice")}
+            </Link>
+            <Link
+              to="/progress"
+              className="flex items-center h-11 px-4 rounded-lg text-slate-300 hover:bg-slate-800 min-h-[44px] transition-colors"
+            >
+              {t("nav.progress")}
             </Link>
             {status === "authenticated" && (
               <Link
@@ -106,13 +121,25 @@ export const AppShell: React.FC<AppShellProps> = ({
           to="/"
           className="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] text-indigo-400 text-xs font-medium"
         >
-          Home
+          {t("nav.dashboard")}
+        </Link>
+        <Link
+          to="/learn"
+          className="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] text-slate-400 text-xs font-medium"
+        >
+          {t("nav.learn")}
         </Link>
         <Link
           to="/practice"
           className="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] text-slate-400 text-xs font-medium"
         >
-          Practice
+          {t("nav.practice")}
+        </Link>
+        <Link
+          to="/progress"
+          className="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] text-slate-400 text-xs font-medium"
+        >
+          {t("nav.progress")}
         </Link>
         {status === "authenticated" ? (
           <>

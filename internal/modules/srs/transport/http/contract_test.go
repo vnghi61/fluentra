@@ -96,6 +96,11 @@ func contractCard() contract.ReviewCardSummary {
 		Reps:             3,
 		Lapses:           1,
 		State:            stateReview,
+		Content: &contract.ReviewCardContent{
+			Kind:      "vocab_flashcard",
+			CEFRLevel: "B2",
+			Body:      []byte(`{"word":"meticulous","ipa":"/məˈtɪkjələs/"}`),
+		},
 	}
 }
 

@@ -202,11 +202,12 @@ func newIdentity(deps identityDeps) *identity {
 	})
 
 	assembled.srs = srs.New(srs.Deps{
-		Pool:   deps.Pool,
-		Caches: newSRSCaches(deps.Redis),
-		Guard:  lazyGuard{of: assembled},
-		Users:  assembled.user.Reader(),
-		Env:    deps.Env,
+		Pool:    deps.Pool,
+		Caches:  newSRSCaches(deps.Redis),
+		Guard:   lazyGuard{of: assembled},
+		Users:   assembled.user.Reader(),
+		Content: assembled.content.Reader(),
+		Env:     deps.Env,
 	})
 
 	assembled.vocabulary = vocabulary.New(vocabulary.Deps{

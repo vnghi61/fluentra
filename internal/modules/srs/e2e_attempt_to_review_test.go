@@ -41,6 +41,11 @@ type fakeSRSRepo struct {
 	dailyStats map[string]sqlc.LearnReviewDailyStat
 }
 
+// fakeRepoNow is the instant this fake stamps rows with; see the note on fakeNow
+// in service/service_test.go. The service runs on a frozen clock, so the
+// repository must not stamp the real one.
+var fakeRepoNow = time.Date(2026, 8, 25, 10, 0, 0, 0, time.UTC)
+
 func newFakeSRSRepo() *fakeSRSRepo {
 	return &fakeSRSRepo{
 		cards:      make(map[uuid.UUID]sqlc.LearnReviewCard),
@@ -60,7 +65,7 @@ func (f *fakeSRSRepo) UpsertReviewCard(
 		if card.UserID == arg.UserID && card.ContentVersionID == arg.ContentVersionID {
 			// Mirrors the ON CONFLICT clause: an existing card keeps its schedule.
 			card.Skill = arg.Skill
-			card.UpdatedAt = time.Now().UTC()
+			card.UpdatedAt = fakeRepoNow
 			f.cards[id] = card
 			return card, nil
 		}
@@ -77,8 +82,8 @@ func (f *fakeSRSRepo) UpsertReviewCard(
 		Reps:             arg.Reps,
 		Lapses:           arg.Lapses,
 		State:            arg.State,
-		CreatedAt:        time.Now().UTC(),
-		UpdatedAt:        time.Now().UTC(),
+		CreatedAt:        fakeRepoNow,
+		UpdatedAt:        fakeRepoNow,
 	}
 	f.cards[card.ID] = card
 	return card, nil
@@ -172,7 +177,7 @@ func (f *fakeSRSRepo) UpdateReviewCardSchedule(
 	card.Reps = arg.Reps
 	card.Lapses = arg.Lapses
 	card.State = arg.State
-	card.UpdatedAt = time.Now().UTC()
+	card.UpdatedAt = fakeRepoNow
 	f.cards[arg.ID] = card
 	return card, nil
 }
@@ -182,7 +187,7 @@ func (f *fakeSRSRepo) SuspendReviewCard(_ context.Context, id, userID uuid.UUID)
 	if !ok || card.UserID != userID {
 		return sqlc.LearnReviewCard{}, apperr.New(apperr.NotFound, "NOT_FOUND", "card not found")
 	}
-	now := time.Now().UTC()
+	now := fakeRepoNow
 	card.SuspendedAt = &now
 	card.UpdatedAt = now
 	f.cards[id] = card
@@ -205,7 +210,7 @@ func (f *fakeSRSRepo) SetReviewCardsSuspended(
 			continue
 		}
 		if suspended {
-			at := time.Now().UTC()
+			at := fakeRepoNow
 			card.SuspendedAt = &at
 		} else {
 			card.SuspendedAt = nil
@@ -221,7 +226,7 @@ func (f *fakeSRSRepo) ResetReviewCard(_ context.Context, arg sqlc.ResetReviewCar
 	if !ok || card.UserID != arg.UserID {
 		return sqlc.LearnReviewCard{}, apperr.New(apperr.NotFound, "NOT_FOUND", "card not found")
 	}
-	now := time.Now().UTC()
+	now := fakeRepoNow
 	card.Stability = arg.Stability
 	card.Difficulty = arg.Difficulty
 	card.DueAt = arg.DueAt
@@ -301,14 +306,14 @@ func (f *fakeSRSRepo) UpsertReviewDailyStats(
 			ReviewsCompleted: arg.ReviewsCompleted,
 			NewCardsLearned:  arg.NewCardsLearned,
 			TotalMinutes:     arg.TotalMinutes,
-			CreatedAt:        time.Now().UTC(),
-			UpdatedAt:        time.Now().UTC(),
+			CreatedAt:        fakeRepoNow,
+			UpdatedAt:        fakeRepoNow,
 		}
 	} else {
 		stat.ReviewsCompleted += arg.ReviewsCompleted
 		stat.NewCardsLearned += arg.NewCardsLearned
 		stat.TotalMinutes += arg.TotalMinutes
-		stat.UpdatedAt = time.Now().UTC()
+		stat.UpdatedAt = fakeRepoNow
 	}
 	f.dailyStats[key] = stat
 	return stat, nil

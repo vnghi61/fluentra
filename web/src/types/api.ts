@@ -3225,6 +3225,30 @@ export interface components {
             state: "new" | "learning" | "review" | "relearning";
             /** Format: date-time */
             suspended_at?: string | null;
+            content?: components["schemas"]["ReviewCardContent"];
+        };
+        ReviewCardContent: {
+            /**
+             * @description The activity kind, which decides how the client renders the body.
+             * @example vocab_flashcard
+             */
+            kind: string;
+            /** @example B2 */
+            cefr_level?: string;
+            /**
+             * @description The authored content body, exactly as the version stores it.
+             * @example {
+             *       "word": "meticulous",
+             *       "pos": "adjective",
+             *       "ipa": "/məˈtɪkjələs/",
+             *       "definition": "Showing great attention to detail.",
+             *       "definition_vi": "Tỉ mỉ, cẩn thận.",
+             *       "example_sentence": "She kept meticulous records of every transaction."
+             *     }
+             */
+            body: {
+                [key: string]: unknown;
+            };
         };
         DueCountResponse: {
             /** @example 12 */
@@ -6693,7 +6717,19 @@ export interface operations {
                      *           "due_at": "2026-09-02T10:00:00Z",
                      *           "reps": 3,
                      *           "lapses": 1,
-                     *           "state": "review"
+                     *           "state": "review",
+                     *           "content": {
+                     *             "kind": "vocab_flashcard",
+                     *             "cefr_level": "B2",
+                     *             "body": {
+                     *               "word": "meticulous",
+                     *               "pos": "adjective",
+                     *               "ipa": "/məˈtɪkjələs/",
+                     *               "definition": "Showing great attention to detail.",
+                     *               "definition_vi": "Tỉ mỉ, cẩn thận.",
+                     *               "example_sentence": "She kept meticulous records of every transaction."
+                     *             }
+                     *           }
                      *         }
                      *       ]
                      *     }

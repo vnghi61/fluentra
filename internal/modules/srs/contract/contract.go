@@ -4,6 +4,7 @@ package contract
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -25,6 +26,19 @@ const (
 	EventReviewDueSoon = "review.due_soon"
 )
 
+// ReviewCardContent is the authored material behind a review card.
+//
+// srs schedules a `content_version_id` and knows nothing about what it holds; a
+// card carrying only a schedule cannot be rendered as a flashcard, which is what
+// the review screen needs. The version is resolved through `c_content`, so the
+// body arrives exactly as it was authored and this module stays ignorant of
+// which skill module owns the material.
+type ReviewCardContent struct {
+	Kind      string          `json:"kind"`
+	CEFRLevel string          `json:"cefr_level,omitempty"`
+	Body      json.RawMessage `json:"body"`
+}
+
 // ReviewCardSummary represents a learner's review card state.
 type ReviewCardSummary struct {
 	ID               uuid.UUID  `json:"id"`
@@ -38,6 +52,11 @@ type ReviewCardSummary struct {
 	Lapses           int        `json:"lapses"`
 	State            string     `json:"state"`
 	SuspendedAt      *time.Time `json:"suspended_at,omitempty"`
+
+	// Content is nil when the version behind the card could not be resolved —
+	// archived, or not yet authored. The client renders that as an explicit
+	// state; it must never be filled in with a placeholder.
+	Content *ReviewCardContent `json:"content,omitempty"`
 }
 
 // CardWriter allows upstream modules to create review cards and to take content

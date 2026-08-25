@@ -1,6 +1,7 @@
 package http
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -21,6 +22,17 @@ type ReviewCardResponse struct {
 	Lapses           int        `json:"lapses"`
 	State            string     `json:"state"`
 	SuspendedAt      *time.Time `json:"suspended_at,omitempty"`
+
+	// Content is omitted when the version behind the card could not be resolved.
+	// The client renders that as an explicit state rather than a placeholder.
+	Content *ReviewCardContentResponse `json:"content,omitempty"`
+}
+
+// ReviewCardContentResponse is the authored material a flashcard renders.
+type ReviewCardContentResponse struct {
+	Kind      string          `json:"kind"`
+	CEFRLevel string          `json:"cefr_level,omitempty"`
+	Body      json.RawMessage `json:"body"`
 }
 
 // DueCountResponse models badge count response.
@@ -84,5 +96,17 @@ func mapCardResponse(c contract.ReviewCardSummary) ReviewCardResponse {
 		Lapses:           c.Lapses,
 		State:            c.State,
 		SuspendedAt:      c.SuspendedAt,
+		Content:          mapCardContent(c.Content),
+	}
+}
+
+func mapCardContent(content *contract.ReviewCardContent) *ReviewCardContentResponse {
+	if content == nil {
+		return nil
+	}
+	return &ReviewCardContentResponse{
+		Kind:      content.Kind,
+		CEFRLevel: content.CEFRLevel,
+		Body:      content.Body,
 	}
 }
