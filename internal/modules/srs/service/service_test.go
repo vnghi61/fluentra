@@ -2,6 +2,7 @@ package service_test
 
 import (
 	"context"
+	"errors"
 	"sort"
 	"testing"
 	"time"
@@ -14,7 +15,9 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/fluentra/fluentra/internal/generated/srs/sqlc"
+	contentcontract "github.com/fluentra/fluentra/internal/modules/content/contract"
 	learningcontract "github.com/fluentra/fluentra/internal/modules/learning/contract"
+	"github.com/fluentra/fluentra/internal/modules/srs/contract"
 	"github.com/fluentra/fluentra/internal/modules/srs/domain"
 	"github.com/fluentra/fluentra/internal/modules/srs/repository"
 	"github.com/fluentra/fluentra/internal/modules/srs/service"
@@ -37,8 +40,18 @@ const (
 	tzVietnam = "Asia/Ho_Chi_Minh"
 
 	skillVocabulary = "vocabulary"
+	kindFlashcard   = "vocab_flashcard"
 	gradeGood       = "good"
 )
+
+// fakeNow is the instant the fake repository stamps rows with.
+//
+// It is not time.Now(). AnswerCard reads a card's UpdatedAt as "when this was
+// last reviewed", so stamping the real clock while the service runs on a frozen
+// one made every scheduling assertion depend on the hour the suite ran at: the
+// lifecycle test passed before 10:00 UTC and failed after it. A test whose
+// verdict changes with the time of day is worse than no test.
+var fakeNow = time.Date(2026, 8, 25, 10, 0, 0, 0, time.UTC)
 
 func newFakeRepo() *fakeRepo {
 	return &fakeRepo{
@@ -57,7 +70,7 @@ func (f *fakeRepo) UpsertReviewCard(_ context.Context, arg sqlc.UpsertReviewCard
 		if card.UserID == arg.UserID && card.ContentVersionID == arg.ContentVersionID {
 			// Mirrors the ON CONFLICT clause: an existing card keeps its schedule.
 			card.Skill = arg.Skill
-			card.UpdatedAt = time.Now().UTC()
+			card.UpdatedAt = fakeNow
 			f.cards[id] = card
 			return card, nil
 		}
@@ -74,8 +87,8 @@ func (f *fakeRepo) UpsertReviewCard(_ context.Context, arg sqlc.UpsertReviewCard
 		Reps:             arg.Reps,
 		Lapses:           arg.Lapses,
 		State:            arg.State,
-		CreatedAt:        time.Now().UTC(),
-		UpdatedAt:        time.Now().UTC(),
+		CreatedAt:        fakeNow,
+		UpdatedAt:        fakeNow,
 	}
 	f.cards[card.ID] = card
 	return card, nil
@@ -169,7 +182,7 @@ func (f *fakeRepo) UpdateReviewCardSchedule(
 	card.Reps = arg.Reps
 	card.Lapses = arg.Lapses
 	card.State = arg.State
-	card.UpdatedAt = time.Now().UTC()
+	card.UpdatedAt = fakeNow
 	f.cards[arg.ID] = card
 	return card, nil
 }
@@ -179,7 +192,7 @@ func (f *fakeRepo) SuspendReviewCard(_ context.Context, id, userID uuid.UUID) (s
 	if !ok || card.UserID != userID {
 		return sqlc.LearnReviewCard{}, apperr.New(apperr.NotFound, "NOT_FOUND", "card not found")
 	}
-	now := time.Now().UTC()
+	now := fakeNow
 	card.SuspendedAt = &now
 	card.UpdatedAt = now
 	f.cards[id] = card
@@ -202,7 +215,7 @@ func (f *fakeRepo) SetReviewCardsSuspended(
 			continue
 		}
 		if suspended {
-			at := time.Now().UTC()
+			at := fakeNow
 			card.SuspendedAt = &at
 		} else {
 			card.SuspendedAt = nil
@@ -218,7 +231,7 @@ func (f *fakeRepo) ResetReviewCard(_ context.Context, arg sqlc.ResetReviewCardPa
 	if !ok || card.UserID != arg.UserID {
 		return sqlc.LearnReviewCard{}, apperr.New(apperr.NotFound, "NOT_FOUND", "card not found")
 	}
-	now := time.Now().UTC()
+	now := fakeNow
 	card.Stability = arg.Stability
 	card.Difficulty = arg.Difficulty
 	card.DueAt = arg.DueAt
@@ -298,14 +311,14 @@ func (f *fakeRepo) UpsertReviewDailyStats(
 			ReviewsCompleted: arg.ReviewsCompleted,
 			NewCardsLearned:  arg.NewCardsLearned,
 			TotalMinutes:     arg.TotalMinutes,
-			CreatedAt:        time.Now().UTC(),
-			UpdatedAt:        time.Now().UTC(),
+			CreatedAt:        fakeNow,
+			UpdatedAt:        fakeNow,
 		}
 	} else {
 		stat.ReviewsCompleted += arg.ReviewsCompleted
 		stat.NewCardsLearned += arg.NewCardsLearned
 		stat.TotalMinutes += arg.TotalMinutes
-		stat.UpdatedAt = time.Now().UTC()
+		stat.UpdatedAt = fakeNow
 	}
 	f.dailyStats[key] = stat
 	return stat, nil
@@ -430,7 +443,18 @@ func TestSRS_Lifecycle_UpsertAnswerSuspendReset(t *testing.T) {
 	assert.Equal(t, "learning", card.State)
 	assert.Equal(t, int32(1), card.Reps)
 
-	// 2. Answer card with Good
+	// 2. Answer the card on the day it comes due, not the instant it was created.
+	//
+	// Answering at zero elapsed time is a no-op in FSRS by design: retrievability
+	// is 1, nothing has been forgotten, so nothing is learned and stability does
+	// not move. Asserting growth there asserts a bug. The clock is a dependency,
+	// so "three days later" is a new service over the same repository.
+	later := now.AddDate(0, 0, 3)
+	svc = service.New(service.Deps{
+		Repo:  repo,
+		Clock: clock.NewFake(later),
+	})
+
 	res, err := svc.AnswerCard(ctx, userID, card.ID, gradeGood, 1200)
 	require.NoError(t, err)
 	assert.Equal(t, "review", res.Card.State)
@@ -689,4 +713,146 @@ func TestSRS_Forecast_StopsAtTheHorizon(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, days, 1, "only the card inside the 30-day horizon counts")
 	assert.Equal(t, "2026-08-28", days[0].Date)
+}
+
+// fakeContentReader stands in for the content module's batched version read.
+type fakeContentReader struct {
+	versions map[uuid.UUID]*contentcontract.Version
+	calls    int
+	err      error
+}
+
+func (f *fakeContentReader) GetManyVersions(
+	_ context.Context, ids []uuid.UUID,
+) (map[uuid.UUID]*contentcontract.Version, error) {
+	f.calls++
+	if f.err != nil {
+		return nil, f.err
+	}
+	out := make(map[uuid.UUID]*contentcontract.Version, len(ids))
+	for _, id := range ids {
+		if v, ok := f.versions[id]; ok {
+			out[id] = v
+		}
+	}
+	return out, nil
+}
+
+func seedDueCard(t *testing.T, repo *fakeRepo, userID, versionID uuid.UUID, dueAt time.Time) {
+	t.Helper()
+	id := uuid.New()
+	repo.cards[id] = sqlc.LearnReviewCard{
+		ID: id, UserID: userID, ContentVersionID: versionID,
+		Skill: skillVocabulary, DueAt: dueAt, State: string(domain.StateReview),
+	}
+}
+
+// TestSRS_DueCardsResolveTheirContent is what makes the review screen possible.
+//
+// A card carries a content_version_id and a schedule; the word, its IPA and its
+// senses live in the version. Without this the client has a queue it cannot draw,
+// which is how the first version of the review screen ended up displaying a
+// hard-coded word for every card in it.
+func TestSRS_DueCardsResolveTheirContent(t *testing.T) {
+	now := time.Date(2026, 8, 25, 10, 0, 0, 0, time.UTC)
+	userID := uuid.New()
+	versionID := uuid.New()
+
+	repo := newFakeRepo()
+	seedDueCard(t, repo, userID, versionID, now.Add(-time.Hour))
+
+	content := &fakeContentReader{versions: map[uuid.UUID]*contentcontract.Version{
+		versionID: {
+			ID:        versionID,
+			Kind:      kindFlashcard,
+			CEFRLevel: "B2",
+			Body:      []byte(`{"word":"meticulous","ipa":"/məˈtɪkjələs/"}`),
+		},
+	}}
+
+	svc := service.New(service.Deps{Repo: repo, Content: content, Clock: clock.NewFake(now)})
+
+	cards, err := svc.DueCards(context.Background(), userID, 20)
+	require.NoError(t, err)
+	require.Len(t, cards, 1)
+	require.NotNil(t, cards[0].Content, "a due card must carry the content it schedules")
+	assert.Equal(t, kindFlashcard, cards[0].Content.Kind)
+	assert.Equal(t, "B2", cards[0].Content.CEFRLevel)
+	assert.JSONEq(t, `{"word":"meticulous","ipa":"/məˈtɪkjələs/"}`, string(cards[0].Content.Body))
+}
+
+// TestSRS_DueCardsResolveContentInOneRead: a review session is twenty cards, and
+// a per-card read is the N+1 the content contract exposes GetManyVersions to
+// prevent.
+func TestSRS_DueCardsResolveContentInOneRead(t *testing.T) {
+	now := time.Date(2026, 8, 25, 10, 0, 0, 0, time.UTC)
+	userID := uuid.New()
+
+	repo := newFakeRepo()
+	shared := uuid.New()
+	versions := map[uuid.UUID]*contentcontract.Version{}
+	for range 5 {
+		versionID := uuid.New()
+		versions[versionID] = &contentcontract.Version{ID: versionID, Kind: kindFlashcard, Body: []byte(`{}`)}
+		seedDueCard(t, repo, userID, versionID, now.Add(-time.Hour))
+	}
+	// Two cards on one version: the batch must not ask for it twice.
+	versions[shared] = &contentcontract.Version{ID: shared, Kind: kindFlashcard, Body: []byte(`{}`)}
+	seedDueCard(t, repo, userID, shared, now.Add(-time.Hour))
+	seedDueCard(t, repo, userID, shared, now.Add(-2*time.Hour))
+
+	content := &fakeContentReader{versions: versions}
+	svc := service.New(service.Deps{Repo: repo, Content: content, Clock: clock.NewFake(now)})
+
+	cards, err := svc.DueCards(context.Background(), userID, 20)
+	require.NoError(t, err)
+	require.Len(t, cards, 7)
+	assert.Equal(t, 1, content.calls, "seven cards must cost one content read, not seven")
+}
+
+// TestSRS_DueCardsSurviveUnresolvableContent: one archived version must not cost
+// the learner the other nineteen cards, and the gap must arrive as an absent
+// field the client can render explicitly — never as a placeholder.
+func TestSRS_DueCardsSurviveUnresolvableContent(t *testing.T) {
+	now := time.Date(2026, 8, 25, 10, 0, 0, 0, time.UTC)
+	userID := uuid.New()
+	known, missing := uuid.New(), uuid.New()
+
+	repo := newFakeRepo()
+	seedDueCard(t, repo, userID, known, now.Add(-2*time.Hour))
+	seedDueCard(t, repo, userID, missing, now.Add(-time.Hour))
+
+	content := &fakeContentReader{versions: map[uuid.UUID]*contentcontract.Version{
+		known: {ID: known, Kind: kindFlashcard, Body: []byte(`{"word":"meticulous"}`)},
+	}}
+	svc := service.New(service.Deps{Repo: repo, Content: content, Clock: clock.NewFake(now)})
+
+	cards, err := svc.DueCards(context.Background(), userID, 20)
+	require.NoError(t, err)
+	require.Len(t, cards, 2)
+
+	byVersion := map[uuid.UUID]*contract.ReviewCardContent{}
+	for _, card := range cards {
+		byVersion[card.ContentVersionID] = card.Content
+	}
+	assert.NotNil(t, byVersion[known])
+	assert.Nil(t, byVersion[missing], "an unresolvable version leaves Content absent")
+}
+
+// TestSRS_DueCardsSurviveAContentOutage: the content module being down degrades
+// the session to schedules without material rather than failing it outright.
+func TestSRS_DueCardsSurviveAContentOutage(t *testing.T) {
+	now := time.Date(2026, 8, 25, 10, 0, 0, 0, time.UTC)
+	userID := uuid.New()
+
+	repo := newFakeRepo()
+	seedDueCard(t, repo, userID, uuid.New(), now.Add(-time.Hour))
+
+	content := &fakeContentReader{err: errors.New("content is unavailable")}
+	svc := service.New(service.Deps{Repo: repo, Content: content, Clock: clock.NewFake(now)})
+
+	cards, err := svc.DueCards(context.Background(), userID, 20)
+	require.NoError(t, err, "a content outage must not fail the review session")
+	require.Len(t, cards, 1)
+	assert.Nil(t, cards[0].Content)
 }

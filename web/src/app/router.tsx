@@ -36,14 +36,34 @@ function RouteLoadingSpinner(): React.JSX.Element {
   );
 }
 
-const HomePage = lazyRouteComponent(
-  () => import("@/routes/HomePage"),
-  "HomePage",
+const DashboardPage = lazyRouteComponent(
+  () => import("@/routes/DashboardPage"),
+  "DashboardPage",
+);
+
+const LearnPage = lazyRouteComponent(
+  () => import("@/routes/LearnPage"),
+  "LearnPage",
+);
+
+const LessonPage = lazyRouteComponent(
+  () => import("@/routes/LessonPage"),
+  "LessonPage",
 );
 
 const PracticePage = lazyRouteComponent(
   () => import("@/routes/PracticePage"),
   "PracticePage",
+);
+
+const ReviewPage = lazyRouteComponent(
+  () => import("@/routes/ReviewPage"),
+  "ReviewPage",
+);
+
+const ProgressPage = lazyRouteComponent(
+  () => import("@/routes/ProgressPage"),
+  "ProgressPage",
 );
 
 const OAuthCallbackPage = lazyRouteComponent(
@@ -91,7 +111,31 @@ export const homeRoute = createRoute({
       throw redirect({ to: "/login" });
     }
   },
-  component: HomePage,
+  component: DashboardPage,
+});
+
+export const learnRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/learn",
+  beforeLoad: () => {
+    const { status } = useAuthStore.getState();
+    if (status === "unauthenticated") {
+      throw redirect({ to: "/login" });
+    }
+  },
+  component: LearnPage,
+});
+
+export const lessonRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/learn/lesson/$lessonId",
+  beforeLoad: () => {
+    const { status } = useAuthStore.getState();
+    if (status === "unauthenticated") {
+      throw redirect({ to: "/login" });
+    }
+  },
+  component: LessonPage,
 });
 
 export const practiceRoute = createRoute({
@@ -104,6 +148,30 @@ export const practiceRoute = createRoute({
     }
   },
   component: PracticePage,
+});
+
+export const reviewRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/practice/review",
+  beforeLoad: () => {
+    const { status } = useAuthStore.getState();
+    if (status === "unauthenticated") {
+      throw redirect({ to: "/login" });
+    }
+  },
+  component: ReviewPage,
+});
+
+export const progressRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/progress",
+  beforeLoad: () => {
+    const { status } = useAuthStore.getState();
+    if (status === "unauthenticated") {
+      throw redirect({ to: "/login" });
+    }
+  },
+  component: ProgressPage,
 });
 
 export const settingsRoute = createRoute({
@@ -180,7 +248,11 @@ export const oauthCallbackRoute = createRoute({
 
 export const routeTree = rootRoute.addChildren([
   homeRoute,
+  learnRoute,
+  lessonRoute,
   practiceRoute,
+  reviewRoute,
+  progressRoute,
   settingsRoute,
   adminRoute,
   loginRoute,

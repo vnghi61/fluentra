@@ -36,12 +36,13 @@ type Guard = srshttp.Guard
 
 // Deps defines dependencies supplied by the composition root.
 type Deps struct {
-	Pool   *pgxpool.Pool
-	Clock  clock.Clock
-	Guard  Guard
-	Users  usercontract.Reader
-	Caches service.SRSCaches
-	Env    string
+	Pool    *pgxpool.Pool
+	Clock   clock.Clock
+	Guard   Guard
+	Users   usercontract.Reader
+	Content service.ContentReader
+	Caches  service.SRSCaches
+	Env     string
 }
 
 // Module represents the wired srs module.
@@ -69,13 +70,14 @@ func New(deps Deps) *Module {
 	events := outboxWriter{Writer: outbox.NewWriter()}
 
 	srv := service.New(service.Deps{
-		Pool:   deps.Pool,
-		Repo:   repo,
-		Users:  deps.Users,
-		Events: events,
-		Caches: deps.Caches,
-		Clock:  timekeeper,
-		Env:    deps.Env,
+		Pool:    deps.Pool,
+		Repo:    repo,
+		Users:   deps.Users,
+		Content: deps.Content,
+		Events:  events,
+		Caches:  deps.Caches,
+		Clock:   timekeeper,
+		Env:     deps.Env,
 	})
 
 	// The handler is built only when there is a Guard to enforce with.

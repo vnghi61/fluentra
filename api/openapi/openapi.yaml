@@ -3357,6 +3357,16 @@ paths:
                     reps: 3
                     lapses: 1
                     state: review
+                    content:
+                      kind: vocab_flashcard
+                      cefr_level: B2
+                      body:
+                        word: meticulous
+                        pos: adjective
+                        ipa: /məˈtɪkjələs/
+                        definition: Showing great attention to detail.
+                        definition_vi: Tỉ mỉ, cẩn thận.
+                        example_sentence: She kept meticulous records of every transaction.
         '401':
           $ref: '#/components/responses/Unauthorized'
         '500':
@@ -4195,6 +4205,8 @@ components:
       $ref: ./components/srs.yaml#/ReviewGrade
     ReviewCard:
       $ref: ./components/srs.yaml#/ReviewCard
+    ReviewCardContent:
+      $ref: ./components/srs.yaml#/ReviewCardContent
     DueCountResponse:
       $ref: ./components/srs.yaml#/DueCountResponse
     ReviewSessionResponse:

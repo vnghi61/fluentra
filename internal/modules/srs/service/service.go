@@ -16,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/fluentra/fluentra/internal/generated/srs/sqlc"
+	contentcontract "github.com/fluentra/fluentra/internal/modules/content/contract"
 	learningcontract "github.com/fluentra/fluentra/internal/modules/learning/contract"
 	"github.com/fluentra/fluentra/internal/modules/srs/contract"
 	"github.com/fluentra/fluentra/internal/modules/srs/domain"
@@ -43,6 +44,15 @@ const (
 	maxForecastDays = 30
 )
 
+// ContentReader resolves the authored material behind a card's content version.
+//
+// It is the batched form on purpose: a review session is twenty cards, and a
+// per-card read is the N+1 the content contract exposes GetManyVersions to
+// prevent.
+type ContentReader interface {
+	GetManyVersions(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]*contentcontract.Version, error)
+}
+
 // OutboxTx is the database transaction interface needed to write outbox events.
 type OutboxTx interface {
 	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
@@ -60,26 +70,28 @@ type SRSCaches struct {
 
 // Deps carries dependencies for constructing the srs Service.
 type Deps struct {
-	Pool   *pgxpool.Pool
-	Repo   repository.Repository
-	Users  usercontract.Reader
-	Events EventWriter
-	Caches SRSCaches
-	Clock  clock.Clock
-	NewID  func() uuid.UUID
-	Env    string
+	Pool    *pgxpool.Pool
+	Repo    repository.Repository
+	Users   usercontract.Reader
+	Content ContentReader
+	Events  EventWriter
+	Caches  SRSCaches
+	Clock   clock.Clock
+	NewID   func() uuid.UUID
+	Env     string
 }
 
 // Service orchestrates review cards and FSRS scheduling.
 type Service struct {
-	pool   *pgxpool.Pool
-	repo   repository.Repository
-	users  usercontract.Reader
-	events EventWriter
-	caches SRSCaches
-	clock  clock.Clock
-	newID  func() uuid.UUID
-	env    string
+	pool    *pgxpool.Pool
+	repo    repository.Repository
+	users   usercontract.Reader
+	content ContentReader
+	events  EventWriter
+	caches  SRSCaches
+	clock   clock.Clock
+	newID   func() uuid.UUID
+	env     string
 }
 
 // New creates a new srs Service.
@@ -93,14 +105,15 @@ func New(deps Deps) *Service {
 		newID = uuid.New
 	}
 	return &Service{
-		pool:   deps.Pool,
-		repo:   deps.Repo,
-		users:  deps.Users,
-		events: deps.Events,
-		caches: deps.Caches,
-		clock:  clk,
-		newID:  newID,
-		env:    deps.Env,
+		pool:    deps.Pool,
+		repo:    deps.Repo,
+		users:   deps.Users,
+		content: deps.Content,
+		events:  deps.Events,
+		caches:  deps.Caches,
+		clock:   clk,
+		newID:   newID,
+		env:     deps.Env,
 	}
 }
 
@@ -267,7 +280,48 @@ func (s *Service) DueCards(ctx context.Context, userID uuid.UUID, limit int32) (
 	for _, row := range rows {
 		result = append(result, mapReviewCardSummary(row))
 	}
+	s.attachContent(ctx, result)
 	return result, nil
+}
+
+// attachContent resolves each card's content version in one batched read.
+//
+// A failure is logged and leaves Content nil rather than failing the session: a
+// learner with twenty due cards and one archived version should review the other
+// nineteen. The client renders the missing one as an explicit state, which is why
+// nothing here substitutes a placeholder.
+func (s *Service) attachContent(ctx context.Context, cards []contract.ReviewCardSummary) {
+	if s.content == nil || len(cards) == 0 {
+		return
+	}
+
+	ids := make([]uuid.UUID, 0, len(cards))
+	seen := make(map[uuid.UUID]struct{}, len(cards))
+	for _, card := range cards {
+		if _, ok := seen[card.ContentVersionID]; ok {
+			continue
+		}
+		seen[card.ContentVersionID] = struct{}{}
+		ids = append(ids, card.ContentVersionID)
+	}
+
+	versions, err := s.content.GetManyVersions(ctx, ids)
+	if err != nil {
+		slog.WarnContext(ctx, "failed to resolve review card content", "error", err)
+		return
+	}
+
+	for i := range cards {
+		version, ok := versions[cards[i].ContentVersionID]
+		if !ok || version == nil {
+			continue
+		}
+		cards[i].Content = &contract.ReviewCardContent{
+			Kind:      version.Kind,
+			CEFRLevel: version.CEFRLevel,
+			Body:      version.Body,
+		}
+	}
 }
 
 // Forecast projects the learner's workload for the next `days` calendar days in

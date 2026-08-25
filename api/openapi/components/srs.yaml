@@ -45,6 +45,35 @@ ReviewCard:
       type: string
       format: date-time
       nullable: true
+    content:
+      $ref: '#/ReviewCardContent'
+
+# srs schedules a content version and knows nothing about what it holds. A card
+# carrying only a schedule cannot be drawn as a flashcard, so the session resolves
+# the version through the content contract and hands the body over as authored.
+# It is absent — never a placeholder — when the version cannot be resolved.
+ReviewCardContent:
+  type: object
+  required: [kind, body]
+  properties:
+    kind:
+      type: string
+      description: The activity kind, which decides how the client renders the body.
+      example: vocab_flashcard
+    cefr_level:
+      type: string
+      example: B2
+    body:
+      type: object
+      additionalProperties: true
+      description: The authored content body, exactly as the version stores it.
+      example:
+        word: meticulous
+        pos: adjective
+        ipa: /məˈtɪkjələs/
+        definition: Showing great attention to detail.
+        definition_vi: Tỉ mỉ, cẩn thận.
+        example_sentence: She kept meticulous records of every transaction.
 
 DueCountResponse:
   type: object
