@@ -1586,7 +1586,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Dictionary lookup with senses, IPA, audio, examples. */
+        /**
+         * Dictionary lookup with senses, IPA, audio, examples.
+         * @description Returns every word entry that shares the lemma — one per part of speech, because `bank` is both a noun and a verb — each with its senses, pronunciation and examples.
+         */
         get: operations["getVocabularyWord"];
         put?: never;
         post?: never;
@@ -1603,7 +1606,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Search the dictionary. */
+        /**
+         * Search the dictionary.
+         * @description Prefix search over lemmas, ordered by frequency. Returns summaries rather than full entries; `total` counts the whole result, not the page.
+         */
         get: operations["searchVocabulary"];
         put?: never;
         post?: never;
@@ -1620,10 +1626,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The learner's decks plus curated ones. */
+        /**
+         * The learner's decks plus curated ones.
+         * @description Returns the decks the learner owns together with the public curated decks, and nobody else's.
+         */
         get: operations["listVocabularyDecks"];
         put?: never;
-        /** Create a deck. */
+        /**
+         * Create a deck.
+         * @description Creates a deck owned by the caller. A learner may reuse a slug a curated deck already took, because uniqueness is per owner.
+         */
         post: operations["createVocabularyDeck"];
         delete?: never;
         options?: never;
@@ -1638,10 +1650,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The word senses in a deck, with everything a flashcard renders. */
+        /**
+         * The word senses in a deck, with everything a flashcard renders.
+         * @description Returns each sense in the deck with its lemma, part of speech, CEFR level, pronunciation, definition and examples — the exact field set the review card renders.
+         */
         get: operations["listDeckWords"];
         put?: never;
-        /** Add a word sense to a deck. */
+        /**
+         * Add a word sense to a deck.
+         * @description Adds one sense to the deck. Adding a sense the deck already holds is a conflict, not a second row.
+         */
         post: operations["addWordToDeck"];
         delete?: never;
         options?: never;
@@ -1659,7 +1677,10 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Remove a word sense from a deck. */
+        /**
+         * Remove a word sense from a deck.
+         * @description Removes one sense from the deck. Removing a sense the deck does not hold succeeds, so the call is safe to retry.
+         */
         delete: operations["removeWordFromDeck"];
         options?: never;
         head?: never;
@@ -1675,7 +1696,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Mark known or ignored. */
+        /**
+         * Mark known or ignored.
+         * @description Sets the learner's status for a sense. `known` and `ignored` both stop the sense being scheduled for review; moving back to `new` or `learning` resumes it.
+         */
         post: operations["updateWordState"];
         delete?: never;
         options?: never;
@@ -1692,7 +1716,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create a word entry. */
+        /**
+         * Create a word entry.
+         * @description Creates or refreshes a dictionary entry and its senses. Re-importing an existing lemma and part of speech updates it rather than duplicating it.
+         */
         post: operations["adminCreateWord"];
         delete?: never;
         options?: never;
@@ -6653,6 +6680,24 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "cards": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *           "user_id": "0199a1c2-3d4e-7f80-9abc-def012345679",
+                     *           "content_version_id": "0199a1c2-3d4e-7f80-9abc-def01234567a",
+                     *           "skill": "vocabulary",
+                     *           "stability": 8.4231,
+                     *           "difficulty": 5.1,
+                     *           "due_at": "2026-09-02T10:00:00Z",
+                     *           "reps": 3,
+                     *           "lapses": 1,
+                     *           "state": "review"
+                     *         }
+                     *       ]
+                     *     }
+                     */
                     "application/json": components["schemas"]["ReviewSessionResponse"];
                 };
             };
@@ -6676,6 +6721,11 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "due_count": 12
+                     *     }
+                     */
                     "application/json": components["schemas"]["DueCountResponse"];
                 };
             };
@@ -6705,6 +6755,24 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "card": {
+                     *         "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *         "user_id": "0199a1c2-3d4e-7f80-9abc-def012345679",
+                     *         "content_version_id": "0199a1c2-3d4e-7f80-9abc-def01234567a",
+                     *         "skill": "vocabulary",
+                     *         "stability": 21.7,
+                     *         "difficulty": 4.9,
+                     *         "due_at": "2026-09-10T10:00:00Z",
+                     *         "reps": 4,
+                     *         "lapses": 1,
+                     *         "state": "review"
+                     *       },
+                     *       "next_due_at": "2026-09-10T10:00:00Z",
+                     *       "interval_days": 8
+                     *     }
+                     */
                     "application/json": components["schemas"]["AnswerReviewResponse"];
                 };
             };
@@ -6736,6 +6804,14 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "reviewed": 10,
+                     *       "correct": 8,
+                     *       "minutes": 4,
+                     *       "completed_at": "2026-08-25T10:30:00Z"
+                     *     }
+                     */
                     "application/json": components["schemas"]["CompleteReviewSessionResult"];
                 };
             };
@@ -6762,6 +6838,20 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345679",
+                     *       "content_version_id": "0199a1c2-3d4e-7f80-9abc-def01234567a",
+                     *       "skill": "vocabulary",
+                     *       "stability": 8.4231,
+                     *       "difficulty": 5.1,
+                     *       "due_at": "2026-09-02T10:00:00Z",
+                     *       "reps": 3,
+                     *       "lapses": 1,
+                     *       "state": "review"
+                     *     }
+                     */
                     "application/json": components["schemas"]["ReviewCard"];
                 };
             };
@@ -6788,6 +6878,20 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345679",
+                     *       "content_version_id": "0199a1c2-3d4e-7f80-9abc-def01234567a",
+                     *       "skill": "vocabulary",
+                     *       "stability": 8.4231,
+                     *       "difficulty": 5.1,
+                     *       "due_at": "2026-09-02T10:00:00Z",
+                     *       "reps": 3,
+                     *       "lapses": 1,
+                     *       "state": "review"
+                     *     }
+                     */
                     "application/json": components["schemas"]["ReviewCard"];
                 };
             };
@@ -6812,6 +6916,20 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "days": [
+                     *         {
+                     *           "date": "2026-08-26",
+                     *           "due_count": 15
+                     *         },
+                     *         {
+                     *           "date": "2026-08-27",
+                     *           "due_count": 3
+                     *         }
+                     *       ]
+                     *     }
+                     */
                     "application/json": components["schemas"]["ForecastResponse"];
                 };
             };
@@ -6837,6 +6955,35 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "words": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def01234567b",
+                     *           "lemma": "bank",
+                     *           "pos": "noun",
+                     *           "cefr_level": "A2",
+                     *           "frequency_rank": 450,
+                     *           "ipa": "/bæŋk/",
+                     *           "senses": [
+                     *             {
+                     *               "id": "0199a1c2-3d4e-7f80-9abc-def01234567c",
+                     *               "word_id": "0199a1c2-3d4e-7f80-9abc-def01234567b",
+                     *               "definition": "An institution where people deposit and borrow money.",
+                     *               "definition_vi": "Ngân hàng.",
+                     *               "examples": [
+                     *                 {
+                     *                   "sentence": "She withdrew $100 from the bank.",
+                     *                   "sentence_vi": "Cô ấy rút 100 đô la từ ngân hàng."
+                     *                 }
+                     *               ],
+                     *               "created_at": "2026-08-01T09:00:00Z"
+                     *             }
+                     *           ]
+                     *         }
+                     *       ]
+                     *     }
+                     */
                     "application/json": components["schemas"]["WordLookupResponse"];
                 };
             };
@@ -6863,6 +7010,20 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "results": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def01234567b",
+                     *           "lemma": "bank",
+                     *           "pos": "noun",
+                     *           "cefr_level": "A2",
+                     *           "ipa": "/bæŋk/"
+                     *         }
+                     *       ],
+                     *       "total": 2
+                     *     }
+                     */
                     "application/json": components["schemas"]["WordSearchResponse"];
                 };
             };
@@ -6886,6 +7047,21 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "decks": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def01234567d",
+                     *           "owner_id": "0199a1c2-3d4e-7f80-9abc-def012345679",
+                     *           "slug": "ielts-academic-vocab",
+                     *           "name": "IELTS Academic Vocabulary",
+                     *           "is_public": false,
+                     *           "item_count": 50,
+                     *           "created_at": "2026-08-01T09:00:00Z"
+                     *         }
+                     *       ]
+                     *     }
+                     */
                     "application/json": components["schemas"]["DeckListResponse"];
                 };
             };
@@ -6913,6 +7089,17 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def01234567d",
+                     *       "owner_id": "0199a1c2-3d4e-7f80-9abc-def012345679",
+                     *       "slug": "ielts-academic-vocab",
+                     *       "name": "IELTS Academic Vocabulary",
+                     *       "is_public": false,
+                     *       "item_count": 0,
+                     *       "created_at": "2026-08-01T09:00:00Z"
+                     *     }
+                     */
                     "application/json": components["schemas"]["Deck"];
                 };
             };
@@ -6943,6 +7130,28 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "sense_id": "0199a1c2-3d4e-7f80-9abc-def01234567c",
+                     *           "word_id": "0199a1c2-3d4e-7f80-9abc-def01234567b",
+                     *           "lemma": "meticulous",
+                     *           "pos": "adjective",
+                     *           "cefr_level": "B2",
+                     *           "ipa": "/məˈtɪkjələs/",
+                     *           "definition": "Showing great attention to detail.",
+                     *           "definition_vi": "Tỉ mỉ, cẩn thận.",
+                     *           "examples": [
+                     *             {
+                     *               "sentence": "She kept meticulous records of every transaction."
+                     *             }
+                     *           ],
+                     *           "added_at": "2026-08-20T09:00:00Z"
+                     *         }
+                     *       ]
+                     *     }
+                     */
                     "application/json": components["schemas"]["DeckWordsResponse"];
                 };
             };
@@ -7028,6 +7237,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345679",
+                     *       "word_sense_id": "0199a1c2-3d4e-7f80-9abc-def01234567c",
+                     *       "status": "known",
+                     *       "first_seen_at": "2026-08-01T09:00:00Z",
+                     *       "updated_at": "2026-08-25T09:00:00Z"
+                     *     }
+                     */
                     "application/json": components["schemas"]["UserWordState"];
                 };
             };
@@ -7057,6 +7275,30 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def01234567b",
+                     *       "lemma": "meticulous",
+                     *       "pos": "adjective",
+                     *       "cefr_level": "B2",
+                     *       "frequency_rank": 4821,
+                     *       "ipa": "/məˈtɪkjələs/",
+                     *       "senses": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def01234567c",
+                     *           "word_id": "0199a1c2-3d4e-7f80-9abc-def01234567b",
+                     *           "definition": "Showing great attention to detail.",
+                     *           "definition_vi": "Tỉ mỉ, cẩn thận.",
+                     *           "examples": [
+                     *             {
+                     *               "sentence": "She kept meticulous records of every transaction."
+                     *             }
+                     *           ],
+                     *           "created_at": "2026-08-01T09:00:00Z"
+                     *         }
+                     *       ]
+                     *     }
+                     */
                     "application/json": components["schemas"]["WordDetail"];
                 };
             };

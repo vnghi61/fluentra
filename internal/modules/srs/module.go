@@ -78,9 +78,21 @@ func New(deps Deps) *Module {
 		Env:    deps.Env,
 	})
 
-	handler, err := srshttp.NewHandler(srv, deps.Guard)
-	if err != nil {
-		panic(fmt.Sprintf("failed to construct srs HTTP handler: %v", err))
+	// The handler is built only when there is a Guard to enforce with.
+	//
+	// cmd/worker constructs this module for one reason — the partition rotation
+	// job — and hands over no Guard, because it serves no HTTP. Constructing the
+	// handler unconditionally panicked the worker at boot on
+	// GUARD_REQUIRED, which is a deploy that never starts rather than a route
+	// that is accidentally unguarded. `learning` and `vocabulary` are wired the
+	// same way for the same reason.
+	var handler *srshttp.Handler
+	if deps.Guard != nil {
+		var err error
+		handler, err = srshttp.NewHandler(srv, deps.Guard)
+		if err != nil {
+			panic(fmt.Sprintf("failed to construct srs HTTP handler: %v", err))
+		}
 	}
 
 	return &Module{
@@ -92,9 +104,12 @@ func New(deps Deps) *Module {
 	}
 }
 
-// Routes mounts the srs endpoints on the provided router.
+// Routes mounts the srs endpoints on the provided router. A module built without
+// a Guard has no handler and mounts nothing, rather than serving unguarded routes.
 func (m *Module) Routes(router chi.Router) {
-	m.handler.Routes(router)
+	if m.handler != nil {
+		m.handler.Routes(router)
+	}
 }
 
 // CardWriter returns the card writer interface for learning exercise engine.

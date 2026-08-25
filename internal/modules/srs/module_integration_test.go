@@ -6,10 +6,12 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
@@ -203,4 +205,37 @@ func TestModuleIntegration_RotatePartitionsWithoutAPoolFails(t *testing.T) {
 	module := srs.New(srs.Deps{Guard: permissiveGuard{}})
 
 	require.Error(t, module.RotatePartitions(context.Background()))
+}
+
+// TestModuleIntegration_WorkerWiringNeedsNoGuard is the boot path cmd/worker
+// takes: it constructs this module only for the partition rotation job and
+// serves no HTTP, so it hands over no Guard.
+//
+// Constructing the handler unconditionally made that a panic at start-up —
+// `GUARD_REQUIRED` — which the unit tests never saw because they all supply a
+// Guard, and which only surfaced when CI smoke-tested the worker binary.
+func TestModuleIntegration_WorkerWiringNeedsNoGuard(t *testing.T) {
+	if modulePool == nil {
+		t.Skip("TEST_DATABASE_URL is not set")
+	}
+
+	var module *srs.Module
+	require.NotPanics(t, func() {
+		module = srs.New(srs.Deps{Pool: modulePool})
+	}, "the worker constructs this module with no Guard and must not panic")
+
+	require.NotNil(t, module)
+	require.NoError(t, module.RotatePartitions(context.Background()),
+		"the one thing the worker needs from this module must still work")
+
+	// A module with no Guard serves no routes rather than unguarded ones.
+	router := chi.NewRouter()
+	require.NotPanics(t, func() { module.Routes(router) })
+
+	mounted := 0
+	require.NoError(t, chi.Walk(router, func(string, string, http.Handler, ...func(http.Handler) http.Handler) error {
+		mounted++
+		return nil
+	}))
+	assert.Zero(t, mounted, "a module built without a Guard must mount nothing")
 }

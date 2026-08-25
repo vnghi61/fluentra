@@ -420,12 +420,16 @@ type ClientInterface interface {
 
 	// AdminCreateWordWithBody Create a word entry.
 	//
+	// Creates or refreshes a dictionary entry and its senses. Re-importing an existing lemma and part of speech updates it rather than duplicating it.
+	//
 	// Takes any type of body and a specified content type.
 	//
 	// Corresponds with POST /admin/vocabulary/words (the `AdminCreateWord` operationId).
 	AdminCreateWordWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// AdminCreateWord Create a word entry.
+	//
+	// Creates or refreshes a dictionary entry and its senses. Re-importing an existing lemma and part of speech updates it rather than duplicating it.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1104,10 +1108,14 @@ type ClientInterface interface {
 
 	// ListVocabularyDecks The learner's decks plus curated ones.
 	//
+	// Returns the decks the learner owns together with the public curated decks, and nobody else's.
+	//
 	// Corresponds with GET /vocabulary/decks (the `ListVocabularyDecks` operationId).
 	ListVocabularyDecks(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateVocabularyDeckWithBody Create a deck.
+	//
+	// Creates a deck owned by the caller. A learner may reuse a slug a curated deck already took, because uniqueness is per owner.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1116,6 +1124,8 @@ type ClientInterface interface {
 
 	// CreateVocabularyDeck Create a deck.
 	//
+	// Creates a deck owned by the caller. A learner may reuse a slug a curated deck already took, because uniqueness is per owner.
+	//
 	// Takes a body of the `application/json` content type.
 	//
 	// Corresponds with POST /vocabulary/decks (the `CreateVocabularyDeck` operationId).
@@ -1123,10 +1133,14 @@ type ClientInterface interface {
 
 	// ListDeckWords The word senses in a deck, with everything a flashcard renders.
 	//
+	// Returns each sense in the deck with its lemma, part of speech, CEFR level, pronunciation, definition and examples — the exact field set the review card renders.
+	//
 	// Corresponds with GET /vocabulary/decks/{id}/words (the `ListDeckWords` operationId).
 	ListDeckWords(ctx context.Context, id openapi_types.UUID, params *ListDeckWordsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// AddWordToDeckWithBody Add a word sense to a deck.
+	//
+	// Adds one sense to the deck. Adding a sense the deck already holds is a conflict, not a second row.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1135,6 +1149,8 @@ type ClientInterface interface {
 
 	// AddWordToDeck Add a word sense to a deck.
 	//
+	// Adds one sense to the deck. Adding a sense the deck already holds is a conflict, not a second row.
+	//
 	// Takes a body of the `application/json` content type.
 	//
 	// Corresponds with POST /vocabulary/decks/{id}/words (the `AddWordToDeck` operationId).
@@ -1142,20 +1158,28 @@ type ClientInterface interface {
 
 	// RemoveWordFromDeck Remove a word sense from a deck.
 	//
+	// Removes one sense from the deck. Removing a sense the deck does not hold succeeds, so the call is safe to retry.
+	//
 	// Corresponds with DELETE /vocabulary/decks/{id}/words/{sense_id} (the `RemoveWordFromDeck` operationId).
 	RemoveWordFromDeck(ctx context.Context, id openapi_types.UUID, senseId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SearchVocabulary Search the dictionary.
+	//
+	// Prefix search over lemmas, ordered by frequency. Returns summaries rather than full entries; `total` counts the whole result, not the page.
 	//
 	// Corresponds with GET /vocabulary/search (the `SearchVocabulary` operationId).
 	SearchVocabulary(ctx context.Context, params *SearchVocabularyParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetVocabularyWord Dictionary lookup with senses, IPA, audio, examples.
 	//
+	// Returns every word entry that shares the lemma — one per part of speech, because `bank` is both a noun and a verb — each with its senses, pronunciation and examples.
+	//
 	// Corresponds with GET /vocabulary/words/{lemma} (the `GetVocabularyWord` operationId).
 	GetVocabularyWord(ctx context.Context, lemma string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateWordStateWithBody Mark known or ignored.
+	//
+	// Sets the learner's status for a sense. `known` and `ignored` both stop the sense being scheduled for review; moving back to `new` or `learning` resumes it.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1163,6 +1187,8 @@ type ClientInterface interface {
 	UpdateWordStateWithBody(ctx context.Context, senseId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateWordState Mark known or ignored.
+	//
+	// Sets the learner's status for a sense. `known` and `ignored` both stop the sense being scheduled for review; moving back to `new` or `learning` resumes it.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1869,6 +1895,8 @@ func (c *Client) AdminSuspendUser(ctx context.Context, id openapi_types.UUID, bo
 
 // AdminCreateWordWithBody Create a word entry.
 //
+// Creates or refreshes a dictionary entry and its senses. Re-importing an existing lemma and part of speech updates it rather than duplicating it.
+//
 // Takes any type of body and a specified content type.
 //
 // Corresponds with POST /admin/vocabulary/words (the `AdminCreateWord` operationId).
@@ -1885,6 +1913,8 @@ func (c *Client) AdminCreateWordWithBody(ctx context.Context, contentType string
 }
 
 // AdminCreateWord Create a word entry.
+//
+// Creates or refreshes a dictionary entry and its senses. Re-importing an existing lemma and part of speech updates it rather than duplicating it.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -3273,6 +3303,8 @@ func (c *Client) SystemVersion(ctx context.Context, reqEditors ...RequestEditorF
 
 // ListVocabularyDecks The learner's decks plus curated ones.
 //
+// Returns the decks the learner owns together with the public curated decks, and nobody else's.
+//
 // Corresponds with GET /vocabulary/decks (the `ListVocabularyDecks` operationId).
 func (c *Client) ListVocabularyDecks(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListVocabularyDecksRequest(c.Server)
@@ -3287,6 +3319,8 @@ func (c *Client) ListVocabularyDecks(ctx context.Context, reqEditors ...RequestE
 }
 
 // CreateVocabularyDeckWithBody Create a deck.
+//
+// Creates a deck owned by the caller. A learner may reuse a slug a curated deck already took, because uniqueness is per owner.
 //
 // Takes any type of body and a specified content type.
 //
@@ -3305,6 +3339,8 @@ func (c *Client) CreateVocabularyDeckWithBody(ctx context.Context, contentType s
 
 // CreateVocabularyDeck Create a deck.
 //
+// Creates a deck owned by the caller. A learner may reuse a slug a curated deck already took, because uniqueness is per owner.
+//
 // Takes a body of the `application/json` content type.
 //
 // Corresponds with POST /vocabulary/decks (the `CreateVocabularyDeck` operationId).
@@ -3322,6 +3358,8 @@ func (c *Client) CreateVocabularyDeck(ctx context.Context, body CreateVocabulary
 
 // ListDeckWords The word senses in a deck, with everything a flashcard renders.
 //
+// Returns each sense in the deck with its lemma, part of speech, CEFR level, pronunciation, definition and examples — the exact field set the review card renders.
+//
 // Corresponds with GET /vocabulary/decks/{id}/words (the `ListDeckWords` operationId).
 func (c *Client) ListDeckWords(ctx context.Context, id openapi_types.UUID, params *ListDeckWordsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListDeckWordsRequest(c.Server, id, params)
@@ -3336,6 +3374,8 @@ func (c *Client) ListDeckWords(ctx context.Context, id openapi_types.UUID, param
 }
 
 // AddWordToDeckWithBody Add a word sense to a deck.
+//
+// Adds one sense to the deck. Adding a sense the deck already holds is a conflict, not a second row.
 //
 // Takes any type of body and a specified content type.
 //
@@ -3354,6 +3394,8 @@ func (c *Client) AddWordToDeckWithBody(ctx context.Context, id openapi_types.UUI
 
 // AddWordToDeck Add a word sense to a deck.
 //
+// Adds one sense to the deck. Adding a sense the deck already holds is a conflict, not a second row.
+//
 // Takes a body of the `application/json` content type.
 //
 // Corresponds with POST /vocabulary/decks/{id}/words (the `AddWordToDeck` operationId).
@@ -3371,6 +3413,8 @@ func (c *Client) AddWordToDeck(ctx context.Context, id openapi_types.UUID, body 
 
 // RemoveWordFromDeck Remove a word sense from a deck.
 //
+// Removes one sense from the deck. Removing a sense the deck does not hold succeeds, so the call is safe to retry.
+//
 // Corresponds with DELETE /vocabulary/decks/{id}/words/{sense_id} (the `RemoveWordFromDeck` operationId).
 func (c *Client) RemoveWordFromDeck(ctx context.Context, id openapi_types.UUID, senseId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRemoveWordFromDeckRequest(c.Server, id, senseId)
@@ -3385,6 +3429,8 @@ func (c *Client) RemoveWordFromDeck(ctx context.Context, id openapi_types.UUID, 
 }
 
 // SearchVocabulary Search the dictionary.
+//
+// Prefix search over lemmas, ordered by frequency. Returns summaries rather than full entries; `total` counts the whole result, not the page.
 //
 // Corresponds with GET /vocabulary/search (the `SearchVocabulary` operationId).
 func (c *Client) SearchVocabulary(ctx context.Context, params *SearchVocabularyParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -3401,6 +3447,8 @@ func (c *Client) SearchVocabulary(ctx context.Context, params *SearchVocabularyP
 
 // GetVocabularyWord Dictionary lookup with senses, IPA, audio, examples.
 //
+// Returns every word entry that shares the lemma — one per part of speech, because `bank` is both a noun and a verb — each with its senses, pronunciation and examples.
+//
 // Corresponds with GET /vocabulary/words/{lemma} (the `GetVocabularyWord` operationId).
 func (c *Client) GetVocabularyWord(ctx context.Context, lemma string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetVocabularyWordRequest(c.Server, lemma)
@@ -3415,6 +3463,8 @@ func (c *Client) GetVocabularyWord(ctx context.Context, lemma string, reqEditors
 }
 
 // UpdateWordStateWithBody Mark known or ignored.
+//
+// Sets the learner's status for a sense. `known` and `ignored` both stop the sense being scheduled for review; moving back to `new` or `learning` resumes it.
 //
 // Takes any type of body and a specified content type.
 //
@@ -3432,6 +3482,8 @@ func (c *Client) UpdateWordStateWithBody(ctx context.Context, senseId openapi_ty
 }
 
 // UpdateWordState Mark known or ignored.
+//
+// Sets the learner's status for a sense. `known` and `ignored` both stop the sense being scheduled for review; moving back to `new` or `learning` resumes it.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -7481,12 +7533,16 @@ type ClientWithResponsesInterface interface {
 
 	// AdminCreateWordWithBodyWithResponse Create a word entry.
 	//
+	// Creates or refreshes a dictionary entry and its senses. Re-importing an existing lemma and part of speech updates it rather than duplicating it.
+	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with POST /admin/vocabulary/words (the `AdminCreateWord` operationId).
 	AdminCreateWordWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminCreateWordResponse, error)
 
 	// AdminCreateWordWithResponse Create a word entry.
+	//
+	// Creates or refreshes a dictionary entry and its senses. Re-importing an existing lemma and part of speech updates it rather than duplicating it.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -8237,12 +8293,16 @@ type ClientWithResponsesInterface interface {
 
 	// ListVocabularyDecksWithResponse The learner's decks plus curated ones.
 	//
+	// Returns the decks the learner owns together with the public curated decks, and nobody else's.
+	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with GET /vocabulary/decks (the `ListVocabularyDecks` operationId).
 	ListVocabularyDecksWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListVocabularyDecksResponse, error)
 
 	// CreateVocabularyDeckWithBodyWithResponse Create a deck.
+	//
+	// Creates a deck owned by the caller. A learner may reuse a slug a curated deck already took, because uniqueness is per owner.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -8251,12 +8311,16 @@ type ClientWithResponsesInterface interface {
 
 	// CreateVocabularyDeckWithResponse Create a deck.
 	//
+	// Creates a deck owned by the caller. A learner may reuse a slug a curated deck already took, because uniqueness is per owner.
+	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with POST /vocabulary/decks (the `CreateVocabularyDeck` operationId).
 	CreateVocabularyDeckWithResponse(ctx context.Context, body CreateVocabularyDeckJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateVocabularyDeckResponse, error)
 
 	// ListDeckWordsWithResponse The word senses in a deck, with everything a flashcard renders.
+	//
+	// Returns each sense in the deck with its lemma, part of speech, CEFR level, pronunciation, definition and examples — the exact field set the review card renders.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -8265,12 +8329,16 @@ type ClientWithResponsesInterface interface {
 
 	// AddWordToDeckWithBodyWithResponse Add a word sense to a deck.
 	//
+	// Adds one sense to the deck. Adding a sense the deck already holds is a conflict, not a second row.
+	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with POST /vocabulary/decks/{id}/words (the `AddWordToDeck` operationId).
 	AddWordToDeckWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddWordToDeckResponse, error)
 
 	// AddWordToDeckWithResponse Add a word sense to a deck.
+	//
+	// Adds one sense to the deck. Adding a sense the deck already holds is a conflict, not a second row.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -8279,12 +8347,16 @@ type ClientWithResponsesInterface interface {
 
 	// RemoveWordFromDeckWithResponse Remove a word sense from a deck.
 	//
+	// Removes one sense from the deck. Removing a sense the deck does not hold succeeds, so the call is safe to retry.
+	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with DELETE /vocabulary/decks/{id}/words/{sense_id} (the `RemoveWordFromDeck` operationId).
 	RemoveWordFromDeckWithResponse(ctx context.Context, id openapi_types.UUID, senseId openapi_types.UUID, reqEditors ...RequestEditorFn) (*RemoveWordFromDeckResponse, error)
 
 	// SearchVocabularyWithResponse Search the dictionary.
+	//
+	// Prefix search over lemmas, ordered by frequency. Returns summaries rather than full entries; `total` counts the whole result, not the page.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -8293,6 +8365,8 @@ type ClientWithResponsesInterface interface {
 
 	// GetVocabularyWordWithResponse Dictionary lookup with senses, IPA, audio, examples.
 	//
+	// Returns every word entry that shares the lemma — one per part of speech, because `bank` is both a noun and a verb — each with its senses, pronunciation and examples.
+	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with GET /vocabulary/words/{lemma} (the `GetVocabularyWord` operationId).
@@ -8300,12 +8374,16 @@ type ClientWithResponsesInterface interface {
 
 	// UpdateWordStateWithBodyWithResponse Mark known or ignored.
 	//
+	// Sets the learner's status for a sense. `known` and `ignored` both stop the sense being scheduled for review; moving back to `new` or `learning` resumes it.
+	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with POST /vocabulary/words/{sense_id}/state (the `UpdateWordState` operationId).
 	UpdateWordStateWithBodyWithResponse(ctx context.Context, senseId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateWordStateResponse, error)
 
 	// UpdateWordStateWithResponse Mark known or ignored.
+	//
+	// Sets the learner's status for a sense. `known` and `ignored` both stop the sense being scheduled for review; moving back to `new` or `learning` resumes it.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -15165,6 +15243,8 @@ func (c *ClientWithResponses) AdminSuspendUserWithResponse(ctx context.Context, 
 
 // AdminCreateWordWithBodyWithResponse Create a word entry.
 //
+// Creates or refreshes a dictionary entry and its senses. Re-importing an existing lemma and part of speech updates it rather than duplicating it.
+//
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with POST /admin/vocabulary/words (the `AdminCreateWord` operationId).
@@ -15177,6 +15257,8 @@ func (c *ClientWithResponses) AdminCreateWordWithBodyWithResponse(ctx context.Co
 }
 
 // AdminCreateWordWithResponse Create a word entry.
+//
+// Creates or refreshes a dictionary entry and its senses. Re-importing an existing lemma and part of speech updates it rather than duplicating it.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -16353,6 +16435,8 @@ func (c *ClientWithResponses) SystemVersionWithResponse(ctx context.Context, req
 
 // ListVocabularyDecksWithResponse The learner's decks plus curated ones.
 //
+// Returns the decks the learner owns together with the public curated decks, and nobody else's.
+//
 // Returns a wrapper object for the known response body format(s).
 //
 // Corresponds with GET /vocabulary/decks (the `ListVocabularyDecks` operationId).
@@ -16365,6 +16449,8 @@ func (c *ClientWithResponses) ListVocabularyDecksWithResponse(ctx context.Contex
 }
 
 // CreateVocabularyDeckWithBodyWithResponse Create a deck.
+//
+// Creates a deck owned by the caller. A learner may reuse a slug a curated deck already took, because uniqueness is per owner.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -16379,6 +16465,8 @@ func (c *ClientWithResponses) CreateVocabularyDeckWithBodyWithResponse(ctx conte
 
 // CreateVocabularyDeckWithResponse Create a deck.
 //
+// Creates a deck owned by the caller. A learner may reuse a slug a curated deck already took, because uniqueness is per owner.
+//
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with POST /vocabulary/decks (the `CreateVocabularyDeck` operationId).
@@ -16391,6 +16479,8 @@ func (c *ClientWithResponses) CreateVocabularyDeckWithResponse(ctx context.Conte
 }
 
 // ListDeckWordsWithResponse The word senses in a deck, with everything a flashcard renders.
+//
+// Returns each sense in the deck with its lemma, part of speech, CEFR level, pronunciation, definition and examples — the exact field set the review card renders.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -16405,6 +16495,8 @@ func (c *ClientWithResponses) ListDeckWordsWithResponse(ctx context.Context, id 
 
 // AddWordToDeckWithBodyWithResponse Add a word sense to a deck.
 //
+// Adds one sense to the deck. Adding a sense the deck already holds is a conflict, not a second row.
+//
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with POST /vocabulary/decks/{id}/words (the `AddWordToDeck` operationId).
@@ -16417,6 +16509,8 @@ func (c *ClientWithResponses) AddWordToDeckWithBodyWithResponse(ctx context.Cont
 }
 
 // AddWordToDeckWithResponse Add a word sense to a deck.
+//
+// Adds one sense to the deck. Adding a sense the deck already holds is a conflict, not a second row.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -16431,6 +16525,8 @@ func (c *ClientWithResponses) AddWordToDeckWithResponse(ctx context.Context, id 
 
 // RemoveWordFromDeckWithResponse Remove a word sense from a deck.
 //
+// Removes one sense from the deck. Removing a sense the deck does not hold succeeds, so the call is safe to retry.
+//
 // Returns a wrapper object for the known response body format(s).
 //
 // Corresponds with DELETE /vocabulary/decks/{id}/words/{sense_id} (the `RemoveWordFromDeck` operationId).
@@ -16443,6 +16539,8 @@ func (c *ClientWithResponses) RemoveWordFromDeckWithResponse(ctx context.Context
 }
 
 // SearchVocabularyWithResponse Search the dictionary.
+//
+// Prefix search over lemmas, ordered by frequency. Returns summaries rather than full entries; `total` counts the whole result, not the page.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -16457,6 +16555,8 @@ func (c *ClientWithResponses) SearchVocabularyWithResponse(ctx context.Context, 
 
 // GetVocabularyWordWithResponse Dictionary lookup with senses, IPA, audio, examples.
 //
+// Returns every word entry that shares the lemma — one per part of speech, because `bank` is both a noun and a verb — each with its senses, pronunciation and examples.
+//
 // Returns a wrapper object for the known response body format(s).
 //
 // Corresponds with GET /vocabulary/words/{lemma} (the `GetVocabularyWord` operationId).
@@ -16470,6 +16570,8 @@ func (c *ClientWithResponses) GetVocabularyWordWithResponse(ctx context.Context,
 
 // UpdateWordStateWithBodyWithResponse Mark known or ignored.
 //
+// Sets the learner's status for a sense. `known` and `ignored` both stop the sense being scheduled for review; moving back to `new` or `learning` resumes it.
+//
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with POST /vocabulary/words/{sense_id}/state (the `UpdateWordState` operationId).
@@ -16482,6 +16584,8 @@ func (c *ClientWithResponses) UpdateWordStateWithBodyWithResponse(ctx context.Co
 }
 
 // UpdateWordStateWithResponse Mark known or ignored.
+//
+// Sets the learner's status for a sense. `known` and `ignored` both stop the sense being scheduled for review; moving back to `new` or `learning` resumes it.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
