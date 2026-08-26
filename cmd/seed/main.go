@@ -104,6 +104,7 @@ func run(ctx context.Context, out io.Writer) error {
 		return fmt.Errorf("hash demo password: %w", err)
 	}
 
+	var adminID uuid.UUID
 	for _, account := range demoAccounts {
 		id, created, err := ensureAccount(ctx, pool, module.Creator(), account)
 		if err != nil {
@@ -116,6 +117,7 @@ func run(ctx context.Context, out io.Writer) error {
 			return fmt.Errorf("verify %s: %w", account.email, err)
 		}
 		if account.admin {
+			adminID = id
 			if err := ensureAdmin(ctx, pool, id); err != nil {
 				return fmt.Errorf("grant admin to %s: %w", account.email, err)
 			}
@@ -126,6 +128,17 @@ func run(ctx context.Context, out io.Writer) error {
 			state = "created"
 		}
 		_, _ = fmt.Fprintf(out, "%-24s %s\n", account.email, state)
+	}
+
+	// The content is owned by the admin account, so a run that produced no admin
+	// has nothing to attribute it to. That is a broken seed, not a partial one:
+	// silently skipping left a database with logins and no curriculum, which
+	// looks like a working seed until someone signs in.
+	if adminID == uuid.Nil {
+		return fmt.Errorf("no admin account was seeded, so content cannot be authored")
+	}
+	if err := seedContentAndCurriculum(ctx, pool, adminID, out); err != nil {
+		return fmt.Errorf("seed content & curriculum: %w", err)
 	}
 
 	_, _ = fmt.Fprintf(out, "\npassword for both: %s\n", demoPassword)

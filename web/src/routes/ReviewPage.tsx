@@ -164,10 +164,21 @@ export function ReviewPage(): React.JSX.Element {
     <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in duration-200 py-4">
       <div className="flex items-center justify-between gap-4">
         <Link to="/">
+          {/*
+            The label is hidden below `sm`, which left the arrow alone in a 32 px
+            button — under the 44 × 44 minimum, and only at 320 px, which is why
+            no test saw it until the narrow-320 project covered this screen.
+            min-w-11 keeps the target while the text goes away, and the
+            accessible name comes from aria-label rather than the hidden span.
+            The negative margin went with it: it pulled the button outside the
+            link wrapping it, so the anchor measured 36 px however wide the
+            button was.
+          */}
           <Button
             variant="ghost"
             size="sm"
-            className="gap-1.5 text-text-muted hover:text-text -ml-2"
+            aria-label={t("review.backToDashboardBtn")}
+            className="gap-1.5 text-text-muted hover:text-text min-w-11 min-h-11"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             <span className="hidden sm:inline">
@@ -176,7 +187,12 @@ export function ReviewPage(): React.JSX.Element {
           </Button>
         </Link>
 
-        <div className="flex-1 max-w-xs space-y-1">
+        <div
+          className="flex-1 max-w-xs space-y-1"
+          data-testid="review-progress"
+          data-current={currentIndex + 1}
+          data-total={cards.length}
+        >
           <div className="flex justify-between text-xs text-text-muted font-medium">
             <span>{t("review.sessionTitle")}</span>
             <span>

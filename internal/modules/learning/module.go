@@ -20,6 +20,7 @@ import (
 	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
 	srscontract "github.com/fluentra/fluentra/internal/modules/srs/contract"
 	"github.com/fluentra/fluentra/internal/platform/job"
+	"github.com/fluentra/fluentra/internal/platform/telemetry"
 	"github.com/fluentra/fluentra/internal/shared/clock"
 	"github.com/fluentra/fluentra/internal/shared/outbox"
 )
@@ -44,6 +45,7 @@ type Deps struct {
 	SRSCards      srscontract.CardWriter
 	Graders       map[string]contract.ExerciseGrader
 	DeclaredKinds []string
+	Metrics       telemetry.Instruments
 	Caches        service.LearningCaches
 	Env           string
 }
@@ -110,6 +112,7 @@ func New(deps Deps) *Module {
 		SRSCards: deps.SRSCards,
 		Graders:  registry,
 		Events:   events,
+		Metrics:  deps.Metrics,
 		Clock:    timekeeper,
 		Caches:   deps.Caches,
 		Env:      deps.Env,

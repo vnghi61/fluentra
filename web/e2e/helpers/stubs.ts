@@ -133,3 +133,117 @@ export async function stubAccountApi(page: Page): Promise<void> {
     route.fulfill(json(stubSessions)),
   );
 }
+
+/**
+ * The learner screens' API, stubbed for layout checks.
+ *
+ * The 320 px suite runs without a backend, and the five learner screens are the
+ * tightest layouts in the app — the four review grade buttons in Vietnamese most
+ * of all. Stubbing here keeps them in the narrow-320 project rather than making
+ * the layout rule wait on `make dev`.
+ *
+ * The payloads are the fullest reasonable state, not the emptiest: an empty
+ * dashboard has nothing to overflow with.
+ */
+export async function stubLearningApi(page: Page): Promise<void> {
+  const json = (body: unknown) => ({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify(body),
+  });
+
+  await page.route("**/api/v1/me/dashboard", (route) =>
+    route.fulfill(
+      json({
+        state: "in_progress",
+        next_activity: {
+          activity_id: "0199a1c2-3d4e-7f80-9abc-def01234567b",
+          lesson_id: "0199a1c2-3d4e-7f80-9abc-def01234567a",
+          unit_id: "0199a1c2-3d4e-7f80-9abc-def012345679",
+          course_id: "0199a1c2-3d4e-7f80-9abc-def012345678",
+          title: "Everyday English: A2–B1 Foundations — Morning Routines & Habits",
+          kind: "vocab_multiple_choice",
+          skill: "vocabulary",
+          estimated_minutes: 15,
+        },
+        due_reviews_count: 12,
+        skill_mastery: [
+          { skill: "vocabulary", level: "B1", confidence: 0.85, updated_at: "2026-08-24T09:00:00Z" },
+          { skill: "grammar", level: "A2", confidence: 0.4, updated_at: "2026-08-24T09:00:00Z" },
+        ],
+      }),
+    ),
+  );
+
+  await page.route("**/api/v1/me/progress", (route) =>
+    route.fulfill(
+      json({
+        courses: [
+          {
+            course_id: "0199a1c2-3d4e-7f80-9abc-def012345678",
+            status: "in_progress",
+            completed_activities: 12,
+            total_activities: 40,
+            percentage: 30,
+          },
+        ],
+        skills: [
+          { skill: "vocabulary", level: "B1", confidence: 0.85, updated_at: "2026-08-24T09:00:00Z" },
+        ],
+      }),
+    ),
+  );
+
+  await page.route("**/api/v1/reviews/session", (route) =>
+    route.fulfill(
+      json({
+        cards: [
+          {
+            id: "0199a1c2-3d4e-7f80-9abc-def01234567c",
+            user_id: "0199a1c2-3d4e-7f80-9abc-def012345679",
+            content_version_id: "0199a1c2-3d4e-7f80-9abc-def01234567b",
+            skill: "vocabulary",
+            stability: 8.42,
+            difficulty: 5.1,
+            due_at: "2026-09-02T10:00:00Z",
+            reps: 3,
+            lapses: 1,
+            state: "review",
+            content: {
+              kind: "vocab_flashcard",
+              cefr_level: "B2",
+              body: {
+                word: "meticulous",
+                pos: "adjective",
+                ipa: "/məˈtɪkjələs/",
+                definition: "Showing great attention to detail.",
+                definition_vi: "Tỉ mỉ, cẩn thận, kỹ lưỡng.",
+                example_sentence: "She kept meticulous records of every transaction.",
+              },
+            },
+          },
+        ],
+        total_due: 1,
+      }),
+    ),
+  );
+
+  await page.route("**/api/v1/courses**", (route) =>
+    route.fulfill(
+      json({
+        courses: [
+          {
+            id: "0199a1c2-3d4e-7f80-9abc-def012345678",
+            slug: "everyday-english-a2-b1",
+            title: "Everyday English: A2–B1 Foundations",
+            cefr_from: "A2",
+            cefr_to: "B1",
+            status: "published",
+            estimated_hours: 24,
+          },
+        ],
+        total: 1,
+      }),
+    ),
+  );
+}

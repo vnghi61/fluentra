@@ -5,7 +5,7 @@
     "group": "modules",
     "schema": "content",
     "phase": 2,
-    "status": "PLANNED",
+    "status": "DONE",
     "owner": "@learning-team",
     "hasJobs": true,
     "purpose": "The canonical model for every piece of learning material, whatever skill it belongs to: content items, immutable versions, media links, taxonomy, CEFR levelling, and the authoring workflow that takes a draft to publication.",
@@ -165,7 +165,7 @@
     "group": "modules",
     "schema": "learn",
     "phase": 2,
-    "status": "PLANNED",
+    "status": "DONE",
     "owner": "@learning-team",
     "purpose": "Structure: courses contain units, units contain lessons, lessons contain activities, and activities point at content versions. Owns prerequisites, ordering and unlocking rules.",
     "businessPurpose": "A learner needs a path, not a pile of exercises. This module is what turns a content library into a curriculum with a beginning, an order, and a sense of progress.",
@@ -286,7 +286,7 @@
     "group": "modules",
     "schema": "learn",
     "phase": 2,
-    "status": "PLANNED",
+    "status": "DONE",
     "owner": "@learning-team",
     "hasJobs": true,
     "purpose": "The learner's journey and the **exercise engine**. Owns enrolment, progress, attempts, session tracking, placement and the adaptive path — and defines the `ExerciseGrader` interface that every skill module implements.",
@@ -495,7 +495,7 @@
       "A per-lesson unlock cache (`fluentra:{env}:learning:unlock:{user_id}:{lesson_id}:v1`). `IsUnlocked` is two batched reads for a whole course tree, so the cache would save less than the invalidation it needs: a lesson completion changes the verdict for every lesson downstream of it, and the keys are per lesson. Revisit if the course-detail page shows up in latency work (P8.5)"
     ],
     "future": ["Item response theory for mastery", "Learned rather than rule-based adaptation", "Offline attempt sync", "Asynchronous progress rollup"],
-    "doNot": [
+"doNot": [
       "Do not accept a score from the client.",
       "Do not implement skill-specific grading here — write a grader in the skill module.",
       "Do not mutate a graded attempt.",
@@ -511,7 +511,7 @@
     "group": "modules",
     "schema": "learn",
     "phase": 2,
-    "status": "PLANNED",
+    "status": "DONE",
     "owner": "@learning-team",
     "hasJobs": true,
     "purpose": "Spaced repetition. Owns review cards, the FSRS scheduler, review logs, due queues and retention forecasting. Any material worth remembering long-term enters this module and comes back at the right time.",
@@ -681,7 +681,7 @@
     "group": "modules",
     "schema": "skill",
     "phase": 2,
-    "status": "PLANNED",
+    "status": "DONE",
     "owner": "@learning-team",
     "purpose": "Words and how learners acquire them: senses, pronunciations, collocations, word families, learner decks, and the vocabulary graders. The first skill module built, and the reference implementation the other five follow.",
     "responsibilities": [
@@ -787,6 +787,7 @@
         "Review item production feeding `srs`",
         "TTS pronunciation pre-generation",
         "Audio URL resolution: `content.Reader` exposes no media-asset lookup, so `audio_url` is null. It needs a `c_content` method returning a playable link for a `content.media_assets` object key; do not format a URL in this module",
+        "Seed audio: the 200 senses P11.1 authors carry IPA, definitions and examples but no audio, because there is nothing to point `audio_asset_id` at until the lookup above exists. P11.1's acceptance asks for audio that resolves, and it is the one part of that task still open",
         "Seed dictionary of 2,000 A1–B1 senses"
       ]}
     ],

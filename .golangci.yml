@@ -26,6 +26,18 @@ linters:
     lll:
       line-length: 120
 
+  exclusions:
+    rules:
+      # cmd/seed/content_data.go is authored curriculum, not code: two hundred
+      # word senses and twenty-four exercises. goconst measures repeated string
+      # literals, which in a data file means the answer to a question appearing
+      # in its option id, its correct_answer and its acceptable list — naming
+      # those would replace readable content with indirection. The keys and kinds
+      # around the content *are* constants; see the const block in that file.
+      - path: cmd/seed/content_data\.go
+        linters:
+          - goconst
+
 formatters:
   enable:
     - gofmt

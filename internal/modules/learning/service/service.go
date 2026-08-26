@@ -21,6 +21,7 @@ import (
 	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
 	srscontract "github.com/fluentra/fluentra/internal/modules/srs/contract"
 	"github.com/fluentra/fluentra/internal/platform/cache"
+	"github.com/fluentra/fluentra/internal/platform/telemetry"
 	"github.com/fluentra/fluentra/internal/shared/clock"
 	"github.com/fluentra/fluentra/internal/shared/dbx"
 )
@@ -146,6 +147,7 @@ type Deps struct {
 	SRSCards srscontract.CardWriter
 	Graders  *domain.GraderRegistry
 	Events   EventWriter
+	Metrics  telemetry.Instruments
 	Clock    clock.Clock
 	NewID    func() (uuid.UUID, error)
 	Caches   LearningCaches
@@ -161,6 +163,7 @@ type Service struct {
 	srsCards srscontract.CardWriter
 	graders  *domain.GraderRegistry
 	events   EventWriter
+	metrics  telemetry.Instruments
 	clock    clock.Clock
 	newID    func() (uuid.UUID, error)
 	caches   LearningCaches
@@ -187,6 +190,7 @@ func New(deps Deps) *Service {
 		srsCards: deps.SRSCards,
 		graders:  deps.Graders,
 		events:   deps.Events,
+		metrics:  deps.Metrics,
 		clock:    clk,
 		newID:    idGen,
 		caches:   deps.Caches,
@@ -567,6 +571,11 @@ func (s *Service) executeRollupTx(
 		if _, err := s.events.Write(ctx, tx, contract.Aggregate, contract.EventActivityCompleted, actEvent); err != nil {
 			return fmt.Errorf("write activity.completed event: %w", err)
 		}
+		// The counter sits beside the outbox write, not instead of it: the event
+		// is the record, the metric is what a dashboard can draw. Emitting from
+		// here rather than from a consumer means the funnel counts what happened
+		// even before anything subscribes.
+		s.metrics.RecordFunnelStep(ctx, telemetry.FunnelActivityCompleted)
 	}
 
 	// 4. Update incremental skill mastery if focus is a valid skill (Trap 4)
@@ -681,6 +690,7 @@ func (s *Service) rollupLessonAndAbove(
 			SkillFocus: lesson.SkillFocus,
 			OccurredAt: now,
 		}
+		s.metrics.RecordFunnelStep(ctx, telemetry.FunnelLessonCompleted)
 		if _, err := s.events.Write(ctx, tx, contract.Aggregate, contract.EventLessonCompleted, lessonEvent); err != nil {
 			return fmt.Errorf("write lesson.completed event: %w", err)
 		}
@@ -799,6 +809,7 @@ func (s *Service) rollupCourse(
 			CourseID:   activity.CourseID,
 			OccurredAt: now,
 		}
+		s.metrics.RecordFunnelStep(ctx, telemetry.FunnelCourseCompleted)
 		if _, err := s.events.Write(ctx, tx, contract.Aggregate, contract.EventCourseCompleted, courseEvent); err != nil {
 			return fmt.Errorf("write course.completed event: %w", err)
 		}
@@ -908,6 +919,9 @@ func (s *Service) Enroll(ctx context.Context, userID, courseID uuid.UUID) (*doma
 
 	now := s.clock.Now().UTC()
 	enrollment, err := s.repo.CreateEnrollment(ctx, userID, courseID, domain.StatusEnrollmentActive, now)
+	if err == nil {
+		s.metrics.RecordFunnelStep(ctx, telemetry.FunnelEnrolled)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("create enrollment: %w", err)
 	}

@@ -29,6 +29,7 @@ import (
 	srsservice "github.com/fluentra/fluentra/internal/modules/srs/service"
 	"github.com/fluentra/fluentra/internal/modules/user"
 	"github.com/fluentra/fluentra/internal/modules/vocabulary"
+	vocabularycontract "github.com/fluentra/fluentra/internal/modules/vocabulary/contract"
 	"github.com/fluentra/fluentra/internal/platform/cache"
 	"github.com/fluentra/fluentra/internal/platform/job"
 	"github.com/fluentra/fluentra/internal/platform/mailer"
@@ -218,20 +219,32 @@ func newIdentity(deps identityDeps) *identity {
 	})
 
 	assembled.learning = learning.New(learning.Deps{
-		Pool:     deps.Pool,
-		Caches:   newLearningCaches(deps.Redis),
-		Guard:    lazyGuard{of: assembled},
-		Lesson:   assembled.lesson.Reader(),
-		SRSDue:   assembled.srs.QueueReader(),
-		SRSCards: assembled.srs.CardWriter(),
-		Graders: map[string]learningcontract.ExerciseGrader{
-			"vocabulary_quiz": assembled.vocabulary.Grader(),
-		},
-		DeclaredKinds: []string{"vocabulary_quiz"},
+		Pool:          deps.Pool,
+		Caches:        newLearningCaches(deps.Redis),
+		Guard:         lazyGuard{of: assembled},
+		Lesson:        assembled.lesson.Reader(),
+		SRSDue:        assembled.srs.QueueReader(),
+		SRSCards:      assembled.srs.CardWriter(),
+		Graders:       vocabularyGraders(assembled.vocabulary.Grader()),
+		Metrics:       deps.Instruments,
+		DeclaredKinds: vocabularycontract.GradedKinds(),
 		Env:           deps.Env,
 	})
 
 	return assembled
+}
+
+// vocabularyGraders registers one grader under every kind it claims.
+//
+// The map and DeclaredKinds are built from the same list on purpose: a kind
+// declared with no grader behind it fails the process at boot, and building the
+// two from one source is what makes that impossible to do by accident.
+func vocabularyGraders(grader learningcontract.ExerciseGrader) map[string]learningcontract.ExerciseGrader {
+	graders := make(map[string]learningcontract.ExerciseGrader, len(vocabularycontract.GradedKinds()))
+	for _, kind := range vocabularycontract.GradedKinds() {
+		graders[kind] = grader
+	}
+	return graders
 }
 
 func newSRSCaches(client redis.Cmdable) srsservice.SRSCaches {

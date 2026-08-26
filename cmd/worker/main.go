@@ -24,6 +24,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/auth"
 	authservice "github.com/fluentra/fluentra/internal/modules/auth/service"
 	"github.com/fluentra/fluentra/internal/modules/learning"
+	learningjob "github.com/fluentra/fluentra/internal/modules/learning/job"
 	"github.com/fluentra/fluentra/internal/modules/lesson"
 	lessonservice "github.com/fluentra/fluentra/internal/modules/lesson/service"
 	"github.com/fluentra/fluentra/internal/modules/rbac"
@@ -256,7 +257,9 @@ func run(ctx context.Context) error {
 	// trivially — so an event delivered in the window before `audit` subscribed
 	// would be marked done without anybody recording it, and never redelivered.
 	bus := eventbus.NewInProcessBus(eventbus.NewRegistry())
-	cron := job.NewCronScheduler(pool)
+	// With instruments: a cron failure is otherwise only a log line, invisible to
+	// the job-failure alert that already watches River.
+	cron := job.NewCronScheduler(pool).WithInstruments(provider.Instruments())
 	outboxPruner, err := job.NewOutboxPruner(pool, cfg.Outbox.PublishedRetentionDays)
 	if err != nil {
 		return err
@@ -264,7 +267,9 @@ func run(ctx context.Context) error {
 	cron.Register(outboxPruner.CronJob())
 
 	workers := river.NewWorkers()
-	if err := startModules(ctx, pool, redisClient, bus, cron, storageStore, workers, cfg); err != nil {
+	if err := startModules(
+		ctx, pool, redisClient, bus, cron, storageStore, workers, provider.Instruments(), cfg,
+	); err != nil {
 		return err
 	}
 
@@ -334,11 +339,44 @@ func run(ctx context.Context) error {
 
 // startModules builds the business modules this binary works for, subscribes
 // their event consumers, and hands their scheduled work to the cron scheduler.
+// startLearning wires the learning module's scheduled work: the attempt-table
+// partition rotation, and the retention refresh that makes ROADMAP.md's Phase 2
+// exit criterion a number rather than a query someone could write.
+func startLearning(
+	ctx context.Context, pool *pgxpool.Pool, cron *job.CronScheduler,
+	instruments telemetry.Instruments,
+) error {
+	learningModule := learning.New(learning.Deps{Pool: pool})
+
+	for _, scheduled := range learningModule.CronJobs() {
+		cron.Register(scheduled)
+	}
+
+	if err := learningModule.RotatePartitions(ctx); err != nil {
+		slog.ErrorContext(ctx, "could not rotate learning partitions at start-up; the scheduled job will retry",
+			"error", err)
+	}
+
+	// Retention is a query over a window rather than an event: the refresher
+	// recomputes the two cohorts on a schedule and the gauge callback reports
+	// whatever it last found.
+	retention := learningjob.NewRetentionRefresher(pool)
+	cron.Register(retention.CronJob())
+	if _, err := instruments.ObserveRetention(retention.Snapshot); err != nil {
+		return fmt.Errorf("register retention gauge: %w", err)
+	}
+	if err := retention.Refresh(ctx); err != nil {
+		slog.ErrorContext(ctx, "could not compute retention at start-up; the scheduled job will retry",
+			"error", err)
+	}
+	return nil
+}
+
 func startModules(
 	ctx context.Context, pool *pgxpool.Pool, redisClient redis.Cmdable,
 	bus *eventbus.InProcessBus, cron *job.CronScheduler,
 	storageStore storage.Store, workers *river.Workers,
-	cfg workerConfig,
+	instruments telemetry.Instruments, cfg workerConfig,
 ) error {
 	trail := audit.New(audit.Deps{Pool: pool})
 
@@ -375,17 +413,8 @@ func startModules(
 		return err
 	}
 
-	learningModule := learning.New(learning.Deps{
-		Pool: pool,
-	})
-
-	for _, scheduled := range learningModule.CronJobs() {
-		cron.Register(scheduled)
-	}
-
-	if err := learningModule.RotatePartitions(ctx); err != nil {
-		slog.ErrorContext(ctx, "could not rotate learning partitions at start-up; the scheduled job will retry",
-			"error", err)
+	if err := startLearning(ctx, pool, cron, instruments); err != nil {
+		return err
 	}
 
 	srsModule := srs.New(srs.Deps{

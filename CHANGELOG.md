@@ -13,6 +13,12 @@ generated text describes commits; release notes should describe change.
 
 ### Added
 
+- **Phase 2 Learning Experience & Core Curriculum (v0.2.0)**:
+  - **WP7 Content & Lesson**: Canonical content item authoring, versioning, review & publish state machines (`content`), course catalogue, units, lessons, activities, and prerequisite validation (`lesson`).
+  - **WP8 Learning Engine**: Attempt execution engine, startup-validated grader registry, atomic grading claim, multi-level progress rollup (`activity` → `lesson` → `unit` → `course`), learning sessions, and learner dashboard endpoint (`learning`).
+  - **WP9 Spaced Repetition & Vocabulary**: FSRS-based review scheduling, due queues, review logs (`srs`), comprehensive dictionary lookup, word senses, curated/user decks (`vocabulary`), and first-party vocabulary exercise grader.
+  - **WP10 Learner Web SPA**: Responsive React 19 SPA with Dashboard, Syllabus browser, distraction-free Lesson Runner (Multiple Choice, Gap Fill, Flashcard), Spaced Repetition Review session (with full keyboard controls 1–4 and space), and Progress breakdown.
+  - **WP11 Seed, E2E & Observability**: Complete development dataset with 1 A2–B1 course ("Everyday English: A2–B1 Foundations"), 2 units, 8 lessons, and 200 curated word senses with IPA, definitions and examples; Playwright E2E learning journeys; a Grafana learning-funnel and D1 retention dashboard built on new `learning_funnel_events_total` and `learning_cohort_learners` metrics; Prometheus alerts for grading errors and failing scheduled jobs; and runbooks for a stuck attempt and a missing monthly partition.
 - WP4 Admin Shell (P4.1): Admin user management endpoints (`GET /api/v1/admin/users`, `GET /api/v1/admin/users/{id}`, `POST /api/v1/admin/users/{id}/suspend`, `POST /api/v1/admin/users/{id}/reinstate`, `POST /api/v1/admin/users/{id}/sessions/revoke`) with cursor pagination, audited reads and writes, and self-administration guards.
 - WP4 Feature Flags (P4.2): Feature flags system with stable per-user bucketing via SHA256, percentage rollouts, in-memory caching (30s TTL), and CRUD management endpoints (`/api/v1/admin/flags`).
 - WP4 Observability (P4.3): Prometheus alerting rules (`deploy/prometheus/rules/phase1.yml`), Grafana dashboards (API Overview, Database, Jobs, Auth & Security), and operational runbooks (`docs/operations/runbooks/`).

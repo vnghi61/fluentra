@@ -49,6 +49,23 @@ type Reader interface {
 	GetSenses(ctx context.Context, senseIDs []uuid.UUID) ([]WordSense, error)
 }
 
+// GradedKinds are the activity kinds this module's grader can score.
+//
+// It is one list with three readers, and that is the point. `cmd/api` builds
+// both the grader registry and DeclaredKinds from it, and the content seed's
+// tests assert every kind it authors appears here. When they were three separate
+// literals, a kind in the seed that the registry did not know failed the
+// learner's request, and a kind declared with no grader behind it failed the
+// process at boot — both deliberate, both avoidable.
+func GradedKinds() []string {
+	return []string{
+		"vocabulary_quiz",
+		"vocab_multiple_choice",
+		"vocab_gap_fill",
+		"vocab_flashcard",
+	}
+}
+
 // Grader defines the exercise grading contract implemented by vocabulary module.
 type Grader interface {
 	learningcontract.ExerciseGrader

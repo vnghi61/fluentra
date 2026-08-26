@@ -41,7 +41,11 @@ export const RunnerHeader: React.FC<RunnerHeaderProps> = ({
             <span className="truncate max-w-[200px] font-semibold text-text">
               {lessonTitle}
             </span>
-            <span>
+            <span
+              data-testid="runner-step-counter"
+              data-current={currentStep}
+              data-total={totalSteps}
+            >
               {t("runner.stepProgress", {
                 current: currentStep,
                 total: totalSteps,
