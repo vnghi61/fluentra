@@ -30,10 +30,12 @@ export function LearnPage(): React.JSX.Element {
   // `courses` is required on the catalogue response; it is absent only before
   // the query resolves, which the loading branch handles.
   const courses = courseListData?.courses ?? [];
-  const selectedCourseId: string | undefined = undefined;
+  const selectedCourseSlug: string | undefined = undefined;
 
-  // Default to first course if none explicitly selected
-  const activeCourseId = selectedCourseId ?? courses[0]?.id;
+  // Default to first course if none explicitly selected. Addressed by slug: the
+  // detail endpoint is `/courses/{slug}`, so passing `courses[0].id` here made
+  // every syllabus a 404 the moment the catalogue stopped being empty.
+  const activeCourseSlug = selectedCourseSlug ?? courses[0]?.slug;
 
   const {
     data: activeCourse,
@@ -41,9 +43,9 @@ export function LearnPage(): React.JSX.Element {
     isError: activeCourseError,
     error: activeCourseErr,
     refetch: refetchActiveCourse,
-  } = useCourse(activeCourseId);
+  } = useCourse(activeCourseSlug);
 
-  if (coursesLoading || (activeCourseId && activeCourseLoading)) {
+  if (coursesLoading || (activeCourseSlug && activeCourseLoading)) {
     return <LearnSkeleton />;
   }
 
@@ -52,7 +54,7 @@ export function LearnPage(): React.JSX.Element {
       <LearnError
         onRetry={() => {
           void refetchCourses();
-          if (activeCourseId) void refetchActiveCourse();
+          if (activeCourseSlug) void refetchActiveCourse();
         }}
         error={courseListErr || activeCourseErr}
       />
@@ -65,7 +67,10 @@ export function LearnPage(): React.JSX.Element {
         <Card className="text-center p-8">
           <CardHeader>
             <div className="flex justify-center mb-3">
-              <BookOpen className="h-12 w-12 text-primary-accent" aria-hidden="true" />
+              <BookOpen
+                className="h-12 w-12 text-primary-accent"
+                aria-hidden="true"
+              />
             </div>
             <CardTitle className="text-xl font-bold">
               {t("learn.emptyTitle", "No Courses Available Yet")}

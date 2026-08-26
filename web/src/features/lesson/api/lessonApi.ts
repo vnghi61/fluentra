@@ -18,9 +18,12 @@ export const lessonApi = {
     return apiFetch<CourseList>("/api/v1/courses");
   },
 
-  /** Get full syllabus for a specific course */
-  async getCourse(id: string): Promise<CourseDetail> {
-    return apiFetch<CourseDetail>(`/api/v1/courses/${id}`);
+  /** Get full syllabus for a specific course, addressed by slug. */
+  async getCourse(slug: string): Promise<CourseDetail> {
+    // The path parameter is `{slug}`, not `{id}` — openapi.yaml declares
+    // `getCourseBySlug`, and the repository looks the course up by slug alone.
+    // A course id here is a 404 for every course that exists.
+    return apiFetch<CourseDetail>(`/api/v1/courses/${slug}`);
   },
 
   /** Get lesson detail with activities */
@@ -36,18 +39,30 @@ export function useCourses() {
   });
 }
 
-export function useCourse(id?: string) {
+// A disabled query still registers its options against its key, so a fallback
+// key that collides with another hook's lets the rejecting queryFn below
+// overwrite that hook's. `useCourse(undefined)` fell back to
+// `lessonKeys.courses()` — the exact key `useCourses` owns — and the syllabus
+// then rendered "Unable to Load Curriculum / No course id" over a catalogue it
+// had already fetched successfully. A private placeholder segment cannot collide.
+const noArgument = "__none__";
+
+export function useCourse(slug?: string) {
   return useQuery({
-    queryKey: id ? lessonKeys.course(id) : lessonKeys.courses(),
-    queryFn: () => (id ? lessonApi.getCourse(id) : Promise.reject(new Error("No course id"))),
-    enabled: Boolean(id),
+    queryKey: lessonKeys.course(slug ?? noArgument),
+    queryFn: () =>
+      slug
+        ? lessonApi.getCourse(slug)
+        : Promise.reject(new Error("No course slug")),
+    enabled: Boolean(slug),
   });
 }
 
 export function useLesson(id?: string) {
   return useQuery({
-    queryKey: id ? lessonKeys.lesson(id) : lessonKeys.all,
-    queryFn: () => (id ? lessonApi.getLesson(id) : Promise.reject(new Error("No lesson id"))),
+    queryKey: lessonKeys.lesson(id ?? noArgument),
+    queryFn: () =>
+      id ? lessonApi.getLesson(id) : Promise.reject(new Error("No lesson id")),
     enabled: Boolean(id),
   });
 }
