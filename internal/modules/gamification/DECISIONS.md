@@ -27,6 +27,7 @@ contract belongs in a repository-level ADR instead — see [`/DECISIONS.md`](../
 | Streak freezes? | Yes, limited and automatic | An all-or-nothing streak punishes the illness or travel that real learners have, and losing a long streak is a strong churn trigger. Forgiveness retains better than strictness |
 | Global leaderboard? | No — opt-in leagues | A global board demotivates everyone outside the top few and creates a privacy exposure nobody asked for |
 | Which day boundary does a streak use? | The learner's own timezone | core.users already stores a timezone and the seed sets Asia/Ho_Chi_Minh. Counting in UTC would end the day at 7am local, so a learner studying in the evening in Vietnam loses a streak they kept |
+| What identity appears on a league board? | The display name, and only inside a league the learner opted into | Display name is the only name a learner chooses and the only one already meant to be seen; email and profile are never on a board. The opt-in boundary is what keeps this compatible with refusing a global leaderboard — a name is shown to people the learner joined, not to everyone |
 <!-- END GENERATED: decisions -->
 
 ## Related repository ADRs

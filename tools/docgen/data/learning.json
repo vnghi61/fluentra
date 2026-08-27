@@ -1735,7 +1735,8 @@
       { "question": "Event-driven or called directly?", "choice": "Event-driven", "why": "It keeps motivation mechanics strictly downstream — a bug here can never break a learning flow, and learning modules need no knowledge of XP at all" },
       { "question": "Streak freezes?", "choice": "Yes, limited and automatic", "why": "An all-or-nothing streak punishes the illness or travel that real learners have, and losing a long streak is a strong churn trigger. Forgiveness retains better than strictness" },
       { "question": "Global leaderboard?", "choice": "No — opt-in leagues", "why": "A global board demotivates everyone outside the top few and creates a privacy exposure nobody asked for" },
-      { "question": "Which day boundary does a streak use?", "choice": "The learner's own timezone", "why": "core.users already stores a timezone and the seed sets Asia/Ho_Chi_Minh. Counting in UTC would end the day at 7am local, so a learner studying in the evening in Vietnam loses a streak they kept" }
+      { "question": "Which day boundary does a streak use?", "choice": "The learner's own timezone", "why": "core.users already stores a timezone and the seed sets Asia/Ho_Chi_Minh. Counting in UTC would end the day at 7am local, so a learner studying in the evening in Vietnam loses a streak they kept" },
+      { "question": "What identity appears on a league board?", "choice": "The display name, and only inside a league the learner opted into", "why": "Display name is the only name a learner chooses and the only one already meant to be seen; email and profile are never on a board. The opt-in boundary is what keeps this compatible with refusing a global leaderboard — a name is shown to people the learner joined, not to everyone" }
     ],
     "todo": [
       { "title": "Phase 3", "items": [
