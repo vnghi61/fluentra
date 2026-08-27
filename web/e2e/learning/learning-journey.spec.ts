@@ -1,7 +1,12 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
-import { expectSignedIn, newLearner, registerAndVerify } from "../helpers/auth";
+import {
+  expectSignedIn,
+  makeReviewsDue,
+  newLearner,
+  registerAndVerify,
+} from "../helpers/auth";
 
 /**
  * The Phase 2 learner journeys, against the real stack from `make dev`.
@@ -131,17 +136,38 @@ test.describe("Phase 2 learning journeys", () => {
       await completeActivity(page);
     }
 
+    // The lesson just scheduled this learner's cards, three days out. Nothing a
+    // test can do inside its own run makes that time pass, so the clock moves
+    // instead: `make due-reviews` brings the learner's own cards forward, the
+    // same real path db/seeds/due_reviews.sql documents. Without it there is no
+    // queue here at all, and P10.4's acceptance -- a full queue clears from the
+    // keyboard -- has nothing to assert against.
+    makeReviewsDue(learner.email);
+
     await page.goto(routes.review);
     const progress = page.getByTestId("review-progress");
     await expect(progress).toBeVisible({ timeout: 15_000 });
 
     // Space reveals, a digit grades. No mouse: P10.4's acceptance is that a full
     // queue clears from the keyboard.
+    //
+    // Each grade is a round trip, and the card only advances once it lands, so
+    // the loop waits for the answer rather than firing four keypresses into a
+    // screen still showing the previous card. Without the wait it graded one
+    // card and dropped the rest on the floor -- and then failed at the summary,
+    // three steps from the cause.
     const queue = Number((await progress.getAttribute("data-total")) ?? "0");
     expect(queue).toBeGreaterThan(0);
     for (let card = 0; card < queue; card++) {
+      const graded = page.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          /\/api\/v1\/reviews\/[0-9a-f-]{36}\/answer$/.test(response.url()),
+        { timeout: 15_000 },
+      );
       await page.keyboard.press("Space");
       await page.keyboard.press("3");
+      await graded;
     }
 
     await expect(page.getByText("Review Session Summary")).toBeVisible({

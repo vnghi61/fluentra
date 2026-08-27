@@ -197,6 +197,27 @@ export function promoteToAdmin(email: string): void {
 }
 
 /**
+ * Brings a learner's review cards forward so the queue has something in it.
+ *
+ * FSRS schedules a card answered correctly three days out and one answered
+ * wrong ten minutes out -- both measured against a live stack, and both longer
+ * than a suite can wait. The cards themselves are the ones the learner earned
+ * by finishing activities; only the clock moves, which is what the passage of
+ * three days means to a scheduler comparing due_at with now().
+ *
+ * Driven through `make due-reviews` for the same reason promoteToAdmin drives
+ * `make promote-admin`: the journey exercises a path that exists outside the
+ * test, so changing db/seeds/due_reviews.sql breaks this journey instead of
+ * quietly diverging from it.
+ */
+export function makeReviewsDue(email: string): void {
+  execFileSync("make", ["due-reviews", `EMAIL=${email}`], {
+    cwd: new URL("../../../", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1"),
+    stdio: "pipe",
+  });
+}
+
+/**
  * Asserts the browser is signed in.
  *
  * The shell renders "Sign out" in the desktop sidebar and "Logout" in the
