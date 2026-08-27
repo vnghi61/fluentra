@@ -125,12 +125,12 @@ export const ExerciseMultipleChoice: React.FC<ExerciseMultipleChoiceProps> = ({
                   {isSelectedCorrect || isAnswer ? (
                     <Check
                       className="h-5 w-5 text-success"
-                      aria-label={t("runner.correct", "Correct")}
+                      aria-label={t("runner.markCorrect", "Correct")}
                     />
                   ) : isSelectedWrong ? (
                     <X
                       className="h-5 w-5 text-danger"
-                      aria-label={t("runner.incorrect", "Incorrect")}
+                      aria-label={t("runner.markIncorrect", "Incorrect")}
                     />
                   ) : null}
                 </div>
