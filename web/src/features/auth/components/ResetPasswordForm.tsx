@@ -70,16 +70,16 @@ export function ResetPasswordForm({
 
   if (successResult) {
     return (
-      <div className="mx-auto w-full max-w-md space-y-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-6 sm:p-8 shadow-xl backdrop-blur-sm text-center">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-400">
+      <div className="mx-auto w-full max-w-md space-y-6 rounded-2xl border border-border-subtle bg-surface-card/60 p-6 sm:p-8 shadow-xl backdrop-blur-sm text-center">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-success/10 text-success-accent">
           <CheckCircle2 className="h-6 w-6" />
         </div>
 
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold tracking-tight text-slate-100">
+          <h1 className="text-2xl font-bold tracking-tight text-text">
             Password reset complete
           </h1>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-text-muted">
             Your password has been successfully updated.
           </p>
         </div>
@@ -87,9 +87,9 @@ export function ResetPasswordForm({
         {successResult.sessions_revoked > 0 && (
           <div
             role="status"
-            className="flex items-start gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3.5 text-left text-xs font-medium text-amber-200"
+            className="flex items-start gap-2.5 rounded-lg border border-warning/30 bg-warning/10 p-3.5 text-left text-xs font-medium text-warning-accent"
           >
-            <ShieldAlert className="h-4 w-4 shrink-0 text-amber-400 mt-0.5" />
+            <ShieldAlert className="h-4 w-4 shrink-0 text-warning-accent mt-0.5" />
             <span>
               For your security, {successResult.sessions_revoked} active session
               {successResult.sessions_revoked > 1 ? "s were" : " was"} signed
@@ -100,7 +100,7 @@ export function ResetPasswordForm({
 
         <Link
           to="/login"
-          className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+          className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover"
         >
           Sign in with new password
         </Link>
@@ -109,14 +109,14 @@ export function ResetPasswordForm({
   }
 
   return (
-    <div className="mx-auto w-full max-w-md space-y-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-6 sm:p-8 shadow-xl backdrop-blur-sm">
+    <div className="mx-auto w-full max-w-md space-y-6 rounded-2xl border border-border-subtle bg-surface-card/60 p-6 sm:p-8 shadow-xl backdrop-blur-sm">
       <div className="space-y-2 text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-100">
+        <h1 className="text-2xl font-bold tracking-tight text-text">
           Create new password
         </h1>
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-text-muted">
           Enter the 6-digit code sent to{" "}
-          <span className="font-semibold text-slate-200">{email}</span> and your
+          <span className="font-semibold text-text">{email}</span> and your
           new password
         </p>
       </div>
@@ -124,7 +124,7 @@ export function ResetPasswordForm({
       {serverError && (
         <div
           role="alert"
-          className="rounded-lg border border-rose-500/50 bg-rose-500/10 p-3 text-sm font-medium text-rose-300"
+          className="rounded-lg border border-danger/50 bg-danger/10 p-3 text-sm font-medium text-danger-accent"
         >
           {serverError}
         </div>

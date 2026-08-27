@@ -53,7 +53,7 @@ function RouteLoadingSpinner(): React.JSX.Element {
       aria-label="Loading"
       className="flex items-center justify-center p-8 min-h-[200px]"
     >
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-700 border-t-indigo-500" />
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-border-subtle border-t-primary" />
       <span className="sr-only">Loading...</span>
     </div>
   );

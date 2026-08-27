@@ -119,10 +119,10 @@ export const AdminFeatureFlags: React.FC = () => {
           const flag = info.row.original;
           return (
             <div className="space-y-0.5">
-              <p className="font-mono text-sm font-semibold text-slate-100">
+              <p className="font-mono text-sm font-semibold text-text">
                 {flag.key}
               </p>
-              <p className="text-xs text-slate-400">{flag.description}</p>
+              <p className="text-xs text-text-muted">{flag.description}</p>
             </div>
           );
         },
@@ -143,7 +143,7 @@ export const AdminFeatureFlags: React.FC = () => {
               />
               <span
                 className={`text-xs font-medium ${
-                  flag.enabled ? "text-emerald-400" : "text-slate-400"
+                  flag.enabled ? "text-success-accent" : "text-text-muted"
                 }`}
               >
                 {flag.enabled ? "Enabled" : "Disabled"}
@@ -168,9 +168,9 @@ export const AdminFeatureFlags: React.FC = () => {
                 onChange={(e) => {
                   void handleUpdateRollout(flag, parseInt(e.target.value, 10));
                 }}
-                className="w-20 accent-indigo-500 cursor-pointer disabled:opacity-40"
+                className="w-20 accent-primary cursor-pointer disabled:opacity-40"
               />
-              <span className="text-xs font-mono text-slate-200">
+              <span className="text-xs font-mono text-text">
                 {flag.rollout_percent}%
               </span>
             </div>
@@ -180,8 +180,8 @@ export const AdminFeatureFlags: React.FC = () => {
       columnHelper.accessor("owner", {
         header: "Owner",
         cell: (info) => (
-          <span className="text-xs text-slate-300 flex items-center gap-1 font-mono">
-            <User className="h-3.5 w-3.5 text-slate-400" />
+          <span className="text-xs text-text-muted flex items-center gap-1 font-mono">
+            <User className="h-3.5 w-3.5 text-text-muted" />
             {info.getValue()}
           </span>
         ),
@@ -194,7 +194,7 @@ export const AdminFeatureFlags: React.FC = () => {
           return (
             <span
               className={`text-xs flex items-center gap-1 ${
-                isPast ? "text-rose-400 font-semibold" : "text-slate-400"
+                isPast ? "text-danger-accent font-semibold" : "text-text-muted"
               }`}
             >
               <Clock className="h-3.5 w-3.5" />
@@ -218,7 +218,7 @@ export const AdminFeatureFlags: React.FC = () => {
                 void handleDelete(flag.key);
               }}
               disabled={deletingKey === flag.key}
-              className="text-slate-400 hover:text-rose-400 hover:bg-rose-500/10"
+              className="text-text-muted hover:text-danger-accent hover:bg-danger/10"
             >
               <Trash2 className="h-3.5 w-3.5" />
               <span className="sr-only">Delete flag</span>
@@ -240,11 +240,11 @@ export const AdminFeatureFlags: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="space-y-1">
-          <h3 className="text-base font-semibold text-slate-100 flex items-center gap-2">
-            <Flag className="h-5 w-5 text-indigo-400" />
+          <h3 className="text-base font-semibold text-text flex items-center gap-2">
+            <Flag className="h-5 w-5 text-primary-accent" />
             Feature Flags & Rollouts
           </h3>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-text-muted">
             Control dynamic system feature switches, percentage rollouts, and
             owner assignments.
           </p>
@@ -261,25 +261,25 @@ export const AdminFeatureFlags: React.FC = () => {
       </div>
 
       {error && (
-        <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs text-rose-300">
-          <AlertCircle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
+        <div className="flex items-start gap-2.5 rounded-lg border border-danger/30 bg-danger/10 p-3.5 text-xs text-danger-accent">
+          <AlertCircle className="h-4 w-4 shrink-0 text-danger-accent mt-0.5" />
           <span>{error}</span>
         </div>
       )}
 
       {/* Table */}
-      <div className="rounded-xl border border-slate-800 bg-slate-900/60 overflow-hidden">
+      <div className="rounded-xl border border-border-subtle bg-surface-card/60 overflow-hidden">
         {isLoading ? (
           <div className="flex min-h-[250px] items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+            <Loader2 className="h-8 w-8 animate-spin text-primary-accent" />
           </div>
         ) : flags.length === 0 ? (
           <div className="flex min-h-[200px] flex-col items-center justify-center p-8 text-center space-y-2">
-            <Flag className="h-8 w-8 text-slate-500" />
-            <p className="text-sm font-medium text-slate-300">
+            <Flag className="h-8 w-8 text-text-muted" />
+            <p className="text-sm font-medium text-text-muted">
               No feature flags configured
             </p>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-text-muted">
               Create a feature flag to control rollouts.
             </p>
           </div>
@@ -290,12 +290,12 @@ export const AdminFeatureFlags: React.FC = () => {
                 {table.getHeaderGroups().map((headerGroup) => (
                   <tr
                     key={headerGroup.id}
-                    className="border-b border-slate-800 bg-slate-950/60"
+                    className="border-b border-border-subtle bg-surface-muted"
                   >
                     {headerGroup.headers.map((header) => (
                       <th
                         key={header.id}
-                        className="px-4 py-3.5 text-xs font-semibold uppercase tracking-wider text-slate-400"
+                        className="px-4 py-3.5 text-xs font-semibold uppercase tracking-wider text-text-muted"
                       >
                         {header.isPlaceholder
                           ? null
@@ -308,11 +308,11 @@ export const AdminFeatureFlags: React.FC = () => {
                   </tr>
                 ))}
               </thead>
-              <tbody className="divide-y divide-slate-800/60">
+              <tbody className="divide-y divide-border-subtle">
                 {table.getRowModel().rows.map((row) => (
                   <tr
                     key={row.id}
-                    className="hover:bg-slate-800/40 transition-colors"
+                    className="hover:bg-surface-muted/40 transition-colors"
                   >
                     {row.getVisibleCells().map((cell) => (
                       <td key={cell.id} className="px-4 py-3.5 text-sm">

@@ -37,22 +37,22 @@ export function AdminPage(): React.JSX.Element {
       {/* Header */}
       <header className="space-y-1">
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1 rounded-md bg-indigo-500/10 px-2 py-0.5 text-xs font-semibold text-indigo-400 border border-indigo-500/20 uppercase tracking-wider">
+          <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary-accent border border-primary/20 uppercase tracking-wider">
             <Shield className="h-3 w-3" />
             Administration
           </span>
         </div>
-        <h1 className="text-2xl font-bold text-slate-100">
+        <h1 className="text-2xl font-bold text-text">
           Platform Administration
         </h1>
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-text-muted">
           Manage platform learners, enforce moderation, and configure system
           feature flags.
         </p>
       </header>
 
       {/* Tabs */}
-      <div className="flex border-b border-slate-800 gap-2 pb-px overflow-x-auto">
+      <div className="flex border-b border-border-subtle gap-2 pb-px overflow-x-auto">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = visible === tab.key;
@@ -63,8 +63,8 @@ export function AdminPage(): React.JSX.Element {
               onClick={() => setActiveTab(tab.key)}
               className={`flex items-center gap-2 whitespace-nowrap px-4 py-3 text-sm font-medium border-b-2 transition-colors min-h-[44px] cursor-pointer ${
                 isActive
-                  ? "border-indigo-500 text-indigo-400 bg-indigo-500/5 rounded-t-lg"
-                  : "border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700"
+                  ? "border-primary text-primary-accent bg-primary/5 rounded-t-lg"
+                  : "border-transparent text-text-muted hover:text-text hover:border-border-subtle"
               }`}
             >
               <Icon className="h-4 w-4" />
@@ -77,9 +77,9 @@ export function AdminPage(): React.JSX.Element {
       {/* Tab Panels */}
       <div>
         {isLoading ? (
-          <p className="text-sm text-slate-400">Checking your permissions…</p>
+          <p className="text-sm text-text-muted">Checking your permissions…</p>
         ) : tabs.length === 0 ? (
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-text-muted">
             Your account holds no administrative permissions.
           </p>
         ) : (

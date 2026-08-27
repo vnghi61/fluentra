@@ -70,8 +70,8 @@ export function AccountSettingsPage(): React.JSX.Element {
   if (isLoading) {
     return (
       <div className="flex min-h-[400px] flex-col items-center justify-center space-y-4">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
-        <p className="text-sm text-slate-400">Loading your settings...</p>
+        <Loader2 className="h-8 w-8 animate-spin text-primary-accent" />
+        <p className="text-sm text-text-muted">Loading your settings...</p>
       </div>
     );
   }
@@ -79,19 +79,19 @@ export function AccountSettingsPage(): React.JSX.Element {
   if (error || !profile || !preferences) {
     return (
       <div className="mx-auto max-w-xl py-12">
-        <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-6 text-center space-y-4">
-          <AlertCircle className="mx-auto h-8 w-8 text-rose-400" />
-          <h2 className="text-base font-semibold text-rose-200">
+        <div className="rounded-xl border border-danger/30 bg-danger/10 p-6 text-center space-y-4">
+          <AlertCircle className="mx-auto h-8 w-8 text-danger-accent" />
+          <h2 className="text-base font-semibold text-danger-accent">
             Unable to load settings
           </h2>
-          <p className="text-xs text-rose-300">
+          <p className="text-xs text-danger-accent">
             {error ||
               "An unexpected error occurred while loading account details."}
           </p>
           <button
             type="button"
             onClick={() => window.location.reload()}
-            className="rounded-lg bg-rose-600 px-4 py-2 text-xs font-medium text-white hover:bg-rose-700 transition-colors"
+            className="rounded-lg bg-danger px-4 py-2 text-xs font-medium text-white hover:bg-danger transition-colors"
           >
             Retry
           </button>
@@ -118,18 +118,18 @@ export function AccountSettingsPage(): React.JSX.Element {
     <div className="max-w-5xl mx-auto min-w-0 space-y-8 py-4">
       {/* Header */}
       <header className="space-y-1">
-        <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-2.5">
-          <SettingsIcon className="h-7 w-7 text-indigo-400" />
+        <h1 className="text-2xl font-bold text-text flex items-center gap-2.5">
+          <SettingsIcon className="h-7 w-7 text-primary-accent" />
           Account Settings
         </h1>
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-text-muted">
           Manage your personal profile, study preferences, security credentials,
           and privacy options.
         </p>
       </header>
 
       {/* Tabs Navigation */}
-      <div className="flex w-full min-w-0 border-b border-slate-800 overflow-x-auto gap-2 pb-px scrollbar-none">
+      <div className="flex w-full min-w-0 border-b border-border-subtle overflow-x-auto gap-2 pb-px scrollbar-none">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.key;
@@ -140,8 +140,8 @@ export function AccountSettingsPage(): React.JSX.Element {
               onClick={() => setActiveTab(tab.key)}
               className={`flex items-center gap-2 whitespace-nowrap px-4 py-3 text-sm font-medium border-b-2 transition-colors min-h-[44px] cursor-pointer ${
                 isActive
-                  ? "border-indigo-500 text-indigo-400 bg-indigo-500/5 rounded-t-lg"
-                  : "border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700"
+                  ? "border-primary text-primary-accent bg-primary/5 rounded-t-lg"
+                  : "border-transparent text-text-muted hover:text-text hover:border-border-subtle"
               }`}
             >
               <Icon className="h-4 w-4" />

@@ -77,31 +77,31 @@ export const SessionsList: React.FC<SessionsListProps> = ({ onLoggedOut }) => {
   };
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 space-y-4">
+    <div className="rounded-xl border border-border-subtle bg-surface-card/60 p-6 space-y-4">
       <div className="space-y-1">
-        <h3 className="text-base font-semibold text-slate-100 flex items-center gap-2">
-          <History className="h-5 w-5 text-indigo-400" />
+        <h3 className="text-base font-semibold text-text flex items-center gap-2">
+          <History className="h-5 w-5 text-primary-accent" />
           Active Sessions
         </h3>
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-text-muted">
           Where you are currently signed in. You can revoke any session to sign
           it out.
         </p>
       </div>
 
       {error && (
-        <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs text-rose-300">
-          <AlertCircle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
+        <div className="flex items-start gap-2.5 rounded-lg border border-danger/30 bg-danger/10 p-3.5 text-xs text-danger-accent">
+          <AlertCircle className="h-4 w-4 shrink-0 text-danger-accent mt-0.5" />
           <span>{error}</span>
         </div>
       )}
 
       {isLoading ? (
         <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
+          <Loader2 className="h-6 w-6 animate-spin text-primary-accent" />
         </div>
       ) : sessions.length === 0 ? (
-        <p className="text-xs text-slate-400 py-4 text-center">
+        <p className="text-xs text-text-muted py-4 text-center">
           No active sessions found.
         </p>
       ) : (
@@ -115,10 +115,10 @@ export const SessionsList: React.FC<SessionsListProps> = ({ onLoggedOut }) => {
             return (
               <div
                 key={session.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-800 bg-slate-900/40 p-4"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border-subtle bg-surface-card/40 p-4"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-800 text-slate-300">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-muted text-text-muted">
                     {isMobile ? (
                       <Smartphone className="h-5 w-5" />
                     ) : (
@@ -127,16 +127,16 @@ export const SessionsList: React.FC<SessionsListProps> = ({ onLoggedOut }) => {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium text-slate-200">
+                      <p className="text-sm font-medium text-text">
                         {session.device_label || "Unknown Device"}
                       </p>
                       {session.current && (
-                        <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-400 border border-emerald-500/20">
+                        <span className="rounded-full bg-success/10 px-2 py-0.5 text-xs font-semibold text-success-accent border border-success/20">
                           Current Device
                         </span>
                       )}
                     </div>
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400 mt-0.5">
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-muted mt-0.5">
                       <span>
                         Signed in:{" "}
                         {new Date(session.created_at).toLocaleDateString()}
@@ -160,7 +160,7 @@ export const SessionsList: React.FC<SessionsListProps> = ({ onLoggedOut }) => {
                     void handleRevoke(session);
                   }}
                   disabled={revokingId === session.id}
-                  className="text-slate-400 hover:text-rose-400 hover:bg-rose-500/10"
+                  className="text-text-muted hover:text-danger-accent hover:bg-danger/10"
                 >
                   {revokingId === session.id ? (
                     <Loader2 className="h-4 w-4 animate-spin" />

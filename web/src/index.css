@@ -66,6 +66,13 @@
    * a value taken from the original artwork's own palette, not invented.
    */
   --color-brand: var(--brand);
+  /*
+   * A scrim is dark in both themes. Modal overlays were `bg-slate-950/*`, which
+   * was right for the look and wrong for the reason — it read as "the dark
+   * palette" rather than "the thing behind a dialog", so a light theme would
+   * have been tempted to lighten it. This value does not move.
+   */
+  --color-overlay: #020617;
 }
 
 :root {

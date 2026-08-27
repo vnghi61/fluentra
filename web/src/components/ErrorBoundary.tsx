@@ -46,13 +46,13 @@ export class ErrorBoundary extends Component<Props, State> {
     return (
       <div role="alert" className="mx-auto max-w-md p-6 text-center">
         <h1 className="text-lg font-semibold">Something broke</h1>
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+        <p className="mt-2 text-sm text-text-muted">
           This screen failed to render.
         </p>
         <button
           type="button"
           onClick={this.reset}
-          className="mt-4 rounded-md bg-slate-900 px-4 py-2 text-sm text-white dark:bg-slate-100 dark:text-slate-900"
+          className="mt-4 min-h-[44px] rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-fg hover:bg-primary-hover"
         >
           Try again
         </button>

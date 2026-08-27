@@ -113,9 +113,9 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
   return (
     <div className="space-y-8">
       {/* Avatar Section */}
-      <div className="flex flex-col sm:flex-row items-center gap-6 rounded-xl border border-slate-800 bg-slate-900/60 p-6">
+      <div className="flex flex-col sm:flex-row items-center gap-6 rounded-xl border border-border-subtle bg-surface-card/60 p-6">
         <div className="relative group">
-          <div className="h-24 w-24 overflow-hidden rounded-full border-2 border-indigo-500/40 bg-slate-800 flex items-center justify-center text-2xl font-bold text-indigo-300">
+          <div className="h-24 w-24 overflow-hidden rounded-full border-2 border-primary/40 bg-surface-muted flex items-center justify-center text-2xl font-bold text-primary-accent">
             {profile.profile.avatar_url ? (
               <img
                 src={profile.profile.avatar_url}
@@ -131,7 +131,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
           <button
             type="button"
             onClick={() => setIsAvatarModalOpen(true)}
-            className="absolute inset-0 flex items-center justify-center rounded-full bg-slate-950/60 opacity-0 group-hover:opacity-100 transition-opacity text-white"
+            className="absolute inset-0 flex items-center justify-center rounded-full bg-overlay/60 opacity-0 group-hover:opacity-100 transition-opacity text-white"
             title="Change avatar"
           >
             <Camera className="h-6 w-6" />
@@ -139,10 +139,10 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
         </div>
 
         <div className="space-y-2 text-center sm:text-left">
-          <h3 className="text-base font-semibold text-slate-100">
+          <h3 className="text-base font-semibold text-text">
             {profile.profile.display_name}
           </h3>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-text-muted">
             Upload a custom avatar. PNG, JPG or WebP up to 5 MB.
           </p>
           <Button
@@ -163,14 +163,14 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
           role="status"
           className={`flex items-start gap-2.5 rounded-lg p-3.5 text-xs ${
             statusMessage.type === "success"
-              ? "border border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-              : "border border-rose-500/30 bg-rose-500/10 text-rose-300"
+              ? "border border-success/30 bg-success/10 text-success-accent"
+              : "border border-danger/30 bg-danger/10 text-danger-accent"
           }`}
         >
           {statusMessage.type === "success" ? (
-            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400 mt-0.5" />
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-success-accent mt-0.5" />
           ) : (
-            <AlertCircle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
+            <AlertCircle className="h-4 w-4 shrink-0 text-danger-accent mt-0.5" />
           )}
           <span>{statusMessage.text}</span>
         </div>
@@ -187,18 +187,18 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
           {/* Email (Read-only) */}
           <div className="space-y-2 sm:col-span-2">
             <Label htmlFor="email" className="flex items-center gap-2">
-              <Mail className="h-4 w-4 text-slate-400" />
+              <Mail className="h-4 w-4 text-text-muted" />
               Email Address
             </Label>
-            <div className="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-900/40 px-3.5 py-2.5 text-sm text-slate-400">
+            <div className="flex items-center justify-between rounded-lg border border-border-subtle bg-surface-card/40 px-3.5 py-2.5 text-sm text-text-muted">
               <span>{profile.email}</span>
               {profile.email_verified_at ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-400 border border-emerald-500/20">
+                <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-xs font-medium text-success-accent border border-success/20">
                   <CheckCircle2 className="h-3 w-3" />
                   Verified
                 </span>
               ) : (
-                <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-400 border border-amber-500/20">
+                <span className="rounded-full bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning-accent border border-warning/20">
                   Unverified
                 </span>
               )}
@@ -208,7 +208,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
           {/* Display Name */}
           <div className="space-y-2">
             <Label htmlFor="display_name" className="flex items-center gap-2">
-              <User className="h-4 w-4 text-slate-400" />
+              <User className="h-4 w-4 text-text-muted" />
               Display Name
             </Label>
             <Input
@@ -218,7 +218,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
               aria-invalid={!!errors.display_name}
             />
             {errors.display_name && (
-              <p className="text-xs text-rose-400">
+              <p className="text-xs text-danger-accent">
                 {errors.display_name.message}
               </p>
             )}
@@ -227,7 +227,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
           {/* Country */}
           <div className="space-y-2">
             <Label htmlFor="country" className="flex items-center gap-2">
-              <Globe className="h-4 w-4 text-slate-400" />
+              <Globe className="h-4 w-4 text-text-muted" />
               Country (ISO 2-letter code)
             </Label>
             <Input
@@ -238,7 +238,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
               aria-invalid={!!errors.country}
             />
             {errors.country && (
-              <p className="text-xs text-rose-400">{errors.country.message}</p>
+              <p className="text-xs text-danger-accent">{errors.country.message}</p>
             )}
           </div>
 
@@ -252,7 +252,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
               aria-invalid={!!errors.timezone}
             />
             {errors.timezone && (
-              <p className="text-xs text-rose-400">{errors.timezone.message}</p>
+              <p className="text-xs text-danger-accent">{errors.timezone.message}</p>
             )}
           </div>
 
@@ -266,7 +266,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
               aria-invalid={!!errors.date_of_birth}
             />
             {errors.date_of_birth && (
-              <p className="text-xs text-rose-400">
+              <p className="text-xs text-danger-accent">
                 {errors.date_of_birth.message}
               </p>
             )}

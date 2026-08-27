@@ -177,7 +177,7 @@ export function LessonPage(): React.JSX.Element {
   if (lessonLoading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-4 border-slate-700 border-t-primary" />
+        <div className="animate-spin rounded-full h-8 w-8 border-4 border-border-subtle border-t-primary" />
       </div>
     );
   }

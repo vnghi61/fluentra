@@ -174,7 +174,7 @@ export function OtpVerificationScreen({
 
   return (
     <div
-      className="mx-auto w-full max-w-md space-y-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-6 sm:p-8 shadow-xl backdrop-blur-sm"
+      className="mx-auto w-full max-w-md space-y-6 rounded-2xl border border-border-subtle bg-surface-card/60 p-6 sm:p-8 shadow-xl backdrop-blur-sm"
       style={
         isKeyboardOpen
           ? { paddingBottom: `max(1.5rem, ${keyboardHeight}px)` }
@@ -185,7 +185,7 @@ export function OtpVerificationScreen({
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex min-h-11 items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors"
+          className="inline-flex min-h-11 items-center gap-1.5 text-xs font-medium text-text-muted hover:text-text transition-colors"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Back
@@ -193,19 +193,19 @@ export function OtpVerificationScreen({
       )}
 
       <div className="space-y-2 text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-100">
+        <h1 className="text-2xl font-bold tracking-tight text-text">
           Enter verification code
         </h1>
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-text-muted">
           We emailed a 6-digit code to{" "}
-          <span className="font-semibold text-slate-200">{email}</span>
+          <span className="font-semibold text-text">{email}</span>
         </p>
       </div>
 
       {error && (
         <div
           role="alert"
-          className="flex items-start gap-2.5 rounded-lg border border-rose-500/50 bg-rose-500/10 p-3.5 text-sm font-medium text-rose-300"
+          className="flex items-start gap-2.5 rounded-lg border border-danger/50 bg-danger/10 p-3.5 text-sm font-medium text-danger-accent"
         >
           <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
           <span>{error}</span>
@@ -221,14 +221,14 @@ export function OtpVerificationScreen({
           error={!!error}
         />
 
-        <div className="flex items-center justify-between text-xs text-slate-400 px-1">
+        <div className="flex items-center justify-between text-xs text-text-muted px-1">
           <span>
             Expires in:{" "}
             <span
               className={
                 secondsUntilExpiry < 60
-                  ? "font-semibold text-rose-400"
-                  : "font-semibold text-slate-200"
+                  ? "font-semibold text-danger-accent"
+                  : "font-semibold text-text"
               }
             >
               {formatTime(secondsUntilExpiry)}
@@ -239,8 +239,8 @@ export function OtpVerificationScreen({
             <span
               className={
                 attemptsRemaining <= 2
-                  ? "font-semibold text-amber-400"
-                  : "font-semibold text-slate-200"
+                  ? "font-semibold text-warning-accent"
+                  : "font-semibold text-text"
               }
             >
               {attemptsRemaining}/5
@@ -265,7 +265,7 @@ export function OtpVerificationScreen({
             type="button"
             disabled={secondsUntilResend > 0 || isResending || isBurned}
             onClick={() => void handleResend()}
-            className="inline-flex min-h-11 items-center gap-1.5 text-xs font-medium text-indigo-400 hover:text-indigo-300 disabled:opacity-50 disabled:pointer-events-none transition-colors"
+            className="inline-flex min-h-11 items-center gap-1.5 text-xs font-medium text-primary-accent hover:text-primary-accent disabled:opacity-50 disabled:pointer-events-none transition-colors"
           >
             <RotateCw
               className={

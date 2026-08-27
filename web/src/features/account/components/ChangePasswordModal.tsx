@@ -70,36 +70,36 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="change-password-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/80 backdrop-blur-sm p-4"
     >
-      <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl space-y-6">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+      <div className="w-full max-w-md rounded-2xl border border-border-subtle bg-surface-card p-6 shadow-2xl space-y-6">
+        <div className="flex items-center justify-between border-b border-border-subtle pb-4">
           <h2
             id="change-password-title"
-            className="text-lg font-semibold text-slate-100 flex items-center gap-2"
+            className="text-lg font-semibold text-text flex items-center gap-2"
           >
-            <KeyRound className="h-5 w-5 text-indigo-400" />
+            <KeyRound className="h-5 w-5 text-primary-accent" />
             Change Password
           </h2>
           <button
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="rounded-lg p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors"
+            className="rounded-lg p-1 text-text-muted hover:bg-surface-muted hover:text-text transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {error && (
-          <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">
-            <AlertCircle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
+          <div className="flex items-start gap-2.5 rounded-lg border border-danger/30 bg-danger/10 p-3 text-xs text-danger-accent">
+            <AlertCircle className="h-4 w-4 shrink-0 text-danger-accent mt-0.5" />
             <span>{error}</span>
           </div>
         )}
 
-        <div className="flex items-start gap-2.5 rounded-lg border border-indigo-500/30 bg-indigo-500/10 p-3 text-xs text-indigo-200">
-          <ShieldCheck className="h-4 w-4 shrink-0 text-indigo-400 mt-0.5" />
+        <div className="flex items-start gap-2.5 rounded-lg border border-primary/30 bg-primary/10 p-3 text-xs text-primary-accent">
+          <ShieldCheck className="h-4 w-4 shrink-0 text-primary-accent mt-0.5" />
           <span>
             Changing your password will keep this session active while revoking
             all other signed-in devices.
@@ -122,7 +122,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
               aria-invalid={!!errors.current_password}
             />
             {errors.current_password && (
-              <p className="text-xs text-rose-400">
+              <p className="text-xs text-danger-accent">
                 {errors.current_password.message}
               </p>
             )}
@@ -138,7 +138,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
               aria-invalid={!!errors.new_password}
             />
             {errors.new_password && (
-              <p className="text-xs text-rose-400">
+              <p className="text-xs text-danger-accent">
                 {errors.new_password.message}
               </p>
             )}
@@ -154,13 +154,13 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
               aria-invalid={!!errors.confirm_new_password}
             />
             {errors.confirm_new_password && (
-              <p className="text-xs text-rose-400">
+              <p className="text-xs text-danger-accent">
                 {errors.confirm_new_password.message}
               </p>
             )}
           </div>
 
-          <div className="flex items-center justify-end gap-3 border-t border-slate-800 pt-4 mt-6">
+          <div className="flex items-center justify-end gap-3 border-t border-border-subtle pt-4 mt-6">
             <Button
               type="button"
               variant="ghost"

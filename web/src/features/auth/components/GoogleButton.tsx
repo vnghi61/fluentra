@@ -124,7 +124,7 @@ export function GoogleButton({
       isLoading={isLoading}
       onClick={() => void handleGoogleSignIn()}
       className={cn(
-        "w-full gap-2 border-slate-700 bg-slate-900/60 hover:bg-slate-800 text-slate-100",
+        "w-full gap-2 border-border-subtle bg-surface-card/60 hover:bg-surface-muted text-text",
         className,
       )}
     >

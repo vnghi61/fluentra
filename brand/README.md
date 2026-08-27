@@ -12,12 +12,25 @@ from, so `Logo/` can be deleted.
 | Primary | `#2563EB` | `#60A5FA` | every action and navigation state |
 | Success | `#22C55E` | `#34D399` | progress, completion |
 
-**The brand blue is not the primary blue.** `#011AD1` is deeper and more violet
-than the `#2563EB` the interface acts in. Both appear in the sidebar, a few
-pixels apart. That is a live question, not an oversight — decide it rather than
-letting it settle by accident. The dark value `#7194F8` is taken from the
-original artwork's own palette, because `#011AD1` reads at 1.4:1 on the dark
-surface and vanishes.
+**The brand blue is not the primary blue, and stays that way.** `#011AD1` is
+deeper and more violet than the `#2563EB` the interface acts in, and both appear
+in the sidebar a few pixels apart. Settled deliberately, on three grounds:
+
+| On | `#011AD1` brand | `#2563EB` primary |
+|---|---|---|
+| white `#FFFFFF` | **10.15:1** | 5.17:1 |
+| dark card `#0B1120` | 1.86:1 — invisible | — |
+
+1. A logo is the one element entitled to its own value. Repainting it to match a
+   UI token would mean the mark in the app differed from the mark in
+   `source/`, in the favicon, in an OG image — one brand with a colour per
+   medium, which is worse than one interface with two blues.
+2. It is twice as legible: 10.15:1 against white, where the primary manages 5.17.
+3. It is isolated. `--color-brand` has exactly one consumer, `BrandMark`. Nothing
+   else in the interface can drift toward it by accident.
+
+The dark value `#7194F8` comes from the original artwork's own palette, because
+`#011AD1` reads at 1.86:1 on the dark card and disappears. It measures 6.54:1.
 
 ## Files
 

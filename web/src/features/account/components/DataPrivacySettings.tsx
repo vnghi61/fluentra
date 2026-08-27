@@ -136,38 +136,38 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
           role="status"
           className={`flex items-start gap-2.5 rounded-lg p-3.5 text-xs ${
             statusMessage.type === "success"
-              ? "border border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-              : "border border-rose-500/30 bg-rose-500/10 text-rose-300"
+              ? "border border-success/30 bg-success/10 text-success-accent"
+              : "border border-danger/30 bg-danger/10 text-danger-accent"
           }`}
         >
           {statusMessage.type === "success" ? (
-            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400 mt-0.5" />
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-success-accent mt-0.5" />
           ) : (
-            <AlertCircle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
+            <AlertCircle className="h-4 w-4 shrink-0 text-danger-accent mt-0.5" />
           )}
           <span>{statusMessage.text}</span>
         </div>
       )}
 
       {/* Data Export (GDPR) */}
-      <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 space-y-4">
+      <div className="rounded-xl border border-border-subtle bg-surface-card/60 p-6 space-y-4">
         <div className="space-y-1">
-          <h3 className="text-base font-semibold text-slate-100 flex items-center gap-2">
-            <FileArchive className="h-5 w-5 text-indigo-400" />
+          <h3 className="text-base font-semibold text-text flex items-center gap-2">
+            <FileArchive className="h-5 w-5 text-primary-accent" />
             Export Your Personal Data (GDPR Article 20)
           </h3>
-          <p className="text-xs text-slate-400 leading-relaxed max-w-2xl">
+          <p className="text-xs text-text-muted leading-relaxed max-w-2xl">
             You have the right to receive a copy of all personal data, study
             history, and vocabulary progress in a machine-readable ZIP format.
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-lg border border-slate-800 bg-slate-900/40 p-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-lg border border-border-subtle bg-surface-card/40 p-4">
           <div className="space-y-1">
-            <p className="text-sm font-medium text-slate-200">
+            <p className="text-sm font-medium text-text">
               Download personal archive
             </p>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-text-muted">
               {exportState
                 ? `Export status: ${exportState.status}`
                 : "Includes account details, preferences, study logs, and exercise records"}
@@ -199,27 +199,27 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
       </div>
 
       {/* Account Deletion (GDPR Article 17) */}
-      <div className="rounded-xl border border-rose-900/30 bg-slate-900/60 p-6 space-y-6">
+      <div className="rounded-xl border border-danger/30 bg-surface-card/60 p-6 space-y-6">
         <div className="space-y-1">
-          <h3 className="text-base font-semibold text-rose-400 flex items-center gap-2">
+          <h3 className="text-base font-semibold text-danger-accent flex items-center gap-2">
             <Trash2 className="h-5 w-5" />
             Delete Account (GDPR Article 17)
           </h3>
-          <p className="text-xs text-slate-400 leading-relaxed max-w-2xl">
+          <p className="text-xs text-text-muted leading-relaxed max-w-2xl">
             Permanently erase your account, login credentials, learning stats,
             and personal data.
           </p>
         </div>
 
         {isPendingDeletion ? (
-          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 space-y-4">
+          <div className="rounded-lg border border-warning/30 bg-warning/10 p-4 space-y-4">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="h-5 w-5 shrink-0 text-amber-400 mt-0.5" />
+              <AlertTriangle className="h-5 w-5 shrink-0 text-warning-accent mt-0.5" />
               <div className="space-y-1">
-                <h4 className="text-sm font-semibold text-amber-200">
+                <h4 className="text-sm font-semibold text-warning-accent">
                   Account deletion is currently scheduled
                 </h4>
-                <p className="text-xs text-amber-300/90 leading-relaxed">
+                <p className="text-xs text-warning-accent leading-relaxed">
                   Your account is in the <strong>30-day grace period</strong>.
                   All active sessions have been revoked, and all data across all
                   modules will be completely purged when the grace period ends.
@@ -227,7 +227,7 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
                   window to restore full access.
                 </p>
                 {deletionState?.execute_at && (
-                  <p className="text-xs font-semibold text-amber-200 pt-1">
+                  <p className="text-xs font-semibold text-warning-accent pt-1">
                     Scheduled execution:{" "}
                     {new Date(deletionState.execute_at).toLocaleString()}
                   </p>
@@ -244,7 +244,7 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
                   void handleCancelDeletion();
                 }}
                 disabled={isCancelling}
-                className="border-amber-500/40 text-amber-200 hover:bg-amber-500/20"
+                className="border-warning/40 text-warning-accent hover:bg-warning/20"
               >
                 {isCancelling ? (
                   <>
@@ -261,12 +261,12 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
             </div>
           </div>
         ) : (
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-lg border border-rose-900/30 bg-rose-950/20 p-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-lg border border-danger/30 bg-danger/20 p-4">
             <div className="space-y-1">
-              <p className="text-sm font-medium text-slate-200">
+              <p className="text-sm font-medium text-text">
                 Initiate account erasure
               </p>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-text-muted">
                 Begins a 30-day grace period during which you can cancel if you
                 change your mind.
               </p>
@@ -289,23 +289,23 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/80 backdrop-blur-sm p-4"
         >
-          <div className="w-full max-w-md rounded-2xl border border-rose-900/50 bg-slate-900 p-6 shadow-2xl space-y-6">
-            <div className="flex items-center gap-3 text-rose-400">
+          <div className="w-full max-w-md rounded-2xl border border-danger/50 bg-surface-card p-6 shadow-2xl space-y-6">
+            <div className="flex items-center gap-3 text-danger-accent">
               <AlertTriangle className="h-6 w-6" />
-              <h4 className="text-lg font-semibold text-slate-100">
+              <h4 className="text-lg font-semibold text-text">
                 Are you absolutely sure?
               </h4>
             </div>
 
-            <div className="space-y-3 text-xs text-slate-300 leading-relaxed">
+            <div className="space-y-3 text-xs text-text-muted leading-relaxed">
               <p>
                 Requesting deletion will immediately schedule your account and
                 all associated data for permanent erasure across all system
                 modules.
               </p>
-              <ul className="list-disc pl-4 space-y-1 text-slate-400">
+              <ul className="list-disc pl-4 space-y-1 text-text-muted">
                 <li>
                   A <strong>30-day grace period</strong> begins immediately.
                 </li>
@@ -323,9 +323,9 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
             <div className="space-y-2">
               <Label
                 htmlFor="confirm-delete"
-                className="text-xs text-slate-300"
+                className="text-xs text-text-muted"
               >
-                Type <strong className="text-rose-400">DELETE</strong> to
+                Type <strong className="text-danger-accent">DELETE</strong> to
                 confirm:
               </Label>
               <Input
@@ -336,7 +336,7 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
               />
             </div>
 
-            <div className="flex items-center justify-end gap-3 border-t border-slate-800 pt-4">
+            <div className="flex items-center justify-end gap-3 border-t border-border-subtle pt-4">
               <Button
                 type="button"
                 variant="ghost"

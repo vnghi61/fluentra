@@ -109,36 +109,36 @@ export const GoogleAccountLink: React.FC = () => {
   };
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 space-y-4">
+    <div className="rounded-xl border border-border-subtle bg-surface-card/60 p-6 space-y-4">
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
-          <h3 className="text-base font-semibold text-slate-100 flex items-center gap-2">
-            <Link2 className="h-5 w-5 text-indigo-400" />
+          <h3 className="text-base font-semibold text-text flex items-center gap-2">
+            <Link2 className="h-5 w-5 text-primary-accent" />
             Connected Accounts
           </h3>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-text-muted">
             Link your Google account for quick, one-tap sign in.
           </p>
         </div>
       </div>
 
       {error && (
-        <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs text-rose-300">
-          <AlertCircle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
+        <div className="flex items-start gap-2.5 rounded-lg border border-danger/30 bg-danger/10 p-3.5 text-xs text-danger-accent">
+          <AlertCircle className="h-4 w-4 shrink-0 text-danger-accent mt-0.5" />
           <span>{error}</span>
         </div>
       )}
 
       {success && (
-        <div className="flex items-start gap-2.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3.5 text-xs text-emerald-300">
-          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400 mt-0.5" />
+        <div className="flex items-start gap-2.5 rounded-lg border border-success/30 bg-success/10 p-3.5 text-xs text-success-accent">
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-success-accent mt-0.5" />
           <span>{success}</span>
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-800 bg-slate-900/40 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border-subtle bg-surface-card/40 p-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-800 text-slate-200">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-muted text-text">
             <svg className="h-5 w-5" viewBox="0 0 24 24">
               <path
                 fill="currentColor"
@@ -159,8 +159,8 @@ export const GoogleAccountLink: React.FC = () => {
             </svg>
           </div>
           <div>
-            <p className="text-sm font-medium text-slate-200">Google</p>
-            <p className="text-xs text-slate-400">
+            <p className="text-sm font-medium text-text">Google</p>
+            <p className="text-xs text-text-muted">
               {linked
                 ? status?.linked_at
                   ? `Connected since ${new Date(status.linked_at).toLocaleDateString()}`

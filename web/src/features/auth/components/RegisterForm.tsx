@@ -70,12 +70,12 @@ export function RegisterForm({
   };
 
   return (
-    <div className="mx-auto w-full max-w-md space-y-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-6 sm:p-8 shadow-xl backdrop-blur-sm">
+    <div className="mx-auto w-full max-w-md space-y-6 rounded-2xl border border-border-subtle bg-surface-card/60 p-6 sm:p-8 shadow-xl backdrop-blur-sm">
       <div className="space-y-2 text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-100">
+        <h1 className="text-2xl font-bold tracking-tight text-text">
           Create your account
         </h1>
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-text-muted">
           Start mastering all 6 English competencies today
         </p>
       </div>
@@ -84,9 +84,9 @@ export function RegisterForm({
 
       <div className="relative flex items-center justify-center">
         <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-slate-800" />
+          <div className="w-full border-t border-border-subtle" />
         </div>
-        <span className="relative bg-slate-900 px-3 text-xs uppercase tracking-wider text-slate-500">
+        <span className="relative bg-surface-card px-3 text-xs uppercase tracking-wider text-text-muted">
           Or register with email
         </span>
       </div>
@@ -94,7 +94,7 @@ export function RegisterForm({
       {serverError && (
         <div
           role="alert"
-          className="rounded-lg border border-rose-500/50 bg-rose-500/10 p-3 text-sm font-medium text-rose-300"
+          className="rounded-lg border border-danger/50 bg-danger/10 p-3 text-sm font-medium text-danger-accent"
         >
           {serverError}
         </div>
@@ -175,11 +175,11 @@ export function RegisterForm({
         </form>
       </Form>
 
-      <p className="text-center text-sm text-slate-400">
+      <p className="text-center text-sm text-text-muted">
         Already have an account?{" "}
         <Link
           to="/login"
-          className="font-medium text-indigo-400 hover:text-indigo-300 hover:underline"
+          className="font-medium text-primary-accent hover:text-primary-accent hover:underline"
         >
           Sign in
         </Link>

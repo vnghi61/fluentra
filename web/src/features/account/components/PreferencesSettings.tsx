@@ -120,14 +120,14 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
           role="status"
           className={`flex items-start gap-2.5 rounded-lg p-3.5 text-xs ${
             statusMessage.type === "success"
-              ? "border border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-              : "border border-rose-500/30 bg-rose-500/10 text-rose-300"
+              ? "border border-success/30 bg-success/10 text-success-accent"
+              : "border border-danger/30 bg-danger/10 text-danger-accent"
           }`}
         >
           {statusMessage.type === "success" ? (
-            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400 mt-0.5" />
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-success-accent mt-0.5" />
           ) : (
-            <AlertCircle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
+            <AlertCircle className="h-4 w-4 shrink-0 text-danger-accent mt-0.5" />
           )}
           <span>{statusMessage.text}</span>
         </div>
@@ -140,9 +140,9 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
         className="space-y-8"
       >
         {/* Learning Goal & Locale */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 space-y-6">
-          <h3 className="text-base font-semibold text-slate-100 flex items-center gap-2">
-            <Clock className="h-5 w-5 text-indigo-400" />
+        <div className="rounded-xl border border-border-subtle bg-surface-card/60 p-6 space-y-6">
+          <h3 className="text-base font-semibold text-text flex items-center gap-2">
+            <Clock className="h-5 w-5 text-primary-accent" />
             Learning & Interface
           </h3>
 
@@ -161,7 +161,7 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
                 aria-invalid={!!errors.daily_goal_minutes}
               />
               {errors.daily_goal_minutes && (
-                <p className="text-xs text-rose-400">
+                <p className="text-xs text-danger-accent">
                   {errors.daily_goal_minutes.message}
                 </p>
               )}
@@ -170,13 +170,13 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
             {/* Language / Locale */}
             <div className="space-y-2">
               <Label htmlFor="locale" className="flex items-center gap-2">
-                <Globe className="h-4 w-4 text-slate-400" />
+                <Globe className="h-4 w-4 text-text-muted" />
                 Language
               </Label>
               <select
                 id="locale"
                 {...register("locale")}
-                className="w-full h-11 min-h-[44px] rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-base md:text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full h-11 min-h-[44px] rounded-lg border border-border-subtle bg-surface-card px-3 py-2 text-base md:text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="vi">Tiếng Việt (Vietnamese)</option>
                 <option value="en">English</option>
@@ -186,7 +186,7 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
             {/* Theme */}
             <div className="space-y-2 sm:col-span-2">
               <Label className="flex items-center gap-2">
-                <Sun className="h-4 w-4 text-slate-400" />
+                <Sun className="h-4 w-4 text-text-muted" />
                 Theme Preference
               </Label>
               <div className="grid grid-cols-3 gap-3">
@@ -195,8 +195,8 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
                     key={t}
                     className={`flex items-center justify-center gap-2 rounded-lg border p-3 text-sm font-medium cursor-pointer transition-colors ${
                       currentTheme === t
-                        ? "border-indigo-500 bg-indigo-500/10 text-indigo-300"
-                        : "border-slate-800 bg-slate-900/40 text-slate-400 hover:bg-slate-800"
+                        ? "border-primary bg-primary/10 text-primary-accent"
+                        : "border-border-subtle bg-surface-card/40 text-text-muted hover:bg-surface-muted"
                     }`}
                   >
                     <input
@@ -221,9 +221,9 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
         </div>
 
         {/* Notifications & Quiet Hours */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 space-y-6">
-          <h3 className="text-base font-semibold text-slate-100 flex items-center gap-2">
-            <Bell className="h-5 w-5 text-indigo-400" />
+        <div className="rounded-xl border border-border-subtle bg-surface-card/60 p-6 space-y-6">
+          <h3 className="text-base font-semibold text-text flex items-center gap-2">
+            <Bell className="h-5 w-5 text-primary-accent" />
             Notifications & Quiet Hours
           </h3>
 
@@ -242,7 +242,7 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
                     ].map((channel) => (
                       <label
                         key={channel.id}
-                        className="flex items-center gap-2.5 cursor-pointer text-sm text-slate-300"
+                        className="flex items-center gap-2.5 cursor-pointer text-sm text-text-muted"
                       >
                         <Checkbox
                           checked={field.value.includes(
@@ -267,7 +267,7 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
             </div>
           </div>
 
-          <div className="border-t border-slate-800 pt-4 space-y-4">
+          <div className="border-t border-border-subtle pt-4 space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <Label
@@ -276,7 +276,7 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
                 >
                   Enable Quiet Hours
                 </Label>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-text-muted">
                   Pause non-critical notifications during sleeping hours
                 </p>
               </div>
@@ -321,14 +321,14 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
         </div>
 
         {/* AI Processing Opt-Out */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 space-y-4">
+        <div className="rounded-xl border border-border-subtle bg-surface-card/60 p-6 space-y-4">
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-1">
-              <h3 className="text-base font-semibold text-slate-100 flex items-center gap-2">
-                <Bot className="h-5 w-5 text-indigo-400" />
+              <h3 className="text-base font-semibold text-text flex items-center gap-2">
+                <Bot className="h-5 w-5 text-primary-accent" />
                 AI Grading & Processing
               </h3>
-              <p className="text-xs text-slate-400 leading-relaxed max-w-xl">
+              <p className="text-xs text-text-muted leading-relaxed max-w-xl">
                 Opt out of AI-assisted grading and pronunciation feedback.
                 Deterministic exercises and progress tracking remain fully
                 functional.

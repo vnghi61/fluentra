@@ -31,7 +31,7 @@ export const ExitDialog: React.FC<ExitDialogProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="exit-dialog-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-sm animate-in fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/75 p-4 backdrop-blur-sm animate-in fade-in"
     >
       <Card className="max-w-md w-full border-border bg-surface-card shadow-2xl">
         <CardHeader className="space-y-2">
