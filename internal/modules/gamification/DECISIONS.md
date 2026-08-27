@@ -26,6 +26,7 @@ contract belongs in a repository-level ADR instead — see [`/DECISIONS.md`](../
 | Event-driven or called directly? | Event-driven | It keeps motivation mechanics strictly downstream — a bug here can never break a learning flow, and learning modules need no knowledge of XP at all |
 | Streak freezes? | Yes, limited and automatic | An all-or-nothing streak punishes the illness or travel that real learners have, and losing a long streak is a strong churn trigger. Forgiveness retains better than strictness |
 | Global leaderboard? | No — opt-in leagues | A global board demotivates everyone outside the top few and creates a privacy exposure nobody asked for |
+| Which day boundary does a streak use? | The learner's own timezone | core.users already stores a timezone and the seed sets Asia/Ho_Chi_Minh. Counting in UTC would end the day at 7am local, so a learner studying in the evening in Vietnam loses a streak they kept |
 <!-- END GENERATED: decisions -->
 
 ## Related repository ADRs

@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { BrandMark } from "./BrandMark";
+
 export interface AppShellProps {
   children: React.ReactNode;
   user?: { role: string } | null | undefined;
@@ -146,20 +148,8 @@ export const AppShell: React.FC<AppShellProps> = ({
       <aside className="hidden md:flex flex-col w-64 shrink-0 bg-surface-card border-r border-border-subtle p-4 gap-6 justify-between">
         <div className="flex flex-col gap-6">
           <Link to="/" className="flex items-center gap-2.5">
-            {/*
-              The artwork is a raster trace with a white ground painted into it,
-              so it cannot sit transparently on a dark surface. Rounding it turns
-              that ground into a deliberate plate: invisible on the light sidebar,
-              a clean white tile in dark mode. The word is live text rather than
-              part of the image, so it scales, translates and stays selectable.
-            */}
-            <img
-              src="/brand/fluentra-mark-64.png"
-              alt=""
-              width={28}
-              height={28}
-              className="h-7 w-7 rounded-md shrink-0"
-            />
+            {/* Inline, so the mark takes --color-brand and needs no request. */}
+            <BrandMark className="h-7 w-7 shrink-0 text-brand" />
             <span className="text-lg font-bold tracking-tight text-text">
               Fluentra
             </span>
@@ -218,13 +208,7 @@ export const AppShell: React.FC<AppShellProps> = ({
         <header className="sticky top-0 z-40 flex items-center justify-between gap-3 h-14 px-4 bg-surface-card border-b border-border-subtle">
           {/* The brand belongs here only where the sidebar is not drawing it. */}
           <Link to="/" className="flex items-center gap-2 md:hidden">
-            <img
-              src="/brand/fluentra-mark-64.png"
-              alt=""
-              width={26}
-              height={26}
-              className="h-[26px] w-[26px] rounded-md shrink-0"
-            />
+            <BrandMark className="h-[26px] w-[26px] shrink-0 text-brand" />
             <span className="text-base font-bold tracking-tight text-text">
               Fluentra
             </span>

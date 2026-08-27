@@ -58,6 +58,14 @@
    */
   --color-border: var(--border);
   --color-border-subtle: var(--border-subtle);
+  /*
+   * The brand blue is not the primary blue. The mark is #011AD1, deeper and
+   * more violet than the #2563EB the interface acts in, and it stays its own
+   * value rather than being rounded off to the nearest UI token. On the dark
+   * surface #011AD1 reads at 1.4:1 and disappears, so dark mode uses #7194F8 —
+   * a value taken from the original artwork's own palette, not invented.
+   */
+  --color-brand: var(--brand);
 }
 
 :root {
@@ -70,6 +78,7 @@
   --text: #0f172a;
   --text-muted: #64748b;
   --primary-accent: #2563eb;
+  --brand: #011ad1;
   --success-accent: #15803d;
   --warning-accent: #b45309;
   --danger-accent: #b91c1c;
@@ -85,6 +94,7 @@
   --text: #f8fafc;
   --text-muted: #94a3b8;
   --primary-accent: #60a5fa;
+  --brand: #7194f8;
   --success-accent: #34d399;
   --warning-accent: #fbbf24;
   --danger-accent: #f87171;
