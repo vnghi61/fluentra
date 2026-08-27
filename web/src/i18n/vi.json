@@ -4,11 +4,17 @@
     "tagline": "Học tiếng Anh để nhớ lâu"
   },
   "nav": {
+    "admin": "Quản trị",
+    "createAccount": "Tạo tài khoản",
     "dashboard": "Tổng quan",
     "home": "Trang chủ",
     "learn": "Học",
+    "logout": "Đăng xuất",
     "practice": "Luyện tập",
-    "progress": "Tiến độ"
+    "progress": "Tiến độ",
+    "settings": "Cài đặt",
+    "signIn": "Đăng nhập",
+    "signOut": "Đăng xuất"
   },
   "status": {
     "checking": "Đang kiểm tra API…",

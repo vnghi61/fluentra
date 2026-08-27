@@ -4,11 +4,17 @@
     "tagline": "Learn English that stays learned"
   },
   "nav": {
+    "admin": "Admin",
+    "createAccount": "Create account",
     "dashboard": "Dashboard",
     "home": "Home",
     "learn": "Learn",
+    "logout": "Logout",
     "practice": "Practice",
-    "progress": "Progress"
+    "progress": "Progress",
+    "settings": "Settings",
+    "signIn": "Sign in",
+    "signOut": "Sign out"
   },
   "status": {
     "checking": "Checking the API…",

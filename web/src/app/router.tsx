@@ -6,10 +6,33 @@ import {
   Outlet,
   redirect,
   useNavigate,
+  useRouterState,
   type AnyRoute,
 } from "@tanstack/react-router";
 
 import { AppShell } from "@/components/layout/AppShell";
+
+/**
+ * The routes that stand on their own, with no app frame around them.
+ *
+ * AppShell wraps the root route, so without this list /login drew a sidebar and
+ * a bottom bar offering four destinations a signed-out visitor is redirected
+ * away from. Listed by path rather than by route id because the OAuth callback
+ * carries a provider segment.
+ */
+const bareRoutes = [
+  "/login",
+  "/register",
+  "/forgot-password",
+  "/reset-password",
+  "/auth/",
+];
+
+function isBareRoute(pathname: string): boolean {
+  return bareRoutes.some(
+    (prefix) => pathname === prefix || pathname.startsWith(prefix),
+  );
+}
 import { authApi } from "@/features/auth";
 import { ForgotPasswordPage } from "@/pages/ForgotPasswordPage";
 import { LoginPage } from "@/pages/LoginPage";
@@ -85,6 +108,9 @@ function RootApp(): React.JSX.Element {
   const user = useAuthStore((s) => s.user);
   const status = useAuthStore((s) => s.status);
   const navigate = useNavigate();
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  });
 
   const handleLogout = async () => {
     await authApi.logout();
@@ -92,7 +118,12 @@ function RootApp(): React.JSX.Element {
   };
 
   return (
-    <AppShell user={user} status={status} onLogout={() => void handleLogout()}>
+    <AppShell
+      user={user}
+      status={status}
+      onLogout={() => void handleLogout()}
+      chrome={!isBareRoute(pathname)}
+    >
       <Outlet />
     </AppShell>
   );
