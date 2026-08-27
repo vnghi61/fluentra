@@ -152,10 +152,15 @@ func newIdentity(deps identityDeps) *identity {
 		Env:   deps.Env,
 	})
 
+	// `user` comes after `rbac` because every account it creates is granted the
+	// baseline role in the same call. Without it, registration produced accounts
+	// the access token called `user` and core.user_roles knew nothing about, and
+	// the guard reads core.user_roles.
 	assembled.user = user.New(user.Deps{
 		Pool:     deps.Pool,
 		Storage:  deps.Storage,
 		Enqueuer: deps.Enqueuer,
+		Roles:    assembled.rbac,
 	})
 
 	// `auth` comes after `user` because it holds a reference to user.Registrar.

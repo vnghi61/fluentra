@@ -138,6 +138,14 @@ it is what the `/me` routes mean. It now holds exactly one, `content.read.publis
 published material is the first thing a learner reads that is **not** their own data and `self`
 cannot express that. The paragraph above says how that stays a set of one.
 
+**The `user` role is granted by `GrantBaselineRole`, at account creation, with no actor.**
+`AssignRole` is administrative — it requires an actor holding `rbac.assign`, and its only caller
+is the admin handler — so until this existed nothing granted `user` to anybody. An access token
+still called the account `user`, because `HighestRole` of an empty set is `user`, while the guard
+read `core.user_roles` and found nothing. The two disagreed harmlessly for as long as the role
+held no permissions; P7.1 ended that. `user` calls it through a one-method interface it declares
+itself, so this module does not know `user` exists and the composition root is what joins them.
+
 ## 6. HTTP endpoints
 
 Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openapi.yaml)

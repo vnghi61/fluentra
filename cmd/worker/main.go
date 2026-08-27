@@ -440,6 +440,7 @@ func startModules(
 		Pool:    pool,
 		Storage: storageStore,
 		Mailer:  sender,
+		Roles:   rbacModule,
 	})
 
 	authModule := auth.New(auth.Deps{
@@ -459,6 +460,7 @@ func startModules(
 		Pool:    pool,
 		Storage: storageStore,
 		Mailer:  sender,
+		Roles:   rbacModule,
 		Providers: []user.NamedExportable{
 			{Name: "user", Provider: userModule.Exportable()},
 			{Name: "auth", Provider: authModule},

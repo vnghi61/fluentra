@@ -37,7 +37,15 @@ type Deps struct {
 	Bucket    string
 	LinkTTL   time.Duration
 	Retention time.Duration
+	// Roles grants the baseline role to every account this module creates.
+	// The composition root supplies rbac's module; a build without it creates
+	// accounts that hold nothing, which is the bug this exists to close.
+	Roles BaselineRoleGranter
 }
+
+// BaselineRoleGranter is satisfied by the rbac module. It is named here so
+// cmd/ can read the wiring without opening the service package.
+type BaselineRoleGranter = service.BaselineRoles
 
 // Module is the user module, assembled. It is the only symbol cmd/ imports.
 type Module struct {
@@ -74,6 +82,7 @@ func New(deps Deps) *Module {
 		NewID:    id.NewUUIDv7,
 		Storage:  deps.Storage,
 		Enqueuer: enqueuer,
+		Roles:    deps.Roles,
 	})
 
 	worker := userjob.NewExportWorker(userjob.ExportWorkerOptions{

@@ -28,6 +28,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	authdomain "github.com/fluentra/fluentra/internal/modules/auth/domain"
+	"github.com/fluentra/fluentra/internal/modules/rbac"
 	"github.com/fluentra/fluentra/internal/modules/user"
 	usercontract "github.com/fluentra/fluentra/internal/modules/user/contract"
 	"github.com/fluentra/fluentra/internal/shared/config"
@@ -96,7 +97,12 @@ func run(ctx context.Context, out io.Writer) error {
 	}
 	defer pool.Close()
 
-	module := user.New(user.Deps{Pool: pool})
+	// The demo learner needs the baseline role for the same reason a registered
+	// one does: `user` holds content.read.published, and without it the account
+	// the getting-started guide hands out is refused the very catalogue this
+	// seed then authors. user.New grants it as part of creating the account.
+	roles := rbac.New(rbac.Deps{Pool: pool})
+	module := user.New(user.Deps{Pool: pool, Roles: roles})
 	hasher := authdomain.NewHasher(authdomain.DefaultHashParams())
 
 	hash, err := hasher.Hash(demoPassword)
@@ -115,6 +121,13 @@ func run(ctx context.Context, out io.Writer) error {
 		}
 		if err := ensureVerified(ctx, pool, id); err != nil {
 			return fmt.Errorf("verify %s: %w", account.email, err)
+		}
+		// Also for accounts that already existed. user.New grants the role while
+		// creating an account, and a re-run against a database seeded before this
+		// existed would otherwise leave the demo learner exactly as it was:
+		// signed in, and refused the catalogue. The grant is idempotent.
+		if err := roles.GrantBaselineRole(ctx, id); err != nil {
+			return fmt.Errorf("grant baseline role to %s: %w", account.email, err)
 		}
 		if account.admin {
 			adminID = id

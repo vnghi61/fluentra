@@ -127,6 +127,16 @@ type EventWriter interface {
 // deterministic without also having to control the clock.
 type IDGenerator func(ctx context.Context) (uuid.UUID, error)
 
+// BaselineRoles grants the role every account holds.
+//
+// Declared here rather than imported from rbac/contract so this module keeps
+// depending on nothing but its own domain: the interface is one method wide and
+// `rbac` satisfies it without knowing that `user` exists. The composition root
+// is what puts the two together.
+type BaselineRoles interface {
+	GrantBaselineRole(ctx context.Context, userID uuid.UUID) error
+}
+
 // Service implements the user module's use cases.
 type Service struct {
 	pool     dbx.Beginner
@@ -136,6 +146,7 @@ type Service struct {
 	ids      IDGenerator
 	storage  StorageStore
 	enqueuer JobEnqueuer
+	roles    BaselineRoles
 }
 
 // Deps are the service's collaborators.
@@ -147,6 +158,9 @@ type Deps struct {
 	NewID    IDGenerator
 	Storage  StorageStore
 	Enqueuer JobEnqueuer
+	// Roles is optional: a build with no rbac wired creates accounts that hold
+	// no role, which is the behaviour this field exists to end. cmd/ supplies it.
+	Roles BaselineRoles
 }
 
 // New creates the user service.
@@ -159,6 +173,7 @@ func New(deps Deps) *Service {
 		ids:      deps.NewID,
 		storage:  deps.Storage,
 		enqueuer: deps.Enqueuer,
+		roles:    deps.Roles,
 	}
 }
 

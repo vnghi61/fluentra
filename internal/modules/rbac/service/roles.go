@@ -79,6 +79,60 @@ func (s *Service) AssignRole(
 	return roles, nil
 }
 
+// GrantBaselineRole grants `user` to a newly created account.
+//
+// It exists because nothing did. AssignRole is an administrative operation: it
+// needs an actor holding rbac.assign, and its only caller is the admin handler.
+// So no account created by registration or by `make seed` ever received a role,
+// while the access token minted for it claimed `user` anyway — HighestRole of
+// an empty set is `user`. The token said one thing and the guard read another,
+// and the guard reads core.user_roles.
+//
+// That was invisible until Phase 2. `user` held no permissions at all, so an
+// account with no roles and an account with `user` could do exactly the same
+// things. P7.1 gave `user` its first permission, content.read.published, and
+// from that commit every learner was refused the published catalogue. The
+// module's integration tests did not catch it because their fixtures grant the
+// role themselves, which is the shape of a test agreeing with itself.
+//
+// No actor, because there is none: the system made this grant, the way
+// db/seeds/rbac.sql makes its own with granted_by NULL. That also keeps
+// BR-RBAC-04 intact — this is not somebody granting themselves anything, and
+// `user` is not a role anybody could escalate to.
+//
+// Idempotent: the underlying insert is ON CONFLICT DO NOTHING, so re-running it
+// for an account that already holds the role writes nothing, publishes nothing
+// and busts nothing.
+func (s *Service) GrantBaselineRole(ctx context.Context, userID uuid.UUID) error {
+	var changed bool
+	err := dbx.InTx(ctx, s.pool, func(ctx context.Context, tx pgx.Tx) error {
+		repo := s.repo.WithTx(tx)
+
+		var err error
+		if changed, err = repo.AssignRole(ctx, userID, contract.RoleUser, nil); err != nil {
+			return err
+		}
+		if !changed {
+			return nil
+		}
+		_, err = s.events.Write(ctx, tx, contract.Aggregate, contract.EventRoleAssigned,
+			contract.RoleAssigned{
+				UserID: userID, Role: contract.RoleUser,
+				ActorID: uuid.Nil, OccurredAt: s.clock.Now(),
+			})
+		return err
+	})
+	if err != nil {
+		return err
+	}
+
+	// After the commit, for the reason AssignRole records.
+	if changed {
+		s.invalidate(ctx, userID)
+	}
+	return nil
+}
+
 // RevokeRole removes role from targetID on behalf of actorID.
 //
 // The admin count is read inside the transaction, which is what makes the
