@@ -104,22 +104,18 @@ func (s *Service) AssignRole(
 // for an account that already holds the role writes nothing, publishes nothing
 // and busts nothing.
 func (s *Service) GrantBaselineRole(ctx context.Context, userID uuid.UUID) error {
+	// No rbac.role_assigned event, unlike AssignRole. That event exists for
+	// accountability — it is what puts "this administrator granted that role" in
+	// the audit trail — and there is no one to hold accountable here. An entry
+	// with a null actor on every account ever created is volume without
+	// information, and it would make `rbac.role_assigned` mean two different
+	// things in the trail. The row's granted_by NULL is the record that the
+	// system made this grant, the same way db/seeds/rbac.sql records its own.
 	var changed bool
 	err := dbx.InTx(ctx, s.pool, func(ctx context.Context, tx pgx.Tx) error {
 		repo := s.repo.WithTx(tx)
-
 		var err error
-		if changed, err = repo.AssignRole(ctx, userID, contract.RoleUser, nil); err != nil {
-			return err
-		}
-		if !changed {
-			return nil
-		}
-		_, err = s.events.Write(ctx, tx, contract.Aggregate, contract.EventRoleAssigned,
-			contract.RoleAssigned{
-				UserID: userID, Role: contract.RoleUser,
-				ActorID: uuid.Nil, OccurredAt: s.clock.Now(),
-			})
+		changed, err = repo.AssignRole(ctx, userID, contract.RoleUser, nil)
 		return err
 	})
 	if err != nil {
