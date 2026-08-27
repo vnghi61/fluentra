@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "@tanstack/react-router";
@@ -26,6 +27,7 @@ export interface LoginFormProps {
 }
 
 export function LoginForm({ onSuccess }: LoginFormProps): React.JSX.Element {
+  const { t } = useTranslation();
   const [serverError, setServerError] = React.useState<string | null>(null);
   const deviceId = useAuthStore((s) => s.deviceId);
 
@@ -63,10 +65,13 @@ export function LoginForm({ onSuccess }: LoginFormProps): React.JSX.Element {
     <div className="mx-auto w-full max-w-md space-y-6 rounded-2xl border border-border-subtle bg-surface-card/60 p-6 sm:p-8 shadow-xl backdrop-blur-sm">
       <div className="space-y-2 text-center">
         <h1 className="text-2xl font-bold tracking-tight text-text">
-          Sign in to Fluentra
+          {t("auth.signInTitle", "Sign in to Fluentra")}
         </h1>
         <p className="text-sm text-text-muted">
-          Continue your personalized English learning path
+          {t(
+            "auth.signInSubtitle",
+            "Continue your personalized English learning path",
+          )}
         </p>
       </div>
 
@@ -77,7 +82,7 @@ export function LoginForm({ onSuccess }: LoginFormProps): React.JSX.Element {
           <div className="w-full border-t border-border-subtle" />
         </div>
         <span className="relative bg-surface-card px-3 text-xs uppercase tracking-wider text-text-muted">
-          Or continue with email
+          {t("auth.orContinueEmail", "Or continue with email")}
         </span>
       </div>
 
@@ -100,7 +105,9 @@ export function LoginForm({ onSuccess }: LoginFormProps): React.JSX.Element {
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel required>Email address</FormLabel>
+                <FormLabel required>
+                  {t("auth.emailLabel", "Email address")}
+                </FormLabel>
                 <FormControl>
                   <Input
                     type="email"
@@ -120,7 +127,9 @@ export function LoginForm({ onSuccess }: LoginFormProps): React.JSX.Element {
             render={({ field }) => (
               <FormItem>
                 <div className="flex items-center justify-between">
-                  <FormLabel required>Password</FormLabel>
+                  <FormLabel required>
+                    {t("auth.passwordLabel", "Password")}
+                  </FormLabel>
                   <Link
                     to="/forgot-password"
                     // A standalone control, not a link inside a sentence, so
@@ -128,7 +137,7 @@ export function LoginForm({ onSuccess }: LoginFormProps): React.JSX.Element {
                     // keeps the row's visual rhythm while the hit area grows.
                     className="inline-flex min-h-11 items-center -my-3 text-xs font-medium text-primary-accent hover:text-primary-accent hover:underline"
                   >
-                    Forgot password?
+                    {t("auth.forgotPassword", "Forgot password?")}
                   </Link>
                 </div>
                 <FormControl>
@@ -165,7 +174,7 @@ export function LoginForm({ onSuccess }: LoginFormProps): React.JSX.Element {
             isLoading={form.formState.isSubmitting}
             className="w-full"
           >
-            Sign in
+            {t("auth.signIn", "Sign in")}
           </Button>
         </form>
       </Form>
@@ -176,7 +185,7 @@ export function LoginForm({ onSuccess }: LoginFormProps): React.JSX.Element {
           to="/register"
           className="font-medium text-primary-accent hover:text-primary-accent hover:underline"
         >
-          Create one now
+          {t("auth.createOne", "Create one now")}
         </Link>
       </p>
     </div>

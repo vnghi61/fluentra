@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "@tanstack/react-router";
@@ -30,6 +31,7 @@ export interface RegisterFormProps {
 export function RegisterForm({
   onChallengeIssued,
 }: RegisterFormProps): React.JSX.Element {
+  const { t } = useTranslation();
   const [serverError, setServerError] = React.useState<string | null>(null);
 
   const form = useForm<RegisterFormData>({
@@ -73,7 +75,7 @@ export function RegisterForm({
     <div className="mx-auto w-full max-w-md space-y-6 rounded-2xl border border-border-subtle bg-surface-card/60 p-6 sm:p-8 shadow-xl backdrop-blur-sm">
       <div className="space-y-2 text-center">
         <h1 className="text-2xl font-bold tracking-tight text-text">
-          Create your account
+          {t("auth.createAccountTitle", "Create your account")}
         </h1>
         <p className="text-sm text-text-muted">
           Start mastering all 6 English competencies today
@@ -87,7 +89,7 @@ export function RegisterForm({
           <div className="w-full border-t border-border-subtle" />
         </div>
         <span className="relative bg-surface-card px-3 text-xs uppercase tracking-wider text-text-muted">
-          Or register with email
+          {t("auth.orRegisterEmail", "Or register with email")}
         </span>
       </div>
 
@@ -110,7 +112,9 @@ export function RegisterForm({
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel required>Email address</FormLabel>
+                <FormLabel required>
+                  {t("auth.emailLabel", "Email address")}
+                </FormLabel>
                 <FormControl>
                   <Input
                     type="email"
@@ -129,7 +133,9 @@ export function RegisterForm({
             name="display_name"
             render={({ field }) => (
               <FormItem>
-                <FormLabel required>Display Name</FormLabel>
+                <FormLabel required>
+                  {t("auth.displayNameLabel", "Display Name")}
+                </FormLabel>
                 <FormControl>
                   <Input
                     type="text"
@@ -148,7 +154,9 @@ export function RegisterForm({
             name="password"
             render={({ field }) => (
               <FormItem>
-                <FormLabel required>Password</FormLabel>
+                <FormLabel required>
+                  {t("auth.passwordLabel", "Password")}
+                </FormLabel>
                 <FormControl>
                   <Input
                     type="password"
@@ -170,7 +178,7 @@ export function RegisterForm({
             isLoading={form.formState.isSubmitting}
             className="w-full"
           >
-            Create account
+            {t("auth.createAccount", "Create account")}
           </Button>
         </form>
       </Form>
@@ -181,7 +189,7 @@ export function RegisterForm({
           to="/login"
           className="font-medium text-primary-accent hover:text-primary-accent hover:underline"
         >
-          Sign in
+          {t("auth.signIn", "Sign in")}
         </Link>
       </p>
     </div>

@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "@tanstack/react-router";
@@ -35,6 +36,7 @@ export function ResetPasswordForm({
   email,
   onSuccess,
 }: ResetPasswordFormProps): React.JSX.Element {
+  const { t } = useTranslation();
   const [serverError, setServerError] = React.useState<string | null>(null);
   const [successResult, setSuccessResult] =
     React.useState<PasswordChanged | null>(null);
@@ -77,10 +79,13 @@ export function ResetPasswordForm({
 
         <div className="space-y-2">
           <h1 className="text-2xl font-bold tracking-tight text-text">
-            Password reset complete
+            {t("auth.resetDoneTitle", "Password reset complete")}
           </h1>
           <p className="text-sm text-text-muted">
-            Your password has been successfully updated.
+            {t(
+              "auth.resetDoneBody",
+              "Your password has been successfully updated.",
+            )}
           </p>
         </div>
 
@@ -102,7 +107,7 @@ export function ResetPasswordForm({
           to="/login"
           className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover"
         >
-          Sign in with new password
+          {t("auth.signInNewPassword", "Sign in with new password")}
         </Link>
       </div>
     );
@@ -112,12 +117,12 @@ export function ResetPasswordForm({
     <div className="mx-auto w-full max-w-md space-y-6 rounded-2xl border border-border-subtle bg-surface-card/60 p-6 sm:p-8 shadow-xl backdrop-blur-sm">
       <div className="space-y-2 text-center">
         <h1 className="text-2xl font-bold tracking-tight text-text">
-          Create new password
+          {t("auth.newPasswordTitle", "Create new password")}
         </h1>
         <p className="text-sm text-text-muted">
           Enter the 6-digit code sent to{" "}
-          <span className="font-semibold text-text">{email}</span> and your
-          new password
+          <span className="font-semibold text-text">{email}</span> and your new
+          password
         </p>
       </div>
 
@@ -160,7 +165,9 @@ export function ResetPasswordForm({
             name="password"
             render={({ field }) => (
               <FormItem>
-                <FormLabel required>New Password</FormLabel>
+                <FormLabel required>
+                  {t("auth.newPasswordLabel", "New Password")}
+                </FormLabel>
                 <FormControl>
                   <Input
                     type="password"
@@ -183,7 +190,7 @@ export function ResetPasswordForm({
             isLoading={form.formState.isSubmitting}
             className="w-full"
           >
-            Reset password
+            {t("auth.resetPassword", "Reset password")}
           </Button>
         </form>
       </Form>

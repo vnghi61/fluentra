@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "@tanstack/react-router";
@@ -29,6 +30,7 @@ export interface ForgotPasswordFormProps {
 export function ForgotPasswordForm({
   onChallengeIssued,
 }: ForgotPasswordFormProps): React.JSX.Element {
+  const { t } = useTranslation();
   const [serverError, setServerError] = React.useState<string | null>(null);
 
   const form = useForm<ForgotPasswordFormData>({
@@ -60,12 +62,12 @@ export function ForgotPasswordForm({
         className="inline-flex items-center gap-1.5 text-xs font-medium text-text-muted hover:text-text transition-colors"
       >
         <ArrowLeft className="h-3.5 w-3.5" />
-        Back to sign in
+        {t("auth.backToSignIn", "Back to sign in")}
       </Link>
 
       <div className="space-y-2 text-center">
         <h1 className="text-2xl font-bold tracking-tight text-text">
-          Reset your password
+          {t("auth.resetTitle", "Reset your password")}
         </h1>
         <p className="text-sm text-text-muted">
           Enter your account email to receive a 6-digit recovery code
@@ -91,7 +93,9 @@ export function ForgotPasswordForm({
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel required>Email address</FormLabel>
+                <FormLabel required>
+                  {t("auth.emailLabel", "Email address")}
+                </FormLabel>
                 <FormControl>
                   <Input
                     type="email"
@@ -110,7 +114,7 @@ export function ForgotPasswordForm({
             isLoading={form.formState.isSubmitting}
             className="w-full"
           >
-            Send recovery code
+            {t("auth.sendRecoveryCode", "Send recovery code")}
           </Button>
         </form>
       </Form>

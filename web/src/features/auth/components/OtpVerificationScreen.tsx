@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { AlertCircle, ArrowLeft, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { OtpInput } from "@/components/ui/otp-input";
@@ -24,6 +25,7 @@ export function OtpVerificationScreen({
   onSuccess,
   onBack,
 }: OtpVerificationScreenProps): React.JSX.Element {
+  const { t } = useTranslation();
   const [challenge, setChallenge] = React.useState<Challenge>(initialChallenge);
   const [code, setCode] = React.useState("");
   const [isVerifying, setIsVerifying] = React.useState(false);
@@ -194,7 +196,7 @@ export function OtpVerificationScreen({
 
       <div className="space-y-2 text-center">
         <h1 className="text-2xl font-bold tracking-tight text-text">
-          Enter verification code
+          {t("auth.otpTitle", "Enter verification code")}
         </h1>
         <p className="text-sm text-text-muted">
           We emailed a 6-digit code to{" "}
@@ -257,7 +259,7 @@ export function OtpVerificationScreen({
           isLoading={isVerifying}
           className="w-full"
         >
-          Verify & continue
+          {t("auth.otpVerify", "Verify & continue")}
         </Button>
 
         <div className="text-center">
