@@ -55,7 +55,10 @@ export function LoginForm({ onSuccess }: LoginFormProps): React.JSX.Element {
         setServerError(getErrorMessage(err.problem));
       } else {
         setServerError(
-          "Failed to sign in. Please check your connection and try again.",
+          t(
+            "auth.failedToSignInPlease",
+            "Failed to sign in. Please check your connection and try again.",
+          ),
         );
       }
     }
@@ -143,7 +146,10 @@ export function LoginForm({ onSuccess }: LoginFormProps): React.JSX.Element {
                 <FormControl>
                   <Input
                     type="password"
-                    placeholder="Enter your password"
+                    placeholder={t(
+                      "auth.enterYourPassword",
+                      "Enter your password",
+                    )}
                     autoComplete="current-password"
                     {...field}
                   />
@@ -162,7 +168,10 @@ export function LoginForm({ onSuccess }: LoginFormProps): React.JSX.Element {
                   <Checkbox
                     checked={field.value}
                     onCheckedChange={field.onChange}
-                    label="Stay signed in on this device"
+                    label={t(
+                      "auth.staySignedInOnThis",
+                      "Stay signed in on this device",
+                    )}
                   />
                 </FormControl>
               </FormItem>

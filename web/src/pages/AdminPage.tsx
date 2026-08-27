@@ -21,10 +21,22 @@ export function AdminPage(): React.JSX.Element {
   // x-permission in api/openapi/openapi.yaml.
   const tabs = [
     ...(can(PERMISSIONS.userList)
-      ? [{ key: "users" as AdminTab, label: "Learner Management", icon: Users }]
+      ? [
+          {
+            key: "users" as AdminTab,
+            label: t("page.learnerManagement", "Learner Management"),
+            icon: Users,
+          },
+        ]
       : []),
     ...(can(PERMISSIONS.systemFlags)
-      ? [{ key: "flags" as AdminTab, label: "Feature Flags", icon: Flag }]
+      ? [
+          {
+            key: "flags" as AdminTab,
+            label: t("page.featureFlags", "Feature Flags"),
+            icon: Flag,
+          },
+        ]
       : []),
   ];
 

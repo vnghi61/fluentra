@@ -39,7 +39,10 @@ export const DevicesList: React.FC<DevicesListProps> = ({ onLoggedOut }) => {
           setError(
             err instanceof Error
               ? err.message
-              : "Failed to load trusted devices.",
+              : t(
+                  "account.failedToLoadTrustedDevices",
+                  "Failed to load trusted devices.",
+                ),
           );
           setIsLoading(false);
         }
@@ -50,7 +53,7 @@ export const DevicesList: React.FC<DevicesListProps> = ({ onLoggedOut }) => {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [t]);
 
   const handleUntrust = async (device: TrustedDevice) => {
     setUntrustingId(device.id);
@@ -68,7 +71,9 @@ export const DevicesList: React.FC<DevicesListProps> = ({ onLoggedOut }) => {
       }
     } catch (err: unknown) {
       setError(
-        err instanceof Error ? err.message : "Failed to untrust device.",
+        err instanceof Error
+          ? err.message
+          : t("account.failedToUntrustDevice", "Failed to untrust device."),
       );
     } finally {
       setUntrustingId(null);
@@ -127,7 +132,8 @@ export const DevicesList: React.FC<DevicesListProps> = ({ onLoggedOut }) => {
                   <div>
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium text-text">
-                        {device.label || "Unknown Device"}
+                        {device.label ||
+                          t("account.unknownDevice", "Unknown Device")}
                       </p>
                       {device.current && (
                         <span className="inline-flex items-center rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary-accent">
@@ -232,7 +238,7 @@ export const DevicesList: React.FC<DevicesListProps> = ({ onLoggedOut }) => {
                     {t("account.untrusting", "Untrusting...")}
                   </>
                 ) : (
-                  "Untrust & Sign Out"
+                  t("account.untrustSignOut", "Untrust & Sign Out")
                 )}
               </Button>
             </div>

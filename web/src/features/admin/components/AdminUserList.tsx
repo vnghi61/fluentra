@@ -74,7 +74,12 @@ export const AdminUserList: React.FC = () => {
       setNextCursor(res.next_cursor);
     } catch (err: unknown) {
       setError(
-        err instanceof Error ? err.message : "Failed to load learners list.",
+        err instanceof Error
+          ? err.message
+          : t(
+              "admin.failedToLoadLearnersList",
+              "Failed to load learners list.",
+            ),
       );
     } finally {
       setIsLoading(false);
@@ -110,7 +115,7 @@ export const AdminUserList: React.FC = () => {
   const columns = useMemo(
     () => [
       columnHelper.accessor("display_name", {
-        header: "Learner",
+        header: t("admin.learner", "Learner"),
         cell: (info) => {
           const user = info.row.original;
           return (
@@ -147,7 +152,7 @@ export const AdminUserList: React.FC = () => {
         ),
       }),
       columnHelper.accessor("status", {
-        header: "Status",
+        header: t("admin.status", "Status"),
         cell: (info) => {
           const status = info.getValue();
           return (
@@ -166,7 +171,7 @@ export const AdminUserList: React.FC = () => {
         },
       }),
       columnHelper.accessor("created_at", {
-        header: "Joined",
+        header: t("admin.joined", "Joined"),
         cell: (info) => (
           <span className="text-xs text-text-muted">
             {new Date(info.getValue()).toLocaleDateString()}
@@ -175,7 +180,7 @@ export const AdminUserList: React.FC = () => {
       }),
       columnHelper.display({
         id: "actions",
-        header: "Actions",
+        header: t("admin.actions", "Actions"),
         cell: (info) => (
           <Button
             type="button"
@@ -212,7 +217,10 @@ export const AdminUserList: React.FC = () => {
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by name or email..."
+              placeholder={t(
+                "admin.searchByNameOrEmail",
+                "Search by name or email...",
+              )}
               className="pl-10"
             />
           </div>

@@ -34,7 +34,12 @@ export function OAuthCallbackPage(): React.JSX.Element {
 
       if (!code || !state) {
         setIsLoading(false);
-        setError("Missing authentication parameters in callback URL.");
+        setError(
+          t(
+            "page.missingAuthenticationParametersInCallback",
+            "Missing authentication parameters in callback URL.",
+          ),
+        );
         return;
       }
 
@@ -68,14 +73,17 @@ export function OAuthCallbackPage(): React.JSX.Element {
           setErrorCode(err.problem.code ?? null);
         } else {
           setError(
-            "Failed to complete Google authentication. Please try again.",
+            t(
+              "page.failedToCompleteGoogleAuthentication",
+              "Failed to complete Google authentication. Please try again.",
+            ),
           );
         }
       }
     }
 
     void processCallback();
-  }, [navigate]);
+  }, [navigate, t]);
 
   if (isLoading) {
     return (

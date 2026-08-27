@@ -50,7 +50,10 @@ export function AccountSettingsPage(): React.JSX.Element {
         setError(
           err instanceof Error
             ? err.message
-            : "Failed to load account settings.",
+            : t(
+                "page.failedToLoadAccountSettings",
+                "Failed to load account settings.",
+              ),
         );
       } finally {
         setIsLoading(false);
@@ -58,7 +61,7 @@ export function AccountSettingsPage(): React.JSX.Element {
     }
 
     void loadAccountData();
-  }, []);
+  }, [t]);
 
   const handleLoggedOut = async () => {
     try {
@@ -90,7 +93,10 @@ export function AccountSettingsPage(): React.JSX.Element {
           </h2>
           <p className="text-xs text-danger-accent">
             {error ||
-              "An unexpected error occurred while loading account details."}
+              t(
+                "page.anUnexpectedErrorOccurredWhile",
+                "An unexpected error occurred while loading account details.",
+              )}
           </p>
           <button
             type="button"
@@ -105,14 +111,26 @@ export function AccountSettingsPage(): React.JSX.Element {
   }
 
   const tabs = [
-    { key: "profile" as TabKey, label: "Profile & Avatar", icon: User },
+    {
+      key: "profile" as TabKey,
+      label: t("page.profileAvatar", "Profile & Avatar"),
+      icon: User,
+    },
     {
       key: "preferences" as TabKey,
-      label: "Learning Preferences",
+      label: t("page.learningPreferences", "Learning Preferences"),
       icon: Sliders,
     },
-    { key: "security" as TabKey, label: "Security & Devices", icon: Lock },
-    { key: "privacy" as TabKey, label: "Data & Privacy", icon: FileText },
+    {
+      key: "security" as TabKey,
+      label: t("page.securityDevices", "Security & Devices"),
+      icon: Lock,
+    },
+    {
+      key: "privacy" as TabKey,
+      label: t("page.dataPrivacy", "Data & Privacy"),
+      icon: FileText,
+    },
   ];
 
   return (

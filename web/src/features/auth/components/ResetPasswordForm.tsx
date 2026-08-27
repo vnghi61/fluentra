@@ -64,7 +64,10 @@ export function ResetPasswordForm({
         setServerError(getErrorMessage(err.problem));
       } else {
         setServerError(
-          "Failed to reset password. Please check your connection.",
+          t(
+            "auth.failedToResetPasswordPlease",
+            "Failed to reset password. Please check your connection.",
+          ),
         );
       }
     }
@@ -171,7 +174,10 @@ export function ResetPasswordForm({
                 <FormControl>
                   <Input
                     type="password"
-                    placeholder="At least 12 characters"
+                    placeholder={t(
+                      "auth.atLeast12Characters",
+                      "At least 12 characters",
+                    )}
                     autoComplete="new-password"
                     {...field}
                   />

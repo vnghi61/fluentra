@@ -121,7 +121,12 @@ export function OtpVerificationScreen({
           );
         }
       } else {
-        setError("Failed to verify code. Please check your connection.");
+        setError(
+          t(
+            "auth.failedToVerifyCodePlease",
+            "Failed to verify code. Please check your connection.",
+          ),
+        );
       }
     } finally {
       setIsVerifying(false);
@@ -161,7 +166,12 @@ export function OtpVerificationScreen({
       if (err instanceof ApiError) {
         setError(getErrorMessage(err.problem));
       } else {
-        setError("Failed to resend code. Please try again.");
+        setError(
+          t(
+            "auth.failedToResendCodePlease",
+            "Failed to resend code. Please try again.",
+          ),
+        );
       }
     } finally {
       setIsResending(false);

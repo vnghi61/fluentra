@@ -71,7 +71,10 @@ export const AdminActionReasonModal: React.FC<AdminActionReasonModalProps> = ({
         setError(
           err instanceof Error
             ? err.message
-            : "Failed to perform administrative action.",
+            : t(
+                "admin.failedToPerformAdministrativeAction",
+                "Failed to perform administrative action.",
+              ),
         );
       }
     } finally {
@@ -134,7 +137,10 @@ export const AdminActionReasonModal: React.FC<AdminActionReasonModalProps> = ({
               id="action-reason"
               rows={3}
               {...register("reason")}
-              placeholder="State the justification for this administrative action..."
+              placeholder={t(
+                "admin.stateTheJustificationForThis",
+                "State the justification for this administrative action...",
+              )}
               className="w-full rounded-lg border border-border-subtle bg-surface-muted p-3 text-base md:text-sm text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary"
               aria-invalid={!!errors.reason}
             />

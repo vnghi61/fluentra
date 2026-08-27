@@ -3,7 +3,12 @@ import { FileQuestion } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 export interface ActivityUnavailableProps {
   /** The activity kind the runner was handed, when there was one. */
@@ -32,7 +37,10 @@ export const ActivityUnavailable: React.FC<ActivityUnavailableProps> = ({
     <Card className="max-w-2xl mx-auto w-full text-center p-6 border-dashed">
       <CardHeader>
         <div className="flex justify-center mb-2">
-          <FileQuestion className="h-10 w-10 text-text-muted" aria-hidden="true" />
+          <FileQuestion
+            className="h-10 w-10 text-text-muted"
+            aria-hidden="true"
+          />
         </div>
         <CardTitle>{t("runner.activityUnavailable")}</CardTitle>
         <CardDescription>

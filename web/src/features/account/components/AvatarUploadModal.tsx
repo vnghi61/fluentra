@@ -33,12 +33,19 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
     if (!file) return;
 
     if (!ALLOWED_TYPES.includes(file.type)) {
-      setError("Please select a JPEG, PNG, or WebP image.");
+      setError(
+        t(
+          "account.pleaseSelectAJpegPng",
+          "Please select a JPEG, PNG, or WebP image.",
+        ),
+      );
       return;
     }
 
     if (file.size > MAX_BYTES) {
-      setError("Image size exceeds the 5 MB limit.");
+      setError(
+        t("account.imageSizeExceedsThe5", "Image size exceeds the 5 MB limit."),
+      );
       return;
     }
 
@@ -73,7 +80,10 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
       setError(
         err instanceof Error
           ? err.message
-          : "Failed to upload avatar. Please try again.",
+          : t(
+              "account.failedToUploadAvatarPlease",
+              "Failed to upload avatar. Please try again.",
+            ),
       );
     } finally {
       setIsUploading(false);
@@ -128,7 +138,7 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
             <div className="relative h-36 w-36 overflow-hidden rounded-full border-4 border-primary/30 bg-surface-muted">
               <img
                 src={previewUrl}
-                alt="Avatar preview"
+                alt={t("account.avatarPreview", "Avatar preview")}
                 className="h-full w-full object-cover"
               />
             </div>
@@ -161,7 +171,9 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}
             >
-              {previewUrl ? "Choose different image" : "Browse computer"}
+              {previewUrl
+                ? t("account.chooseDifferentImage", "Choose different image")
+                : t("account.browseComputer", "Browse computer")}
             </Button>
             <p className="text-xs text-text-muted">
               JPEG, PNG, or WebP. Max size: 5 MB.
@@ -191,7 +203,7 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
                 {t("account.uploadingDirectly", "Uploading directly...")}
               </>
             ) : (
-              "Save Avatar"
+              t("account.saveAvatar", "Save Avatar")
             )}
           </Button>
         </div>

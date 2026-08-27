@@ -19,7 +19,8 @@ export const RunnerHeader: React.FC<RunnerHeaderProps> = ({
   onExit,
 }) => {
   const { t } = useTranslation();
-  const progressPercent = totalSteps > 0 ? Math.round((currentStep / totalSteps) * 100) : 0;
+  const progressPercent =
+    totalSteps > 0 ? Math.round((currentStep / totalSteps) * 100) : 0;
 
   return (
     <header className="border-b border-border bg-surface-card sticky top-0 z-30 px-4 py-3">

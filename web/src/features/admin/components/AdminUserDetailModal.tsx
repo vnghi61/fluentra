@@ -59,7 +59,12 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
       } catch (err: unknown) {
         if (isMounted) {
           setError(
-            err instanceof Error ? err.message : "Failed to load user details.",
+            err instanceof Error
+              ? err.message
+              : t(
+                  "admin.failedToLoadUserDetails",
+                  "Failed to load user details.",
+                ),
           );
           setIsLoading(false);
         }
@@ -70,7 +75,7 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [userId]);
+  }, [userId, t]);
 
   if (!userId) return null;
 
@@ -265,24 +270,33 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
           isOpen={true}
           title={
             actionType === "suspend"
-              ? "Suspend Account"
+              ? t("admin.suspendAccount", "Suspend Account")
               : actionType === "reinstate"
-                ? "Reinstate Account"
-                : "Revoke Active Sessions"
+                ? t("admin.reinstateAccount", "Reinstate Account")
+                : t("admin.revokeActiveSessions", "Revoke Active Sessions")
           }
           description={
             actionType === "suspend"
-              ? "Suspending will immediately block login and terminate all active sessions."
+              ? t(
+                  "admin.suspendingWillImmediatelyBlockLogin",
+                  "Suspending will immediately block login and terminate all active sessions.",
+                )
               : actionType === "reinstate"
-                ? "Reinstating restores full account access. Active sessions are not restored."
-                : "Signs the user out of all active devices without changing account status."
+                ? t(
+                    "admin.reinstatingRestoresFullAccountAccess",
+                    "Reinstating restores full account access. Active sessions are not restored.",
+                  )
+                : t(
+                    "admin.signsTheUserOutOf",
+                    "Signs the user out of all active devices without changing account status.",
+                  )
           }
           actionButtonLabel={
             actionType === "suspend"
-              ? "Confirm Suspension"
+              ? t("admin.confirmSuspension", "Confirm Suspension")
               : actionType === "reinstate"
-                ? "Confirm Reinstatement"
-                : "Revoke All Sessions"
+                ? t("admin.confirmReinstatement", "Confirm Reinstatement")
+                : t("admin.revokeAllSessions", "Revoke All Sessions")
           }
           variant={actionType === "suspend" ? "destructive" : "primary"}
           onClose={() => setActionType(null)}

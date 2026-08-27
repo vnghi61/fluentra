@@ -33,7 +33,9 @@ export const ReviewSummary: React.FC<ReviewSummaryProps> = ({
   const successfulReviews = gradeCounts.good + gradeCounts.easy;
   // Nothing reviewed is not perfect retention.
   const retentionRate =
-    totalReviewed > 0 ? Math.round((successfulReviews / totalReviewed) * 100) : 0;
+    totalReviewed > 0
+      ? Math.round((successfulReviews / totalReviewed) * 100)
+      : 0;
 
   return (
     <div className="max-w-md mx-auto py-12 px-4 animate-in fade-in">
@@ -60,14 +62,18 @@ export const ReviewSummary: React.FC<ReviewSummaryProps> = ({
               <span className="text-xs text-text-muted font-medium">
                 {t("review.cardsReviewed", "Cards Reviewed")}
               </span>
-              <p className="text-2xl font-extrabold text-text">{totalReviewed}</p>
+              <p className="text-2xl font-extrabold text-text">
+                {totalReviewed}
+              </p>
             </div>
 
             <div className="p-4 rounded-xl border border-border bg-surface-muted/50 text-center space-y-1">
               <span className="text-xs text-text-muted font-medium">
                 {t("review.retentionRate", "Retention Rate")}
               </span>
-              <p className="text-2xl font-extrabold text-text">{retentionRate}%</p>
+              <p className="text-2xl font-extrabold text-text">
+                {retentionRate}%
+              </p>
             </div>
           </div>
         </CardContent>

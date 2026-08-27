@@ -1,6 +1,12 @@
 import React from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, BookOpen, CheckCircle2, Clock, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  BookOpen,
+  CheckCircle2,
+  Clock,
+  Sparkles,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Badge } from "@/components/ui/badge";
@@ -86,14 +92,14 @@ export const ContinueLearningCard: React.FC<ContinueLearningCardProps> = ({
             {next_activity.title}
           </CardTitle>
           <CardDescription className="line-clamp-2">
-            {t("dashboard.continue.resumePrompt", "Pick up right where you left off in your study plan.")}
+            {t(
+              "dashboard.continue.resumePrompt",
+              "Pick up right where you left off in your study plan.",
+            )}
           </CardDescription>
         </CardHeader>
         <CardFooter>
-          <Link
-            to="/learn"
-            className="w-full sm:w-auto"
-          >
+          <Link to="/learn" className="w-full sm:w-auto">
             <Button className="w-full sm:w-auto gap-2 text-sm font-semibold">
               {t("dashboard.continue.continueBtn", "Continue Lesson")}
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -115,7 +121,10 @@ export const ContinueLearningCard: React.FC<ContinueLearningCardProps> = ({
           </span>
         </div>
         <CardTitle className="text-xl font-bold">
-          {t("dashboard.continue.notStartedTitle", "Start Your English Journey")}
+          {t(
+            "dashboard.continue.notStartedTitle",
+            "Start Your English Journey",
+          )}
         </CardTitle>
         <CardDescription>
           {t(

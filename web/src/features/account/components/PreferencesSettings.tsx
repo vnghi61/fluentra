@@ -111,14 +111,22 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
       });
       setStatusMessage({
         type: "success",
-        text: "Preferences updated successfully.",
+        text: t(
+          "account.preferencesUpdatedSuccessfully",
+          "Preferences updated successfully.",
+        ),
       });
       onPreferencesUpdated?.(updated);
     } catch (err: unknown) {
       setStatusMessage({
         type: "error",
         text:
-          err instanceof Error ? err.message : "Failed to update preferences.",
+          err instanceof Error
+            ? err.message
+            : t(
+                "account.failedToUpdatePreferences",
+                "Failed to update preferences.",
+              ),
       });
     } finally {
       setIsSaving(false);
@@ -256,9 +264,27 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
                 render={({ field }) => (
                   <>
                     {[
-                      { id: "in_app", label: "In-App Notifications" },
-                      { id: "email", label: "Email Summaries & Reminders" },
-                      { id: "push", label: "Push Notifications" },
+                      {
+                        id: "in_app",
+                        label: t(
+                          "account.inAppNotifications",
+                          "In-App Notifications",
+                        ),
+                      },
+                      {
+                        id: "email",
+                        label: t(
+                          "account.emailSummariesReminders",
+                          "Email Summaries & Reminders",
+                        ),
+                      },
+                      {
+                        id: "push",
+                        label: t(
+                          "account.pushNotifications",
+                          "Push Notifications",
+                        ),
+                      },
                     ].map((channel) => (
                       <label
                         key={channel.id}
@@ -380,7 +406,7 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
                 {t("account.saving", "Saving...")}
               </>
             ) : (
-              "Save Preferences"
+              t("account.savePreferences", "Save Preferences")
             )}
           </Button>
         </div>

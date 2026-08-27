@@ -65,7 +65,10 @@ export function RegisterForm({
         setServerError(getErrorMessage(err.problem));
       } else {
         setServerError(
-          "Failed to create account. Please check your connection and try again.",
+          t(
+            "auth.failedToCreateAccountPlease",
+            "Failed to create account. Please check your connection and try again.",
+          ),
         );
       }
     }
@@ -139,7 +142,10 @@ export function RegisterForm({
                 <FormControl>
                   <Input
                     type="text"
-                    placeholder="Your name or nickname"
+                    placeholder={t(
+                      "auth.yourNameOrNickname",
+                      "Your name or nickname",
+                    )}
                     autoComplete="name"
                     {...field}
                   />
@@ -160,7 +166,10 @@ export function RegisterForm({
                 <FormControl>
                   <Input
                     type="password"
-                    placeholder="At least 12 characters"
+                    placeholder={t(
+                      "auth.atLeast12Characters",
+                      "At least 12 characters",
+                    )}
                     autoComplete="new-password"
                     {...field}
                   />

@@ -74,7 +74,12 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
       onClose();
     } catch (err: unknown) {
       setError(
-        err instanceof Error ? err.message : "Failed to create feature flag.",
+        err instanceof Error
+          ? err.message
+          : t(
+              "admin.failedToCreateFeatureFlag",
+              "Failed to create feature flag.",
+            ),
       );
     } finally {
       setIsSubmitting(false);
@@ -249,7 +254,7 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
                   {t("admin.creating", "Creating...")}
                 </>
               ) : (
-                "Save Feature Flag"
+                t("admin.saveFeatureFlag", "Save Feature Flag")
               )}
             </Button>
           </div>

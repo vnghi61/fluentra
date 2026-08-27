@@ -65,8 +65,13 @@ export const SkillProgressCard: React.FC<SkillProgressCardProps> = ({
                 <div key={item.skill} className="space-y-1.5">
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-text">{skillLabel}</span>
-                      <Badge variant="secondary" className="font-mono text-xs px-1.5 py-0">
+                      <span className="font-medium text-text">
+                        {skillLabel}
+                      </span>
+                      <Badge
+                        variant="secondary"
+                        className="font-mono text-xs px-1.5 py-0"
+                      >
                         {item.level}
                       </Badge>
                     </div>

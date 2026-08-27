@@ -67,7 +67,9 @@ export const CompletionScreen: React.FC<CompletionScreenProps> = ({
               <span className="text-xs text-text-muted font-medium">
                 {t("runner.timeSpentLabel", "Time Spent")}
               </span>
-              <p className="text-2xl font-extrabold text-text">{formattedTime}</p>
+              <p className="text-2xl font-extrabold text-text">
+                {formattedTime}
+              </p>
             </div>
           </div>
         </CardContent>

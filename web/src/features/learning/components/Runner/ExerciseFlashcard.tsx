@@ -69,7 +69,7 @@ export const ExerciseFlashcard: React.FC<ExerciseFlashcardProps> = ({
       <div
         role="button"
         tabIndex={0}
-        aria-label="Flashcard"
+        aria-label={t("runner.flashcard", "Flashcard")}
         onClick={() => setIsFlipped((prev) => !prev)}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {

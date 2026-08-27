@@ -41,7 +41,10 @@ export const GoogleAccountLink: React.FC = () => {
           setError(
             err instanceof Error
               ? err.message
-              : "Could not read your Google link.",
+              : t(
+                  "account.couldNotReadYourGoogle",
+                  "Could not read your Google link.",
+                ),
           );
         }
       }
@@ -50,7 +53,7 @@ export const GoogleAccountLink: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [t]);
 
   const linked = status?.linked ?? false;
   const canUnlink = status?.can_unlink ?? false;
@@ -67,7 +70,10 @@ export const GoogleAccountLink: React.FC = () => {
       setError(
         err instanceof Error
           ? err.message
-          : "Failed to start Google linking flow.",
+          : t(
+              "account.failedToStartGoogleLinking",
+              "Failed to start Google linking flow.",
+            ),
       );
       setIsLoading(false);
     }
@@ -89,7 +95,12 @@ export const GoogleAccountLink: React.FC = () => {
     try {
       await accountApi.unlinkGoogle();
       await refresh();
-      setSuccess("Google account unlinked successfully.");
+      setSuccess(
+        t(
+          "account.googleAccountUnlinkedSuccessfully",
+          "Google account unlinked successfully.",
+        ),
+      );
     } catch (err: unknown) {
       if (
         err instanceof ApiError &&
@@ -102,7 +113,10 @@ export const GoogleAccountLink: React.FC = () => {
         setError(
           err instanceof Error
             ? err.message
-            : "Failed to unlink Google account.",
+            : t(
+                "account.failedToUnlinkGoogleAccount",
+                "Failed to unlink Google account.",
+              ),
         );
       }
     } finally {
@@ -169,8 +183,8 @@ export const GoogleAccountLink: React.FC = () => {
               {linked
                 ? status?.linked_at
                   ? `Connected since ${new Date(status.linked_at).toLocaleDateString()}`
-                  : "Connected"
-                : "Not connected"}
+                  : t("account.connected", "Connected")
+                : t("account.notConnected", "Not connected")}
             </p>
           </div>
         </div>
@@ -187,7 +201,10 @@ export const GoogleAccountLink: React.FC = () => {
             title={
               canUnlink
                 ? undefined
-                : "Google is your only sign-in method. Set a password before unlinking."
+                : t(
+                    "account.googleIsYourOnlySign",
+                    "Google is your only sign-in method. Set a password before unlinking.",
+                  )
             }
           >
             {isLoading ? (
@@ -212,7 +229,7 @@ export const GoogleAccountLink: React.FC = () => {
             {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              "Connect Google"
+              t("account.connectGoogle", "Connect Google")
             )}
           </Button>
         )}

@@ -114,7 +114,10 @@ export function GoogleButton({
       const errorMessage =
         err instanceof Error
           ? err.message
-          : "Unable to initiate Google sign-in";
+          : t(
+              "auth.unableToInitiateGoogleSign",
+              "Unable to initiate Google sign-in",
+            );
       onError?.(errorMessage);
     }
   };

@@ -117,7 +117,7 @@ export function LearnPage(): React.JSX.Element {
     return (
       <LearnError
         onRetry={() => void refetchCourses()}
-        error={new Error("Course syllabus could not be found.")}
+        error={new Error(t("page.courseSyllabusCouldNotBe", "Course syllabus could not be found."))}
       />
     );
   }

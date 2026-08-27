@@ -62,11 +62,11 @@ function RouteLoadingSpinner(): React.JSX.Element {
   return (
     <div
       role="status"
-      aria-label="Loading"
+      aria-label={i18n.t("app.loading", "Loading")}
       className="flex items-center justify-center p-8 min-h-[200px]"
     >
       <div className="h-8 w-8 animate-spin rounded-full border-4 border-border-subtle border-t-primary" />
-      <span className="sr-only">{i18n.t("app.loading", "Loading...")}</span>
+      <span className="sr-only">{i18n.t("app.loading", "Loading")}</span>
     </div>
   );
 }

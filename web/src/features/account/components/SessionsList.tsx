@@ -36,7 +36,10 @@ export const SessionsList: React.FC<SessionsListProps> = ({ onLoggedOut }) => {
           setError(
             err instanceof Error
               ? err.message
-              : "Failed to load active sessions.",
+              : t(
+                  "account.failedToLoadActiveSessions",
+                  "Failed to load active sessions.",
+                ),
           );
           setIsLoading(false);
         }
@@ -47,7 +50,7 @@ export const SessionsList: React.FC<SessionsListProps> = ({ onLoggedOut }) => {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [t]);
 
   const handleRevoke = async (session: SessionSummary) => {
     if (
@@ -71,7 +74,9 @@ export const SessionsList: React.FC<SessionsListProps> = ({ onLoggedOut }) => {
       }
     } catch (err: unknown) {
       setError(
-        err instanceof Error ? err.message : "Failed to revoke session.",
+        err instanceof Error
+          ? err.message
+          : t("account.failedToRevokeSession", "Failed to revoke session."),
       );
     } finally {
       setRevokingId(null);
@@ -130,7 +135,8 @@ export const SessionsList: React.FC<SessionsListProps> = ({ onLoggedOut }) => {
                   <div>
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium text-text">
-                        {session.device_label || "Unknown Device"}
+                        {session.device_label ||
+                          t("account.unknownDevice", "Unknown Device")}
                       </p>
                       {session.current && (
                         <span className="rounded-full bg-success/10 px-2 py-0.5 text-xs font-semibold text-success-accent border border-success/20">

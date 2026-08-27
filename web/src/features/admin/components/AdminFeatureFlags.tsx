@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useCallback, useEffect, useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
   createColumnHelper,
@@ -31,7 +31,7 @@ export const AdminFeatureFlags: React.FC = () => {
   const [updatingKey, setUpdatingKey] = useState<string | null>(null);
   const [deletingKey, setDeletingKey] = useState<string | null>(null);
 
-  const fetchFlags = async () => {
+  const fetchFlags = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -39,84 +39,108 @@ export const AdminFeatureFlags: React.FC = () => {
       setFlags(res.items);
     } catch (err: unknown) {
       setError(
-        err instanceof Error ? err.message : "Failed to load feature flags.",
+        err instanceof Error
+          ? err.message
+          : t(
+              "admin.failedToLoadFeatureFlags",
+              "Failed to load feature flags.",
+            ),
       );
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
     void fetchFlags();
-  }, []);
+  }, [fetchFlags]);
 
-  const handleToggleEnabled = async (
-    flag: FeatureFlag,
-    newEnabled: boolean,
-  ) => {
-    setUpdatingKey(flag.key);
-    try {
-      const updated = await adminApi.updateFlag(flag.key, {
-        enabled: newEnabled,
-        expires_on: flag.expires_on,
-        rollout_percent: flag.rollout_percent,
-        description: flag.description,
-      });
-      setFlags((prev) => prev.map((f) => (f.key === flag.key ? updated : f)));
-    } catch (err: unknown) {
-      setError(
-        err instanceof Error ? err.message : "Failed to update feature flag.",
-      );
-    } finally {
-      setUpdatingKey(null);
-    }
-  };
+  const handleToggleEnabled = useCallback(
+    async (flag: FeatureFlag, newEnabled: boolean) => {
+      setUpdatingKey(flag.key);
+      try {
+        const updated = await adminApi.updateFlag(flag.key, {
+          enabled: newEnabled,
+          expires_on: flag.expires_on,
+          rollout_percent: flag.rollout_percent,
+          description: flag.description,
+        });
+        setFlags((prev) => prev.map((f) => (f.key === flag.key ? updated : f)));
+      } catch (err: unknown) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : t(
+                "admin.failedToUpdateFeatureFlag",
+                "Failed to update feature flag.",
+              ),
+        );
+      } finally {
+        setUpdatingKey(null);
+      }
+    },
+    [t],
+  );
 
-  const handleUpdateRollout = async (flag: FeatureFlag, percent: number) => {
-    setUpdatingKey(flag.key);
-    try {
-      const updated = await adminApi.updateFlag(flag.key, {
-        rollout_percent: percent,
-        expires_on: flag.expires_on,
-        enabled: flag.enabled,
-        description: flag.description,
-      });
-      setFlags((prev) => prev.map((f) => (f.key === flag.key ? updated : f)));
-    } catch (err: unknown) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to update rollout percentage.",
-      );
-    } finally {
-      setUpdatingKey(null);
-    }
-  };
+  const handleUpdateRollout = useCallback(
+    async (flag: FeatureFlag, percent: number) => {
+      setUpdatingKey(flag.key);
+      try {
+        const updated = await adminApi.updateFlag(flag.key, {
+          rollout_percent: percent,
+          expires_on: flag.expires_on,
+          enabled: flag.enabled,
+          description: flag.description,
+        });
+        setFlags((prev) => prev.map((f) => (f.key === flag.key ? updated : f)));
+      } catch (err: unknown) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : t(
+                "admin.failedToUpdateRolloutPercentage",
+                "Failed to update rollout percentage.",
+              ),
+        );
+      } finally {
+        setUpdatingKey(null);
+      }
+    },
+    [t],
+  );
 
-  const handleDelete = async (key: string) => {
-    if (
-      !confirm(`Are you sure you want to permanently delete flag "${key}"?`)
-    ) {
-      return;
-    }
+  const handleDelete = useCallback(
+    async (key: string) => {
+      if (
+        !confirm(`Are you sure you want to permanently delete flag "${key}"?`)
+      ) {
+        return;
+      }
 
-    setDeletingKey(key);
-    try {
-      await adminApi.deleteFlag(key);
-      setFlags((prev) => prev.filter((f) => f.key !== key));
-    } catch (err: unknown) {
-      setError(
-        err instanceof Error ? err.message : "Failed to delete feature flag.",
-      );
-    } finally {
-      setDeletingKey(null);
-    }
-  };
+      setDeletingKey(key);
+      try {
+        await adminApi.deleteFlag(key);
+        setFlags((prev) => prev.filter((f) => f.key !== key));
+      } catch (err: unknown) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : t(
+                "admin.failedToDeleteFeatureFlag",
+                "Failed to delete feature flag.",
+              ),
+        );
+      } finally {
+        setDeletingKey(null);
+      }
+    },
+    [t],
+  );
 
   const columns = useMemo(
     () => [
       columnHelper.accessor("key", {
-        header: "Flag Key & Description",
+        header: t("admin.flagKeyDescription", "Flag Key & Description"),
         cell: (info) => {
           const flag = info.row.original;
           return (
@@ -148,14 +172,16 @@ export const AdminFeatureFlags: React.FC = () => {
                   flag.enabled ? "text-success-accent" : "text-text-muted"
                 }`}
               >
-                {flag.enabled ? "Enabled" : "Disabled"}
+                {flag.enabled
+                  ? t("admin.enabled", "Enabled")
+                  : t("admin.disabled", "Disabled")}
               </span>
             </div>
           );
         },
       }),
       columnHelper.accessor("rollout_percent", {
-        header: "Rollout",
+        header: t("admin.rollout", "Rollout"),
         cell: (info) => {
           const flag = info.row.original;
           return (
@@ -189,7 +215,7 @@ export const AdminFeatureFlags: React.FC = () => {
         ),
       }),
       columnHelper.accessor("expires_on", {
-        header: "Expires On",
+        header: t("admin.expiresOn", "Expires On"),
         cell: (info) => {
           const expiresDate = new Date(info.getValue());
           const isPast = expiresDate.getTime() < Date.now();
@@ -208,7 +234,7 @@ export const AdminFeatureFlags: React.FC = () => {
       }),
       columnHelper.display({
         id: "actions",
-        header: "Actions",
+        header: t("admin.actions", "Actions"),
         cell: (info) => {
           const flag = info.row.original;
           return (
@@ -231,7 +257,14 @@ export const AdminFeatureFlags: React.FC = () => {
         },
       }),
     ],
-    [updatingKey, deletingKey, t],
+    [
+      updatingKey,
+      deletingKey,
+      t,
+      handleToggleEnabled,
+      handleUpdateRollout,
+      handleDelete,
+    ],
   );
 
   const table = useReactTable({

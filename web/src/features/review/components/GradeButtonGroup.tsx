@@ -94,7 +94,7 @@ export const GradeButtonGroup: React.FC<GradeButtonGroupProps> = ({
   return (
     <div
       role="group"
-      aria-label="SRS recall grading"
+      aria-label={t("review.srsRecallGrading", "SRS recall grading")}
       className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 w-full max-w-2xl mx-auto pt-2"
     >
       {grades.map(({ grade, labelKey, subKey, digit, colorClass }) => (
@@ -110,7 +110,9 @@ export const GradeButtonGroup: React.FC<GradeButtonGroupProps> = ({
         >
           <div className="flex items-center gap-1.5 font-bold text-sm sm:text-base">
             <span className="text-xs opacity-75 font-mono">[{digit}]</span>
-            <span>{t(labelKey, grade.charAt(0).toUpperCase() + grade.slice(1))}</span>
+            <span>
+              {t(labelKey, grade.charAt(0).toUpperCase() + grade.slice(1))}
+            </span>
           </div>
           <span className="text-[11px] text-text-muted font-medium mt-0.5">
             {t(subKey, "")}

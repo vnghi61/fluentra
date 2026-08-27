@@ -50,7 +50,12 @@ export function ForgotPasswordForm({
       if (err instanceof ApiError) {
         setServerError(getErrorMessage(err.problem));
       } else {
-        setServerError("Failed to request reset. Please try again.");
+        setServerError(
+          t(
+            "auth.failedToRequestResetPlease",
+            "Failed to request reset. Please try again.",
+          ),
+        );
       }
     }
   };

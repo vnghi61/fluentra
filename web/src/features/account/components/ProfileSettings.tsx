@@ -86,13 +86,19 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
       });
       setStatusMessage({
         type: "success",
-        text: "Profile updated successfully.",
+        text: t(
+          "account.profileUpdatedSuccessfully",
+          "Profile updated successfully.",
+        ),
       });
       onProfileUpdated?.(updated);
     } catch (err: unknown) {
       setStatusMessage({
         type: "error",
-        text: err instanceof Error ? err.message : "Failed to update profile.",
+        text:
+          err instanceof Error
+            ? err.message
+            : t("account.failedToUpdateProfile", "Failed to update profile."),
       });
     } finally {
       setIsSaving(false);
@@ -108,7 +114,13 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
       },
     };
     setProfile(updated);
-    setStatusMessage({ type: "success", text: "Avatar updated successfully." });
+    setStatusMessage({
+      type: "success",
+      text: t(
+        "account.avatarUpdatedSuccessfully",
+        "Avatar updated successfully.",
+      ),
+    });
     onProfileUpdated?.(updated);
   };
 
@@ -134,7 +146,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
             type="button"
             onClick={() => setIsAvatarModalOpen(true)}
             className="absolute inset-0 flex items-center justify-center rounded-full bg-overlay/60 opacity-0 group-hover:opacity-100 transition-opacity text-white"
-            title="Change avatar"
+            title={t("account.changeAvatar", "Change avatar")}
           >
             <Camera className="h-6 w-6" />
           </button>
@@ -216,7 +228,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
             <Input
               id="display_name"
               {...register("display_name")}
-              placeholder="Your name"
+              placeholder={t("account.yourName", "Your name")}
               aria-invalid={!!errors.display_name}
             />
             {errors.display_name && (
@@ -291,7 +303,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
                 {t("account.saving", "Saving...")}
               </>
             ) : (
-              "Save Changes"
+              t("account.saveChanges", "Save Changes")
             )}
           </Button>
         </div>

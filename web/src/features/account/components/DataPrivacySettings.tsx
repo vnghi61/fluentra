@@ -54,13 +54,21 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
       setExportState(res);
       setStatusMessage({
         type: "success",
-        text: "Data export requested. We will prepare your ZIP archive and send a secure link to your email.",
+        text: t(
+          "account.dataExportRequestedWeWill",
+          "Data export requested. We will prepare your ZIP archive and send a secure link to your email.",
+        ),
       });
     } catch (err: unknown) {
       setStatusMessage({
         type: "error",
         text:
-          err instanceof Error ? err.message : "Failed to request data export.",
+          err instanceof Error
+            ? err.message
+            : t(
+                "account.failedToRequestDataExport",
+                "Failed to request data export.",
+              ),
       });
     } finally {
       setIsExporting(false);
@@ -84,7 +92,10 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
       setConfirmInput("");
       setStatusMessage({
         type: "success",
-        text: "Account deletion requested. Your 30-day grace period has begun.",
+        text: t(
+          "account.accountDeletionRequestedYour30",
+          "Account deletion requested. Your 30-day grace period has begun.",
+        ),
       });
     } catch (err: unknown) {
       setStatusMessage({
@@ -92,7 +103,10 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
         text:
           err instanceof Error
             ? err.message
-            : "Failed to request account deletion.",
+            : t(
+                "account.failedToRequestAccountDeletion",
+                "Failed to request account deletion.",
+              ),
       });
     } finally {
       setIsDeleting(false);
@@ -114,12 +128,18 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
       onProfileUpdated?.(updatedProfile);
       setStatusMessage({
         type: "success",
-        text: "Account deletion cancelled. Your account is fully restored to active status.",
+        text: t(
+          "account.accountDeletionCancelledYourAccount",
+          "Account deletion cancelled. Your account is fully restored to active status.",
+        ),
       });
     } catch (err: unknown) {
       setStatusMessage({
         type: "error",
-        text: err instanceof Error ? err.message : "Failed to cancel deletion.",
+        text:
+          err instanceof Error
+            ? err.message
+            : t("account.failedToCancelDeletion", "Failed to cancel deletion."),
       });
     } finally {
       setIsCancelling(false);
@@ -175,7 +195,10 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
             <p className="text-xs text-text-muted">
               {exportState
                 ? `Export status: ${exportState.status}`
-                : "Includes account details, preferences, study logs, and exercise records"}
+                : t(
+                    "account.includesAccountDetailsPreferencesStudy",
+                    "Includes account details, preferences, study logs, and exercise records",
+                  )}
             </p>
           </div>
 
@@ -376,7 +399,10 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
                     {t("account.schedulingDeletion", "Scheduling Deletion...")}
                   </>
                 ) : (
-                  "Confirm Deletion Request"
+                  t(
+                    "account.confirmDeletionRequest",
+                    "Confirm Deletion Request",
+                  )
                 )}
               </Button>
             </div>

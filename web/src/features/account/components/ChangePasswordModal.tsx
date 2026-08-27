@@ -60,7 +60,10 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
       setError(
         err instanceof Error
           ? err.message
-          : "Failed to change password. Please check your current password.",
+          : t(
+              "account.failedToChangePasswordPlease",
+              "Failed to change password. Please check your current password.",
+            ),
       );
     } finally {
       setIsSubmitting(false);
@@ -184,7 +187,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
                   {t("account.updating", "Updating...")}
                 </>
               ) : (
-                "Update Password"
+                t("account.updatePassword", "Update Password")
               )}
             </Button>
           </div>
