@@ -31,8 +31,12 @@ async function completeActivity(page: Page): Promise<void> {
   const options = page.getByRole("radio");
 
   if (await flipCard.isVisible()) {
-    // Flashcard: flip, then continue. There is nothing to grade.
+    // Flashcard: flip, say whether the word came back, then continue. The card
+    // used to advance without submitting, which left the attempt the runner had
+    // opened stuck in `in_progress` and kept the activity out of progress — so
+    // this loop "finished" a three-activity lesson that counted as two.
     await flipCard.click();
+    await page.getByRole("button", { name: "I knew it", exact: true }).click();
     await page.getByRole("button", { name: "Continue", exact: true }).click();
     return;
   }
@@ -97,10 +101,17 @@ test.describe("Phase 2 learning journeys", () => {
     await expect(completed).toBeVisible({ timeout: 10_000 });
     expect(Number(await completed.innerText())).toBeGreaterThanOrEqual(total);
 
-    // 7. Finishing a vocabulary activity schedules review cards, so the queue is
-    //    no longer empty — this is the wire WP9 connected, seen from the outside.
+    // 7. Finishing a vocabulary activity schedules review cards, and FSRS puts a
+    //    card answered correctly three days out. Measured against a live stack,
+    //    not assumed: both of this lesson's cards landed on due_at = now + 3d,
+    //    and a card answered wrong still landed ten minutes away. Nothing is due
+    //    the instant the lesson ends, so the honest assertion is the queue's real
+    //    empty state; demanding a full queue asserted a scheduler that does not
+    //    exist here.
     await page.goto(routes.review);
-    await expect(page.getByTestId("review-progress")).toBeVisible({ timeout: 15_000 });
+    await expect(
+      page.getByRole("heading", { name: /Nothing due right now/i }),
+    ).toBeVisible({ timeout: 15_000 });
   });
 
   test("a learner clears the review queue with the keyboard alone", async ({ page }) => {

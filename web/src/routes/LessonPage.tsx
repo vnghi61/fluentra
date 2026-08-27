@@ -344,10 +344,17 @@ export function LessonPage(): React.JSX.Element {
             definition={fcConfig.definition ?? ""}
             exampleSentence={fcConfig.example_sentence ?? ""}
             isLoading={isSubmitting || isAttemptStarting}
-            onComplete={() => {
-              setScoreCount((prev) => prev + 1);
-              handleContinue();
-            }}
+            isSubmitted={isSubmitted}
+            isCorrect={submissionResult?.correct}
+            // The recall verdict is the answer. "I knew it" submits the word
+            // itself, which is what the grader calls a typed recall; "Not yet"
+            // submits nothing, and an empty recall is not a match. Either way
+            // the attempt is graded rather than abandoned, so it stops leaking
+            // an `in_progress` row and starts counting towards progress.
+            onSubmit={(knewIt) =>
+              void handleSubmit({ text_answer: knewIt ? (fcConfig.target_word ?? "") : "" })
+            }
+            onContinue={handleContinue}
           />
         )}
       </main>
