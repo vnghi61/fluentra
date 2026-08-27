@@ -30,6 +30,12 @@ export interface AppShellProps {
    * reach. The composition root decides; this component only obeys.
    */
   chrome?: boolean;
+  /**
+   * The theme and language switchers, passed in rather than built here: they
+   * read and write the learner's preferences, and a component may not reach
+   * into a store or a feature.
+   */
+  controls?: React.ReactNode;
 }
 
 /**
@@ -84,6 +90,7 @@ export const AppShell: React.FC<AppShellProps> = ({
   status = "idle",
   onLogout,
   chrome = true,
+  controls,
 }) => {
   const { t } = useTranslation();
   const signedIn = status === "authenticated";
@@ -127,6 +134,16 @@ export const AppShell: React.FC<AppShellProps> = ({
   if (!chrome) {
     return (
       <div className="min-h-screen bg-surface-muted text-text flex flex-col">
+        {/*
+          Theme and language, and nothing else. Removing the shell from the auth
+          pages also removed the only way a Vietnamese learner could switch the
+          interface to Vietnamese before signing in. These two controls are not
+          navigation, so they can come back without bringing the sidebar with
+          them.
+        */}
+        {controls ? (
+          <div className="flex justify-end p-3">{controls}</div>
+        ) : null}
         <main className="flex-1 flex flex-col justify-center p-4 w-full">
           {children}
         </main>
@@ -215,7 +232,10 @@ export const AppShell: React.FC<AppShellProps> = ({
             </span>
           </Link>
           <div className="hidden md:block" />
-          {account}
+          <div className="flex items-center gap-1">
+            {controls}
+            {account}
+          </div>
         </header>
 
         <main className="flex-1 p-4 pb-20 md:pb-4 max-w-7xl mx-auto w-full">

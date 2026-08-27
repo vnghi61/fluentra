@@ -1,3 +1,4 @@
+import React from "react";
 import {
   createRootRoute,
   createRoute,
@@ -11,6 +12,16 @@ import {
 } from "@tanstack/react-router";
 
 import { AppShell } from "@/components/layout/AppShell";
+import { usePreferencesSync } from "@/features/account/hooks/usePreferencesSync";
+
+/**
+ * Lazy for the same reason AccountMenu is: both are built on Radix, so together
+ * they keep its ~30 kB out of the entry chunk instead of each paying for it.
+ */
+const ThemeLanguageControls = React.lazy(async () => ({
+  default: (await import("@/features/account/components/ThemeLanguageControls"))
+    .ThemeLanguageControls,
+}));
 
 /**
  * The routes that stand on their own, with no app frame around them.
@@ -111,6 +122,8 @@ function RootApp(): React.JSX.Element {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
+  const { themeChoice, locale, setThemeChoice, setLocaleChoice } =
+    usePreferencesSync(status === "authenticated");
 
   const handleLogout = async () => {
     await authApi.logout();
@@ -123,6 +136,18 @@ function RootApp(): React.JSX.Element {
       status={status}
       onLogout={() => void handleLogout()}
       chrome={!isBareRoute(pathname)}
+      controls={
+        <React.Suspense
+          fallback={<div className="h-11 w-24" aria-hidden="true" />}
+        >
+          <ThemeLanguageControls
+            themeChoice={themeChoice}
+            locale={locale}
+            onThemeChoice={setThemeChoice}
+            onLocale={setLocaleChoice}
+          />
+        </React.Suspense>
+      }
     >
       <Outlet />
     </AppShell>

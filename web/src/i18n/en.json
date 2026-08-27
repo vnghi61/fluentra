@@ -1,36 +1,12 @@
 {
-  "app": {
-    "name": "Fluentra",
-    "tagline": "Learn English that stays learned"
-  },
-  "nav": {
-    "account": "Account",
-    "admin": "Admin",
-    "createAccount": "Create account",
-    "dashboard": "Dashboard",
-    "home": "Home",
-    "learn": "Learn",
-    "logout": "Logout",
-    "practice": "Practice",
-    "progress": "Progress",
-    "settings": "Settings",
-    "signIn": "Sign in",
-    "signOut": "Sign out"
-  },
-  "status": {
-    "checking": "Checking the API…",
-    "ok": "API reachable",
-    "failed": "API unreachable"
-  },
   "action": {
     "ping": "Ping the API",
     "retry": "Try again",
     "toggleTheme": "Toggle theme"
   },
-  "error": {
-    "title": "Something broke",
-    "body": "This screen failed to render. The error has been reported.",
-    "reload": "Reload"
+  "app": {
+    "name": "Fluentra",
+    "tagline": "Learn English that stays learned"
   },
   "dashboard": {
     "welcome": "Welcome to Fluentra",
@@ -77,6 +53,14 @@
       "desc": "We encountered an issue fetching your learning data. Please try again."
     }
   },
+  "error": {
+    "title": "Something broke",
+    "body": "This screen failed to render. The error has been reported.",
+    "reload": "Reload"
+  },
+  "language": {
+    "label": "Language"
+  },
   "learn": {
     "courseBadge": "Course Syllabus",
     "syllabusProgress": "{{completed}} of {{total}} lessons completed",
@@ -95,6 +79,65 @@
     "lockedBtn": "Locked",
     "startBtn": "Start Lesson",
     "reviewBtn": "Review"
+  },
+  "nav": {
+    "account": "Account",
+    "admin": "Admin",
+    "createAccount": "Create account",
+    "dashboard": "Dashboard",
+    "home": "Home",
+    "learn": "Learn",
+    "logout": "Logout",
+    "practice": "Practice",
+    "progress": "Progress",
+    "settings": "Settings",
+    "signIn": "Sign in",
+    "signOut": "Sign out"
+  },
+  "progress": {
+    "activitiesDone": "Activities Completed",
+    "coursesDesc": "Track your completion percentage across active and finished courses.",
+    "coursesTitle": "Enrolled Courses",
+    "hours": "hours",
+    "mins": "mins",
+    "noCourses": "No course progress recorded yet.",
+    "notStarted": "Not started yet",
+    "skillsTitle": "Skill Mastery (CEFR)",
+    "tagline": "Track your study time, skill competencies, and course completion.",
+    "title": "Learning Progress",
+    "totalTime": "Total Study Time",
+    "wordsMastered": "Words Mastered"
+  },
+  "review": {
+    "again": "Again",
+    "againSub": "1d",
+    "audioFailed": "Audio unavailable",
+    "backToDashboardBtn": "Back to Dashboard",
+    "cardsReviewed": "Cards Reviewed",
+    "contentUnavailable": "This card has no content yet",
+    "contentUnavailableDesc": "The material behind this card could not be loaded, so there is nothing to show. You can still grade it — the schedule is real.",
+    "easy": "Easy",
+    "easySub": "14d",
+    "emptyDesc": "Your review queue is clear. New cards appear as you finish lessons.",
+    "emptyLearnBtn": "Start a lesson",
+    "emptyTitle": "Nothing due right now",
+    "errorDesc": "We could not fetch your due review cards.",
+    "errorTitle": "Unable to load reviews",
+    "flipHint": "Space to reveal answer",
+    "good": "Good",
+    "goodSub": "7d",
+    "gradeFailed": "That grade did not reach the server. The card is still here — try again.",
+    "hard": "Hard",
+    "hardSub": "3d",
+    "keyboardHelp": "Shortcuts: Space to flip, 1-4 to grade",
+    "listenBtn": "Pronounce word",
+    "loading": "Loading your review session",
+    "progressLabel": "Card {{current}} of {{total}}",
+    "queueCount": "{{count}} cards remaining",
+    "retentionRate": "Retention Rate",
+    "sessionTitle": "SRS Vocabulary Review",
+    "summaryTitle": "Review Session Summary",
+    "title": "Daily Review"
   },
   "runner": {
     "accuracyLabel": "Accuracy",
@@ -131,49 +174,15 @@
     "submitBtn": "Submit",
     "timeSpentLabel": "Time Spent"
   },
-  "review": {
-    "again": "Again",
-    "againSub": "1d",
-    "audioFailed": "Audio unavailable",
-    "backToDashboardBtn": "Back to Dashboard",
-    "cardsReviewed": "Cards Reviewed",
-    "contentUnavailable": "This card has no content yet",
-    "contentUnavailableDesc": "The material behind this card could not be loaded, so there is nothing to show. You can still grade it — the schedule is real.",
-    "easy": "Easy",
-    "easySub": "14d",
-    "emptyDesc": "Your review queue is clear. New cards appear as you finish lessons.",
-    "emptyLearnBtn": "Start a lesson",
-    "emptyTitle": "Nothing due right now",
-    "errorDesc": "We could not fetch your due review cards.",
-    "errorTitle": "Unable to load reviews",
-    "flipHint": "Space to reveal answer",
-    "good": "Good",
-    "goodSub": "7d",
-    "gradeFailed": "That grade did not reach the server. The card is still here — try again.",
-    "hard": "Hard",
-    "hardSub": "3d",
-    "keyboardHelp": "Shortcuts: Space to flip, 1-4 to grade",
-    "listenBtn": "Pronounce word",
-    "loading": "Loading your review session",
-    "progressLabel": "Card {{current}} of {{total}}",
-    "queueCount": "{{count}} cards remaining",
-    "retentionRate": "Retention Rate",
-    "sessionTitle": "SRS Vocabulary Review",
-    "summaryTitle": "Review Session Summary",
-    "title": "Daily Review"
+  "status": {
+    "checking": "Checking the API…",
+    "ok": "API reachable",
+    "failed": "API unreachable"
   },
-  "progress": {
-    "activitiesDone": "Activities Completed",
-    "coursesDesc": "Track your completion percentage across active and finished courses.",
-    "coursesTitle": "Enrolled Courses",
-    "hours": "hours",
-    "mins": "mins",
-    "noCourses": "No course progress recorded yet.",
-    "notStarted": "Not started yet",
-    "skillsTitle": "Skill Mastery (CEFR)",
-    "tagline": "Track your study time, skill competencies, and course completion.",
-    "title": "Learning Progress",
-    "totalTime": "Total Study Time",
-    "wordsMastered": "Words Mastered"
+  "theme": {
+    "dark": "Dark",
+    "label": "Theme",
+    "light": "Light",
+    "system": "System"
   }
 }

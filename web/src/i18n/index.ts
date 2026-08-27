@@ -36,13 +36,23 @@ export function detectLocale(): Locale {
   return isLocale(browser) ? browser : DEFAULT_LOCALE;
 }
 
+/** The locale i18next is actually running in, not the one on <html lang>. */
+export function currentLocale(): Locale {
+  return isLocale(i18n.language) ? i18n.language : DEFAULT_LOCALE;
+}
+
 export function setLocale(locale: Locale): void {
   try {
     localStorage.setItem(STORAGE_KEY, locale);
   } catch {
     // Not being able to remember the choice is not a reason to refuse it.
   }
-  void i18n.changeLanguage(locale);
+  // Remember first, switch second, and only once i18next can switch. Calling
+  // changeLanguage before init throws from inside i18next
+  // (`hasLanguageSomeTranslations` of undefined), which a caller would surface
+  // as "failed to save" for a save that in fact succeeded. The stored value is
+  // not lost either way: initI18n reads it through detectLocale.
+  if (i18n.isInitialized) void i18n.changeLanguage(locale);
 }
 
 export function initI18n(locale: Locale = detectLocale()): typeof i18n {

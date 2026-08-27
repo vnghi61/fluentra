@@ -1,6 +1,10 @@
 import React, { useState } from "react";
 import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+
+import { isLocale, setLocale } from "@/i18n";
+import { applyThemeChoice } from "@/lib/theme";
+import { usePreferencesStore } from "@/stores/preferencesStore";
 import {
   Bell,
   Bot,
@@ -87,6 +91,12 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
       });
 
       setPreferences(updated);
+      // Apply what was just saved. Without these two lines the form wrote the
+      // row and changed nothing on screen, which is how `applyTheme` and
+      // `setLocale` both ended up written and never called.
+      if (updated.theme) applyThemeChoice(updated.theme);
+      if (isLocale(updated.locale)) setLocale(updated.locale);
+      usePreferencesStore.getState().set(updated);
       reset({
         locale: updated.locale,
         theme: updated.theme,

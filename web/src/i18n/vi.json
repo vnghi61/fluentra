@@ -1,36 +1,12 @@
 {
-  "app": {
-    "name": "Fluentra",
-    "tagline": "Học tiếng Anh để nhớ lâu"
-  },
-  "nav": {
-    "account": "Tài khoản",
-    "admin": "Quản trị",
-    "createAccount": "Tạo tài khoản",
-    "dashboard": "Tổng quan",
-    "home": "Trang chủ",
-    "learn": "Học",
-    "logout": "Đăng xuất",
-    "practice": "Luyện tập",
-    "progress": "Tiến độ",
-    "settings": "Cài đặt",
-    "signIn": "Đăng nhập",
-    "signOut": "Đăng xuất"
-  },
-  "status": {
-    "checking": "Đang kiểm tra API…",
-    "ok": "API phản hồi",
-    "failed": "Không gọi được API"
-  },
   "action": {
     "ping": "Gọi thử API",
     "retry": "Thử lại",
     "toggleTheme": "Đổi giao diện"
   },
-  "error": {
-    "title": "Đã xảy ra lỗi",
-    "body": "Màn hình này không dựng được. Lỗi đã được ghi nhận.",
-    "reload": "Tải lại"
+  "app": {
+    "name": "Fluentra",
+    "tagline": "Học tiếng Anh để nhớ lâu"
   },
   "dashboard": {
     "welcome": "Chào mừng đến với Fluentra",
@@ -77,6 +53,14 @@
       "desc": "Đã xảy ra lỗi khi lấy dữ liệu học tập. Vui lòng thử lại."
     }
   },
+  "error": {
+    "title": "Đã xảy ra lỗi",
+    "body": "Màn hình này không dựng được. Lỗi đã được ghi nhận.",
+    "reload": "Tải lại"
+  },
+  "language": {
+    "label": "Ngôn ngữ"
+  },
   "learn": {
     "courseBadge": "Giáo trình khóa học",
     "syllabusProgress": "Đã hoàn thành {{completed}} / {{total}} bài học",
@@ -95,6 +79,65 @@
     "lockedBtn": "Đã khóa",
     "startBtn": "Bắt đầu bài học",
     "reviewBtn": "Ôn lại"
+  },
+  "nav": {
+    "account": "Tài khoản",
+    "admin": "Quản trị",
+    "createAccount": "Tạo tài khoản",
+    "dashboard": "Tổng quan",
+    "home": "Trang chủ",
+    "learn": "Học",
+    "logout": "Đăng xuất",
+    "practice": "Luyện tập",
+    "progress": "Tiến độ",
+    "settings": "Cài đặt",
+    "signIn": "Đăng nhập",
+    "signOut": "Đăng xuất"
+  },
+  "progress": {
+    "activitiesDone": "Bài tập đã xong",
+    "coursesDesc": "Theo dõi tỉ lệ hoàn thành của các khoá đang học và đã xong.",
+    "coursesTitle": "Khóa học đang học",
+    "hours": "giờ",
+    "mins": "phút",
+    "noCourses": "Chưa có dữ liệu khóa học.",
+    "notStarted": "Chưa bắt đầu",
+    "skillsTitle": "Năng lực kỹ năng (CEFR)",
+    "tagline": "Theo dõi thời gian học, năng lực kỹ năng và tiến độ khóa học.",
+    "title": "Tiến độ học tập",
+    "totalTime": "Tổng thời gian học",
+    "wordsMastered": "Từ vựng đã vững"
+  },
+  "review": {
+    "again": "Lại",
+    "againSub": "1 ngày",
+    "audioFailed": "Không phát được âm thanh",
+    "backToDashboardBtn": "Về bảng điều khiển",
+    "cardsReviewed": "Số thẻ đã ôn",
+    "contentUnavailable": "Thẻ này chưa có nội dung",
+    "contentUnavailableDesc": "Không tải được học liệu của thẻ nên chưa có gì để hiển thị. Bạn vẫn có thể chấm — lịch ôn tập là thật.",
+    "easy": "Dễ",
+    "easySub": "14 ngày",
+    "emptyDesc": "Hàng đợi ôn tập của bạn đang trống. Thẻ mới sẽ xuất hiện khi bạn hoàn thành bài học.",
+    "emptyLearnBtn": "Bắt đầu một bài học",
+    "emptyTitle": "Hiện chưa có thẻ nào đến hạn",
+    "errorDesc": "Chúng tôi không lấy được danh sách thẻ đến hạn.",
+    "errorTitle": "Không tải được phần ôn tập",
+    "flipHint": "Space để xem đáp án",
+    "good": "Tốt",
+    "goodSub": "7 ngày",
+    "gradeFailed": "Mức đánh giá chưa gửi được lên máy chủ. Thẻ vẫn còn đây — hãy thử lại.",
+    "hard": "Khó",
+    "hardSub": "3 ngày",
+    "keyboardHelp": "Phím tắt: Space để lật, 1-4 để chấm điểm",
+    "listenBtn": "Phát âm",
+    "loading": "Đang tải phiên ôn tập",
+    "progressLabel": "Thẻ {{current}} trên {{total}}",
+    "queueCount": "Còn lại {{count}} thẻ",
+    "retentionRate": "Tỷ lệ ghi nhớ",
+    "sessionTitle": "Ôn tập từ vựng SRS",
+    "summaryTitle": "Kết quả phiên ôn tập",
+    "title": "Ôn tập hàng ngày"
   },
   "runner": {
     "accuracyLabel": "Độ chính xác",
@@ -131,49 +174,15 @@
     "submitBtn": "Gửi đáp án",
     "timeSpentLabel": "Thời gian"
   },
-  "review": {
-    "again": "Lại",
-    "againSub": "1 ngày",
-    "audioFailed": "Không phát được âm thanh",
-    "backToDashboardBtn": "Về bảng điều khiển",
-    "cardsReviewed": "Số thẻ đã ôn",
-    "contentUnavailable": "Thẻ này chưa có nội dung",
-    "contentUnavailableDesc": "Không tải được học liệu của thẻ nên chưa có gì để hiển thị. Bạn vẫn có thể chấm — lịch ôn tập là thật.",
-    "easy": "Dễ",
-    "easySub": "14 ngày",
-    "emptyDesc": "Hàng đợi ôn tập của bạn đang trống. Thẻ mới sẽ xuất hiện khi bạn hoàn thành bài học.",
-    "emptyLearnBtn": "Bắt đầu một bài học",
-    "emptyTitle": "Hiện chưa có thẻ nào đến hạn",
-    "errorDesc": "Chúng tôi không lấy được danh sách thẻ đến hạn.",
-    "errorTitle": "Không tải được phần ôn tập",
-    "flipHint": "Space để xem đáp án",
-    "good": "Tốt",
-    "goodSub": "7 ngày",
-    "gradeFailed": "Mức đánh giá chưa gửi được lên máy chủ. Thẻ vẫn còn đây — hãy thử lại.",
-    "hard": "Khó",
-    "hardSub": "3 ngày",
-    "keyboardHelp": "Phím tắt: Space để lật, 1-4 để chấm điểm",
-    "listenBtn": "Phát âm",
-    "loading": "Đang tải phiên ôn tập",
-    "progressLabel": "Thẻ {{current}} trên {{total}}",
-    "queueCount": "Còn lại {{count}} thẻ",
-    "retentionRate": "Tỷ lệ ghi nhớ",
-    "sessionTitle": "Ôn tập từ vựng SRS",
-    "summaryTitle": "Kết quả phiên ôn tập",
-    "title": "Ôn tập hàng ngày"
+  "status": {
+    "checking": "Đang kiểm tra API…",
+    "ok": "API phản hồi",
+    "failed": "Không gọi được API"
   },
-  "progress": {
-    "activitiesDone": "Bài tập đã xong",
-    "coursesDesc": "Theo dõi tỉ lệ hoàn thành của các khoá đang học và đã xong.",
-    "coursesTitle": "Khóa học đang học",
-    "hours": "giờ",
-    "mins": "phút",
-    "noCourses": "Chưa có dữ liệu khóa học.",
-    "notStarted": "Chưa bắt đầu",
-    "skillsTitle": "Năng lực kỹ năng (CEFR)",
-    "tagline": "Theo dõi thời gian học, năng lực kỹ năng và tiến độ khóa học.",
-    "title": "Tiến độ học tập",
-    "totalTime": "Tổng thời gian học",
-    "wordsMastered": "Từ vựng đã vững"
+  "theme": {
+    "dark": "Tối",
+    "label": "Giao diện",
+    "light": "Sáng",
+    "system": "Theo hệ thống"
   }
 }
