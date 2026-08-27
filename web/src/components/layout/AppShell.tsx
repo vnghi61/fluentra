@@ -5,7 +5,6 @@ import {
   LayoutDashboard,
   LineChart,
   LogIn,
-  LogOut,
   Settings,
   ShieldCheck,
   Target,
@@ -14,6 +13,9 @@ import {
 import { useTranslation } from "react-i18next";
 
 import { BrandMark } from "./BrandMark";
+
+/** Lazy: see AccountMenu's own comment for why it is not in the entry chunk. */
+const AccountMenu = React.lazy(() => import("./AccountMenu"));
 
 export interface AppShellProps {
   children: React.ReactNode;
@@ -87,34 +89,16 @@ export const AppShell: React.FC<AppShellProps> = ({
   const signedIn = status === "authenticated";
 
   // The account controls, in the top-right corner rather than the foot of the
-  // sidebar. Sign out stays a visible button rather than living behind an
-  // avatar menu: there is no dropdown primitive in this design system yet, and
-  // eight E2E specs assert on a visible control. Build the primitive first.
+  // sidebar, and behind an avatar once there is an account to show — which is
+  // what keeps Sign out out of primary navigation. The menu waited on the
+  // dropdown primitive; that now exists, so this is no longer a bare button.
   const account =
     signedIn && user ? (
-      <div className="flex items-center gap-2">
-        <span className="hidden sm:inline text-xs text-text-muted">
-          Role:{" "}
-          <span className="font-semibold text-text uppercase">{user.role}</span>
-        </span>
-        {/*
-          aria-label, because the text label is hidden below `sm`. Without it
-          the control is an icon and nothing else on a phone: unreadable to a
-          screen reader, and invisible to `getByRole("button", { name: ... })`,
-          which is how ten journeys assert that a learner is signed in.
-        */}
-        <button
-          type="button"
-          onClick={onLogout}
-          aria-label={t("nav.signOut", "Sign out")}
-          className="flex items-center gap-2 h-10 px-3 rounded-lg text-danger-accent hover:bg-danger/10 min-h-[44px] min-w-[44px] transition-colors text-sm font-medium cursor-pointer"
-        >
-          <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />
-          <span className="hidden sm:inline">
-            {t("nav.signOut", "Sign out")}
-          </span>
-        </button>
-      </div>
+      <React.Suspense
+        fallback={<div className="h-11 w-11" aria-hidden="true" />}
+      >
+        <AccountMenu role={user.role} onLogout={onLogout} />
+      </React.Suspense>
     ) : (
       <div className="flex items-center gap-2">
         <Link

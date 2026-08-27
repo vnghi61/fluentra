@@ -183,6 +183,17 @@ This is the mechanism that stops agents inventing endpoints.
 | Rate limit (in-process) | `golang.org/x/time/rate` | — | Official, for per-provider client-side throttling |
 | Single-flight | `golang.org/x/sync/singleflight` | — | Official; cache stampede protection |
 
+**Not yet installed.** `sony/gobreaker` and `go-redis/redis_rate` are decided but
+absent from `go.mod`: both land with `platform/ai` in Phase 3, which is the first
+caller that needs a breaker or a per-tier LLM budget. `golang.org/x/time/rate`
+lands with the first provider client that needs local throttling.
+
+**A contradiction to settle, not to inherit:** the row above chose `redis_rate`,
+but `internal/platform/cache/limiter.go` already implements distributed rate
+limiting over Redis with a Lua script and a deliberate fail-open policy
+(API_GUIDELINE.md §11). GCRA is the better algorithm; replacing a tested,
+running component to get it is a decision someone should take on purpose.
+
 ### 1.11 Infrastructure clients
 
 | Concern | Chosen | Alternatives | Why |
@@ -266,6 +277,7 @@ Business code sees only `ai.Client` and task names.
 | Routing | TanStack Router | React Router 7 | Type-safe params **and** search params; loader integration | Smaller community than React Router |
 | Server state | TanStack Query v5 | SWR, RTK Query, Apollo | Best-in-class caching, invalidation, mutations, devtools | Learning curve |
 | Client state | Zustand 5 | Redux Toolkit, Jotai, Valtio | Minimal API for the small amount of true global state | Less structure than RTK (fine at this size) |
+| Component variants | `class-variance-authority` | hand-rolled maps, `tailwind-variants` | Type-safe variant/size props; shadcn's generated components already use it, so not adopting it would mean editing every one on the way in | One more tiny dependency |
 | UI components | shadcn/ui + Radix + Tailwind 4 | MUI, Mantine, Chakra, Ant | **Components live in our repo** — agents can read and modify them; Radix gives real a11y | We own the maintenance |
 | Forms | React Hook Form + Zod | Formik, TanStack Form | Uncontrolled = fast; Zod schemas shared with API types | — |
 | Tables | TanStack Table v8 | AG Grid, MRT | Headless; styled by our own design system | More assembly |
@@ -279,6 +291,30 @@ Business code sees only `ai.Client` and task names.
 | E2E | Playwright | Cypress, WebdriverIO | Multi-browser, trace viewer, sharding, best CI ergonomics | — |
 | Component workshop | Storybook 9 | Ladle, Histoire | a11y + interaction + visual regression addons | Build time |
 | Lint/format | ESLint 9 flat + `eslint-plugin-boundaries` + Prettier | Biome | Boundaries plugin enforces feature-slice isolation; Biome is faster but lacks the plugin | Slower than Biome |
+
+### 2.1 Chosen, not yet installed
+
+These are decided — the row above is the decision. They are absent from
+`web/package.json` because the screen or module that needs them does not exist
+yet, and an unused dependency is one more thing to audit, patch and explain.
+Install each with the work that first calls it.
+
+| Package | Lands with | Why not now |
+|---|---|---|
+| `recharts` | Progress screen, Phase 3 | `GET /me/progress` returns one number today; the skill radar has nothing to plot. ~100 kB gzipped — must be behind the lazy Progress route |
+| `date-fns` + `@date-fns/tz` | first client-side date maths | The streak's timezone rule is computed in Go. `Intl.DateTimeFormat` already handles the formatting the SPA does today |
+| `wavesurfer.js` | Listening / Speaking, Phase 3 | `platform/media` is a two-line package |
+| `Tiptap` | Writing editor + admin authoring, Phase 3 | `writing` is a two-line package |
+| `@radix-ui/*` (beyond dropdown-menu) | each component that needs one | Only `react-dropdown-menu` is installed, for the account menu. Add the rest one at a time, not as a set |
+| `openapi-fetch` | when `src/api/client.ts` is replaced | The hand-written client carries the refresh interceptor and the ApiError shape the app depends on; swapping it is its own change |
+| `Storybook` | design-system work, Phase 3 | Nothing to gain until there are enough primitives to browse |
+| `sonner` | the first toast | Their plan lists `toast` as a Phase 1 primitive, but no screen raises one yet — errors are rendered inline |
+| `motion`, `canvas-confetti` | gamification, Phase 3 | Nothing to celebrate until XP and streaks exist. Both need a `prefers-reduced-motion` guard |
+| `diff-match-patch` | AI writing feedback, Phase 3 | Needs a graded essay to diff |
+
+**Rejected:** `react-hotkeys-hook`. `ReviewPage` already implements Space to
+reveal and 1–4 to grade, by hand, and it works — a dependency to replace working
+code is churn.
 
 ---
 

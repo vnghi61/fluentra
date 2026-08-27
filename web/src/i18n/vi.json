@@ -4,6 +4,7 @@
     "tagline": "Học tiếng Anh để nhớ lâu"
   },
   "nav": {
+    "account": "Tài khoản",
     "admin": "Quản trị",
     "createAccount": "Tạo tài khoản",
     "dashboard": "Tổng quan",

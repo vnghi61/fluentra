@@ -134,7 +134,8 @@ export async function registerAndVerify(
 
 /** Signs the current browser out and waits for the login screen. */
 export async function signOut(page: Page): Promise<void> {
-  await page.getByRole("button", { name: /Sign out|Logout/i }).first().click();
+  await page.getByRole("button", { name: /Account/i }).first().click();
+  await page.getByRole("menuitem", { name: /Sign out/i }).click();
   await expect(page).toHaveURL(/\/login/, { timeout: 10_000 });
 }
 
@@ -226,7 +227,5 @@ export function makeReviewsDue(email: string): void {
  * the journey under test.
  */
 export async function expectSignedIn(page: Page): Promise<void> {
-  await expect(
-    page.getByRole("button", { name: /Sign out|Logout/i }).first(),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: /Account/i }).first()).toBeVisible();
 }

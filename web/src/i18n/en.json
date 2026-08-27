@@ -4,6 +4,7 @@
     "tagline": "Learn English that stays learned"
   },
   "nav": {
+    "account": "Account",
     "admin": "Admin",
     "createAccount": "Create account",
     "dashboard": "Dashboard",
