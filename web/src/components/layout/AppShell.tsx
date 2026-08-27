@@ -215,7 +215,16 @@ export const AppShell: React.FC<AppShellProps> = ({
       <div className="flex-1 flex flex-col min-w-0">
         <header className="sticky top-0 z-40 flex items-center justify-between gap-3 h-14 px-4 bg-surface-card border-b border-border-subtle">
           {/* The brand belongs here only where the sidebar is not drawing it. */}
-          <Link to="/" className="flex items-center gap-2 md:hidden">
+          {/*
+            min-h-[44px]: the mark is 26px and the word sits beside it, so
+            without a floor this link was 94x26 — a tap target under the 44x44
+            minimum ADR-0024 sets, and the narrow-320 suite caught it at 320px
+            in both locales.
+          */}
+          <Link
+            to="/"
+            className="flex items-center gap-2 min-h-[44px] md:hidden"
+          >
             <BrandMark className="h-[26px] w-[26px] shrink-0 text-brand" />
             <span className="text-base font-bold tracking-tight text-text">
               Fluentra
