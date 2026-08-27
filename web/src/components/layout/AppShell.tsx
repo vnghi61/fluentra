@@ -97,9 +97,16 @@ export const AppShell: React.FC<AppShellProps> = ({
           Role:{" "}
           <span className="font-semibold text-text uppercase">{user.role}</span>
         </span>
+        {/*
+          aria-label, because the text label is hidden below `sm`. Without it
+          the control is an icon and nothing else on a phone: unreadable to a
+          screen reader, and invisible to `getByRole("button", { name: ... })`,
+          which is how ten journeys assert that a learner is signed in.
+        */}
         <button
           type="button"
           onClick={onLogout}
+          aria-label={t("nav.signOut", "Sign out")}
           className="flex items-center gap-2 h-10 px-3 rounded-lg text-danger-accent hover:bg-danger/10 min-h-[44px] min-w-[44px] transition-colors text-sm font-medium cursor-pointer"
         >
           <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -112,6 +119,7 @@ export const AppShell: React.FC<AppShellProps> = ({
       <div className="flex items-center gap-2">
         <Link
           to="/register"
+          aria-label={t("nav.createAccount", "Create account")}
           className="flex items-center gap-2 h-10 px-3 rounded-lg border border-border hover:bg-surface-muted text-text min-h-[44px] transition-colors text-sm font-medium"
         >
           <UserPlus className="h-4 w-4 shrink-0" aria-hidden="true" />
