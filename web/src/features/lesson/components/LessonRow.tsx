@@ -1,6 +1,13 @@
 import React from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, CheckCircle2, Clock, Lock, PlayCircle, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  CheckCircle2,
+  Clock,
+  Lock,
+  PlayCircle,
+  Sparkles,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Badge } from "@/components/ui/badge";
@@ -12,12 +19,19 @@ export interface LessonRowProps {
   lesson: LessonSummary;
   isCompleted?: boolean;
   isNext?: boolean;
+  /**
+   * Called instead of following the link on a plain left click, so the page
+   * that knows the course id can enrol before the runner opens an attempt.
+   * Absent, the row stays an ordinary link.
+   */
+  onStartLesson?: (lessonId: string) => void;
 }
 
 export const LessonRow: React.FC<LessonRowProps> = ({
   lesson,
   isCompleted = false,
   isNext = false,
+  onStartLesson,
 }) => {
   const { t } = useTranslation();
   const { locked, lock_reason, title, skill_focus, estimated_minutes } = lesson;
@@ -55,19 +69,27 @@ export const LessonRow: React.FC<LessonRowProps> = ({
               {title}
             </span>
             {isNext && (
-              <Badge variant="primary" className="text-[10px] uppercase font-bold py-0">
+              <Badge
+                variant="primary"
+                className="text-[10px] uppercase font-bold py-0"
+              >
                 {t("learn.nextBadge", "Next Up")}
               </Badge>
             )}
             {isCompleted && (
-              <Badge variant="success" className="text-[10px] uppercase font-bold py-0">
+              <Badge
+                variant="success"
+                className="text-[10px] uppercase font-bold py-0"
+              >
                 {t("learn.completedBadge", "Completed")}
               </Badge>
             )}
           </div>
 
           <div className="flex flex-wrap items-center gap-3 text-xs text-text-muted">
-            <span className="capitalize font-medium text-text-muted">{skill_focus}</span>
+            <span className="capitalize font-medium text-text-muted">
+              {skill_focus}
+            </span>
             <span>•</span>
             <span className="inline-flex items-center gap-1">
               <Clock className="h-3.5 w-3.5" aria-hidden="true" />
@@ -100,9 +122,28 @@ export const LessonRow: React.FC<LessonRowProps> = ({
           <Link
             to={`/learn/lesson/${lesson.id}`}
             className="w-full sm:w-auto"
+            onClick={(event) => {
+              // The href stays real, and modified clicks keep doing what the
+              // browser does with any link: open a tab, save, copy. Only the
+              // plain left click is intercepted, because only that one is a
+              // learner saying "start this lesson now".
+              if (!onStartLesson) return;
+              if (event.defaultPrevented) return;
+              if (
+                event.metaKey ||
+                event.ctrlKey ||
+                event.shiftKey ||
+                event.altKey
+              )
+                return;
+              event.preventDefault();
+              onStartLesson(lesson.id);
+            }}
           >
             <Button
-              variant={isNext ? "primary" : isCompleted ? "secondary" : "outline"}
+              variant={
+                isNext ? "primary" : isCompleted ? "secondary" : "outline"
+              }
               className="w-full sm:w-auto min-h-[44px] gap-1.5 text-sm font-semibold"
             >
               {isCompleted

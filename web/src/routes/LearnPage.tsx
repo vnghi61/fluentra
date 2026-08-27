@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { BookOpen } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -16,9 +17,12 @@ import {
   useCourse,
   useCourses,
 } from "@/features/lesson";
+import { learningApi } from "@/features/learning";
 
 export function LearnPage(): React.JSX.Element {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const [enrolErr, setEnrolErr] = React.useState<Error | null>(null);
   const {
     data: courseListData,
     isLoading: coursesLoading,
@@ -45,18 +49,40 @@ export function LearnPage(): React.JSX.Element {
     refetch: refetchActiveCourse,
   } = useCourse(activeCourseSlug);
 
+  // Enrolment is the learner's half of `StartAttempt`'s precondition, and this
+  // is the only screen that holds the course id it needs. Doing it here rather
+  // than in the runner keeps the lesson URL free of a course parameter, which
+  // is what the route declares and what the journeys assert.
+  const activeCourseId = activeCourse?.id;
+  const startLesson = React.useCallback(
+    (lessonId: string): void => {
+      void (async () => {
+        try {
+          if (activeCourseId) await learningApi.enrollCourse(activeCourseId);
+          setEnrolErr(null);
+        } catch (err) {
+          setEnrolErr(err instanceof Error ? err : new Error(String(err)));
+          return;
+        }
+        await navigate({ to: `/learn/lesson/${lessonId}` });
+      })();
+    },
+    [activeCourseId, navigate],
+  );
+
   if (coursesLoading || (activeCourseSlug && activeCourseLoading)) {
     return <LearnSkeleton />;
   }
 
-  if (coursesError || activeCourseError) {
+  if (coursesError || activeCourseError || enrolErr) {
     return (
       <LearnError
         onRetry={() => {
+          setEnrolErr(null);
           void refetchCourses();
           if (activeCourseSlug) void refetchActiveCourse();
         }}
-        error={courseListErr || activeCourseErr}
+        error={courseListErr || activeCourseErr || enrolErr}
       />
     );
   }
@@ -112,7 +138,7 @@ export function LearnPage(): React.JSX.Element {
       />
 
       {/* Syllabus Unit & Lesson List */}
-      <UnitList units={activeCourse.units} />
+      <UnitList units={activeCourse.units} onStartLesson={startLesson} />
     </div>
   );
 }
