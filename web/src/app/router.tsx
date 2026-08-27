@@ -11,6 +11,7 @@ import {
   type AnyRoute,
 } from "@tanstack/react-router";
 
+import i18n from "@/i18n";
 import { AppShell } from "@/components/layout/AppShell";
 import { usePreferencesSync } from "@/features/account/hooks/usePreferencesSync";
 
@@ -65,7 +66,7 @@ function RouteLoadingSpinner(): React.JSX.Element {
       className="flex items-center justify-center p-8 min-h-[200px]"
     >
       <div className="h-8 w-8 animate-spin rounded-full border-4 border-border-subtle border-t-primary" />
-      <span className="sr-only">Loading...</span>
+      <span className="sr-only">{i18n.t("app.loading", "Loading...")}</span>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Flag, Shield, Users } from "lucide-react";
 import { AdminUserList, AdminFeatureFlags } from "@/features/admin";
 import {
@@ -9,6 +10,7 @@ import {
 type AdminTab = "users" | "flags";
 
 export function AdminPage(): React.JSX.Element {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<AdminTab>("users");
   const { can, isLoading } = usePermissions();
 
@@ -39,11 +41,11 @@ export function AdminPage(): React.JSX.Element {
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary-accent border border-primary/20 uppercase tracking-wider">
             <Shield className="h-3 w-3" />
-            Administration
+            {t("page.administration", "Administration")}
           </span>
         </div>
         <h1 className="text-2xl font-bold text-text">
-          Platform Administration
+          {t("page.platformAdministration", "Platform Administration")}
         </h1>
         <p className="text-sm text-text-muted">
           Manage platform learners, enforce moderation, and configure system
@@ -80,7 +82,10 @@ export function AdminPage(): React.JSX.Element {
           <p className="text-sm text-text-muted">Checking your permissions…</p>
         ) : tabs.length === 0 ? (
           <p className="text-sm text-text-muted">
-            Your account holds no administrative permissions.
+            {t(
+              "page.yourAccountHoldsNoAdministrativePermissions",
+              "Your account holds no administrative permissions.",
+            )}
           </p>
         ) : (
           <>

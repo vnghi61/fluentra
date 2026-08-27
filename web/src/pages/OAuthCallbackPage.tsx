@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { AlertCircle, ArrowRight, Loader2 } from "lucide-react";
 
@@ -7,6 +8,7 @@ import { ApiError } from "@/api/client";
 import { getErrorMessage } from "@/lib/errors/catalogue";
 
 export function OAuthCallbackPage(): React.JSX.Element {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -80,7 +82,7 @@ export function OAuthCallbackPage(): React.JSX.Element {
       <div className="flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center space-y-4 px-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary-accent" />
         <p className="text-sm font-medium text-text-muted">
-          Authenticating with Google...
+          {t("page.authenticatingWithGoogle", "Authenticating with Google...")}
         </p>
       </div>
     );
@@ -95,7 +97,7 @@ export function OAuthCallbackPage(): React.JSX.Element {
 
         <div className="space-y-2">
           <h1 className="text-xl font-bold tracking-tight text-text">
-            Authentication Issue
+            {t("page.authenticationIssue", "Authentication Issue")}
           </h1>
           <p className="text-sm text-text-muted leading-relaxed">{error}</p>
         </div>
@@ -110,7 +112,8 @@ export function OAuthCallbackPage(): React.JSX.Element {
               to="/register"
               className="inline-flex items-center gap-1 text-primary-accent hover:text-primary-accent underline font-semibold"
             >
-              Verify your email now <ArrowRight className="h-3 w-3" />
+              {t("page.verifyYourEmailNow", "Verify your email now")}
+              <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
         )}
@@ -120,7 +123,7 @@ export function OAuthCallbackPage(): React.JSX.Element {
             to="/login"
             className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover"
           >
-            Return to Sign in
+            {t("page.returnToSignIn", "Return to Sign in")}
           </Link>
         </div>
       </div>

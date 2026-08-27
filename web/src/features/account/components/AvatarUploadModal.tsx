@@ -1,4 +1,5 @@
 import React, { useState, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { Camera, Loader2, UploadCloud, X, AlertCircle } from "lucide-react";
 import { accountApi } from "../api/accountApi";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
   onClose,
   onSuccess,
 }) => {
+  const { t } = useTranslation();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -102,7 +104,7 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
             className="text-lg font-semibold text-text flex items-center gap-2"
           >
             <Camera className="h-5 w-5 text-primary-accent" />
-            Update Profile Avatar
+            {t("account.updateProfileAvatar", "Update Profile Avatar")}
           </h2>
           <button
             type="button"
@@ -136,7 +138,9 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
               className="flex h-36 w-36 cursor-pointer flex-col items-center justify-center rounded-full border-2 border-dashed border-border-subtle bg-surface-muted/50 hover:border-primary/50 hover:bg-surface-muted transition-all text-text-muted hover:text-primary-accent"
             >
               <UploadCloud className="h-8 w-8 mb-1" />
-              <span className="text-xs font-medium">Choose file</span>
+              <span className="text-xs font-medium">
+                {t("account.chooseFile", "Choose file")}
+              </span>
             </div>
           )}
 
@@ -172,7 +176,7 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
             onClick={handleClose}
             disabled={isUploading}
           >
-            Cancel
+            {t("account.cancel", "Cancel")}
           </Button>
           <Button
             type="button"
@@ -184,7 +188,7 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
             {isUploading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Uploading directly...
+                {t("account.uploadingDirectly", "Uploading directly...")}
               </>
             ) : (
               "Save Avatar"

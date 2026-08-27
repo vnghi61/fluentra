@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   AlertCircle,
   Ban,
@@ -28,6 +29,7 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
   onClose,
   onUserStatusChanged,
 }) => {
+  const { t } = useTranslation();
   const [detail, setDetail] = useState<AdminUserDetail | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -104,7 +106,7 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
               className="text-lg font-semibold text-text flex items-center gap-2"
             >
               <User className="h-5 w-5 text-primary-accent" />
-              Learner Account Details
+              {t("admin.learnerAccountDetails", "Learner Account Details")}
             </h2>
             <button
               type="button"
@@ -175,24 +177,30 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
               {/* Meta Grid */}
               <div className="grid grid-cols-2 gap-4 text-xs">
                 <div className="rounded-lg border border-border-subtle bg-surface-card/40 p-3 space-y-1">
-                  <span className="text-text-muted">User ID</span>
-                  <p className="font-mono text-text truncate">
-                    {detail.id}
-                  </p>
+                  <span className="text-text-muted">
+                    {t("admin.userId", "User ID")}
+                  </span>
+                  <p className="font-mono text-text truncate">{detail.id}</p>
                 </div>
                 <div className="rounded-lg border border-border-subtle bg-surface-card/40 p-3 space-y-1">
-                  <span className="text-text-muted">Language / Locale</span>
+                  <span className="text-text-muted">
+                    {t("admin.languageLocale", "Language / Locale")}
+                  </span>
                   <p className="text-text flex items-center gap-1">
                     <Globe className="h-3.5 w-3.5 text-text-muted" />
                     {detail.locale}
                   </p>
                 </div>
                 <div className="rounded-lg border border-border-subtle bg-surface-card/40 p-3 space-y-1">
-                  <span className="text-text-muted">Timezone</span>
+                  <span className="text-text-muted">
+                    {t("admin.timezone", "Timezone")}
+                  </span>
                   <p className="text-text">{detail.timezone}</p>
                 </div>
                 <div className="rounded-lg border border-border-subtle bg-surface-card/40 p-3 space-y-1">
-                  <span className="text-text-muted">Registered</span>
+                  <span className="text-text-muted">
+                    {t("admin.registered", "Registered")}
+                  </span>
                   <p className="text-text flex items-center gap-1">
                     <Clock className="h-3.5 w-3.5 text-text-muted" />
                     {new Date(detail.created_at).toLocaleString()}
@@ -203,7 +211,7 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
               {/* Administrative Actions */}
               <div className="border-t border-border-subtle pt-4 space-y-3">
                 <h4 className="text-xs font-semibold uppercase tracking-wider text-text-muted">
-                  Administrative Controls
+                  {t("admin.administrativeControls", "Administrative Controls")}
                 </h4>
                 <div className="flex flex-wrap gap-3">
                   {detail.status === "active" &&
@@ -215,7 +223,7 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
                       onClick={() => setActionType("suspend")}
                     >
                       <Ban className="mr-1.5 h-3.5 w-3.5" />
-                      Suspend User
+                      {t("admin.suspendUser", "Suspend User")}
                     </Button>
                   ) : detail.status === "suspended" &&
                     can(PERMISSIONS.userReinstate) ? (
@@ -227,7 +235,7 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
                       className="border-success/40 text-success-accent hover:bg-success/10"
                     >
                       <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
-                      Reinstate User
+                      {t("admin.reinstateUser", "Reinstate User")}
                     </Button>
                   ) : null}
 
@@ -239,7 +247,10 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
                       onClick={() => setActionType("revoke_sessions")}
                     >
                       <LogOut className="mr-1.5 h-3.5 w-3.5" />
-                      Revoke Active Sessions
+                      {t(
+                        "admin.revokeActiveSessions",
+                        "Revoke Active Sessions",
+                      )}
                     </Button>
                   )}
                 </div>

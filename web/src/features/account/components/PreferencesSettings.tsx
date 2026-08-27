@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -35,6 +36,7 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
   initialPreferences,
   onPreferencesUpdated,
 }) => {
+  const { t } = useTranslation();
   const [preferences, setPreferences] =
     useState<UserPreferences>(initialPreferences);
   const [isSaving, setIsSaving] = useState(false);
@@ -153,14 +155,17 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
         <div className="rounded-xl border border-border-subtle bg-surface-card/60 p-6 space-y-6">
           <h3 className="text-base font-semibold text-text flex items-center gap-2">
             <Clock className="h-5 w-5 text-primary-accent" />
-            Learning & Interface
+            {t("account.learningInterface", "Learning & Interface")}
           </h3>
 
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
             {/* Daily Goal */}
             <div className="space-y-2">
               <Label htmlFor="daily_goal_minutes">
-                Daily Study Goal (minutes)
+                {t(
+                  "account.dailyStudyGoalMinutes",
+                  "Daily Study Goal (minutes)",
+                )}
               </Label>
               <Input
                 id="daily_goal_minutes"
@@ -181,7 +186,7 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
             <div className="space-y-2">
               <Label htmlFor="locale" className="flex items-center gap-2">
                 <Globe className="h-4 w-4 text-text-muted" />
-                Language
+                {t("account.language", "Language")}
               </Label>
               <select
                 id="locale"
@@ -189,7 +194,7 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
                 className="w-full h-11 min-h-[44px] rounded-lg border border-border-subtle bg-surface-card px-3 py-2 text-base md:text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="vi">Tiếng Việt (Vietnamese)</option>
-                <option value="en">English</option>
+                <option value="en">{t("account.english", "English")}</option>
               </select>
             </div>
 
@@ -197,7 +202,7 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
             <div className="space-y-2 sm:col-span-2">
               <Label className="flex items-center gap-2">
                 <Sun className="h-4 w-4 text-text-muted" />
-                Theme Preference
+                {t("account.themePreference", "Theme Preference")}
               </Label>
               <div className="grid grid-cols-3 gap-3">
                 {(["system", "dark", "light"] as const).map((t) => (
@@ -234,11 +239,16 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
         <div className="rounded-xl border border-border-subtle bg-surface-card/60 p-6 space-y-6">
           <h3 className="text-base font-semibold text-text flex items-center gap-2">
             <Bell className="h-5 w-5 text-primary-accent" />
-            Notifications & Quiet Hours
+            {t(
+              "account.notificationsQuietHours",
+              "Notifications & Quiet Hours",
+            )}
           </h3>
 
           <div className="space-y-4">
-            <Label>Notification Channels</Label>
+            <Label>
+              {t("account.notificationChannels", "Notification Channels")}
+            </Label>
             <div className="flex flex-wrap gap-4">
               <Controller
                 control={control}
@@ -284,10 +294,13 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
                   htmlFor="quiet_hours_enabled"
                   className="text-sm font-medium"
                 >
-                  Enable Quiet Hours
+                  {t("account.enableQuietHours", "Enable Quiet Hours")}
                 </Label>
                 <p className="text-xs text-text-muted">
-                  Pause non-critical notifications during sleeping hours
+                  {t(
+                    "account.pauseNonCriticalNotificationsDuringSleepingHours",
+                    "Pause non-critical notifications during sleeping hours",
+                  )}
                 </p>
               </div>
               <Controller
@@ -307,7 +320,7 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
               <div className="grid grid-cols-2 gap-4 pt-2">
                 <div className="space-y-1.5">
                   <Label htmlFor="quiet_hours_start" className="text-xs">
-                    Start Time
+                    {t("account.startTime", "Start Time")}
                   </Label>
                   <Input
                     id="quiet_hours_start"
@@ -317,7 +330,7 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="quiet_hours_end" className="text-xs">
-                    End Time
+                    {t("account.endTime", "End Time")}
                   </Label>
                   <Input
                     id="quiet_hours_end"
@@ -336,7 +349,7 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
             <div className="space-y-1">
               <h3 className="text-base font-semibold text-text flex items-center gap-2">
                 <Bot className="h-5 w-5 text-primary-accent" />
-                AI Grading & Processing
+                {t("account.aiGradingProcessing", "AI Grading & Processing")}
               </h3>
               <p className="text-xs text-text-muted leading-relaxed max-w-xl">
                 Opt out of AI-assisted grading and pronunciation feedback.
@@ -364,7 +377,7 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
             {isSaving ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
+                {t("account.saving", "Saving...")}
               </>
             ) : (
               "Save Preferences"

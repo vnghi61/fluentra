@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   CheckCircle2,
   Link2,
@@ -11,6 +12,7 @@ import { ApiError } from "@/api/client";
 import { Button } from "@/components/ui/button";
 
 export const GoogleAccountLink: React.FC = () => {
+  const { t } = useTranslation();
   // Read from the server rather than taken as a prop. The prop was never
   // passed, so `linkedEmail` was always null: the component only ever rendered
   // "Not connected", the Unlink button was unreachable, and the
@@ -114,10 +116,13 @@ export const GoogleAccountLink: React.FC = () => {
         <div className="space-y-1">
           <h3 className="text-base font-semibold text-text flex items-center gap-2">
             <Link2 className="h-5 w-5 text-primary-accent" />
-            Connected Accounts
+            {t("account.connectedAccounts", "Connected Accounts")}
           </h3>
           <p className="text-xs text-text-muted">
-            Link your Google account for quick, one-tap sign in.
+            {t(
+              "account.linkYourGoogleAccountForQuickOneTapSignIn",
+              "Link your Google account for quick, one-tap sign in.",
+            )}
           </p>
         </div>
       </div>
@@ -190,7 +195,7 @@ export const GoogleAccountLink: React.FC = () => {
             ) : (
               <>
                 <Unlink className="mr-1.5 h-3.5 w-3.5" />
-                Unlink
+                {t("account.unlink", "Unlink")}
               </>
             )}
           </Button>

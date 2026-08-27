@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -28,6 +29,7 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
   initialProfile,
   onProfileUpdated,
 }) => {
+  const { t } = useTranslation();
   const [profile, setProfile] = useState<UserProfile>(initialProfile);
   const [exportState, setExportState] = useState<ExportResponse | null>(null);
   const [deletionState, setDeletionState] = useState<DeletionResponse | null>(
@@ -165,7 +167,10 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-lg border border-border-subtle bg-surface-card/40 p-4">
           <div className="space-y-1">
             <p className="text-sm font-medium text-text">
-              Download personal archive
+              {t(
+                "account.downloadPersonalArchive",
+                "Download personal archive",
+              )}
             </p>
             <p className="text-xs text-text-muted">
               {exportState
@@ -186,12 +191,12 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
             {isExporting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Requesting...
+                {t("account.requesting", "Requesting...")}
               </>
             ) : (
               <>
                 <Download className="mr-2 h-4 w-4" />
-                Request Data Export
+                {t("account.requestDataExport", "Request Data Export")}
               </>
             )}
           </Button>
@@ -217,14 +222,16 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
               <AlertTriangle className="h-5 w-5 shrink-0 text-warning-accent mt-0.5" />
               <div className="space-y-1">
                 <h4 className="text-sm font-semibold text-warning-accent">
-                  Account deletion is currently scheduled
+                  {t(
+                    "account.accountDeletionIsCurrentlyScheduled",
+                    "Account deletion is currently scheduled",
+                  )}
                 </h4>
                 <p className="text-xs text-warning-accent leading-relaxed">
-                  Your account is in the <strong>30-day grace period</strong>.
-                  All active sessions have been revoked, and all data across all
-                  modules will be completely purged when the grace period ends.
-                  You may cancel this deletion request at any time during this
-                  window to restore full access.
+                  {t(
+                    "account.gracePeriodBody",
+                    "Your account is in the 30-day grace period. All active sessions have been revoked, and all data across all modules will be completely purged when the grace period ends. You may cancel this deletion request at any time during this window to restore full access.",
+                  )}
                 </p>
                 {deletionState?.execute_at && (
                   <p className="text-xs font-semibold text-warning-accent pt-1">
@@ -249,12 +256,15 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
                 {isCancelling ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Cancelling...
+                    {t("account.cancelling", "Cancelling...")}
                   </>
                 ) : (
                   <>
                     <Undo2 className="mr-1.5 h-3.5 w-3.5" />
-                    Cancel Deletion & Restore Account
+                    {t(
+                      "account.cancelDeletionRestoreAccount",
+                      "Cancel Deletion & Restore Account",
+                    )}
                   </>
                 )}
               </Button>
@@ -264,7 +274,10 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-lg border border-danger/30 bg-danger/20 p-4">
             <div className="space-y-1">
               <p className="text-sm font-medium text-text">
-                Initiate account erasure
+                {t(
+                  "account.initiateAccountErasure",
+                  "Initiate account erasure",
+                )}
               </p>
               <p className="text-xs text-text-muted">
                 Begins a 30-day grace period during which you can cancel if you
@@ -278,7 +291,7 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
               size="sm"
               onClick={() => setIsConfirmModalOpen(true)}
             >
-              Delete My Account
+              {t("account.deleteMyAccount", "Delete My Account")}
             </Button>
           </div>
         )}
@@ -295,7 +308,7 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
             <div className="flex items-center gap-3 text-danger-accent">
               <AlertTriangle className="h-6 w-6" />
               <h4 className="text-lg font-semibold text-text">
-                Are you absolutely sure?
+                {t("account.areYouAbsolutelySure", "Are you absolutely sure?")}
               </h4>
             </div>
 
@@ -325,7 +338,8 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
                 htmlFor="confirm-delete"
                 className="text-xs text-text-muted"
               >
-                Type <strong className="text-danger-accent">DELETE</strong> to
+                {t("account.type", "Type")}
+                <strong className="text-danger-accent">DELETE</strong> to
                 confirm:
               </Label>
               <Input
@@ -346,7 +360,7 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
                 }}
                 disabled={isDeleting}
               >
-                Cancel
+                {t("account.cancel", "Cancel")}
               </Button>
               <Button
                 type="button"
@@ -359,7 +373,7 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
                 {isDeleting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Scheduling Deletion...
+                    {t("account.schedulingDeletion", "Scheduling Deletion...")}
                   </>
                 ) : (
                   "Confirm Deletion Request"

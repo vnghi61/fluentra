@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { CheckCircle2, KeyRound, Shield, AlertCircle } from "lucide-react";
 import { ChangePasswordModal } from "./ChangePasswordModal";
 import { GoogleAccountLink } from "./GoogleAccountLink";
@@ -13,6 +14,7 @@ interface SecuritySettingsProps {
 export const SecuritySettings: React.FC<SecuritySettingsProps> = ({
   onLoggedOut,
 }) => {
+  const { t } = useTranslation();
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{
     type: "success" | "error";
@@ -52,10 +54,13 @@ export const SecuritySettings: React.FC<SecuritySettingsProps> = ({
           <div className="space-y-1">
             <h3 className="text-base font-semibold text-text flex items-center gap-2">
               <Shield className="h-5 w-5 text-primary-accent" />
-              Password & Authentication
+              {t("account.passwordAuthentication", "Password & Authentication")}
             </h3>
             <p className="text-xs text-text-muted">
-              Ensure your account is protected with a strong, unique password.
+              {t(
+                "account.ensureYourAccountIsProtectedWithAStrongUniquePassword",
+                "Ensure your account is protected with a strong, unique password.",
+              )}
             </p>
           </div>
         </div>
@@ -66,7 +71,7 @@ export const SecuritySettings: React.FC<SecuritySettingsProps> = ({
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border-subtle bg-surface-card/40 p-4">
           <div className="min-w-0">
             <p className="text-sm font-medium text-text">
-              Account Password
+              {t("account.accountPassword", "Account Password")}
             </p>
             <p className="text-xs text-text-muted">••••••••••••••••</p>
           </div>
@@ -77,7 +82,7 @@ export const SecuritySettings: React.FC<SecuritySettingsProps> = ({
             onClick={() => setIsPasswordModalOpen(true)}
           >
             <KeyRound className="mr-1.5 h-3.5 w-3.5" />
-            Change Password
+            {t("account.changePassword", "Change Password")}
           </Button>
         </div>
       </div>

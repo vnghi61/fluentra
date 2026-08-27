@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Laptop,
   Loader2,
@@ -15,6 +16,7 @@ interface DevicesListProps {
 }
 
 export const DevicesList: React.FC<DevicesListProps> = ({ onLoggedOut }) => {
+  const { t } = useTranslation();
   const [devices, setDevices] = useState<TrustedDevice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [untrustingId, setUntrustingId] = useState<string | null>(null);
@@ -78,7 +80,7 @@ export const DevicesList: React.FC<DevicesListProps> = ({ onLoggedOut }) => {
       <div className="space-y-1">
         <h3 className="text-base font-semibold text-text flex items-center gap-2">
           <Laptop className="h-5 w-5 text-primary-accent" />
-          Trusted Devices
+          {t("account.trustedDevices", "Trusted Devices")}
         </h3>
         <p className="text-xs text-text-muted">
           Devices you selected &quot;Stay signed in&quot; on. They remain signed
@@ -99,7 +101,7 @@ export const DevicesList: React.FC<DevicesListProps> = ({ onLoggedOut }) => {
         </div>
       ) : devices.length === 0 ? (
         <p className="text-xs text-text-muted py-4 text-center">
-          No trusted devices found.
+          {t("account.noTrustedDevicesFound", "No trusted devices found.")}
         </p>
       ) : (
         <div className="space-y-3">
@@ -129,7 +131,7 @@ export const DevicesList: React.FC<DevicesListProps> = ({ onLoggedOut }) => {
                       </p>
                       {device.current && (
                         <span className="inline-flex items-center rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary-accent">
-                          This device
+                          {t("account.thisDevice", "This device")}
                         </span>
                       )}
                     </div>
@@ -157,7 +159,9 @@ export const DevicesList: React.FC<DevicesListProps> = ({ onLoggedOut }) => {
                   className="min-w-11 text-text-muted hover:text-danger-accent hover:bg-danger/10"
                 >
                   <Trash2 className="h-4 w-4" />
-                  <span className="sr-only">Untrust device</span>
+                  <span className="sr-only">
+                    {t("account.untrustDevice", "Untrust device")}
+                  </span>
                 </Button>
               </div>
             );
@@ -176,7 +180,10 @@ export const DevicesList: React.FC<DevicesListProps> = ({ onLoggedOut }) => {
             <div className="flex items-center gap-3 text-danger-accent">
               <ShieldAlert className="h-6 w-6" />
               <h4 className="text-base font-semibold text-text">
-                Stop trusting this device?
+                {t(
+                  "account.stopTrustingThisDevice",
+                  "Stop trusting this device?",
+                )}
               </h4>
             </div>
 
@@ -209,7 +216,7 @@ export const DevicesList: React.FC<DevicesListProps> = ({ onLoggedOut }) => {
                 onClick={() => setConfirmDevice(null)}
                 disabled={!!untrustingId}
               >
-                Cancel
+                {t("account.cancel", "Cancel")}
               </Button>
               <Button
                 type="button"
@@ -222,7 +229,7 @@ export const DevicesList: React.FC<DevicesListProps> = ({ onLoggedOut }) => {
                 {untrustingId ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Untrusting...
+                    {t("account.untrusting", "Untrusting...")}
                   </>
                 ) : (
                   "Untrust & Sign Out"

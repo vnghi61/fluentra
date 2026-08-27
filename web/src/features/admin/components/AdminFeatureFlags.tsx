@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
   createColumnHelper,
   flexRender,
@@ -22,6 +23,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 const columnHelper = createColumnHelper<FeatureFlag>();
 
 export const AdminFeatureFlags: React.FC = () => {
+  const { t } = useTranslation();
   const [flags, setFlags] = useState<FeatureFlag[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -221,13 +223,15 @@ export const AdminFeatureFlags: React.FC = () => {
               className="text-text-muted hover:text-danger-accent hover:bg-danger/10"
             >
               <Trash2 className="h-3.5 w-3.5" />
-              <span className="sr-only">Delete flag</span>
+              <span className="sr-only">
+                {t("admin.deleteFlag", "Delete flag")}
+              </span>
             </Button>
           );
         },
       }),
     ],
-    [updatingKey, deletingKey],
+    [updatingKey, deletingKey, t],
   );
 
   const table = useReactTable({
@@ -242,7 +246,7 @@ export const AdminFeatureFlags: React.FC = () => {
         <div className="space-y-1">
           <h3 className="text-base font-semibold text-text flex items-center gap-2">
             <Flag className="h-5 w-5 text-primary-accent" />
-            Feature Flags & Rollouts
+            {t("admin.featureFlagsRollouts", "Feature Flags & Rollouts")}
           </h3>
           <p className="text-xs text-text-muted">
             Control dynamic system feature switches, percentage rollouts, and
@@ -256,7 +260,7 @@ export const AdminFeatureFlags: React.FC = () => {
           size="sm"
         >
           <Plus className="mr-1.5 h-4 w-4" />
-          Create Flag
+          {t("admin.createFlag", "Create Flag")}
         </Button>
       </div>
 
@@ -277,10 +281,16 @@ export const AdminFeatureFlags: React.FC = () => {
           <div className="flex min-h-[200px] flex-col items-center justify-center p-8 text-center space-y-2">
             <Flag className="h-8 w-8 text-text-muted" />
             <p className="text-sm font-medium text-text-muted">
-              No feature flags configured
+              {t(
+                "admin.noFeatureFlagsConfigured",
+                "No feature flags configured",
+              )}
             </p>
             <p className="text-xs text-text-muted">
-              Create a feature flag to control rollouts.
+              {t(
+                "admin.createAFeatureFlagToControlRollouts",
+                "Create a feature flag to control rollouts.",
+              )}
             </p>
           </div>
         ) : (

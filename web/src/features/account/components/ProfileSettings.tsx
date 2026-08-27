@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -26,6 +27,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
   initialProfile,
   onProfileUpdated,
 }) => {
+  const { t } = useTranslation();
   const [profile, setProfile] = useState<UserProfile>(initialProfile);
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -153,7 +155,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
             className="mt-2"
           >
             <Camera className="mr-2 h-4 w-4" />
-            Change Photo
+            {t("account.changePhoto", "Change Photo")}
           </Button>
         </div>
       </div>
@@ -188,18 +190,18 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
           <div className="space-y-2 sm:col-span-2">
             <Label htmlFor="email" className="flex items-center gap-2">
               <Mail className="h-4 w-4 text-text-muted" />
-              Email Address
+              {t("account.emailAddress", "Email Address")}
             </Label>
             <div className="flex items-center justify-between rounded-lg border border-border-subtle bg-surface-card/40 px-3.5 py-2.5 text-sm text-text-muted">
               <span>{profile.email}</span>
               {profile.email_verified_at ? (
                 <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-xs font-medium text-success-accent border border-success/20">
                   <CheckCircle2 className="h-3 w-3" />
-                  Verified
+                  {t("account.verified", "Verified")}
                 </span>
               ) : (
                 <span className="rounded-full bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning-accent border border-warning/20">
-                  Unverified
+                  {t("account.unverified", "Unverified")}
                 </span>
               )}
             </div>
@@ -209,7 +211,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
           <div className="space-y-2">
             <Label htmlFor="display_name" className="flex items-center gap-2">
               <User className="h-4 w-4 text-text-muted" />
-              Display Name
+              {t("account.displayName", "Display Name")}
             </Label>
             <Input
               id="display_name"
@@ -238,13 +240,17 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
               aria-invalid={!!errors.country}
             />
             {errors.country && (
-              <p className="text-xs text-danger-accent">{errors.country.message}</p>
+              <p className="text-xs text-danger-accent">
+                {errors.country.message}
+              </p>
             )}
           </div>
 
           {/* Timezone */}
           <div className="space-y-2">
-            <Label htmlFor="timezone">Timezone</Label>
+            <Label htmlFor="timezone">
+              {t("account.timezone", "Timezone")}
+            </Label>
             <Input
               id="timezone"
               {...register("timezone")}
@@ -252,13 +258,17 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
               aria-invalid={!!errors.timezone}
             />
             {errors.timezone && (
-              <p className="text-xs text-danger-accent">{errors.timezone.message}</p>
+              <p className="text-xs text-danger-accent">
+                {errors.timezone.message}
+              </p>
             )}
           </div>
 
           {/* Date of Birth */}
           <div className="space-y-2">
-            <Label htmlFor="date_of_birth">Date of Birth</Label>
+            <Label htmlFor="date_of_birth">
+              {t("account.dateOfBirth", "Date of Birth")}
+            </Label>
             <Input
               id="date_of_birth"
               type="date"
@@ -278,7 +288,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
             {isSaving ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
+                {t("account.saving", "Saving...")}
               </>
             ) : (
               "Save Changes"

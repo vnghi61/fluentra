@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertCircle, FileText, Loader2, X } from "lucide-react";
@@ -29,6 +30,7 @@ export const AdminActionReasonModal: React.FC<AdminActionReasonModalProps> = ({
   onClose,
   onConfirm,
 }) => {
+  const { t } = useTranslation();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -137,7 +139,9 @@ export const AdminActionReasonModal: React.FC<AdminActionReasonModalProps> = ({
               aria-invalid={!!errors.reason}
             />
             {errors.reason && (
-              <p className="text-xs text-danger-accent">{errors.reason.message}</p>
+              <p className="text-xs text-danger-accent">
+                {errors.reason.message}
+              </p>
             )}
           </div>
 
@@ -148,13 +152,13 @@ export const AdminActionReasonModal: React.FC<AdminActionReasonModalProps> = ({
               onClick={handleClose}
               disabled={isSubmitting}
             >
-              Cancel
+              {t("admin.cancel", "Cancel")}
             </Button>
             <Button type="submit" variant={variant} disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Executing...
+                  {t("admin.executing", "Executing...")}
                 </>
               ) : (
                 actionButtonLabel

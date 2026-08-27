@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
 import {
   FileText,
@@ -24,6 +25,7 @@ import { useAuthStore } from "@/stores/authStore";
 type TabKey = "profile" | "preferences" | "security" | "privacy";
 
 export function AccountSettingsPage(): React.JSX.Element {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabKey>("profile");
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [preferences, setPreferences] = useState<UserPreferences | null>(null);
@@ -71,7 +73,9 @@ export function AccountSettingsPage(): React.JSX.Element {
     return (
       <div className="flex min-h-[400px] flex-col items-center justify-center space-y-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary-accent" />
-        <p className="text-sm text-text-muted">Loading your settings...</p>
+        <p className="text-sm text-text-muted">
+          {t("page.loadingYourSettings", "Loading your settings...")}
+        </p>
       </div>
     );
   }
@@ -82,7 +86,7 @@ export function AccountSettingsPage(): React.JSX.Element {
         <div className="rounded-xl border border-danger/30 bg-danger/10 p-6 text-center space-y-4">
           <AlertCircle className="mx-auto h-8 w-8 text-danger-accent" />
           <h2 className="text-base font-semibold text-danger-accent">
-            Unable to load settings
+            {t("page.unableToLoadSettings", "Unable to load settings")}
           </h2>
           <p className="text-xs text-danger-accent">
             {error ||
@@ -93,7 +97,7 @@ export function AccountSettingsPage(): React.JSX.Element {
             onClick={() => window.location.reload()}
             className="rounded-lg bg-danger px-4 py-2 text-xs font-medium text-white hover:bg-danger transition-colors"
           >
-            Retry
+            {t("page.retry", "Retry")}
           </button>
         </div>
       </div>
@@ -120,7 +124,7 @@ export function AccountSettingsPage(): React.JSX.Element {
       <header className="space-y-1">
         <h1 className="text-2xl font-bold text-text flex items-center gap-2.5">
           <SettingsIcon className="h-7 w-7 text-primary-accent" />
-          Account Settings
+          {t("page.accountSettings", "Account Settings")}
         </h1>
         <p className="text-sm text-text-muted">
           Manage your personal profile, study preferences, security credentials,

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertCircle, Flag, Loader2, X } from "lucide-react";
@@ -23,6 +24,7 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
   onClose,
   onSuccess,
 }) => {
+  const { t } = useTranslation();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -93,7 +95,7 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
             className="text-lg font-semibold text-text flex items-center gap-2"
           >
             <Flag className="h-5 w-5 text-primary-accent" />
-            Create Feature Flag
+            {t("admin.createFeatureFlag", "Create Feature Flag")}
           </h2>
           <button
             type="button"
@@ -120,7 +122,9 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
         >
           {/* Key */}
           <div className="space-y-1.5">
-            <Label htmlFor="flag-key">Flag Identifier Key</Label>
+            <Label htmlFor="flag-key">
+              {t("admin.flagIdentifierKey", "Flag Identifier Key")}
+            </Label>
             <Input
               id="flag-key"
               {...register("key")}
@@ -134,7 +138,9 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
 
           {/* Description */}
           <div className="space-y-1.5">
-            <Label htmlFor="flag-desc">Description</Label>
+            <Label htmlFor="flag-desc">
+              {t("admin.description", "Description")}
+            </Label>
             <Input
               id="flag-desc"
               {...register("description")}
@@ -151,7 +157,9 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
           {/* Owner & Expiry */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="flag-owner">Owner / Team</Label>
+              <Label htmlFor="flag-owner">
+                {t("admin.ownerTeam", "Owner / Team")}
+              </Label>
               <Input
                 id="flag-owner"
                 {...register("owner")}
@@ -159,12 +167,16 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
                 aria-invalid={!!errors.owner}
               />
               {errors.owner && (
-                <p className="text-xs text-danger-accent">{errors.owner.message}</p>
+                <p className="text-xs text-danger-accent">
+                  {errors.owner.message}
+                </p>
               )}
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="flag-expiry">Expires On (Future)</Label>
+              <Label htmlFor="flag-expiry">
+                {t("admin.expiresOnFuture", "Expires On (Future)")}
+              </Label>
               <Input
                 id="flag-expiry"
                 type="date"
@@ -214,7 +226,10 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
               htmlFor="flag-enabled"
               className="text-sm font-medium cursor-pointer"
             >
-              Enable immediately on creation
+              {t(
+                "admin.enableImmediatelyOnCreation",
+                "Enable immediately on creation",
+              )}
             </Label>
           </div>
 
@@ -225,13 +240,13 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
               onClick={onClose}
               disabled={isSubmitting}
             >
-              Cancel
+              {t("admin.cancel", "Cancel")}
             </Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating...
+                  {t("admin.creating", "Creating...")}
                 </>
               ) : (
                 "Save Feature Flag"

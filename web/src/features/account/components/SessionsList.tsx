@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   History,
   Laptop,
@@ -15,6 +16,7 @@ interface SessionsListProps {
 }
 
 export const SessionsList: React.FC<SessionsListProps> = ({ onLoggedOut }) => {
+  const { t } = useTranslation();
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [revokingId, setRevokingId] = useState<string | null>(null);
@@ -81,7 +83,7 @@ export const SessionsList: React.FC<SessionsListProps> = ({ onLoggedOut }) => {
       <div className="space-y-1">
         <h3 className="text-base font-semibold text-text flex items-center gap-2">
           <History className="h-5 w-5 text-primary-accent" />
-          Active Sessions
+          {t("account.activeSessions", "Active Sessions")}
         </h3>
         <p className="text-xs text-text-muted">
           Where you are currently signed in. You can revoke any session to sign
@@ -102,7 +104,7 @@ export const SessionsList: React.FC<SessionsListProps> = ({ onLoggedOut }) => {
         </div>
       ) : sessions.length === 0 ? (
         <p className="text-xs text-text-muted py-4 text-center">
-          No active sessions found.
+          {t("account.noActiveSessionsFound", "No active sessions found.")}
         </p>
       ) : (
         <div className="space-y-3">
@@ -132,7 +134,7 @@ export const SessionsList: React.FC<SessionsListProps> = ({ onLoggedOut }) => {
                       </p>
                       {session.current && (
                         <span className="rounded-full bg-success/10 px-2 py-0.5 text-xs font-semibold text-success-accent border border-success/20">
-                          Current Device
+                          {t("account.currentDevice", "Current Device")}
                         </span>
                       )}
                     </div>
@@ -167,7 +169,7 @@ export const SessionsList: React.FC<SessionsListProps> = ({ onLoggedOut }) => {
                   ) : (
                     <>
                       <LogOut className="mr-1.5 h-3.5 w-3.5" />
-                      Revoke
+                      {t("account.revoke", "Revoke")}
                     </>
                   )}
                 </Button>

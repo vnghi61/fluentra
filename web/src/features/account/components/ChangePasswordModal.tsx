@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { KeyRound, Loader2, ShieldCheck, X, AlertCircle } from "lucide-react";
@@ -22,6 +23,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
   onClose,
   onSuccess,
 }) => {
+  const { t } = useTranslation();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -79,7 +81,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
             className="text-lg font-semibold text-text flex items-center gap-2"
           >
             <KeyRound className="h-5 w-5 text-primary-accent" />
-            Change Password
+            {t("account.changePassword", "Change Password")}
           </h2>
           <button
             type="button"
@@ -113,7 +115,9 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
           className="space-y-4"
         >
           <div className="space-y-2">
-            <Label htmlFor="current_password">Current Password</Label>
+            <Label htmlFor="current_password">
+              {t("account.currentPassword", "Current Password")}
+            </Label>
             <Input
               id="current_password"
               type="password"
@@ -129,7 +133,9 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="new_password">New Password</Label>
+            <Label htmlFor="new_password">
+              {t("account.newPassword", "New Password")}
+            </Label>
             <Input
               id="new_password"
               type="password"
@@ -145,7 +151,9 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="confirm_new_password">Confirm New Password</Label>
+            <Label htmlFor="confirm_new_password">
+              {t("account.confirmNewPassword", "Confirm New Password")}
+            </Label>
             <Input
               id="confirm_new_password"
               type="password"
@@ -167,13 +175,13 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
               onClick={onClose}
               disabled={isSubmitting}
             >
-              Cancel
+              {t("account.cancel", "Cancel")}
             </Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Updating...
+                  {t("account.updating", "Updating...")}
                 </>
               ) : (
                 "Update Password"

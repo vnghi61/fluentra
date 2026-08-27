@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
   createColumnHelper,
   flexRender,
@@ -25,6 +26,7 @@ type UserStatus = components["schemas"]["UserStatus"];
 const columnHelper = createColumnHelper<AdminUserSummary>();
 
 export const AdminUserList: React.FC = () => {
+  const { t } = useTranslation();
   const [users, setUsers] = useState<AdminUserSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -183,12 +185,12 @@ export const AdminUserList: React.FC = () => {
             className="text-text-muted hover:text-primary-accent hover:bg-primary/10"
           >
             <Eye className="mr-1.5 h-3.5 w-3.5" />
-            Inspect
+            {t("admin.inspect", "Inspect")}
           </Button>
         ),
       }),
     ],
-    [],
+    [t],
   );
 
   const table = useReactTable({
@@ -222,16 +224,20 @@ export const AdminUserList: React.FC = () => {
             }
             className="h-11 min-h-[44px] rounded-lg border border-border-subtle bg-surface-card px-3 text-base md:text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary"
           >
-            <option value="">All Statuses</option>
-            <option value="active">Active</option>
-            <option value="suspended">Suspended</option>
-            <option value="pending_deletion">Pending Deletion</option>
-            <option value="deleted">Deleted</option>
+            <option value="">{t("admin.allStatuses", "All Statuses")}</option>
+            <option value="active">{t("admin.active", "Active")}</option>
+            <option value="suspended">
+              {t("admin.suspended", "Suspended")}
+            </option>
+            <option value="pending_deletion">
+              {t("admin.pendingDeletion", "Pending Deletion")}
+            </option>
+            <option value="deleted">{t("admin.deleted", "Deleted")}</option>
           </select>
 
           <Button type="submit" size="md">
             <Search className="mr-1.5 h-4 w-4" />
-            Search
+            {t("admin.search", "Search")}
           </Button>
         </form>
       </div>
@@ -253,10 +259,13 @@ export const AdminUserList: React.FC = () => {
           <div className="flex min-h-[250px] flex-col items-center justify-center p-8 text-center space-y-2">
             <Users className="h-8 w-8 text-text-muted" />
             <p className="text-sm font-medium text-text-muted">
-              No learners found
+              {t("admin.noLearnersFound", "No learners found")}
             </p>
             <p className="text-xs text-text-muted">
-              Try adjusting your search query or filters.
+              {t(
+                "admin.tryAdjustingYourSearchQueryOrFilters",
+                "Try adjusting your search query or filters.",
+              )}
             </p>
           </div>
         ) : (
@@ -308,8 +317,8 @@ export const AdminUserList: React.FC = () => {
         {/* Cursor Pagination Footer */}
         <div className="flex items-center justify-between border-t border-border-subtle px-4 py-3 bg-surface-muted text-xs text-text-muted">
           <div>
-            Showing <strong className="text-text">{users.length}</strong>{" "}
-            learner(s)
+            {t("admin.showing", "Showing")}
+            <strong className="text-text">{users.length}</strong> learner(s)
           </div>
 
           <div className="flex items-center gap-2">
@@ -321,7 +330,7 @@ export const AdminUserList: React.FC = () => {
               disabled={cursorHistory.length === 0 || isLoading}
             >
               <ChevronLeft className="mr-1 h-3.5 w-3.5" />
-              Previous
+              {t("admin.previous", "Previous")}
             </Button>
 
             <Button
