@@ -35,6 +35,29 @@ export type DeletionResponse = components["schemas"]["DeletionResponse"];
  * S3 and R2 both put a machine-readable `<Code>` in that body. Surfacing it
  * costs one read and turns the next failure into a diagnosis.
  */
+/**
+ * Turns a rejected upload request into an error that names the likely cause.
+ *
+ * A cross-origin `PUT` is never a CORS "simple request", so the browser sends an
+ * `OPTIONS` preflight first. A bucket with no CORS policy refuses it and `fetch`
+ * rejects with a bare `TypeError: Failed to fetch` — no status, no body, nothing
+ * `storageUploadError` can read, because there is no response at all.
+ *
+ * That message is what a learner saw while the actual answer sat in R2's own
+ * reply to the preflight: "CORS not configured for this bucket". The fix is a
+ * bucket setting, not code — see deploy/r2/README.md — so the least this can do
+ * is say where to look.
+ */
+function storageNetworkError(error: unknown): Error {
+  if (error instanceof TypeError) {
+    return new Error(
+      "The upload never reached storage. This is usually the bucket's CORS " +
+        "policy refusing the browser's preflight — see deploy/r2/README.md.",
+    );
+  }
+  return error instanceof Error ? error : new Error(String(error));
+}
+
 async function storageUploadError(response: Response): Promise<Error> {
   let detail = "";
   try {
@@ -131,10 +154,12 @@ export const accountApi = {
       }
       formData.append(intent.file_field || "file", file);
 
-      const response = await fetch(uploadUrl, {
-        method: "POST",
-        body: formData,
-      });
+      let response: Response;
+      try {
+        response = await fetch(uploadUrl, { method: "POST", body: formData });
+      } catch (error) {
+        throw storageNetworkError(error);
+      }
 
       if (!response.ok) {
         throw await storageUploadError(response);
@@ -147,13 +172,18 @@ export const accountApi = {
       // carrying the headers the signature covers, byte for byte — falling back
       // to `file.type` here would send a string the signature does not describe
       // and earn a 403 from the store.
-      const response = await fetch(uploadUrl, {
-        method: "PUT",
-        body: file,
-        headers: {
-          "Content-Type": intent.content_type,
-        },
-      });
+      let response: Response;
+      try {
+        response = await fetch(uploadUrl, {
+          method: "PUT",
+          body: file,
+          headers: {
+            "Content-Type": intent.content_type,
+          },
+        });
+      } catch (error) {
+        throw storageNetworkError(error);
+      }
 
       if (!response.ok) {
         throw await storageUploadError(response);
