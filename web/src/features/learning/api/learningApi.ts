@@ -15,6 +15,7 @@ export type SubmitAttemptRequest =
 export type SubmitAttemptResult = components["schemas"]["SubmitAttemptResult"];
 export type AttemptDetail = components["schemas"]["AttemptDetail"];
 export type Enrollment = components["schemas"]["Enrollment"];
+export type PreviewGradeResult = components["schemas"]["PreviewGradeResult"];
 
 export const learningApi = {
   /** Fetch the learner's current dashboard state */
@@ -73,6 +74,29 @@ export const learningApi = {
         headers: {
           "Idempotency-Key": idempotencyKey,
         },
+        body: JSON.stringify(data),
+      },
+    );
+  },
+
+  /**
+   * Grade one response and keep nothing.
+   *
+   * What a visitor with no account submits to. There is no attempt to start
+   * first and no Idempotency-Key to send, because there is nothing to make
+   * idempotent — replaying it changes no state on the server.
+   *
+   * A signed-in learner must not come here: their answers belong in the attempt
+   * flow, which is what produces their progress and their review cards.
+   */
+  async gradePreview(
+    activityId: string,
+    data: SubmitAttemptRequest,
+  ): Promise<PreviewGradeResult> {
+    return apiFetch<PreviewGradeResult>(
+      `/api/v1/activities/${activityId}/grade`,
+      {
+        method: "POST",
         body: JSON.stringify(data),
       },
     );

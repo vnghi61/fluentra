@@ -3,6 +3,8 @@ import { useNavigate, useParams } from "@tanstack/react-router";
 import { AlertCircle, RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { useAuthStore } from "@/stores/authStore";
+
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,6 +15,7 @@ import {
 } from "@/components/ui/card";
 import {
   CompletionScreen,
+  SaveProgressPrompt,
   ExerciseFlashcard,
   ExerciseGapFill,
   ExerciseMultipleChoice,
@@ -20,7 +23,6 @@ import {
   ExitDialog,
   learningApi,
   RunnerHeader,
-  type SubmitAttemptResult,
 } from "@/features/learning";
 import { useLesson } from "@/features/lesson";
 
@@ -54,6 +56,21 @@ interface FlashcardConfig {
   example_sentence?: string;
 }
 
+/**
+ * What the screen needs out of a grading, from either path.
+ *
+ * A signed-in learner's answer goes through the attempt flow and comes back as
+ * SubmitAttemptResult; a guest's goes to POST /activities/{id}/grade and comes
+ * back as PreviewGradeResult. The two responses differ in what they say about
+ * storage — one has an attempt id, the other says `saved: false` — and agree
+ * exactly on the verdict, which is the only part the runner renders.
+ */
+interface Verdict {
+  correct?: boolean | undefined;
+  feedback?: string | null | undefined;
+  correct_answer?: string | null | undefined;
+}
+
 export function LessonPage(): React.JSX.Element {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -61,6 +78,9 @@ export function LessonPage(): React.JSX.Element {
     strict: false,
   });
   const lessonId = params["lessonId"] ?? "";
+  // A guest works through the same lesson with the same grader; what differs is
+  // that nothing they do is written down, and the completion screen says so.
+  const signedIn = useAuthStore((state) => state.status === "authenticated");
 
   const {
     data: lesson,
@@ -76,8 +96,9 @@ export function LessonPage(): React.JSX.Element {
   const [attemptStartFailed, setAttemptStartFailed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [submissionResult, setSubmissionResult] =
-    useState<SubmitAttemptResult | null>(null);
+  const [submissionResult, setSubmissionResult] = useState<Verdict | null>(
+    null,
+  );
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [lastSubmittedPayload, setLastSubmittedPayload] = useState<Record<
     string,
@@ -89,6 +110,9 @@ export function LessonPage(): React.JSX.Element {
 
   const [scoreCount, setScoreCount] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
+  // Shown once, at the end, and dismissible. A guest who has decided to keep
+  // looking around should not be asked again on the next lesson's last screen.
+  const [savePromptDismissed, setSavePromptDismissed] = useState(false);
   const [isExitDialogOpen, setIsExitDialogOpen] = useState(false);
   const [startTime] = useState(() => Date.now());
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -98,9 +122,13 @@ export function LessonPage(): React.JSX.Element {
   const activities = lesson?.activities ?? [];
   const currentActivity = activities[currentIndex];
 
-  // Start attempt when current activity changes
+  // Start attempt when current activity changes.
+  //
+  // Skipped entirely for a guest: there is no attempt to start, because there is
+  // nobody to attribute one to. Their answers go to the grading route instead,
+  // and nothing about the lesson is written down.
   useEffect(() => {
-    if (!currentActivity || isCompleted) return;
+    if (!currentActivity || isCompleted || !signedIn) return;
 
     let isMounted = true;
     idempotencyKeyRef.current = crypto.randomUUID();
@@ -128,21 +156,28 @@ export function LessonPage(): React.JSX.Element {
     return () => {
       isMounted = false;
     };
-  }, [currentActivity, isCompleted]);
+  }, [currentActivity, isCompleted, signedIn]);
 
   const handleSubmit = async (responsePayload: Record<string, unknown>) => {
-    if (!currentAttemptId) return;
+    if (signedIn && !currentAttemptId) return;
+    if (!currentActivity) return;
 
     setIsSubmitting(true);
     setSubmissionError(null);
     setLastSubmittedPayload(responsePayload);
 
     try {
-      const result = await learningApi.submitAttempt(
-        currentAttemptId,
-        { response: responsePayload as Record<string, never> },
-        idempotencyKeyRef.current, // Reuses same key on retry
-      );
+      const body = { response: responsePayload as Record<string, never> };
+      // The guest path is deliberately a different call, not the same call with
+      // a flag. Nothing it sends can be mistaken for work to be saved.
+      const result: Verdict =
+        signedIn && currentAttemptId
+          ? await learningApi.submitAttempt(
+              currentAttemptId,
+              body,
+              idempotencyKeyRef.current, // Reuses same key on retry
+            )
+          : await learningApi.gradePreview(currentActivity.id, body);
 
       setIsSubmitted(true);
       setSubmissionResult(result);
@@ -176,7 +211,11 @@ export function LessonPage(): React.JSX.Element {
       setSubmissionError(null);
       setLastSubmittedPayload(null);
       setAttemptStartFailed(false);
-      setIsAttemptStarting(true);
+      // Only a signed-in learner is waiting on an attempt to be opened. For a
+      // guest nothing is being started, so leaving this true left every
+      // activity after the first with its Check Answer button disabled — the
+      // effect that would clear it returns early for them.
+      setIsAttemptStarting(signedIn);
       setCurrentIndex((prev) => prev + 1);
     } else {
       setElapsedSeconds(
@@ -230,21 +269,29 @@ export function LessonPage(): React.JSX.Element {
 
   if (isCompleted) {
     return (
-      <CompletionScreen
-        score={scoreCount}
-        totalActivities={activities.length}
-        timeSpentSeconds={elapsedSeconds}
-        onRetryLesson={() => {
-          setCurrentIndex(0);
-          setScoreCount(0);
-          setIsSubmitted(false);
-          setSubmissionResult(null);
-          setSubmissionError(null);
-          setLastSubmittedPayload(null);
-          setIsAttemptStarting(true);
-          setIsCompleted(false);
-        }}
-      />
+      <>
+        <SaveProgressPrompt
+          isOpen={!signedIn && !savePromptDismissed}
+          score={scoreCount}
+          total={activities.length}
+          onDismiss={() => setSavePromptDismissed(true)}
+        />
+        <CompletionScreen
+          score={scoreCount}
+          totalActivities={activities.length}
+          timeSpentSeconds={elapsedSeconds}
+          onRetryLesson={() => {
+            setCurrentIndex(0);
+            setScoreCount(0);
+            setIsSubmitted(false);
+            setSubmissionResult(null);
+            setSubmissionError(null);
+            setLastSubmittedPayload(null);
+            setIsAttemptStarting(signedIn);
+            setIsCompleted(false);
+          }}
+        />
+      </>
     );
   }
 
@@ -310,7 +357,7 @@ export function LessonPage(): React.JSX.Element {
           </div>
         )}
 
-        {attemptStartFailed && (
+        {signedIn && attemptStartFailed && (
           <Card className="max-w-2xl mx-auto w-full text-center p-6 border-danger/30">
             <CardHeader>
               <CardTitle>{t("runner.attemptFailedTitle")}</CardTitle>
@@ -324,7 +371,7 @@ export function LessonPage(): React.JSX.Element {
           </Card>
         )}
 
-        {!attemptStartFailed &&
+        {!(signedIn && attemptStartFailed) &&
           !canRenderMultipleChoice &&
           !canRenderGapFill &&
           !canRenderFlashcard && (

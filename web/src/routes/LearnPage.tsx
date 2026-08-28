@@ -3,6 +3,8 @@ import { useNavigate } from "@tanstack/react-router";
 import { BookOpen } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { useAuthStore } from "@/stores/authStore";
+
 import {
   Card,
   CardDescription,
@@ -17,10 +19,11 @@ import {
   useCourse,
   useCourses,
 } from "@/features/lesson";
-import { learningApi } from "@/features/learning";
+import { GuestNotice, learningApi } from "@/features/learning";
 
 export function LearnPage(): React.JSX.Element {
   const { t } = useTranslation();
+  const signedIn = useAuthStore((state) => state.status === "authenticated");
   const navigate = useNavigate();
   const [enrolErr, setEnrolErr] = React.useState<Error | null>(null);
   const {
@@ -57,17 +60,24 @@ export function LearnPage(): React.JSX.Element {
   const startLesson = React.useCallback(
     (lessonId: string): void => {
       void (async () => {
-        try {
-          if (activeCourseId) await learningApi.enrollCourse(activeCourseId);
-          setEnrolErr(null);
-        } catch (err) {
-          setEnrolErr(err instanceof Error ? err : new Error(String(err)));
-          return;
+        // A guest enrols in nothing. Enrolment is a row against a person, so
+        // the call 401s for them — and because a failed enrolment stops the
+        // navigation, every "Start Lesson" button on this page did nothing at
+        // all for a signed-out visitor. The lesson itself is public; only the
+        // bookkeeping needs an account.
+        if (signedIn) {
+          try {
+            if (activeCourseId) await learningApi.enrollCourse(activeCourseId);
+            setEnrolErr(null);
+          } catch (err) {
+            setEnrolErr(err instanceof Error ? err : new Error(String(err)));
+            return;
+          }
         }
         await navigate({ to: `/learn/lesson/${lessonId}` });
       })();
     },
-    [activeCourseId, navigate],
+    [activeCourseId, navigate, signedIn],
   );
 
   if (coursesLoading || (activeCourseSlug && activeCourseLoading)) {
@@ -117,7 +127,14 @@ export function LearnPage(): React.JSX.Element {
     return (
       <LearnError
         onRetry={() => void refetchCourses()}
-        error={new Error(t("page.courseSyllabusCouldNotBe", "Course syllabus could not be found."))}
+        error={
+          new Error(
+            t(
+              "page.courseSyllabusCouldNotBe",
+              "Course syllabus could not be found.",
+            ),
+          )
+        }
       />
     );
   }
@@ -130,6 +147,8 @@ export function LearnPage(): React.JSX.Element {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-200">
+      {!signedIn && <GuestNotice />}
+
       {/* Course Header & Info */}
       <CourseHeader
         course={activeCourse}

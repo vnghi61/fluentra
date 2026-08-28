@@ -1,15 +1,19 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { AlertCircle, BookMarked } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { AlertCircle, BookMarked, Layers } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { GuestNotice } from "@/features/learning";
+import { useAuthStore } from "@/stores/authStore";
 import {
   ForecastStrip,
   ReviewQueueCard,
@@ -30,8 +34,12 @@ import {
  */
 export function PracticePage(): React.JSX.Element {
   const { t } = useTranslation();
-  const due = useDueCount();
-  const forecast = useForecast();
+  // Review cards belong to a person. A guest has none, and asking for them
+  // would earn a 401 on a page they are allowed to be on — which reads as a
+  // bug rather than as the honest "there is nothing here for you yet".
+  const signedIn = useAuthStore((state) => state.status === "authenticated");
+  const due = useDueCount(signedIn);
+  const forecast = useForecast(signedIn);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -47,7 +55,37 @@ export function PracticePage(): React.JSX.Element {
         </p>
       </header>
 
-      {due.isLoading ? (
+      {!signedIn ? (
+        <>
+          <GuestNotice />
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2 text-text-muted mb-1">
+                <Layers className="h-5 w-5" aria-hidden="true" />
+                <span className="text-xs font-semibold uppercase tracking-wider">
+                  {t("practice.review.label", "Spaced repetition")}
+                </span>
+              </div>
+              <CardTitle className="text-base font-semibold">
+                {t("guest.practice.title", "Reviews need an account")}
+              </CardTitle>
+              <CardDescription>
+                {t(
+                  "guest.practice.desc",
+                  "Cards are scheduled against the day you are likely to forget, which means they belong to a person. Sign in and the lessons you finish start filling this queue.",
+                )}
+              </CardDescription>
+            </CardHeader>
+            <CardFooter className="pt-0">
+              <Link to="/learn">
+                <Button variant="secondary">
+                  {t("practice.review.emptyLearnBtn", "Go to a lesson")}
+                </Button>
+              </Link>
+            </CardFooter>
+          </Card>
+        </>
+      ) : due.isLoading ? (
         <Skeleton className="h-48 w-full rounded-xl" />
       ) : due.isError ? (
         <Card className="border-danger/30">
@@ -79,7 +117,7 @@ export function PracticePage(): React.JSX.Element {
         The forecast is supporting detail, so it fails quietly: a learner whose
         queue loaded does not need an error banner because a chart did not.
       */}
-      {forecast.isLoading ? (
+      {!signedIn ? null : forecast.isLoading ? (
         <Skeleton className="h-40 w-full rounded-xl" />
       ) : forecast.data ? (
         <ForecastStrip days={forecast.data.days} />
@@ -103,10 +141,20 @@ export function PracticePage(): React.JSX.Element {
             {t("practice.vocabulary.title", "Word lists are not here yet")}
           </CardTitle>
           <CardDescription>
-            {t(
-              "practice.vocabulary.desc",
-              "Browsing and building decks is still being built. Words you meet in lessons are already scheduled for review above.",
-            )}
+            {/*
+              The second sentence is only true for someone who has an account —
+              a guest's lessons schedule nothing — so they get the first half
+              and no claim that is false for them.
+            */}
+            {signedIn
+              ? t(
+                  "practice.vocabulary.desc",
+                  "Browsing and building decks is still being built. Words you meet in lessons are already scheduled for review above.",
+                )
+              : t(
+                  "practice.vocabulary.descGuest",
+                  "Browsing and building decks is still being built.",
+                )}
           </CardDescription>
         </CardHeader>
       </Card>

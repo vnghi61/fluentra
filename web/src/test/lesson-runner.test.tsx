@@ -15,10 +15,16 @@ import {
 import i18n, { initI18n } from "@/i18n";
 import { LessonPage } from "@/routes/LessonPage";
 import type { LessonDetail } from "@/features/lesson";
-import type { StartAttemptResult, SubmitAttemptResult } from "@/features/learning";
+import type {
+  StartAttemptResult,
+  SubmitAttemptResult,
+} from "@/features/learning";
+import { useAuthStore } from "@/stores/authStore";
 import { server } from "./msw-server";
 
-async function renderLessonRunner(lessonId = "0199a1c2-3d4e-7f80-9abc-def01234567a") {
+async function renderLessonRunner(
+  lessonId = "0199a1c2-3d4e-7f80-9abc-def01234567a",
+) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
@@ -36,10 +42,28 @@ async function renderLessonRunner(lessonId = "0199a1c2-3d4e-7f80-9abc-def0123456
   });
   const router = createRouter({
     routeTree: rootRoute.addChildren([lessonRoute]),
-    history: createMemoryHistory({ initialEntries: [`/learn/lesson/${lessonId}`] }),
+    history: createMemoryHistory({
+      initialEntries: [`/learn/lesson/${lessonId}`],
+    }),
   });
   await router.load();
   return render(<RouterProvider router={router} />);
+}
+
+/**
+ * These exercise the signed-in runner: an attempt is started, the answer goes
+ * through the attempt flow, and the result is stored. A guest takes a different
+ * path through the same screen — see the guest suite — so the session has to be
+ * real here rather than incidental.
+ */
+function signIn(): void {
+  useAuthStore.getState().setAuthSession({
+    access_token: "valid-test-token",
+    token_type: "Bearer",
+    expires_in: 900,
+    user_id: "user-123",
+    role: "user",
+  });
 }
 
 describe("LessonPage Runner (P10.3)", () => {
@@ -67,7 +91,9 @@ describe("LessonPage Runner (P10.3)", () => {
             { id: "opt-3", text: "Extremely angry" },
             { id: "opt-4", text: "Quiet and hesitant" },
           ],
-          correct_option_id: "opt-1",
+          // No correct_option_id. The server redacts it out of the lesson, so a
+          // fixture that still carried it would let the runner go back to
+          // reading the answer from the body and nothing here would notice.
         } as unknown as Record<string, never>,
       },
       {
@@ -95,8 +121,10 @@ describe("LessonPage Runner (P10.3)", () => {
           prompt: "Vocabulary Card",
           target_word: "meticulous",
           ipa: "/məˈtɪkjələs/",
-          definition: "Showing great attention to detail; very careful and precise.",
-          example_sentence: "He kept meticulous accounts of the laboratory tests.",
+          definition:
+            "Showing great attention to detail; very careful and precise.",
+          example_sentence:
+            "He kept meticulous accounts of the laboratory tests.",
         } as unknown as Record<string, never>,
       },
     ],
@@ -105,6 +133,7 @@ describe("LessonPage Runner (P10.3)", () => {
   let capturedSubmitHeaders: Headers[] = [];
 
   beforeEach(async () => {
+    signIn();
     initI18n("en");
     await i18n.changeLanguage("en");
     capturedSubmitHeaders = [];
@@ -144,7 +173,9 @@ describe("LessonPage Runner (P10.3)", () => {
     await renderLessonRunner();
 
     // 1. Multiple choice step
-    expect(await screen.findByText("What is the meaning of 'meticulous'?")).toBeInTheDocument();
+    expect(
+      await screen.findByText("What is the meaning of 'meticulous'?"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Activity 1 of 3")).toBeInTheDocument();
 
     // Select option 1
@@ -156,14 +187,18 @@ describe("LessonPage Runner (P10.3)", () => {
     await user.click(checkBtn);
 
     // Feedback shown
-    expect((await screen.findAllByText("Correct! Well done.")).length).toBeGreaterThanOrEqual(1);
+    expect(
+      (await screen.findAllByText("Correct! Well done.")).length,
+    ).toBeGreaterThanOrEqual(1);
 
     // Continue to Step 2
     const contBtn1 = screen.getByRole("button", { name: /Continue/i });
     await user.click(contBtn1);
 
     // 2. Gap fill step
-    expect(await screen.findByText("Complete the sentence with the target word")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Complete the sentence with the target word"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Activity 2 of 3")).toBeInTheDocument();
 
     const input = screen.getByPlaceholderText("Type your answer...");
@@ -172,7 +207,9 @@ describe("LessonPage Runner (P10.3)", () => {
     const checkBtn2 = screen.getByRole("button", { name: /Check Answer/i });
     await user.click(checkBtn2);
 
-    expect((await screen.findAllByText("Correct! Well done.")).length).toBeGreaterThanOrEqual(1);
+    expect(
+      (await screen.findAllByText("Correct! Well done.")).length,
+    ).toBeGreaterThanOrEqual(1);
 
     const contBtn2 = screen.getByRole("button", { name: /Continue/i });
     await user.click(contBtn2);
@@ -184,7 +221,11 @@ describe("LessonPage Runner (P10.3)", () => {
     const flipBtn = screen.getByRole("button", { name: /Flip Card/i });
     await user.click(flipBtn);
 
-    expect(await screen.findByText("Showing great attention to detail; very careful and precise.")).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        "Showing great attention to detail; very careful and precise.",
+      ),
+    ).toBeInTheDocument();
 
     // The flashcard is graded on the learner's own recall verdict now, so it
     // submits an attempt like the other two instead of advancing silently and
@@ -198,14 +239,18 @@ describe("LessonPage Runner (P10.3)", () => {
     // 4. Completion screen
     expect(await screen.findByText("Lesson Completed!")).toBeInTheDocument();
     expect(screen.getByText("100%")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Back to Syllabus/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Back to Syllabus/i }),
+    ).toBeInTheDocument();
   });
 
   it("sends and verifies Idempotency-Key header on attempt submissions", async () => {
     const user = userEventDefault.setup();
     await renderLessonRunner();
 
-    expect(await screen.findByText("What is the meaning of 'meticulous'?")).toBeInTheDocument();
+    expect(
+      await screen.findByText("What is the meaning of 'meticulous'?"),
+    ).toBeInTheDocument();
     await user.click(screen.getByText("Showing great attention to detail"));
     await user.click(screen.getByRole("button", { name: /Check Answer/i }));
 
@@ -247,7 +292,9 @@ describe("LessonPage Runner (P10.3)", () => {
     );
 
     await renderLessonRunner();
-    expect(await screen.findByText("What is the meaning of 'meticulous'?")).toBeInTheDocument();
+    expect(
+      await screen.findByText("What is the meaning of 'meticulous'?"),
+    ).toBeInTheDocument();
     await user.click(screen.getByText("Showing great attention to detail"));
     await user.click(screen.getByRole("button", { name: /Check Answer/i }));
 
@@ -296,16 +343,24 @@ describe("LessonPage Runner (P10.3)", () => {
     // Both runners live in one jsdom document, so each tab's assertions are
     // scoped to its own container; an unscoped query would find the other tab.
     const tabOne = within((await renderLessonRunner()).container);
-    expect(await tabOne.findByText("What is the meaning of 'meticulous'?")).toBeInTheDocument();
+    expect(
+      await tabOne.findByText("What is the meaning of 'meticulous'?"),
+    ).toBeInTheDocument();
     await user.click(tabOne.getByText("Showing great attention to detail"));
     await user.click(tabOne.getByRole("button", { name: /Check Answer/i }));
-    expect((await tabOne.findAllByText("Correct! Well done.")).length).toBeGreaterThan(0);
+    expect(
+      (await tabOne.findAllByText("Correct! Well done.")).length,
+    ).toBeGreaterThan(0);
 
     const tabTwo = within((await renderLessonRunner()).container);
-    expect(await tabTwo.findByText("What is the meaning of 'meticulous'?")).toBeInTheDocument();
+    expect(
+      await tabTwo.findByText("What is the meaning of 'meticulous'?"),
+    ).toBeInTheDocument();
     await user.click(tabTwo.getByText("Showing great attention to detail"));
     await user.click(tabTwo.getByRole("button", { name: /Check Answer/i }));
-    expect((await tabTwo.findAllByText("Correct! Well done.")).length).toBeGreaterThan(0);
+    expect(
+      (await tabTwo.findAllByText("Correct! Well done.")).length,
+    ).toBeGreaterThan(0);
 
     // Both tabs show the same verdict, and neither surfaced a conflict.
     expect(graderRuns).toBe(2);
@@ -326,7 +381,10 @@ describe("LessonPage Runner (P10.3)", () => {
             {
               ...mockLesson.activities[0],
               kind: "vocab_gap_fill",
-              config: { prompt: "Complete it" } as unknown as Record<string, never>,
+              config: { prompt: "Complete it" } as unknown as Record<
+                string,
+                never
+              >,
             },
           ],
         }),
@@ -345,7 +403,9 @@ describe("LessonPage Runner (P10.3)", () => {
     const user = userEventDefault.setup();
     await renderLessonRunner();
 
-    expect(await screen.findByText("What is the meaning of 'meticulous'?")).toBeInTheDocument();
+    expect(
+      await screen.findByText("What is the meaning of 'meticulous'?"),
+    ).toBeInTheDocument();
 
     // Click exit header button
     await user.click(screen.getByLabelText("Exit"));

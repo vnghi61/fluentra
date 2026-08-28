@@ -265,6 +265,22 @@
     "body": "This screen failed to render. The error has been reported.",
     "reload": "Reload"
   },
+  "guest": {
+    "notice": {
+      "text": "You are browsing without an account. You can open any lesson and answer its exercises, but nothing is saved."
+    },
+    "practice": {
+      "title": "Reviews need an account",
+      "desc": "Cards are scheduled against the day you are likely to forget, which means they belong to a person. Sign in and the lessons you finish start filling this queue."
+    },
+    "savePrompt": {
+      "title": "This result was not saved",
+      "desc": "You answered {{score}} of {{total}} correctly. You are not signed in, so nothing was recorded — no progress, no streak, and no review cards. Sign in and your next lesson counts.",
+      "dismissBtn": "Keep looking around",
+      "createAccountBtn": "Create an account",
+      "signInBtn": "Sign in"
+    }
+  },
   "language": {
     "label": "Language"
   },
@@ -346,9 +362,10 @@
       "desc": "Cards already scheduled to come back to you."
     },
     "vocabulary": {
+      "desc": "Browsing and building decks is still being built. Words you meet in lessons are already scheduled for review above.",
+      "descGuest": "Browsing and building decks is still being built.",
       "label": "Vocabulary",
-      "title": "Word lists are not here yet",
-      "desc": "Browsing and building decks is still being built. Words you meet in lessons are already scheduled for review above."
+      "title": "Word lists are not here yet"
     }
   },
   "progress": {

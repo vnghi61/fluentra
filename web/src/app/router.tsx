@@ -168,13 +168,26 @@ export const rootRoute = createRootRoute({
   component: RootApp,
 });
 
+/**
+ * The routes a visitor with no account may reach.
+ *
+ * Everything here used to redirect to /login the moment `status` said
+ * unauthenticated, which is how the product's whole value ended up behind a
+ * registration form. ADR-0025 opens the curriculum; these are the screens that
+ * serve it.
+ *
+ * `/` is not among them, and cannot be: the dashboard is "continue where you
+ * left off", "reviews due" and "your skill mastery", every one of which is a
+ * fact about a person. For a guest it has no content, so `/` sends them to the
+ * catalogue, which is the thing they came to see.
+ */
 export const homeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
   beforeLoad: () => {
     const { status } = useAuthStore.getState();
     if (status === "unauthenticated") {
-      throw redirect({ to: "/login" });
+      throw redirect({ to: "/learn" });
     }
   },
   component: DashboardPage,
@@ -183,36 +196,24 @@ export const homeRoute = createRoute({
 export const learnRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/learn",
-  beforeLoad: () => {
-    const { status } = useAuthStore.getState();
-    if (status === "unauthenticated") {
-      throw redirect({ to: "/login" });
-    }
-  },
+  // Open to a visitor with no account (ADR-0025). The screen itself says what
+  // is not being saved; it does not pretend to be signed in.
   component: LearnPage,
 });
 
 export const lessonRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/learn/lesson/$lessonId",
-  beforeLoad: () => {
-    const { status } = useAuthStore.getState();
-    if (status === "unauthenticated") {
-      throw redirect({ to: "/login" });
-    }
-  },
+  // Open to a visitor with no account (ADR-0025). The screen itself says what
+  // is not being saved; it does not pretend to be signed in.
   component: LessonPage,
 });
 
 export const practiceRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/practice",
-  beforeLoad: () => {
-    const { status } = useAuthStore.getState();
-    if (status === "unauthenticated") {
-      throw redirect({ to: "/login" });
-    }
-  },
+  // Open to a visitor with no account (ADR-0025). The screen itself says what
+  // is not being saved; it does not pretend to be signed in.
   component: PracticePage,
 });
 

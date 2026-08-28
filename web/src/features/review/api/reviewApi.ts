@@ -66,17 +66,25 @@ export function useReviewSession() {
  * a hub that has to load the whole dashboard to print one integer would be
  * slower and would fail for a reason that has nothing to do with reviews.
  */
-export function useDueCount() {
+export function useDueCount(enabled = true) {
   return useQuery({
     queryKey: reviewKeys.dueCount(),
     queryFn: () => reviewApi.getDueCount(),
+    enabled,
   });
 }
 
-/** The next 30 days of scheduled reviews. */
-export function useForecast() {
+/**
+ * The next 30 days of scheduled reviews.
+ *
+ * `enabled` exists for the signed-out case. Review cards belong to a person, so
+ * there is nothing here for a guest and the request would only earn a 401 — and
+ * a 401 on a page a guest is allowed to be on reads as a bug.
+ */
+export function useForecast(enabled = true) {
   return useQuery({
     queryKey: reviewKeys.forecast(),
     queryFn: () => reviewApi.getForecast(),
+    enabled,
   });
 }

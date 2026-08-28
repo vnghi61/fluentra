@@ -13,6 +13,7 @@ import {
 
 import i18n, { initI18n } from "@/i18n";
 import { PracticePage } from "@/routes/PracticePage";
+import { useAuthStore } from "@/stores/authStore";
 import { server } from "./msw-server";
 
 async function renderPractice() {
@@ -59,8 +60,25 @@ const forecast = {
   ],
 };
 
+/**
+ * These exercise the signed-in runner: an attempt is started, the answer goes
+ * through the attempt flow, and the result is stored. A guest takes a different
+ * path through the same screen — see the guest suite — so the session has to be
+ * real here rather than incidental.
+ */
+function signIn(): void {
+  useAuthStore.getState().setAuthSession({
+    access_token: "valid-test-token",
+    token_type: "Bearer",
+    expires_in: 900,
+    user_id: "user-123",
+    role: "user",
+  });
+}
+
 describe("PracticePage hub", () => {
   beforeEach(() => {
+    signIn();
     initI18n("en");
   });
 

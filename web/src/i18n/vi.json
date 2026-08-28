@@ -265,6 +265,22 @@
     "body": "Màn hình này không dựng được. Lỗi đã được ghi nhận.",
     "reload": "Tải lại"
   },
+  "guest": {
+    "notice": {
+      "text": "Bạn đang xem mà chưa đăng nhập. Bạn mở được mọi bài học và làm được bài tập, nhưng không có gì được lưu lại."
+    },
+    "practice": {
+      "title": "Ôn tập cần có tài khoản",
+      "desc": "Thẻ ôn được xếp vào đúng ngày bạn sắp quên, nghĩa là nó gắn với một người cụ thể. Đăng nhập rồi thì mỗi bài học xong sẽ tự thêm thẻ vào hàng đợi này."
+    },
+    "savePrompt": {
+      "title": "Kết quả này chưa được lưu",
+      "desc": "Bạn trả lời đúng {{score}}/{{total}} câu. Vì chưa đăng nhập nên không có gì được ghi nhận — không tiến độ, không chuỗi ngày, không thẻ ôn tập. Đăng nhập thì bài học kế tiếp sẽ được tính.",
+      "dismissBtn": "Xem tiếp đã",
+      "createAccountBtn": "Tạo tài khoản",
+      "signInBtn": "Đăng nhập"
+    }
+  },
   "language": {
     "label": "Ngôn ngữ"
   },
@@ -346,9 +362,10 @@
       "desc": "Những thẻ đã được xếp lịch quay lại với bạn."
     },
     "vocabulary": {
+      "desc": "Phần duyệt từ và tạo bộ thẻ đang được xây. Những từ bạn gặp trong bài học thì đã được xếp lịch ôn ở trên.",
+      "descGuest": "Phần duyệt từ và tạo bộ thẻ đang được xây.",
       "label": "Từ vựng",
-      "title": "Danh sách từ chưa có",
-      "desc": "Phần duyệt từ và tạo bộ thẻ đang được xây. Những từ bạn gặp trong bài học thì đã được xếp lịch ôn ở trên."
+      "title": "Danh sách từ chưa có"
     }
   },
   "progress": {
