@@ -435,6 +435,10 @@
     "submitBtn": "Submit",
     "timeSpentLabel": "Time Spent"
   },
+  "server": {
+    "unreachable": "The server is not responding. Reload the page to try again.",
+    "waking": "Starting the server — this takes up to a minute after a quiet spell."
+  },
   "status": {
     "checking": "Checking the API…",
     "ok": "API reachable",

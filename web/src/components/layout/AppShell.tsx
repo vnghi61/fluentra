@@ -36,6 +36,12 @@ export interface AppShellProps {
    * into a store or a feature.
    */
   controls?: React.ReactNode;
+  /**
+   * Status chrome that belongs above everything — the cold-start notice. Passed
+   * in for the same reason `controls` is: it reads the API host's state, and a
+   * component may not reach into `api`.
+   */
+  banner?: React.ReactNode;
 }
 
 /**
@@ -91,6 +97,7 @@ export const AppShell: React.FC<AppShellProps> = ({
   onLogout,
   chrome = true,
   controls,
+  banner,
 }) => {
   const { t } = useTranslation();
   const signedIn = status === "authenticated";
@@ -134,6 +141,7 @@ export const AppShell: React.FC<AppShellProps> = ({
   if (!chrome) {
     return (
       <div className="min-h-screen bg-surface-muted text-text flex flex-col">
+        {banner}
         {/*
           Theme and language, and nothing else. Removing the shell from the auth
           pages also removed the only way a Vietnamese learner could switch the
@@ -152,95 +160,98 @@ export const AppShell: React.FC<AppShellProps> = ({
   }
 
   return (
-    <div className="min-h-screen bg-surface-muted text-text flex flex-col md:flex-row">
-      {/* Desktop Sidebar Navigation */}
-      <aside className="hidden md:flex flex-col w-64 shrink-0 bg-surface-card border-r border-border-subtle p-4 gap-6 justify-between">
-        <div className="flex flex-col gap-6">
-          <Link to="/" className="flex items-center gap-2.5">
-            {/* Inline, so the mark takes --color-brand and needs no request. */}
-            <BrandMark className="h-7 w-7 shrink-0 text-brand" />
-            <span className="text-lg font-bold tracking-tight text-text">
-              Fluentra
-            </span>
-          </Link>
+    <div className="min-h-screen bg-surface-muted text-text flex flex-col">
+      {banner}
+      <div className="flex-1 flex flex-col md:flex-row">
+        {/* Desktop Sidebar Navigation */}
+        <aside className="hidden md:flex flex-col w-64 shrink-0 bg-surface-card border-r border-border-subtle p-4 gap-6 justify-between">
+          <div className="flex flex-col gap-6">
+            <Link to="/" className="flex items-center gap-2.5">
+              {/* Inline, so the mark takes --color-brand and needs no request. */}
+              <BrandMark className="h-7 w-7 shrink-0 text-brand" />
+              <span className="text-lg font-bold tracking-tight text-text">
+                Fluentra
+              </span>
+            </Link>
 
-          <nav className="flex flex-col gap-1">
-            {destinations.map(({ to, labelKey, fallback, Icon, exact }) => (
-              <Link
-                key={to}
-                to={to}
-                activeOptions={{ exact }}
-                className={`${navBase} ${navIdle}`}
-                activeProps={{ className: `${navBase} ${navActive}` }}
-              >
-                <Icon
-                  className="h-[18px] w-[18px] shrink-0"
-                  aria-hidden="true"
-                />
-                {t(labelKey, fallback)}
-              </Link>
-            ))}
+            <nav className="flex flex-col gap-1">
+              {destinations.map(({ to, labelKey, fallback, Icon, exact }) => (
+                <Link
+                  key={to}
+                  to={to}
+                  activeOptions={{ exact }}
+                  className={`${navBase} ${navIdle}`}
+                  activeProps={{ className: `${navBase} ${navActive}` }}
+                >
+                  <Icon
+                    className="h-[18px] w-[18px] shrink-0"
+                    aria-hidden="true"
+                  />
+                  {t(labelKey, fallback)}
+                </Link>
+              ))}
 
-            {signedIn && (
-              <Link
-                to="/settings"
-                className={`${navBase} ${navIdle}`}
-                activeProps={{ className: `${navBase} ${navActive}` }}
-              >
-                <Settings
-                  className="h-[18px] w-[18px] shrink-0"
-                  aria-hidden="true"
-                />
-                {t("nav.settings", "Settings")}
-              </Link>
-            )}
+              {signedIn && (
+                <Link
+                  to="/settings"
+                  className={`${navBase} ${navIdle}`}
+                  activeProps={{ className: `${navBase} ${navActive}` }}
+                >
+                  <Settings
+                    className="h-[18px] w-[18px] shrink-0"
+                    aria-hidden="true"
+                  />
+                  {t("nav.settings", "Settings")}
+                </Link>
+              )}
 
-            {signedIn && user?.role === "admin" && (
-              <Link
-                to="/admin"
-                className={`${navBase} ${navIdle}`}
-                activeProps={{ className: `${navBase} ${navActive}` }}
-              >
-                <ShieldCheck
-                  className="h-[18px] w-[18px] shrink-0"
-                  aria-hidden="true"
-                />
-                {t("nav.admin", "Admin")}
-              </Link>
-            )}
-          </nav>
-        </div>
-      </aside>
+              {signedIn && user?.role === "admin" && (
+                <Link
+                  to="/admin"
+                  className={`${navBase} ${navIdle}`}
+                  activeProps={{ className: `${navBase} ${navActive}` }}
+                >
+                  <ShieldCheck
+                    className="h-[18px] w-[18px] shrink-0"
+                    aria-hidden="true"
+                  />
+                  {t("nav.admin", "Admin")}
+                </Link>
+              )}
+            </nav>
+          </div>
+        </aside>
 
-      {/* Header + content column */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="sticky top-0 z-40 flex items-center justify-between gap-3 h-14 px-4 bg-surface-card border-b border-border-subtle">
-          {/* The brand belongs here only where the sidebar is not drawing it. */}
-          {/*
+        {/* Header + content column */}
+        <div className="flex-1 flex flex-col min-w-0">
+          <header className="sticky top-0 z-40 flex items-center justify-between gap-3 h-14 px-4 bg-surface-card border-b border-border-subtle">
+            {/* The brand belongs here only where the sidebar is not drawing it. */}
+            {/*
             min-h-[44px]: the mark is 26px and the word sits beside it, so
             without a floor this link was 94x26 — a tap target under the 44x44
             minimum ADR-0024 sets, and the narrow-320 suite caught it at 320px
             in both locales.
           */}
-          <Link
-            to="/"
-            className="flex items-center gap-2 min-h-[44px] md:hidden"
-          >
-            <BrandMark className="h-[26px] w-[26px] shrink-0 text-brand" />
-            <span className="text-base font-bold tracking-tight text-text">
-              Fluentra
-            </span>
-          </Link>
-          <div className="hidden md:block" />
-          <div className="flex items-center gap-1">
-            {controls}
-            {account}
-          </div>
-        </header>
+            <Link
+              to="/"
+              className="flex items-center gap-2 min-h-[44px] md:hidden"
+            >
+              <BrandMark className="h-[26px] w-[26px] shrink-0 text-brand" />
+              <span className="text-base font-bold tracking-tight text-text">
+                Fluentra
+              </span>
+            </Link>
+            <div className="hidden md:block" />
+            <div className="flex items-center gap-1">
+              {controls}
+              {account}
+            </div>
+          </header>
 
-        <main className="flex-1 p-4 pb-20 md:pb-4 max-w-7xl mx-auto w-full">
-          {children}
-        </main>
+          <main className="flex-1 p-4 pb-20 md:pb-4 max-w-7xl mx-auto w-full">
+            {children}
+          </main>
+        </div>
       </div>
 
       {/*

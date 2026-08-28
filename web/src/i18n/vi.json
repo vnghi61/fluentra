@@ -435,6 +435,10 @@
     "submitBtn": "Gửi đáp án",
     "timeSpentLabel": "Thời gian"
   },
+  "server": {
+    "unreachable": "Máy chủ không phản hồi. Hãy tải lại trang để thử lại.",
+    "waking": "Đang khởi động máy chủ — sau một lúc không ai dùng, việc này mất tới một phút."
+  },
   "status": {
     "checking": "Đang kiểm tra API…",
     "ok": "API phản hồi",
