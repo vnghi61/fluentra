@@ -1361,6 +1361,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/activities/{id}/grade": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Grade a response without recording anything.
+         * @description Grades a response against the activity's registered grader and records nothing: no attempt, no progress, no review card, no event. Public (ADR-0025) — this is what a visitor who has not signed up submits to.
+         *
+         *     A signed-in learner uses the attempt flow instead (`POST /activities/{id}/attempts` then `POST /attempts/{id}/submit`), which is what produces their progress and their review cards. `saved` is always `false` here, stated rather than implied, so a client cannot mistake a preview for a recorded attempt.
+         *
+         *     No `Idempotency-Key`: replaying this changes no state anywhere.
+         */
+        post: operations["gradeActivityPreview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/attempts/{id}/submit": {
         parameters: {
             query?: never;
@@ -3132,6 +3156,27 @@ export interface components {
             correct_answer?: string | null;
             /** @example Correct! Well done. */
             feedback?: string | null;
+        };
+        /** @description The outcome of grading that recorded nothing. There is no attempt id and no status, because nothing was created and nothing moved. */
+        PreviewGradeResult: {
+            /** @example true */
+            correct: boolean;
+            /** @example 100 */
+            score: number;
+            /** @example 100 */
+            max_score: number;
+            /** @example Correct! Well done. */
+            feedback: string;
+            /**
+             * @description What the learner should have said. The lesson body is redacted, so this is where the renderer learns the answer. For a choice-based activity it is the option's id.
+             * @example opt_habit
+             */
+            correct_answer?: string | null;
+            /**
+             * @description Always false. Stated rather than implied, so a client cannot mistake a preview for a recorded attempt.
+             * @example false
+             */
+            saved: boolean;
         };
         AttemptDetail: {
             /** Format: uuid */
@@ -6486,6 +6531,45 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    gradeActivityPreview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The activity being answered. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "response": {
+                 *         "selected_option_id": "opt_habit"
+                 *       }
+                 *     }
+                 */
+                "application/json": components["schemas"]["SubmitAttemptRequest"];
+            };
+        };
+        responses: {
+            /** @description The verdict. Nothing was stored. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreviewGradeResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
+            500: components["responses"]["InternalServerError"];
         };
     };
     submitAttempt: {

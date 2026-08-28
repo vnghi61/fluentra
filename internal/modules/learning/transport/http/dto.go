@@ -34,6 +34,32 @@ type SubmitAttemptResponse struct {
 	CorrectAnswer *string   `json:"correct_answer,omitempty"`
 }
 
+// PreviewGradeResponse matches the OpenAPI schema for POST /activities/{id}/grade.
+//
+// No attempt id and no status, because nothing was created and nothing moved.
+type PreviewGradeResponse struct {
+	Correct       bool    `json:"correct"`
+	Score         int     `json:"score"`
+	MaxScore      int     `json:"max_score"`
+	Feedback      string  `json:"feedback"`
+	CorrectAnswer *string `json:"correct_answer,omitempty"`
+	// Saved is always false. It is stated rather than implied because the whole
+	// contract of this endpoint is what it does not do, and a client that reads
+	// this field cannot mistake a preview for a recorded attempt.
+	Saved bool `json:"saved"`
+}
+
+func toPreviewGradeResponse(dto *service.PreviewGradeResultDTO) PreviewGradeResponse {
+	return PreviewGradeResponse{
+		Correct:       dto.Correct,
+		Score:         dto.Score,
+		MaxScore:      dto.MaxScore,
+		Feedback:      dto.Feedback,
+		CorrectAnswer: dto.CorrectAnswer,
+		Saved:         false,
+	}
+}
+
 // AttemptDetailResponse matches the OpenAPI schema for GET /attempts/{id}.
 type AttemptDetailResponse struct {
 	ID          uuid.UUID       `json:"id"`
