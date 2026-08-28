@@ -25,7 +25,9 @@ const ALL_SKILLS = [
   "writing",
 ] as const;
 
-export const SkillMasteryList: React.FC<SkillMasteryListProps> = ({ skills }) => {
+export const SkillMasteryList: React.FC<SkillMasteryListProps> = ({
+  skills,
+}) => {
   const { t } = useTranslation();
 
   const skillMap = new Map<string, SkillMastery>();
@@ -74,7 +76,10 @@ export const SkillMasteryList: React.FC<SkillMasteryListProps> = ({ skills }) =>
               <div className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-text">{skillLabel}</span>
-                  <Badge variant="primary" className="font-mono text-xs px-1.5 py-0">
+                  <Badge
+                    variant="primary"
+                    className="font-mono text-xs px-1.5 py-0"
+                  >
                     {mastery.level}
                   </Badge>
                 </div>

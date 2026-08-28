@@ -186,7 +186,13 @@ describe("LessonPage Runner (P10.3)", () => {
 
     expect(await screen.findByText("Showing great attention to detail; very careful and precise.")).toBeInTheDocument();
 
-    const contBtn3 = screen.getByRole("button", { name: /Continue/i });
+    // The flashcard is graded on the learner's own recall verdict now, so it
+    // submits an attempt like the other two instead of advancing silently and
+    // leaving the one the runner opened stuck in `in_progress`.
+    const knewItBtn = screen.getByRole("button", { name: /I knew it/i });
+    await user.click(knewItBtn);
+
+    const contBtn3 = await screen.findByRole("button", { name: /Continue/i });
     await user.click(contBtn3);
 
     // 4. Completion screen

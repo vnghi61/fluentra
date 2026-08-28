@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
   createColumnHelper,
   flexRender,
@@ -25,6 +26,7 @@ type UserStatus = components["schemas"]["UserStatus"];
 const columnHelper = createColumnHelper<AdminUserSummary>();
 
 export const AdminUserList: React.FC = () => {
+  const { t } = useTranslation();
   const [users, setUsers] = useState<AdminUserSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +74,12 @@ export const AdminUserList: React.FC = () => {
       setNextCursor(res.next_cursor);
     } catch (err: unknown) {
       setError(
-        err instanceof Error ? err.message : "Failed to load learners list.",
+        err instanceof Error
+          ? err.message
+          : t(
+              "admin.failedToLoadLearnersList",
+              "Failed to load learners list.",
+            ),
       );
     } finally {
       setIsLoading(false);
@@ -108,12 +115,12 @@ export const AdminUserList: React.FC = () => {
   const columns = useMemo(
     () => [
       columnHelper.accessor("display_name", {
-        header: "Learner",
+        header: t("admin.learner", "Learner"),
         cell: (info) => {
           const user = info.row.original;
           return (
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 overflow-hidden rounded-full border border-indigo-500/30 bg-slate-800 flex items-center justify-center text-xs font-bold text-indigo-300 shrink-0">
+              <div className="h-9 w-9 overflow-hidden rounded-full border border-primary/30 bg-surface-muted flex items-center justify-center text-xs font-bold text-primary-accent shrink-0">
                 {user.avatar_url ? (
                   <img
                     src={user.avatar_url}
@@ -125,10 +132,10 @@ export const AdminUserList: React.FC = () => {
                 )}
               </div>
               <div className="truncate">
-                <p className="text-sm font-medium text-slate-100 truncate">
+                <p className="text-sm font-medium text-text truncate">
                   {user.display_name}
                 </p>
-                <p className="text-xs text-slate-400 font-mono truncate">
+                <p className="text-xs text-text-muted font-mono truncate">
                   {user.id.slice(0, 8)}...
                 </p>
               </div>
@@ -139,23 +146,23 @@ export const AdminUserList: React.FC = () => {
       columnHelper.accessor("email", {
         header: "Email",
         cell: (info) => (
-          <span className="text-xs font-mono text-slate-300">
+          <span className="text-xs font-mono text-text-muted">
             {info.getValue()}
           </span>
         ),
       }),
       columnHelper.accessor("status", {
-        header: "Status",
+        header: t("admin.status", "Status"),
         cell: (info) => {
           const status = info.getValue();
           return (
             <span
               className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium uppercase border ${
                 status === "active"
-                  ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                  ? "bg-success/10 text-success-accent border-success/20"
                   : status === "suspended"
-                    ? "bg-rose-500/10 text-rose-400 border-rose-500/20"
-                    : "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                    ? "bg-danger/10 text-danger-accent border-danger/20"
+                    : "bg-warning/10 text-warning-accent border-warning/20"
               }`}
             >
               {status}
@@ -164,31 +171,31 @@ export const AdminUserList: React.FC = () => {
         },
       }),
       columnHelper.accessor("created_at", {
-        header: "Joined",
+        header: t("admin.joined", "Joined"),
         cell: (info) => (
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-text-muted">
             {new Date(info.getValue()).toLocaleDateString()}
           </span>
         ),
       }),
       columnHelper.display({
         id: "actions",
-        header: "Actions",
+        header: t("admin.actions", "Actions"),
         cell: (info) => (
           <Button
             type="button"
             variant="ghost"
             size="sm"
             onClick={() => setSelectedUserId(info.row.original.id)}
-            className="text-slate-400 hover:text-indigo-300 hover:bg-indigo-500/10"
+            className="text-text-muted hover:text-primary-accent hover:bg-primary/10"
           >
             <Eye className="mr-1.5 h-3.5 w-3.5" />
-            Inspect
+            {t("admin.inspect", "Inspect")}
           </Button>
         ),
       }),
     ],
-    [],
+    [t],
   );
 
   const table = useReactTable({
@@ -200,17 +207,20 @@ export const AdminUserList: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Search & Filter Header */}
-      <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 space-y-4">
+      <div className="rounded-xl border border-border-subtle bg-surface-card/60 p-4 space-y-4">
         <form
           onSubmit={handleSearchSubmit}
           className="flex flex-col sm:flex-row gap-3"
         >
           <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-3.5 top-3 h-4 w-4 text-text-muted" />
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by name or email..."
+              placeholder={t(
+                "admin.searchByNameOrEmail",
+                "Search by name or email...",
+              )}
               className="pl-10"
             />
           </div>
@@ -220,43 +230,50 @@ export const AdminUserList: React.FC = () => {
             onChange={(e) =>
               setSelectedStatus(e.target.value as UserStatus | "")
             }
-            className="h-11 min-h-[44px] rounded-lg border border-slate-800 bg-slate-900 px-3 text-base md:text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="h-11 min-h-[44px] rounded-lg border border-border-subtle bg-surface-card px-3 text-base md:text-xs text-text focus:outline-none focus:ring-2 focus:ring-primary"
           >
-            <option value="">All Statuses</option>
-            <option value="active">Active</option>
-            <option value="suspended">Suspended</option>
-            <option value="pending_deletion">Pending Deletion</option>
-            <option value="deleted">Deleted</option>
+            <option value="">{t("admin.allStatuses", "All Statuses")}</option>
+            <option value="active">{t("admin.active", "Active")}</option>
+            <option value="suspended">
+              {t("admin.suspended", "Suspended")}
+            </option>
+            <option value="pending_deletion">
+              {t("admin.pendingDeletion", "Pending Deletion")}
+            </option>
+            <option value="deleted">{t("admin.deleted", "Deleted")}</option>
           </select>
 
           <Button type="submit" size="md">
             <Search className="mr-1.5 h-4 w-4" />
-            Search
+            {t("admin.search", "Search")}
           </Button>
         </form>
       </div>
 
       {error && (
-        <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs text-rose-300">
-          <AlertCircle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
+        <div className="flex items-start gap-2.5 rounded-lg border border-danger/30 bg-danger/10 p-3.5 text-xs text-danger-accent">
+          <AlertCircle className="h-4 w-4 shrink-0 text-danger-accent mt-0.5" />
           <span>{error}</span>
         </div>
       )}
 
       {/* Table Container */}
-      <div className="rounded-xl border border-slate-800 bg-slate-900/60 overflow-hidden">
+      <div className="rounded-xl border border-border-subtle bg-surface-card/60 overflow-hidden">
         {isLoading ? (
           <div className="flex min-h-[300px] items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+            <Loader2 className="h-8 w-8 animate-spin text-primary-accent" />
           </div>
         ) : users.length === 0 ? (
           <div className="flex min-h-[250px] flex-col items-center justify-center p-8 text-center space-y-2">
-            <Users className="h-8 w-8 text-slate-500" />
-            <p className="text-sm font-medium text-slate-300">
-              No learners found
+            <Users className="h-8 w-8 text-text-muted" />
+            <p className="text-sm font-medium text-text-muted">
+              {t("admin.noLearnersFound", "No learners found")}
             </p>
-            <p className="text-xs text-slate-500">
-              Try adjusting your search query or filters.
+            <p className="text-xs text-text-muted">
+              {t(
+                "admin.tryAdjustingYourSearchQueryOrFilters",
+                "Try adjusting your search query or filters.",
+              )}
             </p>
           </div>
         ) : (
@@ -266,12 +283,12 @@ export const AdminUserList: React.FC = () => {
                 {table.getHeaderGroups().map((headerGroup) => (
                   <tr
                     key={headerGroup.id}
-                    className="border-b border-slate-800 bg-slate-950/60"
+                    className="border-b border-border-subtle bg-surface-muted"
                   >
                     {headerGroup.headers.map((header) => (
                       <th
                         key={header.id}
-                        className="px-4 py-3.5 text-xs font-semibold uppercase tracking-wider text-slate-400"
+                        className="px-4 py-3.5 text-xs font-semibold uppercase tracking-wider text-text-muted"
                       >
                         {header.isPlaceholder
                           ? null
@@ -284,11 +301,11 @@ export const AdminUserList: React.FC = () => {
                   </tr>
                 ))}
               </thead>
-              <tbody className="divide-y divide-slate-800/60">
+              <tbody className="divide-y divide-border-subtle">
                 {table.getRowModel().rows.map((row) => (
                   <tr
                     key={row.id}
-                    className="hover:bg-slate-800/40 transition-colors"
+                    className="hover:bg-surface-muted/40 transition-colors"
                   >
                     {row.getVisibleCells().map((cell) => (
                       <td key={cell.id} className="px-4 py-3 text-sm">
@@ -306,10 +323,10 @@ export const AdminUserList: React.FC = () => {
         )}
 
         {/* Cursor Pagination Footer */}
-        <div className="flex items-center justify-between border-t border-slate-800 px-4 py-3 bg-slate-950/40 text-xs text-slate-400">
+        <div className="flex items-center justify-between border-t border-border-subtle px-4 py-3 bg-surface-muted text-xs text-text-muted">
           <div>
-            Showing <strong className="text-slate-200">{users.length}</strong>{" "}
-            learner(s)
+            {t("admin.showing", "Showing")}
+            <strong className="text-text">{users.length}</strong> learner(s)
           </div>
 
           <div className="flex items-center gap-2">
@@ -321,7 +338,7 @@ export const AdminUserList: React.FC = () => {
               disabled={cursorHistory.length === 0 || isLoading}
             >
               <ChevronLeft className="mr-1 h-3.5 w-3.5" />
-              Previous
+              {t("admin.previous", "Previous")}
             </Button>
 
             <Button

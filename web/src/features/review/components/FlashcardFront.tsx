@@ -64,7 +64,9 @@ export const FlashcardFront: React.FC<FlashcardFrontProps> = ({
 
         {ipa && (
           <div className="flex items-center justify-center gap-2">
-            <span className="font-mono text-base text-primary-accent">{ipa}</span>
+            <span className="font-mono text-base text-primary-accent">
+              {ipa}
+            </span>
             {audioUrl && (
               <Button
                 type="button"
@@ -80,7 +82,10 @@ export const FlashcardFront: React.FC<FlashcardFrontProps> = ({
                 }
               >
                 {audioError ? (
-                  <VolumeX className="h-4 w-4 text-text-muted" aria-hidden="true" />
+                  <VolumeX
+                    className="h-4 w-4 text-text-muted"
+                    aria-hidden="true"
+                  />
                 ) : (
                   <Volume2
                     className={`h-4 w-4 text-primary-accent ${isPlaying ? "animate-pulse" : ""}`}

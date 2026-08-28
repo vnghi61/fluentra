@@ -5,6 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="color-scheme" content="light dark" />
     <title>Fluentra</title>
+
+    <!--
+      Icons. There were none, so every tab showed the browser's default globe
+      and an installed shortcut had nothing to draw. The PNGs are opaque on
+      purpose: apple-touch-icon composites onto black when it is transparent,
+      and the artwork carries a white ground anyway (see web/AGENT.md).
+      theme-color is the primary blue the design system already defines.
+    -->
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-180x180.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="theme-color" content="#2563eb" />
     <!--
       The theme is applied before React mounts. Doing it in a component means one
       painted frame in the wrong colours on every load, which reads as a flash.

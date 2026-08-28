@@ -111,6 +111,22 @@ func (s *Service) CreateUser(ctx context.Context, newUser contract.NewUser) (uui
 	if err != nil {
 		return uuid.Nil, err
 	}
+
+	// Outside the transaction, because core.user_roles belongs to `rbac` and no
+	// transaction may span two modules (rule L4). Sequential, not eventual: the
+	// learner who has just registered asks for the published catalogue seconds
+	// later, and a grant still sitting in an outbox is a first session that
+	// reads "Permission denied".
+	//
+	// A failure here fails registration. The alternative is an account that
+	// exists and can sign in but holds nothing, which is precisely the state
+	// that made every learner's catalogue a 403 — silent, and indistinguishable
+	// from a working account until they try to read something.
+	if s.roles != nil {
+		if err := s.roles.GrantBaselineRole(ctx, userID); err != nil {
+			return uuid.Nil, fmt.Errorf("grant baseline role: %w", err)
+		}
+	}
 	return userID, nil
 }
 

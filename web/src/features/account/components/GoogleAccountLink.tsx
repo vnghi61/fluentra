@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   CheckCircle2,
   Link2,
@@ -11,6 +12,7 @@ import { ApiError } from "@/api/client";
 import { Button } from "@/components/ui/button";
 
 export const GoogleAccountLink: React.FC = () => {
+  const { t } = useTranslation();
   // Read from the server rather than taken as a prop. The prop was never
   // passed, so `linkedEmail` was always null: the component only ever rendered
   // "Not connected", the Unlink button was unreachable, and the
@@ -39,7 +41,10 @@ export const GoogleAccountLink: React.FC = () => {
           setError(
             err instanceof Error
               ? err.message
-              : "Could not read your Google link.",
+              : t(
+                  "account.couldNotReadYourGoogle",
+                  "Could not read your Google link.",
+                ),
           );
         }
       }
@@ -48,7 +53,7 @@ export const GoogleAccountLink: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [t]);
 
   const linked = status?.linked ?? false;
   const canUnlink = status?.can_unlink ?? false;
@@ -65,7 +70,10 @@ export const GoogleAccountLink: React.FC = () => {
       setError(
         err instanceof Error
           ? err.message
-          : "Failed to start Google linking flow.",
+          : t(
+              "account.failedToStartGoogleLinking",
+              "Failed to start Google linking flow.",
+            ),
       );
       setIsLoading(false);
     }
@@ -87,7 +95,12 @@ export const GoogleAccountLink: React.FC = () => {
     try {
       await accountApi.unlinkGoogle();
       await refresh();
-      setSuccess("Google account unlinked successfully.");
+      setSuccess(
+        t(
+          "account.googleAccountUnlinkedSuccessfully",
+          "Google account unlinked successfully.",
+        ),
+      );
     } catch (err: unknown) {
       if (
         err instanceof ApiError &&
@@ -100,7 +113,10 @@ export const GoogleAccountLink: React.FC = () => {
         setError(
           err instanceof Error
             ? err.message
-            : "Failed to unlink Google account.",
+            : t(
+                "account.failedToUnlinkGoogleAccount",
+                "Failed to unlink Google account.",
+              ),
         );
       }
     } finally {
@@ -109,36 +125,39 @@ export const GoogleAccountLink: React.FC = () => {
   };
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 space-y-4">
+    <div className="rounded-xl border border-border-subtle bg-surface-card/60 p-6 space-y-4">
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
-          <h3 className="text-base font-semibold text-slate-100 flex items-center gap-2">
-            <Link2 className="h-5 w-5 text-indigo-400" />
-            Connected Accounts
+          <h3 className="text-base font-semibold text-text flex items-center gap-2">
+            <Link2 className="h-5 w-5 text-primary-accent" />
+            {t("account.connectedAccounts", "Connected Accounts")}
           </h3>
-          <p className="text-xs text-slate-400">
-            Link your Google account for quick, one-tap sign in.
+          <p className="text-xs text-text-muted">
+            {t(
+              "account.linkYourGoogleAccountForQuickOneTapSignIn",
+              "Link your Google account for quick, one-tap sign in.",
+            )}
           </p>
         </div>
       </div>
 
       {error && (
-        <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs text-rose-300">
-          <AlertCircle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
+        <div className="flex items-start gap-2.5 rounded-lg border border-danger/30 bg-danger/10 p-3.5 text-xs text-danger-accent">
+          <AlertCircle className="h-4 w-4 shrink-0 text-danger-accent mt-0.5" />
           <span>{error}</span>
         </div>
       )}
 
       {success && (
-        <div className="flex items-start gap-2.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3.5 text-xs text-emerald-300">
-          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400 mt-0.5" />
+        <div className="flex items-start gap-2.5 rounded-lg border border-success/30 bg-success/10 p-3.5 text-xs text-success-accent">
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-success-accent mt-0.5" />
           <span>{success}</span>
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-800 bg-slate-900/40 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border-subtle bg-surface-card/40 p-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-800 text-slate-200">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-muted text-text">
             <svg className="h-5 w-5" viewBox="0 0 24 24">
               <path
                 fill="currentColor"
@@ -159,13 +178,13 @@ export const GoogleAccountLink: React.FC = () => {
             </svg>
           </div>
           <div>
-            <p className="text-sm font-medium text-slate-200">Google</p>
-            <p className="text-xs text-slate-400">
+            <p className="text-sm font-medium text-text">Google</p>
+            <p className="text-xs text-text-muted">
               {linked
                 ? status?.linked_at
                   ? `Connected since ${new Date(status.linked_at).toLocaleDateString()}`
-                  : "Connected"
-                : "Not connected"}
+                  : t("account.connected", "Connected")
+                : t("account.notConnected", "Not connected")}
             </p>
           </div>
         </div>
@@ -182,7 +201,10 @@ export const GoogleAccountLink: React.FC = () => {
             title={
               canUnlink
                 ? undefined
-                : "Google is your only sign-in method. Set a password before unlinking."
+                : t(
+                    "account.googleIsYourOnlySign",
+                    "Google is your only sign-in method. Set a password before unlinking.",
+                  )
             }
           >
             {isLoading ? (
@@ -190,7 +212,7 @@ export const GoogleAccountLink: React.FC = () => {
             ) : (
               <>
                 <Unlink className="mr-1.5 h-3.5 w-3.5" />
-                Unlink
+                {t("account.unlink", "Unlink")}
               </>
             )}
           </Button>
@@ -207,7 +229,7 @@ export const GoogleAccountLink: React.FC = () => {
             {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              "Connect Google"
+              t("account.connectGoogle", "Connect Google")
             )}
           </Button>
         )}

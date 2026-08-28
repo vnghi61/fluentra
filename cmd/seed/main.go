@@ -28,6 +28,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	authdomain "github.com/fluentra/fluentra/internal/modules/auth/domain"
+	"github.com/fluentra/fluentra/internal/modules/rbac"
 	"github.com/fluentra/fluentra/internal/modules/user"
 	usercontract "github.com/fluentra/fluentra/internal/modules/user/contract"
 	"github.com/fluentra/fluentra/internal/shared/config"
@@ -96,7 +97,12 @@ func run(ctx context.Context, out io.Writer) error {
 	}
 	defer pool.Close()
 
-	module := user.New(user.Deps{Pool: pool})
+	// The demo learner needs the baseline role for the same reason a registered
+	// one does: `user` holds content.read.published, and without it the account
+	// the getting-started guide hands out is refused the very catalogue this
+	// seed then authors. user.New grants it as part of creating the account.
+	roles := rbac.New(rbac.Deps{Pool: pool})
+	module := user.New(user.Deps{Pool: pool, Roles: roles})
 	hasher := authdomain.NewHasher(authdomain.DefaultHashParams())
 
 	hash, err := hasher.Hash(demoPassword)
@@ -104,6 +110,7 @@ func run(ctx context.Context, out io.Writer) error {
 		return fmt.Errorf("hash demo password: %w", err)
 	}
 
+	var adminID uuid.UUID
 	for _, account := range demoAccounts {
 		id, created, err := ensureAccount(ctx, pool, module.Creator(), account)
 		if err != nil {
@@ -115,7 +122,15 @@ func run(ctx context.Context, out io.Writer) error {
 		if err := ensureVerified(ctx, pool, id); err != nil {
 			return fmt.Errorf("verify %s: %w", account.email, err)
 		}
+		// Also for accounts that already existed. user.New grants the role while
+		// creating an account, and a re-run against a database seeded before this
+		// existed would otherwise leave the demo learner exactly as it was:
+		// signed in, and refused the catalogue. The grant is idempotent.
+		if err := roles.GrantBaselineRole(ctx, id); err != nil {
+			return fmt.Errorf("grant baseline role to %s: %w", account.email, err)
+		}
 		if account.admin {
+			adminID = id
 			if err := ensureAdmin(ctx, pool, id); err != nil {
 				return fmt.Errorf("grant admin to %s: %w", account.email, err)
 			}
@@ -126,6 +141,17 @@ func run(ctx context.Context, out io.Writer) error {
 			state = "created"
 		}
 		_, _ = fmt.Fprintf(out, "%-24s %s\n", account.email, state)
+	}
+
+	// The content is owned by the admin account, so a run that produced no admin
+	// has nothing to attribute it to. That is a broken seed, not a partial one:
+	// silently skipping left a database with logins and no curriculum, which
+	// looks like a working seed until someone signs in.
+	if adminID == uuid.Nil {
+		return fmt.Errorf("no admin account was seeded, so content cannot be authored")
+	}
+	if err := seedContentAndCurriculum(ctx, pool, adminID, out); err != nil {
+		return fmt.Errorf("seed content & curriculum: %w", err)
 	}
 
 	_, _ = fmt.Fprintf(out, "\npassword for both: %s\n", demoPassword)

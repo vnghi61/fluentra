@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { newLearner, registerAndVerify } from "../helpers/auth";
+import { expectSignedIn, newLearner, registerAndVerify } from "../helpers/auth";
 import { waitForEmail } from "../helpers/mailpit";
 
 /**
@@ -18,6 +18,11 @@ test.describe("Journey 10: GDPR data export", () => {
   }) => {
     const learner = newLearner("j10");
     await registerAndVerify(page, learner);
+    // registerAndVerify returns on the first sight of "/", while the shell is
+    // still settling the auth state and redirecting to it again. Navigating in
+    // that window aborts with "interrupted by another navigation to /". Waiting
+    // for the signed-in shell is the settle point the learning journeys use.
+    await expectSignedIn(page);
 
     await page.goto("/settings");
     await page.getByRole("button", { name: /Data & Privacy/i }).click();

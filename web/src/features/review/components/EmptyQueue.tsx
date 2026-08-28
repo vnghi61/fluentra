@@ -4,7 +4,12 @@ import { CheckCircle2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 /**
  * Nothing due is not a finished session.
@@ -21,7 +26,10 @@ export const EmptyQueue: React.FC = () => {
       <Card className="text-center p-6">
         <CardHeader>
           <div className="flex justify-center mb-2">
-            <CheckCircle2 className="h-10 w-10 text-success" aria-hidden="true" />
+            <CheckCircle2
+              className="h-10 w-10 text-success"
+              aria-hidden="true"
+            />
           </div>
           <CardTitle>{t("review.emptyTitle")}</CardTitle>
           <CardDescription>{t("review.emptyDesc")}</CardDescription>

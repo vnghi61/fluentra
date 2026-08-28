@@ -37,6 +37,7 @@ by hand. Completed work is recorded here instead.
 | Task | Done | What landed |
 |---|---|---|
 | P1.3 | 2026-08-10 | Four tables, the seeded role and permission catalogue, `Authorizer.Require`/`Can` with cached resolution and eager invalidation, the `/admin/*` middleware, `GET /me/permissions`, the role catalogue and grant/revoke operations, self-elevation and last-admin protections |
+| — | 2026-08-27 | `GrantBaselineRole`: the system grant of `user` at account creation. `AssignRole` needs an actor holding `rbac.assign` and is only reachable from the admin handler, so no account created by registration or by `make seed` ever held a role — invisible until P7.1 gave `user` its first permission, and every learner's catalogue a 403 from that commit on. Wired into `user` through a one-method interface the composition root satisfies. |
 
 Still open in Phase 1: MFA enrolment on an `admin` grant (BR-RBAC-06, needs WP2), and publishing
 `rbac.access_denied` to the audit trail (BR-RBAC-07, needs P1.4).

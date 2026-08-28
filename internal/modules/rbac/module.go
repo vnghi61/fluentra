@@ -100,6 +100,15 @@ func (m *Module) AssignRole(
 	return m.service.AssignRole(ctx, actorID, targetID, role)
 }
 
+// GrantBaselineRole grants `user` to a newly created account, with no actor.
+//
+// It is the contract the composition root hands to `user`, so that creating an
+// account and holding the role every account holds stop being two things that
+// can drift apart. See the service method for why they had.
+func (m *Module) GrantBaselineRole(ctx context.Context, userID uuid.UUID) error {
+	return m.service.GrantBaselineRole(ctx, userID)
+}
+
 // RevokeRole removes a role, subject to the self-demotion and last-admin
 // protections.
 func (m *Module) RevokeRole(

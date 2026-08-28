@@ -32,7 +32,10 @@ export const OverallStats: React.FC<OverallStatsProps> = ({
           <p className="text-xs text-text-muted font-medium">
             {t("progress.activitiesDone")}
           </p>
-          <p className="text-2xl font-extrabold text-text mt-0.5">
+          <p
+            className="text-2xl font-extrabold text-text mt-0.5"
+            data-testid="activities-completed"
+          >
             {totalActivitiesCompleted}
           </p>
         </div>

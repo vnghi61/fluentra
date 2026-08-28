@@ -22,7 +22,23 @@ type harness struct {
 	repo    *fakeRepo
 	events  *recordingEvents
 	pool    *fakeBeginner
+	roles   *fakeRoles
 	actor   uuid.UUID
+}
+
+// fakeRoles stands in for rbac's baseline grant. It records who was granted so
+// a test can assert that creating an account and holding a role are one step.
+type fakeRoles struct {
+	granted []uuid.UUID
+	err     error
+}
+
+func (f *fakeRoles) GrantBaselineRole(_ context.Context, userID uuid.UUID) error {
+	if f.err != nil {
+		return f.err
+	}
+	f.granted = append(f.granted, userID)
+	return nil
 }
 
 // newHarness builds a service over fakes, with one active account already
@@ -53,11 +69,15 @@ func newHarness(t *testing.T) *harness {
 		Status: domain.StatusActive,
 	}
 
+	roles := &fakeRoles{}
 	users := service.New(service.Deps{
 		Pool: pool, Repo: repo, Events: events, Clock: clock.NewFake(testNow),
 		NewID: func(context.Context) (uuid.UUID, error) { return uuid.New(), nil },
+		Roles: roles,
 	})
-	return &harness{service: users, repo: repo, events: events, pool: pool, actor: actor}
+	return &harness{
+		service: users, repo: repo, events: events, pool: pool, roles: roles, actor: actor,
+	}
 }
 
 func stringPtr(value string) *string { return &value }

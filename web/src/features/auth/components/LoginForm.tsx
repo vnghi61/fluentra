@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "@tanstack/react-router";
@@ -26,6 +27,7 @@ export interface LoginFormProps {
 }
 
 export function LoginForm({ onSuccess }: LoginFormProps): React.JSX.Element {
+  const { t } = useTranslation();
   const [serverError, setServerError] = React.useState<string | null>(null);
   const deviceId = useAuthStore((s) => s.deviceId);
 
@@ -53,20 +55,26 @@ export function LoginForm({ onSuccess }: LoginFormProps): React.JSX.Element {
         setServerError(getErrorMessage(err.problem));
       } else {
         setServerError(
-          "Failed to sign in. Please check your connection and try again.",
+          t(
+            "auth.failedToSignInPlease",
+            "Failed to sign in. Please check your connection and try again.",
+          ),
         );
       }
     }
   };
 
   return (
-    <div className="mx-auto w-full max-w-md space-y-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-6 sm:p-8 shadow-xl backdrop-blur-sm">
+    <div className="mx-auto w-full max-w-md space-y-6 rounded-2xl border border-border-subtle bg-surface-card/60 p-6 sm:p-8 shadow-xl backdrop-blur-sm">
       <div className="space-y-2 text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-100">
-          Sign in to Fluentra
+        <h1 className="text-2xl font-bold tracking-tight text-text">
+          {t("auth.signInTitle", "Sign in to Fluentra")}
         </h1>
-        <p className="text-sm text-slate-400">
-          Continue your personalized English learning path
+        <p className="text-sm text-text-muted">
+          {t(
+            "auth.signInSubtitle",
+            "Continue your personalized English learning path",
+          )}
         </p>
       </div>
 
@@ -74,17 +82,17 @@ export function LoginForm({ onSuccess }: LoginFormProps): React.JSX.Element {
 
       <div className="relative flex items-center justify-center">
         <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-slate-800" />
+          <div className="w-full border-t border-border-subtle" />
         </div>
-        <span className="relative bg-slate-900 px-3 text-xs uppercase tracking-wider text-slate-500">
-          Or continue with email
+        <span className="relative bg-surface-card px-3 text-xs uppercase tracking-wider text-text-muted">
+          {t("auth.orContinueEmail", "Or continue with email")}
         </span>
       </div>
 
       {serverError && (
         <div
           role="alert"
-          className="rounded-lg border border-rose-500/50 bg-rose-500/10 p-3 text-sm font-medium text-rose-300"
+          className="rounded-lg border border-danger/50 bg-danger/10 p-3 text-sm font-medium text-danger-accent"
         >
           {serverError}
         </div>
@@ -100,7 +108,9 @@ export function LoginForm({ onSuccess }: LoginFormProps): React.JSX.Element {
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel required>Email address</FormLabel>
+                <FormLabel required>
+                  {t("auth.emailLabel", "Email address")}
+                </FormLabel>
                 <FormControl>
                   <Input
                     type="email"
@@ -120,21 +130,26 @@ export function LoginForm({ onSuccess }: LoginFormProps): React.JSX.Element {
             render={({ field }) => (
               <FormItem>
                 <div className="flex items-center justify-between">
-                  <FormLabel required>Password</FormLabel>
+                  <FormLabel required>
+                    {t("auth.passwordLabel", "Password")}
+                  </FormLabel>
                   <Link
                     to="/forgot-password"
                     // A standalone control, not a link inside a sentence, so
                     // R1's 44 px minimum applies to it. The negative margin
                     // keeps the row's visual rhythm while the hit area grows.
-                    className="inline-flex min-h-11 items-center -my-3 text-xs font-medium text-indigo-400 hover:text-indigo-300 hover:underline"
+                    className="inline-flex min-h-11 items-center -my-3 text-xs font-medium text-primary-accent hover:text-primary-accent hover:underline"
                   >
-                    Forgot password?
+                    {t("auth.forgotPassword", "Forgot password?")}
                   </Link>
                 </div>
                 <FormControl>
                   <Input
                     type="password"
-                    placeholder="Enter your password"
+                    placeholder={t(
+                      "auth.enterYourPassword",
+                      "Enter your password",
+                    )}
                     autoComplete="current-password"
                     {...field}
                   />
@@ -153,7 +168,10 @@ export function LoginForm({ onSuccess }: LoginFormProps): React.JSX.Element {
                   <Checkbox
                     checked={field.value}
                     onCheckedChange={field.onChange}
-                    label="Stay signed in on this device"
+                    label={t(
+                      "auth.staySignedInOnThis",
+                      "Stay signed in on this device",
+                    )}
                   />
                 </FormControl>
               </FormItem>
@@ -165,18 +183,18 @@ export function LoginForm({ onSuccess }: LoginFormProps): React.JSX.Element {
             isLoading={form.formState.isSubmitting}
             className="w-full"
           >
-            Sign in
+            {t("auth.signIn", "Sign in")}
           </Button>
         </form>
       </Form>
 
-      <p className="text-center text-sm text-slate-400">
+      <p className="text-center text-sm text-text-muted">
         Don&apos;t have an account?{" "}
         <Link
           to="/register"
-          className="font-medium text-indigo-400 hover:text-indigo-300 hover:underline"
+          className="font-medium text-primary-accent hover:text-primary-accent hover:underline"
         >
-          Create one now
+          {t("auth.createOne", "Create one now")}
         </Link>
       </p>
     </div>

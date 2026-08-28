@@ -46,6 +46,12 @@
     "node_modules",
     "web/node_modules",
     "CHANGELOG.md",
-    "PROMPT-*.md"
+    "PROMPT-*.md",
+    // Playwright writes error-context.md into every failed test's artifact
+    // directory. It is generated, it is gitignored, and it has two <h1>s — so a
+    // developer who ran the E2E suite locally would see docs-check fail on
+    // output the suite itself produced.
+    "web/test-results",
+    "web/playwright-report"
   ]
 }

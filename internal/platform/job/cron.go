@@ -7,7 +7,20 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
+
+	"github.com/fluentra/fluentra/internal/platform/telemetry"
 )
+
+// cronQueue is the `queue` label value for scheduled jobs.
+//
+// Cron jobs emit the same job_attempts_total and job_duration_seconds as River
+// jobs, under a queue of their own, so one alert covers both. Until they did,
+// the only trace of a failed rotation was a log line: the partition job could
+// fail every six hours for a month and no alert could see it, which is the
+// outage P8.2 paid to learn about happening quietly.
+const cronQueue = "cron"
 
 // CronJob represents a scheduled background task.
 type CronJob struct {
@@ -19,14 +32,24 @@ type CronJob struct {
 
 // CronScheduler manages periodic background jobs backed by Postgres advisory locks.
 type CronScheduler struct {
-	pool *pgxpool.Pool
-	jobs []CronJob
-	mu   sync.Mutex
+	pool        *pgxpool.Pool
+	instruments telemetry.Instruments
+	jobs        []CronJob
+	mu          sync.Mutex
 }
 
 // NewCronScheduler creates a cron scheduler facade.
+//
+// Instruments are optional so tests and the migrate path can build a scheduler
+// without a meter; a zero Instruments records nothing.
 func NewCronScheduler(pool *pgxpool.Pool) *CronScheduler {
 	return &CronScheduler{pool: pool}
+}
+
+// WithInstruments returns the scheduler with metrics enabled.
+func (s *CronScheduler) WithInstruments(instruments telemetry.Instruments) *CronScheduler {
+	s.instruments = instruments
+	return s
 }
 
 // Register adds a periodic job to the scheduler.
@@ -84,7 +107,34 @@ func (s *CronScheduler) executeWithLock(ctx context.Context, job CronJob) {
 	}()
 
 	slog.InfoContext(ctx, "executing cron job", "job", job.Name)
-	if err := job.Task(ctx); err != nil {
+	started := time.Now()
+	err = job.Task(ctx)
+	result := "success"
+	if err != nil {
+		result = "error"
 		slog.ErrorContext(ctx, "cron job failed", "job", job.Name, "error", err)
 	}
+	s.record(ctx, job.Name, result, time.Since(started))
+}
+
+// RecordForTest exposes record so the metric contract the alert depends on can
+// be asserted without waiting out a ticker.
+func (s *CronScheduler) RecordForTest(ctx context.Context, name, result string, duration time.Duration) {
+	s.record(ctx, name, result, duration)
+}
+
+// record emits the same instruments the River middleware does, so a cron failure
+// is visible to the same alert. The labels are a closed set: the job name is
+// registered in code, never derived from input.
+func (s *CronScheduler) record(ctx context.Context, name, result string, duration time.Duration) {
+	if s.instruments.JobAttempts == nil || s.instruments.JobDuration == nil {
+		return
+	}
+	attributes := metric.WithAttributes(
+		attribute.String("queue", cronQueue),
+		attribute.String("kind", name),
+		attribute.String("result", result),
+	)
+	s.instruments.JobDuration.Record(ctx, duration.Seconds(), attributes)
+	s.instruments.JobAttempts.Add(ctx, 1, attributes)
 }

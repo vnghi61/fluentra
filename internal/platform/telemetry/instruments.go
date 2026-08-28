@@ -30,6 +30,13 @@ type Instruments struct {
 	JobAttempts       metric.Int64Counter
 	AuthLockout       metric.Int64Counter
 	AuthRefreshReuse  metric.Int64Counter
+
+	// LearningFunnel and LearningCohort are what make ROADMAP.md's Phase 2 exit
+	// criterion — "D1 retention measurable" — a number a person reads rather than
+	// one someone could derive. The events behind the funnel are already in the
+	// outbox; a counter beside each write is what puts them on a dashboard.
+	LearningFunnel metric.Int64Counter
+	LearningCohort metric.Int64ObservableGauge
 }
 
 // NewInstruments creates the standard metric instruments from meter.
@@ -76,6 +83,16 @@ func NewInstruments(meter metric.Meter) (Instruments, error) {
 	if err != nil {
 		return Instruments{}, fmt.Errorf("create auth refresh reuse counter: %w", err)
 	}
+	learningFunnel, err := meter.Int64Counter("learning_funnel_events_total",
+		metric.WithDescription("Learner progress events, labelled by funnel step."))
+	if err != nil {
+		return Instruments{}, fmt.Errorf("create learning funnel counter: %w", err)
+	}
+	learningCohort, err := meter.Int64ObservableGauge("learning_cohort_learners",
+		metric.WithDescription("Distinct learners per retention cohort; d1_returned over d0 is D1 retention."))
+	if err != nil {
+		return Instruments{}, fmt.Errorf("create learning cohort gauge: %w", err)
+	}
 	return Instruments{
 		meter:             meter,
 		HTTPDuration:      httpDuration,
@@ -88,7 +105,69 @@ func NewInstruments(meter metric.Meter) (Instruments, error) {
 		JobAttempts:       jobAttempts,
 		AuthLockout:       authLockout,
 		AuthRefreshReuse:  authRefreshReuse,
+		LearningFunnel:    learningFunnel,
+		LearningCohort:    learningCohort,
 	}, nil
+}
+
+// Funnel steps. The label set is closed on purpose: a dashboard panel per step
+// only works if the steps are the same ones every time.
+const (
+	FunnelEnrolled          = "enrolled"
+	FunnelLessonStarted     = "lesson_started"
+	FunnelActivityCompleted = "activity_completed"
+	FunnelLessonCompleted   = "lesson_completed"
+	FunnelCourseCompleted   = "course_completed"
+	FunnelReviewAnswered    = "review_answered"
+)
+
+// RecordFunnelStep increments learning_funnel_events_total for one step.
+func (i Instruments) RecordFunnelStep(ctx context.Context, step string) {
+	if i.LearningFunnel != nil {
+		i.LearningFunnel.Add(ctx, 1, metric.WithAttributes(attribute.String("step", step)))
+	}
+}
+
+// Retention cohorts.
+const (
+	// CohortD0 is the learners who did something yesterday.
+	CohortD0 = "d0"
+	// CohortD1Returned is the subset of those who came back today.
+	CohortD1Returned = "d1_returned"
+)
+
+// RetentionSnapshot is one measurement of the two cohorts D1 retention is a
+// ratio of.
+type RetentionSnapshot struct {
+	D0         int64
+	D1Returned int64
+}
+
+// ObserveRetention registers a callback reporting the latest retention snapshot.
+//
+// The gauge is observable rather than a plain counter because retention is a
+// query over a window, not an event: it is recomputed on a schedule and read
+// here, so a scrape that lands between recomputations reports the last real
+// answer instead of zero.
+func (i Instruments) ObserveRetention(read func() RetentionSnapshot) (metric.Registration, error) {
+	if i.meter == nil {
+		return nil, errors.New("telemetry: instruments were not built from a meter")
+	}
+	registration, err := i.meter.RegisterCallback(
+		func(_ context.Context, observer metric.Observer) error {
+			snapshot := read()
+			observer.ObserveInt64(i.LearningCohort, snapshot.D0,
+				metric.WithAttributes(attribute.String("cohort", CohortD0)))
+			observer.ObserveInt64(i.LearningCohort, snapshot.D1Returned,
+				metric.WithAttributes(attribute.String("cohort", CohortD1Returned)))
+			return nil
+		},
+		i.LearningCohort,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("register retention callback: %w", err)
+	}
+	return registration, nil
 }
 
 // RecordDBQuery emits a query duration histogram. queryName is the leading SQL

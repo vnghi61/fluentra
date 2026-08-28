@@ -219,6 +219,7 @@ components:
   m_learning_repository: { in: modules/learning/repository }
   m_learning_service:    { in: modules/learning/service }
   m_learning_http:       { in: modules/learning/transport/http }
+  m_learning_job:        { in: modules/learning/job }
   m_srs:            { in: modules/srs }
   m_srs_domain:     { in: modules/srs/domain }
   m_srs_repository: { in: modules/srs/repository }
@@ -395,9 +396,10 @@ deps:
   # mayDependOn. Every other module here with real code is split the same way.
   m_learning_domain:     { mayDependOn: [c_learning] }
   m_learning_repository: { mayDependOn: [m_learning_domain, c_learning, g_learning] }
-  m_learning_service:    { mayDependOn: [m_learning_domain, m_learning_repository, c_learning, c_lesson, c_srs, p_cache, p_job] }
+  m_learning_service:    { mayDependOn: [m_learning_domain, m_learning_repository, c_learning, c_lesson, c_srs, p_cache, p_job, p_telemetry] }
   m_learning_http:       { mayDependOn: [m_learning_domain, m_learning_service, c_learning] }
-  m_learning:            { mayDependOn: [m_learning_domain, m_learning_repository, m_learning_service, m_learning_http, c_learning, c_lesson, c_content, c_srs, g_learning, p_cache, p_job, p_telemetry] }
+  m_learning_job:        { mayDependOn: [m_learning_domain, p_job, p_telemetry] }
+  m_learning:            { mayDependOn: [m_learning_domain, m_learning_repository, m_learning_service, m_learning_http, m_learning_job, c_learning, c_lesson, c_content, c_srs, g_learning, p_cache, p_job, p_telemetry] }
   c_srs:           { mayDependOn: [c_learning] }
   c_vocabulary:    { mayDependOn: [c_learning] }
   m_srs_domain:     { mayDependOn: [c_srs] }

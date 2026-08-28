@@ -1,0 +1,156 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "title": "Learning funnel (events/min)",
+      "description": "Each step is counted where the learning service writes the matching outbox event, so the funnel counts what happened rather than what a consumer managed to process.",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(learning_funnel_events_total{step=\"enrolled\"}[5m])) * 60",
+          "legendFormat": "Enrolled"
+        },
+        {
+          "expr": "sum(rate(learning_funnel_events_total{step=\"activity_completed\"}[5m])) * 60",
+          "legendFormat": "Activity completed"
+        },
+        {
+          "expr": "sum(rate(learning_funnel_events_total{step=\"lesson_completed\"}[5m])) * 60",
+          "legendFormat": "Lesson completed"
+        },
+        {
+          "expr": "sum(rate(learning_funnel_events_total{step=\"course_completed\"}[5m])) * 60",
+          "legendFormat": "Course completed"
+        }
+      ]
+    },
+    {
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "title": "D1 retention (%)",
+      "description": "Of the learners who attempted an activity yesterday, the share who attempted one again today. This is the Phase 2 exit criterion; it is a ratio of the two panels below, recomputed every 15 minutes by learning.refresh_retention. clamp_min keeps an empty day reading 0 % rather than NaN.",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(learning_cohort_learners{cohort=\"d1_returned\"}) / clamp_min(sum(learning_cohort_learners{cohort=\"d0\"}), 1) * 100",
+          "legendFormat": "D1 retention"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "title": "Retention cohorts (learners)",
+      "description": "The two numbers the retention percentage divides, shown separately so a ratio over a tiny cohort is visibly a ratio over a tiny cohort.",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(learning_cohort_learners{cohort=\"d0\"})",
+          "legendFormat": "Active yesterday (D0)"
+        },
+        {
+          "expr": "sum(learning_cohort_learners{cohort=\"d1_returned\"})",
+          "legendFormat": "Returned today (D1)"
+        }
+      ]
+    },
+    {
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "title": "Reviews answered (per minute)",
+      "description": "Coming back for reviews is the behaviour D1 retention is meant to capture, so it is on the same screen as the number.",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(learning_funnel_events_total{step=\"review_answered\"}[5m])) * 60",
+          "legendFormat": "Reviews answered"
+        }
+      ]
+    },
+    {
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "title": "Grading errors (5xx on the submit route)",
+      "description": "There is no grading-specific counter; the submit route is where grading happens, so its 5xx rate is the signal. Named here so the alert and the dashboard read the same series.",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(http_server_request_duration_seconds_count{route=\"/api/v1/attempts/{id}/submit\",status_class=\"5xx\"}[5m]))",
+          "legendFormat": "5xx/s"
+        },
+        {
+          "expr": "sum(rate(http_server_request_duration_seconds_count{route=\"/api/v1/attempts/{id}/submit\"}[5m]))",
+          "legendFormat": "submissions/s"
+        }
+      ]
+    },
+    {
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "title": "Scheduled job failures",
+      "description": "Cron jobs report job_attempts_total under queue=\"cron\" alongside River jobs, so the partition rotations appear here too.",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(job_attempts_total{result!=\"success\"}[5m])) by (kind)",
+          "legendFormat": "{{kind}}"
+        }
+      ]
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": [
+    "fluentra",
+    "learning",
+    "funnel",
+    "retention"
+  ],
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "title": "Learning Funnel & Retention",
+  "uid": "fluentra-learning-funnel"
+}

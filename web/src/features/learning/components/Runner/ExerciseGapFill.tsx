@@ -70,11 +70,18 @@ export const ExerciseGapFill: React.FC<ExerciseGapFillProps> = ({
               value={answer}
               disabled={isSubmitted || isLoading}
               onChange={(e) => setAnswer(e.target.value)}
-              placeholder={t("runner.gapFillPlaceholder", "Type your answer...")}
+              placeholder={t(
+                "runner.gapFillPlaceholder",
+                "Type your answer...",
+              )}
               className={cn(
                 "w-48 sm:w-64 inline-block font-bold text-base h-11 border-2 focus-visible:ring-primary",
-                isSubmitted && isCorrect && "border-success bg-success/10 text-success-accent",
-                isSubmitted && !isCorrect && "border-danger bg-danger/10 text-danger-accent",
+                isSubmitted &&
+                  isCorrect &&
+                  "border-success bg-success/10 text-success-accent",
+                isSubmitted &&
+                  !isCorrect &&
+                  "border-danger bg-danger/10 text-danger-accent",
               )}
             />
           </span>
@@ -108,10 +115,13 @@ export const ExerciseGapFill: React.FC<ExerciseGapFillProps> = ({
           </div>
           {!isCorrect && expectedAnswer && (
             <p className="mt-1 text-sm text-text font-medium">
-              Correct answer: <span className="font-bold underline">{expectedAnswer}</span>
+              Correct answer:{" "}
+              <span className="font-bold underline">{expectedAnswer}</span>
             </p>
           )}
-          {feedback && <p className="mt-1 text-sm text-text font-normal">{feedback}</p>}
+          {feedback && (
+            <p className="mt-1 text-sm text-text font-normal">{feedback}</p>
+          )}
         </div>
       )}
 

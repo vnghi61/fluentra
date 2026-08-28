@@ -2,6 +2,7 @@ package service_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -126,6 +127,37 @@ func TestCreateUser_WritesAllThreeRowsInOneTransaction(t *testing.T) {
 	// immediately after a successful registration.
 	if _, err := h.service.GetPreferences(context.Background(), id); err != nil {
 		t.Errorf("the new account has no preferences: %v", err)
+	}
+}
+
+// A created account that holds no role is what shipped: the access token called
+// it `user` because HighestRole of an empty set is `user`, while core.user_roles
+// — the table the guard reads — had nothing in it. Harmless until Phase 2 gave
+// the `user` role its first permission, and from then on every learner was
+// refused the published catalogue.
+func TestCreateUser_GrantsTheBaselineRole(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+
+	id, err := h.service.CreateUser(context.Background(), newUserFixture())
+	if err != nil {
+		t.Fatalf("CreateUser: %v", err)
+	}
+	if len(h.roles.granted) != 1 || h.roles.granted[0] != id {
+		t.Errorf("baseline role granted to %v, want exactly [%v]", h.roles.granted, id)
+	}
+}
+
+// Failing loudly is the point. An account that exists, can sign in, and holds
+// nothing is indistinguishable from a working one until the learner reads
+// something they do not own — which is how this went unnoticed for a phase.
+func TestCreateUser_FailsWhenTheBaselineRoleCannotBeGranted(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	h.roles.err = errors.New("rbac unavailable")
+
+	if _, err := h.service.CreateUser(context.Background(), newUserFixture()); err == nil {
+		t.Fatal("CreateUser reported success for an account that holds no role")
 	}
 }
 

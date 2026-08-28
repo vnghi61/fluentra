@@ -150,6 +150,15 @@ promote-admin: ## Grant the admin role to an account: make promote-admin EMAIL=y
 	@test -n "$(EMAIL)" || (echo "EMAIL is required: make promote-admin EMAIL=you@example.com" && exit 1)
 	docker compose $(COMPOSE_INFRA) exec -T postgres psql -U fluentra -d fluentra -v seed_admin_email=$(EMAIL) -f - < db/seeds/rbac.sql
 
+due-reviews: ## Bring an account's review cards forward so they are due: make due-reviews EMAIL=you@example.com
+	# FSRS schedules a card answered correctly three days out and one answered
+	# wrong ten minutes out, so a suite that has just finished a lesson has no
+	# due queue to work with. This moves the clock, not the cards. The E2E
+	# review journey drives this target for the same reason the admin journey
+	# drives promote-admin: one path, exercised by dev and CI alike.
+	@test -n "$(EMAIL)" || (echo "EMAIL is required: make due-reviews EMAIL=you@example.com" && exit 1)
+	docker compose $(COMPOSE_INFRA) exec -T postgres psql -U fluentra -d fluentra -v seed_due_email=$(EMAIL) -f - < db/seeds/due_reviews.sql
+
 db-reset-DANGEROUS: ## DESTROYS all local data. Requires confirmation.
 	@read -p "This deletes every local volume including learner data. Type 'yes' to continue: " c; \
 	 [ "$$c" = "yes" ] && docker compose $(COMPOSE_DEV) down -v || echo "aborted"
@@ -332,7 +341,7 @@ security: ## Security scans
 	cd web && pnpm audit --audit-level=high
 
 .PHONY: help setup dev dev-infra dev-infra-down dev-down logs prod-up api worker web gen gen-backend gen-sql gen-api gen-mocks gen-web \
-        gen-check gen-check-web migrate-up migrate-down migrate-status migrate-new seed promote-admin audit-logs \
+        gen-check gen-check-web migrate-up migrate-down migrate-status migrate-new seed promote-admin due-reviews audit-logs \
         db-reset-DANGEROUS check fmt fmt-check vet lint lint-int lint-go arch test test-int \
         test-contract test-web test-e2e test-load test-eval cover cover-check cover-gate docs \
         docs-check ci ci-backend ci-frontend ci-fast security

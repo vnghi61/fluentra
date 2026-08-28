@@ -115,7 +115,7 @@ jobs:
         working-directory: .
         run: make dev-infra
 
-      - name: Apply migrations and start the API and the worker
+      - name: Apply migrations, seed the curriculum, and start the API and the worker
         working-directory: .
         env:
           # These match deploy/compose/compose.dev.yaml. The API runs on the
@@ -146,6 +146,14 @@ jobs:
           export OTP_HMAC_KEY="$(openssl rand -hex 32)"
           export JWT_SIGNING_KEY="$(openssl rand -hex 32)"
           go run ./cmd/migrate up
+
+          # The Phase 2 journeys drive the seeded curriculum: `/learn` has to show
+          # "Everyday English: A2-B1 Foundations" and a "Start Lesson" link, and
+          # the review queue only fills once a vocabulary activity has been
+          # completed against a real lesson. Migrating alone leaves an empty
+          # database, so those journeys look for a course nobody authored and
+          # fail as "element(s) not found" fifteen seconds later.
+          go run ./cmd/seed
 
           # Built, not `go run`: a backgrounded `go run` is a parent whose child
           # is the actual server, so the pid this step leaves behind is not the

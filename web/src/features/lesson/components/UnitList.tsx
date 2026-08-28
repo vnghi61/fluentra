@@ -15,12 +15,14 @@ export interface UnitListProps {
   units: CourseUnit[];
   completedLessonIds?: Set<string>;
   nextLessonId?: string | null;
+  onStartLesson?: (lessonId: string) => void;
 }
 
 export const UnitList: React.FC<UnitListProps> = ({
   units,
   completedLessonIds = new Set(),
   nextLessonId,
+  onStartLesson,
 }) => {
   const { t } = useTranslation();
 
@@ -29,7 +31,10 @@ export const UnitList: React.FC<UnitListProps> = ({
       <Card className="text-center py-12">
         <CardHeader>
           <div className="flex justify-center mb-2">
-            <FolderCheck className="h-10 w-10 text-text-muted" aria-hidden="true" />
+            <FolderCheck
+              className="h-10 w-10 text-text-muted"
+              aria-hidden="true"
+            />
           </div>
           <CardTitle className="text-lg font-bold">
             {t("learn.noUnitsTitle", "Curriculum in Preparation")}
@@ -85,6 +90,7 @@ export const UnitList: React.FC<UnitListProps> = ({
                       lesson={lesson}
                       isCompleted={isCompleted}
                       isNext={isNext}
+                      {...(onStartLesson ? { onStartLesson } : {})}
                     />
                   );
                 })

@@ -1,7 +1,12 @@
 import { newPassword } from "../helpers/auth";
 import { expect, test, type Page } from "@playwright/test";
 
-import { stubAccountApi, stubAuthenticated, stubRegistration } from "../helpers/stubs";
+import {
+  stubAccountApi,
+  stubAuthenticated,
+  stubLearningApi,
+  stubRegistration,
+} from "../helpers/stubs";
 
 /**
  * R6 — no horizontal scroll at 320 px (web/AGENT.md §6b, ADR-0024).
@@ -138,6 +143,38 @@ test.describe("R6/R1 at 320 px", () => {
     await page.locator('input[inputmode="numeric"]').first().focus();
     await check(page, "OTP screen with a digit focused");
   });
+
+  // P11.2's acceptance: the narrow-320 project passes in `vi` as well as `en`.
+  // Vietnamese runs 20–30 % longer than English, and the four review grade
+  // buttons are the tightest row in the app — P10.4 said to check that one
+  // specifically, so it is checked in both locales rather than in the default.
+  for (const locale of ["en", "vi"] as const) {
+    test(`the learner screens fit in ${locale}`, async ({ page }) => {
+      await stubAuthenticated(page);
+      await stubAccountApi(page);
+      await stubLearningApi(page);
+
+      await page.addInitScript((value) => {
+        window.localStorage.setItem("fluentra.locale", value);
+      }, locale);
+
+      for (const [path, name] of [
+        ["/", "dashboard"],
+        ["/learn", "learn"],
+        ["/progress", "progress"],
+        ["/practice/review", "review"],
+      ] as const) {
+        await page.goto(path);
+        await check(page, `${name} — ${locale}`);
+      }
+
+      // The review card flipped: the grade row only exists after the reveal, and
+      // it is the row this test was written for.
+      await page.goto("/practice/review");
+      await page.keyboard.press("Space");
+      await check(page, `review graded — ${locale}`);
+    });
+  }
 
   test("the account screens fit", async ({ page }) => {
     await stubAuthenticated(page);

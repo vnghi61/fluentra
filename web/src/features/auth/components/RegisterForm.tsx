@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "@tanstack/react-router";
@@ -30,6 +31,7 @@ export interface RegisterFormProps {
 export function RegisterForm({
   onChallengeIssued,
 }: RegisterFormProps): React.JSX.Element {
+  const { t } = useTranslation();
   const [serverError, setServerError] = React.useState<string | null>(null);
 
   const form = useForm<RegisterFormData>({
@@ -63,19 +65,22 @@ export function RegisterForm({
         setServerError(getErrorMessage(err.problem));
       } else {
         setServerError(
-          "Failed to create account. Please check your connection and try again.",
+          t(
+            "auth.failedToCreateAccountPlease",
+            "Failed to create account. Please check your connection and try again.",
+          ),
         );
       }
     }
   };
 
   return (
-    <div className="mx-auto w-full max-w-md space-y-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-6 sm:p-8 shadow-xl backdrop-blur-sm">
+    <div className="mx-auto w-full max-w-md space-y-6 rounded-2xl border border-border-subtle bg-surface-card/60 p-6 sm:p-8 shadow-xl backdrop-blur-sm">
       <div className="space-y-2 text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-100">
-          Create your account
+        <h1 className="text-2xl font-bold tracking-tight text-text">
+          {t("auth.createAccountTitle", "Create your account")}
         </h1>
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-text-muted">
           Start mastering all 6 English competencies today
         </p>
       </div>
@@ -84,17 +89,17 @@ export function RegisterForm({
 
       <div className="relative flex items-center justify-center">
         <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-slate-800" />
+          <div className="w-full border-t border-border-subtle" />
         </div>
-        <span className="relative bg-slate-900 px-3 text-xs uppercase tracking-wider text-slate-500">
-          Or register with email
+        <span className="relative bg-surface-card px-3 text-xs uppercase tracking-wider text-text-muted">
+          {t("auth.orRegisterEmail", "Or register with email")}
         </span>
       </div>
 
       {serverError && (
         <div
           role="alert"
-          className="rounded-lg border border-rose-500/50 bg-rose-500/10 p-3 text-sm font-medium text-rose-300"
+          className="rounded-lg border border-danger/50 bg-danger/10 p-3 text-sm font-medium text-danger-accent"
         >
           {serverError}
         </div>
@@ -110,7 +115,9 @@ export function RegisterForm({
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel required>Email address</FormLabel>
+                <FormLabel required>
+                  {t("auth.emailLabel", "Email address")}
+                </FormLabel>
                 <FormControl>
                   <Input
                     type="email"
@@ -129,11 +136,16 @@ export function RegisterForm({
             name="display_name"
             render={({ field }) => (
               <FormItem>
-                <FormLabel required>Display Name</FormLabel>
+                <FormLabel required>
+                  {t("auth.displayNameLabel", "Display Name")}
+                </FormLabel>
                 <FormControl>
                   <Input
                     type="text"
-                    placeholder="Your name or nickname"
+                    placeholder={t(
+                      "auth.yourNameOrNickname",
+                      "Your name or nickname",
+                    )}
                     autoComplete="name"
                     {...field}
                   />
@@ -148,11 +160,16 @@ export function RegisterForm({
             name="password"
             render={({ field }) => (
               <FormItem>
-                <FormLabel required>Password</FormLabel>
+                <FormLabel required>
+                  {t("auth.passwordLabel", "Password")}
+                </FormLabel>
                 <FormControl>
                   <Input
                     type="password"
-                    placeholder="At least 12 characters"
+                    placeholder={t(
+                      "auth.atLeast12Characters",
+                      "At least 12 characters",
+                    )}
                     autoComplete="new-password"
                     {...field}
                   />
@@ -170,18 +187,18 @@ export function RegisterForm({
             isLoading={form.formState.isSubmitting}
             className="w-full"
           >
-            Create account
+            {t("auth.createAccount", "Create account")}
           </Button>
         </form>
       </Form>
 
-      <p className="text-center text-sm text-slate-400">
+      <p className="text-center text-sm text-text-muted">
         Already have an account?{" "}
         <Link
           to="/login"
-          className="font-medium text-indigo-400 hover:text-indigo-300 hover:underline"
+          className="font-medium text-primary-accent hover:text-primary-accent hover:underline"
         >
-          Sign in
+          {t("auth.signIn", "Sign in")}
         </Link>
       </p>
     </div>

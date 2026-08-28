@@ -1,0 +1,53 @@
+# Phase 2 alerts.
+#
+# Every expression here names a metric this codebase emits. The first draft did
+# not: it watched `learning_grading_errors_total`, `learning_attempt_submissions_total`
+# and a job called `srs.GenerateDueQueue`, none of which exist, on a label
+# `job_class` that is spelled `kind`. An alert on a metric nobody publishes never
+# fires, and a rule file full of them is worse than an empty one, because it reads
+# like coverage.
+groups:
+  - name: learning
+    interval: 30s
+    rules:
+      # There is no grading-specific counter. Grading happens inside the submit
+      # request, so the route's 5xx rate is the signal — the same series the
+      # learning funnel dashboard plots, so the alert and the panel cannot
+      # disagree about what "failing" means.
+      #
+      # `clamp_min` on the denominator keeps a quiet period from dividing by zero
+      # and firing on NaN.
+      - alert: GradingErrorRateHigh
+        expr: >-
+          sum(rate(http_server_request_duration_seconds_count{route="/api/v1/attempts/{id}/submit",status_class="5xx"}[5m]))
+          / clamp_min(sum(rate(http_server_request_duration_seconds_count{route="/api/v1/attempts/{id}/submit"}[5m])), 0.001)
+          > 0.05
+        for: 5m
+        annotations:
+          summary: "Exercise grading error rate > 5%"
+          description: >-
+            More than one submission in twenty is returning 5xx. Learners are losing
+            answers they believe they submitted.
+          runbook_url: "https://fluentra.dev/runbooks/stuck-attempt"
+
+  - name: scheduled_jobs
+    interval: 30s
+    rules:
+      # The partition rotations are cron jobs, not River jobs, and until they were
+      # instrumented their only trace was a log line — so `learn.review_logs` could
+      # lose its rotation for a month and no alert could see it. They now report
+      # job_attempts_total under queue="cron", which is what this watches.
+      #
+      # `for: 30m` rather than minutes: the rotations run every six hours, so a
+      # single failure is not yet an outage, and firing on one would train the
+      # on-call to ignore it. A partition is missing only after several.
+      - alert: ScheduledJobFailing
+        expr: sum(rate(job_attempts_total{queue="cron",result!="success"}[30m])) by (kind) > 0
+        for: 30m
+        annotations:
+          summary: "Scheduled job {{ $labels.kind }} is failing"
+          description: >-
+            A cron job has failed every run for half an hour. For
+            srs.rotate_partitions and learning.rotate_partitions this ends as a
+            failed insert on the first of the month.
+          runbook_url: "https://fluentra.dev/runbooks/missing-monthly-partition"

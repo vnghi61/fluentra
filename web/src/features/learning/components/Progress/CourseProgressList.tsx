@@ -41,7 +41,10 @@ export const CourseProgressList: React.FC<CourseProgressListProps> = ({
       <CardContent>
         {courses.length === 0 ? (
           <div className="text-center py-8 text-text-muted space-y-3">
-            <BookOpen className="h-8 w-8 mx-auto opacity-50" aria-hidden="true" />
+            <BookOpen
+              className="h-8 w-8 mx-auto opacity-50"
+              aria-hidden="true"
+            />
             <p className="text-sm">
               {t("progress.noCourses", "No course progress recorded yet.")}
             </p>
@@ -67,17 +70,24 @@ export const CourseProgressList: React.FC<CourseProgressListProps> = ({
                         Course #{idx + 1}
                       </span>
                       {isDone ? (
-                        <Badge variant="success" className="text-[10px] py-0 uppercase">
+                        <Badge
+                          variant="success"
+                          className="text-[10px] py-0 uppercase"
+                        >
                           {t("learn.completedBadge", "Completed")}
                         </Badge>
                       ) : (
-                        <Badge variant="primary" className="text-[10px] py-0 uppercase">
+                        <Badge
+                          variant="primary"
+                          className="text-[10px] py-0 uppercase"
+                        >
                           {t("dashboard.continue.title", "In Progress")}
                         </Badge>
                       )}
                     </div>
                     <span className="text-xs font-semibold text-text-muted">
-                      {course.completed_activities} / {course.total_activities} {t("progress.activitiesDone", "activities")}
+                      {course.completed_activities} / {course.total_activities}{" "}
+                      {t("progress.activitiesDone", "activities")}
                     </span>
                   </div>
 

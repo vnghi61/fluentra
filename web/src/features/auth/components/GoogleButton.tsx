@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { authApi, type Session } from "@/features/auth/api/authApi";
 import { cn } from "@/lib/utils";
@@ -17,6 +18,7 @@ export function GoogleButton({
   onSuccess,
   onError,
 }: GoogleButtonProps): React.JSX.Element {
+  const { t } = useTranslation();
   const [isLoading, setIsLoading] = React.useState(false);
   const cleanupRef = React.useRef<(() => void) | null>(null);
 
@@ -112,7 +114,10 @@ export function GoogleButton({
       const errorMessage =
         err instanceof Error
           ? err.message
-          : "Unable to initiate Google sign-in";
+          : t(
+              "auth.unableToInitiateGoogleSign",
+              "Unable to initiate Google sign-in",
+            );
       onError?.(errorMessage);
     }
   };
@@ -124,7 +129,7 @@ export function GoogleButton({
       isLoading={isLoading}
       onClick={() => void handleGoogleSignIn()}
       className={cn(
-        "w-full gap-2 border-slate-700 bg-slate-900/60 hover:bg-slate-800 text-slate-100",
+        "w-full gap-2 border-border-subtle bg-surface-card/60 hover:bg-surface-muted text-text",
         className,
       )}
     >
@@ -146,7 +151,7 @@ export function GoogleButton({
           d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
         />
       </svg>
-      Continue with Google
+      {t("auth.continueGoogle", "Continue with Google")}
     </Button>
   );
 }

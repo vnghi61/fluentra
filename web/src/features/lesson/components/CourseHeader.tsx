@@ -61,7 +61,10 @@ export const CourseHeader: React.FC<CourseHeaderProps> = ({
 
         {totalLessons > 0 && (
           <div className="flex items-center gap-2 text-xs text-text-muted pt-1">
-            <BookMarked className="h-4 w-4 text-primary-accent" aria-hidden="true" />
+            <BookMarked
+              className="h-4 w-4 text-primary-accent"
+              aria-hidden="true"
+            />
             <span>
               {t("learn.syllabusProgress", {
                 completed: completedLessons,

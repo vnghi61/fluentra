@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "@tanstack/react-router";
@@ -29,6 +30,7 @@ export interface ForgotPasswordFormProps {
 export function ForgotPasswordForm({
   onChallengeIssued,
 }: ForgotPasswordFormProps): React.JSX.Element {
+  const { t } = useTranslation();
   const [serverError, setServerError] = React.useState<string | null>(null);
 
   const form = useForm<ForgotPasswordFormData>({
@@ -48,26 +50,31 @@ export function ForgotPasswordForm({
       if (err instanceof ApiError) {
         setServerError(getErrorMessage(err.problem));
       } else {
-        setServerError("Failed to request reset. Please try again.");
+        setServerError(
+          t(
+            "auth.failedToRequestResetPlease",
+            "Failed to request reset. Please try again.",
+          ),
+        );
       }
     }
   };
 
   return (
-    <div className="mx-auto w-full max-w-md space-y-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-6 sm:p-8 shadow-xl backdrop-blur-sm">
+    <div className="mx-auto w-full max-w-md space-y-6 rounded-2xl border border-border-subtle bg-surface-card/60 p-6 sm:p-8 shadow-xl backdrop-blur-sm">
       <Link
         to="/login"
-        className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors"
+        className="inline-flex items-center gap-1.5 text-xs font-medium text-text-muted hover:text-text transition-colors"
       >
         <ArrowLeft className="h-3.5 w-3.5" />
-        Back to sign in
+        {t("auth.backToSignIn", "Back to sign in")}
       </Link>
 
       <div className="space-y-2 text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-100">
-          Reset your password
+        <h1 className="text-2xl font-bold tracking-tight text-text">
+          {t("auth.resetTitle", "Reset your password")}
         </h1>
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-text-muted">
           Enter your account email to receive a 6-digit recovery code
         </p>
       </div>
@@ -75,7 +82,7 @@ export function ForgotPasswordForm({
       {serverError && (
         <div
           role="alert"
-          className="rounded-lg border border-rose-500/50 bg-rose-500/10 p-3 text-sm font-medium text-rose-300"
+          className="rounded-lg border border-danger/50 bg-danger/10 p-3 text-sm font-medium text-danger-accent"
         >
           {serverError}
         </div>
@@ -91,7 +98,9 @@ export function ForgotPasswordForm({
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel required>Email address</FormLabel>
+                <FormLabel required>
+                  {t("auth.emailLabel", "Email address")}
+                </FormLabel>
                 <FormControl>
                   <Input
                     type="email"
@@ -110,7 +119,7 @@ export function ForgotPasswordForm({
             isLoading={form.formState.isSubmitting}
             className="w-full"
           >
-            Send recovery code
+            {t("auth.sendRecoveryCode", "Send recovery code")}
           </Button>
         </form>
       </Form>

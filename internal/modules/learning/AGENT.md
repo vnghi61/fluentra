@@ -2,7 +2,7 @@
 module: learning
 tier: learning
 group: modules
-status: PLANNED
+status: DONE
 phase: 2
 owner: "@learning-team"
 schema: learn

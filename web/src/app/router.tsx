@@ -1,3 +1,4 @@
+import React from "react";
 import {
   createRootRoute,
   createRoute,
@@ -6,10 +7,44 @@ import {
   Outlet,
   redirect,
   useNavigate,
+  useRouterState,
   type AnyRoute,
 } from "@tanstack/react-router";
 
+import i18n from "@/i18n";
 import { AppShell } from "@/components/layout/AppShell";
+import { usePreferencesSync } from "@/features/account/hooks/usePreferencesSync";
+
+/**
+ * Lazy for the same reason AccountMenu is: both are built on Radix, so together
+ * they keep its ~30 kB out of the entry chunk instead of each paying for it.
+ */
+const ThemeLanguageControls = React.lazy(async () => ({
+  default: (await import("@/features/account/components/ThemeLanguageControls"))
+    .ThemeLanguageControls,
+}));
+
+/**
+ * The routes that stand on their own, with no app frame around them.
+ *
+ * AppShell wraps the root route, so without this list /login drew a sidebar and
+ * a bottom bar offering four destinations a signed-out visitor is redirected
+ * away from. Listed by path rather than by route id because the OAuth callback
+ * carries a provider segment.
+ */
+const bareRoutes = [
+  "/login",
+  "/register",
+  "/forgot-password",
+  "/reset-password",
+  "/auth/",
+];
+
+function isBareRoute(pathname: string): boolean {
+  return bareRoutes.some(
+    (prefix) => pathname === prefix || pathname.startsWith(prefix),
+  );
+}
 import { authApi } from "@/features/auth";
 import { ForgotPasswordPage } from "@/pages/ForgotPasswordPage";
 import { LoginPage } from "@/pages/LoginPage";
@@ -27,11 +62,11 @@ function RouteLoadingSpinner(): React.JSX.Element {
   return (
     <div
       role="status"
-      aria-label="Loading"
+      aria-label={i18n.t("app.loading", "Loading")}
       className="flex items-center justify-center p-8 min-h-[200px]"
     >
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-700 border-t-indigo-500" />
-      <span className="sr-only">Loading...</span>
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-border-subtle border-t-primary" />
+      <span className="sr-only">{i18n.t("app.loading", "Loading")}</span>
     </div>
   );
 }
@@ -85,6 +120,11 @@ function RootApp(): React.JSX.Element {
   const user = useAuthStore((s) => s.user);
   const status = useAuthStore((s) => s.status);
   const navigate = useNavigate();
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  });
+  const { themeChoice, locale, setThemeChoice, setLocaleChoice } =
+    usePreferencesSync(status === "authenticated");
 
   const handleLogout = async () => {
     await authApi.logout();
@@ -92,7 +132,24 @@ function RootApp(): React.JSX.Element {
   };
 
   return (
-    <AppShell user={user} status={status} onLogout={() => void handleLogout()}>
+    <AppShell
+      user={user}
+      status={status}
+      onLogout={() => void handleLogout()}
+      chrome={!isBareRoute(pathname)}
+      controls={
+        <React.Suspense
+          fallback={<div className="h-11 w-24" aria-hidden="true" />}
+        >
+          <ThemeLanguageControls
+            themeChoice={themeChoice}
+            locale={locale}
+            onThemeChoice={setThemeChoice}
+            onLocale={setLocaleChoice}
+          />
+        </React.Suspense>
+      }
+    >
       <Outlet />
     </AppShell>
   );

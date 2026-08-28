@@ -6,7 +6,7 @@ export function PracticePage(): React.JSX.Element {
   return (
     <div className="space-y-2">
       <h1 className="text-2xl font-bold">{t("nav.practice")}</h1>
-      <p className="text-sm text-slate-400">{t("app.tagline")}</p>
+      <p className="text-sm text-text-muted">{t("app.tagline")}</p>
     </div>
   );
 }

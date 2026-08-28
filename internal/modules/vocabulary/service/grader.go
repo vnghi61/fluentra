@@ -34,9 +34,11 @@ func NewGrader(content ContentReader) *Grader {
 // the shapes the P10.4 flashcard can send: a typed recall, a chosen option, or
 // free text.
 type vocabularyQuizResponse struct {
-	Answer         string `json:"answer"`
-	SelectedOption string `json:"selected_option"`
-	Text           string `json:"text"`
+	Answer           string `json:"answer"`
+	SelectedOption   string `json:"selected_option"`
+	SelectedOptionID string `json:"selected_option_id"`
+	Text             string `json:"text"`
+	TextAnswer       string `json:"text_answer"`
 }
 
 // vocabularyQuizBody is the authored side, stored in the content version body.
@@ -97,7 +99,7 @@ func (g *Grader) loadBody(ctx context.Context, versionID uuid.UUID) (vocabularyQ
 	return body, nil
 }
 
-// submittedAnswer normalises whichever of the three response shapes arrived.
+// submittedAnswer normalises whichever of the response shapes arrived.
 func submittedAnswer(raw json.RawMessage) string {
 	if len(raw) == 0 {
 		return ""
@@ -106,7 +108,10 @@ func submittedAnswer(raw json.RawMessage) string {
 	if err := json.Unmarshal(raw, &resp); err != nil {
 		return ""
 	}
-	for _, candidate := range []string{resp.Answer, resp.SelectedOption, resp.Text} {
+	candidates := []string{
+		resp.Answer, resp.SelectedOption, resp.SelectedOptionID, resp.Text, resp.TextAnswer,
+	}
+	for _, candidate := range candidates {
 		if candidate != "" {
 			return normalise(candidate)
 		}

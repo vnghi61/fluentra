@@ -32,9 +32,7 @@ export const FlashcardBack: React.FC<FlashcardBackProps> = ({
           )}
         </div>
 
-        {ipa && (
-          <p className="font-mono text-sm text-primary-accent">{ipa}</p>
-        )}
+        {ipa && <p className="font-mono text-sm text-primary-accent">{ipa}</p>}
 
         {/* English Definition */}
         <p className="text-lg md:text-xl font-medium text-text leading-relaxed pt-1">

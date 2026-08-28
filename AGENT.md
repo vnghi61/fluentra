@@ -206,6 +206,7 @@ make gen           # sqlc + oapi-codegen + mocks + openapi-typescript
 make migrate-up    # apply migrations
 make seed          # the two demo accounts getting-started.md names
 make promote-admin EMAIL=you@example.com   # grant the admin role to an existing account
+make due-reviews EMAIL=you@example.com     # bring that account's review cards forward so they are due
 make audit-logs    # prove no OTP code or personal data is searchable in Loki
 make docs          # regenerate module doc scaffolding
 make docs-check    # docs lint + drift check

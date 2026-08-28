@@ -1,4 +1,5 @@
 import React, { useState, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { Camera, Loader2, UploadCloud, X, AlertCircle } from "lucide-react";
 import { accountApi } from "../api/accountApi";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
   onClose,
   onSuccess,
 }) => {
+  const { t } = useTranslation();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -31,12 +33,19 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
     if (!file) return;
 
     if (!ALLOWED_TYPES.includes(file.type)) {
-      setError("Please select a JPEG, PNG, or WebP image.");
+      setError(
+        t(
+          "account.pleaseSelectAJpegPng",
+          "Please select a JPEG, PNG, or WebP image.",
+        ),
+      );
       return;
     }
 
     if (file.size > MAX_BYTES) {
-      setError("Image size exceeds the 5 MB limit.");
+      setError(
+        t("account.imageSizeExceedsThe5", "Image size exceeds the 5 MB limit."),
+      );
       return;
     }
 
@@ -71,7 +80,10 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
       setError(
         err instanceof Error
           ? err.message
-          : "Failed to upload avatar. Please try again.",
+          : t(
+              "account.failedToUploadAvatarPlease",
+              "Failed to upload avatar. Please try again.",
+            ),
       );
     } finally {
       setIsUploading(false);
@@ -93,50 +105,52 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="avatar-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/80 backdrop-blur-sm p-4"
     >
-      <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl space-y-6">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+      <div className="w-full max-w-md rounded-2xl border border-border-subtle bg-surface-card p-6 shadow-2xl space-y-6">
+        <div className="flex items-center justify-between border-b border-border-subtle pb-4">
           <h2
             id="avatar-modal-title"
-            className="text-lg font-semibold text-slate-100 flex items-center gap-2"
+            className="text-lg font-semibold text-text flex items-center gap-2"
           >
-            <Camera className="h-5 w-5 text-indigo-400" />
-            Update Profile Avatar
+            <Camera className="h-5 w-5 text-primary-accent" />
+            {t("account.updateProfileAvatar", "Update Profile Avatar")}
           </h2>
           <button
             type="button"
             onClick={handleClose}
             disabled={isUploading}
-            className="rounded-lg p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors"
+            className="rounded-lg p-1 text-text-muted hover:bg-surface-muted hover:text-text transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {error && (
-          <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">
-            <AlertCircle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
+          <div className="flex items-start gap-2.5 rounded-lg border border-danger/30 bg-danger/10 p-3 text-xs text-danger-accent">
+            <AlertCircle className="h-4 w-4 shrink-0 text-danger-accent mt-0.5" />
             <span>{error}</span>
           </div>
         )}
 
         <div className="flex flex-col items-center justify-center space-y-4">
           {previewUrl ? (
-            <div className="relative h-36 w-36 overflow-hidden rounded-full border-4 border-indigo-500/30 bg-slate-800">
+            <div className="relative h-36 w-36 overflow-hidden rounded-full border-4 border-primary/30 bg-surface-muted">
               <img
                 src={previewUrl}
-                alt="Avatar preview"
+                alt={t("account.avatarPreview", "Avatar preview")}
                 className="h-full w-full object-cover"
               />
             </div>
           ) : (
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="flex h-36 w-36 cursor-pointer flex-col items-center justify-center rounded-full border-2 border-dashed border-slate-700 bg-slate-800/50 hover:border-indigo-500/50 hover:bg-slate-800 transition-all text-slate-400 hover:text-indigo-300"
+              className="flex h-36 w-36 cursor-pointer flex-col items-center justify-center rounded-full border-2 border-dashed border-border-subtle bg-surface-muted/50 hover:border-primary/50 hover:bg-surface-muted transition-all text-text-muted hover:text-primary-accent"
             >
               <UploadCloud className="h-8 w-8 mb-1" />
-              <span className="text-xs font-medium">Choose file</span>
+              <span className="text-xs font-medium">
+                {t("account.chooseFile", "Choose file")}
+              </span>
             </div>
           )}
 
@@ -157,22 +171,24 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}
             >
-              {previewUrl ? "Choose different image" : "Browse computer"}
+              {previewUrl
+                ? t("account.chooseDifferentImage", "Choose different image")
+                : t("account.browseComputer", "Browse computer")}
             </Button>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-text-muted">
               JPEG, PNG, or WebP. Max size: 5 MB.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3 border-t border-slate-800 pt-4">
+        <div className="flex items-center justify-end gap-3 border-t border-border-subtle pt-4">
           <Button
             type="button"
             variant="ghost"
             onClick={handleClose}
             disabled={isUploading}
           >
-            Cancel
+            {t("account.cancel", "Cancel")}
           </Button>
           <Button
             type="button"
@@ -184,10 +200,10 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
             {isUploading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Uploading directly...
+                {t("account.uploadingDirectly", "Uploading directly...")}
               </>
             ) : (
-              "Save Avatar"
+              t("account.saveAvatar", "Save Avatar")
             )}
           </Button>
         </div>

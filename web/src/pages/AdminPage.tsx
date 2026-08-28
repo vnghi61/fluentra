@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Flag, Shield, Users } from "lucide-react";
 import { AdminUserList, AdminFeatureFlags } from "@/features/admin";
 import {
@@ -9,6 +10,7 @@ import {
 type AdminTab = "users" | "flags";
 
 export function AdminPage(): React.JSX.Element {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<AdminTab>("users");
   const { can, isLoading } = usePermissions();
 
@@ -19,10 +21,22 @@ export function AdminPage(): React.JSX.Element {
   // x-permission in api/openapi/openapi.yaml.
   const tabs = [
     ...(can(PERMISSIONS.userList)
-      ? [{ key: "users" as AdminTab, label: "Learner Management", icon: Users }]
+      ? [
+          {
+            key: "users" as AdminTab,
+            label: t("page.learnerManagement", "Learner Management"),
+            icon: Users,
+          },
+        ]
       : []),
     ...(can(PERMISSIONS.systemFlags)
-      ? [{ key: "flags" as AdminTab, label: "Feature Flags", icon: Flag }]
+      ? [
+          {
+            key: "flags" as AdminTab,
+            label: t("page.featureFlags", "Feature Flags"),
+            icon: Flag,
+          },
+        ]
       : []),
   ];
 
@@ -37,22 +51,22 @@ export function AdminPage(): React.JSX.Element {
       {/* Header */}
       <header className="space-y-1">
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1 rounded-md bg-indigo-500/10 px-2 py-0.5 text-xs font-semibold text-indigo-400 border border-indigo-500/20 uppercase tracking-wider">
+          <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary-accent border border-primary/20 uppercase tracking-wider">
             <Shield className="h-3 w-3" />
-            Administration
+            {t("page.administration", "Administration")}
           </span>
         </div>
-        <h1 className="text-2xl font-bold text-slate-100">
-          Platform Administration
+        <h1 className="text-2xl font-bold text-text">
+          {t("page.platformAdministration", "Platform Administration")}
         </h1>
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-text-muted">
           Manage platform learners, enforce moderation, and configure system
           feature flags.
         </p>
       </header>
 
       {/* Tabs */}
-      <div className="flex border-b border-slate-800 gap-2 pb-px overflow-x-auto">
+      <div className="flex border-b border-border-subtle gap-2 pb-px overflow-x-auto">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = visible === tab.key;
@@ -63,8 +77,8 @@ export function AdminPage(): React.JSX.Element {
               onClick={() => setActiveTab(tab.key)}
               className={`flex items-center gap-2 whitespace-nowrap px-4 py-3 text-sm font-medium border-b-2 transition-colors min-h-[44px] cursor-pointer ${
                 isActive
-                  ? "border-indigo-500 text-indigo-400 bg-indigo-500/5 rounded-t-lg"
-                  : "border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700"
+                  ? "border-primary text-primary-accent bg-primary/5 rounded-t-lg"
+                  : "border-transparent text-text-muted hover:text-text hover:border-border-subtle"
               }`}
             >
               <Icon className="h-4 w-4" />
@@ -77,10 +91,13 @@ export function AdminPage(): React.JSX.Element {
       {/* Tab Panels */}
       <div>
         {isLoading ? (
-          <p className="text-sm text-slate-400">Checking your permissions…</p>
+          <p className="text-sm text-text-muted">Checking your permissions…</p>
         ) : tabs.length === 0 ? (
-          <p className="text-sm text-slate-400">
-            Your account holds no administrative permissions.
+          <p className="text-sm text-text-muted">
+            {t(
+              "page.yourAccountHoldsNoAdministrativePermissions",
+              "Your account holds no administrative permissions.",
+            )}
           </p>
         ) : (
           <>

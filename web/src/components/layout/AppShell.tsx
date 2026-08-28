@@ -1,178 +1,270 @@
 import React from "react";
 import { Link } from "@tanstack/react-router";
-import { LogIn, LogOut, UserPlus } from "lucide-react";
+import {
+  BookOpen,
+  LayoutDashboard,
+  LineChart,
+  LogIn,
+  Settings,
+  ShieldCheck,
+  Target,
+  UserPlus,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
+
+import { BrandMark } from "./BrandMark";
+
+/** Lazy: see AccountMenu's own comment for why it is not in the entry chunk. */
+const AccountMenu = React.lazy(() => import("./AccountMenu"));
 
 export interface AppShellProps {
   children: React.ReactNode;
   user?: { role: string } | null | undefined;
   status?: "idle" | "authenticated" | "unauthenticated" | undefined;
   onLogout?: (() => void) | undefined;
+  /**
+   * Whether to draw the app frame at all.
+   *
+   * The shell wraps the root route, so /login and /register inherited a sidebar
+   * and a bottom bar advertising four destinations a signed-out visitor cannot
+   * reach. The composition root decides; this component only obeys.
+   */
+  chrome?: boolean;
+  /**
+   * The theme and language switchers, passed in rather than built here: they
+   * read and write the learner's preferences, and a component may not reach
+   * into a store or a feature.
+   */
+  controls?: React.ReactNode;
 }
+
+/**
+ * Every navigation destination, declared once.
+ *
+ * The sidebar and the mobile bar used to spell the same five links out twice,
+ * in two different sets of hardcoded colours, which is how `Settings` ended up
+ * translated in neither. One list, two renderers.
+ *
+ * `exact` matters only for "/": without it the dashboard link stays active on
+ * every route, because every path starts with a slash.
+ */
+const destinations = [
+  {
+    to: "/",
+    labelKey: "nav.dashboard",
+    fallback: "Dashboard",
+    Icon: LayoutDashboard,
+    exact: true,
+  },
+  {
+    to: "/learn",
+    labelKey: "nav.learn",
+    fallback: "Learn",
+    Icon: BookOpen,
+    exact: false,
+  },
+  {
+    to: "/practice",
+    labelKey: "nav.practice",
+    fallback: "Practice",
+    Icon: Target,
+    exact: false,
+  },
+  {
+    to: "/progress",
+    labelKey: "nav.progress",
+    fallback: "Progress",
+    Icon: LineChart,
+    exact: false,
+  },
+] as const;
+
+const navBase =
+  "flex items-center gap-3 h-11 px-3 rounded-lg min-h-[44px] transition-colors text-sm";
+const navIdle = "text-text-muted hover:bg-surface-muted hover:text-text";
+const navActive = "bg-primary/10 text-primary-accent font-semibold";
 
 export const AppShell: React.FC<AppShellProps> = ({
   children,
   user,
   status = "idle",
   onLogout,
+  chrome = true,
+  controls,
 }) => {
   const { t } = useTranslation();
+  const signedIn = status === "authenticated";
+
+  // The account controls, in the top-right corner rather than the foot of the
+  // sidebar, and behind an avatar once there is an account to show — which is
+  // what keeps Sign out out of primary navigation. The menu waited on the
+  // dropdown primitive; that now exists, so this is no longer a bare button.
+  const account =
+    signedIn && user ? (
+      <React.Suspense
+        fallback={<div className="h-11 w-11" aria-hidden="true" />}
+      >
+        <AccountMenu role={user.role} onLogout={onLogout} />
+      </React.Suspense>
+    ) : (
+      <div className="flex items-center gap-2">
+        <Link
+          to="/register"
+          aria-label={t("nav.createAccount", "Create account")}
+          className="flex items-center gap-2 h-10 px-3 rounded-lg border border-border hover:bg-surface-muted text-text min-h-[44px] transition-colors text-sm font-medium"
+        >
+          <UserPlus className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span className="hidden sm:inline">
+            {t("nav.createAccount", "Create account")}
+          </span>
+        </Link>
+        <Link
+          to="/login"
+          className="flex items-center gap-2 h-10 px-4 rounded-full bg-primary hover:bg-primary-hover text-primary-fg min-h-[44px] transition-colors text-sm font-semibold"
+        >
+          <LogIn className="h-4 w-4 shrink-0" aria-hidden="true" />
+          {t("nav.signIn", "Sign in")}
+        </Link>
+      </div>
+    );
+
+  // Authentication stands on its own page: no navigation to gated routes, and
+  // nothing competing with the form. LoginForm and RegisterForm already link to
+  // each other, so no header is needed to get between them.
+  if (!chrome) {
+    return (
+      <div className="min-h-screen bg-surface-muted text-text flex flex-col">
+        {/*
+          Theme and language, and nothing else. Removing the shell from the auth
+          pages also removed the only way a Vietnamese learner could switch the
+          interface to Vietnamese before signing in. These two controls are not
+          navigation, so they can come back without bringing the sidebar with
+          them.
+        */}
+        {controls ? (
+          <div className="flex justify-end p-3">{controls}</div>
+        ) : null}
+        <main className="flex-1 flex flex-col justify-center p-4 w-full">
+          {children}
+        </main>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col md:flex-row">
+    <div className="min-h-screen bg-surface-muted text-text flex flex-col md:flex-row">
       {/* Desktop Sidebar Navigation */}
-      <aside className="hidden md:flex flex-col w-64 border-r border-slate-800 p-4 space-y-6 justify-between">
-        <div className="space-y-6">
-          <Link to="/" className="text-xl font-bold text-indigo-400 block">
-            Fluentra
+      <aside className="hidden md:flex flex-col w-64 shrink-0 bg-surface-card border-r border-border-subtle p-4 gap-6 justify-between">
+        <div className="flex flex-col gap-6">
+          <Link to="/" className="flex items-center gap-2.5">
+            {/* Inline, so the mark takes --color-brand and needs no request. */}
+            <BrandMark className="h-7 w-7 shrink-0 text-brand" />
+            <span className="text-lg font-bold tracking-tight text-text">
+              Fluentra
+            </span>
           </Link>
-          <nav className="flex flex-col space-y-2">
-            <Link
-              to="/"
-              className="flex items-center h-11 px-4 rounded-lg text-slate-300 hover:bg-slate-800 min-h-[44px] transition-colors"
-            >
-              {t("nav.dashboard")}
-            </Link>
-            <Link
-              to="/learn"
-              className="flex items-center h-11 px-4 rounded-lg text-slate-300 hover:bg-slate-800 min-h-[44px] transition-colors"
-            >
-              {t("nav.learn")}
-            </Link>
-            <Link
-              to="/practice"
-              className="flex items-center h-11 px-4 rounded-lg text-slate-300 hover:bg-slate-800 min-h-[44px] transition-colors"
-            >
-              {t("nav.practice")}
-            </Link>
-            <Link
-              to="/progress"
-              className="flex items-center h-11 px-4 rounded-lg text-slate-300 hover:bg-slate-800 min-h-[44px] transition-colors"
-            >
-              {t("nav.progress")}
-            </Link>
-            {status === "authenticated" && (
+
+          <nav className="flex flex-col gap-1">
+            {destinations.map(({ to, labelKey, fallback, Icon, exact }) => (
+              <Link
+                key={to}
+                to={to}
+                activeOptions={{ exact }}
+                className={`${navBase} ${navIdle}`}
+                activeProps={{ className: `${navBase} ${navActive}` }}
+              >
+                <Icon
+                  className="h-[18px] w-[18px] shrink-0"
+                  aria-hidden="true"
+                />
+                {t(labelKey, fallback)}
+              </Link>
+            ))}
+
+            {signedIn && (
               <Link
                 to="/settings"
-                className="flex items-center h-11 px-4 rounded-lg text-slate-300 hover:bg-slate-800 min-h-[44px] transition-colors"
+                className={`${navBase} ${navIdle}`}
+                activeProps={{ className: `${navBase} ${navActive}` }}
               >
-                Settings
+                <Settings
+                  className="h-[18px] w-[18px] shrink-0"
+                  aria-hidden="true"
+                />
+                {t("nav.settings", "Settings")}
               </Link>
             )}
-            {status === "authenticated" && user?.role === "admin" && (
+
+            {signedIn && user?.role === "admin" && (
               <Link
                 to="/admin"
-                className="flex items-center h-11 px-4 rounded-lg text-indigo-300 hover:bg-indigo-500/10 min-h-[44px] transition-colors font-medium"
+                className={`${navBase} ${navIdle}`}
+                activeProps={{ className: `${navBase} ${navActive}` }}
               >
-                Admin Panel
+                <ShieldCheck
+                  className="h-[18px] w-[18px] shrink-0"
+                  aria-hidden="true"
+                />
+                {t("nav.admin", "Admin")}
               </Link>
             )}
           </nav>
         </div>
-
-        {/* Auth footer in sidebar */}
-        <div className="border-t border-slate-800 pt-4 space-y-2">
-          {status === "authenticated" && user ? (
-            <div className="space-y-3">
-              <div className="text-xs text-slate-400 px-2 truncate">
-                Role:{" "}
-                <span className="font-semibold text-slate-200 uppercase">
-                  {user.role}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={onLogout}
-                className="flex items-center gap-2 w-full h-11 px-4 rounded-lg text-rose-400 hover:bg-rose-500/10 min-h-[44px] transition-colors text-sm font-medium cursor-pointer"
-              >
-                <LogOut className="h-4 w-4" />
-                Sign out
-              </button>
-            </div>
-          ) : (
-            <div className="flex flex-col space-y-2">
-              <Link
-                to="/login"
-                className="flex items-center gap-2 h-11 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white min-h-[44px] transition-colors text-sm font-medium justify-center"
-              >
-                <LogIn className="h-4 w-4" />
-                Sign in
-              </Link>
-              <Link
-                to="/register"
-                className="flex items-center gap-2 h-11 px-4 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-300 min-h-[44px] transition-colors text-sm font-medium justify-center"
-              >
-                <UserPlus className="h-4 w-4" />
-                Create account
-              </Link>
-            </div>
-          )}
-        </div>
       </aside>
 
-      {/* Main Content Area */}
-      <main className="flex-1 p-4 pb-20 md:pb-4 max-w-7xl mx-auto w-full">
-        {children}
-      </main>
-
-      {/* Mobile Bottom Navigation Bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-slate-900 border-t border-slate-800 flex items-center justify-around z-50 px-2 pb-[env(safe-area-inset-bottom)]">
-        <Link
-          to="/"
-          className="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] text-indigo-400 text-xs font-medium"
-        >
-          {t("nav.dashboard")}
-        </Link>
-        <Link
-          to="/learn"
-          className="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] text-slate-400 text-xs font-medium"
-        >
-          {t("nav.learn")}
-        </Link>
-        <Link
-          to="/practice"
-          className="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] text-slate-400 text-xs font-medium"
-        >
-          {t("nav.practice")}
-        </Link>
-        <Link
-          to="/progress"
-          className="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] text-slate-400 text-xs font-medium"
-        >
-          {t("nav.progress")}
-        </Link>
-        {status === "authenticated" ? (
-          <>
-            <Link
-              to="/settings"
-              className="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] text-slate-400 text-xs font-medium"
-            >
-              Settings
-            </Link>
-            {user?.role === "admin" && (
-              <Link
-                to="/admin"
-                className="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] text-indigo-400 text-xs font-medium"
-              >
-                Admin
-              </Link>
-            )}
-            <button
-              type="button"
-              onClick={onLogout}
-              className="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] text-rose-400 text-xs font-medium"
-            >
-              Logout
-            </button>
-          </>
-        ) : (
+      {/* Header + content column */}
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="sticky top-0 z-40 flex items-center justify-between gap-3 h-14 px-4 bg-surface-card border-b border-border-subtle">
+          {/* The brand belongs here only where the sidebar is not drawing it. */}
+          {/*
+            min-h-[44px]: the mark is 26px and the word sits beside it, so
+            without a floor this link was 94x26 — a tap target under the 44x44
+            minimum ADR-0024 sets, and the narrow-320 suite caught it at 320px
+            in both locales.
+          */}
           <Link
-            to="/login"
-            className="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] text-slate-400 text-xs font-medium"
+            to="/"
+            className="flex items-center gap-2 min-h-[44px] md:hidden"
           >
-            Sign in
+            <BrandMark className="h-[26px] w-[26px] shrink-0 text-brand" />
+            <span className="text-base font-bold tracking-tight text-text">
+              Fluentra
+            </span>
           </Link>
-        )}
+          <div className="hidden md:block" />
+          <div className="flex items-center gap-1">
+            {controls}
+            {account}
+          </div>
+        </header>
+
+        <main className="flex-1 p-4 pb-20 md:pb-4 max-w-7xl mx-auto w-full">
+          {children}
+        </main>
+      </div>
+
+      {/*
+        Mobile Bottom Navigation Bar — the four learner destinations and nothing
+        else. Settings, Admin and Sign out moved to the header, which is where
+        the IA puts them and which keeps the bar at four thumb-sized targets
+        instead of seven.
+      */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-surface-card border-t border-border-subtle flex items-center justify-around z-50 px-2 pb-[env(safe-area-inset-bottom)]">
+        {destinations.map(({ to, labelKey, fallback, Icon, exact }) => (
+          <Link
+            key={to}
+            to={to}
+            activeOptions={{ exact }}
+            className="flex flex-col items-center justify-center gap-0.5 min-w-[44px] min-h-[44px] text-text-muted text-[11px] font-medium"
+            activeProps={{
+              className:
+                "flex flex-col items-center justify-center gap-0.5 min-w-[44px] min-h-[44px] text-primary-accent text-[11px] font-semibold",
+            }}
+          >
+            <Icon className="h-5 w-5" aria-hidden="true" />
+            {t(labelKey, fallback)}
+          </Link>
+        ))}
       </nav>
     </div>
   );

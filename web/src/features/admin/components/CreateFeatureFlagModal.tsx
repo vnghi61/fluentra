@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertCircle, Flag, Loader2, X } from "lucide-react";
@@ -23,6 +24,7 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
   onClose,
   onSuccess,
 }) => {
+  const { t } = useTranslation();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,7 +74,12 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
       onClose();
     } catch (err: unknown) {
       setError(
-        err instanceof Error ? err.message : "Failed to create feature flag.",
+        err instanceof Error
+          ? err.message
+          : t(
+              "admin.failedToCreateFeatureFlag",
+              "Failed to create feature flag.",
+            ),
       );
     } finally {
       setIsSubmitting(false);
@@ -84,30 +91,30 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="create-flag-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/80 backdrop-blur-sm p-4"
     >
-      <div className="w-full max-w-lg rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl space-y-6">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+      <div className="w-full max-w-lg rounded-2xl border border-border-subtle bg-surface-card p-6 shadow-2xl space-y-6">
+        <div className="flex items-center justify-between border-b border-border-subtle pb-4">
           <h2
             id="create-flag-modal-title"
-            className="text-lg font-semibold text-slate-100 flex items-center gap-2"
+            className="text-lg font-semibold text-text flex items-center gap-2"
           >
-            <Flag className="h-5 w-5 text-indigo-400" />
-            Create Feature Flag
+            <Flag className="h-5 w-5 text-primary-accent" />
+            {t("admin.createFeatureFlag", "Create Feature Flag")}
           </h2>
           <button
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="rounded-lg p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors"
+            className="rounded-lg p-1 text-text-muted hover:bg-surface-muted hover:text-text transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {error && (
-          <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs text-rose-300">
-            <AlertCircle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
+          <div className="flex items-start gap-2.5 rounded-lg border border-danger/30 bg-danger/10 p-3.5 text-xs text-danger-accent">
+            <AlertCircle className="h-4 w-4 shrink-0 text-danger-accent mt-0.5" />
             <span>{error}</span>
           </div>
         )}
@@ -120,7 +127,9 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
         >
           {/* Key */}
           <div className="space-y-1.5">
-            <Label htmlFor="flag-key">Flag Identifier Key</Label>
+            <Label htmlFor="flag-key">
+              {t("admin.flagIdentifierKey", "Flag Identifier Key")}
+            </Label>
             <Input
               id="flag-key"
               {...register("key")}
@@ -128,13 +137,15 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
               aria-invalid={!!errors.key}
             />
             {errors.key && (
-              <p className="text-xs text-rose-400">{errors.key.message}</p>
+              <p className="text-xs text-danger-accent">{errors.key.message}</p>
             )}
           </div>
 
           {/* Description */}
           <div className="space-y-1.5">
-            <Label htmlFor="flag-desc">Description</Label>
+            <Label htmlFor="flag-desc">
+              {t("admin.description", "Description")}
+            </Label>
             <Input
               id="flag-desc"
               {...register("description")}
@@ -142,7 +153,7 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
               aria-invalid={!!errors.description}
             />
             {errors.description && (
-              <p className="text-xs text-rose-400">
+              <p className="text-xs text-danger-accent">
                 {errors.description.message}
               </p>
             )}
@@ -151,7 +162,9 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
           {/* Owner & Expiry */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="flag-owner">Owner / Team</Label>
+              <Label htmlFor="flag-owner">
+                {t("admin.ownerTeam", "Owner / Team")}
+              </Label>
               <Input
                 id="flag-owner"
                 {...register("owner")}
@@ -159,12 +172,16 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
                 aria-invalid={!!errors.owner}
               />
               {errors.owner && (
-                <p className="text-xs text-rose-400">{errors.owner.message}</p>
+                <p className="text-xs text-danger-accent">
+                  {errors.owner.message}
+                </p>
               )}
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="flag-expiry">Expires On (Future)</Label>
+              <Label htmlFor="flag-expiry">
+                {t("admin.expiresOnFuture", "Expires On (Future)")}
+              </Label>
               <Input
                 id="flag-expiry"
                 type="date"
@@ -172,7 +189,7 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
                 aria-invalid={!!errors.expires_on}
               />
               {errors.expires_on && (
-                <p className="text-xs text-rose-400">
+                <p className="text-xs text-danger-accent">
                   {errors.expires_on.message}
                 </p>
               )}
@@ -191,7 +208,7 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
               aria-invalid={!!errors.rollout_percent}
             />
             {errors.rollout_percent && (
-              <p className="text-xs text-rose-400">
+              <p className="text-xs text-danger-accent">
                 {errors.rollout_percent.message}
               </p>
             )}
@@ -214,27 +231,30 @@ export const CreateFeatureFlagModal: React.FC<CreateFeatureFlagModalProps> = ({
               htmlFor="flag-enabled"
               className="text-sm font-medium cursor-pointer"
             >
-              Enable immediately on creation
+              {t(
+                "admin.enableImmediatelyOnCreation",
+                "Enable immediately on creation",
+              )}
             </Label>
           </div>
 
-          <div className="flex items-center justify-end gap-3 border-t border-slate-800 pt-4 mt-6">
+          <div className="flex items-center justify-end gap-3 border-t border-border-subtle pt-4 mt-6">
             <Button
               type="button"
               variant="ghost"
               onClick={onClose}
               disabled={isSubmitting}
             >
-              Cancel
+              {t("admin.cancel", "Cancel")}
             </Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating...
+                  {t("admin.creating", "Creating...")}
                 </>
               ) : (
-                "Save Feature Flag"
+                t("admin.saveFeatureFlag", "Save Feature Flag")
               )}
             </Button>
           </div>

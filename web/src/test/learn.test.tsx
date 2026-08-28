@@ -47,7 +47,8 @@ describe("LearnPage (P10.2)", () => {
         id: "0199a1c2-3d4e-7f80-9abc-def012345678",
         slug: "ielts-foundation",
         title: "IELTS Foundation 5.0 - 6.5",
-        description: "Comprehensive curriculum covering vocabulary and core grammar.",
+        description:
+          "Comprehensive curriculum covering vocabulary and core grammar.",
         cefr_from: "B1",
         cefr_to: "B2",
         status: "published",
@@ -60,7 +61,8 @@ describe("LearnPage (P10.2)", () => {
     id: "0199a1c2-3d4e-7f80-9abc-def012345678",
     slug: "ielts-foundation",
     title: "IELTS Foundation 5.0 - 6.5",
-    description: "Comprehensive curriculum covering vocabulary and core grammar.",
+    description:
+      "Comprehensive curriculum covering vocabulary and core grammar.",
     cefr_from: "B1",
     cefr_to: "B2",
     status: "published",
@@ -112,20 +114,30 @@ describe("LearnPage (P10.2)", () => {
 
     await renderLearn();
 
-    expect(await screen.findByText("No Courses Available Yet")).toBeInTheDocument();
-    expect(screen.getByText(/Curriculum content is currently being prepared/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText("No Courses Available Yet"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Curriculum content is currently being prepared/i),
+    ).toBeInTheDocument();
   });
 
   it("renders course syllabus with units and lessons", async () => {
     server.use(
       http.get("/api/v1/courses", () => HttpResponse.json(mockCourseList)),
-      http.get("/api/v1/courses/0199a1c2-3d4e-7f80-9abc-def012345678", () => HttpResponse.json(mockCourseDetail)),
+      // Addressed by slug, which is what `/courses/{slug}` declares. Mocking
+      // the id path made this test pass while the real syllabus 404ed.
+      http.get("/api/v1/courses/ielts-foundation", () =>
+        HttpResponse.json(mockCourseDetail),
+      ),
     );
 
     await renderLearn();
 
     // Course Header
-    expect(await screen.findByText("IELTS Foundation 5.0 - 6.5")).toBeInTheDocument();
+    expect(
+      await screen.findByText("IELTS Foundation 5.0 - 6.5"),
+    ).toBeInTheDocument();
     expect(screen.getByText("B1 → B2")).toBeInTheDocument();
     expect(screen.getByText("40h")).toBeInTheDocument();
 
@@ -133,12 +145,20 @@ describe("LearnPage (P10.2)", () => {
     expect(screen.getByText("Everyday Campus Life")).toBeInTheDocument();
 
     // Lesson 1 (Unlocked)
-    expect(screen.getByText("Academic Word List - Topic 1")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Start Lesson/i })).toBeInTheDocument();
+    expect(
+      screen.getByText("Academic Word List - Topic 1"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Start Lesson/i }),
+    ).toBeInTheDocument();
 
     // Lesson 2 (Locked with reason)
-    expect(screen.getByText("Present Perfect in Research Contexts")).toBeInTheDocument();
-    expect(screen.getByText(/Complete Academic Word List - Topic 1 first/i)).toBeInTheDocument();
+    expect(
+      screen.getByText("Present Perfect in Research Contexts"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Complete Academic Word List - Topic 1 first/i),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Locked/i })).toBeDisabled();
   });
 
@@ -147,13 +167,21 @@ describe("LearnPage (P10.2)", () => {
 
     server.use(
       http.get("/api/v1/courses", () => HttpResponse.json(mockCourseList)),
-      http.get("/api/v1/courses/0199a1c2-3d4e-7f80-9abc-def012345678", () => HttpResponse.json(mockCourseDetail)),
+      // Addressed by slug, which is what `/courses/{slug}` declares. Mocking
+      // the id path made this test pass while the real syllabus 404ed.
+      http.get("/api/v1/courses/ielts-foundation", () =>
+        HttpResponse.json(mockCourseDetail),
+      ),
     );
 
     await renderLearn();
 
-    expect(await screen.findByText("IELTS Foundation 5.0 - 6.5")).toBeInTheDocument();
+    expect(
+      await screen.findByText("IELTS Foundation 5.0 - 6.5"),
+    ).toBeInTheDocument();
     expect(screen.getByText(/Giáo trình khóa học/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Bắt đầu bài học/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Bắt đầu bài học/i }),
+    ).toBeInTheDocument();
   });
 });

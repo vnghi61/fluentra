@@ -87,9 +87,11 @@ export const ExerciseMultipleChoice: React.FC<ExerciseMultipleChoiceProps> = ({
             "border-border bg-surface-card hover:border-primary/50 text-text";
           if (isSubmitted) {
             if (isSelectedCorrect || isAnswer) {
-              optionStyle = "border-success bg-success/10 text-text font-semibold";
+              optionStyle =
+                "border-success bg-success/10 text-text font-semibold";
             } else if (isSelectedWrong) {
-              optionStyle = "border-danger bg-danger/10 text-text line-through opacity-80";
+              optionStyle =
+                "border-danger bg-danger/10 text-text line-through opacity-80";
             } else {
               optionStyle = "border-border opacity-50 text-text-muted";
             }
@@ -121,9 +123,15 @@ export const ExerciseMultipleChoice: React.FC<ExerciseMultipleChoiceProps> = ({
               {isSubmitted && (
                 <div>
                   {isSelectedCorrect || isAnswer ? (
-                    <Check className="h-5 w-5 text-success" aria-label="Correct" />
+                    <Check
+                      className="h-5 w-5 text-success"
+                      aria-label={t("runner.markCorrect", "Correct")}
+                    />
                   ) : isSelectedWrong ? (
-                    <X className="h-5 w-5 text-danger" aria-label="Incorrect" />
+                    <X
+                      className="h-5 w-5 text-danger"
+                      aria-label={t("runner.markIncorrect", "Incorrect")}
+                    />
                   ) : null}
                 </div>
               )}
@@ -152,11 +160,18 @@ export const ExerciseMultipleChoice: React.FC<ExerciseMultipleChoiceProps> = ({
             ) : (
               <>
                 <X className="h-5 w-5" aria-hidden="true" />
-                <span>{t("runner.incorrect", "Not quite. Review the correct option above.")}</span>
+                <span>
+                  {t(
+                    "runner.incorrect",
+                    "Not quite. Review the correct option above.",
+                  )}
+                </span>
               </>
             )}
           </div>
-          {feedback && <p className="mt-1 text-sm text-text font-normal">{feedback}</p>}
+          {feedback && (
+            <p className="mt-1 text-sm text-text font-normal">{feedback}</p>
+          )}
         </div>
       )}
 

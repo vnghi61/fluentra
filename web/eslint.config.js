@@ -78,7 +78,10 @@ export default tseslint.config(
             { from: 'routes', allow: ['pages', 'features', 'components', 'api', 'stores', 'hooks', 'lib', 'i18n', 'types'] },
             { from: 'pages', allow: ['features', 'components', 'api', 'stores', 'hooks', 'lib', 'i18n', 'types'] },
             { from: 'features', allow: ['features', 'components', 'api', 'stores', 'hooks', 'lib', 'i18n', 'types'] },
-            { from: 'components', allow: ['lib', 'i18n', 'types'] },
+            // components may use components: a layout composes primitives, and
+            // form.tsx already composes label.tsx. The rule this preserves is the
+            // one that matters — components still may not reach into features.
+            { from: 'components', allow: ['components', 'lib', 'i18n', 'types'] },
             { from: 'api', allow: ['lib', 'types'] },
             { from: 'stores', allow: ['lib', 'types'] },
             { from: 'hooks', allow: ['stores', 'lib', 'api', 'types'] },

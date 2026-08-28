@@ -239,3 +239,57 @@ func TestNewMiddleware_FallsBackToDefaultTimeout(t *testing.T) {
 		t.Errorf("deadline in %s, want a positive value up to %s", remaining, job.DefaultJobTimeout)
 	}
 }
+
+// resultError is the `result` label value a failed run carries.
+const resultError = "error"
+
+// TestCronScheduler_ReportsAttempts is what makes the ScheduledJobFailing alert
+// possible.
+//
+// Cron jobs used to emit nothing — a failed partition rotation was a log line
+// and nothing else, so the job could fail every six hours for a month while the
+// alerting stack showed green. They now report the same job_attempts_total the
+// River middleware does, under queue="cron", which is what the alert watches.
+func TestCronScheduler_ReportsAttempts(t *testing.T) {
+	instruments, reader := newTestInstruments(t)
+	scheduler := job.NewCronScheduler(nil).WithInstruments(instruments)
+
+	scheduler.RecordForTest(context.Background(), "srs.rotate_partitions", resultError, time.Second)
+
+	collected := collect(t, reader)
+	attempts := findMetric(collected, "job_attempts_total")
+	if attempts == nil {
+		t.Fatal("a cron job run exported no job_attempts_total")
+	}
+
+	sum, ok := attempts.Data.(metricdata.Sum[int64])
+	if !ok {
+		t.Fatalf("job_attempts_total is %T, want a Sum[int64]", attempts.Data)
+	}
+	if len(sum.DataPoints) != 1 {
+		t.Fatalf("got %d data points, want 1", len(sum.DataPoints))
+	}
+
+	labels := map[string]string{}
+	for _, attribute := range sum.DataPoints[0].Attributes.ToSlice() {
+		labels[string(attribute.Key)] = attribute.Value.String()
+	}
+	// The alert selects on queue and result and groups by kind; all three have to
+	// be present and spelled the way the rule file spells them.
+	if labels["queue"] != "cron" {
+		t.Errorf("queue = %q, want cron — the alert selects queue=\"cron\"", labels["queue"])
+	}
+	if labels["kind"] != "srs.rotate_partitions" {
+		t.Errorf("kind = %q, want the job name", labels["kind"])
+	}
+	if labels["result"] != resultError {
+		t.Errorf("result = %q, want %s", labels["result"], resultError)
+	}
+}
+
+// TestCronScheduler_WithoutInstrumentsIsSilent: cmd/migrate and the tests build a
+// scheduler with no meter, and that must not panic.
+func TestCronScheduler_WithoutInstrumentsIsSilent(_ *testing.T) {
+	scheduler := job.NewCronScheduler(nil)
+	scheduler.RecordForTest(context.Background(), "any.job", "success", time.Second)
+}

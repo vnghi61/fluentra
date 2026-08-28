@@ -1,6 +1,11 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+
+import { isLocale, setLocale } from "@/i18n";
+import { applyThemeChoice } from "@/lib/theme";
+import { usePreferencesStore } from "@/stores/preferencesStore";
 import {
   Bell,
   Bot,
@@ -31,6 +36,7 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
   initialPreferences,
   onPreferencesUpdated,
 }) => {
+  const { t } = useTranslation();
   const [preferences, setPreferences] =
     useState<UserPreferences>(initialPreferences);
   const [isSaving, setIsSaving] = useState(false);
@@ -87,6 +93,12 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
       });
 
       setPreferences(updated);
+      // Apply what was just saved. Without these two lines the form wrote the
+      // row and changed nothing on screen, which is how `applyTheme` and
+      // `setLocale` both ended up written and never called.
+      if (updated.theme) applyThemeChoice(updated.theme);
+      if (isLocale(updated.locale)) setLocale(updated.locale);
+      usePreferencesStore.getState().set(updated);
       reset({
         locale: updated.locale,
         theme: updated.theme,
@@ -99,14 +111,22 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
       });
       setStatusMessage({
         type: "success",
-        text: "Preferences updated successfully.",
+        text: t(
+          "account.preferencesUpdatedSuccessfully",
+          "Preferences updated successfully.",
+        ),
       });
       onPreferencesUpdated?.(updated);
     } catch (err: unknown) {
       setStatusMessage({
         type: "error",
         text:
-          err instanceof Error ? err.message : "Failed to update preferences.",
+          err instanceof Error
+            ? err.message
+            : t(
+                "account.failedToUpdatePreferences",
+                "Failed to update preferences.",
+              ),
       });
     } finally {
       setIsSaving(false);
@@ -120,14 +140,14 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
           role="status"
           className={`flex items-start gap-2.5 rounded-lg p-3.5 text-xs ${
             statusMessage.type === "success"
-              ? "border border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-              : "border border-rose-500/30 bg-rose-500/10 text-rose-300"
+              ? "border border-success/30 bg-success/10 text-success-accent"
+              : "border border-danger/30 bg-danger/10 text-danger-accent"
           }`}
         >
           {statusMessage.type === "success" ? (
-            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400 mt-0.5" />
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-success-accent mt-0.5" />
           ) : (
-            <AlertCircle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
+            <AlertCircle className="h-4 w-4 shrink-0 text-danger-accent mt-0.5" />
           )}
           <span>{statusMessage.text}</span>
         </div>
@@ -140,17 +160,20 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
         className="space-y-8"
       >
         {/* Learning Goal & Locale */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 space-y-6">
-          <h3 className="text-base font-semibold text-slate-100 flex items-center gap-2">
-            <Clock className="h-5 w-5 text-indigo-400" />
-            Learning & Interface
+        <div className="rounded-xl border border-border-subtle bg-surface-card/60 p-6 space-y-6">
+          <h3 className="text-base font-semibold text-text flex items-center gap-2">
+            <Clock className="h-5 w-5 text-primary-accent" />
+            {t("account.learningInterface", "Learning & Interface")}
           </h3>
 
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
             {/* Daily Goal */}
             <div className="space-y-2">
               <Label htmlFor="daily_goal_minutes">
-                Daily Study Goal (minutes)
+                {t(
+                  "account.dailyStudyGoalMinutes",
+                  "Daily Study Goal (minutes)",
+                )}
               </Label>
               <Input
                 id="daily_goal_minutes"
@@ -161,7 +184,7 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
                 aria-invalid={!!errors.daily_goal_minutes}
               />
               {errors.daily_goal_minutes && (
-                <p className="text-xs text-rose-400">
+                <p className="text-xs text-danger-accent">
                   {errors.daily_goal_minutes.message}
                 </p>
               )}
@@ -170,24 +193,24 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
             {/* Language / Locale */}
             <div className="space-y-2">
               <Label htmlFor="locale" className="flex items-center gap-2">
-                <Globe className="h-4 w-4 text-slate-400" />
-                Language
+                <Globe className="h-4 w-4 text-text-muted" />
+                {t("account.language", "Language")}
               </Label>
               <select
                 id="locale"
                 {...register("locale")}
-                className="w-full h-11 min-h-[44px] rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-base md:text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full h-11 min-h-[44px] rounded-lg border border-border-subtle bg-surface-card px-3 py-2 text-base md:text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="vi">Tiếng Việt (Vietnamese)</option>
-                <option value="en">English</option>
+                <option value="en">{t("account.english", "English")}</option>
               </select>
             </div>
 
             {/* Theme */}
             <div className="space-y-2 sm:col-span-2">
               <Label className="flex items-center gap-2">
-                <Sun className="h-4 w-4 text-slate-400" />
-                Theme Preference
+                <Sun className="h-4 w-4 text-text-muted" />
+                {t("account.themePreference", "Theme Preference")}
               </Label>
               <div className="grid grid-cols-3 gap-3">
                 {(["system", "dark", "light"] as const).map((t) => (
@@ -195,8 +218,8 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
                     key={t}
                     className={`flex items-center justify-center gap-2 rounded-lg border p-3 text-sm font-medium cursor-pointer transition-colors ${
                       currentTheme === t
-                        ? "border-indigo-500 bg-indigo-500/10 text-indigo-300"
-                        : "border-slate-800 bg-slate-900/40 text-slate-400 hover:bg-slate-800"
+                        ? "border-primary bg-primary/10 text-primary-accent"
+                        : "border-border-subtle bg-surface-card/40 text-text-muted hover:bg-surface-muted"
                     }`}
                   >
                     <input
@@ -221,14 +244,19 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
         </div>
 
         {/* Notifications & Quiet Hours */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 space-y-6">
-          <h3 className="text-base font-semibold text-slate-100 flex items-center gap-2">
-            <Bell className="h-5 w-5 text-indigo-400" />
-            Notifications & Quiet Hours
+        <div className="rounded-xl border border-border-subtle bg-surface-card/60 p-6 space-y-6">
+          <h3 className="text-base font-semibold text-text flex items-center gap-2">
+            <Bell className="h-5 w-5 text-primary-accent" />
+            {t(
+              "account.notificationsQuietHours",
+              "Notifications & Quiet Hours",
+            )}
           </h3>
 
           <div className="space-y-4">
-            <Label>Notification Channels</Label>
+            <Label>
+              {t("account.notificationChannels", "Notification Channels")}
+            </Label>
             <div className="flex flex-wrap gap-4">
               <Controller
                 control={control}
@@ -236,13 +264,31 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
                 render={({ field }) => (
                   <>
                     {[
-                      { id: "in_app", label: "In-App Notifications" },
-                      { id: "email", label: "Email Summaries & Reminders" },
-                      { id: "push", label: "Push Notifications" },
+                      {
+                        id: "in_app",
+                        label: t(
+                          "account.inAppNotifications",
+                          "In-App Notifications",
+                        ),
+                      },
+                      {
+                        id: "email",
+                        label: t(
+                          "account.emailSummariesReminders",
+                          "Email Summaries & Reminders",
+                        ),
+                      },
+                      {
+                        id: "push",
+                        label: t(
+                          "account.pushNotifications",
+                          "Push Notifications",
+                        ),
+                      },
                     ].map((channel) => (
                       <label
                         key={channel.id}
-                        className="flex items-center gap-2.5 cursor-pointer text-sm text-slate-300"
+                        className="flex items-center gap-2.5 cursor-pointer text-sm text-text-muted"
                       >
                         <Checkbox
                           checked={field.value.includes(
@@ -267,17 +313,20 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
             </div>
           </div>
 
-          <div className="border-t border-slate-800 pt-4 space-y-4">
+          <div className="border-t border-border-subtle pt-4 space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <Label
                   htmlFor="quiet_hours_enabled"
                   className="text-sm font-medium"
                 >
-                  Enable Quiet Hours
+                  {t("account.enableQuietHours", "Enable Quiet Hours")}
                 </Label>
-                <p className="text-xs text-slate-400">
-                  Pause non-critical notifications during sleeping hours
+                <p className="text-xs text-text-muted">
+                  {t(
+                    "account.pauseNonCriticalNotificationsDuringSleepingHours",
+                    "Pause non-critical notifications during sleeping hours",
+                  )}
                 </p>
               </div>
               <Controller
@@ -297,7 +346,7 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
               <div className="grid grid-cols-2 gap-4 pt-2">
                 <div className="space-y-1.5">
                   <Label htmlFor="quiet_hours_start" className="text-xs">
-                    Start Time
+                    {t("account.startTime", "Start Time")}
                   </Label>
                   <Input
                     id="quiet_hours_start"
@@ -307,7 +356,7 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="quiet_hours_end" className="text-xs">
-                    End Time
+                    {t("account.endTime", "End Time")}
                   </Label>
                   <Input
                     id="quiet_hours_end"
@@ -321,14 +370,14 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
         </div>
 
         {/* AI Processing Opt-Out */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 space-y-4">
+        <div className="rounded-xl border border-border-subtle bg-surface-card/60 p-6 space-y-4">
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-1">
-              <h3 className="text-base font-semibold text-slate-100 flex items-center gap-2">
-                <Bot className="h-5 w-5 text-indigo-400" />
-                AI Grading & Processing
+              <h3 className="text-base font-semibold text-text flex items-center gap-2">
+                <Bot className="h-5 w-5 text-primary-accent" />
+                {t("account.aiGradingProcessing", "AI Grading & Processing")}
               </h3>
-              <p className="text-xs text-slate-400 leading-relaxed max-w-xl">
+              <p className="text-xs text-text-muted leading-relaxed max-w-xl">
                 Opt out of AI-assisted grading and pronunciation feedback.
                 Deterministic exercises and progress tracking remain fully
                 functional.
@@ -354,10 +403,10 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
             {isSaving ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
+                {t("account.saving", "Saving...")}
               </>
             ) : (
-              "Save Preferences"
+              t("account.savePreferences", "Save Preferences")
             )}
           </Button>
         </div>
