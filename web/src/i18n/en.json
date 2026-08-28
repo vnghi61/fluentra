@@ -240,8 +240,8 @@
       "readyDesc": "Spaced repetition cards are ready for your daily memory review.",
       "startBtn": "Start Review",
       "emptyTitle": "All Caught Up!",
-      "emptyDesc": "Nothing due right now. Practise vocabulary to reinforce memory retention.",
-      "practiceBtn": "Practice Vocabulary"
+      "emptyDesc": "Nothing due right now. New cards are scheduled as you finish lessons.",
+      "practiceBtn": "Go to practice"
     },
     "skills": {
       "title": "Skill Progress",
@@ -324,6 +324,32 @@
     "unableToLoadSettings": "Unable to load settings",
     "verifyYourEmailNow": "Verify your email now",
     "yourAccountHoldsNoAdministrativePermissions": "Your account holds no administrative permissions."
+  },
+  "practice": {
+    "title": "Practice",
+    "tagline": "Keep what you have learned. Reviews are scheduled for the day you are most likely to forget.",
+    "error": {
+      "title": "Unable to load your review queue",
+      "desc": "The review schedule could not be reached. Your progress is safe."
+    },
+    "review": {
+      "label": "Spaced repetition",
+      "emptyTitle": "Nothing due right now",
+      "emptyDesc": "Your queue is clear. Finish a lesson and new cards are scheduled for you automatically.",
+      "emptyLearnBtn": "Go to a lesson",
+      "dueTitle": "cards due today",
+      "dueDesc": "Grade each card by how well you recalled it. The schedule adapts to your answers.",
+      "startBtn": "Start review"
+    },
+    "forecast": {
+      "title": "The week ahead",
+      "desc": "Cards already scheduled to come back to you."
+    },
+    "vocabulary": {
+      "label": "Vocabulary",
+      "title": "Word lists are not here yet",
+      "desc": "Browsing and building decks is still being built. Words you meet in lessons are already scheduled for review above."
+    }
   },
   "progress": {
     "activitiesDone": "Activities Completed",

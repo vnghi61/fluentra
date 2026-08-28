@@ -7,3 +7,5 @@ export * from "./components/FlashcardFront";
 export * from "./components/FlashcardBack";
 export * from "./components/GradeButtonGroup";
 export * from "./components/ReviewSummary";
+export * from "./components/ReviewQueueCard";
+export * from "./components/ForecastStrip";

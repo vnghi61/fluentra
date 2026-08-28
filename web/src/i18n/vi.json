@@ -240,8 +240,8 @@
       "readyDesc": "Các thẻ ôn tập lặp lại ngắt quãng đã sẵn sàng cho ngày hôm nay.",
       "startBtn": "Bắt đầu ôn tập",
       "emptyTitle": "Đã hoàn thành!",
-      "emptyDesc": "Không có từ nào đến hạn. Hãy luyện từ vựng thêm để ghi nhớ tốt hơn.",
-      "practiceBtn": "Luyện từ vựng"
+      "emptyDesc": "Chưa có thẻ nào đến hạn. Thẻ mới được xếp lịch khi bạn học xong bài.",
+      "practiceBtn": "Đến trang luyện tập"
     },
     "skills": {
       "title": "Tiến độ kỹ năng",
@@ -324,6 +324,32 @@
     "unableToLoadSettings": "Không tải được cài đặt",
     "verifyYourEmailNow": "Xác minh email ngay",
     "yourAccountHoldsNoAdministrativePermissions": "Tài khoản của bạn không có quyền quản trị."
+  },
+  "practice": {
+    "title": "Luyện tập",
+    "tagline": "Giữ lại những gì bạn đã học. Thẻ ôn được xếp vào đúng ngày bạn sắp quên.",
+    "error": {
+      "title": "Không tải được hàng đợi ôn tập",
+      "desc": "Không kết nối được lịch ôn tập. Tiến độ của bạn vẫn an toàn."
+    },
+    "review": {
+      "label": "Lặp lại ngắt quãng",
+      "emptyTitle": "Chưa có thẻ nào đến hạn",
+      "emptyDesc": "Hàng đợi đang trống. Học xong một bài, thẻ mới sẽ được xếp lịch tự động.",
+      "emptyLearnBtn": "Vào bài học",
+      "dueTitle": "thẻ đến hạn hôm nay",
+      "dueDesc": "Chấm từng thẻ theo mức bạn nhớ được. Lịch ôn sẽ điều chỉnh theo câu trả lời.",
+      "startBtn": "Bắt đầu ôn tập"
+    },
+    "forecast": {
+      "title": "Tuần tới",
+      "desc": "Những thẻ đã được xếp lịch quay lại với bạn."
+    },
+    "vocabulary": {
+      "label": "Từ vựng",
+      "title": "Danh sách từ chưa có",
+      "desc": "Phần duyệt từ và tạo bộ thẻ đang được xây. Những từ bạn gặp trong bài học thì đã được xếp lịch ôn ở trên."
+    }
   },
   "progress": {
     "activitiesDone": "Bài tập đã xong",

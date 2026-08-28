@@ -76,8 +76,8 @@ describe("DashboardPage (P10.1)", () => {
     expect(screen.getByRole("button", { name: /Explore Syllabus/i })).toBeInTheDocument();
 
     // 2. Reviews due in empty state (0 cards due)
-    expect(screen.getByText("Nothing due right now. Practise vocabulary to reinforce memory retention.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Practice Vocabulary/i })).toBeInTheDocument();
+    expect(screen.getByText("Nothing due right now. New cards are scheduled as you finish lessons.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Go to practice/i })).toBeInTheDocument();
 
     // 3. Skill progress empty state
     expect(screen.getByText("No skill data yet. Complete lessons and exercises to build your mastery profile.")).toBeInTheDocument();
@@ -211,7 +211,7 @@ describe("DashboardPage (P10.1)", () => {
     expect(await screen.findByText("Chào mừng đến với Fluentra")).toBeInTheDocument();
     expect(screen.getByText("Bắt đầu hành trình tiếng Anh")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Khám phá giáo trình/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Luyện từ vựng/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Đến trang luyện tập/i })).toBeInTheDocument();
   });
 
   it("does NOT render any Phase 3 gamification elements (streak, XP, achievements)", async () => {
