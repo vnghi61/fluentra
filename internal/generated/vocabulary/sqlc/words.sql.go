@@ -75,6 +75,23 @@ func (q *Queries) GetSenseByID(ctx context.Context, id uuid.UUID) (GetSenseByIDR
 	return i, err
 }
 
+const getSenseContentVersionByLemma = `-- name: GetSenseContentVersionByLemma :one
+SELECT s.content_version_id
+FROM skill.word_senses s
+JOIN skill.words w ON w.id = s.word_id
+WHERE w.lemma = $1
+  AND s.content_version_id IS NOT NULL
+ORDER BY w.frequency_rank ASC NULLS LAST, w.pos ASC
+LIMIT 1
+`
+
+func (q *Queries) GetSenseContentVersionByLemma(ctx context.Context, lemma string) (*uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, getSenseContentVersionByLemma, lemma)
+	var content_version_id *uuid.UUID
+	err := row.Scan(&content_version_id)
+	return content_version_id, err
+}
+
 const getUserWordState = `-- name: GetUserWordState :one
 SELECT id, user_id, word_sense_id, status, first_seen_at, updated_at FROM skill.user_word_state
 WHERE user_id = $1 AND word_sense_id = $2

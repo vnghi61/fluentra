@@ -24,6 +24,9 @@ type fakeRepo struct {
 	decks      map[uuid.UUID]sqlc.SkillDeck
 	deckItems  map[string]sqlc.SkillDeckItem
 	wordStates map[string]sqlc.SkillUserWordState
+
+	// lemma -> the content version of that word's sense.
+	senseVersionByLemma map[string]uuid.UUID
 }
 
 func newFakeRepo() *fakeRepo {
@@ -135,6 +138,19 @@ func (f *fakeRepo) ListSensesByWordID(_ context.Context, wordID uuid.UUID) ([]sq
 		}
 	}
 	return result, nil
+}
+
+// senseVersionByLemma is what the grader consults to schedule the *word* behind
+// an exercise rather than the exercise itself. Empty in most tests, which is the
+// "no dictionary entry for this lemma" case the grader falls back from.
+func (f *fakeRepo) GetSenseContentVersionByLemma(
+	_ context.Context, lemma string,
+) (*uuid.UUID, error) {
+	id, ok := f.senseVersionByLemma[lemma]
+	if !ok {
+		return nil, pgx.ErrNoRows
+	}
+	return &id, nil
 }
 
 func (f *fakeRepo) GetSenseByID(_ context.Context, id uuid.UUID) (sqlc.GetSenseByIDRow, error) {

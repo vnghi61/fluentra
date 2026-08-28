@@ -74,6 +74,18 @@ docker compose -f deploy/compose/compose.yaml -f deploy/compose/compose.prod.yam
 docker compose -f deploy/compose/compose.yaml -f deploy/compose/compose.prod.yaml up -d
 ```
 
+### 4.1 Object storage CORS
+
+Avatars upload from the browser straight to object storage, and a cross-origin
+`PUT` is always preceded by a CORS preflight. A bucket with no CORS policy
+refuses that preflight, so the upload never leaves the browser — no environment
+variable and no code change substitutes for the bucket setting.
+
+On Cloudflare R2, apply [deploy/r2/cors.json](deploy/r2/cors.json) to the avatar
+bucket; that folder's README has the command and the one-line `curl` that tells
+you whether it took. R2 also needs `S3_REGION=auto` and
+`S3_USE_POST_POLICY=false`, because it does not implement S3 POST policies.
+
 Then verify with the checklist in §6.
 
 ## 5. Rolling deployment

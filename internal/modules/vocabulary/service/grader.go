@@ -13,6 +13,15 @@ import (
 	"github.com/fluentra/fluentra/internal/shared/apperr"
 )
 
+// SenseResolver finds the dictionary entry behind a word.
+//
+// Declared here, and narrow, because the grader needs exactly one thing from
+// the repository and a grader that could reach the whole of it would eventually
+// do so.
+type SenseResolver interface {
+	GetSenseContentVersionByLemma(ctx context.Context, lemma string) (*uuid.UUID, error)
+}
+
 // Grader evaluates vocabulary exercises such as quizzes, cloze, and recall tests.
 //
 // It is the first real learning.ExerciseGrader. A Phase 3 agent writing the
@@ -21,12 +30,18 @@ import (
 // and that one function.
 type Grader struct {
 	content ContentReader
+	senses  SenseResolver
 }
 
 // NewGrader constructs a vocabulary exercise grader.
-func NewGrader(content ContentReader) *Grader {
+//
+// `senses` may be nil, and then review cards fall back to the activity's own
+// content version — the behaviour before this resolver existed. Nothing breaks
+// without it; the cards are simply the poorer ones.
+func NewGrader(content ContentReader, senses SenseResolver) *Grader {
 	return &Grader{
 		content: content,
+		senses:  senses,
 	}
 }
 
@@ -62,7 +77,49 @@ func (g *Grader) Grade(
 	}
 
 	correct := matches(submittedAnswer(req.Response), body)
-	return buildResult(req.ContentVersionID, correct, body), nil
+	return buildResult(g.reviewVersion(ctx, req.ContentVersionID, body), correct, body), nil
+}
+
+// reviewVersion decides what the learner will be asked to remember.
+//
+// Not the activity. An exercise is one way of asking about a word; the thing
+// worth reviewing in three days is the word. Scheduling the exercise instead is
+// how every card a learner earned ended up pointing at a body holding a prompt
+// and an answer key and nothing a flashcard can render — the review screen
+// showed "This card has no content yet" for all of them, because it wants the
+// dictionary entry and was handed a quiz.
+//
+// The lemma is the authored answer, so no new field is needed on the activity.
+// Any failure falls back to the activity's own version: a review card pointing
+// at something imperfect is better than a correct answer that schedules nothing,
+// and the learner has already earned the card by the time this runs.
+func (g *Grader) reviewVersion(
+	ctx context.Context, activityVersion uuid.UUID, body vocabularyQuizBody,
+) uuid.UUID {
+	if g.senses == nil {
+		return activityVersion
+	}
+
+	// `correct_answer` first, then the acceptable list.
+	//
+	// A multiple-choice activity's answer key is an option id — "opt_habit" —
+	// because that is what the learner submits, and no dictionary has an entry
+	// for it. The lemma is in `acceptable` beside it, put there so typing the
+	// word also counts. Trying both means the resolver works whichever way the
+	// answer key happens to be authored, without a content migration and
+	// without the grader needing to know one activity kind from another.
+	for _, candidate := range append([]string{body.CorrectAnswer}, body.Acceptable...) {
+		lemma := normalise(candidate)
+		if lemma == "" {
+			continue
+		}
+		senseVersion, err := g.senses.GetSenseContentVersionByLemma(ctx, lemma)
+		if err != nil || senseVersion == nil || *senseVersion == uuid.Nil {
+			continue
+		}
+		return *senseVersion
+	}
+	return activityVersion
 }
 
 // loadBody reads the authored answer key for this content version.
