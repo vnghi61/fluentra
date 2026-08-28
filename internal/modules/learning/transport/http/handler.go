@@ -34,6 +34,9 @@ type LearningService interface {
 	) (*domain.LearningSession, error)
 	Dashboard(ctx context.Context, userID uuid.UUID) (*domain.DashboardData, error)
 	Progress(ctx context.Context, userID uuid.UUID) (*domain.ProgressData, error)
+	GradePreview(
+		ctx context.Context, activityID uuid.UUID, response json.RawMessage,
+	) (*service.PreviewGradeResultDTO, error)
 }
 
 // Handler serves HTTP endpoints for attempts.
@@ -59,6 +62,7 @@ func (h *Handler) Routes(router chi.Router) {
 	router.Get("/me/progress", h.getProgress)
 	router.Post("/courses/{id}/enroll", h.enroll)
 	router.Post("/activities/{id}/attempts", h.startAttempt)
+	router.Post("/activities/{id}/grade", h.gradePreview)
 	router.Post("/attempts/{id}/submit", h.submitAttempt)
 	router.Get("/attempts/{id}", h.getAttempt)
 	router.Post("/me/sessions", h.startSession)
@@ -168,6 +172,45 @@ func (h *Handler) startAttempt(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httpx.WriteJSON(w, r, http.StatusCreated, toStartAttemptResponse(dto))
+}
+
+// gradePreview grades a response for a caller with no account, and records
+// nothing.
+//
+// No actor is required and none is read. That is the whole endpoint: a visitor
+// who has not signed up can answer a lesson's activities and be told whether
+// they were right, and nothing about it is kept. See ADR-0025.
+//
+// Deliberately not the attempt flow with the writes switched off. A signed-in
+// learner still goes through POST /activities/{id}/attempts and
+// POST /attempts/{id}/submit, which is what produces their progress and their
+// review cards. Making one handler do both, keyed on whether a token happened
+// to be present, is how a learner's work silently stops being saved.
+//
+// No Idempotency-Key, because there is nothing to make idempotent: replaying
+// this changes no state anywhere.
+func (h *Handler) gradePreview(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	activityID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Validation, "INVALID_ID", "Invalid activity ID format"))
+		return
+	}
+
+	var req SubmitAttemptRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Validation, "INVALID_REQUEST_BODY", "Failed to parse request body"))
+		return
+	}
+
+	dto, err := h.service.GradePreview(ctx, activityID, req.Response)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	httpx.WriteJSON(w, r, http.StatusOK, toPreviewGradeResponse(dto))
 }
 
 func (h *Handler) submitAttempt(w http.ResponseWriter, r *http.Request) {

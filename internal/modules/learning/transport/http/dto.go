@@ -25,12 +25,39 @@ type SubmitAttemptRequest struct {
 
 // SubmitAttemptResponse matches the OpenAPI schema for POST /attempts/{id}/submit (200 & 202).
 type SubmitAttemptResponse struct {
-	AttemptID uuid.UUID `json:"attempt_id"`
-	Status    string    `json:"status"`
-	Score     *int      `json:"score"`
-	MaxScore  *int      `json:"max_score"`
-	Correct   *bool     `json:"correct"`
-	Feedback  *string   `json:"feedback"`
+	AttemptID     uuid.UUID `json:"attempt_id"`
+	Status        string    `json:"status"`
+	Score         *int      `json:"score"`
+	MaxScore      *int      `json:"max_score"`
+	Correct       *bool     `json:"correct"`
+	Feedback      *string   `json:"feedback"`
+	CorrectAnswer *string   `json:"correct_answer,omitempty"`
+}
+
+// PreviewGradeResponse matches the OpenAPI schema for POST /activities/{id}/grade.
+//
+// No attempt id and no status, because nothing was created and nothing moved.
+type PreviewGradeResponse struct {
+	Correct       bool    `json:"correct"`
+	Score         int     `json:"score"`
+	MaxScore      int     `json:"max_score"`
+	Feedback      string  `json:"feedback"`
+	CorrectAnswer *string `json:"correct_answer,omitempty"`
+	// Saved is always false. It is stated rather than implied because the whole
+	// contract of this endpoint is what it does not do, and a client that reads
+	// this field cannot mistake a preview for a recorded attempt.
+	Saved bool `json:"saved"`
+}
+
+func toPreviewGradeResponse(dto *service.PreviewGradeResultDTO) PreviewGradeResponse {
+	return PreviewGradeResponse{
+		Correct:       dto.Correct,
+		Score:         dto.Score,
+		MaxScore:      dto.MaxScore,
+		Feedback:      dto.Feedback,
+		CorrectAnswer: dto.CorrectAnswer,
+		Saved:         false,
+	}
 }
 
 // AttemptDetailResponse matches the OpenAPI schema for GET /attempts/{id}.
@@ -59,12 +86,13 @@ func toStartAttemptResponse(dto *service.StartAttemptDTO) StartAttemptResponse {
 
 func toSubmitAttemptResponse(dto *service.SubmitAttemptResultDTO) SubmitAttemptResponse {
 	return SubmitAttemptResponse{
-		AttemptID: dto.AttemptID,
-		Status:    dto.Status,
-		Score:     dto.Score,
-		MaxScore:  dto.MaxScore,
-		Correct:   dto.Correct,
-		Feedback:  dto.Feedback,
+		AttemptID:     dto.AttemptID,
+		Status:        dto.Status,
+		Score:         dto.Score,
+		MaxScore:      dto.MaxScore,
+		Correct:       dto.Correct,
+		Feedback:      dto.Feedback,
+		CorrectAnswer: dto.CorrectAnswer,
 	}
 }
 

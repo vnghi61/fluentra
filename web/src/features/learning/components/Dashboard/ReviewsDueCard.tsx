@@ -39,7 +39,7 @@ export const ReviewsDueCard: React.FC<ReviewsDueCardProps> = ({ dueCount }) => {
           <CardDescription>
             {t(
               "dashboard.reviews.emptyDesc",
-              "Nothing due right now. Practise vocabulary to reinforce memory retention.",
+              "Nothing due right now. New cards are scheduled as you finish lessons.",
             )}
           </CardDescription>
         </CardHeader>
@@ -47,7 +47,7 @@ export const ReviewsDueCard: React.FC<ReviewsDueCardProps> = ({ dueCount }) => {
           <Link to="/practice" className="w-full">
             <Button variant="secondary" className="w-full gap-2">
               <Sparkles className="h-4 w-4" aria-hidden="true" />
-              {t("dashboard.reviews.practiceBtn", "Practice Vocabulary")}
+              {t("dashboard.reviews.practiceBtn", "Go to practice")}
             </Button>
           </Link>
         </CardFooter>
@@ -90,7 +90,12 @@ export const ReviewsDueCard: React.FC<ReviewsDueCardProps> = ({ dueCount }) => {
         </div>
       </CardHeader>
       <CardFooter className="pt-0">
-        <Link to="/practice" className="w-full">
+        {/*
+          Straight into the session. This button used to point at /practice,
+          which was a placeholder page, so the one control on the dashboard
+          that offered to start a review started nothing.
+        */}
+        <Link to="/practice/review" className="w-full">
           <Button className="w-full gap-2 bg-warning-fill hover:bg-warning-fill-hover text-surface font-semibold">
             <PlayCircle className="h-4 w-4" aria-hidden="true" />
             {t("dashboard.reviews.startBtn", "Start Review")}

@@ -638,9 +638,27 @@ func (s *Service) loadLessonDetail(
 				Position:         act.Position,
 				Kind:             act.Kind,
 				ContentVersionID: act.ContentVersionID,
-				Config:           act.Config,
-				Weight:           act.Weight,
-				Content:          versions[act.ContentVersionID],
+				// Redacted for the same reason the body below is, and this is
+				// the copy that mattered: the renderer reads its prompt and
+				// options out of `config`, not out of the content body, so
+				// `config.correct_option_id` was the answer key the browser
+				// actually held. Redacting only the body left it untouched —
+				// caught by reading a real response, not by the unit test,
+				// which was testing the function rather than the endpoint.
+				Config: contentcontract.RedactForLearner(act.Config),
+				Weight: act.Weight,
+				// Without the answer. The body is authored with the question
+				// and the answer together, so every learner opening a lesson
+				// used to receive correct_answer, acceptable and
+				// correct_option_id for every activity before answering one.
+				// Grading runs on the server against the stored body, so the
+				// runner loses nothing it needs; it learns the answer from the
+				// grade response instead, which is after submitting.
+				//
+				// Redacted here rather than at the handler because this DTO is
+				// what goes into the lesson cache. Redacting later would leave
+				// the unredacted copy in Redis for the next reader.
+				Content: contentcontract.RedactVersionForLearner(versions[act.ContentVersionID]),
 			}
 		}
 

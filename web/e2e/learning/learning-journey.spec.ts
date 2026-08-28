@@ -144,7 +144,18 @@ test.describe("Phase 2 learning journeys", () => {
     // keyboard -- has nothing to assert against.
     makeReviewsDue(learner.email);
 
-    await page.goto(routes.review);
+    // Reached by clicking, not by page.goto.
+    //
+    // Every other step here navigates straight to routes.review, and that is
+    // exactly why nobody noticed that no link in the app pointed at it: the
+    // dashboard's "Start Review" button and the sidebar's Practice entry both
+    // led to a placeholder page, and the whole SRS session was unreachable for
+    // anyone who did not know the URL. A journey that types the URL cannot see
+    // that. This one walks in the way a learner has to.
+    await page.goto(routes.dashboard);
+    await page.getByRole("link", { name: "Start Review" }).click();
+    await expect(page).toHaveURL(/\/practice\/review$/, { timeout: 15_000 });
+
     const progress = page.getByTestId("review-progress");
     await expect(progress).toBeVisible({ timeout: 15_000 });
 

@@ -46,6 +46,10 @@ type vocabularyQuizBody struct {
 	CorrectAnswer string   `json:"correct_answer"`
 	Acceptable    []string `json:"acceptable"`
 	Prompt        string   `json:"prompt"`
+	// Authored by the multiple-choice kinds. The renderer marks the right row
+	// by id, so this is what it needs back after grading — the learner-facing
+	// body no longer carries it.
+	CorrectOptionID string `json:"correct_option_id"`
 }
 
 // Grade implements learningcontract.ExerciseGrader for vocabulary activity kinds.
@@ -58,7 +62,7 @@ func (g *Grader) Grade(
 	}
 
 	correct := matches(submittedAnswer(req.Response), body)
-	return buildResult(req.ContentVersionID, correct), nil
+	return buildResult(req.ContentVersionID, correct, body), nil
 }
 
 // loadBody reads the authored answer key for this content version.
@@ -142,7 +146,9 @@ func normalise(s string) string {
 
 // buildResult turns a verdict into the GradeResult and the single ReviewItem
 // that puts this word into the learner's spaced repetition queue.
-func buildResult(versionID uuid.UUID, correct bool) learningcontract.GradeResult {
+func buildResult(
+	versionID uuid.UUID, correct bool, body vocabularyQuizBody,
+) learningcontract.GradeResult {
 	grade := gradeAgain
 	score := 0
 	feedback := "Incorrect answer. Review this word again."
@@ -152,12 +158,20 @@ func buildResult(versionID uuid.UUID, correct bool) learningcontract.GradeResult
 		feedback = "Correct! Well done."
 	}
 
+	// The option id where there is one, because that is what marks the right
+	// row; the answer text otherwise.
+	answer := body.CorrectOptionID
+	if answer == "" {
+		answer = body.CorrectAnswer
+	}
+
 	return learningcontract.GradeResult{
-		Score:    score,
-		MaxScore: maxVocabularyScore,
-		Correct:  correct,
-		Feedback: feedback,
-		Async:    false,
+		Score:         score,
+		MaxScore:      maxVocabularyScore,
+		Correct:       correct,
+		Feedback:      feedback,
+		CorrectAnswer: answer,
+		Async:         false,
 		ReviewItems: []learningcontract.ReviewItem{
 			{
 				ContentVersionID: versionID,

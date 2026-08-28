@@ -98,6 +98,32 @@ type ClientInterface interface {
 	// Corresponds with POST /activities/{id}/attempts (the `StartAttempt` operationId).
 	StartAttempt(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GradeActivityPreviewWithBody Grade a response without recording anything.
+	//
+	// Grades a response against the activity's registered grader and records nothing: no attempt, no progress, no review card, no event. Public (ADR-0025) — this is what a visitor who has not signed up submits to.
+	//
+	// A signed-in learner uses the attempt flow instead (`POST /activities/{id}/attempts` then `POST /attempts/{id}/submit`), which is what produces their progress and their review cards. `saved` is always `false` here, stated rather than implied, so a client cannot mistake a preview for a recorded attempt.
+	//
+	// No `Idempotency-Key`: replaying this changes no state anywhere.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /activities/{id}/grade (the `GradeActivityPreview` operationId).
+	GradeActivityPreviewWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GradeActivityPreview Grade a response without recording anything.
+	//
+	// Grades a response against the activity's registered grader and records nothing: no attempt, no progress, no review card, no event. Public (ADR-0025) — this is what a visitor who has not signed up submits to.
+	//
+	// A signed-in learner uses the attempt flow instead (`POST /activities/{id}/attempts` then `POST /attempts/{id}/submit`), which is what produces their progress and their review cards. `saved` is always `false` here, stated rather than implied, so a client cannot mistake a preview for a recorded attempt.
+	//
+	// No `Idempotency-Key`: replaying this changes no state anywhere.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /activities/{id}/grade (the `GradeActivityPreview` operationId).
+	GradeActivityPreview(ctx context.Context, id openapi_types.UUID, body GradeActivityPreviewJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AuditSearchLogs Search the audit trail.
 	//
 	// Returns audit entries newest first, within a bounded time window.
@@ -803,7 +829,7 @@ type ClientInterface interface {
 
 	// ListCourses List published courses with level filters.
 	//
-	// Returns catalogue summaries for published courses.
+	// Returns catalogue summaries for published courses. Public: a visitor who has not signed in may browse the catalogue (ADR-0025). A bearer token is accepted and, when present, is what lets the course detail carry the caller's own progress.
 	//
 	// Corresponds with GET /courses (the `ListCourses` operationId).
 	ListCourses(ctx context.Context, params *ListCoursesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -817,7 +843,7 @@ type ClientInterface interface {
 
 	// GetCourseBySlug Get course detail with units and lesson summaries.
 	//
-	// Returns one published course with its ordered units and each unit's lesson summaries, for the learner catalogue and course landing page.
+	// Returns one published course with its ordered units and each unit's lesson summaries, for the learner catalogue and course landing page. Public (ADR-0025); a bearer token, when present, adds the caller's progress and lesson unlocking.
 	//
 	// Corresponds with GET /courses/{slug} (the `GetCourseBySlug` operationId).
 	GetCourseBySlug(ctx context.Context, slug string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -831,7 +857,9 @@ type ClientInterface interface {
 
 	// GetLessonById Get lesson with activities and resolved content versions.
 	//
-	// Returns one lesson with its ordered activities and each activity's resolved content version, ready for the lesson renderer.
+	// Returns one lesson with its ordered activities and each activity's resolved content version, ready for the lesson renderer. Public (ADR-0025).
+	//
+	// Activity bodies are redacted: `correct_answer`, `acceptable` and `correct_option_id` are removed before the response is built, so this endpoint carries the questions and not the answer key. The answer is returned by the grading operations, after the learner has submitted.
 	//
 	// Corresponds with GET /lessons/{id} (the `GetLessonById` operationId).
 	GetLessonById(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1203,6 +1231,52 @@ type ClientInterface interface {
 // Corresponds with POST /activities/{id}/attempts (the `StartAttempt` operationId).
 func (c *Client) StartAttempt(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewStartAttemptRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GradeActivityPreviewWithBody Grade a response without recording anything.
+//
+// Grades a response against the activity's registered grader and records nothing: no attempt, no progress, no review card, no event. Public (ADR-0025) — this is what a visitor who has not signed up submits to.
+//
+// A signed-in learner uses the attempt flow instead (`POST /activities/{id}/attempts` then `POST /attempts/{id}/submit`), which is what produces their progress and their review cards. `saved` is always `false` here, stated rather than implied, so a client cannot mistake a preview for a recorded attempt.
+//
+// No `Idempotency-Key`: replaying this changes no state anywhere.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /activities/{id}/grade (the `GradeActivityPreview` operationId).
+func (c *Client) GradeActivityPreviewWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGradeActivityPreviewRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GradeActivityPreview Grade a response without recording anything.
+//
+// Grades a response against the activity's registered grader and records nothing: no attempt, no progress, no review card, no event. Public (ADR-0025) — this is what a visitor who has not signed up submits to.
+//
+// A signed-in learner uses the attempt flow instead (`POST /activities/{id}/attempts` then `POST /attempts/{id}/submit`), which is what produces their progress and their review cards. `saved` is always `false` here, stated rather than implied, so a client cannot mistake a preview for a recorded attempt.
+//
+// No `Idempotency-Key`: replaying this changes no state anywhere.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /activities/{id}/grade (the `GradeActivityPreview` operationId).
+func (c *Client) GradeActivityPreview(ctx context.Context, id openapi_types.UUID, body GradeActivityPreviewJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGradeActivityPreviewRequest(c.Server, id, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2608,7 +2682,7 @@ func (c *Client) GetContentBySlug(ctx context.Context, slug string, reqEditors .
 
 // ListCourses List published courses with level filters.
 //
-// Returns catalogue summaries for published courses.
+// Returns catalogue summaries for published courses. Public: a visitor who has not signed in may browse the catalogue (ADR-0025). A bearer token is accepted and, when present, is what lets the course detail carry the caller's own progress.
 //
 // Corresponds with GET /courses (the `ListCourses` operationId).
 func (c *Client) ListCourses(ctx context.Context, params *ListCoursesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -2642,7 +2716,7 @@ func (c *Client) EnrollCourse(ctx context.Context, id openapi_types.UUID, reqEdi
 
 // GetCourseBySlug Get course detail with units and lesson summaries.
 //
-// Returns one published course with its ordered units and each unit's lesson summaries, for the learner catalogue and course landing page.
+// Returns one published course with its ordered units and each unit's lesson summaries, for the learner catalogue and course landing page. Public (ADR-0025); a bearer token, when present, adds the caller's progress and lesson unlocking.
 //
 // Corresponds with GET /courses/{slug} (the `GetCourseBySlug` operationId).
 func (c *Client) GetCourseBySlug(ctx context.Context, slug string, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -2676,7 +2750,9 @@ func (c *Client) SystemHealth(ctx context.Context, reqEditors ...RequestEditorFn
 
 // GetLessonById Get lesson with activities and resolved content versions.
 //
-// Returns one lesson with its ordered activities and each activity's resolved content version, ready for the lesson renderer.
+// Returns one lesson with its ordered activities and each activity's resolved content version, ready for the lesson renderer. Public (ADR-0025).
+//
+// Activity bodies are redacted: `correct_answer`, `acceptable` and `correct_option_id` are removed before the response is built, so this endpoint carries the questions and not the answer key. The answer is returned by the grading operations, after the learner has submitted.
 //
 // Corresponds with GET /lessons/{id} (the `GetLessonById` operationId).
 func (c *Client) GetLessonById(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -3530,6 +3606,53 @@ func NewStartAttemptRequest(server string, id openapi_types.UUID) (*http.Request
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewGradeActivityPreviewRequest calls the generic GradeActivityPreview builder with application/json body
+func NewGradeActivityPreviewRequest(server string, id openapi_types.UUID, body GradeActivityPreviewJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewGradeActivityPreviewRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewGradeActivityPreviewRequestWithBody constructs an http.Request for the GradeActivityPreview method, with any body, and a specified content type
+func NewGradeActivityPreviewRequestWithBody(server string, id openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/activities/%s/grade", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -7187,6 +7310,32 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /activities/{id}/attempts (the `StartAttempt` operationId).
 	StartAttemptWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*StartAttemptResponse, error)
 
+	// GradeActivityPreviewWithBodyWithResponse Grade a response without recording anything.
+	//
+	// Grades a response against the activity's registered grader and records nothing: no attempt, no progress, no review card, no event. Public (ADR-0025) — this is what a visitor who has not signed up submits to.
+	//
+	// A signed-in learner uses the attempt flow instead (`POST /activities/{id}/attempts` then `POST /attempts/{id}/submit`), which is what produces their progress and their review cards. `saved` is always `false` here, stated rather than implied, so a client cannot mistake a preview for a recorded attempt.
+	//
+	// No `Idempotency-Key`: replaying this changes no state anywhere.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /activities/{id}/grade (the `GradeActivityPreview` operationId).
+	GradeActivityPreviewWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GradeActivityPreviewResponse, error)
+
+	// GradeActivityPreviewWithResponse Grade a response without recording anything.
+	//
+	// Grades a response against the activity's registered grader and records nothing: no attempt, no progress, no review card, no event. Public (ADR-0025) — this is what a visitor who has not signed up submits to.
+	//
+	// A signed-in learner uses the attempt flow instead (`POST /activities/{id}/attempts` then `POST /attempts/{id}/submit`), which is what produces their progress and their review cards. `saved` is always `false` here, stated rather than implied, so a client cannot mistake a preview for a recorded attempt.
+	//
+	// No `Idempotency-Key`: replaying this changes no state anywhere.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /activities/{id}/grade (the `GradeActivityPreview` operationId).
+	GradeActivityPreviewWithResponse(ctx context.Context, id openapi_types.UUID, body GradeActivityPreviewJSONRequestBody, reqEditors ...RequestEditorFn) (*GradeActivityPreviewResponse, error)
+
 	// AuditSearchLogsWithResponse Search the audit trail.
 	//
 	// Returns audit entries newest first, within a bounded time window.
@@ -7942,7 +8091,7 @@ type ClientWithResponsesInterface interface {
 
 	// ListCoursesWithResponse List published courses with level filters.
 	//
-	// Returns catalogue summaries for published courses.
+	// Returns catalogue summaries for published courses. Public: a visitor who has not signed in may browse the catalogue (ADR-0025). A bearer token is accepted and, when present, is what lets the course detail carry the caller's own progress.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -7960,7 +8109,7 @@ type ClientWithResponsesInterface interface {
 
 	// GetCourseBySlugWithResponse Get course detail with units and lesson summaries.
 	//
-	// Returns one published course with its ordered units and each unit's lesson summaries, for the learner catalogue and course landing page.
+	// Returns one published course with its ordered units and each unit's lesson summaries, for the learner catalogue and course landing page. Public (ADR-0025); a bearer token, when present, adds the caller's progress and lesson unlocking.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -7978,7 +8127,9 @@ type ClientWithResponsesInterface interface {
 
 	// GetLessonByIdWithResponse Get lesson with activities and resolved content versions.
 	//
-	// Returns one lesson with its ordered activities and each activity's resolved content version, ready for the lesson renderer.
+	// Returns one lesson with its ordered activities and each activity's resolved content version, ready for the lesson renderer. Public (ADR-0025).
+	//
+	// Activity bodies are redacted: `correct_answer`, `acceptable` and `correct_option_id` are removed before the response is built, so this endpoint carries the questions and not the answer key. The answer is returned by the grading operations, after the learner has submitted.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -8468,6 +8619,82 @@ func (r StartAttemptResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r StartAttemptResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GradeActivityPreviewResponse200Headers the declared response headers of an HTTP 200 response for GradeActivityPreview
+type GradeActivityPreviewResponse200Headers struct {
+	XRequestId *string
+}
+
+type GradeActivityPreviewResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PreviewGradeResult
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GradeActivityPreviewResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GradeActivityPreviewResponse) GetJSON200() *PreviewGradeResult {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r GradeActivityPreviewResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GradeActivityPreviewResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r GradeActivityPreviewResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r GradeActivityPreviewResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GradeActivityPreviewResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GradeActivityPreviewResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GradeActivityPreviewResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GradeActivityPreviewResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -14681,6 +14908,44 @@ func (c *ClientWithResponses) StartAttemptWithResponse(ctx context.Context, id o
 	return ParseStartAttemptResponse(rsp)
 }
 
+// GradeActivityPreviewWithBodyWithResponse Grade a response without recording anything.
+//
+// Grades a response against the activity's registered grader and records nothing: no attempt, no progress, no review card, no event. Public (ADR-0025) — this is what a visitor who has not signed up submits to.
+//
+// A signed-in learner uses the attempt flow instead (`POST /activities/{id}/attempts` then `POST /attempts/{id}/submit`), which is what produces their progress and their review cards. `saved` is always `false` here, stated rather than implied, so a client cannot mistake a preview for a recorded attempt.
+//
+// No `Idempotency-Key`: replaying this changes no state anywhere.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /activities/{id}/grade (the `GradeActivityPreview` operationId).
+func (c *ClientWithResponses) GradeActivityPreviewWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GradeActivityPreviewResponse, error) {
+	rsp, err := c.GradeActivityPreviewWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGradeActivityPreviewResponse(rsp)
+}
+
+// GradeActivityPreviewWithResponse Grade a response without recording anything.
+//
+// Grades a response against the activity's registered grader and records nothing: no attempt, no progress, no review card, no event. Public (ADR-0025) — this is what a visitor who has not signed up submits to.
+//
+// A signed-in learner uses the attempt flow instead (`POST /activities/{id}/attempts` then `POST /attempts/{id}/submit`), which is what produces their progress and their review cards. `saved` is always `false` here, stated rather than implied, so a client cannot mistake a preview for a recorded attempt.
+//
+// No `Idempotency-Key`: replaying this changes no state anywhere.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /activities/{id}/grade (the `GradeActivityPreview` operationId).
+func (c *ClientWithResponses) GradeActivityPreviewWithResponse(ctx context.Context, id openapi_types.UUID, body GradeActivityPreviewJSONRequestBody, reqEditors ...RequestEditorFn) (*GradeActivityPreviewResponse, error) {
+	rsp, err := c.GradeActivityPreview(ctx, id, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGradeActivityPreviewResponse(rsp)
+}
+
 // AuditSearchLogsWithResponse Search the audit trail.
 //
 // Returns audit entries newest first, within a bounded time window.
@@ -15850,7 +16115,7 @@ func (c *ClientWithResponses) GetContentBySlugWithResponse(ctx context.Context, 
 
 // ListCoursesWithResponse List published courses with level filters.
 //
-// Returns catalogue summaries for published courses.
+// Returns catalogue summaries for published courses. Public: a visitor who has not signed in may browse the catalogue (ADR-0025). A bearer token is accepted and, when present, is what lets the course detail carry the caller's own progress.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -15880,7 +16145,7 @@ func (c *ClientWithResponses) EnrollCourseWithResponse(ctx context.Context, id o
 
 // GetCourseBySlugWithResponse Get course detail with units and lesson summaries.
 //
-// Returns one published course with its ordered units and each unit's lesson summaries, for the learner catalogue and course landing page.
+// Returns one published course with its ordered units and each unit's lesson summaries, for the learner catalogue and course landing page. Public (ADR-0025); a bearer token, when present, adds the caller's progress and lesson unlocking.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -15910,7 +16175,9 @@ func (c *ClientWithResponses) SystemHealthWithResponse(ctx context.Context, reqE
 
 // GetLessonByIdWithResponse Get lesson with activities and resolved content versions.
 //
-// Returns one lesson with its ordered activities and each activity's resolved content version, ready for the lesson renderer.
+// Returns one lesson with its ordered activities and each activity's resolved content version, ready for the lesson renderer. Public (ADR-0025).
+//
+// Activity bodies are redacted: `correct_answer`, `acceptable` and `correct_option_id` are removed before the response is built, so this endpoint carries the questions and not the answer key. The answer is returned by the grading operations, after the learner has submitted.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -16667,6 +16934,73 @@ func ParseStartAttemptResponse(rsp *http.Response) (*StartAttemptResponse, error
 			headers.XRequestId = &value
 		}
 		response.Headers201 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGradeActivityPreviewResponse parses an HTTP response from a GradeActivityPreviewWithResponse call
+func ParseGradeActivityPreviewResponse(rsp *http.Response) (*GradeActivityPreviewResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GradeActivityPreviewResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PreviewGradeResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GradeActivityPreviewResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
 	}
 
 	return response, nil

@@ -240,8 +240,8 @@
       "readyDesc": "Các thẻ ôn tập lặp lại ngắt quãng đã sẵn sàng cho ngày hôm nay.",
       "startBtn": "Bắt đầu ôn tập",
       "emptyTitle": "Đã hoàn thành!",
-      "emptyDesc": "Không có từ nào đến hạn. Hãy luyện từ vựng thêm để ghi nhớ tốt hơn.",
-      "practiceBtn": "Luyện từ vựng"
+      "emptyDesc": "Chưa có thẻ nào đến hạn. Thẻ mới được xếp lịch khi bạn học xong bài.",
+      "practiceBtn": "Đến trang luyện tập"
     },
     "skills": {
       "title": "Tiến độ kỹ năng",
@@ -265,27 +265,44 @@
     "body": "Màn hình này không dựng được. Lỗi đã được ghi nhận.",
     "reload": "Tải lại"
   },
+  "guest": {
+    "notice": {
+      "text": "Bạn đang xem mà chưa đăng nhập. Bạn mở được mọi bài học và làm được bài tập, nhưng không có gì được lưu lại."
+    },
+    "practice": {
+      "title": "Ôn tập cần có tài khoản",
+      "desc": "Thẻ ôn được xếp vào đúng ngày bạn sắp quên, nghĩa là nó gắn với một người cụ thể. Đăng nhập rồi thì mỗi bài học xong sẽ tự thêm thẻ vào hàng đợi này."
+    },
+    "savePrompt": {
+      "title": "Kết quả này chưa được lưu",
+      "desc": "Bạn trả lời đúng {{score}}/{{total}} câu. Vì chưa đăng nhập nên không có gì được ghi nhận — không tiến độ, không chuỗi ngày, không thẻ ôn tập. Đăng nhập thì bài học kế tiếp sẽ được tính.",
+      "dismissBtn": "Xem tiếp đã",
+      "createAccountBtn": "Tạo tài khoản",
+      "signInBtn": "Đăng nhập"
+    }
+  },
   "language": {
     "label": "Ngôn ngữ"
   },
   "learn": {
-    "courseBadge": "Giáo trình khóa học",
-    "syllabusProgress": "Đã hoàn thành {{completed}} / {{total}} bài học",
-    "unitPrefix": "Chương",
-    "emptyUnit": "Chưa có bài học nào trong chương này.",
-    "noUnitsTitle": "Giáo trình đang được chuẩn bị",
-    "noUnitsDesc": "Nội dung bài học cho khóa học này đang được biên soạn. Vui lòng quay lại sau.",
-    "emptyTitle": "Chưa có khóa học nào",
-    "emptyDesc": "Nội dung giáo trình đang được xuất bản. Vui lòng kiểm tra lại sau.",
-    "errorTitle": "Không thể tải giáo trình",
-    "errorDesc": "Đã xảy ra lỗi khi tải tài liệu khóa học. Vui lòng thử lại.",
-    "mins": "phút",
-    "nextBadge": "Tiếp theo",
     "completedBadge": "Đã xong",
+    "courseBadge": "Giáo trình khóa học",
+    "emptyDesc": "Nội dung giáo trình đang được xuất bản. Vui lòng kiểm tra lại sau.",
+    "emptyTitle": "Chưa có khóa học nào",
+    "emptyUnit": "Chưa có bài học nào trong chương này.",
+    "errorDesc": "Đã xảy ra lỗi khi tải tài liệu khóa học. Vui lòng thử lại.",
+    "errorTitle": "Không thể tải giáo trình",
     "locked": "Đã khóa",
     "lockedBtn": "Đã khóa",
+    "mins": "phút",
+    "nextBadge": "Tiếp theo",
+    "noUnitsDesc": "Nội dung bài học cho khóa học này đang được biên soạn. Vui lòng quay lại sau.",
+    "noUnitsTitle": "Giáo trình đang được chuẩn bị",
+    "pageTitle": "Danh mục khoá học",
+    "reviewBtn": "Ôn lại",
     "startBtn": "Bắt đầu bài học",
-    "reviewBtn": "Ôn lại"
+    "syllabusProgress": "Đã hoàn thành {{completed}} / {{total}} bài học",
+    "unitPrefix": "Chương"
   },
   "nav": {
     "account": "Tài khoản",
@@ -324,6 +341,33 @@
     "unableToLoadSettings": "Không tải được cài đặt",
     "verifyYourEmailNow": "Xác minh email ngay",
     "yourAccountHoldsNoAdministrativePermissions": "Tài khoản của bạn không có quyền quản trị."
+  },
+  "practice": {
+    "title": "Luyện tập",
+    "tagline": "Giữ lại những gì bạn đã học. Thẻ ôn được xếp vào đúng ngày bạn sắp quên.",
+    "error": {
+      "title": "Không tải được hàng đợi ôn tập",
+      "desc": "Không kết nối được lịch ôn tập. Tiến độ của bạn vẫn an toàn."
+    },
+    "review": {
+      "label": "Lặp lại ngắt quãng",
+      "emptyTitle": "Chưa có thẻ nào đến hạn",
+      "emptyDesc": "Hàng đợi đang trống. Học xong một bài, thẻ mới sẽ được xếp lịch tự động.",
+      "emptyLearnBtn": "Vào bài học",
+      "dueTitle": "thẻ đến hạn hôm nay",
+      "dueDesc": "Chấm từng thẻ theo mức bạn nhớ được. Lịch ôn sẽ điều chỉnh theo câu trả lời.",
+      "startBtn": "Bắt đầu ôn tập"
+    },
+    "forecast": {
+      "title": "Tuần tới",
+      "desc": "Những thẻ đã được xếp lịch quay lại với bạn."
+    },
+    "vocabulary": {
+      "desc": "Phần duyệt từ và tạo bộ thẻ đang được xây. Những từ bạn gặp trong bài học thì đã được xếp lịch ôn ở trên.",
+      "descGuest": "Phần duyệt từ và tạo bộ thẻ đang được xây.",
+      "label": "Từ vựng",
+      "title": "Danh sách từ chưa có"
+    }
   },
   "progress": {
     "activitiesDone": "Bài tập đã xong",
@@ -408,6 +452,10 @@
     "stepProgress": "Hoạt động {{current}} / {{total}}",
     "submitBtn": "Gửi đáp án",
     "timeSpentLabel": "Thời gian"
+  },
+  "server": {
+    "unreachable": "Máy chủ không phản hồi. Hãy tải lại trang để thử lại.",
+    "waking": "Đang khởi động máy chủ — sau một lúc không ai dùng, việc này mất tới một phút."
   },
   "status": {
     "checking": "Đang kiểm tra API…",

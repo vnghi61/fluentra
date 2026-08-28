@@ -51,7 +51,16 @@ describe("Boot-time Silent Refresh & Route Gates (Task 2)", () => {
     expect(renderedPaths).not.toContain("/login");
   });
 
-  it("redirects unauthenticated caller to /login when refresh fails", async () => {
+  /**
+   * A visitor with no session lands on the catalogue, not on a login form.
+   *
+   * This asserted `/login` until ADR-0025. The dashboard is still not somewhere
+   * a guest can be — it is "continue where you left off", "reviews due" and
+   * "your skill mastery", every one of which is a fact about a person — but the
+   * answer to that is the course catalogue, which is what they came to see, and
+   * not a registration form in front of the whole product.
+   */
+  it("sends a visitor with no session to the catalogue, not to /login", async () => {
     server.use(
       http.post("/api/v1/auth/refresh", () => {
         return HttpResponse.json(
@@ -70,7 +79,33 @@ describe("Boot-time Silent Refresh & Route Gates (Task 2)", () => {
 
     await router.load();
 
-    expect(router.state.location.pathname).toBe("/login");
+    expect(router.state.location.pathname).toBe("/learn");
+  });
+
+  /**
+   * The other half, and the one worth stating explicitly: opening the
+   * curriculum did not open anything else. A guest asking for a screen built
+   * out of their own data is still sent to sign in.
+   */
+  it("still sends a visitor with no session away from /progress", async () => {
+    server.use(
+      http.post("/api/v1/auth/refresh", () =>
+        HttpResponse.json(
+          { title: "Unauthorized", status: 401, code: "TOKEN_INVALID" },
+          { status: 401 },
+        ),
+      ),
+    );
+
+    await initApp();
+    expect(useAuthStore.getState().status).toBe("unauthenticated");
+
+    for (const guarded of ["/progress", "/settings"]) {
+      const history = createMemoryHistory({ initialEntries: [guarded] });
+      router.update({ history });
+      await router.load();
+      expect(router.state.location.pathname).toBe("/login");
+    }
   });
 
   it("redirects signed-in user away from /login back to dashboard", async () => {

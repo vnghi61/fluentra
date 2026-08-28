@@ -1,5 +1,6 @@
 import { type ProblemDetails } from "@/lib/errors/catalogue";
 import { injectTraceContext } from "@/lib/telemetry";
+import { isColdStartStatus, isNetworkError, wakeUp } from "./wake";
 
 export type { ProblemDetails };
 
@@ -12,6 +13,12 @@ export interface RequestOptions extends Omit<RequestInit, "headers"> {
   headers?: Record<string, string> | undefined;
   /** Internal flag to avoid infinite retry loops on 401 */
   _isRetry?: boolean | undefined;
+  /**
+   * Internal flag: this call has already waited out one cold start. Separate
+   * from `_isRetry` because the two retries are for different things and a
+   * request can legitimately need both — a token refresh after the host woke.
+   */
+  _wakeRetried?: boolean | undefined;
 }
 
 export class ApiError extends Error {
@@ -92,10 +99,28 @@ export async function apiFetch<T>(
     headers["Authorization"] = `Bearer ${currentToken}`;
   }
 
-  const response = await fetch(endpoint, {
-    ...options,
-    headers: injectTraceContext(headers),
-  });
+  let response: Response;
+  try {
+    response = await fetch(endpoint, {
+      ...options,
+      headers: injectTraceContext(headers),
+    });
+  } catch (error) {
+    // A connection that never opened is what a suspended host looks like from
+    // the browser. Wake it and try once more before calling it a failure.
+    if (isNetworkError(error) && !options._wakeRetried) {
+      await wakeUp();
+      return apiFetch<T>(endpoint, { ...options, _wakeRetried: true });
+    }
+    throw error;
+  }
+
+  // 502/503/504 while the platform starts the process. Same treatment: this is
+  // a host that is not ready yet, not a request that was wrong.
+  if (isColdStartStatus(response.status) && !options._wakeRetried) {
+    await wakeUp();
+    return apiFetch<T>(endpoint, { ...options, _wakeRetried: true });
+  }
 
   if (!response.ok) {
     let body: unknown;
@@ -124,6 +149,7 @@ export async function apiFetch<T>(
         return apiFetch<T>(endpoint, {
           ...options,
           _isRetry: true,
+          _wakeRetried: options._wakeRetried,
           headers: {
             ...options.headers,
             Authorization: `Bearer ${newToken}`,

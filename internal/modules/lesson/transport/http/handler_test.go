@@ -20,6 +20,9 @@ import (
 const (
 	statusDraft     = "draft"
 	statusPublished = "published"
+
+	slugIELTSFoundation = "ielts-foundation"
+	pathIELTSFoundation = "/courses/" + slugIELTSFoundation
 )
 
 type allowGuard struct{}
@@ -130,8 +133,34 @@ func TestHandler_FailClosedGuard(t *testing.T) {
 	}
 }
 
-func TestHandler_PermissionDenied(t *testing.T) {
-	handler, err := lessonhttp.NewHandler(&fakeLessonService{}, denyGuard{})
+// TestHandler_PublishedCurriculumIsPublic is the inverse of the test that used
+// to be here.
+//
+// It asserted that GET /courses answered 403 behind a denying guard. ADR-0025
+// makes published curriculum public — a visitor who has not signed up browses
+// the catalogue, opens a lesson and works through it — so the assertion is now
+// that these three reach the service with no actor in the context at all, and
+// with a guard that denies everything.
+//
+// The guard is denyGuard on purpose. Passing an allowGuard would prove only
+// that the handler works when permitted, which was never in doubt; denying
+// everything is what proves the handler no longer asks.
+func TestHandler_PublishedCurriculumIsPublic(t *testing.T) {
+	svc := &fakeLessonService{
+		courses: []service.CourseSummaryDTO{},
+		courseDetail: &service.CourseDetailDTO{
+			ID: uuid.New(), Slug: slugIELTSFoundation, Title: "IELTS Foundation",
+			CEFRFrom: "B1", CEFRTo: "B2", Status: statusPublished,
+			Units: []service.CourseUnitDTO{},
+		},
+		lessonDetail: &service.LessonDetailDTO{
+			ID: uuid.New(), UnitID: uuid.New(), Position: 1,
+			Title: "Morning Routines", SkillFocus: "vocabulary", Status: "published",
+			Activities: []service.LessonActivityDTO{},
+		},
+	}
+
+	handler, err := lessonhttp.NewHandler(svc, denyGuard{})
 	if err != nil {
 		t.Fatalf("NewHandler: %v", err)
 	}
@@ -139,12 +168,19 @@ func TestHandler_PermissionDenied(t *testing.T) {
 	r := chi.NewRouter()
 	handler.Routes(r)
 
-	req := httptest.NewRequest(http.MethodGet, "/courses", nil)
-	rec := httptest.NewRecorder()
-	r.ServeHTTP(rec, req)
+	for _, path := range []string{
+		"/courses",
+		pathIELTSFoundation,
+		"/lessons/" + uuid.New().String(),
+	} {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		rec := httptest.NewRecorder()
+		r.ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusForbidden {
-		t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
+		if rec.Code != http.StatusOK {
+			t.Errorf("GET %s with no actor = %d, want %d — published content is public",
+				path, rec.Code, http.StatusOK)
+		}
 	}
 }
 
@@ -194,7 +230,7 @@ func TestHandler_GetCourseBySlug(t *testing.T) {
 	svc := &fakeLessonService{
 		courseDetail: &service.CourseDetailDTO{
 			ID:             courseID,
-			Slug:           "ielts-foundation",
+			Slug:           slugIELTSFoundation,
 			Title:          "IELTS Foundation",
 			CEFRFrom:       "B1",
 			CEFRTo:         "B2",
@@ -212,7 +248,7 @@ func TestHandler_GetCourseBySlug(t *testing.T) {
 	r := chi.NewRouter()
 	handler.Routes(r)
 
-	req := httptest.NewRequest(http.MethodGet, "/courses/ielts-foundation", nil)
+	req := httptest.NewRequest(http.MethodGet, pathIELTSFoundation, nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -224,7 +260,7 @@ func TestHandler_GetCourseBySlug(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("unmarshal response: %v", err)
 	}
-	if resp.ID != courseID || resp.Slug != "ielts-foundation" {
+	if resp.ID != courseID || resp.Slug != slugIELTSFoundation {
 		t.Errorf("unexpected course detail: %+v", resp)
 	}
 }

@@ -240,8 +240,8 @@
       "readyDesc": "Spaced repetition cards are ready for your daily memory review.",
       "startBtn": "Start Review",
       "emptyTitle": "All Caught Up!",
-      "emptyDesc": "Nothing due right now. Practise vocabulary to reinforce memory retention.",
-      "practiceBtn": "Practice Vocabulary"
+      "emptyDesc": "Nothing due right now. New cards are scheduled as you finish lessons.",
+      "practiceBtn": "Go to practice"
     },
     "skills": {
       "title": "Skill Progress",
@@ -265,27 +265,44 @@
     "body": "This screen failed to render. The error has been reported.",
     "reload": "Reload"
   },
+  "guest": {
+    "notice": {
+      "text": "You are browsing without an account. You can open any lesson and answer its exercises, but nothing is saved."
+    },
+    "practice": {
+      "title": "Reviews need an account",
+      "desc": "Cards are scheduled against the day you are likely to forget, which means they belong to a person. Sign in and the lessons you finish start filling this queue."
+    },
+    "savePrompt": {
+      "title": "This result was not saved",
+      "desc": "You answered {{score}} of {{total}} correctly. You are not signed in, so nothing was recorded — no progress, no streak, and no review cards. Sign in and your next lesson counts.",
+      "dismissBtn": "Keep looking around",
+      "createAccountBtn": "Create an account",
+      "signInBtn": "Sign in"
+    }
+  },
   "language": {
     "label": "Language"
   },
   "learn": {
-    "courseBadge": "Course Syllabus",
-    "syllabusProgress": "{{completed}} of {{total}} lessons completed",
-    "unitPrefix": "Unit",
-    "emptyUnit": "No lessons in this unit yet.",
-    "noUnitsTitle": "Curriculum in Preparation",
-    "noUnitsDesc": "Units and lessons for this course are currently being authored. Please check back soon.",
-    "emptyTitle": "No Courses Available Yet",
-    "emptyDesc": "Curriculum content is currently being prepared and published. Please check back shortly.",
-    "errorTitle": "Unable to Load Curriculum",
-    "errorDesc": "We encountered an issue loading course materials. Please try again.",
-    "mins": "mins",
-    "nextBadge": "Next Up",
     "completedBadge": "Completed",
+    "courseBadge": "Course Syllabus",
+    "emptyDesc": "Curriculum content is currently being prepared and published. Please check back shortly.",
+    "emptyTitle": "No Courses Available Yet",
+    "emptyUnit": "No lessons in this unit yet.",
+    "errorDesc": "We encountered an issue loading course materials. Please try again.",
+    "errorTitle": "Unable to Load Curriculum",
     "locked": "Locked",
     "lockedBtn": "Locked",
+    "mins": "mins",
+    "nextBadge": "Next Up",
+    "noUnitsDesc": "Units and lessons for this course are currently being authored. Please check back soon.",
+    "noUnitsTitle": "Curriculum in Preparation",
+    "pageTitle": "Course catalogue",
+    "reviewBtn": "Review",
     "startBtn": "Start Lesson",
-    "reviewBtn": "Review"
+    "syllabusProgress": "{{completed}} of {{total}} lessons completed",
+    "unitPrefix": "Unit"
   },
   "nav": {
     "account": "Account",
@@ -324,6 +341,33 @@
     "unableToLoadSettings": "Unable to load settings",
     "verifyYourEmailNow": "Verify your email now",
     "yourAccountHoldsNoAdministrativePermissions": "Your account holds no administrative permissions."
+  },
+  "practice": {
+    "title": "Practice",
+    "tagline": "Keep what you have learned. Reviews are scheduled for the day you are most likely to forget.",
+    "error": {
+      "title": "Unable to load your review queue",
+      "desc": "The review schedule could not be reached. Your progress is safe."
+    },
+    "review": {
+      "label": "Spaced repetition",
+      "emptyTitle": "Nothing due right now",
+      "emptyDesc": "Your queue is clear. Finish a lesson and new cards are scheduled for you automatically.",
+      "emptyLearnBtn": "Go to a lesson",
+      "dueTitle": "cards due today",
+      "dueDesc": "Grade each card by how well you recalled it. The schedule adapts to your answers.",
+      "startBtn": "Start review"
+    },
+    "forecast": {
+      "title": "The week ahead",
+      "desc": "Cards already scheduled to come back to you."
+    },
+    "vocabulary": {
+      "desc": "Browsing and building decks is still being built. Words you meet in lessons are already scheduled for review above.",
+      "descGuest": "Browsing and building decks is still being built.",
+      "label": "Vocabulary",
+      "title": "Word lists are not here yet"
+    }
   },
   "progress": {
     "activitiesDone": "Activities Completed",
@@ -408,6 +452,10 @@
     "stepProgress": "Activity {{current}} of {{total}}",
     "submitBtn": "Submit",
     "timeSpentLabel": "Time Spent"
+  },
+  "server": {
+    "unreachable": "The server is not responding. Reload the page to try again.",
+    "waking": "Starting the server — this takes up to a minute after a quiet spell."
   },
   "status": {
     "checking": "Checking the API…",

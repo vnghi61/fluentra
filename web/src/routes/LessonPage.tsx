@@ -3,6 +3,8 @@ import { useNavigate, useParams } from "@tanstack/react-router";
 import { AlertCircle, RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { useAuthStore } from "@/stores/authStore";
+
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,6 +15,7 @@ import {
 } from "@/components/ui/card";
 import {
   CompletionScreen,
+  SaveProgressPrompt,
   ExerciseFlashcard,
   ExerciseGapFill,
   ExerciseMultipleChoice,
@@ -20,7 +23,6 @@ import {
   ExitDialog,
   learningApi,
   RunnerHeader,
-  type SubmitAttemptResult,
 } from "@/features/learning";
 import { useLesson } from "@/features/lesson";
 
@@ -33,7 +35,10 @@ import { useLesson } from "@/features/lesson";
 interface MultipleChoiceConfig {
   prompt?: string;
   options?: { id: string; text: string }[];
-  correct_option_id?: string;
+  // No correct_option_id. The server redacts it out of the lesson body — the
+  // answer used to travel with the question, so every learner held the answer
+  // key before starting. It arrives on the grade response instead, which is
+  // after submitting.
 }
 
 interface GapFillConfig {
@@ -51,13 +56,42 @@ interface FlashcardConfig {
   example_sentence?: string;
 }
 
+/**
+ * What the screen needs out of a grading, from either path.
+ *
+ * A signed-in learner's answer goes through the attempt flow and comes back as
+ * SubmitAttemptResult; a guest's goes to POST /activities/{id}/grade and comes
+ * back as PreviewGradeResult. The two responses differ in what they say about
+ * storage — one has an attempt id, the other says `saved: false` — and agree
+ * exactly on the verdict, which is the only part the runner renders.
+ */
+interface Verdict {
+  // `null` as well as `undefined`: the attempt response models these as
+  // nullable, because an attempt handed to an async grader has been accepted
+  // without yet having a verdict.
+  correct?: boolean | null | undefined;
+  feedback?: string | null | undefined;
+  correct_answer?: string | null | undefined;
+}
+
 export function LessonPage(): React.JSX.Element {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const params: Record<string, string | undefined> = useParams({ strict: false });
+  const params: Record<string, string | undefined> = useParams({
+    strict: false,
+  });
   const lessonId = params["lessonId"] ?? "";
+  // A guest works through the same lesson with the same grader; what differs is
+  // that nothing they do is written down, and the completion screen says so.
+  const signedIn = useAuthStore((state) => state.status === "authenticated");
 
-  const { data: lesson, isLoading: lessonLoading, isError, error, refetch } = useLesson(lessonId);
+  const {
+    data: lesson,
+    isLoading: lessonLoading,
+    isError,
+    error,
+    refetch,
+  } = useLesson(lessonId);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentAttemptId, setCurrentAttemptId] = useState<string | null>(null);
@@ -65,15 +99,23 @@ export function LessonPage(): React.JSX.Element {
   const [attemptStartFailed, setAttemptStartFailed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [submissionResult, setSubmissionResult] = useState<SubmitAttemptResult | null>(null);
+  const [submissionResult, setSubmissionResult] = useState<Verdict | null>(
+    null,
+  );
   const [submissionError, setSubmissionError] = useState<string | null>(null);
-  const [lastSubmittedPayload, setLastSubmittedPayload] = useState<Record<string, unknown> | null>(null);
+  const [lastSubmittedPayload, setLastSubmittedPayload] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
 
   // Idempotency key per submission attempt
   const idempotencyKeyRef = useRef<string>(crypto.randomUUID());
 
   const [scoreCount, setScoreCount] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
+  // Shown once, at the end, and dismissible. A guest who has decided to keep
+  // looking around should not be asked again on the next lesson's last screen.
+  const [savePromptDismissed, setSavePromptDismissed] = useState(false);
   const [isExitDialogOpen, setIsExitDialogOpen] = useState(false);
   const [startTime] = useState(() => Date.now());
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -83,9 +125,13 @@ export function LessonPage(): React.JSX.Element {
   const activities = lesson?.activities ?? [];
   const currentActivity = activities[currentIndex];
 
-  // Start attempt when current activity changes
+  // Start attempt when current activity changes.
+  //
+  // Skipped entirely for a guest: there is no attempt to start, because there is
+  // nobody to attribute one to. Their answers go to the grading route instead,
+  // and nothing about the lesson is written down.
   useEffect(() => {
-    if (!currentActivity || isCompleted) return;
+    if (!currentActivity || isCompleted || !signedIn) return;
 
     let isMounted = true;
     idempotencyKeyRef.current = crypto.randomUUID();
@@ -113,21 +159,28 @@ export function LessonPage(): React.JSX.Element {
     return () => {
       isMounted = false;
     };
-  }, [currentActivity, isCompleted]);
+  }, [currentActivity, isCompleted, signedIn]);
 
   const handleSubmit = async (responsePayload: Record<string, unknown>) => {
-    if (!currentAttemptId) return;
+    if (signedIn && !currentAttemptId) return;
+    if (!currentActivity) return;
 
     setIsSubmitting(true);
     setSubmissionError(null);
     setLastSubmittedPayload(responsePayload);
 
     try {
-      const result = await learningApi.submitAttempt(
-        currentAttemptId,
-        { response: responsePayload as Record<string, never> },
-        idempotencyKeyRef.current, // Reuses same key on retry
-      );
+      const body = { response: responsePayload as Record<string, never> };
+      // The guest path is deliberately a different call, not the same call with
+      // a flag. Nothing it sends can be mistaken for work to be saved.
+      const result: Verdict =
+        signedIn && currentAttemptId
+          ? await learningApi.submitAttempt(
+              currentAttemptId,
+              body,
+              idempotencyKeyRef.current, // Reuses same key on retry
+            )
+          : await learningApi.gradePreview(currentActivity.id, body);
 
       setIsSubmitted(true);
       setSubmissionResult(result);
@@ -161,10 +214,16 @@ export function LessonPage(): React.JSX.Element {
       setSubmissionError(null);
       setLastSubmittedPayload(null);
       setAttemptStartFailed(false);
-      setIsAttemptStarting(true);
+      // Only a signed-in learner is waiting on an attempt to be opened. For a
+      // guest nothing is being started, so leaving this true left every
+      // activity after the first with its Check Answer button disabled — the
+      // effect that would clear it returns early for them.
+      setIsAttemptStarting(signedIn);
       setCurrentIndex((prev) => prev + 1);
     } else {
-      setElapsedSeconds(Math.max(0, Math.round((Date.now() - startTime) / 1000)));
+      setElapsedSeconds(
+        Math.max(0, Math.round((Date.now() - startTime) / 1000)),
+      );
       setIsCompleted(true);
     }
   };
@@ -190,12 +249,21 @@ export function LessonPage(): React.JSX.Element {
             <div className="flex justify-center mb-2">
               <AlertCircle className="h-10 w-10 text-danger-accent" />
             </div>
-            <CardTitle>{t("learn.errorTitle", "Unable to Load Lesson")}</CardTitle>
-            <CardDescription>{error?.message || t("learn.errorDesc", "Could not load lesson activities.")}</CardDescription>
+            <CardTitle>
+              {t("learn.errorTitle", "Unable to Load Lesson")}
+            </CardTitle>
+            <CardDescription>
+              {error?.message ||
+                t("learn.errorDesc", "Could not load lesson activities.")}
+            </CardDescription>
           </CardHeader>
           <CardFooter className="justify-center gap-3">
-            <Button variant="outline" onClick={() => void refetch()}>{t("action.retry", "Try again")}</Button>
-            <Button onClick={() => void navigate({ to: "/learn" })}>{t("runner.backToCourseBtn", "Back to Syllabus")}</Button>
+            <Button variant="outline" onClick={() => void refetch()}>
+              {t("action.retry", "Try again")}
+            </Button>
+            <Button onClick={() => void navigate({ to: "/learn" })}>
+              {t("runner.backToCourseBtn", "Back to Syllabus")}
+            </Button>
           </CardFooter>
         </Card>
       </div>
@@ -204,21 +272,29 @@ export function LessonPage(): React.JSX.Element {
 
   if (isCompleted) {
     return (
-      <CompletionScreen
-        score={scoreCount}
-        totalActivities={activities.length}
-        timeSpentSeconds={elapsedSeconds}
-        onRetryLesson={() => {
-          setCurrentIndex(0);
-          setScoreCount(0);
-          setIsSubmitted(false);
-          setSubmissionResult(null);
-          setSubmissionError(null);
-          setLastSubmittedPayload(null);
-          setIsAttemptStarting(true);
-          setIsCompleted(false);
-        }}
-      />
+      <>
+        <SaveProgressPrompt
+          isOpen={!signedIn && !savePromptDismissed}
+          score={scoreCount}
+          total={activities.length}
+          onDismiss={() => setSavePromptDismissed(true)}
+        />
+        <CompletionScreen
+          score={scoreCount}
+          totalActivities={activities.length}
+          timeSpentSeconds={elapsedSeconds}
+          onRetryLesson={() => {
+            setCurrentIndex(0);
+            setScoreCount(0);
+            setIsSubmitted(false);
+            setSubmissionResult(null);
+            setSubmissionError(null);
+            setLastSubmittedPayload(null);
+            setIsAttemptStarting(signedIn);
+            setIsCompleted(false);
+          }}
+        />
+      </>
     );
   }
 
@@ -248,9 +324,10 @@ export function LessonPage(): React.JSX.Element {
     typeof fcConfig.target_word === "string" &&
     typeof fcConfig.definition === "string";
 
-  const selectedOptId = typeof lastSubmittedPayload?.selected_option_id === "string"
-    ? lastSubmittedPayload.selected_option_id
-    : undefined;
+  const selectedOptId =
+    typeof lastSubmittedPayload?.selected_option_id === "string"
+      ? lastSubmittedPayload.selected_option_id
+      : undefined;
 
   return (
     <div className="min-h-screen bg-surface flex flex-col justify-between">
@@ -283,7 +360,7 @@ export function LessonPage(): React.JSX.Element {
           </div>
         )}
 
-        {attemptStartFailed && (
+        {signedIn && attemptStartFailed && (
           <Card className="max-w-2xl mx-auto w-full text-center p-6 border-danger/30">
             <CardHeader>
               <CardTitle>{t("runner.attemptFailedTitle")}</CardTitle>
@@ -297,7 +374,7 @@ export function LessonPage(): React.JSX.Element {
           </Card>
         )}
 
-        {!attemptStartFailed &&
+        {!(signedIn && attemptStartFailed) &&
           !canRenderMultipleChoice &&
           !canRenderGapFill &&
           !canRenderFlashcard && (
@@ -311,12 +388,18 @@ export function LessonPage(): React.JSX.Element {
           <ExerciseMultipleChoice
             prompt={mcConfig.prompt ?? ""}
             options={mcConfig.options ?? []}
-            correctOptionId={submissionResult?.correct ? selectedOptId : mcConfig.correct_option_id}
+            correctOptionId={
+              submissionResult?.correct
+                ? selectedOptId
+                : (submissionResult?.correct_answer ?? undefined)
+            }
             feedback={submissionResult?.feedback}
             isSubmitted={isSubmitted}
             isCorrect={submissionResult?.correct}
             isLoading={isSubmitting || isAttemptStarting}
-            onSubmit={(selectedOptionId) => void handleSubmit({ selected_option_id: selectedOptionId })}
+            onSubmit={(selectedOptionId) =>
+              void handleSubmit({ selected_option_id: selectedOptionId })
+            }
             onContinue={handleContinue}
           />
         )}
@@ -331,7 +414,9 @@ export function LessonPage(): React.JSX.Element {
             isSubmitted={isSubmitted}
             isCorrect={submissionResult?.correct}
             isLoading={isSubmitting || isAttemptStarting}
-            onSubmit={(answerText) => void handleSubmit({ text_answer: answerText })}
+            onSubmit={(answerText) =>
+              void handleSubmit({ text_answer: answerText })
+            }
             onContinue={handleContinue}
           />
         )}
@@ -352,7 +437,9 @@ export function LessonPage(): React.JSX.Element {
             // the attempt is graded rather than abandoned, so it stops leaking
             // an `in_progress` row and starts counting towards progress.
             onSubmit={(knewIt) =>
-              void handleSubmit({ text_answer: knewIt ? (fcConfig.target_word ?? "") : "" })
+              void handleSubmit({
+                text_answer: knewIt ? (fcConfig.target_word ?? "") : "",
+              })
             }
             onContinue={handleContinue}
           />

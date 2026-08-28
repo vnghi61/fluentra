@@ -82,7 +82,12 @@ export default tseslint.config(
             // form.tsx already composes label.tsx. The rule this preserves is the
             // one that matters — components still may not reach into features.
             { from: 'components', allow: ['components', 'lib', 'i18n', 'types'] },
-            { from: 'api', allow: ['lib', 'types'] },
+            // api may use api, the way features, components and lib already use
+            // their own layer. client.ts needs wake.ts to tell a sleeping host
+            // from a broken one, and both are the API layer talking to itself.
+            // The rule that matters is untouched: api still may not reach up
+            // into stores, features or components.
+            { from: 'api', allow: ['api', 'lib', 'types'] },
             { from: 'stores', allow: ['lib', 'types'] },
             { from: 'hooks', allow: ['stores', 'lib', 'api', 'types'] },
             { from: 'lib', allow: ['lib', 'types'] },

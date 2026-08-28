@@ -114,7 +114,10 @@ type SubmitAttemptResultDTO struct {
 	MaxScore  *int      `json:"max_score"`
 	Correct   *bool     `json:"correct"`
 	Feedback  *string   `json:"feedback"`
-	Async     bool      `json:"async"`
+	// What the learner should have said. Empty until they have submitted, which
+	// is the whole reason it travels here and not in the lesson body.
+	CorrectAnswer *string `json:"correct_answer,omitempty"`
+	Async         bool    `json:"async"`
 }
 
 // AttemptDetailDTO models the complete attempt view returned by GET /attempts/{id}.
@@ -508,7 +511,7 @@ func (s *Service) completeSynchronousGrading(
 	correct := gradeResult.Correct
 	feedback := gradeResult.Feedback
 
-	return &SubmitAttemptResultDTO{
+	result := &SubmitAttemptResultDTO{
 		AttemptID: attempt.ID,
 		Status:    domain.StatusGraded,
 		Score:     &score,
@@ -516,7 +519,84 @@ func (s *Service) completeSynchronousGrading(
 		Correct:   &correct,
 		Feedback:  &feedback,
 		Async:     false,
-	}, nil
+	}
+	if gradeResult.CorrectAnswer != "" {
+		answer := gradeResult.CorrectAnswer
+		result.CorrectAnswer = &answer
+	}
+	return result, nil
+}
+
+// PreviewGradeResultDTO is the outcome of grading nothing was recorded for.
+//
+// Deliberately not a SubmitAttemptResultDTO: there is no attempt id to report
+// and no status to move through, and returning a shape that looks like a stored
+// attempt would invite a caller to treat it as one.
+type PreviewGradeResultDTO struct {
+	Correct       bool    `json:"correct"`
+	Score         int     `json:"score"`
+	MaxScore      int     `json:"max_score"`
+	Feedback      string  `json:"feedback"`
+	CorrectAnswer *string `json:"correct_answer,omitempty"`
+}
+
+// GradePreview grades a response and records nothing.
+//
+// This is what a visitor with no account submits to. It resolves the activity,
+// dispatches to the same registered grader SubmitAttempt uses, and returns the
+// verdict — and that is all it does. No attempt row, no progress rollup, no
+// review card, no outbox event, no cache invalidation. Nothing about the caller
+// is written down, because there is no caller to write down.
+//
+// Sharing the grader with SubmitAttempt is the point rather than a convenience.
+// A second scoring path would be a second definition of "correct", and the two
+// would drift the first time a grader changed — a visitor would be told one
+// thing before signing up and another after.
+//
+// The zero UserID and AttemptID in the request are honest: there is neither.
+// Every grader registered today reads only the content version and the
+// response, and a grader that needs an identity has no business on this route —
+// which is also why ADR-0025 keeps Phase 3's metered AI graders off it.
+func (s *Service) GradePreview(
+	ctx context.Context, activityID uuid.UUID, response json.RawMessage,
+) (*PreviewGradeResultDTO, error) {
+	activity, err := s.resolveActivityHierarchy(ctx, activityID)
+	if err != nil {
+		return nil, err
+	}
+
+	grader, ok := s.graders.Get(activity.Kind)
+	if !ok || grader == nil {
+		return nil, domain.ErrGraderNotRegistered.WithMeta("kind", activity.Kind)
+	}
+
+	result, err := grader.Grade(ctx, contract.GradeRequest{
+		ActivityID:       activityID,
+		ContentVersionID: activity.ContentVersionID,
+		Response:         response,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("grading preview for activity %s: %w", activityID, err)
+	}
+
+	// An async grader would have queued work against an attempt that does not
+	// exist. Refusing is the honest answer; inventing an attempt to hang it on
+	// would be how a preview quietly starts writing.
+	if result.Async {
+		return nil, domain.ErrGraderNotRegistered.WithMeta("kind", activity.Kind)
+	}
+
+	preview := &PreviewGradeResultDTO{
+		Correct:  result.Correct,
+		Score:    result.Score,
+		MaxScore: result.MaxScore,
+		Feedback: result.Feedback,
+	}
+	if result.CorrectAnswer != "" {
+		answer := result.CorrectAnswer
+		preview.CorrectAnswer = &answer
+	}
+	return preview, nil
 }
 
 // executeRollupTx performs the atomic update of the attempt, progress scopes, and outbox event emissions.

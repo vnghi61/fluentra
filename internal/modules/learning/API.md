@@ -33,6 +33,7 @@ Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR
 | `POST` | `/api/v1/activities/{id}/attempts` | `self` | Start an attempt |
 | `POST` | `/api/v1/attempts/{id}/submit` | `self` | Submit a response for grading |
 | `GET` | `/api/v1/attempts/{id}` | `self` | Attempt state and result |
+| `POST` | `/api/v1/activities/{id}/grade` | `public` | Grade a response without recording anything |
 | `POST` | `/api/v1/me/sessions` | `self` | Start a study session |
 | `POST` | `/api/v1/me/sessions/{id}/complete` | `self` | End a session |
 <!-- END GENERATED: api-summary -->
@@ -100,6 +101,17 @@ Attempt state and result
 | Permission | `self` |
 | Success | 200 |
 | Errors | standard set |
+
+### `POST /api/v1/activities/{id}/grade`
+
+Grade a response without recording anything
+
+| | |
+|---|---|
+| Permission | `public` |
+| Success | 200 |
+| Errors | `VALIDATION_FAILED`, `GRADER_NOT_REGISTERED` |
+| Notes | Public (ADR-0025). No attempt, no progress, no review card, no event; `saved` is always false. A signed-in learner uses the attempt flow instead. |
 
 ### `POST /api/v1/me/sessions`
 

@@ -6,6 +6,7 @@ import {
   stubAuthenticated,
   stubLearningApi,
   stubRegistration,
+  stubSignedOut,
 } from "../helpers/stubs";
 
 /**
@@ -173,6 +174,32 @@ test.describe("R6/R1 at 320 px", () => {
       await page.goto("/practice/review");
       await page.keyboard.press("Space");
       await check(page, `review graded — ${locale}`);
+    });
+  }
+
+  // The guest screens, in both locales.
+  //
+  // The signed-out case used to mean three auth forms, so that is all this file
+  // measured. Since ADR-0025 a visitor with no account lands on the catalogue
+  // and can open the practice hub, and both grew a notice with two links in it
+  // — links being exactly the thing the 44x44 rule is about, and Vietnamese
+  // being the locale that wraps first.
+  for (const locale of ["en", "vi"] as const) {
+    test(`the guest screens fit in ${locale}`, async ({ page }) => {
+      await stubSignedOut(page);
+      await stubLearningApi(page);
+
+      await page.addInitScript((value) => {
+        window.localStorage.setItem("fluentra.locale", value);
+      }, locale);
+
+      for (const [path, name] of [
+        ["/learn", "guest catalogue"],
+        ["/practice", "guest practice"],
+      ] as const) {
+        await page.goto(path);
+        await check(page, `${name} — ${locale}`);
+      }
     });
   }
 

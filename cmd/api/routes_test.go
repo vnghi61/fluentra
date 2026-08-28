@@ -3,8 +3,10 @@ package main
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
 	auditcontract "github.com/fluentra/fluentra/internal/modules/audit/contract"
@@ -92,12 +94,12 @@ func TestEveryPhaseOneOperationIsMounted(t *testing.T) {
 		{http.MethodPost, "/api/v1/admin/content/" + someone + "/review", ownerContent},
 		{http.MethodPost, "/api/v1/admin/content/" + someone + "/publish", ownerContent},
 		{http.MethodPost, "/api/v1/admin/content/" + someone + "/archive", ownerContent},
-		// The three learner-facing lesson routes are the ones this test can
-		// really check: they sit outside /admin, so a 404 here means the route
-		// is genuinely unmounted rather than swallowed by rbac's catch-all.
-		{http.MethodGet, "/api/v1/courses", ownerLesson},
-		{http.MethodGet, "/api/v1/courses/sample-slug", ownerLesson},
-		{http.MethodGet, "/api/v1/lessons/" + someone, ownerLesson},
+		// The three learner-facing lesson routes moved to
+		// TestPublicCurriculumRoutesAreMounted. They no longer refuse an
+		// anonymous caller — that is the point of ADR-0025 — so they cannot be
+		// asserted by a test whose question is "does this refuse?", and a
+		// request that now reaches the service would dereference this file's
+		// deliberately nil pool.
 		{http.MethodPost, "/api/v1/admin/courses", ownerLesson},
 		{http.MethodPut, "/api/v1/admin/lessons/" + someone + "/activities", ownerLesson},
 		{http.MethodPost, "/api/v1/admin/lessons/" + someone + "/publish", ownerLesson},
@@ -112,6 +114,46 @@ func TestEveryPhaseOneOperationIsMounted(t *testing.T) {
 		if recorder.Code != http.StatusUnauthorized && recorder.Code != http.StatusForbidden {
 			t.Errorf("%s %s (%s) answered an anonymous caller with %d, want 401 or 403",
 				testCase.method, testCase.path, testCase.owner, recorder.Code)
+		}
+	}
+}
+
+// TestPublicCurriculumRoutesAreMounted checks the three routes ADR-0025 opened.
+//
+// It reads the route tree rather than issuing a request, and that is the whole
+// reason it is a separate test. Every other route in this file proves it is
+// mounted by being refused, which never reaches a handler and so never touches
+// the deliberately nil pool. These three are refused by nothing now, so a
+// request would run the real service and panic on that pool — proving the route
+// is open, then failing for a reason that has nothing to do with routing.
+//
+// Walking the tree answers the question this test actually asks: is the pattern
+// registered? Whether it is open to anonymous callers is asserted where the
+// handler can be given a fake service, in the lesson module's own suite.
+func TestPublicCurriculumRoutesAreMounted(t *testing.T) {
+	t.Parallel()
+
+	mux, ok := newWiredRouter(t).(*chi.Mux)
+	if !ok {
+		t.Fatal("the API router is no longer a chi.Mux; this test reads its route tree")
+	}
+
+	registered := make(map[string]bool)
+	err := chi.Walk(mux, func(method, route string, _ http.Handler, _ ...func(http.Handler) http.Handler) error {
+		registered[method+" "+strings.TrimSuffix(route, "/")] = true
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walk routes: %v", err)
+	}
+
+	for _, route := range []string{
+		"GET /api/v1/courses",
+		"GET /api/v1/courses/{slug}",
+		"GET /api/v1/lessons/{id}",
+	} {
+		if !registered[route] {
+			t.Errorf("%s is not mounted", route)
 		}
 	}
 }

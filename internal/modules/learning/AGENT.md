@@ -133,6 +133,7 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | `POST` | `/api/v1/activities/{id}/attempts` | `self` | Start an attempt |
 | `POST` | `/api/v1/attempts/{id}/submit` | `self` | Submit a response for grading |
 | `GET` | `/api/v1/attempts/{id}` | `self` | Attempt state and result |
+| `POST` | `/api/v1/activities/{id}/grade` | `public` | Grade a response without recording anything |
 | `POST` | `/api/v1/me/sessions` | `self` | Start a study session |
 | `POST` | `/api/v1/me/sessions/{id}/complete` | `self` | End a session |
 <!-- END GENERATED: endpoints -->

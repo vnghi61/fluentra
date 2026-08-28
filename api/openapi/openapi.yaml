@@ -2279,8 +2279,12 @@ paths:
       tags: [lesson]
       operationId: listCourses
       summary: List published courses with level filters.
-      description: Returns catalogue summaries for published courses.
-      x-permission: content.read.published
+      description: >-
+        Returns catalogue summaries for published courses. Public: a visitor who
+        has not signed in may browse the catalogue (ADR-0025). A bearer token is
+        accepted and, when present, is what lets the course detail carry the
+        caller's own progress.
+      security: []
       parameters:
         - name: level
           in: query
@@ -2339,7 +2343,9 @@ paths:
       description: >-
         Returns one published course with its ordered units and each unit's
         lesson summaries, for the learner catalogue and course landing page.
-      x-permission: content.read.published
+        Public (ADR-0025); a bearer token, when present, adds the caller's
+        progress and lesson unlocking.
+      security: []
       parameters:
         - name: slug
           in: path
@@ -2393,8 +2399,15 @@ paths:
       summary: Get lesson with activities and resolved content versions.
       description: >-
         Returns one lesson with its ordered activities and each activity's
-        resolved content version, ready for the lesson renderer.
-      x-permission: content.read.published
+        resolved content version, ready for the lesson renderer. Public
+        (ADR-0025).
+
+
+        Activity bodies are redacted: `correct_answer`, `acceptable` and
+        `correct_option_id` are removed before the response is built, so this
+        endpoint carries the questions and not the answer key. The answer is
+        returned by the grading operations, after the learner has submitted.
+      security: []
       parameters:
         - name: id
           in: path
@@ -3119,6 +3132,80 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+  /activities/{id}/grade:
+    post:
+      tags: [learning]
+      operationId: gradeActivityPreview
+      summary: Grade a response without recording anything.
+      description: >-
+        Grades a response against the activity's registered grader and records
+        nothing: no attempt, no progress, no review card, no event. Public
+        (ADR-0025) — this is what a visitor who has not signed up submits to.
+
+
+        A signed-in learner uses the attempt flow instead
+        (`POST /activities/{id}/attempts` then `POST /attempts/{id}/submit`),
+        which is what produces their progress and their review cards. `saved` is
+        always `false` here, stated rather than implied, so a client cannot
+        mistake a preview for a recorded attempt.
+
+
+        No `Idempotency-Key`: replaying this changes no state anywhere.
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The activity being answered.
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitAttemptRequest'
+            example:
+              response:
+                selected_option_id: opt_habit
+      responses:
+        '200':
+          description: The verdict. Nothing was stored.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PreviewGradeResult'
+              examples:
+                correct:
+                  summary: The answer was right.
+                  value:
+                    correct: true
+                    score: 100
+                    max_score: 100
+                    feedback: Correct! Well done.
+                    correct_answer: opt_habit
+                    saved: false
+                incorrect:
+                  summary: The answer was wrong, and the right one is revealed.
+                  value:
+                    correct: false
+                    score: 0
+                    max_score: 100
+                    feedback: Incorrect answer. Review this word again.
+                    correct_answer: opt_habit
+                    saved: false
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /attempts/{id}/submit:
     post:
       tags: [learning]
@@ -4193,6 +4280,8 @@ components:
       $ref: ./components/learning.yaml#/SubmitAttemptRequest
     SubmitAttemptResult:
       $ref: ./components/learning.yaml#/SubmitAttemptResult
+    PreviewGradeResult:
+      $ref: ./components/learning.yaml#/PreviewGradeResult
     AttemptDetail:
       $ref: ./components/learning.yaml#/AttemptDetail
     StartSessionRequest:

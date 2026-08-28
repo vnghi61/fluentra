@@ -83,12 +83,26 @@ type GradeRequest struct {
 
 // GradeResult contains the outcome of grading an exercise.
 type GradeResult struct {
-	Score       int          `json:"score"`
-	MaxScore    int          `json:"max_score"`
-	Correct     bool         `json:"correct"`
-	Feedback    string       `json:"feedback"`
-	Async       bool         `json:"async"`
-	ReviewItems []ReviewItem `json:"review_items,omitempty"`
+	Score    int    `json:"score"`
+	MaxScore int    `json:"max_score"`
+	Correct  bool   `json:"correct"`
+	Feedback string `json:"feedback"`
+	// CorrectAnswer is what the learner should have said, revealed after they
+	// have answered.
+	//
+	// It exists because the answer stopped travelling with the question. The
+	// authored body carries both, and the renderer used to read the answer
+	// straight out of it — which meant every learner held the answer key for a
+	// lesson before starting it. The body is redacted now, so the grader, which
+	// is the only thing that has to know, hands the answer back at the one
+	// moment it is safe to.
+	//
+	// For a choice-based activity this is the option's id, because that is what
+	// the renderer needs to mark the right row. Empty when the activity has no
+	// single answer worth showing.
+	CorrectAnswer string       `json:"correct_answer,omitempty"`
+	Async         bool         `json:"async"`
+	ReviewItems   []ReviewItem `json:"review_items,omitempty"`
 }
 
 // ExerciseGrader is implemented by every skill module to grade domain-specific exercises.

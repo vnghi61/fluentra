@@ -75,11 +75,27 @@ test.describe("Journey 9: admin suspends a learner → the learner is locked out
     await adminPage.getByRole("button", { name: /Confirm Suspension/i }).click();
 
     // The enforcement, in the learner's own browser: the next request their app
-    // makes is refused, and they land back on the login screen.
+    // makes is refused, and the session is gone.
+    //
+    // Asserted through a guarded route rather than through the landing page.
+    // This used to reload `/` and expect `/login`, which stopped being the
+    // signed-out destination when ADR-0025 opened the curriculum — a suspended
+    // learner now lands on the catalogue, the same as any visitor, because the
+    // catalogue is public and the frontend has no way to know they were
+    // suspended rather than simply signed out.
+    //
+    // `/progress` is built from the caller's own data and still refuses them,
+    // which is the thing this journey is actually about: the session no longer
+    // opens anything that belongs to a person.
     await expect(async () => {
-      await learnerPage.reload();
+      await learnerPage.goto("/progress");
       await expect(learnerPage).toHaveURL(/\/login/, { timeout: 5_000 });
     }).toPass({ timeout: 30_000 });
+
+    // And the chrome agrees: no account menu, because there is no account.
+    await expect(
+      learnerPage.getByRole("button", { name: /Account/i }),
+    ).toHaveCount(0);
 
     await learnerContext.close();
     await adminContext.close();

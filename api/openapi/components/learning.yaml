@@ -166,6 +166,40 @@ SubmitAttemptRequest:
       example:
         selected_option_id: 0199a1c2-3d4e-7f80-9abc-def01234567f
 
+PreviewGradeResult:
+  type: object
+  required: [correct, score, max_score, feedback, saved]
+  description: >-
+    The outcome of grading that recorded nothing. There is no attempt id and no
+    status, because nothing was created and nothing moved.
+  properties:
+    correct:
+      type: boolean
+      example: true
+    score:
+      type: integer
+      example: 100
+    max_score:
+      type: integer
+      example: 100
+    feedback:
+      type: string
+      example: Correct! Well done.
+    correct_answer:
+      type: string
+      description: >-
+        What the learner should have said. The lesson body is redacted, so this
+        is where the renderer learns the answer. For a choice-based activity it
+        is the option's id.
+      nullable: true
+      example: opt_habit
+    saved:
+      type: boolean
+      description: >-
+        Always false. Stated rather than implied, so a client cannot mistake a
+        preview for a recorded attempt.
+      example: false
+
 SubmitAttemptResult:
   type: object
   required: [attempt_id, status]
@@ -189,6 +223,15 @@ SubmitAttemptResult:
       type: boolean
       nullable: true
       example: true
+    correct_answer:
+      type: string
+      description: >-
+        What the learner should have said, revealed only now. The lesson body is
+        redacted, so this is where the renderer learns the answer — after the
+        submission, not before it. For a choice-based activity this is the
+        option's id, which is what marks the right row.
+      nullable: true
+      example: opt_habit
     feedback:
       type: string
       nullable: true

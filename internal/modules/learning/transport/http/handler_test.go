@@ -48,6 +48,11 @@ type fakeLearningService struct {
 	dashErr      error
 	progDTO      *domain.ProgressData
 	progErr      error
+	previewDTO   *service.PreviewGradeResultDTO
+	previewErr   error
+	// The activity id gradePreview passed through, so a test can assert the
+	// handler read the path parameter rather than a hard-coded id.
+	seenPreviewActivity uuid.UUID
 }
 
 func (f *fakeLearningService) StartAttempt(_ context.Context, _, _ uuid.UUID) (*service.StartAttemptDTO, error) {
@@ -86,6 +91,13 @@ func (f *fakeLearningService) Dashboard(_ context.Context, _ uuid.UUID) (*domain
 
 func (f *fakeLearningService) Progress(_ context.Context, _ uuid.UUID) (*domain.ProgressData, error) {
 	return f.progDTO, f.progErr
+}
+
+func (f *fakeLearningService) GradePreview(
+	_ context.Context, activityID uuid.UUID, _ json.RawMessage,
+) (*service.PreviewGradeResultDTO, error) {
+	f.seenPreviewActivity = activityID
+	return f.previewDTO, f.previewErr
 }
 
 const (

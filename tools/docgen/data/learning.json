@@ -328,6 +328,7 @@
       { "method": "POST", "path": "/api/v1/activities/{id}/attempts", "permission": "self", "purpose": "Start an attempt", "success": "201", "errors": ["NOT_ENROLLED", "LESSON_LOCKED", "ACTIVITY_ALREADY_COMPLETED"] },
       { "method": "POST", "path": "/api/v1/attempts/{id}/submit", "permission": "self", "purpose": "Submit a response for grading", "success": "200", "errors": ["ATTEMPT_EXPIRED", "VALIDATION_FAILED"], "notes": "Requires an `Idempotency-Key`. Returns 202 when the grader is asynchronous." },
       { "method": "GET", "path": "/api/v1/attempts/{id}", "permission": "self", "purpose": "Attempt state and result", "success": "200" },
+      { "method": "POST", "path": "/api/v1/activities/{id}/grade", "permission": "public", "purpose": "Grade a response without recording anything", "success": "200", "errors": ["VALIDATION_FAILED", "GRADER_NOT_REGISTERED"], "notes": "Public (ADR-0025). No attempt, no progress, no review card, no event; `saved` is always false. A signed-in learner uses the attempt flow instead." },
       { "method": "POST", "path": "/api/v1/me/sessions", "permission": "self", "purpose": "Start a study session", "success": "201" },
       { "method": "POST", "path": "/api/v1/me/sessions/{id}/complete", "permission": "self", "purpose": "End a session", "success": "200", "errors": ["SESSION_NOT_FOUND", "INVALID_ACTIVITY_COUNT"] }
     ],
