@@ -103,6 +103,29 @@ export async function stubAuthenticated(page: Page): Promise<void> {
   );
 }
 
+/**
+ * Refuses the boot refresh, so the app resolves to `unauthenticated`.
+ *
+ * The counterpart to stubAuthenticated, and it exists because signed-out is no
+ * longer the same thing as "sees a login form": since ADR-0025 a visitor with no
+ * session browses the catalogue and works through a lesson, so those screens
+ * have a guest rendering that needs measuring like any other.
+ */
+export async function stubSignedOut(page: Page): Promise<void> {
+  await page.route("**/api/v1/auth/refresh", (route) =>
+    route.fulfill({
+      status: 401,
+      contentType: "application/json",
+      body: JSON.stringify({
+        type: "https://fluentra.dev/errors/TOKEN_INVALID",
+        title: "Unauthorized",
+        status: 401,
+        code: "TOKEN_INVALID",
+      }),
+    }),
+  );
+}
+
 /** Answers registration so the OTP screen can be reached and measured. */
 export async function stubRegistration(page: Page): Promise<void> {
   await page.route("**/api/v1/auth/register", (route) =>

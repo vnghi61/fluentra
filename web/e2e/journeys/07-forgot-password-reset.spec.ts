@@ -73,8 +73,13 @@ test.describe("Journey 7: forgot → reset → old sessions and devices dead", (
     );
 
     // And the old browser is genuinely dead: its refresh token no longer works,
-    // so a reload lands on the login screen rather than the dashboard.
-    await oldPage.reload();
+    // so the screens built from the learner's own data refuse it.
+    //
+    // Asked of `/progress` rather than of a reload of `/`. Since ADR-0025 the
+    // landing page for someone with no session is the public catalogue, not the
+    // login screen, so reloading `/` would now pass for a browser that was
+    // never signed in — which is the opposite of what this step is proving.
+    await oldPage.goto("/progress");
     await expect(oldPage).toHaveURL(/\/login/, { timeout: 15_000 });
 
     // The replacement password is the one that works now.

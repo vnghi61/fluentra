@@ -66,7 +66,10 @@ interface FlashcardConfig {
  * exactly on the verdict, which is the only part the runner renders.
  */
 interface Verdict {
-  correct?: boolean | undefined;
+  // `null` as well as `undefined`: the attempt response models these as
+  // nullable, because an attempt handed to an async grader has been accepted
+  // without yet having a verdict.
+  correct?: boolean | null | undefined;
   feedback?: string | null | undefined;
   correct_answer?: string | null | undefined;
 }

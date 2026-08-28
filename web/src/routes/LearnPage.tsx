@@ -147,6 +147,23 @@ export function LearnPage(): React.JSX.Element {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-200">
+      {/*
+        The page's own heading, which it did not have.
+
+        The course title is rendered by CourseHeader through CardTitle, and
+        CardTitle is an <h3>. So this page opened at h3, put the unit names at
+        h2 *below* it, and had no h1 anywhere — a broken outline that mattered
+        little while /learn sat behind a login form and matters a lot now that
+        it is the first screen every visitor sees.
+
+        Visually quiet on purpose: the course title is still the thing being
+        looked at. This is the page's name, in the shape the other four routes
+        already use.
+      */}
+      <h1 className="text-sm font-semibold uppercase tracking-wider text-text-muted">
+        {t("learn.pageTitle", "Course catalogue")}
+      </h1>
+
       {!signedIn && <GuestNotice />}
 
       {/* Course Header & Info */}

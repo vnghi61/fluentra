@@ -26,16 +26,24 @@ export const GuestNotice: React.FC = () => {
           "You are browsing without an account. You can open any lesson and answer its exercises, but nothing is saved.",
         )}
       </span>
-      <span className="flex items-center gap-3 shrink-0">
+      {/*
+        `whitespace-nowrap` and a width floor, not just a height one.
+
+        At 320 px these two links share a row narrow enough that "Create
+        account" wrapped onto two lines, which left the tap target 42 px wide —
+        under the 44x44 ADR-0024 sets, and only two pixels under, so it flipped
+        with font loading rather than failing honestly every run.
+      */}
+      <span className="flex items-center gap-4 shrink-0">
         <Link
           to="/login"
-          className="inline-flex items-center min-h-[44px] font-semibold text-primary-accent hover:underline"
+          className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] whitespace-nowrap font-semibold text-primary-accent hover:underline"
         >
           {t("nav.signIn", "Sign in")}
         </Link>
         <Link
           to="/register"
-          className="inline-flex items-center min-h-[44px] font-semibold text-primary-accent hover:underline"
+          className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] whitespace-nowrap font-semibold text-primary-accent hover:underline"
         >
           {t("nav.createAccount", "Create account")}
         </Link>

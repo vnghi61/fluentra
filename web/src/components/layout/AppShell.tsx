@@ -115,22 +115,42 @@ export const AppShell: React.FC<AppShellProps> = ({
       </React.Suspense>
     ) : (
       <div className="flex items-center gap-2">
+        {/*
+          min-w-[44px]: below `sm` the label is hidden and only the icon is
+          left, which collapsed this to 42 px wide — a floor on the height
+          alone does not make a 44x44 target. It went unmeasured until the
+          curriculum opened, because signed-out chrome had never appeared on a
+          framed screen before: the auth pages draw no header at all.
+        */}
         <Link
           to="/register"
           aria-label={t("nav.createAccount", "Create account")}
-          className="flex items-center gap-2 h-10 px-3 rounded-lg border border-border hover:bg-surface-muted text-text min-h-[44px] transition-colors text-sm font-medium"
+          className="flex items-center justify-center gap-2 h-10 px-3 rounded-lg border border-border hover:bg-surface-muted text-text min-h-[44px] min-w-[44px] transition-colors text-sm font-medium"
         >
           <UserPlus className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span className="hidden sm:inline">
             {t("nav.createAccount", "Create account")}
           </span>
         </Link>
+        {/*
+          The label hides below `sm`, the way Create account's already did, and
+          the aria-label is what keeps the control named when it does. Both
+          together are 320 px of header the signed-out cluster did not have:
+          brand, theme, language and two auth controls pushed the document to
+          357 px, and the narrow-320 suite caught it the moment this chrome
+          first appeared on a framed screen.
+
+          The aria-label is not optional garnish. Hiding the only text a control
+          carries is how a button ends up with no accessible name at all, which
+          is a mistake this file has made before.
+        */}
         <Link
           to="/login"
-          className="flex items-center gap-2 h-10 px-4 rounded-full bg-primary hover:bg-primary-hover text-primary-fg min-h-[44px] transition-colors text-sm font-semibold"
+          aria-label={t("nav.signIn", "Sign in")}
+          className="flex items-center justify-center gap-2 h-10 px-3 sm:px-4 rounded-full bg-primary hover:bg-primary-hover text-primary-fg min-h-[44px] min-w-[44px] transition-colors text-sm font-semibold"
         >
           <LogIn className="h-4 w-4 shrink-0" aria-hidden="true" />
-          {t("nav.signIn", "Sign in")}
+          <span className="hidden sm:inline">{t("nav.signIn", "Sign in")}</span>
         </Link>
       </div>
     );
