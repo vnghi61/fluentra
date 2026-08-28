@@ -3,6 +3,7 @@ package service_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -51,7 +52,7 @@ func TestVocabularyGrader_CorrectAnswer(t *testing.T) {
 		},
 	}
 
-	grader := service.NewGrader(contentReader)
+	grader := service.NewGrader(contentReader, nil)
 
 	respJSON, _ := json.Marshal(map[string]string{
 		answerField: wordMeticulous,
@@ -89,7 +90,7 @@ func TestVocabularyGrader_AcceptableAlternative(t *testing.T) {
 		},
 	}
 
-	grader := service.NewGrader(contentReader)
+	grader := service.NewGrader(contentReader, nil)
 
 	respJSON, _ := json.Marshal(map[string]string{
 		answerField: "flavor", // BR-VOCABULARY-05: British and American spelling both accepted
@@ -125,7 +126,7 @@ func TestVocabularyGrader_WrongAnswer(t *testing.T) {
 		},
 	}
 
-	grader := service.NewGrader(contentReader)
+	grader := service.NewGrader(contentReader, nil)
 
 	respJSON, _ := json.Marshal(map[string]string{
 		answerField: "permanent",
@@ -165,7 +166,7 @@ func TestVocabularyGrader_UngradableContentIsAnError(t *testing.T) {
 				versions: map[uuid.UUID]*contentcontract.Version{
 					contentID: {ID: contentID, Body: body},
 				},
-			})
+			}, nil)
 
 			_, err := grader.Grade(context.Background(), learningcontract.GradeRequest{
 				ContentVersionID: contentID,
@@ -180,7 +181,7 @@ func TestVocabularyGrader_UngradableContentIsAnError(t *testing.T) {
 // TestVocabularyGrader_UnknownContentIsAnError covers the version the content
 // module does not have at all.
 func TestVocabularyGrader_UnknownContentIsAnError(t *testing.T) {
-	grader := service.NewGrader(&fakeContentReader{versions: map[uuid.UUID]*contentcontract.Version{}})
+	grader := service.NewGrader(&fakeContentReader{versions: map[uuid.UUID]*contentcontract.Version{}}, nil)
 
 	_, err := grader.Grade(context.Background(), learningcontract.GradeRequest{
 		ContentVersionID: uuid.New(),
@@ -197,7 +198,7 @@ func TestVocabularyGrader_EmptyAnswerIsWrong(t *testing.T) {
 		versions: map[uuid.UUID]*contentcontract.Version{
 			contentID: {ID: contentID, Body: json.RawMessage(`{"correct_answer":"` + wordMeticulous + `"}`)},
 		},
-	})
+	}, nil)
 
 	result, err := grader.Grade(context.Background(), learningcontract.GradeRequest{
 		ContentVersionID: contentID,
@@ -207,4 +208,106 @@ func TestVocabularyGrader_EmptyAnswerIsWrong(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, result.Correct)
 	assert.Equal(t, "again", result.ReviewItems[0].InitialGrade)
+}
+
+// fakeSenseResolver maps a lemma to the content version of its dictionary entry.
+type fakeSenseResolver struct {
+	byLemma map[string]uuid.UUID
+	calls   int
+}
+
+func (f *fakeSenseResolver) GetSenseContentVersionByLemma(
+	_ context.Context, lemma string,
+) (*uuid.UUID, error) {
+	f.calls++
+	id, ok := f.byLemma[lemma]
+	if !ok {
+		return nil, errNoSense
+	}
+	return &id, nil
+}
+
+var errNoSense = errors.New("no sense for that lemma")
+
+// TestVocabularyGrader_SchedulesTheWordNotTheExercise is the fix for every
+// review card rendering "This card has no content yet".
+//
+// The card used to point at the activity's own content version — a body holding
+// a prompt and an answer key, which is what grades an exercise and not what a
+// flashcard shows. The review screen wants the dictionary entry, so that is what
+// gets scheduled: an exercise is one way of asking about a word, and the thing
+// worth remembering in three days is the word.
+func TestVocabularyGrader_SchedulesTheWordNotTheExercise(t *testing.T) {
+	activityVersion, senseVersion := uuid.New(), uuid.New()
+	senses := &fakeSenseResolver{byLemma: map[string]uuid.UUID{wordMeticulous: senseVersion}}
+
+	grader := service.NewGrader(&fakeContentReader{
+		versions: map[uuid.UUID]*contentcontract.Version{
+			activityVersion: {
+				ID:   activityVersion,
+				Body: json.RawMessage(`{"correct_answer":"` + wordMeticulous + `","prompt":"p"}`),
+			},
+		},
+	}, senses)
+
+	result, err := grader.Grade(context.Background(), learningcontract.GradeRequest{
+		ContentVersionID: activityVersion,
+		Response:         json.RawMessage(`{"answer":"` + wordMeticulous + `"}`),
+	})
+	require.NoError(t, err)
+	require.Len(t, result.ReviewItems, 1)
+
+	assert.Equal(t, senseVersion, result.ReviewItems[0].ContentVersionID,
+		"the card must schedule the word's dictionary entry, not the exercise that asked about it")
+	assert.NotEqual(t, activityVersion, result.ReviewItems[0].ContentVersionID)
+	assert.Equal(t, 1, senses.calls)
+}
+
+// A word with no dictionary entry still earns a card. Falling back to the
+// activity's version keeps the schedule intact — the learner answered, and
+// losing that because the content is thin would be the worse failure.
+func TestVocabularyGrader_FallsBackWhenTheWordIsUnknown(t *testing.T) {
+	activityVersion := uuid.New()
+	senses := &fakeSenseResolver{byLemma: map[string]uuid.UUID{}}
+
+	grader := service.NewGrader(&fakeContentReader{
+		versions: map[uuid.UUID]*contentcontract.Version{
+			activityVersion: {
+				ID:   activityVersion,
+				Body: json.RawMessage(`{"correct_answer":"` + wordMeticulous + `"}`),
+			},
+		},
+	}, senses)
+
+	result, err := grader.Grade(context.Background(), learningcontract.GradeRequest{
+		ContentVersionID: activityVersion,
+		Response:         json.RawMessage(`{"answer":"` + wordMeticulous + `"}`),
+	})
+	require.NoError(t, err)
+	require.Len(t, result.ReviewItems, 1)
+	assert.Equal(t, activityVersion, result.ReviewItems[0].ContentVersionID)
+}
+
+// The lookup is by normalised lemma, because the authored answer is authored by
+// a person: "Meticulous " and "meticulous" are the same word.
+func TestVocabularyGrader_ResolvesTheLemmaCaseInsensitively(t *testing.T) {
+	activityVersion, senseVersion := uuid.New(), uuid.New()
+	senses := &fakeSenseResolver{byLemma: map[string]uuid.UUID{wordMeticulous: senseVersion}}
+
+	grader := service.NewGrader(&fakeContentReader{
+		versions: map[uuid.UUID]*contentcontract.Version{
+			activityVersion: {
+				ID:   activityVersion,
+				Body: json.RawMessage(`{"correct_answer":"  Meticulous  "}`),
+			},
+		},
+	}, senses)
+
+	result, err := grader.Grade(context.Background(), learningcontract.GradeRequest{
+		ContentVersionID: activityVersion,
+		Response:         json.RawMessage(`{"answer":"` + wordMeticulous + `"}`),
+	})
+	require.NoError(t, err)
+	require.Len(t, result.ReviewItems, 1)
+	assert.Equal(t, senseVersion, result.ReviewItems[0].ContentVersionID)
 }

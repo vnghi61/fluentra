@@ -21,6 +21,7 @@ type Repository interface {
 	InsertWordSense(ctx context.Context, arg sqlc.InsertWordSenseParams) (sqlc.SkillWordSense, error)
 	ListSensesByWordID(ctx context.Context, wordID uuid.UUID) ([]sqlc.SkillWordSense, error)
 	GetSenseByID(ctx context.Context, id uuid.UUID) (sqlc.GetSenseByIDRow, error)
+	GetSenseContentVersionByLemma(ctx context.Context, lemma string) (*uuid.UUID, error)
 	ListSensesByIDs(ctx context.Context, ids []uuid.UUID) ([]sqlc.ListSensesByIDsRow, error)
 	InsertWordRelation(ctx context.Context, arg sqlc.InsertWordRelationParams) (sqlc.SkillWordRelation, error)
 	ListRelationsByWordID(ctx context.Context, wordID uuid.UUID) ([]sqlc.ListRelationsByWordIDRow, error)
@@ -101,6 +102,12 @@ func (r *pgxRepository) ListSensesByWordID(ctx context.Context, wordID uuid.UUID
 
 func (r *pgxRepository) GetSenseByID(ctx context.Context, id uuid.UUID) (sqlc.GetSenseByIDRow, error) {
 	return r.q.GetSenseByID(ctx, id)
+}
+
+func (r *pgxRepository) GetSenseContentVersionByLemma(
+	ctx context.Context, lemma string,
+) (*uuid.UUID, error) {
+	return r.q.GetSenseContentVersionByLemma(ctx, lemma)
 }
 
 func (r *pgxRepository) ListSensesByIDs(ctx context.Context, ids []uuid.UUID) ([]sqlc.ListSensesByIDsRow, error) {

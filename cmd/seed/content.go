@@ -52,6 +52,17 @@ const (
 	bodyKeyCorrectAnswer = "correct_answer"
 	bodyKeyAcceptable    = "acceptable"
 	bodyKeyDefinition    = "definition"
+
+	// The fields the review screen renders a flashcard from. They are not
+	// decoration: web/src/features/review/model/flashcard.ts returns null unless
+	// `word` and `definition` are both present, and a null there is the
+	// "This card has no content yet" state. Every sense body was authored
+	// without `word`, so every card a learner earned rendered as unavailable.
+	bodyKeyWord            = "word"
+	bodyKeyPOS             = "pos"
+	bodyKeyIPA             = "ipa"
+	bodyKeyDefinitionVI    = "definition_vi"
+	bodyKeyExampleSentence = "example_sentence"
 )
 
 func seedCourseData(ctx context.Context, pool *pgxpool.Pool, adminID uuid.UUID, c seedCourse) error {
@@ -243,11 +254,23 @@ func seedVocabularyWords(
 	for i, s := range senses {
 		// 1. Ensure content version for sense
 		slug := fmt.Sprintf("vocab-%s-%s", s.Lemma, s.POS)
+		// The dictionary entry, not just the answer key. All of this is already
+		// on seedWordSense; it simply never reached the body, so the review
+		// screen had a word to schedule and nothing to show for it.
 		body := map[string]any{
 			bodyKeyPrompt:        fmt.Sprintf("What does the word '%s' mean?", s.Lemma),
 			bodyKeyCorrectAnswer: s.Lemma,
 			bodyKeyAcceptable:    []string{s.Lemma},
 			bodyKeyDefinition:    s.Definition,
+			bodyKeyWord:          s.Lemma,
+			bodyKeyPOS:           s.POS,
+			bodyKeyIPA:           s.IPA,
+		}
+		if s.DefinitionVI != "" {
+			body[bodyKeyDefinitionVI] = s.DefinitionVI
+		}
+		if len(s.Examples) > 0 {
+			body[bodyKeyExampleSentence] = s.Examples[0]
 		}
 		versionID, err := ensureContentItemAndVersion(ctx, pool, adminID, slug, "vocabulary_quiz", s.CEFRLevel, body)
 		if err != nil {

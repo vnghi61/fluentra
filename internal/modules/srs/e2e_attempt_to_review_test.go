@@ -335,6 +335,22 @@ func (fakeUserReader) GetManyByIDs(_ context.Context, ids []uuid.UUID) (map[uuid
 
 func (fakeUserReader) Exists(_ context.Context, _ uuid.UUID) (bool, error) { return true, nil }
 
+// The word this journey is about; goconst objects to the literal repeating.
+const lemmaMeticulous = "meticulous"
+
+// fakeSenses stands in for the vocabulary repository's lemma lookup.
+type fakeSenses struct{ byLemma map[string]uuid.UUID }
+
+func (f fakeSenses) GetSenseContentVersionByLemma(
+	_ context.Context, lemma string,
+) (*uuid.UUID, error) {
+	id, ok := f.byLemma[lemma]
+	if !ok {
+		return nil, nil
+	}
+	return &id, nil
+}
+
 func TestE2E_AttemptToReview_Pipeline(t *testing.T) {
 	// Setup deterministic clock
 	fixedTime := time.Date(2026, 8, 25, 14, 0, 0, 0, time.UTC)
@@ -342,11 +358,25 @@ func TestE2E_AttemptToReview_Pipeline(t *testing.T) {
 
 	userID := uuid.New()
 	contentID := uuid.New()
+	senseID := uuid.New()
 
-	// 1. Content version for vocabulary quiz
+	// 1. Two content versions, because there are two different things here.
+	//
+	// The activity's body is an answer key: what this exercise accepts. The
+	// sense's body is the dictionary entry: what a flashcard shows. Conflating
+	// them is what left every review card rendering "This card has no content
+	// yet" — the schedule pointed at the quiz, and a quiz has no front and back.
 	bodyJSON, _ := json.Marshal(map[string]any{
-		"correct_answer": "meticulous",
+		"correct_answer": lemmaMeticulous,
 		"prompt":         "Showing great attention to detail.",
+	})
+	senseBodyJSON, _ := json.Marshal(map[string]any{
+		"word":             lemmaMeticulous,
+		"pos":              "adjective",
+		"ipa":              "/məˈtɪkjələs/",
+		"definition":       "Showing great attention to detail.",
+		"example_sentence": "She kept meticulous records.",
+		"correct_answer":   lemmaMeticulous,
 	})
 	contentReader := &fakeContentReader{
 		versions: map[uuid.UUID]*contentcontract.Version{
@@ -356,13 +386,21 @@ func TestE2E_AttemptToReview_Pipeline(t *testing.T) {
 				Body:      bodyJSON,
 				CEFRLevel: "B2",
 			},
+			senseID: {
+				ID:        senseID,
+				Kind:      "vocab_flashcard",
+				Body:      senseBodyJSON,
+				CEFRLevel: "B2",
+			},
 		},
 	}
 
 	// 2. Grader evaluates learner's attempt
-	vocabGrader := vocabservice.NewGrader(contentReader)
+	vocabGrader := vocabservice.NewGrader(contentReader, &fakeSenses{
+		byLemma: map[string]uuid.UUID{lemmaMeticulous: senseID},
+	})
 	userResp, _ := json.Marshal(map[string]string{
-		"answer": "meticulous",
+		"answer": lemmaMeticulous,
 	})
 
 	ctx := context.Background()
@@ -378,7 +416,8 @@ func TestE2E_AttemptToReview_Pipeline(t *testing.T) {
 	assert.Equal(t, 100, gradeResult.Score)
 	require.Len(t, gradeResult.ReviewItems, 1)
 	assert.Equal(t, "good", gradeResult.ReviewItems[0].InitialGrade)
-	assert.Equal(t, contentID, gradeResult.ReviewItems[0].ContentVersionID)
+	assert.Equal(t, senseID, gradeResult.ReviewItems[0].ContentVersionID,
+		"the card schedules the word, not the exercise that asked about it")
 
 	// 3. SRS CardWriter receives review items and upserts card
 	srsRepo := newFakeSRSRepo()
@@ -403,8 +442,25 @@ func TestE2E_AttemptToReview_Pipeline(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, dueCards, 1)
 	card := dueCards[0]
-	assert.Equal(t, contentID, card.ContentVersionID)
+	assert.Equal(t, senseID, card.ContentVersionID)
 	assert.Equal(t, "vocabulary", card.Skill)
+
+	// The assertion this journey was missing.
+	//
+	// Every step above passed while the card was unrenderable: the pipeline
+	// proved a card existed and was due, and never that there was anything on
+	// it. web/src/features/review/model/flashcard.ts yields null unless `word`
+	// and `definition` are both present, and null is the "This card has no
+	// content yet" screen — so these two keys are the difference between a
+	// review session and an apology.
+	resolved, err := contentReader.GetVersion(ctx, card.ContentVersionID)
+	require.NoError(t, err)
+	require.NotNil(t, resolved, "the card points at content that does not exist")
+
+	var front map[string]any
+	require.NoError(t, json.Unmarshal(resolved.Body, &front))
+	assert.NotEmpty(t, front["word"], "a card with no `word` renders as unavailable")
+	assert.NotEmpty(t, front["definition"], "a card with no `definition` has no back")
 
 	// 5. Learner answers review session card with "good" rating
 	answerRes, err := srsService.AnswerCard(ctx, userID, card.ID, "good", 2100)

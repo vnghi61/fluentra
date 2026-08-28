@@ -74,7 +74,10 @@ func New(deps Deps) *Module {
 		Clock:   timekeeper,
 	})
 
-	grader := service.NewGrader(deps.Content)
+	// The repository doubles as the sense resolver: the grader schedules the
+	// word behind an exercise for review, not the exercise, and the word lives
+	// in this module's own tables.
+	grader := service.NewGrader(deps.Content, repo)
 
 	var handler *vocabularyhttp.Handler
 	if deps.Guard != nil {
