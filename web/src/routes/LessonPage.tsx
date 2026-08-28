@@ -33,7 +33,10 @@ import { useLesson } from "@/features/lesson";
 interface MultipleChoiceConfig {
   prompt?: string;
   options?: { id: string; text: string }[];
-  correct_option_id?: string;
+  // No correct_option_id. The server redacts it out of the lesson body — the
+  // answer used to travel with the question, so every learner held the answer
+  // key before starting. It arrives on the grade response instead, which is
+  // after submitting.
 }
 
 interface GapFillConfig {
@@ -54,10 +57,18 @@ interface FlashcardConfig {
 export function LessonPage(): React.JSX.Element {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const params: Record<string, string | undefined> = useParams({ strict: false });
+  const params: Record<string, string | undefined> = useParams({
+    strict: false,
+  });
   const lessonId = params["lessonId"] ?? "";
 
-  const { data: lesson, isLoading: lessonLoading, isError, error, refetch } = useLesson(lessonId);
+  const {
+    data: lesson,
+    isLoading: lessonLoading,
+    isError,
+    error,
+    refetch,
+  } = useLesson(lessonId);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentAttemptId, setCurrentAttemptId] = useState<string | null>(null);
@@ -65,9 +76,13 @@ export function LessonPage(): React.JSX.Element {
   const [attemptStartFailed, setAttemptStartFailed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [submissionResult, setSubmissionResult] = useState<SubmitAttemptResult | null>(null);
+  const [submissionResult, setSubmissionResult] =
+    useState<SubmitAttemptResult | null>(null);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
-  const [lastSubmittedPayload, setLastSubmittedPayload] = useState<Record<string, unknown> | null>(null);
+  const [lastSubmittedPayload, setLastSubmittedPayload] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
 
   // Idempotency key per submission attempt
   const idempotencyKeyRef = useRef<string>(crypto.randomUUID());
@@ -164,7 +179,9 @@ export function LessonPage(): React.JSX.Element {
       setIsAttemptStarting(true);
       setCurrentIndex((prev) => prev + 1);
     } else {
-      setElapsedSeconds(Math.max(0, Math.round((Date.now() - startTime) / 1000)));
+      setElapsedSeconds(
+        Math.max(0, Math.round((Date.now() - startTime) / 1000)),
+      );
       setIsCompleted(true);
     }
   };
@@ -190,12 +207,21 @@ export function LessonPage(): React.JSX.Element {
             <div className="flex justify-center mb-2">
               <AlertCircle className="h-10 w-10 text-danger-accent" />
             </div>
-            <CardTitle>{t("learn.errorTitle", "Unable to Load Lesson")}</CardTitle>
-            <CardDescription>{error?.message || t("learn.errorDesc", "Could not load lesson activities.")}</CardDescription>
+            <CardTitle>
+              {t("learn.errorTitle", "Unable to Load Lesson")}
+            </CardTitle>
+            <CardDescription>
+              {error?.message ||
+                t("learn.errorDesc", "Could not load lesson activities.")}
+            </CardDescription>
           </CardHeader>
           <CardFooter className="justify-center gap-3">
-            <Button variant="outline" onClick={() => void refetch()}>{t("action.retry", "Try again")}</Button>
-            <Button onClick={() => void navigate({ to: "/learn" })}>{t("runner.backToCourseBtn", "Back to Syllabus")}</Button>
+            <Button variant="outline" onClick={() => void refetch()}>
+              {t("action.retry", "Try again")}
+            </Button>
+            <Button onClick={() => void navigate({ to: "/learn" })}>
+              {t("runner.backToCourseBtn", "Back to Syllabus")}
+            </Button>
           </CardFooter>
         </Card>
       </div>
@@ -248,9 +274,10 @@ export function LessonPage(): React.JSX.Element {
     typeof fcConfig.target_word === "string" &&
     typeof fcConfig.definition === "string";
 
-  const selectedOptId = typeof lastSubmittedPayload?.selected_option_id === "string"
-    ? lastSubmittedPayload.selected_option_id
-    : undefined;
+  const selectedOptId =
+    typeof lastSubmittedPayload?.selected_option_id === "string"
+      ? lastSubmittedPayload.selected_option_id
+      : undefined;
 
   return (
     <div className="min-h-screen bg-surface flex flex-col justify-between">
@@ -311,12 +338,18 @@ export function LessonPage(): React.JSX.Element {
           <ExerciseMultipleChoice
             prompt={mcConfig.prompt ?? ""}
             options={mcConfig.options ?? []}
-            correctOptionId={submissionResult?.correct ? selectedOptId : mcConfig.correct_option_id}
+            correctOptionId={
+              submissionResult?.correct
+                ? selectedOptId
+                : (submissionResult?.correct_answer ?? undefined)
+            }
             feedback={submissionResult?.feedback}
             isSubmitted={isSubmitted}
             isCorrect={submissionResult?.correct}
             isLoading={isSubmitting || isAttemptStarting}
-            onSubmit={(selectedOptionId) => void handleSubmit({ selected_option_id: selectedOptionId })}
+            onSubmit={(selectedOptionId) =>
+              void handleSubmit({ selected_option_id: selectedOptionId })
+            }
             onContinue={handleContinue}
           />
         )}
@@ -331,7 +364,9 @@ export function LessonPage(): React.JSX.Element {
             isSubmitted={isSubmitted}
             isCorrect={submissionResult?.correct}
             isLoading={isSubmitting || isAttemptStarting}
-            onSubmit={(answerText) => void handleSubmit({ text_answer: answerText })}
+            onSubmit={(answerText) =>
+              void handleSubmit({ text_answer: answerText })
+            }
             onContinue={handleContinue}
           />
         )}
@@ -352,7 +387,9 @@ export function LessonPage(): React.JSX.Element {
             // the attempt is graded rather than abandoned, so it stops leaking
             // an `in_progress` row and starts counting towards progress.
             onSubmit={(knewIt) =>
-              void handleSubmit({ text_answer: knewIt ? (fcConfig.target_word ?? "") : "" })
+              void handleSubmit({
+                text_answer: knewIt ? (fcConfig.target_word ?? "") : "",
+              })
             }
             onContinue={handleContinue}
           />

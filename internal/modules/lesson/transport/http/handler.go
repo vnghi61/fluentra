@@ -73,10 +73,18 @@ func (h *Handler) AdminRoutes(router chi.Router) {
 
 func (h *Handler) listCourses(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	if err := h.guard.Require(ctx, PermContentReadPublished); err != nil {
-		httpx.WriteProblem(w, r, err)
-		return
-	}
+	// No guard. Published curriculum is public: a visitor who has not signed up
+	// can browse the catalogue, open a lesson and work through its activities,
+	// and is told at the end that nothing was saved. See ADR-0025.
+	//
+	// What made that safe to do was taking the answer out of the content. The
+	// body these responses carry is redacted by
+	// contentcontract.RedactForLearner, so "public" means the questions and not
+	// the answer key, and grading stays on the server where it always was.
+	//
+	// The permission is still in the catalogue and `admin` still holds it — it
+	// guards the authoring surface below. What it no longer does is stand
+	// between a learner and material that is, by definition, published.
 
 	// The three parameters the spec declares, and no others. `level` is the
 	// filter GET /courses documents; limit and offset are bounded in the spec
@@ -118,10 +126,18 @@ func (h *Handler) listCourses(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) getCourseBySlug(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	if err := h.guard.Require(ctx, PermContentReadPublished); err != nil {
-		httpx.WriteProblem(w, r, err)
-		return
-	}
+	// No guard. Published curriculum is public: a visitor who has not signed up
+	// can browse the catalogue, open a lesson and work through its activities,
+	// and is told at the end that nothing was saved. See ADR-0025.
+	//
+	// What made that safe to do was taking the answer out of the content. The
+	// body these responses carry is redacted by
+	// contentcontract.RedactForLearner, so "public" means the questions and not
+	// the answer key, and grading stays on the server where it always was.
+	//
+	// The permission is still in the catalogue and `admin` still holds it — it
+	// guards the authoring surface below. What it no longer does is stand
+	// between a learner and material that is, by definition, published.
 
 	slug := chi.URLParam(r, "slug")
 	if slug == "" {
@@ -145,10 +161,18 @@ func (h *Handler) getCourseBySlug(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) getLessonByID(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	if err := h.guard.Require(ctx, PermContentReadPublished); err != nil {
-		httpx.WriteProblem(w, r, err)
-		return
-	}
+	// No guard. Published curriculum is public: a visitor who has not signed up
+	// can browse the catalogue, open a lesson and work through its activities,
+	// and is told at the end that nothing was saved. See ADR-0025.
+	//
+	// What made that safe to do was taking the answer out of the content. The
+	// body these responses carry is redacted by
+	// contentcontract.RedactForLearner, so "public" means the questions and not
+	// the answer key, and grading stays on the server where it always was.
+	//
+	// The permission is still in the catalogue and `admin` still holds it — it
+	// guards the authoring surface below. What it no longer does is stand
+	// between a learner and material that is, by definition, published.
 
 	idStr := chi.URLParam(r, "id")
 	lessonID, err := uuid.Parse(idStr)

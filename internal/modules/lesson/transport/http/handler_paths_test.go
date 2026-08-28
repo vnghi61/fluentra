@@ -66,6 +66,12 @@ func serve(router http.Handler, req *http.Request) *httptest.ResponseRecorder {
 // TestEveryEndpointIsBehindItsOwnPermission denies exactly one permission per
 // run and asserts the matching endpoint is the one that 403s. An endpoint wired
 // to the wrong permission fails here rather than in production.
+//
+// The three learner reads are deliberately absent. They were here, behind
+// content.read.published, until ADR-0025 made published curriculum public;
+// TestHandler_PublishedCurriculumIsPublic now asserts the opposite for them,
+// with a guard that denies everything. This table is the authoring surface,
+// which is the part that still has permissions to get wrong.
 func TestEveryEndpointIsBehindItsOwnPermission(t *testing.T) {
 	t.Parallel()
 
@@ -76,9 +82,6 @@ func TestEveryEndpointIsBehindItsOwnPermission(t *testing.T) {
 		path       string
 		body       any
 	}{
-		{lessonhttp.PermContentReadPublished, http.MethodGet, "/courses", nil},
-		{lessonhttp.PermContentReadPublished, http.MethodGet, "/courses/ielts-core", nil},
-		{lessonhttp.PermContentReadPublished, http.MethodGet, "/lessons/" + id, nil},
 		{
 			lessonhttp.PermContentCreate, http.MethodPost, "/admin/courses",
 			lessonhttp.CreateCourseRequest{Slug: "ielts-core", Title: "Course", CEFRFrom: "B1", CEFRTo: "B2"},

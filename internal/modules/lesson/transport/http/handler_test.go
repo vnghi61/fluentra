@@ -130,8 +130,34 @@ func TestHandler_FailClosedGuard(t *testing.T) {
 	}
 }
 
-func TestHandler_PermissionDenied(t *testing.T) {
-	handler, err := lessonhttp.NewHandler(&fakeLessonService{}, denyGuard{})
+// TestHandler_PublishedCurriculumIsPublic is the inverse of the test that used
+// to be here.
+//
+// It asserted that GET /courses answered 403 behind a denying guard. ADR-0025
+// makes published curriculum public — a visitor who has not signed up browses
+// the catalogue, opens a lesson and works through it — so the assertion is now
+// that these three reach the service with no actor in the context at all, and
+// with a guard that denies everything.
+//
+// The guard is denyGuard on purpose. Passing an allowGuard would prove only
+// that the handler works when permitted, which was never in doubt; denying
+// everything is what proves the handler no longer asks.
+func TestHandler_PublishedCurriculumIsPublic(t *testing.T) {
+	svc := &fakeLessonService{
+		courses: []service.CourseSummaryDTO{},
+		courseDetail: &service.CourseDetailDTO{
+			ID: uuid.New(), Slug: "ielts-foundation", Title: "IELTS Foundation",
+			CEFRFrom: "B1", CEFRTo: "B2", Status: "published",
+			Units: []service.CourseUnitDTO{},
+		},
+		lessonDetail: &service.LessonDetailDTO{
+			ID: uuid.New(), UnitID: uuid.New(), Position: 1,
+			Title: "Morning Routines", SkillFocus: "vocabulary", Status: "published",
+			Activities: []service.LessonActivityDTO{},
+		},
+	}
+
+	handler, err := lessonhttp.NewHandler(svc, denyGuard{})
 	if err != nil {
 		t.Fatalf("NewHandler: %v", err)
 	}
@@ -139,12 +165,19 @@ func TestHandler_PermissionDenied(t *testing.T) {
 	r := chi.NewRouter()
 	handler.Routes(r)
 
-	req := httptest.NewRequest(http.MethodGet, "/courses", nil)
-	rec := httptest.NewRecorder()
-	r.ServeHTTP(rec, req)
+	for _, path := range []string{
+		"/courses",
+		"/courses/ielts-foundation",
+		"/lessons/" + uuid.New().String(),
+	} {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		rec := httptest.NewRecorder()
+		r.ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusForbidden {
-		t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
+		if rec.Code != http.StatusOK {
+			t.Errorf("GET %s with no actor = %d, want %d — published content is public",
+				path, rec.Code, http.StatusOK)
+		}
 	}
 }
 

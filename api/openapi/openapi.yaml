@@ -2279,8 +2279,12 @@ paths:
       tags: [lesson]
       operationId: listCourses
       summary: List published courses with level filters.
-      description: Returns catalogue summaries for published courses.
-      x-permission: content.read.published
+      description: >-
+        Returns catalogue summaries for published courses. Public: a visitor who
+        has not signed in may browse the catalogue (ADR-0025). A bearer token is
+        accepted and, when present, is what lets the course detail carry the
+        caller's own progress.
+      security: []
       parameters:
         - name: level
           in: query
@@ -2339,7 +2343,9 @@ paths:
       description: >-
         Returns one published course with its ordered units and each unit's
         lesson summaries, for the learner catalogue and course landing page.
-      x-permission: content.read.published
+        Public (ADR-0025); a bearer token, when present, adds the caller's
+        progress and lesson unlocking.
+      security: []
       parameters:
         - name: slug
           in: path
@@ -2393,8 +2399,15 @@ paths:
       summary: Get lesson with activities and resolved content versions.
       description: >-
         Returns one lesson with its ordered activities and each activity's
-        resolved content version, ready for the lesson renderer.
-      x-permission: content.read.published
+        resolved content version, ready for the lesson renderer. Public
+        (ADR-0025).
+
+
+        Activity bodies are redacted: `correct_answer`, `acceptable` and
+        `correct_option_id` are removed before the response is built, so this
+        endpoint carries the questions and not the answer key. The answer is
+        returned by the grading operations, after the learner has submitted.
+      security: []
       parameters:
         - name: id
           in: path

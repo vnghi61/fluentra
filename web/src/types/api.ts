@@ -1008,7 +1008,7 @@ export interface paths {
         };
         /**
          * List published courses with level filters.
-         * @description Returns catalogue summaries for published courses.
+         * @description Returns catalogue summaries for published courses. Public: a visitor who has not signed in may browse the catalogue (ADR-0025). A bearer token is accepted and, when present, is what lets the course detail carry the caller's own progress.
          */
         get: operations["listCourses"];
         put?: never;
@@ -1028,7 +1028,7 @@ export interface paths {
         };
         /**
          * Get course detail with units and lesson summaries.
-         * @description Returns one published course with its ordered units and each unit's lesson summaries, for the learner catalogue and course landing page.
+         * @description Returns one published course with its ordered units and each unit's lesson summaries, for the learner catalogue and course landing page. Public (ADR-0025); a bearer token, when present, adds the caller's progress and lesson unlocking.
          */
         get: operations["getCourseBySlug"];
         put?: never;
@@ -1048,7 +1048,9 @@ export interface paths {
         };
         /**
          * Get lesson with activities and resolved content versions.
-         * @description Returns one lesson with its ordered activities and each activity's resolved content version, ready for the lesson renderer.
+         * @description Returns one lesson with its ordered activities and each activity's resolved content version, ready for the lesson renderer. Public (ADR-0025).
+         *
+         *     Activity bodies are redacted: `correct_answer`, `acceptable` and `correct_option_id` are removed before the response is built, so this endpoint carries the questions and not the answer key. The answer is returned by the grading operations, after the learner has submitted.
          */
         get: operations["getLessonById"];
         put?: never;
@@ -3123,6 +3125,11 @@ export interface components {
             max_score?: number | null;
             /** @example true */
             correct?: boolean | null;
+            /**
+             * @description What the learner should have said, revealed only now. The lesson body is redacted, so this is where the renderer learns the answer — after the submission, not before it. For a choice-based activity this is the option's id, which is what marks the right row.
+             * @example opt_habit
+             */
+            correct_answer?: string | null;
             /** @example Correct! Well done. */
             feedback?: string | null;
         };

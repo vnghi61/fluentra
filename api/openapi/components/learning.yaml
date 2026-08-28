@@ -189,6 +189,15 @@ SubmitAttemptResult:
       type: boolean
       nullable: true
       example: true
+    correct_answer:
+      type: string
+      description: >-
+        What the learner should have said, revealed only now. The lesson body is
+        redacted, so this is where the renderer learns the answer — after the
+        submission, not before it. For a choice-based activity this is the
+        option's id, which is what marks the right row.
+      nullable: true
+      example: opt_habit
     feedback:
       type: string
       nullable: true

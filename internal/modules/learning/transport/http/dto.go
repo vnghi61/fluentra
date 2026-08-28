@@ -25,12 +25,13 @@ type SubmitAttemptRequest struct {
 
 // SubmitAttemptResponse matches the OpenAPI schema for POST /attempts/{id}/submit (200 & 202).
 type SubmitAttemptResponse struct {
-	AttemptID uuid.UUID `json:"attempt_id"`
-	Status    string    `json:"status"`
-	Score     *int      `json:"score"`
-	MaxScore  *int      `json:"max_score"`
-	Correct   *bool     `json:"correct"`
-	Feedback  *string   `json:"feedback"`
+	AttemptID     uuid.UUID `json:"attempt_id"`
+	Status        string    `json:"status"`
+	Score         *int      `json:"score"`
+	MaxScore      *int      `json:"max_score"`
+	Correct       *bool     `json:"correct"`
+	Feedback      *string   `json:"feedback"`
+	CorrectAnswer *string   `json:"correct_answer,omitempty"`
 }
 
 // AttemptDetailResponse matches the OpenAPI schema for GET /attempts/{id}.
@@ -59,12 +60,13 @@ func toStartAttemptResponse(dto *service.StartAttemptDTO) StartAttemptResponse {
 
 func toSubmitAttemptResponse(dto *service.SubmitAttemptResultDTO) SubmitAttemptResponse {
 	return SubmitAttemptResponse{
-		AttemptID: dto.AttemptID,
-		Status:    dto.Status,
-		Score:     dto.Score,
-		MaxScore:  dto.MaxScore,
-		Correct:   dto.Correct,
-		Feedback:  dto.Feedback,
+		AttemptID:     dto.AttemptID,
+		Status:        dto.Status,
+		Score:         dto.Score,
+		MaxScore:      dto.MaxScore,
+		Correct:       dto.Correct,
+		Feedback:      dto.Feedback,
+		CorrectAnswer: dto.CorrectAnswer,
 	}
 }
 

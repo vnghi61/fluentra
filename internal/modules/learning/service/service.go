@@ -114,7 +114,10 @@ type SubmitAttemptResultDTO struct {
 	MaxScore  *int      `json:"max_score"`
 	Correct   *bool     `json:"correct"`
 	Feedback  *string   `json:"feedback"`
-	Async     bool      `json:"async"`
+	// What the learner should have said. Empty until they have submitted, which
+	// is the whole reason it travels here and not in the lesson body.
+	CorrectAnswer *string `json:"correct_answer,omitempty"`
+	Async         bool    `json:"async"`
 }
 
 // AttemptDetailDTO models the complete attempt view returned by GET /attempts/{id}.
@@ -508,7 +511,7 @@ func (s *Service) completeSynchronousGrading(
 	correct := gradeResult.Correct
 	feedback := gradeResult.Feedback
 
-	return &SubmitAttemptResultDTO{
+	result := &SubmitAttemptResultDTO{
 		AttemptID: attempt.ID,
 		Status:    domain.StatusGraded,
 		Score:     &score,
@@ -516,7 +519,12 @@ func (s *Service) completeSynchronousGrading(
 		Correct:   &correct,
 		Feedback:  &feedback,
 		Async:     false,
-	}, nil
+	}
+	if gradeResult.CorrectAnswer != "" {
+		answer := gradeResult.CorrectAnswer
+		result.CorrectAnswer = &answer
+	}
+	return result, nil
 }
 
 // executeRollupTx performs the atomic update of the attempt, progress scopes, and outbox event emissions.
