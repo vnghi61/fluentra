@@ -220,3 +220,114 @@ func TestPresignPut_RefusesUnconstrainedIntent(t *testing.T) {
 		t.Error("expected a missing size limit to be refused")
 	}
 }
+
+// newNoPostPolicyStore is the Cloudflare R2 shape: a store that cannot use S3
+// POST policies and must issue a presigned PUT instead.
+func newNoPostPolicyStore(t *testing.T) *storage.MinIOStore {
+	t.Helper()
+	_, client := newTestStore(t)
+	return storage.NewMinIOStoreNoPostPolicy(client)
+}
+
+// putPresigned performs the request a browser makes against a presigned PUT
+// URL: the file as the body, and whatever Content-Type the caller decides to
+// send. Returns the status and the store's own error body, which is where an
+// S3-compatible store puts the reason.
+func putPresigned(t *testing.T, url, contentType string, body []byte) (int, string) {
+	t.Helper()
+	request, err := http.NewRequest(http.MethodPut, url, bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
+	if contentType != "" {
+		request.Header.Set("Content-Type", contentType)
+	}
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		t.Fatalf("put: %v", err)
+	}
+	defer func() { _ = response.Body.Close() }()
+	payload, _ := io.ReadAll(response.Body)
+	return response.StatusCode, string(payload)
+}
+
+// TestPresignPut_NoPostPolicy_AcceptsTheHeaderItSigned is the regression for the
+// 403 every avatar upload against Cloudflare R2 returned.
+//
+// PresignedPutObject signed `host` and nothing else, and the browser then sent a
+// Content-Type the signature did not cover. This asserts the upload a real
+// client makes — file body, Content-Type header — is accepted end to end, and
+// that the object lands with the type it declared.
+func TestPresignPut_NoPostPolicy_AcceptsTheHeaderItSigned(t *testing.T) {
+	store := newNoPostPolicyStore(t)
+	ctx := context.Background()
+	key := "probe/presigned-put-conforming.png"
+
+	intent, err := store.PresignPut(ctx, testBucket, key, contentTypePNG, 1<<20, time.Minute)
+	if err != nil {
+		t.Fatalf("presign: %v", err)
+	}
+	if intent.Method != http.MethodPut {
+		t.Fatalf("method = %q, want PUT", intent.Method)
+	}
+	t.Cleanup(func() { _ = store.Delete(context.Background(), testBucket, key) })
+
+	status, body := putPresigned(t, intent.URL, intent.ContentType, pngBytes)
+	if status >= 400 {
+		t.Fatalf("a conforming presigned PUT was refused: status %d, body %s", status, body)
+	}
+
+	// The stored type has to match the bytes, or ConfirmAvatar rejects the
+	// object later for disagreeing with itself.
+	stat, err := store.VerifyUpload(ctx, testBucket, key, contentTypePNG, 1<<20)
+	if err != nil {
+		t.Fatalf("verify: %v", err)
+	}
+	if stat.SniffedContentType != contentTypePNG {
+		t.Errorf("sniffed = %q, want %q", stat.SniffedContentType, contentTypePNG)
+	}
+}
+
+// TestPresignPut_NoPostPolicy_BindsTheContentType is the half that proves the
+// header is genuinely signed rather than merely sent.
+//
+// A client that declares a different type than the intent was issued for must be
+// refused by the store. If this passes, the signature does not cover the header
+// and the fix is decorative.
+func TestPresignPut_NoPostPolicy_BindsTheContentType(t *testing.T) {
+	store := newNoPostPolicyStore(t)
+	ctx := context.Background()
+	key := "probe/presigned-put-swapped-type.png"
+
+	intent, err := store.PresignPut(ctx, testBucket, key, contentTypePNG, 1<<20, time.Minute)
+	if err != nil {
+		t.Fatalf("presign: %v", err)
+	}
+	t.Cleanup(func() { _ = store.Delete(context.Background(), testBucket, key) })
+
+	status, body := putPresigned(t, intent.URL, "application/octet-stream", pngBytes)
+	if status < 400 {
+		t.Fatalf("the store accepted a Content-Type the intent did not sign (status %d) —"+
+			" signing the header bought nothing. body: %s", status, body)
+	}
+}
+
+// TestPresignPut_NoPostPolicy_RefusesAMissingContentType keeps the other end
+// honest: omitting the header is as much a mismatch as swapping it, and a client
+// that "fixes" a 403 by dropping the header must not start succeeding.
+func TestPresignPut_NoPostPolicy_RefusesAMissingContentType(t *testing.T) {
+	store := newNoPostPolicyStore(t)
+	ctx := context.Background()
+	key := "probe/presigned-put-no-type.png"
+
+	intent, err := store.PresignPut(ctx, testBucket, key, contentTypePNG, 1<<20, time.Minute)
+	if err != nil {
+		t.Fatalf("presign: %v", err)
+	}
+	t.Cleanup(func() { _ = store.Delete(context.Background(), testBucket, key) })
+
+	status, body := putPresigned(t, intent.URL, "", pngBytes)
+	if status < 400 {
+		t.Fatalf("the store accepted a PUT with no Content-Type (status %d): %s", status, body)
+	}
+}

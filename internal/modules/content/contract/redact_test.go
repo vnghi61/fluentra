@@ -8,6 +8,13 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/content/contract"
 )
 
+// The authored field names this suite is about, named once.
+const (
+	keyCorrectAnswer   = "correct_answer"
+	keyAcceptable      = "acceptable"
+	keyCorrectOptionID = "correct_option_id"
+)
+
 func TestRedactForLearner_RemovesTheAnswer(t *testing.T) {
 	t.Parallel()
 
@@ -25,7 +32,7 @@ func TestRedactForLearner_RemovesTheAnswer(t *testing.T) {
 	if err := json.Unmarshal(redacted, &decoded); err != nil {
 		t.Fatalf("redacted body is not JSON: %v", err)
 	}
-	for _, key := range []string{"correct_option_id", "correct_answer", "acceptable"} {
+	for _, key := range []string{keyCorrectOptionID, keyCorrectAnswer, keyAcceptable} {
 		if _, present := decoded[key]; present {
 			t.Errorf("%q survived redaction", key)
 		}
@@ -53,7 +60,7 @@ func TestRedactForLearner_Recurses(t *testing.T) {
 
 	redacted := string(contract.RedactForLearner(body))
 
-	for _, leaked := range []string{"correct_answer", "alpha", "acceptable", "beta"} {
+	for _, leaked := range []string{keyCorrectAnswer, "alpha", keyAcceptable, "beta"} {
 		if strings.Contains(redacted, leaked) {
 			t.Errorf("%q survived redaction of a nested body: %s", leaked, redacted)
 		}
@@ -69,17 +76,28 @@ func TestRedactForLearner_Recurses(t *testing.T) {
 func TestRedactForLearner_SeededKinds(t *testing.T) {
 	t.Parallel()
 
+	const multipleChoice = `{
+		"prompt": "p",
+		"options": [{"id": "opt_habit", "text": "Habit"}],
+		"correct_answer": "habit",
+		"acceptable": ["habit", "opt_habit"],
+		"correct_option_id": "opt_habit"
+	}`
+
 	cases := map[string]json.RawMessage{
-		"vocab_multiple_choice": json.RawMessage(`{"prompt":"p","options":[{"id":"opt_habit","text":"Habit"}],"correct_answer":"habit","acceptable":["habit","opt_habit"],"correct_option_id":"opt_habit"}`),
-		"vocab_gap_fill":        json.RawMessage(`{"prompt":"p","correct_answer":"habit","acceptable":["habit","routine"]}`),
-		"vocab_flashcard":       json.RawMessage(`{"prompt":"p","correct_answer":"habit","acceptable":["habit","good"]}`),
+		"vocab_multiple_choice": json.RawMessage(multipleChoice),
+		"vocab_gap_fill": json.RawMessage(
+			`{"prompt":"p","correct_answer":"habit","acceptable":["habit","routine"]}`),
+		"vocab_flashcard": json.RawMessage(
+			`{"prompt":"p","correct_answer":"habit","acceptable":["habit","good"]}`),
 	}
 
 	for kind, body := range cases {
 		t.Run(kind, func(t *testing.T) {
 			t.Parallel()
 			redacted := string(contract.RedactForLearner(body))
-			for _, leaked := range []string{"correct_answer", "acceptable", "correct_option_id", "\"habit\"", "routine"} {
+			leaks := []string{keyCorrectAnswer, keyAcceptable, keyCorrectOptionID, `"habit"`, "routine"}
+			for _, leaked := range leaks {
 				if strings.Contains(redacted, leaked) {
 					t.Errorf("%s leaked %q: %s", kind, leaked, redacted)
 				}
@@ -114,10 +132,10 @@ func TestRedactVersionForLearner_DoesNotMutateTheOriginal(t *testing.T) {
 
 	redacted := contract.RedactVersionForLearner(original)
 
-	if !strings.Contains(string(original.Body), "correct_answer") {
+	if !strings.Contains(string(original.Body), keyCorrectAnswer) {
 		t.Error("the original body was mutated; the grader would read a redacted copy")
 	}
-	if strings.Contains(string(redacted.Body), "correct_answer") {
+	if strings.Contains(string(redacted.Body), keyCorrectAnswer) {
 		t.Errorf("the copy still carries the answer: %s", redacted.Body)
 	}
 	if contract.RedactVersionForLearner(nil) != nil {

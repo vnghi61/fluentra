@@ -20,6 +20,9 @@ import (
 const (
 	statusDraft     = "draft"
 	statusPublished = "published"
+
+	slugIELTSFoundation = "ielts-foundation"
+	pathIELTSFoundation = "/courses/" + slugIELTSFoundation
 )
 
 type allowGuard struct{}
@@ -146,8 +149,8 @@ func TestHandler_PublishedCurriculumIsPublic(t *testing.T) {
 	svc := &fakeLessonService{
 		courses: []service.CourseSummaryDTO{},
 		courseDetail: &service.CourseDetailDTO{
-			ID: uuid.New(), Slug: "ielts-foundation", Title: "IELTS Foundation",
-			CEFRFrom: "B1", CEFRTo: "B2", Status: "published",
+			ID: uuid.New(), Slug: slugIELTSFoundation, Title: "IELTS Foundation",
+			CEFRFrom: "B1", CEFRTo: "B2", Status: statusPublished,
 			Units: []service.CourseUnitDTO{},
 		},
 		lessonDetail: &service.LessonDetailDTO{
@@ -167,7 +170,7 @@ func TestHandler_PublishedCurriculumIsPublic(t *testing.T) {
 
 	for _, path := range []string{
 		"/courses",
-		"/courses/ielts-foundation",
+		pathIELTSFoundation,
 		"/lessons/" + uuid.New().String(),
 	} {
 		req := httptest.NewRequest(http.MethodGet, path, nil)
@@ -227,7 +230,7 @@ func TestHandler_GetCourseBySlug(t *testing.T) {
 	svc := &fakeLessonService{
 		courseDetail: &service.CourseDetailDTO{
 			ID:             courseID,
-			Slug:           "ielts-foundation",
+			Slug:           slugIELTSFoundation,
 			Title:          "IELTS Foundation",
 			CEFRFrom:       "B1",
 			CEFRTo:         "B2",
@@ -245,7 +248,7 @@ func TestHandler_GetCourseBySlug(t *testing.T) {
 	r := chi.NewRouter()
 	handler.Routes(r)
 
-	req := httptest.NewRequest(http.MethodGet, "/courses/ielts-foundation", nil)
+	req := httptest.NewRequest(http.MethodGet, pathIELTSFoundation, nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -257,7 +260,7 @@ func TestHandler_GetCourseBySlug(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("unmarshal response: %v", err)
 	}
-	if resp.ID != courseID || resp.Slug != "ielts-foundation" {
+	if resp.ID != courseID || resp.Slug != slugIELTSFoundation {
 		t.Errorf("unexpected course detail: %+v", resp)
 	}
 }

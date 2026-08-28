@@ -72,7 +72,8 @@ func TestPresignPut_R2SignsContentType(t *testing.T) {
 		t.Errorf("X-Amz-SignedHeaders omits content-type; R2 will reject the upload with 403.\nurl: %s", intent.URL)
 	}
 	if intent.ContentType != "image/png" {
-		t.Errorf("intent content type = %q, want image/png — the client must send exactly what was signed", intent.ContentType)
+		t.Errorf("intent content type = %q, want image/png — the client must send exactly what was signed",
+			intent.ContentType)
 	}
 }
 
