@@ -22,6 +22,36 @@ export type OAuthStart = components["schemas"]["OAuthStart"];
 export type ExportResponse = components["schemas"]["ExportResponse"];
 export type DeletionResponse = components["schemas"]["DeletionResponse"];
 
+/**
+ * Turns a failed direct-to-storage upload into an error that says why.
+ *
+ * The store is not our API: it answers with an S3 XML body, not a Problem
+ * Details document, so `apiFetch` never sees it and nothing here used to read
+ * it. The thrown message was the bare status, which is how an avatar upload
+ * against R2 could fail for a week reported only as "403" — and 403 covers a
+ * signature the store would not accept, a token without write permission, and
+ * a bucket that is not there, which are three different fixes.
+ *
+ * S3 and R2 both put a machine-readable `<Code>` in that body. Surfacing it
+ * costs one read and turns the next failure into a diagnosis.
+ */
+async function storageUploadError(response: Response): Promise<Error> {
+  let detail = "";
+  try {
+    const body = await response.text();
+    const code = /<Code>([^<]+)<\/Code>/.exec(body)?.[1];
+    const message = /<Message>([^<]+)<\/Message>/.exec(body)?.[1];
+    detail = [code, message].filter(Boolean).join(": ") || body.slice(0, 200);
+  } catch {
+    // A body that cannot be read leaves the status, which is what we had before.
+  }
+  return new Error(
+    detail
+      ? `Direct storage upload failed with status ${response.status} (${detail})`
+      : `Direct storage upload failed with status ${response.status}`,
+  );
+}
+
 export const accountApi = {
   /** Read caller's own account */
   async getMe(): Promise<UserProfile> {
@@ -107,24 +137,26 @@ export const accountApi = {
       });
 
       if (!response.ok) {
-        throw new Error(
-          `Direct storage upload failed with status ${response.status}`,
-        );
+        throw await storageUploadError(response);
       }
     } else {
-      // Default / direct PUT upload
+      // Direct PUT, for stores with no POST policy (Cloudflare R2).
+      //
+      // The header is `intent.content_type` and nothing else. The server signs
+      // that exact string into the URL, and a presigned request has to arrive
+      // carrying the headers the signature covers, byte for byte — falling back
+      // to `file.type` here would send a string the signature does not describe
+      // and earn a 403 from the store.
       const response = await fetch(uploadUrl, {
         method: "PUT",
         body: file,
         headers: {
-          "Content-Type": intent.content_type || file.type,
+          "Content-Type": intent.content_type,
         },
       });
 
       if (!response.ok) {
-        throw new Error(
-          `Direct storage upload failed with status ${response.status}`,
-        );
+        throw await storageUploadError(response);
       }
     }
   },

@@ -68,6 +68,12 @@ type workerConfig struct {
 		SecretKey string `koanf:"secret_key"`
 		Region    string `koanf:"region"`
 		UseSSL    bool   `koanf:"use_ssl"`
+		// Read here as well as in cmd/api, because the worker builds the same
+		// user module and hands it the same store. Hardcoding the POST-policy
+		// constructor here meant the two binaries disagreed about what the
+		// object store can do the moment s3.use_post_policy was turned off for
+		// Cloudflare R2.
+		UsePostPolicy bool `koanf:"use_post_policy"`
 	} `koanf:"s3"`
 	Worker struct {
 		Queues        string        `koanf:"queues"`
@@ -138,6 +144,7 @@ func configOptions() config.Options {
 			"s3.secret_key":                   "minioadmin",
 			"s3.region":                       "us-east-1",
 			"s3.use_ssl":                      false,
+			"s3.use_post_policy":              true,
 			"smtp.host":                       "localhost",
 			"smtp.port":                       1025,
 			"smtp.dev_mode":                   true,
@@ -247,7 +254,10 @@ func run(ctx context.Context) error {
 		pool.Close()
 		return fmt.Errorf("create storage client: %w", err)
 	}
-	storageStore := storage.NewMinIOStore(storageClient)
+	var storageStore storage.Store = storage.NewMinIOStore(storageClient)
+	if !cfg.Storage.UsePostPolicy {
+		storageStore = storage.NewMinIOStoreNoPostPolicy(storageClient)
+	}
 
 	// Event bus, module consumers, and the outbox publisher that feeds them.
 	//

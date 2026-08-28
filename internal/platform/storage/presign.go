@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/minio/minio-go/v7"
@@ -58,7 +59,25 @@ func (s *MinIOStore) PresignPut(
 	// Stores that do not support S3 POST policy (Cloudflare R2) receive a
 	// presigned PUT URL instead; MinIO and AWS S3 use the POST policy below.
 	if !s.usePostPolicy {
-		uploadURL, err := s.client.PresignedPutObject(ctx, bucket, key, expiry)
+		// Content-Type is signed into the URL rather than left off it.
+		//
+		// PresignedPutObject signs only `host`, and a browser that then sends
+		// Content-Type is sending a header the signature does not cover. AWS S3
+		// ignores such a header; R2 refuses the request with 403, which is how
+		// every avatar upload against R2 failed. Dropping the header instead
+		// would move the failure rather than fix it: the object would land as
+		// application/octet-stream, and VerifyUpload rejects an object whose
+		// stored type disagrees with its bytes.
+		//
+		// Signing it is the better half of the trade anyway. The POST policy on
+		// MinIO makes the store enforce the declared type; signing the header
+		// here makes R2 enforce it too, so the client can no longer swap the
+		// type after the intent was issued. It cannot lie about the *bytes* —
+		// that is still VerifyUpload's job, on both paths.
+		extra := http.Header{}
+		extra.Set("Content-Type", contentType)
+		uploadURL, err := s.client.PresignHeader(
+			ctx, http.MethodPut, bucket, key, expiry, nil, extra)
 		if err != nil {
 			return UploadIntent{}, fmt.Errorf("presign put (no post policy): %w", err)
 		}
