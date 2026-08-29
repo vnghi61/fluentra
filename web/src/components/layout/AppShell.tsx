@@ -42,6 +42,8 @@ export interface AppShellProps {
    * component may not reach into `api`.
    */
   banner?: React.ReactNode;
+  /** The learner's own name, for the account menu's greeting. */
+  displayName?: string | undefined;
 }
 
 /**
@@ -98,6 +100,7 @@ export const AppShell: React.FC<AppShellProps> = ({
   chrome = true,
   controls,
   banner,
+  displayName,
 }) => {
   const { t } = useTranslation();
   const signedIn = status === "authenticated";
@@ -111,7 +114,11 @@ export const AppShell: React.FC<AppShellProps> = ({
       <React.Suspense
         fallback={<div className="h-11 w-11" aria-hidden="true" />}
       >
-        <AccountMenu role={user.role} onLogout={onLogout} />
+        <AccountMenu
+          role={user.role}
+          displayName={displayName}
+          onLogout={onLogout}
+        />
       </React.Suspense>
     ) : (
       <div className="flex items-center gap-2">

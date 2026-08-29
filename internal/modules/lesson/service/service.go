@@ -31,6 +31,19 @@ const (
 	cacheVersion = 1
 )
 
+// CompletedLessons reports which of a learner's lessons are finished.
+//
+// Consumer-defined, like UnlockChecker beside it: lesson says what it needs and
+// the composition root supplies learning's implementation, so no module-boundary
+// edge is created for a read this module could not perform itself.
+//
+// A set rather than a query per lesson, for the reason UnlockChecker is batched:
+// a course tree renders every lesson at once, and one call per row is the N+1
+// this interface exists to avoid.
+type CompletedLessons interface {
+	CompletedLessonIDs(ctx context.Context, userID uuid.UUID) (map[uuid.UUID]bool, error)
+}
+
 // UnlockChecker answers whether a learner has met a lesson's prerequisites.
 // learning implements it; lesson only calls it, so the interface is declared
 // here rather than imported, and lesson does not depend on learning (Trap 2).
@@ -104,28 +117,30 @@ type LessonCaches struct {
 
 // Deps carries dependencies for constructing the lesson Service.
 type Deps struct {
-	Pool     *pgxpool.Pool
-	Repo     Repository
-	Content  contentcontract.Reader
-	Unlocker UnlockChecker
-	Events   EventWriter
-	Caches   LessonCaches
-	Clock    clock.Clock
-	NewID    func() uuid.UUID
-	Env      string
+	Pool      *pgxpool.Pool
+	Repo      Repository
+	Content   contentcontract.Reader
+	Unlocker  UnlockChecker
+	Completed CompletedLessons
+	Events    EventWriter
+	Caches    LessonCaches
+	Clock     clock.Clock
+	NewID     func() uuid.UUID
+	Env       string
 }
 
 // Service orchestrates curriculum and lesson use cases.
 type Service struct {
-	pool     *pgxpool.Pool
-	repo     Repository
-	content  contentcontract.Reader
-	unlocker UnlockChecker
-	events   EventWriter
-	caches   LessonCaches
-	clock    clock.Clock
-	newID    func() uuid.UUID
-	env      string
+	pool      *pgxpool.Pool
+	repo      Repository
+	content   contentcontract.Reader
+	unlocker  UnlockChecker
+	completed CompletedLessons
+	events    EventWriter
+	caches    LessonCaches
+	clock     clock.Clock
+	newID     func() uuid.UUID
+	env       string
 }
 
 // New creates a new lesson Service.
@@ -144,15 +159,16 @@ func New(deps Deps) *Service {
 	}
 
 	return &Service{
-		pool:     deps.Pool,
-		repo:     deps.Repo,
-		content:  deps.Content,
-		unlocker: deps.Unlocker,
-		events:   deps.Events,
-		caches:   deps.Caches,
-		clock:    clk,
-		newID:    idGen,
-		env:      env,
+		pool:      deps.Pool,
+		repo:      deps.Repo,
+		content:   deps.Content,
+		unlocker:  deps.Unlocker,
+		completed: deps.Completed,
+		events:    deps.Events,
+		caches:    deps.Caches,
+		clock:     clk,
+		newID:     idGen,
+		env:       env,
 	}
 }
 
@@ -179,6 +195,9 @@ type LessonSummaryDTO struct {
 	Status           string    `json:"status"`
 	Locked           bool      `json:"locked"`
 	LockReason       *string   `json:"lock_reason"`
+	// Completed is false for a signed-out visitor, which is correct: they have
+	// no progress, not unknown progress.
+	Completed bool `json:"completed"`
 }
 
 // CourseUnitDTO matches OpenAPI CourseUnit schema.
@@ -437,6 +456,8 @@ func (s *Service) GetCourseDetail(ctx context.Context, slug string, userID uuid.
 		}
 	}
 
+	completed := s.completedLessons(ctx, userID)
+
 	unitDTOs := make([]CourseUnitDTO, len(tree.Units))
 	for i, u := range tree.Units {
 		lessonDTOs := make([]LessonSummaryDTO, len(u.Lessons))
@@ -463,6 +484,7 @@ func (s *Service) GetCourseDetail(ctx context.Context, slug string, userID uuid.
 				Status:           l.Status,
 				Locked:           locked,
 				LockReason:       lockReason,
+				Completed:        completed[l.ID],
 			}
 		}
 		unitDTOs[i] = CourseUnitDTO{
@@ -486,6 +508,31 @@ func (s *Service) GetCourseDetail(ctx context.Context, slug string, userID uuid.
 		EstimatedHours: tree.Course.EstimatedHours,
 		Units:          unitDTOs,
 	}, nil
+}
+
+// completedLessons is which of this learner's lessons are finished, or nil.
+//
+// The catalogue has always had somewhere to show this — LessonRow draws a tick
+// and a "Completed" badge — and never had the data: UnitList took a
+// `completedLessonIds` prop that no caller ever passed, so every lesson
+// rendered as unstarted no matter how many a learner had done.
+//
+// Nil on every failure, and deliberately not an error. The catalogue is worth
+// serving without the ticks; refusing to render a course because a progress
+// read failed would be a worse answer than an incomplete one. A signed-out
+// visitor takes the same path and gets the same nil, which is correct — they
+// have no progress rather than unknown progress.
+func (s *Service) completedLessons(ctx context.Context, userID uuid.UUID) map[uuid.UUID]bool {
+	if s.completed == nil || userID == uuid.Nil {
+		return nil
+	}
+	completed, err := s.completed.CompletedLessonIDs(ctx, userID)
+	if err != nil {
+		slog.WarnContext(ctx, "could not read lesson progress; catalogue renders without completion marks",
+			"module", "lesson", "op", "GetCourseDetail", "error", err)
+		return nil
+	}
+	return completed
 }
 
 func (s *Service) loadCourseTree(ctx context.Context, treeKey, slug string) (*CourseTreeData, error) {

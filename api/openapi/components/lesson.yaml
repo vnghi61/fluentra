@@ -67,7 +67,7 @@ LessonActivity:
 
 LessonSummary:
   type: object
-  required: [id, unit_id, position, title, skill_focus, estimated_minutes, status, locked]
+  required: [id, unit_id, position, title, skill_focus, estimated_minutes, status, locked, completed]
   properties:
     id:
       type: string
@@ -94,6 +94,12 @@ LessonSummary:
     locked:
       type: boolean
       example: false
+    completed:
+      type: boolean
+      description: >-
+        Whether this learner has finished the lesson. False for a signed-out
+        visitor, who has no progress rather than unknown progress.
+      example: true
     lock_reason:
       type: string
       nullable: true

@@ -84,6 +84,7 @@ describe("LearnPage (P10.2)", () => {
             estimated_minutes: 15,
             status: "published",
             locked: false,
+            completed: false,
             lock_reason: null,
           },
           {
@@ -95,6 +96,7 @@ describe("LearnPage (P10.2)", () => {
             estimated_minutes: 20,
             status: "published",
             locked: true,
+            completed: false,
             lock_reason: "Complete Academic Word List - Topic 1 first",
           },
         ],
@@ -183,5 +185,44 @@ describe("LearnPage (P10.2)", () => {
     expect(
       screen.getByRole("button", { name: /Bắt đầu bài học/i }),
     ).toBeInTheDocument();
+  });
+
+  /**
+   * A finished lesson looks finished.
+   *
+   * LessonRow has drawn a tick, a "Completed" badge and a "Review" button since
+   * WP10, and none of them had ever appeared: UnitList read completion from a
+   * `completedLessonIds` prop that no caller passed, so the default empty set
+   * made every lesson unstarted forever. The catalogue now reads
+   * `lesson.completed` off the response, which is why this can be asserted at
+   * all.
+   */
+  it("marks a finished lesson, and offers to review it rather than start it", async () => {
+    server.use(
+      http.get("/api/v1/courses", () => HttpResponse.json(mockCourseList)),
+      http.get("/api/v1/courses/ielts-foundation", () =>
+        HttpResponse.json({
+          ...mockCourseDetail,
+          // The first lesson of each unit is done; the rest are not. Mapped
+          // rather than indexed because noUncheckedIndexedAccess is on, and a
+          // fixture is not the place to start asserting non-null.
+          units: mockCourseDetail.units.map((unit) => ({
+            ...unit,
+            lessons: unit.lessons.map((lesson, index) => ({
+              ...lesson,
+              completed: index === 0,
+            })),
+          })),
+        }),
+      ),
+    );
+
+    await renderLearn();
+
+    expect(await screen.findByText("Completed")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Review/i })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Start Lesson/i }),
+    ).not.toBeInTheDocument();
   });
 });

@@ -2933,6 +2933,11 @@ export interface components {
             status: "draft" | "published" | "archived";
             /** @example false */
             locked: boolean;
+            /**
+             * @description Whether this learner has finished the lesson. False for a signed-out visitor, who has no progress rather than unknown progress.
+             * @example true
+             */
+            completed: boolean;
             /** @example Complete Unit 1 Lesson 2 first */
             lock_reason?: string | null;
         };

@@ -199,12 +199,13 @@ func newIdentity(deps identityDeps) *identity {
 	})
 
 	assembled.lesson = lesson.New(lesson.Deps{
-		Pool:     deps.Pool,
-		Caches:   newLessonCaches(deps.Redis),
-		Guard:    lazyGuard{of: assembled},
-		Content:  assembled.content.Reader(),
-		Unlocker: lazyUnlocker{of: assembled},
-		Env:      deps.Env,
+		Pool:      deps.Pool,
+		Caches:    newLessonCaches(deps.Redis),
+		Guard:     lazyGuard{of: assembled},
+		Content:   assembled.content.Reader(),
+		Unlocker:  lazyUnlocker{of: assembled},
+		Completed: lazyLessonProgress{of: assembled},
+		Env:       deps.Env,
 	})
 
 	assembled.srs = srs.New(srs.Deps{
@@ -381,6 +382,41 @@ func (u lazyUnlocker) IsUnlocked(
 	}
 	return u.of.learning.UnlockChecker().IsUnlocked(ctx, userID, lessonIDs)
 }
+
+// lazyLessonProgress adapts learning's ProgressReader to the set of finished
+// lessons the catalogue needs, resolved at call time for the same reason
+// lazyUnlocker is.
+//
+// The fold lives here rather than in lesson because the scope enum and the
+// Progress row belong to learning, and lesson is not permitted to know them.
+// What crosses the seam is a set of ids, which is all the catalogue renders.
+type lazyLessonProgress struct{ of *identity }
+
+var _ lessonservice.CompletedLessons = lazyLessonProgress{}
+
+func (p lazyLessonProgress) CompletedLessonIDs(
+	ctx context.Context, userID uuid.UUID,
+) (map[uuid.UUID]bool, error) {
+	if p.of.learning == nil {
+		return nil, fmt.Errorf("learning module is not assembled")
+	}
+	rows, err := p.of.learning.ProgressReader().ProgressOf(ctx, userID, learningcontract.ScopeLesson)
+	if err != nil {
+		return nil, err
+	}
+	completed := make(map[uuid.UUID]bool, len(rows))
+	for _, row := range rows {
+		if row.Status == learningStatusCompleted {
+			completed[row.ScopeID] = true
+		}
+	}
+	return completed, nil
+}
+
+// learningStatusCompleted is the one progress status the catalogue cares about.
+// learning stores it as a string; comparing to a literal in three places is how
+// a typo becomes a lesson that never shows a tick.
+const learningStatusCompleted = "completed"
 
 // rateLimiterAdapter bridges platform/cache's limiter to the one httpx declares.
 //

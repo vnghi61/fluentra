@@ -14,6 +14,8 @@ import {
 
 export interface AccountMenuProps {
   role: string;
+  /** The learner's own name, when the profile has loaded. */
+  displayName?: string | undefined;
   onLogout?: (() => void) | undefined;
 }
 
@@ -29,6 +31,7 @@ export interface AccountMenuProps {
  */
 export default function AccountMenu({
   role,
+  displayName,
   onLogout,
 }: AccountMenuProps): React.JSX.Element {
   const { t } = useTranslation();
@@ -48,9 +51,29 @@ export default function AccountMenu({
         <UserRound className="h-5 w-5" aria-hidden="true" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        {/*
+          A greeting, not a role dump.
+
+          This read `Role: USER`, which tells a learner something true and
+          useless: every learner is a user, so the line was noise for everyone
+          except the handful of administrators. Their own name is what belongs
+          at the top of their own menu.
+
+          The role still shows for an administrator, because for them it is a
+          real distinction and a reminder of which account they are in.
+        */}
         <DropdownMenuLabel>
-          Role:{" "}
-          <span className="font-semibold text-text uppercase">{role}</span>
+          <span className="text-text-muted font-normal">
+            {t("nav.greeting", "Hello")}
+          </span>{" "}
+          <span className="font-semibold text-text">
+            {displayName?.trim() || t("nav.greetingFallback", "there")}
+          </span>
+          {role === "admin" && (
+            <span className="ml-2 rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold uppercase text-primary-accent">
+              {role}
+            </span>
+          )}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>

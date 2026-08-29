@@ -38,6 +38,7 @@ type LessonSummaryResponse struct {
 	Status           string    `json:"status"`
 	Locked           bool      `json:"locked"`
 	LockReason       *string   `json:"lock_reason"`
+	Completed        bool      `json:"completed"`
 }
 
 // CourseUnitResponse matches OpenAPI CourseUnit.
@@ -144,6 +145,7 @@ func toCourseDetailResponse(dto *service.CourseDetailDTO) CourseDetailResponse {
 				Status:           l.Status,
 				Locked:           l.Locked,
 				LockReason:       l.LockReason,
+				Completed:        l.Completed,
 			}
 		}
 		units[i] = CourseUnitResponse{
