@@ -30,6 +30,22 @@ HTTP/1.1 403 Forbidden
 That is a bucket setting, not application configuration. No environment
 variable and no code change makes an upload work without it.
 
+## The other R2 setting: the region
+
+`S3_REGION` must be one of R2's own names — `auto`, or `wnam`, `enam`, `weur`,
+`eeur`, `apac`, `oc`. An AWS region name is refused.
+
+It is worth calling out because of *when* it fails. The region appears only in
+the presigned URL's credential scope, so a deployment with `ap-southeast-1`
+starts cleanly, serves every request, and issues URLs that look perfectly
+well-formed. R2 checks the signature and the CORS policy first and the region
+last, so this is the error that surfaces only after everything else has been
+fixed — as a cross-origin `400 InvalidRegionName` in a response the page is not
+allowed to read.
+
+`storage.ValidateRegion` now refuses that configuration at boot, in both the API
+and the worker, so it cannot reach a learner again.
+
 ## Contents
 
 - `cors.json` — the policy the avatar bucket needs
@@ -66,11 +82,37 @@ spend one.
 depends on it today; it is the one header a resumable or verified upload would
 want, and it costs nothing.
 
-## What this does not cover
+## The other buckets
 
-`fluentra-media` and `fluentra-exports` are read through presigned `GET` URLs,
-which *are* simple requests when the browser merely navigates to them. If either
-ever gains a browser-side upload or an `XHR` read, it needs a policy too.
+CORS is a rule about **`fetch` and `XHR`**, not about the browser touching a URL.
+Navigating to a link, loading `<img src>`, playing `new Audio(url)` — none of
+those are cross-origin requests in the CORS sense, and none need a policy. What
+needs one is script reading a cross-origin response.
+
+Measured against how the code actually uses each bucket today:
+
+| Bucket | Needs CORS | Why |
+|---|---|---|
+| `fluentra-avatars` | **Yes** | The browser `PUT`s the file itself, through `fetch`. A `PUT` is never a simple request, so it is always preflighted. |
+| `fluentra-media` | No | Nothing reads it yet. When it does, `FlashcardFront` plays pronunciation with `new Audio(url)` — a media element load, not a fetch. |
+| `fluentra-exports` | No | `ExportWorker` presigns a `GET` and **emails** the link. The learner clicks it and the browser navigates; no script reads the response. |
+
+Displaying an avatar needs no policy either — `<img src>` is a plain image load,
+and the upload modal previews from `URL.createObjectURL(file)`, which never
+leaves the machine. Only the upload itself is cross-origin script traffic.
+
+Two things would change this, and both are on the roadmap rather than in the
+tree:
+
+- **Waveform rendering.** Drawing an audio waveform means *fetching* the bytes,
+  not playing them. A wavesurfer-style reader over `fluentra-media` needs a
+  policy allowing `GET` from the site.
+- **In-app export download.** If the archive stops arriving by email and becomes
+  a button that fetches into a blob, `fluentra-exports` needs one too.
+
+Neither is speculative future-proofing worth doing now: an unused CORS policy is
+a grant nobody is using, and the `curl` above tells you the moment one is
+missing.
 
 ---
 

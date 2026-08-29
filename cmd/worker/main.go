@@ -244,19 +244,11 @@ func run(ctx context.Context) error {
 	redisClient := redis.NewClient(redisOpt)
 	defer func() { _ = redisClient.Close() }()
 
-	storageClient, err := minio.New(storageHost(cfg.Storage.Endpoint), &minio.Options{
-		Creds:  credentials.NewStaticV4(cfg.Storage.AccessKey, cfg.Storage.SecretKey, ""),
-		Secure: cfg.Storage.UseSSL,
-		Region: cfg.Storage.Region,
-	})
+	storageStore, err := newStorageStore(cfg)
 	if err != nil {
 		_ = redisClient.Close()
 		pool.Close()
-		return fmt.Errorf("create storage client: %w", err)
-	}
-	var storageStore storage.Store = storage.NewMinIOStore(storageClient)
-	if !cfg.Storage.UsePostPolicy {
-		storageStore = storage.NewMinIOStoreNoPostPolicy(storageClient)
+		return err
 	}
 
 	// Event bus, module consumers, and the outbox publisher that feeds them.
@@ -564,6 +556,36 @@ func startRiverWorker(
 // registerJobKinds is where a module's job handlers are counted.
 func registerJobKinds(_ *river.Workers) int {
 	return 1
+}
+
+// newStorageStore validates the storage configuration and builds the facade.
+//
+// Extracted from run because the region check pushed that function past the
+// complexity gate — and because the three steps belong together: what the
+// endpoint is, whether the region is one it accepts, and which presign shape it
+// can serve.
+func newStorageStore(cfg workerConfig) (storage.Store, error) {
+	// Refused at boot rather than at the learner's upload. An R2 endpoint with a
+	// region it does not accept starts cleanly and issues presigned URLs that
+	// look right; the failure appears only when the browser spends one, as a
+	// cross-origin 400 the page cannot read.
+	if err := storage.ValidateRegion(cfg.Storage.Endpoint, cfg.Storage.Region); err != nil {
+		return nil, err
+	}
+
+	client, err := minio.New(storageHost(cfg.Storage.Endpoint), &minio.Options{
+		Creds:  credentials.NewStaticV4(cfg.Storage.AccessKey, cfg.Storage.SecretKey, ""),
+		Secure: cfg.Storage.UseSSL,
+		Region: cfg.Storage.Region,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create storage client: %w", err)
+	}
+
+	if !cfg.Storage.UsePostPolicy {
+		return storage.NewMinIOStoreNoPostPolicy(client), nil
+	}
+	return storage.NewMinIOStore(client), nil
 }
 
 func storageHost(endpoint string) string {
