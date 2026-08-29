@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -126,7 +127,7 @@ func seedCourseData(ctx context.Context, pool *pgxpool.Pool, adminID uuid.UUID, 
 					return fmt.Errorf("ensure content version for %s: %w", actSlug, err)
 				}
 
-				configJSON, err := json.Marshal(act.Config)
+				configJSON, err := json.Marshal(withLearnerGloss(act.Config))
 				if err != nil {
 					return fmt.Errorf("marshal act config: %w", err)
 				}
@@ -223,6 +224,44 @@ func ensureContentItemAndVersion(
 	}
 
 	return versionID, nil
+}
+
+// withLearnerGloss adds the Vietnamese meaning to an activity that names a word.
+//
+// The flashcard in the runner showed an English definition and nothing else, so
+// a learner reading the interface in Vietnamese was asked to define an unknown
+// word with more unknown words. The gloss exists — every one of these words is
+// in the 200-sense vocabulary seed — it just never reached the activity.
+//
+// Looked up rather than authored beside each activity, because the same text
+// written twice is the same text drifting: the dictionary is the one place a
+// word's meaning belongs, and eight hand-copied translations would be eight
+// chances to disagree with it.
+//
+// Returns the config unchanged when the activity names no word, when the word is
+// not in the dictionary, or when the dictionary has no Vietnamese for it.
+func withLearnerGloss(config map[string]any) map[string]any {
+	target, ok := config[cfgTargetWord].(string)
+	if !ok || strings.TrimSpace(target) == "" {
+		return config
+	}
+	if _, already := config[bodyKeyDefinitionVI]; already {
+		return config
+	}
+
+	lemma := strings.ToLower(strings.TrimSpace(target))
+	for _, sense := range wordSenseSeedData {
+		if strings.ToLower(sense.Lemma) != lemma || sense.DefinitionVI == "" {
+			continue
+		}
+		enriched := make(map[string]any, len(config)+1)
+		for key, value := range config {
+			enriched[key] = value
+		}
+		enriched[bodyKeyDefinitionVI] = sense.DefinitionVI
+		return enriched
+	}
+	return config
 }
 
 func seedVocabularyWords(

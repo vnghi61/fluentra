@@ -3,6 +3,7 @@ import { ArrowRight, Check, RotateCw, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
+import { FlipCard } from "@/components/ui/flip-card";
 import { cn } from "@/lib/utils";
 
 export interface ExerciseFlashcardProps {
@@ -10,6 +11,8 @@ export interface ExerciseFlashcardProps {
   targetWord?: string;
   ipa?: string;
   definition?: string;
+  /** The gloss in the learner's own language, when the content carries one. */
+  definitionVi?: string;
   exampleSentence?: string;
   isLoading?: boolean;
   isSubmitted: boolean;
@@ -32,6 +35,7 @@ export const ExerciseFlashcard: React.FC<ExerciseFlashcardProps> = ({
   targetWord,
   ipa,
   definition,
+  definitionVi,
   exampleSentence,
   isLoading = false,
   isSubmitted,
@@ -39,7 +43,19 @@ export const ExerciseFlashcard: React.FC<ExerciseFlashcardProps> = ({
   onSubmit,
   onContinue,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+
+  // Both faces carry the same box so the card keeps its shape mid-turn.
+  const faceClass =
+    "min-h-[280px] p-8 rounded-3xl border-2 flex flex-col items-center justify-center text-center shadow-lg select-none h-full";
+
+  // `startsWith`, not equality: i18next resolves to "vi" here but a browser or a
+  // stored preference can hand back "vi-VN".
+  const prefersVietnamese = i18n.language.toLowerCase().startsWith("vi");
+  const gloss = definitionVi?.trim() ? definitionVi : undefined;
+  const leadDefinition = prefersVietnamese && gloss ? gloss : definition;
+  const secondDefinition =
+    prefersVietnamese && gloss ? definition : (gloss ?? undefined);
   const [isFlipped, setIsFlipped] = useState(false);
 
   useEffect(() => {
@@ -66,52 +82,61 @@ export const ExerciseFlashcard: React.FC<ExerciseFlashcardProps> = ({
       </div>
 
       {/* Interactive Flashcard with Flip Animation */}
-      <div
-        role="button"
-        tabIndex={0}
-        aria-label={t("runner.flashcard", "Flashcard")}
+      <FlipCard
+        flipped={isFlipped}
         onClick={() => setIsFlipped((prev) => !prev)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            setIsFlipped((prev) => !prev);
-          }
-        }}
-        className={cn(
-          "min-h-[280px] p-8 rounded-3xl border-2 cursor-pointer transition-all duration-300 flex flex-col items-center justify-center text-center shadow-lg select-none",
-          isFlipped
-            ? "border-primary/50 bg-gradient-to-br from-surface-card to-primary/10"
-            : "border-border bg-surface-card hover:border-primary/40",
-        )}
-      >
-        {!isFlipped ? (
-          <div className="space-y-4 animate-in fade-in">
-            <h3 className="text-3xl md:text-4xl font-extrabold text-text tracking-tight">
-              {targetWord}
-            </h3>
-            {ipa && (
-              <p className="font-mono text-sm text-primary-accent tracking-wide">
-                {ipa}
+        label={t("runner.flashcard", "Flashcard")}
+        className="cursor-pointer"
+        front={
+          <div className={cn(faceClass, "border-border bg-surface-card")}>
+            <div className="space-y-4">
+              <h3 className="text-3xl md:text-4xl font-extrabold text-text tracking-tight">
+                {targetWord}
+              </h3>
+              {ipa && (
+                <p className="font-mono text-sm text-primary-accent tracking-wide">
+                  {ipa}
+                </p>
+              )}
+              <p className="text-xs text-text-muted mt-6 flex items-center justify-center gap-1.5 font-medium">
+                <RotateCw className="h-3.5 w-3.5" aria-hidden="true" />
+                {t("runner.flipPrompt", "Press Space or tap to flip card")}
               </p>
-            )}
-            <p className="text-xs text-text-muted mt-6 flex items-center justify-center gap-1.5 font-medium">
-              <RotateCw className="h-3.5 w-3.5" aria-hidden="true" />
-              {t("runner.flipPrompt", "Press Space or tap to flip card")}
-            </p>
+            </div>
           </div>
-        ) : (
-          <div className="space-y-4 animate-in fade-in">
-            <p className="text-xl md:text-2xl font-semibold text-text">
-              {definition}
-            </p>
-            {exampleSentence && (
-              <p className="text-sm text-text-muted italic border-t border-border-subtle pt-3 max-w-md">
-                &ldquo;{exampleSentence}&rdquo;
+        }
+        back={
+          <div
+            className={cn(
+              faceClass,
+              "border-primary/50 bg-gradient-to-br from-surface-card to-primary/10",
+            )}
+          >
+            <div className="space-y-4">
+              {/*
+                The learner's own language leads when they have chosen it.
+
+                An English definition is the thing being learned, so it is never
+                dropped — but a learner reading the interface in Vietnamese is
+                being asked to define an unknown word with more unknown words,
+                and the gloss they can already read is what makes the card land.
+                When the interface is in English the order is simply reversed.
+              */}
+              <p className="text-xl md:text-2xl font-semibold text-text">
+                {leadDefinition}
               </p>
-            )}
+              {secondDefinition && (
+                <p className="text-base text-text-muted">{secondDefinition}</p>
+              )}
+              {exampleSentence && (
+                <p className="text-sm text-text-muted italic border-t border-border-subtle pt-3 max-w-md">
+                  &ldquo;{exampleSentence}&rdquo;
+                </p>
+              )}
+            </div>
           </div>
-        )}
-      </div>
+        }
+      />
 
       {isSubmitted && (
         <div

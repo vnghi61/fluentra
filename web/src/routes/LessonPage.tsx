@@ -53,6 +53,7 @@ interface FlashcardConfig {
   target_word?: string;
   ipa?: string;
   definition?: string;
+  definition_vi?: string;
   example_sentence?: string;
 }
 
@@ -427,6 +428,9 @@ export function LessonPage(): React.JSX.Element {
             targetWord={fcConfig.target_word ?? ""}
             ipa={fcConfig.ipa ?? ""}
             definition={fcConfig.definition ?? ""}
+            {...(fcConfig.definition_vi !== undefined && {
+              definitionVi: fcConfig.definition_vi,
+            })}
             exampleSentence={fcConfig.example_sentence ?? ""}
             isLoading={isSubmitting || isAttemptStarting}
             isSubmitted={isSubmitted}

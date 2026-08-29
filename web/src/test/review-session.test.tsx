@@ -41,6 +41,20 @@ async function renderReview() {
   return render(<RouterProvider router={router} />);
 }
 
+/**
+ * The card's word, asserted across both faces.
+ *
+ * FlipCard lays the front and the back out together and rotates the container —
+ * that is what makes the turn continuous rather than a cross-fade between two
+ * heights — so the word is in the DOM twice, once per face. The face pointing
+ * away is `aria-hidden`, which is what matters to a screen reader; to a text
+ * query both are simply there.
+ */
+async function expectWordOnCard(word: string): Promise<void> {
+  const shown = await screen.findAllByText(word);
+  expect(shown.length).toBeGreaterThan(0);
+}
+
 describe("ReviewPage SRS Session (P10.4)", () => {
   // The card carries its content, because GET /reviews/session resolves the
   // version behind it. An earlier version of this suite used a fixture with no
@@ -107,15 +121,18 @@ describe("ReviewPage SRS Session (P10.4)", () => {
   it("renders the word the API returned, not a placeholder", async () => {
     await renderReview();
 
-    expect(await screen.findByText("meticulous")).toBeInTheDocument();
-    expect(screen.getByText("/m\u0259\u02c8t\u026akj\u0259l\u0259s/")).toBeInTheDocument();
+    await expectWordOnCard("meticulous");
+    // The IPA sits on both faces too, for the same reason the word does.
+    expect(
+      screen.getAllByText("/m\u0259\u02c8t\u026akj\u0259l\u0259s/").length,
+    ).toBeGreaterThan(0);
   });
 
   it("flips card and grades using 4 grade buttons", async () => {
     const user = userEventDefault.setup();
     await renderReview();
 
-    expect(await screen.findByText("meticulous")).toBeInTheDocument();
+    await expectWordOnCard("meticulous");
 
     await user.click(screen.getByRole("button", { name: /meticulous/i }));
 
@@ -129,7 +146,9 @@ describe("ReviewPage SRS Session (P10.4)", () => {
     expect(capturedGrades.length).toBe(1);
     expect(capturedGrades[0]?.grade).toBe("good");
 
-    expect(await screen.findByText("Review Session Summary")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Review Session Summary"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Cards Reviewed")).toBeInTheDocument();
   });
 
@@ -137,7 +156,7 @@ describe("ReviewPage SRS Session (P10.4)", () => {
     const user = userEventDefault.setup();
     await renderReview();
 
-    expect(await screen.findByText("meticulous")).toBeInTheDocument();
+    await expectWordOnCard("meticulous");
 
     await user.keyboard(" ");
 
@@ -164,15 +183,21 @@ describe("ReviewPage SRS Session (P10.4)", () => {
     });
     await renderReview();
 
-    expect(await screen.findByText("meticulous")).toBeInTheDocument();
+    await expectWordOnCard("meticulous");
 
     for (const digit of ["3", "2", "4"]) {
       await user.keyboard(" ");
       await user.keyboard(digit);
     }
 
-    expect(capturedGrades.map((g) => g.grade)).toEqual(["good", "hard", "easy"]);
-    expect(await screen.findByText("Review Session Summary")).toBeInTheDocument();
+    expect(capturedGrades.map((g) => g.grade)).toEqual([
+      "good",
+      "hard",
+      "easy",
+    ]);
+    expect(
+      await screen.findByText("Review Session Summary"),
+    ).toBeInTheDocument();
   });
 
   it("renders 320px responsive Vietnamese grade buttons cleanly", async () => {
@@ -180,7 +205,7 @@ describe("ReviewPage SRS Session (P10.4)", () => {
     const user = userEventDefault.setup();
     await renderReview();
 
-    expect(await screen.findByText("meticulous")).toBeInTheDocument();
+    await expectWordOnCard("meticulous");
     await user.click(screen.getByRole("button", { name: /meticulous/i }));
 
     expect(await screen.findByText("L\u1ea1i")).toBeInTheDocument();
@@ -197,7 +222,7 @@ describe("ReviewPage SRS Session (P10.4)", () => {
     expect(
       await screen.findByText("This card has no content yet"),
     ).toBeInTheDocument();
-    expect(screen.queryByText("meticulous")).not.toBeInTheDocument();
+    expect(screen.queryAllByText("meticulous")).toHaveLength(0);
 
     // The schedule is real, so the card is still gradable.
     expect(screen.getByRole("button", { name: /Good/i })).toBeInTheDocument();
@@ -221,7 +246,7 @@ describe("ReviewPage SRS Session (P10.4)", () => {
     expect(
       await screen.findByText("This card has no content yet"),
     ).toBeInTheDocument();
-    expect(screen.queryByText("meticulous")).not.toBeInTheDocument();
+    expect(screen.queryAllByText("meticulous")).toHaveLength(0);
   });
 
   it("keeps the card on screen when a grade fails to reach the server", async () => {
@@ -234,13 +259,15 @@ describe("ReviewPage SRS Session (P10.4)", () => {
     );
     await renderReview();
 
-    expect(await screen.findByText("meticulous")).toBeInTheDocument();
+    await expectWordOnCard("meticulous");
     await user.keyboard(" ");
     await user.keyboard("3");
 
     // Not counted, not skipped: a grade that did not land has not happened.
     expect(await screen.findByRole("alert")).toBeInTheDocument();
-    expect(screen.queryByText("Review Session Summary")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Review Session Summary"),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Good/i })).toBeInTheDocument();
   });
 
@@ -248,7 +275,11 @@ describe("ReviewPage SRS Session (P10.4)", () => {
     serveSession({ cards: [], total_due: 0 });
     await renderReview();
 
-    expect(await screen.findByText("Nothing due right now")).toBeInTheDocument();
-    expect(screen.queryByText("Review Session Summary")).not.toBeInTheDocument();
+    expect(
+      await screen.findByText("Nothing due right now"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Review Session Summary"),
+    ).not.toBeInTheDocument();
   });
 });

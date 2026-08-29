@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { FlipCard } from "@/components/ui/flip-card";
 import { Progress } from "@/components/ui/progress";
 import {
   CardContentUnavailable,
@@ -235,30 +236,54 @@ export function ReviewPage(): React.JSX.Element {
               disabled={isSubmitting}
             />
           </div>
-        ) : !isFlipped ? (
-          <FlashcardFront
-            word={content.word}
-            {...(content.ipa !== undefined && { ipa: content.ipa })}
-            {...(content.audioUrl !== undefined && { audioUrl: content.audioUrl })}
-            onFlip={() => setIsFlipped(true)}
-          />
         ) : (
-          <div className="space-y-6 animate-in fade-in duration-200">
-            <FlashcardBack
-              word={content.word}
-              definition={content.definition}
-              {...(content.ipa !== undefined && { ipa: content.ipa })}
-              {...(content.definitionVi !== undefined && { definitionVi: content.definitionVi })}
-              {...(content.exampleSentence !== undefined && {
-                exampleSentence: content.exampleSentence,
-              })}
-              {...(content.pos !== undefined && { partOfSpeech: content.pos })}
+          <div className="space-y-6">
+            {/*
+              One card that turns, rather than two that swap.
+
+              The front and back used to be separate branches with a fade
+              between them, so the box changed height while the text changed
+              instantly — the "not smooth" this replaces. Both faces are laid
+              out now and the container rotates.
+            */}
+            <FlipCard
+              flipped={isFlipped}
+              onClick={isFlipped ? undefined : () => setIsFlipped(true)}
+              label={t("review.sessionTitle", "SRS Vocabulary Review")}
+              front={
+                <FlashcardFront
+                  word={content.word}
+                  {...(content.ipa !== undefined && { ipa: content.ipa })}
+                  {...(content.audioUrl !== undefined && {
+                    audioUrl: content.audioUrl,
+                  })}
+                  onFlip={() => setIsFlipped(true)}
+                />
+              }
+              back={
+                <FlashcardBack
+                  word={content.word}
+                  definition={content.definition}
+                  {...(content.ipa !== undefined && { ipa: content.ipa })}
+                  {...(content.definitionVi !== undefined && {
+                    definitionVi: content.definitionVi,
+                  })}
+                  {...(content.exampleSentence !== undefined && {
+                    exampleSentence: content.exampleSentence,
+                  })}
+                  {...(content.pos !== undefined && {
+                    partOfSpeech: content.pos,
+                  })}
+                />
+              }
             />
 
-            <GradeButtonGroup
-              onGrade={(grade) => void handleGrade(grade)}
-              disabled={isSubmitting}
-            />
+            {isFlipped && (
+              <GradeButtonGroup
+                onGrade={(grade) => void handleGrade(grade)}
+                disabled={isSubmitting}
+              />
+            )}
           </div>
         )}
       </main>
