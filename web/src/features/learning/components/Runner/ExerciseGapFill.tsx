@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PronounceButton } from "@/components/ui/pronounce-button";
 import { cn } from "@/lib/utils";
 
 export interface ExerciseGapFillProps {
@@ -35,6 +36,22 @@ export const ExerciseGapFill: React.FC<ExerciseGapFillProps> = ({
   const [answer, setAnswer] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // What the speaker says.
+  //
+  // Before the answer is in, the blank is a pause: reading the missing word out
+  // loud would hand the learner the answer and turn the exercise into a
+  // dictation. Afterwards the sentence is spoken whole, with the correct word
+  // in place, because hearing the finished sentence is the part worth hearing —
+  // and by then there is nothing left to give away.
+  const spokenSentence = [
+    sentenceBeforeBlank,
+    isSubmitted ? (expectedAnswer ?? "") : "...",
+    sentenceAfterBlank,
+  ]
+    .filter((part) => part.trim() !== "")
+    .join(" ")
+    .trim();
+
   useEffect(() => {
     if (!isSubmitted && inputRef.current) {
       inputRef.current.focus();
@@ -61,31 +78,48 @@ export const ExerciseGapFill: React.FC<ExerciseGapFillProps> = ({
 
       {/* Sentence with Gap Input */}
       <div className="p-6 rounded-2xl border border-border bg-surface-card shadow-sm space-y-4">
-        <div className="text-lg md:text-xl leading-relaxed text-text">
-          <span>{sentenceBeforeBlank} </span>
-          <span className="inline-block align-baseline">
-            <Input
-              ref={inputRef}
-              type="text"
-              value={answer}
-              disabled={isSubmitted || isLoading}
-              onChange={(e) => setAnswer(e.target.value)}
-              placeholder={t(
-                "runner.gapFillPlaceholder",
-                "Type your answer...",
-              )}
-              className={cn(
-                "w-48 sm:w-64 inline-block font-bold text-base h-11 border-2 focus-visible:ring-primary",
-                isSubmitted &&
-                  isCorrect &&
-                  "border-success bg-success/10 text-success-accent",
-                isSubmitted &&
-                  !isCorrect &&
-                  "border-danger bg-danger/10 text-danger-accent",
-              )}
-            />
-          </span>
-          <span> {sentenceAfterBlank}</span>
+        <div className="flex items-center justify-end">
+          <PronounceButton
+            text={spokenSentence}
+            label={
+              isSubmitted
+                ? t("runner.listenFullSentence", "Listen to the full sentence")
+                : t("runner.listenSentence", "Listen to the sentence")
+            }
+          />
+        </div>
+        {/*
+          Laid out as a wrapping flex row, not as inline text with a box dropped
+          into it.
+
+          A 44px-tall bordered input inside `leading-relaxed` prose sits on a
+          baseline it does not fit: the line box stretches around it, the words
+          after the gap hang at the wrong height, and at narrow widths the fixed
+          `w-48` input took most of a line and pushed a single word onto the
+          next. Flex items centre on each other and wrap as units, so the
+          sentence reads as a sentence at every width.
+        */}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-3 text-lg md:text-xl leading-relaxed text-text">
+          {sentenceBeforeBlank && <span>{sentenceBeforeBlank}</span>}
+          <Input
+            ref={inputRef}
+            type="text"
+            value={answer}
+            disabled={isSubmitted || isLoading}
+            onChange={(e) => setAnswer(e.target.value)}
+            aria-label={t("runner.gapFillLabel", "Your answer for the blank")}
+            placeholder={t("runner.gapFillPlaceholder", "Type your answer...")}
+            className={cn(
+              "w-36 sm:w-48 shrink-0 text-center font-bold text-base h-11 border-2 focus-visible:ring-primary",
+              isSubmitted &&
+                isCorrect &&
+                "border-success bg-success/10 text-success-accent",
+              isSubmitted &&
+                !isCorrect &&
+                "border-danger bg-danger/10 text-danger-accent",
+            )}
+          />
+          {sentenceAfterBlank && <span>{sentenceAfterBlank}</span>}
         </div>
       </div>
 

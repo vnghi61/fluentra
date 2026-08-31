@@ -33,8 +33,46 @@ type Module struct {
 	handler *contenthttp.Handler
 }
 
-// New wires the content module.
+// New wires the content module for a process that serves HTTP.
+//
+// It fails closed without a guard, and that is deliberate: the admin authoring
+// routes would otherwise be mounted unprotected. TestNewFailsClosedWithoutAGuard
+// pins it.
 func New(deps Deps) *Module {
+	module := newModule(deps)
+
+	handler, err := contenthttp.NewHandler(module.service, deps.Guard)
+	if err != nil {
+		panic(err)
+	}
+	module.handler = handler
+	return module
+}
+
+// NewAuthoring wires content for a process with no HTTP surface at all.
+//
+// cmd/worker needs Author() to generate practice content and mounts no routes,
+// so it has no guard to give. It used to call New anyway, which built the
+// handler, which fails closed — and the worker panicked on boot with
+// GUARD_REQUIRED three call frames from anything that mentioned HTTP.
+//
+// The consequence was not local to the worker. A worker that will not start
+// drains no outbox, so no OTP email is ever sent: every E2E journey times out
+// waiting for one, and in production registration stops working while the API
+// looks perfectly healthy.
+//
+// A separate constructor rather than a nil-guard branch inside New, because the
+// distinction being made is "this process serves no routes" — which is a fact
+// about the caller, not a missing argument. Handing New a permissive guard
+// would have worked today and quietly disarmed the check the first time
+// somebody mounted a route in the worker.
+func NewAuthoring(deps Deps) *Module {
+	return newModule(deps)
+}
+
+// newModule builds everything both constructors share: the service, and nothing
+// that needs authorization.
+func newModule(deps Deps) *Module {
 	timekeeper := deps.Clock
 	if timekeeper == nil {
 		timekeeper = clock.Real{}
@@ -53,21 +91,18 @@ func New(deps Deps) *Module {
 		NewID:  func() uuid.UUID { return uuid.Must(uuid.NewV7()) },
 	})
 
-	handler, err := contenthttp.NewHandler(svc, deps.Guard)
-	if err != nil {
-		panic(err)
-	}
-
-	return &Module{
-		service: svc,
-		handler: handler,
-	}
+	// No handler here. New attaches one; NewAuthoring deliberately does not.
+	return &Module{service: svc}
 }
 
 // Reader returns the public read contract implementation for other modules.
 func (m *Module) Reader() contract.Reader {
 	return m.service
 }
+
+// Author is the machine-authoring surface, addressed by slug and idempotent.
+// It is not the review state machine, which models decisions a person makes.
+func (m *Module) Author() contract.Author { return m.service }
 
 // Service returns the underlying service instance.
 func (m *Module) Service() *service.Service {

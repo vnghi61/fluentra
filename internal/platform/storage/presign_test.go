@@ -20,7 +20,7 @@ func r2Client(t *testing.T) *minio.Client {
 	client, err := minio.New("accountid.r2.cloudflarestorage.com", &minio.Options{
 		Creds:  credentials.NewStaticV4("accesskey", "secretkey", ""),
 		Secure: true,
-		Region: "auto",
+		Region: regionAuto,
 	})
 	if err != nil {
 		t.Fatalf("minio client: %v", err)

@@ -31,6 +31,19 @@ const (
 	cacheVersion = 1
 )
 
+// CompletedLessons reports which of a learner's lessons are finished.
+//
+// Consumer-defined, like UnlockChecker beside it: lesson says what it needs and
+// the composition root supplies learning's implementation, so no module-boundary
+// edge is created for a read this module could not perform itself.
+//
+// A set rather than a query per lesson, for the reason UnlockChecker is batched:
+// a course tree renders every lesson at once, and one call per row is the N+1
+// this interface exists to avoid.
+type CompletedLessons interface {
+	CompletedLessonIDs(ctx context.Context, userID uuid.UUID) (map[uuid.UUID]bool, error)
+}
+
 // UnlockChecker answers whether a learner has met a lesson's prerequisites.
 // learning implements it; lesson only calls it, so the interface is declared
 // here rather than imported, and lesson does not depend on learning (Trap 2).
@@ -60,6 +73,12 @@ type Repository interface {
 	GetPublishedCourseBySlug(ctx context.Context, slug string) (*contract.Course, error)
 	GetPublishedLessonByID(ctx context.Context, id uuid.UUID) (*contract.Lesson, error)
 	ListPublishedLessonsByCourseID(ctx context.Context, courseID uuid.UUID) ([]*contract.Lesson, error)
+	// GetNextPublishedLesson returns nil, nil when there is no next lesson —
+	// finishing the last lesson of a course is the happy path, not an error.
+	GetNextPublishedLesson(ctx context.Context, unitID uuid.UUID, position int) (*contract.Lesson, error)
+	UpsertCourse(ctx context.Context, spec contract.CourseSpec) (*contract.Course, error)
+	UpsertUnit(ctx context.Context, spec contract.UnitSpec) (*contract.Unit, error)
+	UpsertLesson(ctx context.Context, spec contract.LessonSpec) (*contract.Lesson, error)
 	GetCourseByID(ctx context.Context, id uuid.UUID) (*contract.Course, error)
 	CreateCourse(ctx context.Context, params CreateCourseParams) (*contract.Course, error)
 	ListUnitsByCourseID(ctx context.Context, courseID uuid.UUID) ([]*contract.Unit, error)
@@ -104,28 +123,30 @@ type LessonCaches struct {
 
 // Deps carries dependencies for constructing the lesson Service.
 type Deps struct {
-	Pool     *pgxpool.Pool
-	Repo     Repository
-	Content  contentcontract.Reader
-	Unlocker UnlockChecker
-	Events   EventWriter
-	Caches   LessonCaches
-	Clock    clock.Clock
-	NewID    func() uuid.UUID
-	Env      string
+	Pool      *pgxpool.Pool
+	Repo      Repository
+	Content   contentcontract.Reader
+	Unlocker  UnlockChecker
+	Completed CompletedLessons
+	Events    EventWriter
+	Caches    LessonCaches
+	Clock     clock.Clock
+	NewID     func() uuid.UUID
+	Env       string
 }
 
 // Service orchestrates curriculum and lesson use cases.
 type Service struct {
-	pool     *pgxpool.Pool
-	repo     Repository
-	content  contentcontract.Reader
-	unlocker UnlockChecker
-	events   EventWriter
-	caches   LessonCaches
-	clock    clock.Clock
-	newID    func() uuid.UUID
-	env      string
+	pool      *pgxpool.Pool
+	repo      Repository
+	content   contentcontract.Reader
+	unlocker  UnlockChecker
+	completed CompletedLessons
+	events    EventWriter
+	caches    LessonCaches
+	clock     clock.Clock
+	newID     func() uuid.UUID
+	env       string
 }
 
 // New creates a new lesson Service.
@@ -144,15 +165,16 @@ func New(deps Deps) *Service {
 	}
 
 	return &Service{
-		pool:     deps.Pool,
-		repo:     deps.Repo,
-		content:  deps.Content,
-		unlocker: deps.Unlocker,
-		events:   deps.Events,
-		caches:   deps.Caches,
-		clock:    clk,
-		newID:    idGen,
-		env:      env,
+		pool:      deps.Pool,
+		repo:      deps.Repo,
+		content:   deps.Content,
+		unlocker:  deps.Unlocker,
+		completed: deps.Completed,
+		events:    deps.Events,
+		caches:    deps.Caches,
+		clock:     clk,
+		newID:     idGen,
+		env:       env,
 	}
 }
 
@@ -179,6 +201,9 @@ type LessonSummaryDTO struct {
 	Status           string    `json:"status"`
 	Locked           bool      `json:"locked"`
 	LockReason       *string   `json:"lock_reason"`
+	// Completed is false for a signed-out visitor, which is correct: they have
+	// no progress, not unknown progress.
+	Completed bool `json:"completed"`
 }
 
 // CourseUnitDTO matches OpenAPI CourseUnit schema.
@@ -260,6 +285,14 @@ type LessonDetailDTO struct {
 	EstimatedMinutes int                 `json:"estimated_minutes"`
 	Status           string              `json:"status"`
 	Activities       []LessonActivityDTO `json:"activities"`
+	// NextLessonID is the lesson that follows this one in the course, or nil
+	// when this is the last one.
+	//
+	// Resolved here rather than by the client because the route is
+	// `/learn/lesson/{id}` and carries no course: a browser holding only a
+	// lesson id would have to fetch the whole catalogue to find out what comes
+	// after it, and would get it wrong across a unit boundary.
+	NextLessonID *uuid.UUID `json:"next_lesson_id,omitempty"`
 }
 
 // CreateCourseInput carries arguments for creating a course.
@@ -437,6 +470,8 @@ func (s *Service) GetCourseDetail(ctx context.Context, slug string, userID uuid.
 		}
 	}
 
+	completed := s.completedLessons(ctx, userID)
+
 	unitDTOs := make([]CourseUnitDTO, len(tree.Units))
 	for i, u := range tree.Units {
 		lessonDTOs := make([]LessonSummaryDTO, len(u.Lessons))
@@ -463,6 +498,7 @@ func (s *Service) GetCourseDetail(ctx context.Context, slug string, userID uuid.
 				Status:           l.Status,
 				Locked:           locked,
 				LockReason:       lockReason,
+				Completed:        completed[l.ID],
 			}
 		}
 		unitDTOs[i] = CourseUnitDTO{
@@ -486,6 +522,31 @@ func (s *Service) GetCourseDetail(ctx context.Context, slug string, userID uuid.
 		EstimatedHours: tree.Course.EstimatedHours,
 		Units:          unitDTOs,
 	}, nil
+}
+
+// completedLessons is which of this learner's lessons are finished, or nil.
+//
+// The catalogue has always had somewhere to show this — LessonRow draws a tick
+// and a "Completed" badge — and never had the data: UnitList took a
+// `completedLessonIds` prop that no caller ever passed, so every lesson
+// rendered as unstarted no matter how many a learner had done.
+//
+// Nil on every failure, and deliberately not an error. The catalogue is worth
+// serving without the ticks; refusing to render a course because a progress
+// read failed would be a worse answer than an incomplete one. A signed-out
+// visitor takes the same path and gets the same nil, which is correct — they
+// have no progress rather than unknown progress.
+func (s *Service) completedLessons(ctx context.Context, userID uuid.UUID) map[uuid.UUID]bool {
+	if s.completed == nil || userID == uuid.Nil {
+		return nil
+	}
+	completed, err := s.completed.CompletedLessonIDs(ctx, userID)
+	if err != nil {
+		slog.WarnContext(ctx, "could not read lesson progress; catalogue renders without completion marks",
+			"module", "lesson", "op", "GetCourseDetail", "error", err)
+		return nil
+	}
+	return completed
 }
 
 func (s *Service) loadCourseTree(ctx context.Context, treeKey, slug string) (*CourseTreeData, error) {
@@ -662,7 +723,7 @@ func (s *Service) loadLessonDetail(
 			}
 		}
 
-		return &LessonDetailDTO{
+		detail := &LessonDetailDTO{
 			ID:               lesson.ID,
 			UnitID:           lesson.UnitID,
 			Position:         lesson.Position,
@@ -671,7 +732,18 @@ func (s *Service) loadLessonDetail(
 			EstimatedMinutes: lesson.EstimatedMinutes,
 			Status:           lesson.Status,
 			Activities:       actDTOs,
-		}, nil
+		}
+
+		// Best-effort. A learner who cannot be told what comes next should
+		// still be given the lesson they asked for; the completion screen
+		// simply falls back to the syllabus link it already has.
+		if next, nErr := s.repo.GetNextPublishedLesson(
+			loadCtx, lesson.UnitID, lesson.Position,
+		); nErr == nil && next != nil {
+			nextID := next.ID
+			detail.NextLessonID = &nextID
+		}
+		return detail, nil
 	}
 
 	if s.caches.Detail == nil {

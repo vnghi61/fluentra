@@ -1753,6 +1753,170 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/gamification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The caller's XP, level, streak, badges and open quests.
+         * @description One read rather than several, because the dashboard needs all of it at once. `xp_today` and the streak are computed against the caller's own timezone.
+         */
+        get: operations["getGamificationSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/streak": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The caller's streak, with the freeze state and the day boundary.
+         * @description The same streak the summary carries, for screens that need only this. `hours_remaining` counts down the caller's own local day, so a learner who travels is not told their streak ends at the server's midnight.
+         */
+        get: operations["getStreak"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/streak/freeze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Spend a streak freeze for today.
+         * @description Freezes are limited and at most one may be spent per day. A caller with none left, or who has already spent one today, receives `NO_FREEZES_AVAILABLE`.
+         */
+        post: operations["useStreakFreeze"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/daily-goal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set the XP a day must earn to count towards the streak.
+         * @description The goal is what makes a day count, not opening the app. Raising it mid- streak does not retroactively invalidate days already recorded.
+         */
+        put: operations["setDailyGoal"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/leaderboard-opt-in": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Join or leave the leaderboard.
+         * @description Leaderboards are opt-in. Opting out removes the caller from future snapshots; it does not delete their XP, which is their own record.
+         */
+        put: operations["setLeaderboardOptIn"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/leaderboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * This week's standings for the caller's league.
+         * @description A weekly snapshot, not a live ranking, so the standings do not shuffle mid-week. A caller who has not opted in receives `LEADERBOARD_NOT_OPTED_IN` so the screen can offer the opt-in rather than showing an error.
+         */
+        get: operations["getLeaderboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/vocabulary/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Your uploads, newest first.
+         * @description Each row carries the verified, rejected and still-pending counts, so a learner can see how far the checking has got without opening it.
+         */
+        get: operations["listVocabUploads"];
+        put?: never;
+        /**
+         * Submit your own vocabulary to be checked.
+         * @description Stores the words and returns immediately. The checking — a dictionary lookup and a model call per word — runs hourly in a background job, because it is slow and fails in ways worth retrying, and a learner pasting three hundred words should not be watching a request time out half way through.
+         */
+        post: operations["submitVocabUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/vocabulary/uploads/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One upload, with every word and what became of it.
+         * @description Scoped to the caller: another learner's upload id is a 404 rather than a 403, because they should not learn that it exists.
+         */
+        get: operations["getVocabUpload"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2933,6 +3097,11 @@ export interface components {
             status: "draft" | "published" | "archived";
             /** @example false */
             locked: boolean;
+            /**
+             * @description Whether this learner has finished the lesson. False for a signed-out visitor, who has no progress rather than unknown progress.
+             * @example true
+             */
+            completed: boolean;
             /** @example Complete Unit 1 Lesson 2 first */
             lock_reason?: string | null;
         };
@@ -2971,6 +3140,11 @@ export interface components {
         LessonDetail: {
             /** Format: uuid */
             id: string;
+            /**
+             * Format: uuid
+             * @description The lesson that follows this one in the course, or null when this is the last one. Resolved on the server because the learner-facing route is `/learn/lesson/{id}` and carries no course: a client holding only a lesson id would have to fetch the whole catalogue to find what comes next, and would still get it wrong across a unit boundary.
+             */
+            next_lesson_id?: string | null;
             /** Format: uuid */
             unit_id: string;
             /** @example 1 */
@@ -3338,6 +3512,219 @@ export interface components {
             minutes: number;
             /** Format: date-time */
             completed_at: string;
+        };
+        Badge: {
+            /** @example week_streak */
+            code: string;
+            /** @example Seven Days */
+            name: string;
+            /** @example Studied seven days in a row. */
+            description?: string;
+            /**
+             * @example bronze
+             * @enum {string}
+             */
+            tier: "bronze" | "silver" | "gold" | "platinum";
+            /** Format: date-time */
+            earned_at: string;
+        };
+        Streak: {
+            /**
+             * @description Days in a row, in the learner's own timezone.
+             * @example 7
+             */
+            current: number;
+            /** @example 31 */
+            longest: number;
+            /**
+             * Format: date
+             * @description The learner's local day, not the server's.
+             * @example 2026-03-02
+             */
+            last_active_on?: string | null;
+            /** @example 2 */
+            freezes_available: number;
+            /**
+             * @description Hours left today to keep the streak alive. Zero when nothing is at risk — the learner has already met their goal today, or has no streak to lose.
+             * @example 6
+             */
+            hours_remaining: number;
+        };
+        Quest: {
+            /** @example daily_practice */
+            code: string;
+            /** @example Daily Practice */
+            name: string;
+            /** @example Complete three activities today. */
+            description?: string;
+            /**
+             * @description Counters against the quest's steps.
+             * @example {
+             *       "complete_activities": 2
+             *     }
+             */
+            progress: {
+                [key: string]: number;
+            };
+            /**
+             * @description The target for each step.
+             * @example {
+             *       "complete_activities": 3
+             *     }
+             */
+            steps: {
+                [key: string]: number;
+            };
+            /** @example 30 */
+            reward_xp: number;
+            /**
+             * Format: date
+             * @example 2026-03-02
+             */
+            expires_on: string;
+        };
+        GamificationSummary: {
+            /**
+             * Format: int64
+             * @example 1240
+             */
+            total_xp: number;
+            /** @example 5 */
+            level: number;
+            /**
+             * Format: int64
+             * @description Cumulative XP at which the current level began.
+             * @example 1000
+             */
+            level_start_xp: number;
+            /**
+             * Format: int64
+             * @description Cumulative XP at which the next level begins.
+             * @example 1500
+             */
+            next_level_xp: number;
+            /**
+             * Format: int64
+             * @description XP earned since midnight in the learner's own timezone.
+             * @example 60
+             */
+            xp_today: number;
+            /**
+             * @description The XP a day must earn for it to count towards the streak. A streak extends when this is met, not when the app is opened.
+             * @example 50
+             */
+            daily_goal_xp: number;
+            streak: components["schemas"]["Streak"];
+            badges: components["schemas"]["Badge"][];
+            quests: components["schemas"]["Quest"][];
+            /**
+             * @description The band this learner's weekly XP places them in.
+             * @example silver
+             * @enum {string}
+             */
+            league: "bronze" | "silver" | "gold" | "diamond";
+        };
+        LeaderboardEntry: {
+            /** @example 3 */
+            rank: number;
+            /** Format: uuid */
+            user_id: string;
+            /**
+             * @description The name the learner chose to show. No other identifier is exposed.
+             * @example Demo Learner
+             */
+            display_name: string;
+            /** @example 640 */
+            xp: number;
+            /** @example false */
+            is_self: boolean;
+        };
+        LeaderboardResponse: {
+            entries: components["schemas"]["LeaderboardEntry"][];
+        };
+        SetDailyGoalRequest: {
+            /** @example 50 */
+            daily_goal_xp: number;
+        };
+        SetLeaderboardOptInRequest: {
+            /**
+             * @description Leaderboards are opt-in. A learner who has not opted in is never ranked, never stored in a snapshot, and never appears in anyone else's standings.
+             * @example true
+             */
+            opt_in: boolean;
+        };
+        VocabUpload: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description `pending` until the verification job reaches it. An upload is `completed` once none of its words are still waiting.
+             * @example pending
+             * @enum {string}
+             */
+            status: "pending" | "processing" | "completed" | "failed";
+            /**
+             * @description How many words were stored. Lower than the number of lines pasted when the list had duplicates or lines with no word in them.
+             * @example 12
+             */
+            item_count: number;
+            /** @example 10 */
+            verified_count: number;
+            /** @example 1 */
+            rejected_count: number;
+            /** @example 1 */
+            pending_count: number;
+            /**
+             * Format: uuid
+             * @description The learner's own deck the verified words land in. Null until the first word is verified — creating an empty deck for a paste that turns out to be nonsense leaves a deck nobody asked for.
+             */
+            deck_id?: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            completed_at?: string | null;
+            /** @description Present on the single-upload read, absent from the list. */
+            items?: components["schemas"]["VocabUploadItem"][];
+        };
+        VocabUploadItem: {
+            /**
+             * @description The word as the learner wrote it, before normalisation.
+             * @example leisure
+             */
+            term: string;
+            /**
+             * @description What the learner said it means, in any language. Often absent.
+             * @example thời gian rảnh
+             */
+            provided_meaning?: string;
+            /**
+             * @example verified
+             * @enum {string}
+             */
+            status: "pending" | "verified" | "rejected" | "failed";
+            /**
+             * @description Why it was rejected, or a note about an accepted word whose meaning did not quite match. Addressed to the learner. Empty while pending.
+             * @example
+             */
+            reason?: string;
+            /**
+             * Format: uuid
+             * @description The dictionary entry it became. Null unless verified.
+             */
+            word_sense_id?: string | null;
+            /** Format: date-time */
+            verified_at?: string | null;
+        };
+        VocabUploadList: {
+            items: components["schemas"]["VocabUpload"][];
+        };
+        SubmitVocabUploadRequest: {
+            /**
+             * @description One word per line, optionally followed by its meaning. Tab, dash, colon, equals, semicolon and pipe all separate the two; bullets and numbering are stripped. A bare word list is accepted — a learner pasting words to learn is not making claims to check.
+             * @example leisure - thời gian rảnh
+             *     habit: thói quen
+             *     journey
+             */
+            text: string;
         };
         ForecastItem: {
             /**
@@ -5841,7 +6228,8 @@ export interface operations {
                      *               "skill_focus": "vocabulary",
                      *               "estimated_minutes": 15,
                      *               "status": "published",
-                     *               "locked": false
+                     *               "locked": false,
+                     *               "completed": false
                      *             }
                      *           ]
                      *         }
@@ -7433,6 +7821,418 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    getGamificationSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The caller's gamification state. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "total_xp": 1240,
+                     *       "level": 5,
+                     *       "level_start_xp": 1000,
+                     *       "next_level_xp": 1500,
+                     *       "xp_today": 60,
+                     *       "daily_goal_xp": 50,
+                     *       "streak": {
+                     *         "current": 7,
+                     *         "longest": 31,
+                     *         "last_active_on": "2026-03-02",
+                     *         "freezes_available": 2,
+                     *         "hours_remaining": 0
+                     *       },
+                     *       "badges": [
+                     *         {
+                     *           "code": "week_streak",
+                     *           "name": "Seven Days",
+                     *           "description": "Studied seven days in a row.",
+                     *           "tier": "bronze",
+                     *           "earned_at": "2026-03-01T08:15:00Z"
+                     *         }
+                     *       ],
+                     *       "quests": [
+                     *         {
+                     *           "code": "daily_practice",
+                     *           "name": "Daily Practice",
+                     *           "description": "Complete three activities today.",
+                     *           "progress": {
+                     *             "complete_activities": 2
+                     *           },
+                     *           "steps": {
+                     *             "complete_activities": 3
+                     *           },
+                     *           "reward_xp": 30,
+                     *           "expires_on": "2026-03-02"
+                     *         }
+                     *       ],
+                     *       "league": "silver"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["GamificationSummary"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    getStreak: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The caller's streak. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "current": 7,
+                     *       "longest": 31,
+                     *       "last_active_on": "2026-03-02",
+                     *       "freezes_available": 2,
+                     *       "hours_remaining": 6
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Streak"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    useStreakFreeze: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The streak after the freeze. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "current": 7,
+                     *       "longest": 31,
+                     *       "last_active_on": "2026-03-03",
+                     *       "freezes_available": 1,
+                     *       "hours_remaining": 0
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Streak"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    setDailyGoal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetDailyGoalRequest"];
+            };
+        };
+        responses: {
+            /** @description The caller's gamification state after the change. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "total_xp": 1240,
+                     *       "level": 5,
+                     *       "level_start_xp": 1000,
+                     *       "next_level_xp": 1500,
+                     *       "xp_today": 60,
+                     *       "daily_goal_xp": 50,
+                     *       "streak": {
+                     *         "current": 7,
+                     *         "longest": 31,
+                     *         "last_active_on": "2026-03-02",
+                     *         "freezes_available": 2,
+                     *         "hours_remaining": 0
+                     *       },
+                     *       "badges": [
+                     *         {
+                     *           "code": "week_streak",
+                     *           "name": "Seven Days",
+                     *           "description": "Studied seven days in a row.",
+                     *           "tier": "bronze",
+                     *           "earned_at": "2026-03-01T08:15:00Z"
+                     *         }
+                     *       ],
+                     *       "quests": [
+                     *         {
+                     *           "code": "daily_practice",
+                     *           "name": "Daily Practice",
+                     *           "description": "Complete three activities today.",
+                     *           "progress": {
+                     *             "complete_activities": 2
+                     *           },
+                     *           "steps": {
+                     *             "complete_activities": 3
+                     *           },
+                     *           "reward_xp": 30,
+                     *           "expires_on": "2026-03-02"
+                     *         }
+                     *       ],
+                     *       "league": "silver"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["GamificationSummary"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    setLeaderboardOptIn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetLeaderboardOptInRequest"];
+            };
+        };
+        responses: {
+            /** @description Preference recorded. */
+            204: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    getLeaderboard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The standings. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "entries": [
+                     *         {
+                     *           "rank": 1,
+                     *           "user_id": "0199a1c2-3d4e-7f80-9abc-def012345601",
+                     *           "display_name": "Demo Operator",
+                     *           "xp": 910,
+                     *           "is_self": false
+                     *         },
+                     *         {
+                     *           "rank": 2,
+                     *           "user_id": "0199a1c2-3d4e-7f80-9abc-def012345602",
+                     *           "display_name": "Demo Learner",
+                     *           "xp": 640,
+                     *           "is_self": true
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["LeaderboardResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    listVocabUploads: {
+        parameters: {
+            query?: {
+                /** @description How many uploads to return. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The caller's uploads. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def0123456aa",
+                     *           "status": "completed",
+                     *           "item_count": 12,
+                     *           "verified_count": 10,
+                     *           "rejected_count": 1,
+                     *           "pending_count": 1,
+                     *           "deck_id": "0199a1c2-3d4e-7f80-9abc-def0123456bb",
+                     *           "created_at": "2026-08-30T09:00:00Z",
+                     *           "completed_at": "2026-08-30T10:00:00Z"
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["VocabUploadList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    submitVocabUpload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitVocabUploadRequest"];
+            };
+        };
+        responses: {
+            /** @description Accepted. The words are stored but not yet checked — which is why this is a 202 and not a 201. */
+            202: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def0123456aa",
+                     *       "status": "pending",
+                     *       "item_count": 12,
+                     *       "verified_count": 0,
+                     *       "rejected_count": 0,
+                     *       "pending_count": 12,
+                     *       "deck_id": null,
+                     *       "created_at": "2026-08-30T09:00:00Z",
+                     *       "completed_at": null
+                     *     }
+                     */
+                    "application/json": components["schemas"]["VocabUpload"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    getVocabUpload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The upload and its words. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def0123456aa",
+                     *       "status": "completed",
+                     *       "item_count": 2,
+                     *       "verified_count": 1,
+                     *       "rejected_count": 1,
+                     *       "pending_count": 0,
+                     *       "deck_id": "0199a1c2-3d4e-7f80-9abc-def0123456bb",
+                     *       "created_at": "2026-08-30T09:00:00Z",
+                     *       "completed_at": "2026-08-30T10:00:00Z",
+                     *       "items": [
+                     *         {
+                     *           "term": "leisure",
+                     *           "provided_meaning": "thời gian rảnh",
+                     *           "status": "verified",
+                     *           "reason": "",
+                     *           "word_sense_id": "0199a1c2-3d4e-7f80-9abc-def0123456cc",
+                     *           "verified_at": "2026-08-30T10:00:00Z"
+                     *         },
+                     *         {
+                     *           "term": "asdfgh",
+                     *           "provided_meaning": "",
+                     *           "status": "rejected",
+                     *           "reason": "We could not find \"asdfgh\" as an English word.",
+                     *           "word_sense_id": null,
+                     *           "verified_at": "2026-08-30T10:00:00Z"
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["VocabUpload"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
             500: components["responses"]["InternalServerError"];
         };
     };

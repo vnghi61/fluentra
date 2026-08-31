@@ -69,16 +69,21 @@ type VocabularyService interface {
 type Handler struct {
 	service VocabularyService
 	guard   Guard
+	// uploads is nil when the module is built without the upload pipeline —
+	// the API needs it and cmd/migrate does not — and UploadRoutes then mounts
+	// nothing rather than serving routes that would nil-dereference.
+	uploads UploadService
 }
 
 // NewHandler constructs a Vocabulary HTTP Handler.
-func NewHandler(service VocabularyService, guard Guard) (*Handler, error) {
+func NewHandler(service VocabularyService, guard Guard, uploads UploadService) (*Handler, error) {
 	if guard == nil {
 		return nil, apperr.New(apperr.Internal, "GUARD_REQUIRED", "authorization guard is required for vocabulary handlers")
 	}
 	return &Handler{
 		service: service,
 		guard:   guard,
+		uploads: uploads,
 	}, nil
 }
 
@@ -92,6 +97,7 @@ func (h *Handler) Routes(router chi.Router) {
 	router.Post("/vocabulary/decks/{id}/words", h.addWordToDeck)
 	router.Delete("/vocabulary/decks/{id}/words/{sense_id}", h.removeWordFromDeck)
 	router.Post("/vocabulary/words/{sense_id}/state", h.setWordState)
+	h.UploadRoutes(router)
 }
 
 // AdminRoutes mounts the staff-facing vocabulary authoring endpoints on the router.

@@ -150,11 +150,29 @@ func run(ctx context.Context, out io.Writer) error {
 	if adminID == uuid.Nil {
 		return fmt.Errorf("no admin account was seeded, so content cannot be authored")
 	}
-	if err := seedContentAndCurriculum(ctx, pool, adminID, out); err != nil {
-		return fmt.Errorf("seed content & curriculum: %w", err)
+	if err := seedAuthoredContent(ctx, pool, adminID, out); err != nil {
+		return err
 	}
 
 	_, _ = fmt.Fprintf(out, "\npassword for both: %s\n", demoPassword)
+	return nil
+}
+
+// seedAuthoredContent writes everything that is authored rather than earned:
+// the curriculum, and the badge and quest catalogues.
+//
+// Split out of run() to keep that function under the cyclomatic limit, and
+// because the two calls belong together: both are idempotent upserts of content
+// an operator maintains, and neither writes a single row of learner state.
+func seedAuthoredContent(
+	ctx context.Context, pool *pgxpool.Pool, adminID uuid.UUID, out io.Writer,
+) error {
+	if err := seedContentAndCurriculum(ctx, pool, adminID, out); err != nil {
+		return fmt.Errorf("seed content & curriculum: %w", err)
+	}
+	if err := seedGamification(ctx, pool, out); err != nil {
+		return fmt.Errorf("seed gamification catalogue: %w", err)
+	}
 	return nil
 }
 

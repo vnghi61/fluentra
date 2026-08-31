@@ -206,6 +206,16 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("instrument Redis tracing: %w", err)
 	}
 
+	// Refused at boot rather than at the learner's upload. An R2 endpoint with a
+	// region it does not accept starts cleanly and issues presigned URLs that
+	// look right; the failure appears only when the browser spends one, as a
+	// cross-origin 400 the page cannot read.
+	if err := storage.ValidateRegion(cfg.Storage.Endpoint, cfg.Storage.Region); err != nil {
+		_ = redisClient.Close()
+		pool.Close()
+		return err
+	}
+
 	storageClient, err := minio.New(storageHost(cfg.Storage.Endpoint), &minio.Options{
 		Creds:  credentials.NewStaticV4(cfg.Storage.AccessKey, cfg.Storage.SecretKey, ""),
 		Secure: cfg.Storage.UseSSL,

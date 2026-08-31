@@ -34,6 +34,7 @@ vendors:
   # exactly the set that does.
   v_argon2id: { in: github.com/alexedwards/argon2id }
 
+
   # Also not common, and granted to one component. A JWT library is not a
   # provider SDK — there is no external system behind it to swap — so the reason
   # depOnAnyVendor exists does not apply. It stays narrow anyway: the set of
@@ -125,6 +126,7 @@ components:
   g_learning:    { in: generated/learning/sqlc }
   g_srs:         { in: generated/srs/sqlc }
   g_vocabulary:  { in: generated/vocabulary/sqlc }
+  g_gamification: { in: generated/gamification/sqlc }
 
   # platform capabilities
   p_telemetry:   { in: platform/telemetry/** }
@@ -132,7 +134,15 @@ components:
   p_storage:     { in: platform/storage/** }
   p_job:         { in: platform/job/** }
   p_mailer:      { in: platform/mailer/** }
-  p_ai:          { in: platform/ai/** }
+  # The prompt library is its own component: `platform/ai/**` makes each package
+  # under it an import target anyway, and a component may not name itself.
+  #
+  # The templates live under platform/ai — not under docs/prompts, where L11
+  # says a prompt lives — because `//go:embed` cannot reach outside its own
+  # package directory, and `workdir: internal` puts docs/ beyond anything this
+  # file can declare. See the package comment in platform/ai/prompts.
+  p_ai:          { in: platform/ai }
+  p_ai_prompts:  { in: platform/ai/prompts }
   p_media:       { in: platform/media/** }
   p_search:      { in: platform/search/** }
 
@@ -237,7 +247,14 @@ components:
   m_writing:       { in: modules/writing/** }
   m_questionbank:  { in: modules/questionbank/** }
   m_exam:          { in: modules/exam/** }
-  m_gamification:  { in: modules/gamification/** }
+  # gamification, split by layer for the same reason learning is: the module has
+  # more than one package now, `modules/gamification/**` makes each of them its
+  # own import target, and a component may not name itself in mayDependOn.
+  m_gamification:            { in: modules/gamification }
+  m_gamification_domain:     { in: modules/gamification/domain }
+  m_gamification_repository: { in: modules/gamification/repository }
+  m_gamification_service:    { in: modules/gamification/service }
+  m_gamification_http:       { in: modules/gamification/transport/http }
   m_analytics:     { in: modules/analytics/** }
   m_subscription:  { in: modules/subscription/** }
   m_payment:       { in: modules/payment/** }
@@ -293,7 +310,10 @@ deps:
   p_storage:   { mayDependOn: [p_telemetry, p_job], anyVendorDeps: true }
   p_job:       { mayDependOn: [p_telemetry, g_job], anyVendorDeps: true }
   p_mailer:    { mayDependOn: [p_telemetry, p_job, p_storage], anyVendorDeps: true }
-  p_ai:        { mayDependOn: [p_telemetry, p_cache, p_job], anyVendorDeps: true }
+  # p_ai_prompts has no deps entry of its own, which is how this file spells
+  # "depends on nothing" — the same as the generated sqlc components above,
+  # minus their vendor grant. It is an embed.FS and a doc comment.
+  p_ai:        { mayDependOn: [p_ai_prompts, p_telemetry, p_cache, p_job], anyVendorDeps: true }
   p_media:     { mayDependOn: [p_telemetry, p_storage, p_job, p_ai], anyVendorDeps: true }
   p_search:    { mayDependOn: [p_telemetry, p_cache, p_job], anyVendorDeps: true }
 
@@ -409,9 +429,14 @@ deps:
   m_srs:            { mayDependOn: [m_srs_domain, m_srs_repository, m_srs_service, m_srs_http, c_srs, c_user, c_content, c_learning, g_srs, p_cache, p_job, p_telemetry] }
   m_vocabulary_domain:     { mayDependOn: [c_vocabulary] }
   m_vocabulary_repository: { mayDependOn: [m_vocabulary_domain, c_vocabulary, g_vocabulary] }
-  m_vocabulary_service:    { mayDependOn: [m_vocabulary_domain, m_vocabulary_repository, c_vocabulary, c_content, c_srs, c_learning, g_vocabulary, p_cache, p_media, p_ai, p_search, p_telemetry] }
+  # c_lesson is on this list because the practice generator authors curriculum,
+  # and activities live in lesson's tables: rule L2 forbids writing them from
+  # here, so the generator asks through lesson's Author contract instead. The
+  # arrow is not circular — lesson depends on content and cache only — and
+  # MODULE_INDEX.md 3 carries it, added in the same commit as this line.
+  m_vocabulary_service:    { mayDependOn: [m_vocabulary_domain, m_vocabulary_repository, c_vocabulary, c_content, c_lesson, c_srs, c_learning, g_vocabulary, p_cache, p_media, p_ai, p_search, p_telemetry] }
   m_vocabulary_http:       { mayDependOn: [m_vocabulary_domain, m_vocabulary_service, c_vocabulary] }
-  m_vocabulary:            { mayDependOn: [m_vocabulary_domain, m_vocabulary_repository, m_vocabulary_service, m_vocabulary_http, c_vocabulary, c_content, c_srs, c_learning, g_vocabulary, p_cache, p_media, p_ai, p_search, p_telemetry] }
+  m_vocabulary:            { mayDependOn: [m_vocabulary_domain, m_vocabulary_repository, m_vocabulary_service, m_vocabulary_http, c_vocabulary, c_content, c_lesson, c_srs, c_learning, g_vocabulary, p_cache, p_job, p_media, p_ai, p_search, p_telemetry] }
   m_grammar:      { mayDependOn: [p_cache, p_ai, p_telemetry, c_content, c_srs, c_learning] }
   m_reading:      { mayDependOn: [p_cache, p_telemetry, c_content, c_questionbank, c_vocabulary, c_learning] }
   m_listening:    { mayDependOn: [p_cache, p_media, p_storage, p_telemetry, c_content, c_questionbank, c_learning] }
@@ -419,7 +444,22 @@ deps:
   m_writing:      { mayDependOn: [p_ai, p_job, p_telemetry, c_content, c_learning, c_notification] }
   m_questionbank: { mayDependOn: [p_ai, p_search, p_telemetry, c_content, c_audit] }
   m_exam:         { mayDependOn: [p_job, p_ai, p_telemetry, c_questionbank, c_writing, c_speaking, c_learning] }
-  m_gamification: { mayDependOn: [p_cache, p_job, p_telemetry, c_learning, c_srs, c_notification] }
+  # c_user is on this list and is not in MODULE_INDEX's original arrow set. It
+  # is there for one field: the learner's timezone. BR-GAMIFICATION-02 puts the
+  # streak day boundary in the learner's own zone, and without reading it every
+  # boundary is the server's — which breaks a streak for anyone far enough east
+  # or west. MODULE_INDEX.md §3 carries the arrow now, added in the same commit
+  # as this line.
+  m_gamification_domain:     { mayDependOn: [c_gamification] }
+  m_gamification_repository: { mayDependOn: [m_gamification_domain, c_gamification, g_gamification] }
+  # c_vocabulary is here because a learner's own uploaded words earn XP once
+  # they are verified, and the count arrives as vocabulary.words_verified. The
+  # module spec already anticipates gamification consuming skill-module events —
+  # writing.graded and speaking.scored are on the same list — so the arrow is
+  # the one the design expects rather than a new shape.
+  m_gamification_service:    { mayDependOn: [m_gamification_domain, m_gamification_repository, c_gamification, c_user, c_learning, c_srs, c_vocabulary, c_notification, g_gamification, p_cache, p_job, p_telemetry] }
+  m_gamification_http:       { mayDependOn: [m_gamification_domain, m_gamification_service, c_gamification] }
+  m_gamification:            { mayDependOn: [m_gamification_domain, m_gamification_repository, m_gamification_service, m_gamification_http, c_gamification, c_user, c_learning, c_srs, c_vocabulary, c_notification, g_gamification, p_cache, p_job, p_telemetry] }
 
   # commerce
   m_analytics:    { mayDependOn: [p_job, p_cache, p_telemetry] }

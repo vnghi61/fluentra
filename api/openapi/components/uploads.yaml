@@ -1,0 +1,113 @@
+# A learner's own vocabulary, pasted in and checked on a schedule.
+#
+# Every operation acts on the caller in the access token. There is no route here
+# that takes a user id, and asking for another learner's upload id returns 404
+# rather than 403 — they should not learn that it exists.
+
+VocabUploadItem:
+  type: object
+  required: [term, status]
+  properties:
+    term:
+      type: string
+      description: The word as the learner wrote it, before normalisation.
+      example: leisure
+    provided_meaning:
+      type: string
+      description: What the learner said it means, in any language. Often absent.
+      example: thời gian rảnh
+    status:
+      type: string
+      enum: [pending, verified, rejected, failed]
+      example: verified
+    reason:
+      type: string
+      description: >-
+        Why it was rejected, or a note about an accepted word whose meaning did
+        not quite match. Addressed to the learner. Empty while pending.
+      example: ''
+    word_sense_id:
+      type: string
+      format: uuid
+      nullable: true
+      description: The dictionary entry it became. Null unless verified.
+    verified_at:
+      type: string
+      format: date-time
+      nullable: true
+
+VocabUpload:
+  type: object
+  required: [id, status, item_count, verified_count, rejected_count, pending_count, created_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+    status:
+      type: string
+      enum: [pending, processing, completed, failed]
+      description: >-
+        `pending` until the verification job reaches it. An upload is
+        `completed` once none of its words are still waiting.
+      example: pending
+    item_count:
+      type: integer
+      description: >-
+        How many words were stored. Lower than the number of lines pasted when
+        the list had duplicates or lines with no word in them.
+      example: 12
+    verified_count:
+      type: integer
+      example: 10
+    rejected_count:
+      type: integer
+      example: 1
+    pending_count:
+      type: integer
+      example: 1
+    deck_id:
+      type: string
+      format: uuid
+      nullable: true
+      description: >-
+        The learner's own deck the verified words land in. Null until the first
+        word is verified — creating an empty deck for a paste that turns out to
+        be nonsense leaves a deck nobody asked for.
+    created_at:
+      type: string
+      format: date-time
+    completed_at:
+      type: string
+      format: date-time
+      nullable: true
+    items:
+      type: array
+      description: Present on the single-upload read, absent from the list.
+      items:
+        $ref: '#/VocabUploadItem'
+
+VocabUploadList:
+  type: object
+  required: [items]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/VocabUpload'
+
+SubmitVocabUploadRequest:
+  type: object
+  required: [text]
+  properties:
+    text:
+      type: string
+      maxLength: 100000
+      description: >-
+        One word per line, optionally followed by its meaning. Tab, dash, colon,
+        equals, semicolon and pipe all separate the two; bullets and numbering
+        are stripped. A bare word list is accepted — a learner pasting words to
+        learn is not making claims to check.
+      example: |
+        leisure - thời gian rảnh
+        habit: thói quen
+        journey

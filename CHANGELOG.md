@@ -13,6 +13,116 @@ generated text describes commits; release notes should describe change.
 
 ### Added
 
+- **Your own vocabulary**: paste a list at `/practice/my-words` — tab, dash, colon, equals,
+  semicolon or pipe all separate a word from its meaning, bullets and numbering are
+  stripped, and a bare word list is accepted. Submitting stores and returns; an hourly job
+  then checks each word against the free dictionary, asks the model whether the learner's
+  own wording of the meaning holds and to write example sentences, writes the word into a
+  deck of their own, schedules it for review, and publishes `vocabulary.words_verified` so
+  `gamification` pays XP per verified word.
+  The division of labour is deliberate: whether a word exists is the dictionary's answer,
+  not a model's — a model asked will confidently invent an entry for a typo. An unreachable
+  dictionary or a rate-limited model leaves the word pending for the next run rather than
+  rejecting it, because a network blip must never reject a learner's good word; an item
+  that fails three times retires instead of being retried for ever.
+
+- **Practice generation**: a twelve-hourly job turns every word in the dictionary into six
+  exercises — flashcard, multiple choice, gap fill, listen-and-type, meaning in context and
+  sentence order — plus a matching drill per group of four, published as a `Vocabulary
+  Practice` course of its own. The curated course covered 32 activities against 200 words;
+  this covers the rest. Deterministic throughout: every shuffle is seeded from the data
+  being shuffled, so a re-run converges on the same catalogue instead of rewriting it and
+  dropping every cached lesson. No LLM — which word means what, and which distractors are
+  plausible, are questions the dictionary already answers.
+- **Machine-authoring surfaces**: `content.Author` (one idempotent `EnsurePublished`, keyed
+  on slug, rather than the four-step review state machine that models decisions a person
+  makes) and `lesson.Author` (course, unit and lesson upserts plus wholesale activity
+  replacement). Activities live in `lesson`'s tables and rule L2 forbids writing them from
+  a skill module, so the generator asks rather than reaches; `MODULE_INDEX.md` carries the
+  new `vocabulary -> lesson` arrow.
+- **`rbac.RoleMembers`**: `FirstHolderOf(role)`, so generated content has an owner —
+  `content_items.owner_id` is not nullable, and unattributed content is content nobody can
+  be asked about. Returns `uuid.Nil` on a database with no administrator yet, and the
+  generator stands down quietly rather than failing every twelve hours.
+
+### Fixed
+
+- **Progress read back stale after every graded answer.** Grading writes progress and
+  schedules review cards on the server, but nothing invalidated the caches the course,
+  dashboard and review screens read — so a learner who answered a lesson and pressed back
+  saw the untouched course they had left. The work was always saved; only the reading of it
+  was stale, which is indistinguishable from the answer never having been recorded. Both
+  the lesson runner and the review session now invalidate on every graded answer, not only
+  on finishing.
+- **Seeded word senses returned no examples through the API, ever.** The seed wrote
+  `examples` as a bare `[]string` while `domain.ExampleSentence`, the `ExampleSentence`
+  schema and the reader all expect `{sentence, sentence_vi, audio_url}` objects — and the
+  read path discards its unmarshal error, so the mismatch was silent. `sentence_vi` was
+  never populated by anything.
+
+### Added
+
+- **Example sentences are bilingual**: every one of the 1,000 curated sentences, and the 40
+  on the flashcard activities, now carries its Vietnamese rendering, and the eight
+  flashcards carry a Vietnamese gloss of their definition. Translations start hidden behind
+  one tap — showing both at once sends the eye to the line it can read and leaves the
+  English as decoration.
+- **`next_lesson_id` on `LessonDetail`**, resolved server-side across unit boundaries, and a
+  **Next lesson** action on the completion screen. The learner-facing route is
+  `/learn/lesson/{id}` and carries no course, so a client holding only a lesson id could
+  not work this out for itself.
+
+- **`internal/platform/ai`, first slice**: an `ai.Client` interface, a versioned prompt
+  registry whose templates carry their own token and temperature settings, an offline
+  `mock` provider (the default, so `make dev` needs no key and no internet), and one
+  adapter for every OpenAI-compatible server — Ollama, OpenRouter, Groq, LM Studio, vLLM —
+  written against `net/http`, so choosing a free or local model is two environment
+  variables and adds no Go dependency. Routing, budget, quota, caching, retry, streaming
+  and the usage trail are specified but not built; the module's `AGENT.md` §0 says so, and
+  nothing on a request path may use it until they are.
+- **Free dictionary lookup** (`vocabulary/repository`): resolves a word to its IPA, part of
+  speech, definition and a link to a human pronunciation from Wikimedia Commons, via
+  `api.dictionaryapi.dev` — no key, no account. Audio is referenced by URL and never
+  stored, and the recording's source and licence are carried alongside it because most are
+  CC BY-SA and playing a file does not satisfy attribution. "Not a word" and "the
+  dictionary was unreachable" are distinct outcomes, so a network blip cannot reject a
+  learner's good word.
+
+- **`gamification` module, built from its spec**: XP with per-source daily caps and
+  diminishing returns, a quadratic level curve, streaks on the learner's own day boundary
+  with automatic freeze consumption, an authored badge catalogue with idempotent awards,
+  time-boxed quests, and weekly opt-in league leaderboards. It consumes
+  `activity.completed`, `lesson.completed` and both session-completed events, and owns two
+  cron jobs (hourly streak sweep, quarter-hourly leaderboard build). Six endpoints under
+  the `gamification` tag; ten badges and four quests seeded.
+  Two departures from the module spec, both documented in its `AGENT.md`: `xp_events` is
+  not partitioned, because PostgreSQL cannot give both a monthly partition and the
+  `(user_id, source, source_id)` unique constraint idempotency depends on; and the two
+  per-learner settings live on `streaks` rather than in a table that would be the same row
+  under another name.
+
+- **Four more vocabulary exercise kinds**: `vocab_listen_type` (hear a word, spell it),
+  `vocab_match` (pair words with meanings), `vocab_reorder` (rebuild a sentence from
+  shuffled words) and `vocab_context_choice` (pick the meaning a sentence uses), each
+  seeded twice across the eight lessons and rendered by the lesson runner. Matching is the
+  first kind that can be partly right: it scores pair by pair and reports the fraction
+  rather than a bare pass or fail. Its answer key (`correct_pairs`) is redacted out of the
+  learner-facing body like every other answer field, and grading now schedules one review
+  card per word an activity asked about rather than one per activity.
+
+- **Pronunciation on every card**: a shared `PronounceButton` speaks the word, and each
+  example sentence, from a recorded asset when the content version carries one and from
+  browser speech synthesis otherwise. The previous control rendered only when a body had
+  both an `ipa` and an `audio_url`; nothing populates `audio_url`, so it had never appeared
+  for a learner. It is now on the lesson-runner flashcard, both faces of the review card,
+  and the gap-fill sentence — which speaks the blank as a pause until the answer is in, so
+  hearing the sentence cannot give the answer away.
+- **Five example sentences per word**: all 200 curated senses and the eight flashcard
+  activities now carry five examples instead of one, exposed to clients as a new
+  `example_sentences` body key (`example_sentence` still carries the first, for readers of
+  content authored before it). The cards show two and collapse the rest, highlighting the
+  target word in each.
+
 - **Phase 2 Learning Experience & Core Curriculum (v0.2.0)**:
   - **WP7 Content & Lesson**: Canonical content item authoring, versioning, review & publish state machines (`content`), course catalogue, units, lessons, activities, and prerequisite validation (`lesson`).
   - **WP8 Learning Engine**: Attempt execution engine, startup-validated grader registry, atomic grading claim, multi-level progress rollup (`activity` → `lesson` → `unit` → `course`), learning sessions, and learner dashboard endpoint (`learning`).

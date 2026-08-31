@@ -87,8 +87,14 @@ func (f *fakeRepo) UpsertReviewCard(_ context.Context, arg sqlc.UpsertReviewCard
 		Reps:             arg.Reps,
 		Lapses:           arg.Lapses,
 		State:            arg.State,
-		CreatedAt:        fakeNow,
-		UpdatedAt:        fakeNow,
+		// Carried like every other column. Leaving it out made the fake disagree
+		// with the schema in the one place FSRS reads: a card with no
+		// last_review_at measures zero elapsed time on its next answer, and zero
+		// elapsed means retrievability 1, which makes the stability increase
+		// exactly zero.
+		LastReviewAt: arg.LastReviewAt,
+		CreatedAt:    fakeNow,
+		UpdatedAt:    fakeNow,
 	}
 	f.cards[card.ID] = card
 	return card, nil
@@ -182,6 +188,9 @@ func (f *fakeRepo) UpdateReviewCardSchedule(
 	card.Reps = arg.Reps
 	card.Lapses = arg.Lapses
 	card.State = arg.State
+	// The answer path's whole purpose: record when this review happened, so the
+	// next one can measure elapsed time from it.
+	card.LastReviewAt = arg.LastReviewAt
 	card.UpdatedAt = fakeNow
 	f.cards[arg.ID] = card
 	return card, nil

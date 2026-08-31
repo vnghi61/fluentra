@@ -105,3 +105,43 @@ func (q *Queries) ListUnitsByCourseID(ctx context.Context, courseID uuid.UUID) (
 	}
 	return items, nil
 }
+
+const upsertUnit = `-- name: UpsertUnit :one
+INSERT INTO learn.course_units (course_id, position, title, description)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (course_id, position) DO UPDATE
+SET title       = EXCLUDED.title,
+    description = EXCLUDED.description,
+    updated_at  = now()
+RETURNING id, course_id, position, title, description, created_at, updated_at
+`
+
+type UpsertUnitParams struct {
+	CourseID    uuid.UUID
+	Position    int32
+	Title       string
+	Description string
+}
+
+// Keyed on (course_id, position), the unique constraint the seed already relies
+// on. Position is the unit's identity within a course, so regenerating unit 2
+// rewrites unit 2 rather than appending a second one.
+func (q *Queries) UpsertUnit(ctx context.Context, arg UpsertUnitParams) (LearnCourseUnit, error) {
+	row := q.db.QueryRow(ctx, upsertUnit,
+		arg.CourseID,
+		arg.Position,
+		arg.Title,
+		arg.Description,
+	)
+	var i LearnCourseUnit
+	err := row.Scan(
+		&i.ID,
+		&i.CourseID,
+		&i.Position,
+		&i.Title,
+		&i.Description,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}

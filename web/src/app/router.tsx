@@ -16,6 +16,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { ServerWakingBanner } from "@/components/layout/ServerWakingBanner";
 import { useWakeStatus } from "@/hooks/useWakeStatus";
 import { usePreferencesSync } from "@/features/account/hooks/usePreferencesSync";
+import { useDisplayName } from "@/features/account/hooks/useDisplayName";
 
 /**
  * Lazy for the same reason AccountMenu is: both are built on Radix, so together
@@ -83,6 +84,11 @@ const LearnPage = lazyRouteComponent(
   "LearnPage",
 );
 
+const MyWordsPage = lazyRouteComponent(
+  () => import("@/routes/MyWordsPage"),
+  "MyWordsPage",
+);
+
 const LessonPage = lazyRouteComponent(
   () => import("@/routes/LessonPage"),
   "LessonPage",
@@ -128,6 +134,7 @@ function RootApp(): React.JSX.Element {
   const { themeChoice, locale, setThemeChoice, setLocaleChoice } =
     usePreferencesSync(status === "authenticated");
   const wake = useWakeStatus();
+  const displayName = useDisplayName(status === "authenticated");
 
   const handleLogout = async () => {
     await authApi.logout();
@@ -140,6 +147,7 @@ function RootApp(): React.JSX.Element {
       status={status}
       onLogout={() => void handleLogout()}
       chrome={!isBareRoute(pathname)}
+      displayName={displayName}
       banner={
         <ServerWakingBanner
           waking={wake === "waking"}
@@ -227,6 +235,20 @@ export const reviewRoute = createRoute({
     }
   },
   component: ReviewPage,
+});
+
+// A learner's own vocabulary. Signed-in only, like the review session: an
+// upload belongs to a person, and a guest has none.
+export const myWordsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/practice/my-words",
+  beforeLoad: () => {
+    const { status } = useAuthStore.getState();
+    if (status === "unauthenticated") {
+      throw redirect({ to: "/login" });
+    }
+  },
+  component: MyWordsPage,
 });
 
 export const progressRoute = createRoute({
@@ -319,6 +341,7 @@ export const routeTree = rootRoute.addChildren([
   lessonRoute,
   practiceRoute,
   reviewRoute,
+  myWordsRoute,
   progressRoute,
   settingsRoute,
   adminRoute,

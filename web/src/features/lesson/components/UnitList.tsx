@@ -13,14 +13,12 @@ import { LessonRow } from "./LessonRow";
 
 export interface UnitListProps {
   units: CourseUnit[];
-  completedLessonIds?: Set<string>;
   nextLessonId?: string | null;
   onStartLesson?: (lessonId: string) => void;
 }
 
 export const UnitList: React.FC<UnitListProps> = ({
   units,
-  completedLessonIds = new Set(),
   nextLessonId,
   onStartLesson,
 }) => {
@@ -81,7 +79,14 @@ export const UnitList: React.FC<UnitListProps> = ({
             <div className="space-y-3">
               {unit.lessons && unit.lessons.length > 0 ? (
                 unit.lessons.map((lesson) => {
-                  const isCompleted = completedLessonIds.has(lesson.id);
+                  // Straight off the lesson, not out of a prop.
+                  //
+                  // This took a `completedLessonIds` Set that no caller ever
+                  // passed, so it defaulted to empty and every lesson rendered
+                  // as unstarted — LessonRow has drawn a tick and a "Completed"
+                  // badge all along with nothing to trigger them. The server
+                  // knows, so the server says.
+                  const isCompleted = lesson.completed;
                   const isNext = lesson.id === nextLessonId;
 
                   return (

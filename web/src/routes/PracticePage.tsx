@@ -1,7 +1,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
-import { AlertCircle, BookMarked, Layers } from "lucide-react";
+import { AlertCircle, BookMarked, Layers, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GuestNotice } from "@/features/learning";
+import { useCourse } from "@/features/lesson";
 import { useAuthStore } from "@/stores/authStore";
 import {
   ForecastStrip,
@@ -32,12 +33,19 @@ import {
  * The page owns no learning logic. It is a door: due count and the way into
  * the session, then the week ahead so an empty queue still says something.
  */
+/** The slug cmd/worker's practice generator upserts its course under. */
+const generatedPracticeSlug = "generated-vocabulary-practice";
+
 export function PracticePage(): React.JSX.Element {
   const { t } = useTranslation();
   // Review cards belong to a person. A guest has none, and asking for them
   // would earn a 401 on a page they are allowed to be on — which reads as a
   // bug rather than as the honest "there is nothing here for you yet".
   const signedIn = useAuthStore((state) => state.status === "authenticated");
+  // The slug the practice generator upserts under. A 404 here is the ordinary
+  // case on a deployment whose generator has not run yet, so the card simply
+  // does not render.
+  const generatedPractice = useCourse(generatedPracticeSlug);
   const due = useDueCount(signedIn);
   const forecast = useForecast(signedIn);
 
@@ -124,10 +132,52 @@ export function PracticePage(): React.JSX.Element {
       ) : null}
 
       {/*
-        Named, not hidden. Vocabulary has a backend — lookup, search and decks —
-        and no screens yet, and a learner who came here from a button labelled
-        "Practice Vocabulary" is owed an answer rather than a blank space. This
-        card makes no promise about when.
+        The drills generated from the learner's own dictionary.
+
+        They live in a course of their own, and that course is deliberately not
+        in the catalogue: /learn is the authored syllabus, and a machine-made
+        drill set sorting above it is what made the catalogue open on generated
+        content. Practice is where it belongs, and this is the only door to it.
+
+        Rendered only when the course exists. The generator creates it on its
+        first run over a non-empty dictionary, so on a fresh deployment there is
+        nothing here yet — and a card advertising an empty course would be the
+        same lie the vocabulary card used to tell.
+      */}
+      {generatedPractice.data && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2 text-text-muted mb-1">
+              <Sparkles className="h-5 w-5" aria-hidden="true" />
+              <span className="text-xs font-semibold uppercase tracking-wider">
+                {t("practice.generated.label", "Generated drills")}
+              </span>
+            </div>
+            <CardTitle className="text-base font-semibold">
+              {generatedPractice.data.title}
+            </CardTitle>
+            <CardDescription>
+              {t(
+                "practice.generated.desc",
+                "Exercises built from the words already in your dictionary. They grow as your vocabulary does.",
+              )}
+            </CardDescription>
+          </CardHeader>
+          <CardFooter className="pt-0">
+            <Link to="/learn" search={{ course: generatedPracticeSlug }}>
+              <Button variant="secondary" className="gap-2">
+                <Sparkles className="h-4 w-4" aria-hidden="true" />
+                {t("practice.generated.openBtn", "Open drills")}
+              </Button>
+            </Link>
+          </CardFooter>
+        </Card>
+      )}
+
+      {/*
+        This card said "Word lists are not here yet" for as long as there was no
+        screen behind it. There is one now, so it says what it does instead of
+        apologising for what it does not.
       */}
       <Card>
         <CardHeader>
@@ -138,25 +188,23 @@ export function PracticePage(): React.JSX.Element {
             </span>
           </div>
           <CardTitle className="text-base font-semibold">
-            {t("practice.vocabulary.title", "Word lists are not here yet")}
+            {t("practice.myWords.title", "Add your own words")}
           </CardTitle>
           <CardDescription>
-            {/*
-              The second sentence is only true for someone who has an account —
-              a guest's lessons schedule nothing — so they get the first half
-              and no claim that is false for them.
-            */}
-            {signedIn
-              ? t(
-                  "practice.vocabulary.desc",
-                  "Browsing and building decks is still being built. Words you meet in lessons are already scheduled for review above.",
-                )
-              : t(
-                  "practice.vocabulary.descGuest",
-                  "Browsing and building decks is still being built.",
-                )}
+            {t(
+              "practice.myWords.desc",
+              "Paste vocabulary from your own course. We check each word against a dictionary, write example sentences for it, and schedule it for review here.",
+            )}
           </CardDescription>
         </CardHeader>
+        <CardFooter className="pt-0">
+          <Link to="/practice/my-words">
+            <Button variant="secondary" className="gap-2">
+              <BookMarked className="h-4 w-4" aria-hidden="true" />
+              {t("uploads.openLink", "My words")}
+            </Button>
+          </Link>
+        </CardFooter>
       </Card>
     </div>
   );

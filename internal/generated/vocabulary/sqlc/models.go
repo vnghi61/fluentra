@@ -496,6 +496,7 @@ type LearnCourse struct {
 	EstimatedHours int32
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
+	Origin         string
 }
 
 type LearnCourseUnit struct {
@@ -586,6 +587,7 @@ type LearnReviewCard struct {
 	SuspendedAt      *time.Time
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
+	LastReviewAt     *time.Time
 }
 
 type LearnReviewDailyStat struct {
@@ -659,6 +661,32 @@ type SkillUserWordState struct {
 	Status      string
 	FirstSeenAt time.Time
 	UpdatedAt   time.Time
+}
+
+type SkillVocabUpload struct {
+	ID          uuid.UUID
+	UserID      uuid.UUID
+	RawText     string
+	DeckID      *uuid.UUID
+	Status      string
+	ItemCount   int32
+	CreatedAt   time.Time
+	CompletedAt *time.Time
+}
+
+type SkillVocabUploadItem struct {
+	ID              uuid.UUID
+	UploadID        uuid.UUID
+	UserID          uuid.UUID
+	Term            string
+	ProvidedMeaning string
+	Status          string
+	Reason          string
+	WordSenseID     *uuid.UUID
+	VerifiedByModel string
+	Attempts        int32
+	CreatedAt       time.Time
+	VerifiedAt      *time.Time
 }
 
 type SkillWord struct {

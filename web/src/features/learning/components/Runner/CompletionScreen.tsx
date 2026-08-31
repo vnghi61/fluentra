@@ -17,6 +17,14 @@ export interface CompletionScreenProps {
   score: number;
   totalActivities: number;
   timeSpentSeconds: number;
+  /**
+   * The lesson that follows this one, when the course has one.
+   *
+   * Absent on the last lesson of a course, and then the screen offers only the
+   * syllabus — which is the honest thing to offer, rather than a button that
+   * goes nowhere.
+   */
+  nextLessonId?: string | undefined;
   onRetryLesson?: () => void;
 }
 
@@ -24,6 +32,7 @@ export const CompletionScreen: React.FC<CompletionScreenProps> = ({
   score,
   totalActivities,
   timeSpentSeconds,
+  nextLessonId,
   onRetryLesson,
 }) => {
   const { t } = useTranslation();
@@ -75,12 +84,42 @@ export const CompletionScreen: React.FC<CompletionScreenProps> = ({
         </CardContent>
 
         <CardFooter className="flex flex-col gap-3 pt-2">
-          <Link to="/learn" className="w-full">
-            <Button size="lg" className="w-full font-bold gap-2 min-h-[48px]">
-              {t("runner.backToCourseBtn", "Back to Syllabus")}
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </Button>
-          </Link>
+          {/*
+            Continuing is the primary action when there is somewhere to
+            continue to. A learner who has just finished a lesson is already
+            warmed up, and sending them back to a syllabus to find the next one
+            is the moment most study sessions end.
+          */}
+          {nextLessonId ? (
+            <>
+              <Link
+                to="/learn/lesson/$lessonId"
+                params={{ lessonId: nextLessonId }}
+                className="w-full"
+              >
+                <Button size="lg" className="w-full font-bold gap-2 min-h-[48px]">
+                  {t("runner.nextLessonBtn", "Next lesson")}
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </Button>
+              </Link>
+              <Link to="/learn" className="w-full">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="w-full gap-2 min-h-[44px]"
+                >
+                  {t("runner.backToCourseBtn", "Back to Syllabus")}
+                </Button>
+              </Link>
+            </>
+          ) : (
+            <Link to="/learn" className="w-full">
+              <Button size="lg" className="w-full font-bold gap-2 min-h-[48px]">
+                {t("runner.backToCourseBtn", "Back to Syllabus")}
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Button>
+            </Link>
+          )}
 
           {onRetryLesson && (
             <Button

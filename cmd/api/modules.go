@@ -17,6 +17,7 @@ import (
 	authservice "github.com/fluentra/fluentra/internal/modules/auth/service"
 	"github.com/fluentra/fluentra/internal/modules/auth/service/oauth/google"
 	"github.com/fluentra/fluentra/internal/modules/content"
+	"github.com/fluentra/fluentra/internal/modules/gamification"
 	"github.com/fluentra/fluentra/internal/modules/learning"
 	learningcontract "github.com/fluentra/fluentra/internal/modules/learning/contract"
 	learningdomain "github.com/fluentra/fluentra/internal/modules/learning/domain"
@@ -51,6 +52,8 @@ type identity struct {
 	learning   *learning.Module
 	srs        *srs.Module
 	vocabulary *vocabulary.Module
+	//nolint:unused // read through Routes and by the dashboard's Reader.
+	gamification *gamification.Module
 
 	rateLimit *httpx.RateLimiter
 }
@@ -199,12 +202,13 @@ func newIdentity(deps identityDeps) *identity {
 	})
 
 	assembled.lesson = lesson.New(lesson.Deps{
-		Pool:     deps.Pool,
-		Caches:   newLessonCaches(deps.Redis),
-		Guard:    lazyGuard{of: assembled},
-		Content:  assembled.content.Reader(),
-		Unlocker: lazyUnlocker{of: assembled},
-		Env:      deps.Env,
+		Pool:      deps.Pool,
+		Caches:    newLessonCaches(deps.Redis),
+		Guard:     lazyGuard{of: assembled},
+		Content:   assembled.content.Reader(),
+		Unlocker:  lazyUnlocker{of: assembled},
+		Completed: lazyLessonProgress{of: assembled},
+		Env:       deps.Env,
 	})
 
 	assembled.srs = srs.New(srs.Deps{
@@ -221,6 +225,20 @@ func newIdentity(deps identityDeps) *identity {
 		Guard:   lazyGuard{of: assembled},
 		Content: assembled.content.Reader(),
 		Reviews: assembled.srs.CardWriter(),
+		// No Dictionary and no AI here on purpose: the API stores an upload and
+		// returns, and the worker verifies it. A dictionary call on the request
+		// path would make submitting three hundred words a request that times
+		// out half way through.
+	})
+
+	// After srs and before learning only because it reads neither: gamification
+	// is downstream by design and hears about learning through events, so
+	// nothing in the graph has to be built before it except `user`, whose
+	// timezone decides where a learner's day boundary falls.
+	assembled.gamification = gamification.New(gamification.Deps{
+		Pool:  deps.Pool,
+		Guard: lazyGuard{of: assembled},
+		Users: assembled.user.Reader(),
 	})
 
 	assembled.learning = learning.New(learning.Deps{
@@ -328,6 +346,7 @@ func (i *identity) Routes(api chi.Router) {
 		i.learning.Routes(authenticated)
 		i.srs.Routes(authenticated)
 		i.vocabulary.Routes(authenticated)
+		i.gamification.Routes(authenticated)
 
 		authenticated.Group(func(admin chi.Router) {
 			admin.Use(i.rbac.AdminOnly())
@@ -355,6 +374,7 @@ var _ content.Guard = lazyGuard{}
 var _ lesson.Guard = lazyGuard{}
 var _ learning.Guard = lazyGuard{}
 var _ srs.Guard = lazyGuard{}
+var _ gamification.Guard = lazyGuard{}
 var _ vocabulary.Guard = lazyGuard{}
 
 func (g lazyGuard) Require(ctx context.Context, permission string) error {
@@ -381,6 +401,41 @@ func (u lazyUnlocker) IsUnlocked(
 	}
 	return u.of.learning.UnlockChecker().IsUnlocked(ctx, userID, lessonIDs)
 }
+
+// lazyLessonProgress adapts learning's ProgressReader to the set of finished
+// lessons the catalogue needs, resolved at call time for the same reason
+// lazyUnlocker is.
+//
+// The fold lives here rather than in lesson because the scope enum and the
+// Progress row belong to learning, and lesson is not permitted to know them.
+// What crosses the seam is a set of ids, which is all the catalogue renders.
+type lazyLessonProgress struct{ of *identity }
+
+var _ lessonservice.CompletedLessons = lazyLessonProgress{}
+
+func (p lazyLessonProgress) CompletedLessonIDs(
+	ctx context.Context, userID uuid.UUID,
+) (map[uuid.UUID]bool, error) {
+	if p.of.learning == nil {
+		return nil, fmt.Errorf("learning module is not assembled")
+	}
+	rows, err := p.of.learning.ProgressReader().ProgressOf(ctx, userID, learningcontract.ScopeLesson)
+	if err != nil {
+		return nil, err
+	}
+	completed := make(map[uuid.UUID]bool, len(rows))
+	for _, row := range rows {
+		if row.Status == learningStatusCompleted {
+			completed[row.ScopeID] = true
+		}
+	}
+	return completed, nil
+}
+
+// learningStatusCompleted is the one progress status the catalogue cares about.
+// learning stores it as a string; comparing to a literal in three places is how
+// a typo becomes a lesson that never shows a tick.
+const learningStatusCompleted = "completed"
 
 // rateLimiterAdapter bridges platform/cache's limiter to the one httpx declares.
 //

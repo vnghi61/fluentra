@@ -67,15 +67,23 @@ func (c *countingContentReader) Browse(
 
 // fakeLessonRepo implements service.Repository for unit tests.
 type fakeLessonRepo struct {
-	lesson       *contract.Lesson
-	unit         *contract.Unit
-	hierarchy    *contract.ActivityHierarchy
-	activities   []contract.Activity
-	prereqs      []service.PrerequisiteItem
-	courses      []*contract.Course
-	units        []*contract.Unit
-	edges        []domain.PrerequisiteEdge
+	lesson     *contract.Lesson
+	unit       *contract.Unit
+	hierarchy  *contract.ActivityHierarchy
+	activities []contract.Activity
+	prereqs    []service.PrerequisiteItem
+	courses    []*contract.Course
+	units      []*contract.Unit
+	edges      []domain.PrerequisiteEdge
+	// nextLesson is what GetNextPublishedLesson hands back. nil is the real
+	// answer for the last lesson of a course, so it is also the default.
+	nextLesson   *contract.Lesson
 	queryCounter atomic.Int64
+
+	// What the generator last asked to be written, for assertions.
+	upsertedCourse *contract.CourseSpec
+	upsertedUnit   *contract.UnitSpec
+	upsertedLesson *contract.LessonSpec
 
 	// what the last catalogue query was given, so a test can assert the clamp
 	// and the level filter reach the query rather than stopping at the service.
@@ -135,6 +143,40 @@ func (f *fakeLessonRepo) ListPublishedLessonsByCourseID(
 		return nil, nil
 	}
 	return []*contract.Lesson{f.lesson}, nil
+}
+
+// The generator's three upserts. Recorded rather than simulated: the tests that
+// use them assert what the author asked for, and the real idempotency lives in
+// the ON CONFLICT clauses, which only an integration test can exercise.
+func (f *fakeLessonRepo) UpsertCourse(
+	_ context.Context, spec contract.CourseSpec,
+) (*contract.Course, error) {
+	f.queryCounter.Add(1)
+	f.upsertedCourse = &spec
+	return &contract.Course{ID: uuid.New(), Slug: spec.Slug, Title: spec.Title}, nil
+}
+
+func (f *fakeLessonRepo) UpsertUnit(
+	_ context.Context, spec contract.UnitSpec,
+) (*contract.Unit, error) {
+	f.queryCounter.Add(1)
+	f.upsertedUnit = &spec
+	return &contract.Unit{ID: uuid.New(), CourseID: spec.CourseID, Position: spec.Position}, nil
+}
+
+func (f *fakeLessonRepo) UpsertLesson(
+	_ context.Context, spec contract.LessonSpec,
+) (*contract.Lesson, error) {
+	f.queryCounter.Add(1)
+	f.upsertedLesson = &spec
+	return &contract.Lesson{ID: uuid.New(), UnitID: spec.UnitID, Position: spec.Position}, nil
+}
+
+func (f *fakeLessonRepo) GetNextPublishedLesson(
+	_ context.Context, _ uuid.UUID, _ int,
+) (*contract.Lesson, error) {
+	f.queryCounter.Add(1)
+	return f.nextLesson, nil
 }
 
 func (f *fakeLessonRepo) GetCourseBySlug(_ context.Context, slug string) (*contract.Course, error) {

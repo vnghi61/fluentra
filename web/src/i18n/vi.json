@@ -265,6 +265,13 @@
     "body": "Màn hình này không dựng được. Lỗi đã được ghi nhận.",
     "reload": "Tải lại"
   },
+  "examples": {
+    "heading": "Câu ví dụ",
+    "hideTranslation": "Ẩn nghĩa",
+    "listen": "Nghe câu này",
+    "showMore": "Xem thêm",
+    "showTranslation": "Xem nghĩa"
+  },
   "guest": {
     "notice": {
       "text": "Bạn đang xem mà chưa đăng nhập. Bạn mở được mọi bài học và làm được bài tập, nhưng không có gì được lưu lại."
@@ -309,6 +316,8 @@
     "admin": "Quản trị",
     "createAccount": "Tạo tài khoản",
     "dashboard": "Tổng quan",
+    "greeting": "Xin chào",
+    "greetingFallback": "bạn",
     "home": "Trang chủ",
     "learn": "Học",
     "logout": "Đăng xuất",
@@ -343,12 +352,21 @@
     "yourAccountHoldsNoAdministrativePermissions": "Tài khoản của bạn không có quyền quản trị."
   },
   "practice": {
-    "title": "Luyện tập",
-    "tagline": "Giữ lại những gì bạn đã học. Thẻ ôn được xếp vào đúng ngày bạn sắp quên.",
     "error": {
       "title": "Không tải được hàng đợi ôn tập",
       "desc": "Không kết nối được lịch ôn tập. Tiến độ của bạn vẫn an toàn."
     },
+    "forecast": {
+      "title": "Tuần tới",
+      "desc": "Những thẻ đã được xếp lịch quay lại với bạn."
+    },
+    "generated": {
+      "desc": "Bài tập dựng từ những từ đã có trong từ điển của bạn. Vốn từ lớn tới đâu, bài tập nhiều tới đó.",
+      "label": "Bài luyện tự sinh",
+      "openBtn": "Mở bài luyện"
+    },
+    "myWords.desc": "Dán từ vựng từ khoá học của bạn. Chúng tôi đối chiếu từng từ với từ điển, viết câu ví dụ, và xếp lịch ôn tập ngay tại đây.",
+    "myWords.title": "Thêm từ của riêng bạn",
     "review": {
       "label": "Lặp lại ngắt quãng",
       "emptyTitle": "Chưa có thẻ nào đến hạn",
@@ -358,10 +376,8 @@
       "dueDesc": "Chấm từng thẻ theo mức bạn nhớ được. Lịch ôn sẽ điều chỉnh theo câu trả lời.",
       "startBtn": "Bắt đầu ôn tập"
     },
-    "forecast": {
-      "title": "Tuần tới",
-      "desc": "Những thẻ đã được xếp lịch quay lại với bạn."
-    },
+    "tagline": "Giữ lại những gì bạn đã học. Thẻ ôn được xếp vào đúng ngày bạn sắp quên.",
+    "title": "Luyện tập",
     "vocabulary": {
       "desc": "Phần duyệt từ và tạo bộ thẻ đang được xây. Những từ bạn gặp trong bài học thì đã được xếp lịch ôn ở trên.",
       "descGuest": "Phần duyệt từ và tạo bộ thẻ đang được xây.",
@@ -382,6 +398,10 @@
     "title": "Tiến độ học tập",
     "totalTime": "Tổng thời gian học",
     "wordsMastered": "Từ vựng đã vững"
+  },
+  "pronounce": {
+    "listen": "Nghe phát âm",
+    "unavailable": "Chưa có phát âm"
   },
   "review": {
     "again": "Lại",
@@ -428,6 +448,7 @@
     "confirmExitBtn": "Thoát bài học",
     "continueBtn": "Tiếp tục",
     "correct": "Chính xác! Làm rất tốt.",
+    "correctAnswerLabel": "Đáp án đúng",
     "errorDesc": "Không thể gửi bài do lỗi mạng. Đáp án của bạn vẫn được giữ nguyên. Vui lòng thử lại.",
     "errorTitle": "Gửi bài không thành công",
     "exit": "Thoát",
@@ -437,20 +458,38 @@
     "flashcardAgain": "Đã ghi nhận — từ này sẽ quay lại sớm hơn.",
     "flipCardBtn": "Lật thẻ",
     "flipPrompt": "Nhấn Space hoặc chạm để lật thẻ",
+    "gapFillLabel": "Câu trả lời của bạn cho chỗ trống",
     "gapFillPlaceholder": "Nhập câu trả lời...",
     "incorrect": "Chưa đúng. Xem đáp án chuẩn phía trên.",
     "knewItBtn": "Tôi nhớ từ này",
+    "listenFullSentence": "Nghe câu hoàn chỉnh",
+    "listenSentence": "Nghe câu",
+    "listenTypeLabel": "Từ bạn vừa nghe",
+    "listenTypePlaceholder": "Gõ từ bạn nghe được…",
     "markCorrect": "Đúng",
     "markIncorrect": "Chưa đúng",
-    "nextLessonBtn": "Bài học tiếp theo",
+    "matchClear": "Xóa hết",
+    "matchDefinitions": "Nghĩa",
+    "matchPickMeaning": "Giờ chọn nghĩa của nó",
+    "matchPickWord": "Chọn một từ để bắt đầu",
+    "matchWords": "Từ vựng",
+    "meaningLabel": "Nghĩa",
+    "nextLessonBtn": "Bài tiếp theo",
     "notYetBtn": "Chưa nhớ",
+    "partial": "Đúng một phần",
+    "playWord": "Phát âm từ",
     "recallPrompt": "Bạn có nhớ từ này không?",
+    "reorderAnswer": "Câu của bạn",
+    "reorderBank": "Các từ có sẵn",
+    "reorderEmpty": "Chạm các từ bên dưới theo đúng thứ tự",
+    "reorderReset": "Làm lại",
     "resumeBtn": "Tiếp tục học",
     "retryBtn": "Thử gửi lại",
     "scoreLabel": "Điểm số",
     "skipActivityBtn": "Bỏ qua hoạt động này",
     "stepProgress": "Hoạt động {{current}} / {{total}}",
     "submitBtn": "Gửi đáp án",
+    "tapToHear": "Chạm để nghe lại",
     "timeSpentLabel": "Thời gian"
   },
   "server": {
@@ -467,5 +506,23 @@
     "label": "Giao diện",
     "light": "Sáng",
     "system": "Theo hệ thống"
+  },
+  "uploads": {
+    "checking": "đang kiểm tra",
+    "empty": "Chưa thêm gì. Dán một danh sách ở trên và chúng tôi sẽ kiểm tra giúp bạn.",
+    "failed": "Chúng tôi không lưu được. Vui lòng thử lại.",
+    "hint": "Mỗi dòng một từ. Muốn thì thêm nghĩa sau dấu gạch ngang, hai chấm hoặc tab — danh sách từ trơn cũng được.",
+    "history": "Những gì bạn đã thêm",
+    "label": "Dán danh sách từ",
+    "nothingYet": "Chưa có gì để thêm",
+    "openLink": "Từ của tôi",
+    "placeholder": "leisure - thời gian rảnh\nhabit: thói quen\njourney",
+    "rejected": "không tìm thấy",
+    "submit": "Thêm các từ này",
+    "tagline": "Thêm từ vựng từ khoá học riêng của bạn. Chúng tôi kiểm tra từng từ, viết câu ví dụ, và xếp lịch ôn tập cho bạn.",
+    "title": "Từ của tôi",
+    "verified": "đã thêm",
+    "words": "từ",
+    "wordsFound": "từ được tìm thấy"
   }
 }

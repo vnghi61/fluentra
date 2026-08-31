@@ -430,6 +430,84 @@ func (q *Queries) ListSensesByWordID(ctx context.Context, wordID uuid.UUID) ([]S
 	return items, nil
 }
 
+const listSensesForGeneration = `-- name: ListSensesForGeneration :many
+SELECT
+    w.id            AS word_id,
+    w.lemma,
+    w.pos,
+    w.cefr_level,
+    w.ipa,
+    w.frequency_rank,
+    s.id            AS sense_id,
+    s.definition,
+    s.definition_vi,
+    s.examples,
+    s.content_version_id
+FROM skill.word_senses s
+JOIN skill.words w ON w.id = s.word_id
+WHERE s.content_version_id IS NOT NULL
+  AND btrim(s.definition) <> ''
+ORDER BY w.frequency_rank NULLS LAST, w.lemma, s.id
+LIMIT $1
+`
+
+type ListSensesForGenerationRow struct {
+	WordID           uuid.UUID
+	Lemma            string
+	Pos              string
+	CefrLevel        string
+	Ipa              *string
+	FrequencyRank    *int32
+	SenseID          uuid.UUID
+	Definition       string
+	DefinitionVi     *string
+	Examples         []byte
+	ContentVersionID *uuid.UUID
+}
+
+// The generator's input: every published sense with enough to build an exercise
+// from, joined to its word.
+//
+// `content_version_id IS NOT NULL` because a generated exercise schedules a
+// review card at the word's own dictionary entry, and a sense with no entry has
+// nowhere to point one. `definition <> ”` because a definition is the question
+// in half the kinds.
+//
+// Ordered by frequency rank so the first lessons the generator writes are about
+// the commonest words, and the ordering is stable across runs — which is what
+// keeps a lesson's position, and therefore its identity, from moving.
+func (q *Queries) ListSensesForGeneration(ctx context.Context, limit int32) ([]ListSensesForGenerationRow, error) {
+	rows, err := q.db.Query(ctx, listSensesForGeneration, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSensesForGenerationRow
+	for rows.Next() {
+		var i ListSensesForGenerationRow
+		if err := rows.Scan(
+			&i.WordID,
+			&i.Lemma,
+			&i.Pos,
+			&i.CefrLevel,
+			&i.Ipa,
+			&i.FrequencyRank,
+			&i.SenseID,
+			&i.Definition,
+			&i.DefinitionVi,
+			&i.Examples,
+			&i.ContentVersionID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listWordsByLemma = `-- name: ListWordsByLemma :many
 SELECT id, lemma, pos, cefr_level, frequency_rank, ipa, audio_asset_id, created_at, updated_at FROM skill.words
 WHERE lemma = $1

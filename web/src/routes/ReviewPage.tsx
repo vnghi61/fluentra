@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { AlertCircle, ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -11,7 +12,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { FlipCard } from "@/components/ui/flip-card";
 import { Progress } from "@/components/ui/progress";
+import { learningKeys } from "@/features/learning";
 import {
   CardContentUnavailable,
   EmptyQueue,
@@ -21,6 +24,7 @@ import {
   GradeButtonGroup,
   reviewApi,
   type ReviewGrade,
+  reviewKeys,
   ReviewSummary,
   useReviewSession,
 } from "@/features/review";
@@ -31,6 +35,7 @@ const noGrades: GradeCounts = { again: 0, hard: 0, good: 0, easy: 0 };
 
 export function ReviewPage(): React.JSX.Element {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const { data: sessionData, isLoading, isError, refetch } = useReviewSession();
 
   // `cards` is required in ReviewSessionResponse; it is absent here only while the
@@ -95,13 +100,19 @@ export function ReviewPage(): React.JSX.Element {
       try {
         await reviewApi.answerCard(currentCard.id, grade);
         advance(grade);
+        // Answering reschedules the card, so the due count the dashboard shows
+        // and the learner's mastery are both stale the moment this returns.
+        // Not awaited: a refetch that fails must not fail a grade the server
+        // has already written.
+        void queryClient.invalidateQueries({ queryKey: reviewKeys.dueCount() });
+        void queryClient.invalidateQueries({ queryKey: learningKeys.all });
       } catch {
         setGradeFailed(true);
       } finally {
         setIsSubmitting(false);
       }
     },
-    [advance, currentCard, isSubmitting],
+    [advance, currentCard, isSubmitting, queryClient],
   );
 
   if (isLoading) {
@@ -235,30 +246,55 @@ export function ReviewPage(): React.JSX.Element {
               disabled={isSubmitting}
             />
           </div>
-        ) : !isFlipped ? (
-          <FlashcardFront
-            word={content.word}
-            {...(content.ipa !== undefined && { ipa: content.ipa })}
-            {...(content.audioUrl !== undefined && { audioUrl: content.audioUrl })}
-            onFlip={() => setIsFlipped(true)}
-          />
         ) : (
-          <div className="space-y-6 animate-in fade-in duration-200">
-            <FlashcardBack
-              word={content.word}
-              definition={content.definition}
-              {...(content.ipa !== undefined && { ipa: content.ipa })}
-              {...(content.definitionVi !== undefined && { definitionVi: content.definitionVi })}
-              {...(content.exampleSentence !== undefined && {
-                exampleSentence: content.exampleSentence,
-              })}
-              {...(content.pos !== undefined && { partOfSpeech: content.pos })}
+          <div className="space-y-6">
+            {/*
+              One card that turns, rather than two that swap.
+
+              The front and back used to be separate branches with a fade
+              between them, so the box changed height while the text changed
+              instantly — the "not smooth" this replaces. Both faces are laid
+              out now and the container rotates.
+            */}
+            <FlipCard
+              flipped={isFlipped}
+              onClick={isFlipped ? undefined : () => setIsFlipped(true)}
+              label={t("review.sessionTitle", "SRS Vocabulary Review")}
+              front={
+                <FlashcardFront
+                  word={content.word}
+                  {...(content.ipa !== undefined && { ipa: content.ipa })}
+                  {...(content.audioUrl !== undefined && {
+                    audioUrl: content.audioUrl,
+                  })}
+                  onFlip={() => setIsFlipped(true)}
+                />
+              }
+              back={
+                <FlashcardBack
+                  word={content.word}
+                  definition={content.definition}
+                  {...(content.ipa !== undefined && { ipa: content.ipa })}
+                  {...(content.definitionVi !== undefined && {
+                    definitionVi: content.definitionVi,
+                  })}
+                  exampleSentences={content.exampleSentences}
+                  {...(content.audioUrl !== undefined && {
+                    audioUrl: content.audioUrl,
+                  })}
+                  {...(content.pos !== undefined && {
+                    partOfSpeech: content.pos,
+                  })}
+                />
+              }
             />
 
-            <GradeButtonGroup
-              onGrade={(grade) => void handleGrade(grade)}
-              disabled={isSubmitting}
-            />
+            {isFlipped && (
+              <GradeButtonGroup
+                onGrade={(grade) => void handleGrade(grade)}
+                disabled={isSubmitting}
+              />
+            )}
           </div>
         )}
       </main>

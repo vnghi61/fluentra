@@ -1,3 +1,6 @@
+import { readExampleSentences } from "@/lib/examples";
+import type { ExampleSentence } from "@/lib/examples";
+
 import type { ReviewCard } from "../api/reviewApi";
 
 /**
@@ -24,7 +27,8 @@ export interface FlashcardContent {
   ipa?: string;
   audioUrl?: string;
   definitionVi?: string;
-  exampleSentence?: string;
+  /** Every authored example, with its translation where one exists. */
+  exampleSentences: ExampleSentence[];
 }
 
 function str(body: Record<string, unknown>, key: string): string | undefined {
@@ -50,7 +54,7 @@ export function flashcardContent(card: ReviewCard): FlashcardContent | null {
   const ipa = str(body, "ipa");
   const audioUrl = str(body, "audio_url");
   const definitionVi = str(body, "definition_vi");
-  const exampleSentence = str(body, "example_sentence");
+  const exampleSentences = readExampleSentences(body);
 
   return {
     word,
@@ -59,6 +63,6 @@ export function flashcardContent(card: ReviewCard): FlashcardContent | null {
     ...(ipa !== undefined && { ipa }),
     ...(audioUrl !== undefined && { audioUrl }),
     ...(definitionVi !== undefined && { definitionVi }),
-    ...(exampleSentence !== undefined && { exampleSentence }),
+    exampleSentences,
   };
 }

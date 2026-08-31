@@ -23,13 +23,19 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/audit"
 	"github.com/fluentra/fluentra/internal/modules/auth"
 	authservice "github.com/fluentra/fluentra/internal/modules/auth/service"
+	"github.com/fluentra/fluentra/internal/modules/content"
+	"github.com/fluentra/fluentra/internal/modules/gamification"
 	"github.com/fluentra/fluentra/internal/modules/learning"
 	learningjob "github.com/fluentra/fluentra/internal/modules/learning/job"
 	"github.com/fluentra/fluentra/internal/modules/lesson"
 	lessonservice "github.com/fluentra/fluentra/internal/modules/lesson/service"
 	"github.com/fluentra/fluentra/internal/modules/rbac"
+	rbaccontract "github.com/fluentra/fluentra/internal/modules/rbac/contract"
 	"github.com/fluentra/fluentra/internal/modules/srs"
 	"github.com/fluentra/fluentra/internal/modules/user"
+	"github.com/fluentra/fluentra/internal/modules/vocabulary"
+	vocabularyrepo "github.com/fluentra/fluentra/internal/modules/vocabulary/repository"
+	"github.com/fluentra/fluentra/internal/platform/ai"
 	"github.com/fluentra/fluentra/internal/platform/cache"
 	"github.com/fluentra/fluentra/internal/platform/job"
 	"github.com/fluentra/fluentra/internal/platform/mailer"
@@ -93,6 +99,16 @@ type workerConfig struct {
 		Endpoint    string `koanf:"exporter_otlp_endpoint"`
 		ServiceName string `koanf:"service_name"`
 	} `koanf:"otel"`
+	// The AI provider the upload verification uses. Every field is optional:
+	// the default is the offline mock, and a deployment that configures nothing
+	// still verifies uploads against the free dictionary.
+	AI struct {
+		Provider string        `koanf:"provider"`
+		BaseURL  string        `koanf:"base_url"`
+		Model    string        `koanf:"model"`
+		APIKey   string        `koanf:"api_key"`
+		Timeout  time.Duration `koanf:"timeout"`
+	} `koanf:"ai"`
 	OTP struct {
 		HMACKey string `koanf:"hmac_key"`
 	} `koanf:"otp"`
@@ -151,6 +167,14 @@ func configOptions() config.Options {
 			"mail.transport":                  "smtp",
 			"mail.from":                       "no-reply@fluentra.local",
 			"resend.api_key":                  "",
+			// The offline mock by default, so `make dev` verifies uploads with
+			// no key and no internet. It accepts every word it is given, so a
+			// real deployment must set AI_PROVIDER.
+			"ai.provider": "mock",
+			"ai.base_url": "",
+			"ai.model":    "",
+			"ai.api_key":  "",
+			"ai.timeout":  "120s",
 		},
 		Required: []config.RequiredKey{
 			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},
@@ -244,19 +268,11 @@ func run(ctx context.Context) error {
 	redisClient := redis.NewClient(redisOpt)
 	defer func() { _ = redisClient.Close() }()
 
-	storageClient, err := minio.New(storageHost(cfg.Storage.Endpoint), &minio.Options{
-		Creds:  credentials.NewStaticV4(cfg.Storage.AccessKey, cfg.Storage.SecretKey, ""),
-		Secure: cfg.Storage.UseSSL,
-		Region: cfg.Storage.Region,
-	})
+	storageStore, err := newStorageStore(cfg)
 	if err != nil {
 		_ = redisClient.Close()
 		pool.Close()
-		return fmt.Errorf("create storage client: %w", err)
-	}
-	var storageStore storage.Store = storage.NewMinIOStore(storageClient)
-	if !cfg.Storage.UsePostPolicy {
-		storageStore = storage.NewMinIOStoreNoPostPolicy(storageClient)
+		return err
 	}
 
 	// Event bus, module consumers, and the outbox publisher that feeds them.
@@ -440,6 +456,12 @@ func startModules(
 			"error", err)
 	}
 
+	startPracticeGenerator(ctx, cfg, pool, cron, rbacModule, lessonModule, srsModule)
+
+	if err := startGamification(pool, bus, cron); err != nil {
+		return err
+	}
+
 	renderer, err := mailer.NewRenderer(nil, nil)
 	if err != nil {
 		return fmt.Errorf("build mailer renderer: %w", err)
@@ -566,6 +588,36 @@ func registerJobKinds(_ *river.Workers) int {
 	return 1
 }
 
+// newStorageStore validates the storage configuration and builds the facade.
+//
+// Extracted from run because the region check pushed that function past the
+// complexity gate — and because the three steps belong together: what the
+// endpoint is, whether the region is one it accepts, and which presign shape it
+// can serve.
+func newStorageStore(cfg workerConfig) (storage.Store, error) {
+	// Refused at boot rather than at the learner's upload. An R2 endpoint with a
+	// region it does not accept starts cleanly and issues presigned URLs that
+	// look right; the failure appears only when the browser spends one, as a
+	// cross-origin 400 the page cannot read.
+	if err := storage.ValidateRegion(cfg.Storage.Endpoint, cfg.Storage.Region); err != nil {
+		return nil, err
+	}
+
+	client, err := minio.New(storageHost(cfg.Storage.Endpoint), &minio.Options{
+		Creds:  credentials.NewStaticV4(cfg.Storage.AccessKey, cfg.Storage.SecretKey, ""),
+		Secure: cfg.Storage.UseSSL,
+		Region: cfg.Storage.Region,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create storage client: %w", err)
+	}
+
+	if !cfg.Storage.UsePostPolicy {
+		return storage.NewMinIOStoreNoPostPolicy(client), nil
+	}
+	return storage.NewMinIOStore(client), nil
+}
+
 func storageHost(endpoint string) string {
 	trimmed := strings.TrimPrefix(strings.TrimPrefix(endpoint, "https://"), "http://")
 	return strings.TrimSuffix(trimmed, "/")
@@ -602,6 +654,94 @@ func queueNames(queues map[string]int) []string {
 type readinessCheck func(context.Context) error
 
 func (check readinessCheck) Check(ctx context.Context) error { return check(ctx) }
+
+// startGamification wires XP, streaks, badges and the leaderboard.
+//
+// Entirely in the worker: it consumes the events the learning modules publish
+// and owns two scheduled jobs. No Guard is passed because it serves no HTTP
+// here — see gamification.New.
+func startGamification(
+	pool *pgxpool.Pool, bus *eventbus.InProcessBus, cron *job.CronScheduler,
+) error {
+	module := gamification.New(gamification.Deps{Pool: pool})
+	if err := module.Subscribe(bus); err != nil {
+		return err
+	}
+	for _, scheduled := range module.CronJobs() {
+		cron.Register(scheduled)
+	}
+	return nil
+}
+
+// startPracticeGenerator wires the job that turns the dictionary into exercises.
+//
+// Extracted from startModules to keep that function under the cyclomatic limit,
+// and because the three steps belong together: an owner, a module, and a
+// schedule.
+//
+// The owner is the longest-standing administrator. `content_items.owner_id` is
+// not nullable and unattributed content is content nobody can be asked about —
+// and on a database with no administrator yet FirstHolderOf returns uuid.Nil,
+// so the generator stands down quietly rather than failing every twelve hours
+// until somebody signs up.
+func startPracticeGenerator(
+	ctx context.Context,
+	cfg workerConfig,
+	pool *pgxpool.Pool,
+	cron *job.CronScheduler,
+	rbacModule *rbac.Module,
+	lessonModule *lesson.Module,
+	srsModule *srs.Module,
+) {
+	author, err := rbacModule.RoleMembers().FirstHolderOf(ctx, rbaccontract.RoleAdmin)
+	if err != nil {
+		slog.WarnContext(ctx, "could not resolve an owner for generated content; "+
+			"the practice generator will stand down", "error", err)
+		return
+	}
+
+	// The AI client the upload verification uses. A configuration it cannot
+	// build is logged and dropped rather than fatal: verification degrades to
+	// the dictionary alone, which still answers the question that matters most
+	// — whether the word exists.
+	aiClient, err := ai.New(ai.Config{
+		Provider: cfg.AI.Provider,
+		BaseURL:  cfg.AI.BaseURL,
+		Model:    cfg.AI.Model,
+		APIKey:   cfg.AI.APIKey,
+		Timeout:  cfg.AI.Timeout,
+	})
+	if err != nil {
+		slog.WarnContext(ctx, "no AI client; uploads will be verified against the dictionary alone",
+			"error", err)
+		aiClient = nil
+	}
+
+	// NewAuthoring, not New: this process mounts no routes and has no guard to
+	// give, and New fails closed without one — correctly, since its admin
+	// authoring routes would otherwise be unprotected.
+	contentModule := content.NewAuthoring(content.Deps{Pool: pool})
+	vocabularyModule := vocabulary.New(vocabulary.Deps{
+		Pool:              pool,
+		ContentAuthor:     contentModule.Author(),
+		LessonAuthor:      lessonModule.Author(),
+		GeneratorAuthorID: author,
+		Dictionary:        vocabularyrepo.NewFreeDictionaryAPI(""),
+		AI:                aiClient,
+		Reviews:           srsModule.CardWriter(),
+	})
+
+	for _, scheduled := range vocabularyModule.CronJobs() {
+		cron.Register(scheduled)
+	}
+
+	// Once at start-up too, so a freshly seeded database has practice content
+	// without waiting twelve hours for the first interval.
+	if err := vocabularyModule.GenerateExercises(ctx); err != nil {
+		slog.ErrorContext(ctx, "could not generate practice exercises at start-up; "+
+			"the scheduled job will retry", "error", err)
+	}
+}
 
 type workerGuard struct{}
 

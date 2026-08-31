@@ -215,6 +215,13 @@ running component to get it is a decision someone should take on purpose.
 **Rule:** these SDK types **never** appear outside `internal/platform/ai/provider/<name>/`.
 Business code sees only `ai.Client` and task names.
 
+**As built, none of these SDKs is a dependency.** `internal/platform/ai` ships one
+adapter written against `net/http`, because Ollama, OpenRouter, Groq, LM Studio and
+vLLM all serve the same `POST {base}/chat/completions` — so a base URL and a model
+name choose between them, including the free and local ones, with no Go dependency
+and no vendor lock. Add an SDK when a provider-specific capability needs it
+(streaming, tool use, prompt caching), not before.
+
 ### 1.13 Observability
 
 | Concern | Chosen |
@@ -281,6 +288,7 @@ Business code sees only `ai.Client` and task names.
 | UI components | shadcn/ui + Radix + Tailwind 4 | MUI, Mantine, Chakra, Ant | **Components live in our repo** — agents can read and modify them; Radix gives real a11y | We own the maintenance |
 | Forms | React Hook Form + Zod | Formik, TanStack Form | Uncontrolled = fast; Zod schemas shared with API types | — |
 | Tables | TanStack Table v8 | AG Grid, MRT | Headless; styled by our own design system | More assembly |
+| Animation | `motion` 13 | `react-spring`, GSAP, CSS only | Installed ahead of the gamification work that chose it (XP, streaks, badges), where orchestrated and interruptible sequences are the point. Today only `useReducedMotion` is used — the flashcard flip is a plain CSS transform, because `motion.div` with `animate={{ rotateY: 180 }}` took ownership of the element and resolved it to `transform: none`, measured in a browser | +3.4 kB gzipped on the initial download for a hook, until the gamification work earns the rest. Every animation added must keep the `prefers-reduced-motion` guard |
 | Charts | Recharts | Chart.js, visx, ECharts | Declarative React API; sufficient for progress/skill charts | Less powerful than ECharts |
 | Dates | `date-fns` v4 + `@date-fns/tz` | Day.js, Luxon, Temporal polyfill | Tree-shakeable, immutable, good TZ story | — |
 | API client | `openapi-typescript` + `openapi-fetch` | Orval, axios + hand types, tRPC | Types generated from the same spec the server implements; 6 KB runtime | Codegen step |
@@ -309,7 +317,7 @@ Install each with the work that first calls it.
 | `openapi-fetch` | when `src/api/client.ts` is replaced | The hand-written client carries the refresh interceptor and the ApiError shape the app depends on; swapping it is its own change |
 | `Storybook` | design-system work, Phase 3 | Nothing to gain until there are enough primitives to browse |
 | `sonner` | the first toast | Their plan lists `toast` as a Phase 1 primitive, but no screen raises one yet — errors are rendered inline |
-| `motion`, `canvas-confetti` | gamification, Phase 3 | Nothing to celebrate until XP and streaks exist. Both need a `prefers-reduced-motion` guard |
+| `canvas-confetti` | gamification, Phase 3 | Nothing to celebrate until XP and streaks exist. Needs a `prefers-reduced-motion` guard |
 | `diff-match-patch` | AI writing feedback, Phase 3 | Needs a graded essay to diff |
 
 **Rejected:** `react-hotkeys-hook`. `ReviewPage` already implements Space to

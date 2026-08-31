@@ -97,12 +97,18 @@ func TestSeededKindsAreGradable(t *testing.T) {
 		}
 	}
 
-	// The runner renders three kinds and no more; a fourth in the seed is an
-	// activity a learner reaches and cannot do.
+	// The kinds web/src/routes/LessonPage.tsx can render, and no more: a kind in
+	// the seed that the runner does not know is an activity a learner reaches
+	// and cannot do, and a kind the runner supports that nothing seeds is a
+	// renderer no one has ever seen work.
 	runnerKinds := map[string]bool{
 		"vocab_multiple_choice": true,
 		"vocab_gap_fill":        true,
 		"vocab_flashcard":       true,
+		"vocab_listen_type":     true,
+		"vocab_match":           true,
+		"vocab_reorder":         true,
+		"vocab_context_choice":  true,
 	}
 	for kind := range seeded {
 		if !runnerKinds[kind] {
@@ -155,20 +161,30 @@ func assertActivityIsGradable(t *testing.T, lessonTitle string, act seedActivity
 	t.Helper()
 
 	answer, _ := act.Body[bodyKeyCorrectAnswer].(string)
-	if answer == "" {
-		t.Errorf("%s activity %d has no correct_answer; the grader refuses to score it",
+	pairs, _ := act.Body[bodyKeyCorrectPairs].(map[string]string)
+
+	// Either key. A matching exercise has no single answer, and the grader
+	// accepts a body carrying `correct_pairs` instead — demanding both here
+	// would fail content the grader scores perfectly well.
+	if answer == "" && len(pairs) == 0 {
+		t.Errorf("%s activity %d declares neither correct_answer nor correct_pairs; the grader refuses to score it",
 			lessonTitle, act.Position)
 		return
 	}
 
-	if act.Kind != "vocab_multiple_choice" {
+	if len(pairs) > 0 {
+		assertPairsResolve(t, lessonTitle, act, pairs)
+		return
+	}
+
+	if act.Kind != "vocab_multiple_choice" && act.Kind != kindContextChoice {
 		return
 	}
 
 	// The runner submits `selected_option_id`, so the authored answer has to be
 	// an option id — not the word the option displays. A body naming the word
 	// grades every learner wrong while looking entirely reasonable.
-	options, ok := act.Config["options"].([]map[string]string)
+	options, ok := act.Config[cfgOptions].([]map[string]string)
 	if !ok || len(options) == 0 {
 		t.Errorf("%s activity %d is multiple choice with no options", lessonTitle, act.Position)
 		return
@@ -180,6 +196,47 @@ func assertActivityIsGradable(t *testing.T, lessonTitle string, act seedActivity
 	}
 	t.Errorf("%s activity %d: correct_answer %q is not one of the option ids",
 		lessonTitle, act.Position, answer)
+}
+
+// assertPairsResolve checks a matching key against the columns it pairs.
+//
+// A key naming an id that neither column renders grades every learner wrong
+// while the activity looks complete — the same failure mode the multiple-choice
+// check above exists to catch, one shape along.
+func assertPairsResolve(t *testing.T, lessonTitle string, act seedActivity, pairs map[string]string) {
+	t.Helper()
+
+	ids := func(key string) map[string]bool {
+		out := map[string]bool{}
+		rows, _ := act.Config[key].([]map[string]string)
+		for _, row := range rows {
+			out[row[cfgOptionID]] = true
+		}
+		return out
+	}
+	words, definitions := ids(cfgWords), ids(cfgDefinitions)
+
+	if len(words) != len(pairs) || len(definitions) != len(pairs) {
+		t.Errorf("%s activity %d: %d pairs against %d words and %d definitions",
+			lessonTitle, act.Position, len(pairs), len(words), len(definitions))
+	}
+	for wordID, definitionID := range pairs {
+		if !words[wordID] {
+			t.Errorf("%s activity %d: pair key %q is not a rendered word",
+				lessonTitle, act.Position, wordID)
+		}
+		if !definitions[definitionID] {
+			t.Errorf("%s activity %d: pair value %q is not a rendered definition",
+				lessonTitle, act.Position, definitionID)
+		}
+	}
+
+	// Every matching activity must say which words it is about, or the learner
+	// answers four words and earns a card for none of them.
+	if lemmas, _ := act.Body[bodyKeyWordLemmas].([]string); len(lemmas) != len(pairs) {
+		t.Errorf("%s activity %d: %d pairs but %d word_lemmas",
+			lessonTitle, act.Position, len(pairs), len(lemmas))
+	}
 }
 
 func TestWordSenseSeedData_Integrity(t *testing.T) {
@@ -201,4 +258,53 @@ func TestWordSenseSeedData_Integrity(t *testing.T) {
 		}
 		seen[key] = true
 	}
+}
+
+// Every curated sense must carry five examples, and every example must carry its
+// Vietnamese rendering.
+//
+// The count is the promise the flashcard makes; the translation is the field
+// `domain.ExampleSentence`, the `ExampleSentence` schema and the DB column have
+// always defined and that nothing ever populated. Both are data invariants, and
+// data drifts silently — an entry that lost its translation would simply render
+// with a blank line under it.
+func TestSeededExamples_AreFiveAndBilingual(t *testing.T) {
+	const wantExamples = 5
+
+	for _, sense := range wordSenseSeedData {
+		if len(sense.Examples) != wantExamples {
+			t.Errorf("%s has %d examples, want %d", sense.Lemma, len(sense.Examples), wantExamples)
+			continue
+		}
+		for i, example := range sense.Examples {
+			switch {
+			case strings.TrimSpace(example.Sentence) == "":
+				t.Errorf("%s example %d has no sentence", sense.Lemma, i+1)
+			case strings.TrimSpace(example.SentenceVi) == "":
+				t.Errorf("%s example %d has no Vietnamese rendering", sense.Lemma, i+1)
+			case example.Sentence == example.SentenceVi:
+				t.Errorf("%s example %d was not translated, only copied", sense.Lemma, i+1)
+			case !containsVietnamese(example.SentenceVi):
+				// A rendering with no Vietnamese-specific letter is almost
+				// always the English pasted into the wrong column.
+				t.Errorf("%s example %d does not look like Vietnamese: %q",
+					sense.Lemma, i+1, example.SentenceVi)
+			}
+		}
+	}
+}
+
+// containsVietnamese reports whether a string carries a letter that only
+// Vietnamese orthography uses. Crude on purpose: it exists to catch a whole
+// sentence in the wrong language, not to validate spelling.
+func containsVietnamese(s string) bool {
+	for _, r := range s {
+		if strings.ContainsRune("ăâđêôơưàáảãạằắẳẵặầấẩẫậèéẻẽẹềếểễệìíỉĩị"+
+			"òóỏõọồốổỗộờớởỡợùúủũụừứửữựỳýỷỹỵ"+
+			"ĂÂĐÊÔƠƯÀÁẢÃẠẰẮẲẴẶẦẤẨẪẬÈÉẺẼẸỀẾỂỄỆÌÍỈĨỊ"+
+			"ÒÓỎÕỌỒỐỔỖỘỜỚỞỠỢÙÚỦŨỤỪỨỬỮỰỲÝỶỸỴ", r) {
+			return true
+		}
+	}
+	return false
 }

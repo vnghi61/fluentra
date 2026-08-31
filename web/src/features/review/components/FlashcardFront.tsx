@@ -1,8 +1,8 @@
-import React, { useState } from "react";
-import { RotateCw, Volume2, VolumeX } from "lucide-react";
+import React from "react";
+import { RotateCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { Button } from "@/components/ui/button";
+import { PronounceButton } from "@/components/ui/pronounce-button";
 
 export interface FlashcardFrontProps {
   word: string;
@@ -18,30 +18,6 @@ export const FlashcardFront: React.FC<FlashcardFrontProps> = ({
   onFlip,
 }) => {
   const { t } = useTranslation();
-  const [audioError, setAudioError] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-
-  const handlePlayAudio = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!audioUrl || audioError) return;
-
-    try {
-      setIsPlaying(true);
-      const audio = new Audio(audioUrl);
-      audio.onended = () => setIsPlaying(false);
-      audio.onerror = () => {
-        setAudioError(true);
-        setIsPlaying(false);
-      };
-      void audio.play().catch(() => {
-        setAudioError(true);
-        setIsPlaying(false);
-      });
-    } catch {
-      setAudioError(true);
-      setIsPlaying(false);
-    }
-  };
 
   return (
     <div
@@ -62,40 +38,26 @@ export const FlashcardFront: React.FC<FlashcardFrontProps> = ({
           {word}
         </h2>
 
-        {ipa && (
-          <div className="flex items-center justify-center gap-2">
+        {/*
+          The IPA and the speaker are one row, but the speaker no longer depends
+          on the IPA being there. Both used to be inside a single `{ipa && ...}`,
+          so a sense authored without a transcription silently lost its audio
+          too — and no seeded sense carries an `audio_url` at all, which is why
+          the control was never on screen. PronounceButton falls back to speech
+          synthesis, so the button is now always the real thing.
+        */}
+        <div className="flex items-center justify-center gap-2">
+          {ipa && (
             <span className="font-mono text-base text-primary-accent">
               {ipa}
             </span>
-            {audioUrl && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={audioError || isPlaying}
-                onClick={handlePlayAudio}
-                className="h-11 w-11 p-0 rounded-full min-h-[44px] min-w-[44px]"
-                title={
-                  audioError
-                    ? t("review.audioFailed", "Audio unavailable")
-                    : t("review.listenBtn", "Pronounce word")
-                }
-              >
-                {audioError ? (
-                  <VolumeX
-                    className="h-4 w-4 text-text-muted"
-                    aria-hidden="true"
-                  />
-                ) : (
-                  <Volume2
-                    className={`h-4 w-4 text-primary-accent ${isPlaying ? "animate-pulse" : ""}`}
-                    aria-hidden="true"
-                  />
-                )}
-              </Button>
-            )}
-          </div>
-        )}
+          )}
+          <PronounceButton
+            text={word}
+            audioUrl={audioUrl}
+            label={t("review.listenBtn", "Pronounce word")}
+          />
+        </div>
 
         <div className="pt-6">
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-text-muted bg-surface-muted px-3 py-1.5 rounded-full">

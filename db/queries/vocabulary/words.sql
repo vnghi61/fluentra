@@ -101,3 +101,34 @@ WHERE w.lemma = $1
   AND s.content_version_id IS NOT NULL
 ORDER BY w.frequency_rank ASC NULLS LAST, w.pos ASC
 LIMIT 1;
+
+-- name: ListSensesForGeneration :many
+-- The generator's input: every published sense with enough to build an exercise
+-- from, joined to its word.
+--
+-- `content_version_id IS NOT NULL` because a generated exercise schedules a
+-- review card at the word's own dictionary entry, and a sense with no entry has
+-- nowhere to point one. `definition <> ''` because a definition is the question
+-- in half the kinds.
+--
+-- Ordered by frequency rank so the first lessons the generator writes are about
+-- the commonest words, and the ordering is stable across runs — which is what
+-- keeps a lesson's position, and therefore its identity, from moving.
+SELECT
+    w.id            AS word_id,
+    w.lemma,
+    w.pos,
+    w.cefr_level,
+    w.ipa,
+    w.frequency_rank,
+    s.id            AS sense_id,
+    s.definition,
+    s.definition_vi,
+    s.examples,
+    s.content_version_id
+FROM skill.word_senses s
+JOIN skill.words w ON w.id = s.word_id
+WHERE s.content_version_id IS NOT NULL
+  AND btrim(s.definition) <> ''
+ORDER BY w.frequency_rank NULLS LAST, w.lemma, s.id
+LIMIT $1;

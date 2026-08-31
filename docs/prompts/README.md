@@ -28,6 +28,19 @@ Design rationale: [`/PROMPT_LIBRARY.md`](../../PROMPT_LIBRARY.md) ·
   `devops/`, `ai/`, `docs/`, plus `_shared/` (context header, definition of done, review checklist)
 - `runtime/` — versioned production prompt templates with input/output schemas and eval suites
 
+> **Where the runtime templates actually live: `internal/platform/ai/prompts/`.**
+>
+> Two mechanics moved them out of this folder. `//go:embed` cannot reach outside
+> its own package directory, so the embed must sit beside the templates; and
+> `.go-arch-lint.yml` sets `workdir: internal`, so a package under `docs/` is
+> outside every component it can declare and importing one fails the boundary
+> linter with no way to grant it.
+>
+> Everything else in this document still governs them: `<task>.v<N>.md`,
+> immutable once live, a new version rather than an edit in place, pinned by
+> configuration. Rule L11's intent — versioned template files, reviewable on
+> their own, no prompt string in Go — is met in full.
+
 ---
 
 ## Using a development prompt

@@ -167,3 +167,20 @@ func (r *Repository) DeleteAssignmentsForUser(ctx context.Context, userID uuid.U
 	}
 	return int(affected), nil
 }
+
+// FirstHolderOf returns the longest-standing holder of a role, or uuid.Nil when
+// nobody holds it.
+//
+// Nil rather than an error for "nobody": a fresh database has no administrator
+// yet, and the one caller — the practice generator — should stand down quietly
+// rather than log a failure every twelve hours until somebody signs up.
+func (r *Repository) FirstHolderOf(ctx context.Context, role contract.Role) (uuid.UUID, error) {
+	id, err := r.queries.FirstHolderOfRole(ctx, string(role))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return uuid.Nil, nil
+		}
+		return uuid.Nil, fmt.Errorf("first holder of role %s: %w", role, err)
+	}
+	return id, nil
+}

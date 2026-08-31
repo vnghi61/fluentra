@@ -1,8 +1,15 @@
 -- name: UpsertReviewCard :one
+--
+-- `last_review_at` is set on creation, because creation *is* a review: the card
+-- is born from a graded answer, and Schedule gives it reps = 1. Leaving it null
+-- meant the first real review measured zero elapsed time, and R = 1 makes the
+-- success term `(e^(w10·(1−R)) − 1)` exactly zero — so the first answer after a
+-- lesson never raised stability, and the interval never grew.
 INSERT INTO learn.review_cards (
-    user_id, content_version_id, skill, stability, difficulty, due_at, reps, lapses, state, updated_at
+    user_id, content_version_id, skill, stability, difficulty, due_at, reps, lapses, state,
+    last_review_at, updated_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, now()
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, sqlc.arg('last_review_at'), now()
 )
 -- The conflict path deliberately leaves the schedule alone. A learner who redoes
 -- a lesson activity already has a card carrying weeks of FSRS history; copying
@@ -37,6 +44,13 @@ WHERE user_id = $1
   AND due_at <= $2;
 
 -- name: UpdateReviewCardSchedule :one
+--
+-- `last_review_at` comes from the caller, not from now(). It is the moment the
+-- learner answered, measured by the injected clock, and it is the baseline FSRS
+-- measures elapsed time from. Reading it off `updated_at` — which the database
+-- writes, and which suspend and reset also write — is what made a suspended card
+-- stop growing its interval, and what made an integration test flip from green
+-- to red on a date change with nobody touching the code.
 UPDATE learn.review_cards SET
     stability = $3,
     difficulty = $4,
@@ -44,6 +58,7 @@ UPDATE learn.review_cards SET
     reps = $6,
     lapses = $7,
     state = $8,
+    last_review_at = $9,
     updated_at = now()
 WHERE id = $1 AND user_id = $2
 RETURNING *;

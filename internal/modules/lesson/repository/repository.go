@@ -133,6 +133,88 @@ func (r *Repository) GetPublishedLessonByID(ctx context.Context, id uuid.UUID) (
 	return ToContractLesson(row, nil), nil
 }
 
+// The three upserts below are the generator's writes, separate from their
+// Create* counterparts because their ON CONFLICT behaviour must not reach a
+// human author: someone creating a course whose slug is taken should be told so,
+// not silently overwrite somebody else's course.
+//
+// They take contract.*Spec rather than a parallel params struct — the specs
+// already describe exactly these writes, and a second copy of the same six
+// fields is a second place to forget one.
+
+// UpsertCourse creates or updates the generated course at this slug.
+func (r *Repository) UpsertCourse(
+	ctx context.Context, params contract.CourseSpec,
+) (*contract.Course, error) {
+	row, err := r.queries.UpsertCourse(ctx, sqlc.UpsertCourseParams{
+		Slug:           params.Slug,
+		Title:          params.Title,
+		Description:    params.Description,
+		CefrFrom:       params.CEFRFrom,
+		CefrTo:         params.CEFRTo,
+		EstimatedHours: int32(params.EstimatedHours), //nolint:gosec // a course length in hours
+	})
+	if err != nil {
+		return nil, mapPgError(err)
+	}
+	return ToContractCourse(row), nil
+}
+
+// UpsertUnit creates or updates the unit at this position in the course.
+func (r *Repository) UpsertUnit(
+	ctx context.Context, params contract.UnitSpec,
+) (*contract.Unit, error) {
+	row, err := r.queries.UpsertUnit(ctx, sqlc.UpsertUnitParams{
+		CourseID:    params.CourseID,
+		Position:    int32(params.Position), //nolint:gosec // a unit ordinal
+		Title:       params.Title,
+		Description: params.Description,
+	})
+	if err != nil {
+		return nil, mapPgError(err)
+	}
+	return ToContractUnit(row), nil
+}
+
+// UpsertLesson creates or updates the lesson at this position in the unit.
+func (r *Repository) UpsertLesson(
+	ctx context.Context, params contract.LessonSpec,
+) (*contract.Lesson, error) {
+	row, err := r.queries.UpsertLesson(ctx, sqlc.UpsertLessonParams{
+		UnitID:           params.UnitID,
+		Position:         int32(params.Position), //nolint:gosec // a lesson ordinal
+		Title:            params.Title,
+		SkillFocus:       params.SkillFocus,
+		EstimatedMinutes: int32(params.EstimatedMinutes), //nolint:gosec // bounded by the caller
+	})
+	if err != nil {
+		return nil, mapPgError(err)
+	}
+	return ToContractLesson(row, nil), nil
+}
+
+// GetNextPublishedLesson returns the lesson that follows this one, or nil when
+// this is the last one in the course.
+//
+// nil rather than an error for "there is no next lesson": finishing the final
+// lesson of a course is the happy path, and a caller that has to distinguish a
+// sentinel error from a real failure will eventually get it wrong.
+func (r *Repository) GetNextPublishedLesson(
+	ctx context.Context, unitID uuid.UUID, position int,
+) (*contract.Lesson, error) {
+	row, err := r.queries.GetNextPublishedLesson(ctx, sqlc.GetNextPublishedLessonParams{
+		ID:       unitID,
+		Position: int32(position), //nolint:gosec // a lesson position is a small authored ordinal
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, mapPgError(err)
+	}
+	return ToContractLesson(row, nil), nil
+}
+
 // ListPublishedLessonsByCourseID lists the lessons a learner may see in a course.
 func (r *Repository) ListPublishedLessonsByCourseID(
 	ctx context.Context, courseID uuid.UUID,

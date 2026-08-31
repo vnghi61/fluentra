@@ -2,15 +2,15 @@
 module: gamification
 tier: learning
 group: modules
-status: PLANNED
+status: DONE
 phase: 3
 owner: "@learning-team"
 schema: learn
 tables: [xp_events, streaks, badges, badges_earned, quests, user_quests, leaderboard_snapshots]
-depends_on: [learning, srs, cache, job, notification]
+depends_on: [learning, srs, user, cache, job, notification]
 depended_on_by: [notification, analytics, admin]
 spec_version: 1.0.0
-last_verified: 2026-08-06
+last_verified: 2026-08-29
 ---
 
 # gamification — AGENT.md
@@ -25,7 +25,7 @@ last_verified: 2026-08-06
 | Path | `internal/modules/gamification` |
 | Schema | `learn` |
 | Delivery phase | 3 |
-| Status | **PLANNED** |
+| Status | **ACTIVE** |
 | Owner | @learning-team |
 
 ---
@@ -112,6 +112,25 @@ Migrations: `db/migrations/gamification/` · Queries: `db/queries/gamification/`
 
 <!-- END GENERATED: schema -->
 
+### Two deliberate departures from the spec above
+
+**`xp_events` is not partitioned.** The spec asked for monthly partitions _and_ a
+unique constraint on `(user_id, source, source_id)`. PostgreSQL gives one or the
+other: a unique constraint on a partitioned table must contain the partition key,
+so the constraint would have to become `(…, awarded_at)` — which stops
+deduplicating the moment a redelivery lands a microsecond later, i.e. always.
+BR-GAMIFICATION-01 says a redelivered event must not double-award, and that rule
+is worth more than a partition this table does not yet need: `review_logs` takes
+a row per card per review, while this takes a handful per learner per day, capped
+again by BR-GAMIFICATION-05. Partition it when volume argues for it, and move the
+idempotency key to a small unpartitioned table at that point.
+
+**`daily_goal_xp` and `leaderboard_opt_in` live on `streaks`.** There is exactly
+one of each per learner, and the streak row already is that; a second table keyed
+by `user_id` would be the same row under another name. They are not in
+`core.user_preferences` because that table belongs to `user`, and L2 forbids
+reaching into it.
+
 ## 6. HTTP endpoints
 
 Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openapi.yaml)
@@ -123,6 +142,7 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | `GET` | `/api/v1/me/gamification` | `self` | XP, level, streak, badges, active quests |
 | `GET` | `/api/v1/me/streak` | `self` | Streak with the freeze state and the day boundary |
 | `POST` | `/api/v1/me/streak/freeze` | `self` | Use a freeze |
+| `PUT` | `/api/v1/me/leaderboard-opt-in` | `self` | Join or leave the leaderboard |
 | `GET` | `/api/v1/leaderboard` | `self` | Current league standings |
 | `PUT` | `/api/v1/me/daily-goal` | `self` | Set the daily XP goal |
 <!-- END GENERATED: endpoints -->

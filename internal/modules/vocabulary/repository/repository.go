@@ -33,6 +33,26 @@ type Repository interface {
 	InsertDeckItem(ctx context.Context, arg sqlc.InsertDeckItemParams) (sqlc.SkillDeckItem, error)
 	DeleteDeckItem(ctx context.Context, deckID, wordSenseID uuid.UUID) error
 	ListDeckWords(ctx context.Context, deckID uuid.UUID, limit, offset int32) ([]sqlc.ListDeckWordsRow, error)
+	// ListSensesForGeneration feeds the practice generator. Bounded by `limit`
+	// because it runs in a scheduled job, and an unbounded scan is how a
+	// background job becomes an outage as the dictionary grows.
+	ListSensesForGeneration(ctx context.Context, limit int32) ([]sqlc.ListSensesForGenerationRow, error)
+
+	// Learner uploads.
+	InsertUpload(ctx context.Context, arg sqlc.InsertUploadParams) (sqlc.SkillVocabUpload, error)
+	InsertUploadItem(ctx context.Context, arg sqlc.InsertUploadItemParams) (sqlc.SkillVocabUploadItem, error)
+	GetUpload(ctx context.Context, id, userID uuid.UUID) (sqlc.SkillVocabUpload, error)
+	ListUploadsByUser(ctx context.Context, userID uuid.UUID, limit int32) ([]sqlc.ListUploadsByUserRow, error)
+	ListUploadItems(ctx context.Context, uploadID, userID uuid.UUID) ([]sqlc.SkillVocabUploadItem, error)
+	ClaimPendingUploadItems(ctx context.Context, maxAttempts, limit int32) ([]sqlc.SkillVocabUploadItem, error)
+	MarkUploadItemVerified(
+		ctx context.Context, id uuid.UUID, senseID *uuid.UUID, model, reason string,
+	) (sqlc.SkillVocabUploadItem, error)
+	MarkUploadItemRejected(ctx context.Context, id uuid.UUID, reason string) (sqlc.SkillVocabUploadItem, error)
+	RecordUploadItemAttempt(ctx context.Context, id uuid.UUID, reason string) error
+	SetUploadDeck(ctx context.Context, uploadID, deckID uuid.UUID) error
+	CompleteFinishedUploads(ctx context.Context) ([]sqlc.SkillVocabUpload, error)
+
 	WithTx(tx pgx.Tx) Repository
 }
 
@@ -172,4 +192,78 @@ func (r *pgxRepository) ListDeckWords(
 		Limit:  limit,
 		Offset: offset,
 	})
+}
+
+func (r *pgxRepository) ListSensesForGeneration(
+	ctx context.Context, limit int32,
+) ([]sqlc.ListSensesForGenerationRow, error) {
+	return r.q.ListSensesForGeneration(ctx, limit)
+}
+
+func (r *pgxRepository) InsertUpload(
+	ctx context.Context, arg sqlc.InsertUploadParams,
+) (sqlc.SkillVocabUpload, error) {
+	return r.q.InsertUpload(ctx, arg)
+}
+
+func (r *pgxRepository) InsertUploadItem(
+	ctx context.Context, arg sqlc.InsertUploadItemParams,
+) (sqlc.SkillVocabUploadItem, error) {
+	return r.q.InsertUploadItem(ctx, arg)
+}
+
+func (r *pgxRepository) GetUpload(
+	ctx context.Context, id, userID uuid.UUID,
+) (sqlc.SkillVocabUpload, error) {
+	return r.q.GetUpload(ctx, sqlc.GetUploadParams{ID: id, UserID: userID})
+}
+
+func (r *pgxRepository) ListUploadsByUser(
+	ctx context.Context, userID uuid.UUID, limit int32,
+) ([]sqlc.ListUploadsByUserRow, error) {
+	return r.q.ListUploadsByUser(ctx, sqlc.ListUploadsByUserParams{UserID: userID, Limit: limit})
+}
+
+func (r *pgxRepository) ListUploadItems(
+	ctx context.Context, uploadID, userID uuid.UUID,
+) ([]sqlc.SkillVocabUploadItem, error) {
+	return r.q.ListUploadItems(ctx, sqlc.ListUploadItemsParams{UploadID: uploadID, UserID: userID})
+}
+
+func (r *pgxRepository) ClaimPendingUploadItems(
+	ctx context.Context, maxAttempts, limit int32,
+) ([]sqlc.SkillVocabUploadItem, error) {
+	return r.q.ClaimPendingUploadItems(ctx, sqlc.ClaimPendingUploadItemsParams{
+		Attempts: maxAttempts, Limit: limit,
+	})
+}
+
+func (r *pgxRepository) MarkUploadItemVerified(
+	ctx context.Context, id uuid.UUID, senseID *uuid.UUID, model, reason string,
+) (sqlc.SkillVocabUploadItem, error) {
+	return r.q.MarkUploadItemVerified(ctx, sqlc.MarkUploadItemVerifiedParams{
+		ID: id, WordSenseID: senseID, VerifiedByModel: model, Reason: reason,
+	})
+}
+
+func (r *pgxRepository) MarkUploadItemRejected(
+	ctx context.Context, id uuid.UUID, reason string,
+) (sqlc.SkillVocabUploadItem, error) {
+	return r.q.MarkUploadItemRejected(ctx, sqlc.MarkUploadItemRejectedParams{ID: id, Reason: reason})
+}
+
+func (r *pgxRepository) RecordUploadItemAttempt(
+	ctx context.Context, id uuid.UUID, reason string,
+) error {
+	return r.q.RecordUploadItemAttempt(ctx, sqlc.RecordUploadItemAttemptParams{ID: id, Reason: reason})
+}
+
+func (r *pgxRepository) SetUploadDeck(ctx context.Context, uploadID, deckID uuid.UUID) error {
+	return r.q.SetUploadDeck(ctx, sqlc.SetUploadDeckParams{ID: uploadID, DeckID: &deckID})
+}
+
+func (r *pgxRepository) CompleteFinishedUploads(
+	ctx context.Context,
+) ([]sqlc.SkillVocabUpload, error) {
+	return r.q.CompleteFinishedUploads(ctx)
 }
