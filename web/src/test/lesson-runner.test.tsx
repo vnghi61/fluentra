@@ -534,4 +534,88 @@ describe("LessonPage progress freshness", () => {
       "/learn/lesson/0199a1c2-3d4e-7f80-9abc-def0123456ff",
     );
   });
+
+  it("will not let the first answer be submitted before its attempt exists", async () => {
+    // The race that broke [mobile-android] on main, and that a learner meets on
+    // every cold start.
+    //
+    // `isAttemptStarting` gates Check Answer while the attempt is being opened.
+    // It was initialised to false and only ever set by handleContinue, so it
+    // covered activities 2..N and left the first one live during its round
+    // trip. A click landing in that window hit
+    // `if (signedIn && !currentAttemptId) return` and vanished: no request, no
+    // error, no change on screen. The learner is looking at a button that says
+    // Check Answer and does nothing.
+    //
+    // Held open here rather than raced, because a race that is lost 81ms at a
+    // time is a test that passes on the machine that has the bug.
+    let openAttempt: (() => void) | undefined;
+    const attemptOpened = new Promise<void>((resolve) => {
+      openAttempt = resolve;
+    });
+    let submits = 0;
+
+    server.use(
+      http.post("/api/v1/activities/:id/attempts", async ({ params }) => {
+        await attemptOpened;
+        const idStr = String(params.id ?? "1");
+        const res: StartAttemptResult = {
+          attempt_id: `att-${idStr}`,
+          activity_id: idStr,
+          status: "in_progress",
+          started_at: "2026-08-24T09:00:00Z",
+        };
+        return HttpResponse.json(res);
+      }),
+      http.post("/api/v1/attempts/:id/submit", ({ params }) => {
+        submits += 1;
+        const res: SubmitAttemptResult = {
+          attempt_id: String(params.id ?? "1"),
+          status: "graded",
+          correct: true,
+          score: 100,
+          max_score: 100,
+          feedback: "Correct! Well done.",
+        };
+        return HttpResponse.json(res);
+      }),
+    );
+
+    const user = userEventDefault.setup();
+    await renderLessonRunner();
+
+    expect(
+      await screen.findByText("What is the meaning of 'meticulous'?"),
+    ).toBeInTheDocument();
+
+    // While the attempt is opening the exercise is inert -- which is exactly
+    // how activities 2..N have always behaved, because handleContinue set the
+    // flag for them. Only the first one was live, and only the first one lost
+    // answers.
+    const check = screen.getByRole("button", { name: /check answer/i });
+    expect(check).toBeDisabled();
+    expect(
+      screen.getByRole("radio", {
+        name: /showing great attention to detail/i,
+      }),
+    ).toBeDisabled();
+
+    // A click that gets through anyway is not silently eaten.
+    await user.click(check);
+    expect(submits).toBe(0);
+
+    openAttempt?.();
+
+    const option = screen.getByRole("radio", {
+      name: /showing great attention to detail/i,
+    });
+    await waitFor(() => expect(option).toBeEnabled());
+    await user.click(option);
+    await user.click(check);
+
+    expect(
+      (await screen.findAllByText("Correct! Well done.")).length,
+    ).toBeGreaterThanOrEqual(1);
+    expect(submits).toBe(1);
+  });
 });
