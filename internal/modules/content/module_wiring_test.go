@@ -103,3 +103,37 @@ func TestRoutesMountTheDocumentedPaths(t *testing.T) {
 	collect(learner, wantLearner, "learner")
 	collect(admin, wantAdmin, "admin")
 }
+
+// TestNewAuthoringWithoutAGuard is the other half of the fail-closed rule.
+//
+// cmd/worker generates practice content and mounts no routes, so it has no
+// guard to give. It called New anyway, which builds the handler, which fails
+// closed — and the worker panicked on boot with GUARD_REQUIRED, three call
+// frames from anything that mentioned HTTP.
+//
+// The consequence was not local to the worker. A worker that will not start
+// drains no outbox, so no OTP email is ever sent: every E2E journey timed out
+// waiting for one, and in production registration would stop working while the
+// API looked perfectly healthy.
+//
+// This asserts the escape hatch exists and stays narrow — a module with no
+// routes and no handler. TestNewFailsClosedWithoutAGuard above still holds for
+// anything that does serve HTTP, and the two together are the rule: no guard,
+// no routes.
+func TestNewAuthoringWithoutAGuard(t *testing.T) {
+	t.Parallel()
+
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			t.Fatalf("NewAuthoring panicked without a guard, which is how cmd/worker calls it: %v", recovered)
+		}
+	}()
+
+	mod := content.NewAuthoring(content.Deps{})
+	if mod == nil {
+		t.Fatal("NewAuthoring returned nil")
+	}
+	if mod.Author() == nil {
+		t.Error("Author() is what the worker came for, and it is nil")
+	}
+}

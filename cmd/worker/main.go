@@ -717,7 +717,10 @@ func startPracticeGenerator(
 		aiClient = nil
 	}
 
-	contentModule := content.New(content.Deps{Pool: pool})
+	// NewAuthoring, not New: this process mounts no routes and has no guard to
+	// give, and New fails closed without one — correctly, since its admin
+	// authoring routes would otherwise be unprotected.
+	contentModule := content.NewAuthoring(content.Deps{Pool: pool})
 	vocabularyModule := vocabulary.New(vocabulary.Deps{
 		Pool:              pool,
 		ContentAuthor:     contentModule.Author(),
