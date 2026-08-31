@@ -481,6 +481,7 @@ type LearnCourse struct {
 	EstimatedHours int32
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
+	Origin         string
 }
 
 type LearnCourseUnit struct {

@@ -211,6 +211,10 @@ func (s *Service) UpsertCards(ctx context.Context, userID uuid.UUID, items []lea
 			Reps:             clampInt32(first.Reps),
 			Lapses:           clampInt32(first.Lapses),
 			State:            string(first.State),
+			// Creation is a review: the card is born from a graded answer and
+			// Schedule gives it reps = 1. Recording `now` here is what lets the
+			// next answer measure real elapsed time instead of zero.
+			LastReviewAt: &now,
 		}
 
 		if _, err := s.repo.UpsertReviewCard(ctx, arg); err != nil {
@@ -383,12 +387,18 @@ func (s *Service) AnswerCard(
 	params := domain.DefaultParameters()
 
 	currentCardState := domain.CardState{
-		Stability:    cardRow.Stability,
-		Difficulty:   cardRow.Difficulty,
-		State:        domain.State(cardRow.State),
-		Reps:         int(cardRow.Reps),
-		Lapses:       int(cardRow.Lapses),
-		LastReviewAt: cardRow.UpdatedAt,
+		Stability:  cardRow.Stability,
+		Difficulty: cardRow.Difficulty,
+		State:      domain.State(cardRow.State),
+		Reps:       int(cardRow.Reps),
+		Lapses:     int(cardRow.Lapses),
+		// The card's own record of when it was last answered, not `updated_at`.
+		// `updated_at` is written by the database's clock and by things that are
+		// not reviews — suspend, reset — each of which used to reset the
+		// baseline FSRS measures elapsed time from, and with it the learner's
+		// interval growth. Nil means never reviewed, which elapsedDays already
+		// reads as no elapsed time.
+		LastReviewAt: derefTime(cardRow.LastReviewAt),
 		DueAt:        cardRow.DueAt,
 	}
 
@@ -412,6 +422,10 @@ func (s *Service) AnswerCard(
 			Reps:       clampInt32(nextState.Reps),
 			Lapses:     clampInt32(nextState.Lapses),
 			State:      string(nextState.State),
+			// `now` is the injected clock, which is the whole reason the clock is
+			// injected: this is the value every later elapsed-time calculation
+			// is measured against.
+			LastReviewAt: &now,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to update review card: %w", err)
@@ -583,6 +597,17 @@ func (s *Service) CompleteSession(ctx context.Context, userID uuid.UUID, reviewe
 // caller here is a small, non-negative count; a negative or absurd value can
 // only come from a caller bug or a hostile payload, and saturating is safer
 // than the silent overflow a bare conversion would produce.
+// derefTime reads a nullable timestamp as a value, with the zero time standing
+// for absent. FSRS already treats a zero LastReviewAt as "no time has elapsed",
+// which is the right reading for a card that has been scheduled and never
+// answered.
+func derefTime(value *time.Time) time.Time {
+	if value == nil {
+		return time.Time{}
+	}
+	return *value
+}
+
 func clampInt32(v int) int32 {
 	switch {
 	case v < 0:

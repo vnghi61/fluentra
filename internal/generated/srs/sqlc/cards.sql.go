@@ -90,7 +90,7 @@ func (q *Queries) ForecastDueCards(ctx context.Context, arg ForecastDueCardsPara
 }
 
 const getReviewCardByID = `-- name: GetReviewCardByID :one
-SELECT id, user_id, content_version_id, skill, stability, difficulty, due_at, reps, lapses, state, suspended_at, created_at, updated_at FROM learn.review_cards
+SELECT id, user_id, content_version_id, skill, stability, difficulty, due_at, reps, lapses, state, suspended_at, created_at, updated_at, last_review_at FROM learn.review_cards
 WHERE id = $1 AND user_id = $2
 `
 
@@ -116,12 +116,13 @@ func (q *Queries) GetReviewCardByID(ctx context.Context, arg GetReviewCardByIDPa
 		&i.SuspendedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.LastReviewAt,
 	)
 	return i, err
 }
 
 const getReviewCardByUserAndContent = `-- name: GetReviewCardByUserAndContent :one
-SELECT id, user_id, content_version_id, skill, stability, difficulty, due_at, reps, lapses, state, suspended_at, created_at, updated_at FROM learn.review_cards
+SELECT id, user_id, content_version_id, skill, stability, difficulty, due_at, reps, lapses, state, suspended_at, created_at, updated_at, last_review_at FROM learn.review_cards
 WHERE user_id = $1 AND content_version_id = $2
 `
 
@@ -147,12 +148,13 @@ func (q *Queries) GetReviewCardByUserAndContent(ctx context.Context, arg GetRevi
 		&i.SuspendedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.LastReviewAt,
 	)
 	return i, err
 }
 
 const listDueCards = `-- name: ListDueCards :many
-SELECT id, user_id, content_version_id, skill, stability, difficulty, due_at, reps, lapses, state, suspended_at, created_at, updated_at FROM learn.review_cards
+SELECT id, user_id, content_version_id, skill, stability, difficulty, due_at, reps, lapses, state, suspended_at, created_at, updated_at, last_review_at FROM learn.review_cards
 WHERE user_id = $1
   AND suspended_at IS NULL
   AND due_at <= $2
@@ -189,6 +191,7 @@ func (q *Queries) ListDueCards(ctx context.Context, arg ListDueCardsParams) ([]L
 			&i.SuspendedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.LastReviewAt,
 		); err != nil {
 			return nil, err
 		}
@@ -211,7 +214,7 @@ UPDATE learn.review_cards SET
     suspended_at = NULL,
     updated_at = now()
 WHERE id = $1 AND user_id = $2
-RETURNING id, user_id, content_version_id, skill, stability, difficulty, due_at, reps, lapses, state, suspended_at, created_at, updated_at
+RETURNING id, user_id, content_version_id, skill, stability, difficulty, due_at, reps, lapses, state, suspended_at, created_at, updated_at, last_review_at
 `
 
 type ResetReviewCardParams struct {
@@ -245,6 +248,7 @@ func (q *Queries) ResetReviewCard(ctx context.Context, arg ResetReviewCardParams
 		&i.SuspendedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.LastReviewAt,
 	)
 	return i, err
 }
@@ -279,7 +283,7 @@ UPDATE learn.review_cards SET
     suspended_at = now(),
     updated_at = now()
 WHERE id = $1 AND user_id = $2
-RETURNING id, user_id, content_version_id, skill, stability, difficulty, due_at, reps, lapses, state, suspended_at, created_at, updated_at
+RETURNING id, user_id, content_version_id, skill, stability, difficulty, due_at, reps, lapses, state, suspended_at, created_at, updated_at, last_review_at
 `
 
 type SuspendReviewCardParams struct {
@@ -304,6 +308,7 @@ func (q *Queries) SuspendReviewCard(ctx context.Context, arg SuspendReviewCardPa
 		&i.SuspendedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.LastReviewAt,
 	)
 	return i, err
 }
@@ -316,22 +321,30 @@ UPDATE learn.review_cards SET
     reps = $6,
     lapses = $7,
     state = $8,
+    last_review_at = $9,
     updated_at = now()
 WHERE id = $1 AND user_id = $2
-RETURNING id, user_id, content_version_id, skill, stability, difficulty, due_at, reps, lapses, state, suspended_at, created_at, updated_at
+RETURNING id, user_id, content_version_id, skill, stability, difficulty, due_at, reps, lapses, state, suspended_at, created_at, updated_at, last_review_at
 `
 
 type UpdateReviewCardScheduleParams struct {
-	ID         uuid.UUID
-	UserID     uuid.UUID
-	Stability  float64
-	Difficulty float64
-	DueAt      time.Time
-	Reps       int32
-	Lapses     int32
-	State      string
+	ID           uuid.UUID
+	UserID       uuid.UUID
+	Stability    float64
+	Difficulty   float64
+	DueAt        time.Time
+	Reps         int32
+	Lapses       int32
+	State        string
+	LastReviewAt *time.Time
 }
 
+// `last_review_at` comes from the caller, not from now(). It is the moment the
+// learner answered, measured by the injected clock, and it is the baseline FSRS
+// measures elapsed time from. Reading it off `updated_at` — which the database
+// writes, and which suspend and reset also write — is what made a suspended card
+// stop growing its interval, and what made an integration test flip from green
+// to red on a date change with nobody touching the code.
 func (q *Queries) UpdateReviewCardSchedule(ctx context.Context, arg UpdateReviewCardScheduleParams) (LearnReviewCard, error) {
 	row := q.db.QueryRow(ctx, updateReviewCardSchedule,
 		arg.ID,
@@ -342,6 +355,7 @@ func (q *Queries) UpdateReviewCardSchedule(ctx context.Context, arg UpdateReview
 		arg.Reps,
 		arg.Lapses,
 		arg.State,
+		arg.LastReviewAt,
 	)
 	var i LearnReviewCard
 	err := row.Scan(
@@ -358,20 +372,22 @@ func (q *Queries) UpdateReviewCardSchedule(ctx context.Context, arg UpdateReview
 		&i.SuspendedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.LastReviewAt,
 	)
 	return i, err
 }
 
 const upsertReviewCard = `-- name: UpsertReviewCard :one
 INSERT INTO learn.review_cards (
-    user_id, content_version_id, skill, stability, difficulty, due_at, reps, lapses, state, updated_at
+    user_id, content_version_id, skill, stability, difficulty, due_at, reps, lapses, state,
+    last_review_at, updated_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, now()
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now()
 )
 ON CONFLICT (user_id, content_version_id) DO UPDATE SET
     skill = EXCLUDED.skill,
     updated_at = now()
-RETURNING id, user_id, content_version_id, skill, stability, difficulty, due_at, reps, lapses, state, suspended_at, created_at, updated_at
+RETURNING id, user_id, content_version_id, skill, stability, difficulty, due_at, reps, lapses, state, suspended_at, created_at, updated_at, last_review_at
 `
 
 type UpsertReviewCardParams struct {
@@ -384,8 +400,14 @@ type UpsertReviewCardParams struct {
 	Reps             int32
 	Lapses           int32
 	State            string
+	LastReviewAt     *time.Time
 }
 
+// `last_review_at` is set on creation, because creation *is* a review: the card
+// is born from a graded answer, and Schedule gives it reps = 1. Leaving it null
+// meant the first real review measured zero elapsed time, and R = 1 makes the
+// success term `(e^(w10·(1−R)) − 1)` exactly zero — so the first answer after a
+// lesson never raised stability, and the interval never grew.
 // The conflict path deliberately leaves the schedule alone. A learner who redoes
 // a lesson activity already has a card carrying weeks of FSRS history; copying
 // the initial stability, difficulty, reps and lapses over it would silently reset
@@ -402,6 +424,7 @@ func (q *Queries) UpsertReviewCard(ctx context.Context, arg UpsertReviewCardPara
 		arg.Reps,
 		arg.Lapses,
 		arg.State,
+		arg.LastReviewAt,
 	)
 	var i LearnReviewCard
 	err := row.Scan(
@@ -418,6 +441,7 @@ func (q *Queries) UpsertReviewCard(ctx context.Context, arg UpsertReviewCardPara
 		&i.SuspendedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.LastReviewAt,
 	)
 	return i, err
 }

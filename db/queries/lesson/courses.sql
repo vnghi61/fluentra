@@ -7,6 +7,10 @@
 SELECT *
 FROM learn.courses
 WHERE status = 'published'
+  -- Curriculum only. The generator's course is practice, not syllabus, and it
+  -- is A1 against the curriculum's A2 — so without this it sorted first and
+  -- /learn opened on a machine-made drill set.
+  AND origin = 'curriculum'
   AND (
       sqlc.narg('level')::text IS NULL
       OR array_position(ARRAY['A1', 'A2', 'B1', 'B2', 'C1', 'C2'], sqlc.narg('level')::text)
@@ -20,6 +24,10 @@ LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
 SELECT count(*)
 FROM learn.courses
 WHERE status = 'published'
+  -- Curriculum only. The generator's course is practice, not syllabus, and it
+  -- is A1 against the curriculum's A2 — so without this it sorted first and
+  -- /learn opened on a machine-made drill set.
+  AND origin = 'curriculum'
   AND (
       sqlc.narg('level')::text IS NULL
       OR array_position(ARRAY['A1', 'A2', 'B1', 'B2', 'C1', 'C2'], sqlc.narg('level')::text)
@@ -80,8 +88,8 @@ RETURNING *;
 -- A separate query from CreateCourse on purpose: a human author creating a
 -- course whose slug is taken should be told so, not have their title silently
 -- overwrite somebody else's course.
-INSERT INTO learn.courses (slug, title, description, cefr_from, cefr_to, status, estimated_hours)
-VALUES ($1, $2, $3, $4, $5, 'published', $6)
+INSERT INTO learn.courses (slug, title, description, cefr_from, cefr_to, status, estimated_hours, origin)
+VALUES ($1, $2, $3, $4, $5, 'published', $6, 'generated')
 ON CONFLICT (slug) DO UPDATE
 SET title           = EXCLUDED.title,
     description     = EXCLUDED.description,
