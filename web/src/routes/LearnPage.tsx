@@ -1,5 +1,5 @@
 import React from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { BookOpen } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -37,7 +37,18 @@ export function LearnPage(): React.JSX.Element {
   // `courses` is required on the catalogue response; it is absent only before
   // the query resolves, which the loading branch handles.
   const courses = courseListData?.courses ?? [];
-  const selectedCourseSlug: string | undefined = undefined;
+  // `?course=<slug>` addresses one course directly.
+  //
+  // This was a hardcoded `undefined` — a placeholder for course selection that
+  // nothing ever filled — so the page could only ever show `courses[0]`. The
+  // generated practice course is deliberately absent from the catalogue now
+  // (it is drills, not syllabus), which left it reachable by no route at all.
+  // This is that route, and it is also the seam a course switcher will use.
+  const search: Record<string, unknown> = useSearch({ strict: false });
+  const selectedCourseSlug =
+    typeof search["course"] === "string" && search["course"].trim() !== ""
+      ? search["course"]
+      : undefined;
 
   // Default to first course if none explicitly selected. Addressed by slug: the
   // detail endpoint is `/courses/{slug}`, so passing `courses[0].id` here made

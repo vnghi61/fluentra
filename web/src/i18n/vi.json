@@ -360,6 +360,11 @@
       "title": "Tuần tới",
       "desc": "Những thẻ đã được xếp lịch quay lại với bạn."
     },
+    "generated": {
+      "desc": "Bài tập dựng từ những từ đã có trong từ điển của bạn. Vốn từ lớn tới đâu, bài tập nhiều tới đó.",
+      "label": "Bài luyện tự sinh",
+      "openBtn": "Mở bài luyện"
+    },
     "myWords.desc": "Dán từ vựng từ khoá học của bạn. Chúng tôi đối chiếu từng từ với từ điển, viết câu ví dụ, và xếp lịch ôn tập ngay tại đây.",
     "myWords.title": "Thêm từ của riêng bạn",
     "review": {

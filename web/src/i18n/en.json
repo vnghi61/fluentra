@@ -360,6 +360,11 @@
       "title": "The week ahead",
       "desc": "Cards already scheduled to come back to you."
     },
+    "generated": {
+      "desc": "Exercises built from the words already in your dictionary. They grow as your vocabulary does.",
+      "label": "Generated drills",
+      "openBtn": "Open drills"
+    },
     "myWords.desc": "Paste vocabulary from your own course. We check each word against a dictionary, write example sentences for it, and schedule it for review here.",
     "myWords.title": "Add your own words",
     "review": {
