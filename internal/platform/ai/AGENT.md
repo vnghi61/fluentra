@@ -2,7 +2,7 @@
 module: ai
 tier: platform
 group: platform
-status: PLANNED
+status: IN_PROGRESS
 phase: 3
 owner: "@ai-team"
 schema: ai
@@ -10,7 +10,7 @@ tables: [ai_requests, ai_usage, prompt_versions, ai_cache_entries, ai_budgets]
 depends_on: [cache, telemetry, job]
 depended_on_by: [writing, speaking, grammar, questionbank, content, reading, media, learning]
 spec_version: 1.0.0
-last_verified: 2026-08-06
+last_verified: 2026-08-29
 ---
 
 # ai — AGENT.md
@@ -18,6 +18,48 @@ last_verified: 2026-08-06
 > AI entry point for this module. Read [`/AGENT.md`](../../../AGENT.md) and
 > [`/MODULE_INDEX.md`](../../../MODULE_INDEX.md) first if you have not.
 > **Everything you need for this module is below. Do not scan other modules.**
+
+---
+
+## 0. What is built — read this before anything below it
+
+The rest of this file is the module's **specification**. Most of it is not
+implemented. What exists today is a narrow slice, built for one caller: the
+vocabulary upload verification job, which runs on a schedule, processes a
+bounded batch and can afford to fail.
+
+| Built | Not built |
+|---|---|
+| `ai.Client` — the one interface business code sees | Task routing by model tier |
+| Versioned prompt registry with front-matter settings | Quota (per user) and budget (global daily) |
+| `MockProvider` — offline, the default | Exact-hash and semantic caching |
+| `OpenAICompatibleProvider` — Ollama, OpenRouter, Groq, LM Studio, vLLM | Retry, backoff, circuit breaker, provider fallback chain |
+| `CompleteJSON` — tolerant structured-output parsing | PII redaction, untrusted-content wrapping |
+| | Streaming, output repair pass, eval harness |
+| | The `ai` schema: `ai_requests`, `ai_usage`, `prompt_versions`, `ai_cache_entries`, `ai_budgets` |
+
+**Nothing on a request path, and nothing a learner is graded by, may use this
+module until the rest of the specification is built.** There is no budget
+ceiling, so an unbounded caller is an unbounded bill; there is no retry, so a
+transient failure is a failed unit of work; and there is no usage trail, so a
+cost cannot be attributed after the fact.
+
+### Configuration
+
+One adapter serves every OpenAI-compatible server, so the provider is two
+environment variables. `.env.example` carries worked examples for Ollama,
+OpenRouter and Groq. `AI_PROVIDER=mock` is the default so `make dev` works with
+no key and no internet — and because it accepts every word it is given, a real
+deployment must not leave it set.
+
+### Where the prompts live
+
+`internal/platform/ai/prompts/`, not `docs/prompts/runtime/`. Rule L11's intent
+is met — versioned `.md` files, reviewable on their own, no prompt string in Go
+— but two mechanics moved the folder: `//go:embed` cannot reach outside its own
+package directory, and `.go-arch-lint.yml` sets `workdir: internal`, so a
+package under `docs/` is outside every component it can declare.
+`docs/prompts/README.md` points here.
 
 | | |
 |---|---|

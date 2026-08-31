@@ -15,6 +15,7 @@ import (
 
 	"github.com/fluentra/fluentra/internal/generated/vocabulary/sqlc"
 	contentcontract "github.com/fluentra/fluentra/internal/modules/content/contract"
+	learningcontract "github.com/fluentra/fluentra/internal/modules/learning/contract"
 	"github.com/fluentra/fluentra/internal/modules/vocabulary/domain"
 	"github.com/fluentra/fluentra/internal/modules/vocabulary/repository"
 	"github.com/fluentra/fluentra/internal/shared/apperr"
@@ -53,6 +54,10 @@ type ContentReader interface {
 // learn.review_cards belongs to srs.
 type ReviewScheduler interface {
 	SetCardsSuspended(ctx context.Context, userID uuid.UUID, contentVersionIDs []uuid.UUID, suspended bool) error
+	// UpsertCards schedules a word for review. Used by the upload pipeline: a
+	// learner's own verified word is worth reviewing, and without a card it is
+	// stored and never seen again.
+	UpsertCards(ctx context.Context, userID uuid.UUID, items []learningcontract.ReviewItem) error
 }
 
 // OutboxTx is the database transaction interface needed to write outbox events.

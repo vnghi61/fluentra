@@ -26,13 +26,17 @@ var answerKeys = map[string]struct{}{
 	"correct_answers":    {},
 	"correct_option_id":  {},
 	"correct_option_ids": {},
-	"acceptable":         {},
-	"answer":             {},
-	"answers":            {},
-	"answer_key":         {},
-	"solution":           {},
-	"solutions":          {},
-	"rubric":             {},
+	// `vocab_match`: word option id against definition option id. Without this
+	// row the whole matching key travelled to the renderer, which is the exact
+	// leak the rest of this list exists to close.
+	"correct_pairs": {},
+	"acceptable":    {},
+	"answer":        {},
+	"answers":       {},
+	"answer_key":    {},
+	"solution":      {},
+	"solutions":     {},
+	"rubric":        {},
 }
 
 // RedactForLearner strips the answer from a content body.

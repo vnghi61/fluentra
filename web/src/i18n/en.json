@@ -265,6 +265,13 @@
     "body": "This screen failed to render. The error has been reported.",
     "reload": "Reload"
   },
+  "examples": {
+    "heading": "Examples",
+    "hideTranslation": "Hide meaning",
+    "listen": "Listen to this sentence",
+    "showMore": "Show more",
+    "showTranslation": "Show meaning"
+  },
   "guest": {
     "notice": {
       "text": "You are browsing without an account. You can open any lesson and answer its exercises, but nothing is saved."
@@ -345,12 +352,16 @@
     "yourAccountHoldsNoAdministrativePermissions": "Your account holds no administrative permissions."
   },
   "practice": {
-    "title": "Practice",
-    "tagline": "Keep what you have learned. Reviews are scheduled for the day you are most likely to forget.",
     "error": {
       "title": "Unable to load your review queue",
       "desc": "The review schedule could not be reached. Your progress is safe."
     },
+    "forecast": {
+      "title": "The week ahead",
+      "desc": "Cards already scheduled to come back to you."
+    },
+    "myWords.desc": "Paste vocabulary from your own course. We check each word against a dictionary, write example sentences for it, and schedule it for review here.",
+    "myWords.title": "Add your own words",
     "review": {
       "label": "Spaced repetition",
       "emptyTitle": "Nothing due right now",
@@ -360,10 +371,8 @@
       "dueDesc": "Grade each card by how well you recalled it. The schedule adapts to your answers.",
       "startBtn": "Start review"
     },
-    "forecast": {
-      "title": "The week ahead",
-      "desc": "Cards already scheduled to come back to you."
-    },
+    "tagline": "Keep what you have learned. Reviews are scheduled for the day you are most likely to forget.",
+    "title": "Practice",
     "vocabulary": {
       "desc": "Browsing and building decks is still being built. Words you meet in lessons are already scheduled for review above.",
       "descGuest": "Browsing and building decks is still being built.",
@@ -384,6 +393,10 @@
     "title": "Learning Progress",
     "totalTime": "Total Study Time",
     "wordsMastered": "Words Mastered"
+  },
+  "pronounce": {
+    "listen": "Listen to the pronunciation",
+    "unavailable": "Pronunciation unavailable"
   },
   "review": {
     "again": "Again",
@@ -430,6 +443,7 @@
     "confirmExitBtn": "Exit Lesson",
     "continueBtn": "Continue",
     "correct": "Correct! Well done.",
+    "correctAnswerLabel": "Correct answer",
     "errorDesc": "We could not submit your attempt due to a network error. Your answer has been saved. Please retry.",
     "errorTitle": "Submission Failed",
     "exit": "Exit",
@@ -443,17 +457,34 @@
     "gapFillPlaceholder": "Type your answer...",
     "incorrect": "Not quite. Check the correct answer above.",
     "knewItBtn": "I knew it",
+    "listenFullSentence": "Listen to the full sentence",
+    "listenSentence": "Listen to the sentence",
+    "listenTypeLabel": "The word you heard",
+    "listenTypePlaceholder": "Type what you hear…",
     "markCorrect": "Correct",
     "markIncorrect": "Incorrect",
-    "nextLessonBtn": "Next Lesson",
+    "matchClear": "Clear all",
+    "matchDefinitions": "Meanings",
+    "matchPickMeaning": "Now pick its meaning",
+    "matchPickWord": "Pick a word to start",
+    "matchWords": "Words",
+    "meaningLabel": "Meaning",
+    "nextLessonBtn": "Next lesson",
     "notYetBtn": "Not yet",
+    "partial": "Partly right",
+    "playWord": "Play the word",
     "recallPrompt": "Did you recall this word?",
+    "reorderAnswer": "Your sentence",
+    "reorderBank": "Available words",
+    "reorderEmpty": "Tap the words below in the right order",
+    "reorderReset": "Start over",
     "resumeBtn": "Keep Learning",
     "retryBtn": "Retry Submission",
     "scoreLabel": "Score",
     "skipActivityBtn": "Skip this activity",
     "stepProgress": "Activity {{current}} of {{total}}",
     "submitBtn": "Submit",
+    "tapToHear": "Tap to hear the word again",
     "timeSpentLabel": "Time Spent"
   },
   "server": {
@@ -470,5 +501,23 @@
     "label": "Theme",
     "light": "Light",
     "system": "System"
+  },
+  "uploads": {
+    "checking": "being checked",
+    "empty": "Nothing added yet. Paste a list above and we will check it for you.",
+    "failed": "We could not save that. Please try again.",
+    "hint": "One word per line. Add its meaning after a dash, colon or tab if you want to — a plain list of words is fine.",
+    "history": "What you have added",
+    "label": "Paste your words",
+    "nothingYet": "Nothing to add yet",
+    "openLink": "My words",
+    "placeholder": "leisure - free time\nhabit: a regular practice\njourney",
+    "rejected": "not found",
+    "submit": "Add these words",
+    "tagline": "Add vocabulary from your own course. We check each word, write example sentences for it, and schedule it for review.",
+    "title": "My words",
+    "verified": "added",
+    "words": "words",
+    "wordsFound": "words found"
   }
 }

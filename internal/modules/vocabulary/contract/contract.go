@@ -18,6 +18,10 @@ const (
 
 	// EventWordLearned is emitted when a learner masters a word sense.
 	EventWordLearned = "vocabulary.word_learned"
+
+	// EventWordsVerified is emitted when a learner's uploaded words pass
+	// verification. gamification consumes it and pays XP per word.
+	EventWordsVerified = "vocabulary.words_verified"
 )
 
 // WordSense models a single definition and examples for a vocabulary entry.
@@ -63,12 +67,38 @@ func GradedKinds() []string {
 		"vocab_multiple_choice",
 		"vocab_gap_fill",
 		"vocab_flashcard",
+
+		// Added alongside the four above rather than in a module of their own,
+		// because a vocabulary exercise is a vocabulary exercise however it is
+		// presented: all four ask whether the learner knows a word, and all four
+		// schedule the same review card when they are answered.
+		//
+		// `vocab_listen_type` hears a word and spells it.
+		// `vocab_match` pairs words with their definitions.
+		// `vocab_reorder` rebuilds an example sentence from shuffled tokens.
+		// `vocab_context_choice` picks the meaning a sentence actually uses.
+		"vocab_listen_type",
+		"vocab_match",
+		"vocab_reorder",
+		"vocab_context_choice",
 	}
 }
 
 // Grader defines the exercise grading contract implemented by vocabulary module.
 type Grader interface {
 	learningcontract.ExerciseGrader
+}
+
+// WordsVerified reports how many of a learner's uploaded words were accepted in
+// one verification run.
+//
+// A count rather than one event per word: gamification pays per word either way,
+// and a learner who pasted three hundred words should not produce three hundred
+// outbox rows.
+type WordsVerified struct {
+	UserID     uuid.UUID `json:"user_id"`
+	Count      int       `json:"count"`
+	OccurredAt time.Time `json:"occurred_at"`
 }
 
 // WordLearned payload for vocabulary.word_learned event.

@@ -86,7 +86,7 @@ Legend — **Status**: `PLANNED` (spec only) · `IN_PROGRESS` · `DONE` · `DEPR
 | L2 | `lesson` | Courses → units → lessons → activities; sequencing, prerequisites, unlocking | `learn` | `courses`, `course_units`, `lessons`, `activities`, `activity_content` | content, cache | 2 | DONE |
 | L3 | `learning` | Enrolment, progress, placement test, adaptive path, session tracking, exercise engine | `learn` | `enrollments`, `progress`, `attempts`, `learning_sessions`, `placement_results` | lesson, content, srs, all skill modules (contract) | 2 | DONE |
 | L4 | `srs` | FSRS scheduling, review cards, due queues, review logs, retention forecasting | `learn` | `review_cards`, `review_logs`, `srs_params`, `review_daily_stats` | cache, job, content, user, learning (contract) | 2 | DONE |
-| L5 | `vocabulary` | Words, senses, decks, collocations, word families, vocab exercises | `skill` | `words`, `word_senses`, `decks`, `deck_items`, `user_word_state` | content, srs, media, ai | 2 | DONE |
+| L5 | `vocabulary` | Words, senses, decks, collocations, word families, vocab exercises, practice generation | `skill` | `words`, `word_senses`, `decks`, `deck_items`, `user_word_state` | content, lesson, srs, job, media, ai | 2 | DONE |
 | L6 | `grammar` | Grammar point taxonomy, rules, error tagging, gap-fill and transformation drills | `skill` | `grammar_points`, `grammar_rules`, `grammar_exercises`, `error_tags` | content, srs, ai | 3 | PLANNED |
 | L7 | `reading` | Passages, comprehension sets, span answers, reading speed, difficulty estimation | `skill` | `passages`, `passage_questions`, `reading_attempts` | content, questionbank | 3 | PLANNED |
 | L8 | `listening` | Audio items, transcripts, play-limit policy, dictation, note-taking | `skill` | `audio_items`, `transcripts`, `listening_attempts` | content, media | 3 | PLANNED |
@@ -94,7 +94,7 @@ Legend — **Status**: `PLANNED` (spec only) · `IN_PROGRESS` · `DONE` · `DEPR
 | L10 | `writing` | Tasks, drafts, submissions, AI rubric grading, revision history, plagiarism | `skill` | `writing_tasks`, `writing_drafts`, `writing_submissions`, `writing_feedback` | ai, job, content | 3 | PLANNED |
 | L11 | `questionbank` | Item authoring, item types, tagging, difficulty (IRT-lite), review workflow, AI generation | `assess` | `questions`, `question_options`, `question_sets`, `question_stats` | content, ai, audit | 3 | PLANNED |
 | L12 | `exam` | Mock exams (IELTS/TOEIC), sections, timing, auto-submit, scoring, score reports | `assess` | `exams`, `exam_sections`, `exam_attempts`, `attempt_answers`, `score_reports` | questionbank, job, ai | 4 | PLANNED |
-| L13 | `gamification` | XP, levels, streaks, badges, quests, leaderboards | `learn` | `xp_events`, `streaks`, `badges`, `badges_earned`, `quests`, `leaderboard_snapshots` | cache, job, notification | 3 | PLANNED |
+| L13 | `gamification` | XP, levels, streaks, badges, quests, leaderboards | `learn` | `xp_events`, `streaks`, `badges`, `badges_earned`, `quests`, `user_quests`, `leaderboard_snapshots` | learning, srs, user, cache, job, notification | 3 | DONE |
 
 ### 2.4 Commerce & insight tier — `internal/modules/`
 
@@ -151,6 +151,7 @@ graph BT
     SRS --> USR
     SRS --> LRN
     VOC & GRM --> SRS
+    VOC --> LSN
     VOC & GRM & RDG & LIS & SPK & WRT --> CNT
     VOC & GRM & RDG & LIS & SPK & WRT & EXM --> LRN
     RDG & LIS --> QB
@@ -163,6 +164,8 @@ graph BT
     EXM --> WRT & SPK
     GAM --> LRN
     GAM --> SRS
+    GAM --> USR
+    GAM --> VOC
     SUB --> PAY
     SUB --> USR
     PAY --> SUB

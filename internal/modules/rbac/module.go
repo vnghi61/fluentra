@@ -86,6 +86,10 @@ func (m *Module) Authorizer() contract.Authorizer { return m.service }
 // minting a token.
 func (m *Module) RoleReader() contract.RoleReader { return m.service }
 
+// RoleMembers answers who holds a role. Used by the practice generator to find
+// an owner for the content it authors.
+func (m *Module) RoleMembers() contract.RoleMembers { return m.service }
+
 // AdminOnly is the route-group guard, exported so the composition root can
 // wrap other modules' `/admin` routes in the same check.
 func (m *Module) AdminOnly() func(http.Handler) http.Handler {

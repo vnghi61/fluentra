@@ -262,3 +262,56 @@ func (q *Queries) UpdateCourse(ctx context.Context, arg UpdateCourseParams) (Lea
 	)
 	return i, err
 }
+
+const upsertCourse = `-- name: UpsertCourse :one
+INSERT INTO learn.courses (slug, title, description, cefr_from, cefr_to, status, estimated_hours)
+VALUES ($1, $2, $3, $4, $5, 'published', $6)
+ON CONFLICT (slug) DO UPDATE
+SET title           = EXCLUDED.title,
+    description     = EXCLUDED.description,
+    cefr_from       = EXCLUDED.cefr_from,
+    cefr_to         = EXCLUDED.cefr_to,
+    estimated_hours = EXCLUDED.estimated_hours,
+    updated_at      = now()
+RETURNING id, slug, title, description, cefr_from, cefr_to, status, estimated_hours, created_at, updated_at
+`
+
+type UpsertCourseParams struct {
+	Slug           string
+	Title          string
+	Description    string
+	CefrFrom       string
+	CefrTo         string
+	EstimatedHours int32
+}
+
+// The generator's course. Keyed on the slug, which is what makes re-running the
+// job idempotent.
+//
+// A separate query from CreateCourse on purpose: a human author creating a
+// course whose slug is taken should be told so, not have their title silently
+// overwrite somebody else's course.
+func (q *Queries) UpsertCourse(ctx context.Context, arg UpsertCourseParams) (LearnCourse, error) {
+	row := q.db.QueryRow(ctx, upsertCourse,
+		arg.Slug,
+		arg.Title,
+		arg.Description,
+		arg.CefrFrom,
+		arg.CefrTo,
+		arg.EstimatedHours,
+	)
+	var i LearnCourse
+	err := row.Scan(
+		&i.ID,
+		&i.Slug,
+		&i.Title,
+		&i.Description,
+		&i.CefrFrom,
+		&i.CefrTo,
+		&i.Status,
+		&i.EstimatedHours,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}

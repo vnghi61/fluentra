@@ -131,7 +131,7 @@ func (f *fakeVocabService) GetWordState(
 
 func setupTestRouter(svc vocabularyhttp.VocabularyService) chi.Router {
 	r := chi.NewRouter()
-	h, err := vocabularyhttp.NewHandler(svc, fakeGuard{})
+	h, err := vocabularyhttp.NewHandler(svc, fakeGuard{}, nil)
 	if err != nil {
 		panic(err)
 	}

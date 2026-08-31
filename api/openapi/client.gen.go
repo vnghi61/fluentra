@@ -855,6 +855,13 @@ type ClientInterface interface {
 	// Corresponds with GET /health (the `SystemHealth` operationId).
 	SystemHealth(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetLeaderboard This week's standings for the caller's league.
+	//
+	// A weekly snapshot, not a live ranking, so the standings do not shuffle mid-week. A caller who has not opted in receives `LEADERBOARD_NOT_OPTED_IN` so the screen can offer the opt-in rather than showing an error.
+	//
+	// Corresponds with GET /leaderboard (the `GetLeaderboard` operationId).
+	GetLeaderboard(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetLessonById Get lesson with activities and resolved content versions.
 	//
 	// Returns one lesson with its ordered activities and each activity's resolved content version, ready for the lesson renderer. Public (ADR-0025).
@@ -932,6 +939,24 @@ type ClientInterface interface {
 	// Corresponds with POST /me/avatar/upload-intent (the `UserRequestAvatarUploadIntent` operationId).
 	UserRequestAvatarUploadIntent(ctx context.Context, body UserRequestAvatarUploadIntentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// SetDailyGoalWithBody Set the XP a day must earn to count towards the streak.
+	//
+	// The goal is what makes a day count, not opening the app. Raising it mid- streak does not retroactively invalidate days already recorded.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /me/daily-goal (the `SetDailyGoal` operationId).
+	SetDailyGoalWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetDailyGoal Set the XP a day must earn to count towards the streak.
+	//
+	// The goal is what makes a day count, not opening the app. Raising it mid- streak does not retroactively invalidate days already recorded.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /me/daily-goal (the `SetDailyGoal` operationId).
+	SetDailyGoal(ctx context.Context, body SetDailyGoalJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetDashboard Get learner dashboard state.
 	//
 	// Returns current learner plan, resume/next activity (or explicit not_started state), due review count, and per-skill mastery.
@@ -966,6 +991,31 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /me/export/{id} (the `UserGetExport` operationId).
 	UserGetExport(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetGamificationSummary The caller's XP, level, streak, badges and open quests.
+	//
+	// One read rather than several, because the dashboard needs all of it at once. `xp_today` and the streak are computed against the caller's own timezone.
+	//
+	// Corresponds with GET /me/gamification (the `GetGamificationSummary` operationId).
+	GetGamificationSummary(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetLeaderboardOptInWithBody Join or leave the leaderboard.
+	//
+	// Leaderboards are opt-in. Opting out removes the caller from future snapshots; it does not delete their XP, which is their own record.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /me/leaderboard-opt-in (the `SetLeaderboardOptIn` operationId).
+	SetLeaderboardOptInWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetLeaderboardOptIn Join or leave the leaderboard.
+	//
+	// Leaderboards are opt-in. Opting out removes the caller from future snapshots; it does not delete their XP, which is their own record.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /me/leaderboard-opt-in (the `SetLeaderboardOptIn` operationId).
+	SetLeaderboardOptIn(ctx context.Context, body SetLeaderboardOptInJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RbacGetMyPermissions Read the caller's own effective permissions.
 	//
@@ -1041,6 +1091,52 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /me/sessions/{id}/complete (the `CompleteLearningSession` operationId).
 	CompleteLearningSession(ctx context.Context, id openapi_types.UUID, body CompleteLearningSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetStreak The caller's streak, with the freeze state and the day boundary.
+	//
+	// The same streak the summary carries, for screens that need only this. `hours_remaining` counts down the caller's own local day, so a learner who travels is not told their streak ends at the server's midnight.
+	//
+	// Corresponds with GET /me/streak (the `GetStreak` operationId).
+	GetStreak(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UseStreakFreeze Spend a streak freeze for today.
+	//
+	// Freezes are limited and at most one may be spent per day. A caller with none left, or who has already spent one today, receives `NO_FREEZES_AVAILABLE`.
+	//
+	// Corresponds with POST /me/streak/freeze (the `UseStreakFreeze` operationId).
+	UseStreakFreeze(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListVocabUploads Your uploads, newest first.
+	//
+	// Each row carries the verified, rejected and still-pending counts, so a learner can see how far the checking has got without opening it.
+	//
+	// Corresponds with GET /me/vocabulary/uploads (the `ListVocabUploads` operationId).
+	ListVocabUploads(ctx context.Context, params *ListVocabUploadsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SubmitVocabUploadWithBody Submit your own vocabulary to be checked.
+	//
+	// Stores the words and returns immediately. The checking — a dictionary lookup and a model call per word — runs hourly in a background job, because it is slow and fails in ways worth retrying, and a learner pasting three hundred words should not be watching a request time out half way through.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /me/vocabulary/uploads (the `SubmitVocabUpload` operationId).
+	SubmitVocabUploadWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SubmitVocabUpload Submit your own vocabulary to be checked.
+	//
+	// Stores the words and returns immediately. The checking — a dictionary lookup and a model call per word — runs hourly in a background job, because it is slow and fails in ways worth retrying, and a learner pasting three hundred words should not be watching a request time out half way through.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /me/vocabulary/uploads (the `SubmitVocabUpload` operationId).
+	SubmitVocabUpload(ctx context.Context, body SubmitVocabUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetVocabUpload One upload, with every word and what became of it.
+	//
+	// Scoped to the caller: another learner's upload id is a 404 rather than a 403, because they should not learn that it exists.
+	//
+	// Corresponds with GET /me/vocabulary/uploads/{id} (the `GetVocabUpload` operationId).
+	GetVocabUpload(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SystemPing Check API dependency connectivity.
 	//
@@ -2748,6 +2844,23 @@ func (c *Client) SystemHealth(ctx context.Context, reqEditors ...RequestEditorFn
 	return c.Client.Do(req)
 }
 
+// GetLeaderboard This week's standings for the caller's league.
+//
+// A weekly snapshot, not a live ranking, so the standings do not shuffle mid-week. A caller who has not opted in receives `LEADERBOARD_NOT_OPTED_IN` so the screen can offer the opt-in rather than showing an error.
+//
+// Corresponds with GET /leaderboard (the `GetLeaderboard` operationId).
+func (c *Client) GetLeaderboard(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetLeaderboardRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // GetLessonById Get lesson with activities and resolved content versions.
 //
 // Returns one lesson with its ordered activities and each activity's resolved content version, ready for the lesson renderer. Public (ADR-0025).
@@ -2915,6 +3028,44 @@ func (c *Client) UserRequestAvatarUploadIntent(ctx context.Context, body UserReq
 	return c.Client.Do(req)
 }
 
+// SetDailyGoalWithBody Set the XP a day must earn to count towards the streak.
+//
+// The goal is what makes a day count, not opening the app. Raising it mid- streak does not retroactively invalidate days already recorded.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /me/daily-goal (the `SetDailyGoal` operationId).
+func (c *Client) SetDailyGoalWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetDailyGoalRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetDailyGoal Set the XP a day must earn to count towards the streak.
+//
+// The goal is what makes a day count, not opening the app. Raising it mid- streak does not retroactively invalidate days already recorded.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /me/daily-goal (the `SetDailyGoal` operationId).
+func (c *Client) SetDailyGoal(ctx context.Context, body SetDailyGoalJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetDailyGoalRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // GetDashboard Get learner dashboard state.
 //
 // Returns current learner plan, resume/next activity (or explicit not_started state), due review count, and per-skill mastery.
@@ -2990,6 +3141,61 @@ func (c *Client) UserRequestExport(ctx context.Context, reqEditors ...RequestEdi
 // Corresponds with GET /me/export/{id} (the `UserGetExport` operationId).
 func (c *Client) UserGetExport(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUserGetExportRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetGamificationSummary The caller's XP, level, streak, badges and open quests.
+//
+// One read rather than several, because the dashboard needs all of it at once. `xp_today` and the streak are computed against the caller's own timezone.
+//
+// Corresponds with GET /me/gamification (the `GetGamificationSummary` operationId).
+func (c *Client) GetGamificationSummary(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetGamificationSummaryRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetLeaderboardOptInWithBody Join or leave the leaderboard.
+//
+// Leaderboards are opt-in. Opting out removes the caller from future snapshots; it does not delete their XP, which is their own record.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /me/leaderboard-opt-in (the `SetLeaderboardOptIn` operationId).
+func (c *Client) SetLeaderboardOptInWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetLeaderboardOptInRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetLeaderboardOptIn Join or leave the leaderboard.
+//
+// Leaderboards are opt-in. Opting out removes the caller from future snapshots; it does not delete their XP, which is their own record.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /me/leaderboard-opt-in (the `SetLeaderboardOptIn` operationId).
+func (c *Client) SetLeaderboardOptIn(ctx context.Context, body SetLeaderboardOptInJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetLeaderboardOptInRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3155,6 +3361,112 @@ func (c *Client) CompleteLearningSessionWithBody(ctx context.Context, id openapi
 // Corresponds with POST /me/sessions/{id}/complete (the `CompleteLearningSession` operationId).
 func (c *Client) CompleteLearningSession(ctx context.Context, id openapi_types.UUID, body CompleteLearningSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCompleteLearningSessionRequest(c.Server, id, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetStreak The caller's streak, with the freeze state and the day boundary.
+//
+// The same streak the summary carries, for screens that need only this. `hours_remaining` counts down the caller's own local day, so a learner who travels is not told their streak ends at the server's midnight.
+//
+// Corresponds with GET /me/streak (the `GetStreak` operationId).
+func (c *Client) GetStreak(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetStreakRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UseStreakFreeze Spend a streak freeze for today.
+//
+// Freezes are limited and at most one may be spent per day. A caller with none left, or who has already spent one today, receives `NO_FREEZES_AVAILABLE`.
+//
+// Corresponds with POST /me/streak/freeze (the `UseStreakFreeze` operationId).
+func (c *Client) UseStreakFreeze(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUseStreakFreezeRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListVocabUploads Your uploads, newest first.
+//
+// Each row carries the verified, rejected and still-pending counts, so a learner can see how far the checking has got without opening it.
+//
+// Corresponds with GET /me/vocabulary/uploads (the `ListVocabUploads` operationId).
+func (c *Client) ListVocabUploads(ctx context.Context, params *ListVocabUploadsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListVocabUploadsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SubmitVocabUploadWithBody Submit your own vocabulary to be checked.
+//
+// Stores the words and returns immediately. The checking — a dictionary lookup and a model call per word — runs hourly in a background job, because it is slow and fails in ways worth retrying, and a learner pasting three hundred words should not be watching a request time out half way through.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /me/vocabulary/uploads (the `SubmitVocabUpload` operationId).
+func (c *Client) SubmitVocabUploadWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSubmitVocabUploadRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SubmitVocabUpload Submit your own vocabulary to be checked.
+//
+// Stores the words and returns immediately. The checking — a dictionary lookup and a model call per word — runs hourly in a background job, because it is slow and fails in ways worth retrying, and a learner pasting three hundred words should not be watching a request time out half way through.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /me/vocabulary/uploads (the `SubmitVocabUpload` operationId).
+func (c *Client) SubmitVocabUpload(ctx context.Context, body SubmitVocabUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSubmitVocabUploadRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetVocabUpload One upload, with every word and what became of it.
+//
+// Scoped to the caller: another learner's upload id is a 404 rather than a 403, because they should not learn that it exists.
+//
+// Corresponds with GET /me/vocabulary/uploads/{id} (the `GetVocabUpload` operationId).
+func (c *Client) GetVocabUpload(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetVocabUploadRequest(c.Server, id)
 	if err != nil {
 		return nil, err
 	}
@@ -5977,6 +6289,33 @@ func NewSystemHealthRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewGetLeaderboardRequest constructs an http.Request for the GetLeaderboard method
+func NewGetLeaderboardRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/leaderboard")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetLessonByIdRequest constructs an http.Request for the GetLessonById method
 func NewGetLessonByIdRequest(server string, id openapi_types.UUID) (*http.Request, error) {
 	var err error
@@ -6185,6 +6524,46 @@ func NewUserRequestAvatarUploadIntentRequestWithBody(server string, contentType 
 	return req, nil
 }
 
+// NewSetDailyGoalRequest calls the generic SetDailyGoal builder with application/json body
+func NewSetDailyGoalRequest(server string, body SetDailyGoalJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSetDailyGoalRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewSetDailyGoalRequestWithBody constructs an http.Request for the SetDailyGoal method, with any body, and a specified content type
+func NewSetDailyGoalRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/daily-goal")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetDashboardRequest constructs an http.Request for the GetDashboard method
 func NewGetDashboardRequest(server string) (*http.Request, error) {
 	var err error
@@ -6330,6 +6709,73 @@ func NewUserGetExportRequest(server string, id openapi_types.UUID) (*http.Reques
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewGetGamificationSummaryRequest constructs an http.Request for the GetGamificationSummary method
+func NewGetGamificationSummaryRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/gamification")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSetLeaderboardOptInRequest calls the generic SetLeaderboardOptIn builder with application/json body
+func NewSetLeaderboardOptInRequest(server string, body SetLeaderboardOptInJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSetLeaderboardOptInRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewSetLeaderboardOptInRequestWithBody constructs an http.Request for the SetLeaderboardOptIn method, with any body, and a specified content type
+func NewSetLeaderboardOptInRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/leaderboard-opt-in")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -6538,6 +6984,188 @@ func NewCompleteLearningSessionRequestWithBody(server string, id openapi_types.U
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetStreakRequest constructs an http.Request for the GetStreak method
+func NewGetStreakRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/streak")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUseStreakFreezeRequest constructs an http.Request for the UseStreakFreeze method
+func NewUseStreakFreezeRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/streak/freeze")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListVocabUploadsRequest constructs an http.Request for the ListVocabUploads method
+func NewListVocabUploadsRequest(server string, params *ListVocabUploadsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/vocabulary/uploads")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSubmitVocabUploadRequest calls the generic SubmitVocabUpload builder with application/json body
+func NewSubmitVocabUploadRequest(server string, body SubmitVocabUploadJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSubmitVocabUploadRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewSubmitVocabUploadRequestWithBody constructs an http.Request for the SubmitVocabUpload method, with any body, and a specified content type
+func NewSubmitVocabUploadRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/vocabulary/uploads")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetVocabUploadRequest constructs an http.Request for the GetVocabUpload method
+func NewGetVocabUploadRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/vocabulary/uploads/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -8125,6 +8753,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /health (the `SystemHealth` operationId).
 	SystemHealthWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*SystemHealthResponse, error)
 
+	// GetLeaderboardWithResponse This week's standings for the caller's league.
+	//
+	// A weekly snapshot, not a live ranking, so the standings do not shuffle mid-week. A caller who has not opted in receives `LEADERBOARD_NOT_OPTED_IN` so the screen can offer the opt-in rather than showing an error.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /leaderboard (the `GetLeaderboard` operationId).
+	GetLeaderboardWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetLeaderboardResponse, error)
+
 	// GetLessonByIdWithResponse Get lesson with activities and resolved content versions.
 	//
 	// Returns one lesson with its ordered activities and each activity's resolved content version, ready for the lesson renderer. Public (ADR-0025).
@@ -8208,6 +8845,24 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /me/avatar/upload-intent (the `UserRequestAvatarUploadIntent` operationId).
 	UserRequestAvatarUploadIntentWithResponse(ctx context.Context, body UserRequestAvatarUploadIntentJSONRequestBody, reqEditors ...RequestEditorFn) (*UserRequestAvatarUploadIntentResponse, error)
 
+	// SetDailyGoalWithBodyWithResponse Set the XP a day must earn to count towards the streak.
+	//
+	// The goal is what makes a day count, not opening the app. Raising it mid- streak does not retroactively invalidate days already recorded.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /me/daily-goal (the `SetDailyGoal` operationId).
+	SetDailyGoalWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetDailyGoalResponse, error)
+
+	// SetDailyGoalWithResponse Set the XP a day must earn to count towards the streak.
+	//
+	// The goal is what makes a day count, not opening the app. Raising it mid- streak does not retroactively invalidate days already recorded.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /me/daily-goal (the `SetDailyGoal` operationId).
+	SetDailyGoalWithResponse(ctx context.Context, body SetDailyGoalJSONRequestBody, reqEditors ...RequestEditorFn) (*SetDailyGoalResponse, error)
+
 	// GetDashboardWithResponse Get learner dashboard state.
 	//
 	// Returns current learner plan, resume/next activity (or explicit not_started state), due review count, and per-skill mastery.
@@ -8252,6 +8907,33 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /me/export/{id} (the `UserGetExport` operationId).
 	UserGetExportWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*UserGetExportResponse, error)
+
+	// GetGamificationSummaryWithResponse The caller's XP, level, streak, badges and open quests.
+	//
+	// One read rather than several, because the dashboard needs all of it at once. `xp_today` and the streak are computed against the caller's own timezone.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /me/gamification (the `GetGamificationSummary` operationId).
+	GetGamificationSummaryWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetGamificationSummaryResponse, error)
+
+	// SetLeaderboardOptInWithBodyWithResponse Join or leave the leaderboard.
+	//
+	// Leaderboards are opt-in. Opting out removes the caller from future snapshots; it does not delete their XP, which is their own record.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /me/leaderboard-opt-in (the `SetLeaderboardOptIn` operationId).
+	SetLeaderboardOptInWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetLeaderboardOptInResponse, error)
+
+	// SetLeaderboardOptInWithResponse Join or leave the leaderboard.
+	//
+	// Leaderboards are opt-in. Opting out removes the caller from future snapshots; it does not delete their XP, which is their own record.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /me/leaderboard-opt-in (the `SetLeaderboardOptIn` operationId).
+	SetLeaderboardOptInWithResponse(ctx context.Context, body SetLeaderboardOptInJSONRequestBody, reqEditors ...RequestEditorFn) (*SetLeaderboardOptInResponse, error)
 
 	// RbacGetMyPermissionsWithResponse Read the caller's own effective permissions.
 	//
@@ -8333,6 +9015,60 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /me/sessions/{id}/complete (the `CompleteLearningSession` operationId).
 	CompleteLearningSessionWithResponse(ctx context.Context, id openapi_types.UUID, body CompleteLearningSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*CompleteLearningSessionResponse, error)
+
+	// GetStreakWithResponse The caller's streak, with the freeze state and the day boundary.
+	//
+	// The same streak the summary carries, for screens that need only this. `hours_remaining` counts down the caller's own local day, so a learner who travels is not told their streak ends at the server's midnight.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /me/streak (the `GetStreak` operationId).
+	GetStreakWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetStreakResponse, error)
+
+	// UseStreakFreezeWithResponse Spend a streak freeze for today.
+	//
+	// Freezes are limited and at most one may be spent per day. A caller with none left, or who has already spent one today, receives `NO_FREEZES_AVAILABLE`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /me/streak/freeze (the `UseStreakFreeze` operationId).
+	UseStreakFreezeWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*UseStreakFreezeResponse, error)
+
+	// ListVocabUploadsWithResponse Your uploads, newest first.
+	//
+	// Each row carries the verified, rejected and still-pending counts, so a learner can see how far the checking has got without opening it.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /me/vocabulary/uploads (the `ListVocabUploads` operationId).
+	ListVocabUploadsWithResponse(ctx context.Context, params *ListVocabUploadsParams, reqEditors ...RequestEditorFn) (*ListVocabUploadsResponse, error)
+
+	// SubmitVocabUploadWithBodyWithResponse Submit your own vocabulary to be checked.
+	//
+	// Stores the words and returns immediately. The checking — a dictionary lookup and a model call per word — runs hourly in a background job, because it is slow and fails in ways worth retrying, and a learner pasting three hundred words should not be watching a request time out half way through.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /me/vocabulary/uploads (the `SubmitVocabUpload` operationId).
+	SubmitVocabUploadWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SubmitVocabUploadResponse, error)
+
+	// SubmitVocabUploadWithResponse Submit your own vocabulary to be checked.
+	//
+	// Stores the words and returns immediately. The checking — a dictionary lookup and a model call per word — runs hourly in a background job, because it is slow and fails in ways worth retrying, and a learner pasting three hundred words should not be watching a request time out half way through.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /me/vocabulary/uploads (the `SubmitVocabUpload` operationId).
+	SubmitVocabUploadWithResponse(ctx context.Context, body SubmitVocabUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*SubmitVocabUploadResponse, error)
+
+	// GetVocabUploadWithResponse One upload, with every word and what became of it.
+	//
+	// Scoped to the caller: another learner's upload id is a 404 rather than a 403, because they should not learn that it exists.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /me/vocabulary/uploads/{id} (the `GetVocabUpload` operationId).
+	GetVocabUploadWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetVocabUploadResponse, error)
 
 	// SystemPingWithResponse Check API dependency connectivity.
 	//
@@ -12566,6 +13302,75 @@ func (r SystemHealthResponse) ContentType() string {
 	return ""
 }
 
+// GetLeaderboardResponse200Headers the declared response headers of an HTTP 200 response for GetLeaderboard
+type GetLeaderboardResponse200Headers struct {
+	XRequestId *string
+}
+
+type GetLeaderboardResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *LeaderboardResponse
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetLeaderboardResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetLeaderboardResponse) GetJSON200() *LeaderboardResponse {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetLeaderboardResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r GetLeaderboardResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r GetLeaderboardResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetLeaderboardResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetLeaderboardResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetLeaderboardResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetLeaderboardResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // GetLessonByIdResponse200Headers the declared response headers of an HTTP 200 response for GetLessonById
 type GetLessonByIdResponse200Headers struct {
 	XRequestId *string
@@ -12983,6 +13788,75 @@ func (r UserRequestAvatarUploadIntentResponse) ContentType() string {
 	return ""
 }
 
+// SetDailyGoalResponse200Headers the declared response headers of an HTTP 200 response for SetDailyGoal
+type SetDailyGoalResponse200Headers struct {
+	XRequestId *string
+}
+
+type SetDailyGoalResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *GamificationSummary
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *SetDailyGoalResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SetDailyGoalResponse) GetJSON200() *GamificationSummary {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r SetDailyGoalResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r SetDailyGoalResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r SetDailyGoalResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r SetDailyGoalResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SetDailyGoalResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SetDailyGoalResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SetDailyGoalResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // GetDashboardResponse200Headers the declared response headers of an HTTP 200 response for GetDashboard
 type GetDashboardResponse200Headers struct {
 	XRequestId *string
@@ -13294,6 +14168,130 @@ func (r UserGetExportResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r UserGetExportResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GetGamificationSummaryResponse200Headers the declared response headers of an HTTP 200 response for GetGamificationSummary
+type GetGamificationSummaryResponse200Headers struct {
+	XRequestId *string
+}
+
+type GetGamificationSummaryResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *GamificationSummary
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetGamificationSummaryResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetGamificationSummaryResponse) GetJSON200() *GamificationSummary {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetGamificationSummaryResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r GetGamificationSummaryResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetGamificationSummaryResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetGamificationSummaryResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetGamificationSummaryResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetGamificationSummaryResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// SetLeaderboardOptInResponse204Headers the declared response headers of an HTTP 204 response for SetLeaderboardOptIn
+type SetLeaderboardOptInResponse204Headers struct {
+	XRequestId *string
+}
+
+type SetLeaderboardOptInResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers204 the parsed response headers for an HTTP 204 response
+	Headers204 *SetLeaderboardOptInResponse204Headers
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r SetLeaderboardOptInResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r SetLeaderboardOptInResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r SetLeaderboardOptInResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r SetLeaderboardOptInResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SetLeaderboardOptInResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SetLeaderboardOptInResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SetLeaderboardOptInResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -13701,6 +14699,344 @@ func (r CompleteLearningSessionResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r CompleteLearningSessionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GetStreakResponse200Headers the declared response headers of an HTTP 200 response for GetStreak
+type GetStreakResponse200Headers struct {
+	XRequestId *string
+}
+
+type GetStreakResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Streak
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetStreakResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetStreakResponse) GetJSON200() *Streak {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetStreakResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r GetStreakResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetStreakResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetStreakResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetStreakResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetStreakResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// UseStreakFreezeResponse200Headers the declared response headers of an HTTP 200 response for UseStreakFreeze
+type UseStreakFreezeResponse200Headers struct {
+	XRequestId *string
+}
+
+type UseStreakFreezeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Streak
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *UseStreakFreezeResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UseStreakFreezeResponse) GetJSON200() *Streak {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r UseStreakFreezeResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r UseStreakFreezeResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r UseStreakFreezeResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r UseStreakFreezeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UseStreakFreezeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UseStreakFreezeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UseStreakFreezeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ListVocabUploadsResponse200Headers the declared response headers of an HTTP 200 response for ListVocabUploads
+type ListVocabUploadsResponse200Headers struct {
+	XRequestId *string
+}
+
+type ListVocabUploadsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *VocabUploadList
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ListVocabUploadsResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListVocabUploadsResponse) GetJSON200() *VocabUploadList {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ListVocabUploadsResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r ListVocabUploadsResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ListVocabUploadsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListVocabUploadsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListVocabUploadsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListVocabUploadsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// SubmitVocabUploadResponse202Headers the declared response headers of an HTTP 202 response for SubmitVocabUpload
+type SubmitVocabUploadResponse202Headers struct {
+	XRequestId *string
+}
+
+type SubmitVocabUploadResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON202 the response for an HTTP 202 `application/json` response
+	JSON202 *VocabUpload
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers202 the parsed response headers for an HTTP 202 response
+	Headers202 *SubmitVocabUploadResponse202Headers
+}
+
+// GetJSON202 returns the response for an HTTP 202 `application/json` response
+func (r SubmitVocabUploadResponse) GetJSON202() *VocabUpload {
+	return r.JSON202
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r SubmitVocabUploadResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r SubmitVocabUploadResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r SubmitVocabUploadResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r SubmitVocabUploadResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SubmitVocabUploadResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SubmitVocabUploadResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SubmitVocabUploadResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GetVocabUploadResponse200Headers the declared response headers of an HTTP 200 response for GetVocabUpload
+type GetVocabUploadResponse200Headers struct {
+	XRequestId *string
+}
+
+type GetVocabUploadResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *VocabUpload
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetVocabUploadResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetVocabUploadResponse) GetJSON200() *VocabUpload {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r GetVocabUploadResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetVocabUploadResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GetVocabUploadResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r GetVocabUploadResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetVocabUploadResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetVocabUploadResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetVocabUploadResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetVocabUploadResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -16173,6 +17509,21 @@ func (c *ClientWithResponses) SystemHealthWithResponse(ctx context.Context, reqE
 	return ParseSystemHealthResponse(rsp)
 }
 
+// GetLeaderboardWithResponse This week's standings for the caller's league.
+//
+// A weekly snapshot, not a live ranking, so the standings do not shuffle mid-week. A caller who has not opted in receives `LEADERBOARD_NOT_OPTED_IN` so the screen can offer the opt-in rather than showing an error.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /leaderboard (the `GetLeaderboard` operationId).
+func (c *ClientWithResponses) GetLeaderboardWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetLeaderboardResponse, error) {
+	rsp, err := c.GetLeaderboard(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetLeaderboardResponse(rsp)
+}
+
 // GetLessonByIdWithResponse Get lesson with activities and resolved content versions.
 //
 // Returns one lesson with its ordered activities and each activity's resolved content version, ready for the lesson renderer. Public (ADR-0025).
@@ -16310,6 +17661,36 @@ func (c *ClientWithResponses) UserRequestAvatarUploadIntentWithResponse(ctx cont
 	return ParseUserRequestAvatarUploadIntentResponse(rsp)
 }
 
+// SetDailyGoalWithBodyWithResponse Set the XP a day must earn to count towards the streak.
+//
+// The goal is what makes a day count, not opening the app. Raising it mid- streak does not retroactively invalidate days already recorded.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /me/daily-goal (the `SetDailyGoal` operationId).
+func (c *ClientWithResponses) SetDailyGoalWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetDailyGoalResponse, error) {
+	rsp, err := c.SetDailyGoalWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetDailyGoalResponse(rsp)
+}
+
+// SetDailyGoalWithResponse Set the XP a day must earn to count towards the streak.
+//
+// The goal is what makes a day count, not opening the app. Raising it mid- streak does not retroactively invalidate days already recorded.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /me/daily-goal (the `SetDailyGoal` operationId).
+func (c *ClientWithResponses) SetDailyGoalWithResponse(ctx context.Context, body SetDailyGoalJSONRequestBody, reqEditors ...RequestEditorFn) (*SetDailyGoalResponse, error) {
+	rsp, err := c.SetDailyGoal(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetDailyGoalResponse(rsp)
+}
+
 // GetDashboardWithResponse Get learner dashboard state.
 //
 // Returns current learner plan, resume/next activity (or explicit not_started state), due review count, and per-skill mastery.
@@ -16383,6 +17764,51 @@ func (c *ClientWithResponses) UserGetExportWithResponse(ctx context.Context, id 
 		return nil, err
 	}
 	return ParseUserGetExportResponse(rsp)
+}
+
+// GetGamificationSummaryWithResponse The caller's XP, level, streak, badges and open quests.
+//
+// One read rather than several, because the dashboard needs all of it at once. `xp_today` and the streak are computed against the caller's own timezone.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /me/gamification (the `GetGamificationSummary` operationId).
+func (c *ClientWithResponses) GetGamificationSummaryWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetGamificationSummaryResponse, error) {
+	rsp, err := c.GetGamificationSummary(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetGamificationSummaryResponse(rsp)
+}
+
+// SetLeaderboardOptInWithBodyWithResponse Join or leave the leaderboard.
+//
+// Leaderboards are opt-in. Opting out removes the caller from future snapshots; it does not delete their XP, which is their own record.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /me/leaderboard-opt-in (the `SetLeaderboardOptIn` operationId).
+func (c *ClientWithResponses) SetLeaderboardOptInWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetLeaderboardOptInResponse, error) {
+	rsp, err := c.SetLeaderboardOptInWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetLeaderboardOptInResponse(rsp)
+}
+
+// SetLeaderboardOptInWithResponse Join or leave the leaderboard.
+//
+// Leaderboards are opt-in. Opting out removes the caller from future snapshots; it does not delete their XP, which is their own record.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /me/leaderboard-opt-in (the `SetLeaderboardOptIn` operationId).
+func (c *ClientWithResponses) SetLeaderboardOptInWithResponse(ctx context.Context, body SetLeaderboardOptInJSONRequestBody, reqEditors ...RequestEditorFn) (*SetLeaderboardOptInResponse, error) {
+	rsp, err := c.SetLeaderboardOptIn(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetLeaderboardOptInResponse(rsp)
 }
 
 // RbacGetMyPermissionsWithResponse Read the caller's own effective permissions.
@@ -16518,6 +17944,96 @@ func (c *ClientWithResponses) CompleteLearningSessionWithResponse(ctx context.Co
 		return nil, err
 	}
 	return ParseCompleteLearningSessionResponse(rsp)
+}
+
+// GetStreakWithResponse The caller's streak, with the freeze state and the day boundary.
+//
+// The same streak the summary carries, for screens that need only this. `hours_remaining` counts down the caller's own local day, so a learner who travels is not told their streak ends at the server's midnight.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /me/streak (the `GetStreak` operationId).
+func (c *ClientWithResponses) GetStreakWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetStreakResponse, error) {
+	rsp, err := c.GetStreak(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetStreakResponse(rsp)
+}
+
+// UseStreakFreezeWithResponse Spend a streak freeze for today.
+//
+// Freezes are limited and at most one may be spent per day. A caller with none left, or who has already spent one today, receives `NO_FREEZES_AVAILABLE`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /me/streak/freeze (the `UseStreakFreeze` operationId).
+func (c *ClientWithResponses) UseStreakFreezeWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*UseStreakFreezeResponse, error) {
+	rsp, err := c.UseStreakFreeze(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUseStreakFreezeResponse(rsp)
+}
+
+// ListVocabUploadsWithResponse Your uploads, newest first.
+//
+// Each row carries the verified, rejected and still-pending counts, so a learner can see how far the checking has got without opening it.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /me/vocabulary/uploads (the `ListVocabUploads` operationId).
+func (c *ClientWithResponses) ListVocabUploadsWithResponse(ctx context.Context, params *ListVocabUploadsParams, reqEditors ...RequestEditorFn) (*ListVocabUploadsResponse, error) {
+	rsp, err := c.ListVocabUploads(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListVocabUploadsResponse(rsp)
+}
+
+// SubmitVocabUploadWithBodyWithResponse Submit your own vocabulary to be checked.
+//
+// Stores the words and returns immediately. The checking — a dictionary lookup and a model call per word — runs hourly in a background job, because it is slow and fails in ways worth retrying, and a learner pasting three hundred words should not be watching a request time out half way through.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /me/vocabulary/uploads (the `SubmitVocabUpload` operationId).
+func (c *ClientWithResponses) SubmitVocabUploadWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SubmitVocabUploadResponse, error) {
+	rsp, err := c.SubmitVocabUploadWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSubmitVocabUploadResponse(rsp)
+}
+
+// SubmitVocabUploadWithResponse Submit your own vocabulary to be checked.
+//
+// Stores the words and returns immediately. The checking — a dictionary lookup and a model call per word — runs hourly in a background job, because it is slow and fails in ways worth retrying, and a learner pasting three hundred words should not be watching a request time out half way through.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /me/vocabulary/uploads (the `SubmitVocabUpload` operationId).
+func (c *ClientWithResponses) SubmitVocabUploadWithResponse(ctx context.Context, body SubmitVocabUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*SubmitVocabUploadResponse, error) {
+	rsp, err := c.SubmitVocabUpload(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSubmitVocabUploadResponse(rsp)
+}
+
+// GetVocabUploadWithResponse One upload, with every word and what became of it.
+//
+// Scoped to the caller: another learner's upload id is a 404 rather than a 403, because they should not learn that it exists.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /me/vocabulary/uploads/{id} (the `GetVocabUpload` operationId).
+func (c *ClientWithResponses) GetVocabUploadWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetVocabUploadResponse, error) {
+	rsp, err := c.GetVocabUpload(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetVocabUploadResponse(rsp)
 }
 
 // SystemPingWithResponse Check API dependency connectivity.
@@ -20796,6 +22312,66 @@ func ParseSystemHealthResponse(rsp *http.Response) (*SystemHealthResponse, error
 	return response, nil
 }
 
+// ParseGetLeaderboardResponse parses an HTTP response from a GetLeaderboardWithResponse call
+func ParseGetLeaderboardResponse(rsp *http.Response) (*GetLeaderboardResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetLeaderboardResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LeaderboardResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetLeaderboardResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseGetLessonByIdResponse parses an HTTP response from a GetLessonByIdWithResponse call
 func ParseGetLessonByIdResponse(rsp *http.Response) (*GetLessonByIdResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -21180,6 +22756,66 @@ func ParseUserRequestAvatarUploadIntentResponse(rsp *http.Response) (*UserReques
 	return response, nil
 }
 
+// ParseSetDailyGoalResponse parses an HTTP response from a SetDailyGoalWithResponse call
+func ParseSetDailyGoalResponse(rsp *http.Response) (*SetDailyGoalResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SetDailyGoalResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GamificationSummary
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers SetDailyGoalResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseGetDashboardResponse parses an HTTP response from a GetDashboardWithResponse call
 func ParseGetDashboardResponse(rsp *http.Response) (*GetDashboardResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -21447,6 +23083,115 @@ func ParseUserGetExportResponse(rsp *http.Response) (*UserGetExportResponse, err
 			headers.XRequestId = &value
 		}
 		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGetGamificationSummaryResponse parses an HTTP response from a GetGamificationSummaryWithResponse call
+func ParseGetGamificationSummaryResponse(rsp *http.Response) (*GetGamificationSummaryResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetGamificationSummaryResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GamificationSummary
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetGamificationSummaryResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseSetLeaderboardOptInResponse parses an HTTP response from a SetLeaderboardOptInWithResponse call
+func ParseSetLeaderboardOptInResponse(rsp *http.Response) (*SetLeaderboardOptInResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SetLeaderboardOptInResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		var headers SetLeaderboardOptInResponse204Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers204 = &headers
 	}
 
 	return response, nil
@@ -21792,6 +23537,299 @@ func ParseCompleteLearningSessionResponse(rsp *http.Response) (*CompleteLearning
 	switch {
 	case rsp.StatusCode == 200:
 		var headers CompleteLearningSessionResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGetStreakResponse parses an HTTP response from a GetStreakWithResponse call
+func ParseGetStreakResponse(rsp *http.Response) (*GetStreakResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetStreakResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Streak
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetStreakResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseUseStreakFreezeResponse parses an HTTP response from a UseStreakFreezeWithResponse call
+func ParseUseStreakFreezeResponse(rsp *http.Response) (*UseStreakFreezeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UseStreakFreezeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Streak
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers UseStreakFreezeResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseListVocabUploadsResponse parses an HTTP response from a ListVocabUploadsWithResponse call
+func ParseListVocabUploadsResponse(rsp *http.Response) (*ListVocabUploadsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListVocabUploadsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest VocabUploadList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ListVocabUploadsResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseSubmitVocabUploadResponse parses an HTTP response from a SubmitVocabUploadWithResponse call
+func ParseSubmitVocabUploadResponse(rsp *http.Response) (*SubmitVocabUploadResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SubmitVocabUploadResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest VocabUpload
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 202:
+		var headers SubmitVocabUploadResponse202Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers202 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGetVocabUploadResponse parses an HTTP response from a GetVocabUploadWithResponse call
+func ParseGetVocabUploadResponse(rsp *http.Response) (*GetVocabUploadResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetVocabUploadResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest VocabUpload
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetVocabUploadResponse200Headers
 		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
 			var value string
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {

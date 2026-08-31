@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -17,6 +18,8 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/vocabulary/repository"
 	"github.com/fluentra/fluentra/internal/modules/vocabulary/service"
 	vocabularyhttp "github.com/fluentra/fluentra/internal/modules/vocabulary/transport/http"
+	"github.com/fluentra/fluentra/internal/platform/ai"
+	"github.com/fluentra/fluentra/internal/platform/job"
 	"github.com/fluentra/fluentra/internal/shared/apperr"
 	"github.com/fluentra/fluentra/internal/shared/clock"
 	"github.com/fluentra/fluentra/internal/shared/outbox"
@@ -32,6 +35,22 @@ func reviewScheduler(writer srscontract.CardWriter) service.ReviewScheduler {
 	return writer
 }
 
+// Advisory lock id for the generator, derived from this module's migration
+// timestamp so it cannot collide with another module's.
+const generateExercisesLockID int64 = 1_700_000_231
+
+// generateInterval is twelve-hourly. The dictionary changes when content is
+// authored or a learner's upload is verified, which is not an hourly event, and
+// a generator that rewrote the catalogue every hour would drop every cached
+// lesson for nothing.
+const generateInterval = 12 * time.Hour
+
+// The upload verification job. Hourly, because an upload a learner is waiting
+// on should feel answered rather than forgotten.
+const verifyUploadsLockID int64 = 1_700_000_271
+
+const verifyUploadsInterval = time.Hour
+
 // Guard is the authorization interface required by HTTP handlers.
 type Guard = vocabularyhttp.Guard
 
@@ -42,16 +61,37 @@ type Deps struct {
 	Guard   Guard
 	Content contentcontract.Reader
 	Reviews srscontract.CardWriter
+
+	// The practice generator's dependencies. All three are optional and are
+	// supplied only by cmd/worker: the API serves no route that generates
+	// exercises, and a module built without them simply has no generator.
+	ContentAuthor service.ContentAuthor
+	LessonAuthor  service.LessonAuthor
+	// GeneratorAuthorID owns the generated content. `content_items.owner_id` is
+	// not nullable, and unattributed content is content nobody can be asked about.
+	// It owns a learner's verified uploads for the same reason.
+	GeneratorAuthorID uuid.UUID
+
+	// The upload pipeline's dependencies, both optional.
+	//
+	// Dictionary is authoritative on whether an uploaded word exists; AI judges
+	// the learner's own wording of the meaning and writes example sentences. A
+	// module built with neither serves the upload endpoints — a learner can
+	// still submit — and simply verifies nothing until a worker with them runs.
+	Dictionary repository.DictionaryLookup
+	AI         ai.Client
 }
 
 // Module represents the wired vocabulary module.
 type Module struct {
-	pool    *pgxpool.Pool
-	clock   clock.Clock
-	queries *sqlc.Queries
-	service *service.Service
-	handler *vocabularyhttp.Handler
-	grader  *service.Grader
+	pool      *pgxpool.Pool
+	clock     clock.Clock
+	queries   *sqlc.Queries
+	service   *service.Service
+	handler   *vocabularyhttp.Handler
+	grader    *service.Grader
+	generator *service.Generator
+	uploads   *service.Uploads
 }
 
 // New constructs and wires the vocabulary module.
@@ -79,10 +119,18 @@ func New(deps Deps) *Module {
 	// in this module's own tables.
 	grader := service.NewGrader(deps.Content, repo)
 
+	uploads := service.NewUploads(srv, repo, service.UploadDeps{
+		Dictionary: deps.Dictionary,
+		AI:         deps.AI,
+		Content:    deps.ContentAuthor,
+		AuthorID:   deps.GeneratorAuthorID,
+		Pool:       deps.Pool,
+	})
+
 	var handler *vocabularyhttp.Handler
 	if deps.Guard != nil {
 		var err error
-		handler, err = vocabularyhttp.NewHandler(srv, deps.Guard)
+		handler, err = vocabularyhttp.NewHandler(srv, deps.Guard, uploads)
 		if err != nil {
 			panic(fmt.Sprintf("failed to construct vocabulary HTTP handler: %v", err))
 		}
@@ -95,7 +143,42 @@ func New(deps Deps) *Module {
 		service: srv,
 		handler: handler,
 		grader:  grader,
+		uploads: uploads,
+		generator: service.NewGenerator(repo, service.GeneratorDeps{
+			Content:  deps.ContentAuthor,
+			Lessons:  deps.LessonAuthor,
+			AuthorID: deps.GeneratorAuthorID,
+		}),
 	}
+}
+
+// CronJobs returns the scheduled work this module owns.
+//
+// The generator is idempotent, so losing the advisory lock to another replica
+// costs nothing, and a run that overlaps the previous one converges on the same
+// catalogue rather than duplicating it.
+func (m *Module) CronJobs() []job.CronJob {
+	return []job.CronJob{
+		{
+			Name:     "vocabulary.generate_exercises",
+			LockID:   generateExercisesLockID,
+			Interval: generateInterval,
+			Task:     m.generator.GenerateExercises,
+		},
+		{
+			Name:     "vocabulary.verify_uploads",
+			LockID:   verifyUploadsLockID,
+			Interval: verifyUploadsInterval,
+			Task:     m.uploads.VerifyPending,
+		},
+	}
+}
+
+// GenerateExercises runs the practice generator once. Exported so cmd/worker can
+// run it at start-up rather than leaving a fresh database with no practice
+// content until the first interval elapses.
+func (m *Module) GenerateExercises(ctx context.Context) error {
+	return m.generator.GenerateExercises(ctx)
 }
 
 // Routes mounts the learner vocabulary endpoints on the router.

@@ -67,6 +67,29 @@ func (q *Queries) DeleteRoleAssignmentsForUser(ctx context.Context, userID uuid.
 	return result.RowsAffected(), nil
 }
 
+const firstHolderOfRole = `-- name: FirstHolderOfRole :one
+SELECT ur.user_id
+FROM core.user_roles ur
+JOIN core.roles r ON r.id = ur.role_id
+WHERE r.name = $1
+ORDER BY ur.granted_at, ur.user_id
+LIMIT 1
+`
+
+// The longest-standing holder of a role.
+//
+// Exists for one caller: the practice generator needs a stable owner for the
+// content it authors, `content_items.owner_id` is not nullable, and
+// unattributed content is content nobody can be asked about. Ordered by
+// assignment time so the answer does not move when a second administrator is
+// added, which would otherwise reassign every generated item.
+func (q *Queries) FirstHolderOfRole(ctx context.Context, name string) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, firstHolderOfRole, name)
+	var user_id uuid.UUID
+	err := row.Scan(&user_id)
+	return user_id, err
+}
+
 const getRoleByName = `-- name: GetRoleByName :one
 SELECT id, name, description, created_at, updated_at
 FROM core.roles

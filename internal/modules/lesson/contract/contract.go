@@ -92,6 +92,68 @@ type Reader interface {
 	ResolveActivity(ctx context.Context, activityID uuid.UUID) (*ActivityHierarchy, error)
 }
 
+// CourseSpec describes a generated course, addressed by its slug.
+//
+// Every spec in this group — course, unit, lesson, activity — is addressed by
+// something stable, a slug or a position within its parent, because a generator
+// runs on a schedule and must be able to say "unit 2 of the practice course"
+// without remembering what it created last time.
+type CourseSpec struct {
+	Slug           string
+	Title          string
+	Description    string
+	CEFRFrom       string
+	CEFRTo         string
+	EstimatedHours int
+}
+
+// UnitSpec is identified by its position within the course.
+type UnitSpec struct {
+	CourseID    uuid.UUID
+	Position    int
+	Title       string
+	Description string
+}
+
+// LessonSpec is identified by its position within the unit.
+type LessonSpec struct {
+	UnitID           uuid.UUID
+	Position         int
+	Title            string
+	SkillFocus       string
+	EstimatedMinutes int
+}
+
+// ActivitySpec is one exercise. Activities are replaced wholesale rather than
+// matched one by one: a generated lesson is a rendering of its source data, and
+// a partial update leaves exercises from a previous rendering interleaved with
+// the current one.
+type ActivitySpec struct {
+	Position         int
+	Kind             string
+	ContentVersionID uuid.UUID
+	Config           json.RawMessage
+	Weight           int
+}
+
+// Author is the narrow authoring surface a curriculum generator needs.
+//
+// It exists because activities live in this module's tables and rule L2 forbids
+// anyone else writing them. The alternative — a skill module reaching into
+// `learn.activities` — is exactly the coupling the rule prevents, and it would
+// make the sequencing rules this module owns unenforceable from anywhere.
+//
+// Deliberately narrow: no deletion, no prerequisite editing, no status
+// transitions beyond publishing what it creates. A generator that could
+// unpublish a hand-authored lesson is a generator that eventually will.
+type Author interface {
+	EnsureCourse(ctx context.Context, spec CourseSpec) (uuid.UUID, error)
+	EnsureUnit(ctx context.Context, spec UnitSpec) (uuid.UUID, error)
+	EnsureLesson(ctx context.Context, spec LessonSpec) (uuid.UUID, error)
+	// ReplaceActivities swaps a generated lesson's whole activity list.
+	ReplaceActivities(ctx context.Context, lessonID uuid.UUID, activities []ActivitySpec) error
+}
+
 // Published is emitted when a lesson is published.
 type Published struct {
 	LessonID   uuid.UUID `json:"lesson_id"`

@@ -30,6 +30,7 @@ Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR
 | `GET` | `/api/v1/me/gamification` | `self` | XP, level, streak, badges, active quests |
 | `GET` | `/api/v1/me/streak` | `self` | Streak with the freeze state and the day boundary |
 | `POST` | `/api/v1/me/streak/freeze` | `self` | Use a freeze |
+| `PUT` | `/api/v1/me/leaderboard-opt-in` | `self` | Join or leave the leaderboard |
 | `GET` | `/api/v1/leaderboard` | `self` | Current league standings |
 | `PUT` | `/api/v1/me/daily-goal` | `self` | Set the daily XP goal |
 <!-- END GENERATED: api-summary -->
@@ -66,6 +67,17 @@ Use a freeze
 | Permission | `self` |
 | Success | 200 |
 | Errors | `NO_FREEZES_AVAILABLE` |
+
+### `PUT /api/v1/me/leaderboard-opt-in`
+
+Join or leave the leaderboard
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+| Notes | The board is opt-in by decision, not by default: a name is shown to people the learner joined, never to everyone. |
 
 ### `GET /api/v1/leaderboard`
 

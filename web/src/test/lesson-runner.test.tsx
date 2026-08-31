@@ -47,7 +47,7 @@ async function renderLessonRunner(
     }),
   });
   await router.load();
-  return render(<RouterProvider router={router} />);
+  return { ...render(<RouterProvider router={router} />), client };
 }
 
 /**
@@ -417,5 +417,121 @@ describe("LessonPage Runner (P10.3)", () => {
     // Clicking 'Keep Learning' cancels
     await user.click(screen.getByRole("button", { name: /Keep Learning/i }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * The bug this covers looked exactly like data loss.
+ *
+ * Grading writes progress on the server — the activity, the lesson, the course
+ * rollup — and schedules review cards. Nothing invalidated the caches those
+ * screens read, so a learner who answered everything and pressed back saw the
+ * same untouched course they had left. The work was saved; only the reading of
+ * it was stale, which is the worst version of the bug, because it is
+ * indistinguishable from the answer never having been recorded.
+ */
+describe("LessonPage progress freshness", () => {
+  beforeEach(async () => {
+    signIn();
+    initI18n("en");
+    await i18n.changeLanguage("en");
+
+    server.use(
+      http.get("/api/v1/lessons/0199a1c2-3d4e-7f80-9abc-def01234567a", () =>
+        HttpResponse.json({
+          id: "0199a1c2-3d4e-7f80-9abc-def01234567a",
+          unit_id: "0199a1c2-3d4e-7f80-9abc-def012345679",
+          position: 1,
+          title: "Academic Word List - Topic 1",
+          skill_focus: "vocabulary",
+          estimated_minutes: 15,
+          status: "published",
+          next_lesson_id: "0199a1c2-3d4e-7f80-9abc-def0123456ff",
+          activities: [
+            {
+              id: "act-1",
+              lesson_id: "0199a1c2-3d4e-7f80-9abc-def01234567a",
+              position: 1,
+              kind: "vocab_multiple_choice",
+              content_version_id: "0199a1c2-3d4e-7f80-9abc-def01234567b",
+              weight: 1,
+              config: {
+                prompt: "What is the meaning of 'meticulous'?",
+                options: [
+                  { id: "opt-1", text: "Showing great attention to detail" },
+                  { id: "opt-2", text: "Careless and fast" },
+                ],
+              },
+            },
+          ],
+        }),
+      ),
+      http.post("/api/v1/activities/:id/attempts", ({ params }) =>
+        HttpResponse.json({
+          attempt_id: `att-${String(params.id ?? "1")}`,
+          activity_id: String(params.id ?? "1"),
+          status: "in_progress",
+          started_at: "2026-08-24T09:00:00Z",
+        }),
+      ),
+      http.post("/api/v1/attempts/:id/submit", ({ params }) =>
+        HttpResponse.json({
+          attempt_id: String(params.id ?? "1"),
+          status: "graded",
+          correct: true,
+          score: 100,
+          max_score: 100,
+          feedback: "Correct! Well done.",
+        }),
+      ),
+    );
+  });
+
+  it("marks the course and dashboard caches stale as soon as an answer is graded", async () => {
+    const user = userEventDefault.setup();
+    const { client } = await renderLessonRunner();
+
+    // Stand in for a course page the learner has already visited: a cached,
+    // fresh entry that the old code left untouched.
+    const courseKey = ["lesson", "courses"];
+    const dashboardKey = ["learning", "dashboard"];
+    client.setQueryData(courseKey, { items: [] });
+    client.setQueryData(dashboardKey, { items: [] });
+    expect(client.getQueryState(courseKey)?.isInvalidated).toBe(false);
+
+    await user.click(
+      await screen.findByRole("radio", {
+        name: /showing great attention to detail/i,
+      }),
+    );
+    await user.click(screen.getByRole("button", { name: /check answer/i }));
+
+    // Not on finishing the lesson — on every graded answer. A learner who
+    // leaves half-way has still made progress the course screen must show.
+    await waitFor(() => {
+      expect(client.getQueryState(courseKey)?.isInvalidated).toBe(true);
+      expect(client.getQueryState(dashboardKey)?.isInvalidated).toBe(true);
+    });
+  });
+
+  it("offers the next lesson once the last activity is done", async () => {
+    const user = userEventDefault.setup();
+    await renderLessonRunner();
+
+    await user.click(
+      await screen.findByRole("radio", {
+        name: /showing great attention to detail/i,
+      }),
+    );
+    await user.click(screen.getByRole("button", { name: /check answer/i }));
+    await user.click(await screen.findByRole("button", { name: /continue/i }));
+
+    // Continuing is the primary action: sending a warmed-up learner back to a
+    // syllabus to hunt for the next lesson is where study sessions end.
+    const next = await screen.findByRole("link", { name: /next lesson/i });
+    expect(next).toHaveAttribute(
+      "href",
+      "/learn/lesson/0199a1c2-3d4e-7f80-9abc-def0123456ff",
+    );
   });
 });

@@ -1,12 +1,17 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 
+import { ExampleSentences } from "@/components/ui/example-sentences";
+import type { ExampleSentence } from "@/lib/examples";
+import { PronounceButton } from "@/components/ui/pronounce-button";
+
 export interface FlashcardBackProps {
   word: string;
   ipa?: string;
   definition: string;
   definitionVi?: string;
-  exampleSentence?: string;
+  exampleSentences?: ExampleSentence[];
+  audioUrl?: string | null | undefined;
   partOfSpeech?: string;
 }
 
@@ -15,7 +20,8 @@ export const FlashcardBack: React.FC<FlashcardBackProps> = ({
   ipa,
   definition,
   definitionVi,
-  exampleSentence,
+  exampleSentences = [],
+  audioUrl,
   partOfSpeech,
 }) => {
   const { i18n } = useTranslation();
@@ -43,7 +49,12 @@ export const FlashcardBack: React.FC<FlashcardBackProps> = ({
           )}
         </div>
 
-        {ipa && <p className="font-mono text-sm text-primary-accent">{ipa}</p>}
+        <div className="flex items-center justify-center gap-2">
+          {ipa && (
+            <p className="font-mono text-sm text-primary-accent">{ipa}</p>
+          )}
+          <PronounceButton text={word} audioUrl={audioUrl} />
+        </div>
 
         {/* The definition in the language the learner is reading in. */}
         <p className="text-lg md:text-xl font-medium text-text leading-relaxed pt-1">
@@ -56,14 +67,8 @@ export const FlashcardBack: React.FC<FlashcardBackProps> = ({
           </p>
         )}
 
-        {/* Example Sentence */}
-        {exampleSentence && (
-          <div className="pt-3 border-t border-border-subtle">
-            <p className="text-sm text-text-muted italic">
-              "{exampleSentence}"
-            </p>
-          </div>
-        )}
+        {/* Every authored example, each one audible on its own. */}
+        <ExampleSentences sentences={exampleSentences} highlight={word} />
       </div>
     </div>
   );

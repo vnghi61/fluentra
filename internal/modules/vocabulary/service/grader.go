@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"strings"
+	"unicode"
 
 	"github.com/google/uuid"
 
@@ -54,6 +55,12 @@ type vocabularyQuizResponse struct {
 	SelectedOptionID string `json:"selected_option_id"`
 	Text             string `json:"text"`
 	TextAnswer       string `json:"text_answer"`
+
+	// Pairs is what a matching exercise submits: the id of each word option
+	// against the id of the definition the learner dropped on it. It is the one
+	// response shape that is not a single string, which is why matching is the
+	// only kind with a grading path of its own.
+	Pairs map[string]string `json:"pairs"`
 }
 
 // vocabularyQuizBody is the authored side, stored in the content version body.
@@ -65,6 +72,22 @@ type vocabularyQuizBody struct {
 	// by id, so this is what it needs back after grading — the learner-facing
 	// body no longer carries it.
 	CorrectOptionID string `json:"correct_option_id"`
+
+	// CorrectPairs is the answer key for `vocab_match`: word option id against
+	// definition option id. Redacted before the body reaches a learner, like
+	// every other key on this struct.
+	CorrectPairs map[string]string `json:"correct_pairs"`
+
+	// WordLemmas names the words an activity is about, for the sole purpose of
+	// deciding what to schedule for review.
+	//
+	// It is not an answer and is not redacted: a matching exercise shows every
+	// one of these words on screen, and a reorder exercise shows the sentence
+	// they appear in. It exists because `correct_answer` stopped being a lemma
+	// once the kinds diversified — for a reorder it is a whole sentence and for
+	// a match there is no single answer at all — and without it those learners
+	// earned review cards pointing at the activity instead of at the word.
+	WordLemmas []string `json:"word_lemmas"`
 }
 
 // Grade implements learningcontract.ExerciseGrader for vocabulary activity kinds.
@@ -76,8 +99,48 @@ func (g *Grader) Grade(
 		return learningcontract.GradeResult{}, err
 	}
 
-	correct := matches(submittedAnswer(req.Response), body)
-	return buildResult(g.reviewVersion(ctx, req.ContentVersionID, body), correct, body), nil
+	// The verdict, and for matching a partial score: four pairs right out of
+	// five is not the same as none right, and reporting it as "incorrect" tells
+	// the learner nothing about which half they knew.
+	score, correct := grade(req.Response, body)
+	return buildResult(g.reviewVersions(ctx, req.ContentVersionID, body), score, correct, body), nil
+}
+
+// grade scores a submission against the authored answer key.
+//
+// Dispatch is on the shape of the body, not on the activity kind, because the
+// kind never reaches a grader: cmd/api registers this one instance against
+// every vocabulary kind, and GradeRequest carries ids rather than a kind. A body
+// with `correct_pairs` is a matching exercise and nothing else authors that key,
+// so the body identifies itself.
+func grade(response json.RawMessage, body vocabularyQuizBody) (int, bool) {
+	if len(body.CorrectPairs) > 0 {
+		return gradePairs(response, body.CorrectPairs)
+	}
+	if matches(submittedAnswer(response), body) {
+		return maxVocabularyScore, true
+	}
+	return 0, false
+}
+
+// gradePairs scores a matching submission pair by pair.
+func gradePairs(response json.RawMessage, key map[string]string) (int, bool) {
+	var resp vocabularyQuizResponse
+	if len(response) > 0 {
+		// A response that does not parse scores zero rather than erroring: the
+		// learner submitted something, and an unparseable body is a client
+		// fault that must not leave the attempt un-graded and in_progress.
+		_ = json.Unmarshal(response, &resp)
+	}
+
+	matched := 0
+	for wordID, definitionID := range key {
+		if resp.Pairs[wordID] == definitionID {
+			matched++
+		}
+	}
+	// len(key) is non-zero: gradePairs is only reached through the guard above.
+	return matched * maxVocabularyScore / len(key), matched == len(key)
 }
 
 // reviewVersion decides what the learner will be asked to remember.
@@ -93,11 +156,19 @@ func (g *Grader) Grade(
 // Any failure falls back to the activity's own version: a review card pointing
 // at something imperfect is better than a correct answer that schedules nothing,
 // and the learner has already earned the card by the time this runs.
-func (g *Grader) reviewVersion(
+func (g *Grader) reviewVersions(
 	ctx context.Context, activityVersion uuid.UUID, body vocabularyQuizBody,
-) uuid.UUID {
+) []uuid.UUID {
 	if g.senses == nil {
-		return activityVersion
+		return []uuid.UUID{activityVersion}
+	}
+
+	// `word_lemmas` first, and it may name several. A matching exercise asks
+	// about five words at once and deserves five cards; scheduling one, or
+	// scheduling the activity, was how those learners ended up reviewing
+	// something that is not a word.
+	if versions := g.resolveLemmas(ctx, body.WordLemmas); len(versions) > 0 {
+		return versions
 	}
 
 	// `correct_answer` first, then the acceptable list.
@@ -117,9 +188,32 @@ func (g *Grader) reviewVersion(
 		if err != nil || senseVersion == nil || *senseVersion == uuid.Nil {
 			continue
 		}
-		return *senseVersion
+		return []uuid.UUID{*senseVersion}
 	}
-	return activityVersion
+	return []uuid.UUID{activityVersion}
+}
+
+// resolveLemmas maps authored lemmas to the content versions of their senses,
+// dropping any that do not resolve and de-duplicating what remains.
+func (g *Grader) resolveLemmas(ctx context.Context, lemmas []string) []uuid.UUID {
+	seen := make(map[uuid.UUID]struct{}, len(lemmas))
+	versions := make([]uuid.UUID, 0, len(lemmas))
+	for _, candidate := range lemmas {
+		lemma := normalise(candidate)
+		if lemma == "" {
+			continue
+		}
+		senseVersion, err := g.senses.GetSenseContentVersionByLemma(ctx, lemma)
+		if err != nil || senseVersion == nil || *senseVersion == uuid.Nil {
+			continue
+		}
+		if _, duplicate := seen[*senseVersion]; duplicate {
+			continue
+		}
+		seen[*senseVersion] = struct{}{}
+		versions = append(versions, *senseVersion)
+	}
+	return versions
 }
 
 // loadBody reads the authored answer key for this content version.
@@ -154,8 +248,12 @@ func (g *Grader) loadBody(ctx context.Context, versionID uuid.UUID) (vocabularyQ
 	if err := json.Unmarshal(version.Body, &body); err != nil {
 		return vocabularyQuizBody{}, notGradable("content version " + versionID.String() + " body is not a vocabulary quiz")
 	}
-	if strings.TrimSpace(body.CorrectAnswer) == "" {
-		return vocabularyQuizBody{}, notGradable("content version " + versionID.String() + " declares no correct_answer")
+	// A matching exercise has no single correct answer, and demanding one is
+	// what would make every `vocab_match` activity ungradable. Either key will
+	// do; neither is still an authoring fault.
+	if strings.TrimSpace(body.CorrectAnswer) == "" && len(body.CorrectPairs) == 0 {
+		return vocabularyQuizBody{}, notGradable(
+			"content version " + versionID.String() + " declares neither correct_answer nor correct_pairs")
 	}
 	return body, nil
 }
@@ -186,11 +284,18 @@ func matches(answer string, body vocabularyQuizBody) bool {
 	if answer == "" {
 		return false
 	}
-	if answer == normalise(body.CorrectAnswer) {
-		return true
-	}
-	for _, acceptable := range body.Acceptable {
-		if answer == normalise(acceptable) {
+	for _, candidate := range append([]string{body.CorrectAnswer}, body.Acceptable...) {
+		if answer == normalise(candidate) {
+			return true
+		}
+		// Then again ignoring punctuation and repeated spaces.
+		//
+		// `vocab_reorder` is why. Its answer is a whole sentence rebuilt from
+		// shuffled tokens, and whether the learner has understood the word order
+		// does not depend on their having reproduced the full stop or on the
+		// renderer having joined the tokens with exactly one space. Marking that
+		// wrong teaches nothing about vocabulary.
+		if sentence(answer) != "" && sentence(answer) == sentence(candidate) {
 			return true
 		}
 	}
@@ -201,17 +306,23 @@ func normalise(s string) string {
 	return strings.TrimSpace(strings.ToLower(s))
 }
 
+// sentence reduces a string to its words, lowercased and single-spaced.
+func sentence(s string) string {
+	fields := strings.FieldsFunc(strings.ToLower(s), func(r rune) bool {
+		return !unicode.IsLetter(r) && !unicode.IsNumber(r)
+	})
+	return strings.Join(fields, " ")
+}
+
 // buildResult turns a verdict into the GradeResult and the single ReviewItem
 // that puts this word into the learner's spaced repetition queue.
 func buildResult(
-	versionID uuid.UUID, correct bool, body vocabularyQuizBody,
+	versionIDs []uuid.UUID, score int, correct bool, body vocabularyQuizBody,
 ) learningcontract.GradeResult {
-	grade := gradeAgain
-	score := 0
+	initialGrade := gradeAgain
 	feedback := "Incorrect answer. Review this word again."
 	if correct {
-		grade = gradeGood
-		score = maxVocabularyScore
+		initialGrade = gradeGood
 		feedback = "Correct! Well done."
 	}
 
@@ -222,6 +333,15 @@ func buildResult(
 		answer = body.CorrectAnswer
 	}
 
+	items := make([]learningcontract.ReviewItem, 0, len(versionIDs))
+	for _, versionID := range versionIDs {
+		items = append(items, learningcontract.ReviewItem{
+			ContentVersionID: versionID,
+			Skill:            skillVocabulary,
+			InitialGrade:     initialGrade,
+		})
+	}
+
 	return learningcontract.GradeResult{
 		Score:         score,
 		MaxScore:      maxVocabularyScore,
@@ -229,13 +349,7 @@ func buildResult(
 		Feedback:      feedback,
 		CorrectAnswer: answer,
 		Async:         false,
-		ReviewItems: []learningcontract.ReviewItem{
-			{
-				ContentVersionID: versionID,
-				Skill:            skillVocabulary,
-				InitialGrade:     grade,
-			},
-		},
+		ReviewItems:   items,
 	}
 }
 

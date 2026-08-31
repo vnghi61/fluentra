@@ -64,6 +64,15 @@ const (
 	bodyKeyIPA             = "ipa"
 	bodyKeyDefinitionVI    = "definition_vi"
 	bodyKeyExampleSentence = "example_sentence"
+
+	// The full list, as `{sentence, sentence_vi}` objects — the same shape
+	// domain.ExampleSentence and the ExampleSentence schema already define, so
+	// one reader serves the dictionary API and the flashcard alike.
+	//
+	// `example_sentence` stays beside it carrying the first sentence as a bare
+	// string, because it is the field the published OpenAPI examples show and
+	// the field any content authored before this key existed still uses.
+	bodyKeyExampleSentences = "example_sentences"
 )
 
 func seedCourseData(ctx context.Context, pool *pgxpool.Pool, adminID uuid.UUID, c seedCourse) error {
@@ -309,7 +318,11 @@ func seedVocabularyWords(
 			body[bodyKeyDefinitionVI] = s.DefinitionVI
 		}
 		if len(s.Examples) > 0 {
-			body[bodyKeyExampleSentence] = s.Examples[0]
+			// `example_sentence` stays a bare string: it is the key the
+			// published OpenAPI examples show, and the one a client written
+			// before the list existed reads.
+			body[bodyKeyExampleSentence] = s.Examples[0].Sentence
+			body[bodyKeyExampleSentences] = s.Examples
 		}
 		versionID, err := ensureContentItemAndVersion(ctx, pool, adminID, slug, "vocabulary_quiz", s.CEFRLevel, body)
 		if err != nil {

@@ -69,6 +69,10 @@ func (m *Module) Reader() contract.Reader {
 	return m.service
 }
 
+// Author is the machine-authoring surface, addressed by slug and idempotent.
+// It is not the review state machine, which models decisions a person makes.
+func (m *Module) Author() contract.Author { return m.service }
+
 // Service returns the underlying service instance.
 func (m *Module) Service() *service.Service {
 	return m.service

@@ -306,3 +306,19 @@ func (r *recordingEvents) events() []writtenEvent {
 	defer r.mu.Unlock()
 	return append([]writtenEvent(nil), r.written...)
 }
+
+// FirstHolderOf answers with whoever the fixture assigned the role first, and
+// uuid.Nil when nobody holds it — the same "nobody, and that is not an error"
+// the real repository returns for a database with no administrator yet.
+func (f *fakeRepo) FirstHolderOf(_ context.Context, role contract.Role) (uuid.UUID, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for userID, roles := range f.assignments {
+		for _, held := range roles {
+			if held == role {
+				return userID, nil
+			}
+		}
+	}
+	return uuid.Nil, nil
+}

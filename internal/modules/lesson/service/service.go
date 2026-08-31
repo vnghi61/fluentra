@@ -73,6 +73,12 @@ type Repository interface {
 	GetPublishedCourseBySlug(ctx context.Context, slug string) (*contract.Course, error)
 	GetPublishedLessonByID(ctx context.Context, id uuid.UUID) (*contract.Lesson, error)
 	ListPublishedLessonsByCourseID(ctx context.Context, courseID uuid.UUID) ([]*contract.Lesson, error)
+	// GetNextPublishedLesson returns nil, nil when there is no next lesson —
+	// finishing the last lesson of a course is the happy path, not an error.
+	GetNextPublishedLesson(ctx context.Context, unitID uuid.UUID, position int) (*contract.Lesson, error)
+	UpsertCourse(ctx context.Context, spec contract.CourseSpec) (*contract.Course, error)
+	UpsertUnit(ctx context.Context, spec contract.UnitSpec) (*contract.Unit, error)
+	UpsertLesson(ctx context.Context, spec contract.LessonSpec) (*contract.Lesson, error)
 	GetCourseByID(ctx context.Context, id uuid.UUID) (*contract.Course, error)
 	CreateCourse(ctx context.Context, params CreateCourseParams) (*contract.Course, error)
 	ListUnitsByCourseID(ctx context.Context, courseID uuid.UUID) ([]*contract.Unit, error)
@@ -279,6 +285,14 @@ type LessonDetailDTO struct {
 	EstimatedMinutes int                 `json:"estimated_minutes"`
 	Status           string              `json:"status"`
 	Activities       []LessonActivityDTO `json:"activities"`
+	// NextLessonID is the lesson that follows this one in the course, or nil
+	// when this is the last one.
+	//
+	// Resolved here rather than by the client because the route is
+	// `/learn/lesson/{id}` and carries no course: a browser holding only a
+	// lesson id would have to fetch the whole catalogue to find out what comes
+	// after it, and would get it wrong across a unit boundary.
+	NextLessonID *uuid.UUID `json:"next_lesson_id,omitempty"`
 }
 
 // CreateCourseInput carries arguments for creating a course.
@@ -709,7 +723,7 @@ func (s *Service) loadLessonDetail(
 			}
 		}
 
-		return &LessonDetailDTO{
+		detail := &LessonDetailDTO{
 			ID:               lesson.ID,
 			UnitID:           lesson.UnitID,
 			Position:         lesson.Position,
@@ -718,7 +732,18 @@ func (s *Service) loadLessonDetail(
 			EstimatedMinutes: lesson.EstimatedMinutes,
 			Status:           lesson.Status,
 			Activities:       actDTOs,
-		}, nil
+		}
+
+		// Best-effort. A learner who cannot be told what comes next should
+		// still be given the lesson they asked for; the completion screen
+		// simply falls back to the syllabus link it already has.
+		if next, nErr := s.repo.GetNextPublishedLesson(
+			loadCtx, lesson.UnitID, lesson.Position,
+		); nErr == nil && next != nil {
+			nextID := next.ID
+			detail.NextLessonID = &nextID
+		}
+		return detail, nil
 	}
 
 	if s.caches.Detail == nil {

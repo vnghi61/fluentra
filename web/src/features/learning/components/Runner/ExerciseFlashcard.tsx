@@ -3,7 +3,10 @@ import { ArrowRight, Check, RotateCw, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
+import { ExampleSentences } from "@/components/ui/example-sentences";
+import type { ExampleSentence } from "@/lib/examples";
 import { FlipCard } from "@/components/ui/flip-card";
+import { PronounceButton } from "@/components/ui/pronounce-button";
 import { cn } from "@/lib/utils";
 
 export interface ExerciseFlashcardProps {
@@ -13,7 +16,10 @@ export interface ExerciseFlashcardProps {
   definition?: string;
   /** The gloss in the learner's own language, when the content carries one. */
   definitionVi?: string;
-  exampleSentence?: string;
+  /** Every authored example for this word, not just the first. */
+  exampleSentences?: ExampleSentence[];
+  /** A recorded pronunciation, when the activity config carries one. */
+  audioUrl?: string | null | undefined;
   isLoading?: boolean;
   isSubmitted: boolean;
   isCorrect?: boolean | null | undefined;
@@ -36,7 +42,8 @@ export const ExerciseFlashcard: React.FC<ExerciseFlashcardProps> = ({
   ipa,
   definition,
   definitionVi,
-  exampleSentence,
+  exampleSentences = [],
+  audioUrl,
   isLoading = false,
   isSubmitted,
   isCorrect,
@@ -93,11 +100,20 @@ export const ExerciseFlashcard: React.FC<ExerciseFlashcardProps> = ({
               <h3 className="text-3xl md:text-4xl font-extrabold text-text tracking-tight">
                 {targetWord}
               </h3>
-              {ipa && (
-                <p className="font-mono text-sm text-primary-accent tracking-wide">
-                  {ipa}
-                </p>
-              )}
+              {/*
+                The pronunciation control sits on the front, beside the IPA and
+                not behind it. A learner who cannot read an IPA transcription is exactly
+                the one who needs to hear the word, and gating the button on an
+                `ipa` that may be absent hid it from precisely them.
+              */}
+              <div className="flex items-center justify-center gap-2">
+                {ipa && (
+                  <p className="font-mono text-sm text-primary-accent tracking-wide">
+                    {ipa}
+                  </p>
+                )}
+                <PronounceButton text={targetWord ?? ""} audioUrl={audioUrl} />
+              </div>
               <p className="text-xs text-text-muted mt-6 flex items-center justify-center gap-1.5 font-medium">
                 <RotateCw className="h-3.5 w-3.5" aria-hidden="true" />
                 {t("runner.flipPrompt", "Press Space or tap to flip card")}
@@ -128,11 +144,11 @@ export const ExerciseFlashcard: React.FC<ExerciseFlashcardProps> = ({
               {secondDefinition && (
                 <p className="text-base text-text-muted">{secondDefinition}</p>
               )}
-              {exampleSentence && (
-                <p className="text-sm text-text-muted italic border-t border-border-subtle pt-3 max-w-md">
-                  &ldquo;{exampleSentence}&rdquo;
-                </p>
-              )}
+              <ExampleSentences
+                sentences={exampleSentences}
+                highlight={targetWord}
+                className="max-w-md"
+              />
             </div>
           </div>
         }

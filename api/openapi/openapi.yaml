@@ -77,6 +77,15 @@ tags:
   - name: vocabulary
     description: >-
       Words, senses, pronunciations, collocations, learner decks, and word state.
+  - name: gamification
+    description: >-
+      XP, levels, streaks, badges, quests and leaderboards.
+
+
+      Downstream of learning by design: nothing here drives a learning action,
+      and every operation acts on the caller in the access token rather than on
+      a user id in the path. Leaderboards are opt-in and expose display names
+      only.
 security:
   - BearerAuth: []
 paths:
@@ -2386,6 +2395,7 @@ paths:
                         estimated_minutes: 15
                         status: published
                         locked: false
+                        completed: false
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -4069,6 +4079,395 @@ paths:
           $ref: '#/components/responses/Conflict'
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /me/gamification:
+    get:
+      tags: [gamification]
+      operationId: getGamificationSummary
+      summary: The caller's XP, level, streak, badges and open quests.
+      description: >-
+        One read rather than several, because the dashboard needs all of it at
+        once. `xp_today` and the streak are computed against the caller's own
+        timezone.
+      x-permission: self
+      responses:
+        '200':
+          description: The caller's gamification state.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GamificationSummary'
+              example:
+                total_xp: 1240
+                level: 5
+                level_start_xp: 1000
+                next_level_xp: 1500
+                xp_today: 60
+                daily_goal_xp: 50
+                streak:
+                  current: 7
+                  longest: 31
+                  last_active_on: '2026-03-02'
+                  freezes_available: 2
+                  hours_remaining: 0
+                badges:
+                  - code: week_streak
+                    name: Seven Days
+                    description: Studied seven days in a row.
+                    tier: bronze
+                    earned_at: '2026-03-01T08:15:00Z'
+                quests:
+                  - code: daily_practice
+                    name: Daily Practice
+                    description: Complete three activities today.
+                    progress:
+                      complete_activities: 2
+                    steps:
+                      complete_activities: 3
+                    reward_xp: 30
+                    expires_on: '2026-03-02'
+                league: silver
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /me/streak:
+    get:
+      tags: [gamification]
+      operationId: getStreak
+      summary: The caller's streak, with the freeze state and the day boundary.
+      description: >-
+        The same streak the summary carries, for screens that need only this.
+        `hours_remaining` counts down the caller's own local day, so a learner
+        who travels is not told their streak ends at the server's midnight.
+      x-permission: self
+      responses:
+        '200':
+          description: The caller's streak.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Streak'
+              example:
+                current: 7
+                longest: 31
+                last_active_on: '2026-03-02'
+                freezes_available: 2
+                hours_remaining: 6
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /me/streak/freeze:
+    post:
+      tags: [gamification]
+      operationId: useStreakFreeze
+      summary: Spend a streak freeze for today.
+      description: >-
+        Freezes are limited and at most one may be spent per day. A caller with
+        none left, or who has already spent one today, receives
+        `NO_FREEZES_AVAILABLE`.
+      x-permission: self
+      responses:
+        '200':
+          description: The streak after the freeze.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Streak'
+              example:
+                current: 7
+                longest: 31
+                last_active_on: '2026-03-03'
+                freezes_available: 1
+                hours_remaining: 0
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /me/daily-goal:
+    put:
+      tags: [gamification]
+      operationId: setDailyGoal
+      summary: Set the XP a day must earn to count towards the streak.
+      description: >-
+        The goal is what makes a day count, not opening the app. Raising it mid-
+        streak does not retroactively invalidate days already recorded.
+      x-permission: self
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetDailyGoalRequest'
+      responses:
+        '200':
+          description: The caller's gamification state after the change.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GamificationSummary'
+              example:
+                total_xp: 1240
+                level: 5
+                level_start_xp: 1000
+                next_level_xp: 1500
+                xp_today: 60
+                daily_goal_xp: 50
+                streak:
+                  current: 7
+                  longest: 31
+                  last_active_on: '2026-03-02'
+                  freezes_available: 2
+                  hours_remaining: 0
+                badges:
+                  - code: week_streak
+                    name: Seven Days
+                    description: Studied seven days in a row.
+                    tier: bronze
+                    earned_at: '2026-03-01T08:15:00Z'
+                quests:
+                  - code: daily_practice
+                    name: Daily Practice
+                    description: Complete three activities today.
+                    progress:
+                      complete_activities: 2
+                    steps:
+                      complete_activities: 3
+                    reward_xp: 30
+                    expires_on: '2026-03-02'
+                league: silver
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /me/leaderboard-opt-in:
+    put:
+      tags: [gamification]
+      operationId: setLeaderboardOptIn
+      summary: Join or leave the leaderboard.
+      description: >-
+        Leaderboards are opt-in. Opting out removes the caller from future
+        snapshots; it does not delete their XP, which is their own record.
+      x-permission: self
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetLeaderboardOptInRequest'
+      responses:
+        '204':
+          description: Preference recorded.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /leaderboard:
+    get:
+      tags: [gamification]
+      operationId: getLeaderboard
+      summary: This week's standings for the caller's league.
+      description: >-
+        A weekly snapshot, not a live ranking, so the standings do not shuffle
+        mid-week. A caller who has not opted in receives
+        `LEADERBOARD_NOT_OPTED_IN` so the screen can offer the opt-in rather
+        than showing an error.
+      x-permission: self
+      responses:
+        '200':
+          description: The standings.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaderboardResponse'
+              example:
+                entries:
+                  - rank: 1
+                    user_id: 0199a1c2-3d4e-7f80-9abc-def012345601
+                    display_name: Demo Operator
+                    xp: 910
+                    is_self: false
+                  - rank: 2
+                    user_id: 0199a1c2-3d4e-7f80-9abc-def012345602
+                    display_name: Demo Learner
+                    xp: 640
+                    is_self: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /me/vocabulary/uploads:
+    post:
+      tags: [vocabulary]
+      operationId: submitVocabUpload
+      summary: Submit your own vocabulary to be checked.
+      description: >-
+        Stores the words and returns immediately. The checking — a dictionary
+        lookup and a model call per word — runs hourly in a background job,
+        because it is slow and fails in ways worth retrying, and a learner
+        pasting three hundred words should not be watching a request time out
+        half way through.
+      x-permission: self
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitVocabUploadRequest'
+      responses:
+        '202':
+          description: >-
+            Accepted. The words are stored but not yet checked — which is why
+            this is a 202 and not a 201.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VocabUpload'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def0123456aa
+                status: pending
+                item_count: 12
+                verified_count: 0
+                rejected_count: 0
+                pending_count: 12
+                deck_id: null
+                created_at: '2026-08-30T09:00:00Z'
+                completed_at: null
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    get:
+      tags: [vocabulary]
+      operationId: listVocabUploads
+      summary: Your uploads, newest first.
+      description: >-
+        Each row carries the verified, rejected and still-pending counts, so a
+        learner can see how far the checking has got without opening it.
+      x-permission: self
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: How many uploads to return.
+      responses:
+        '200':
+          description: The caller's uploads.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VocabUploadList'
+              example:
+                items:
+                  - id: 0199a1c2-3d4e-7f80-9abc-def0123456aa
+                    status: completed
+                    item_count: 12
+                    verified_count: 10
+                    rejected_count: 1
+                    pending_count: 1
+                    deck_id: 0199a1c2-3d4e-7f80-9abc-def0123456bb
+                    created_at: '2026-08-30T09:00:00Z'
+                    completed_at: '2026-08-30T10:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /me/vocabulary/uploads/{id}:
+    get:
+      tags: [vocabulary]
+      operationId: getVocabUpload
+      summary: One upload, with every word and what became of it.
+      description: >-
+        Scoped to the caller: another learner's upload id is a 404 rather than a
+        403, because they should not learn that it exists.
+      x-permission: self
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The upload and its words.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VocabUpload'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def0123456aa
+                status: completed
+                item_count: 2
+                verified_count: 1
+                rejected_count: 1
+                pending_count: 0
+                deck_id: 0199a1c2-3d4e-7f80-9abc-def0123456bb
+                created_at: '2026-08-30T09:00:00Z'
+                completed_at: '2026-08-30T10:00:00Z'
+                items:
+                  - term: leisure
+                    provided_meaning: thời gian rảnh
+                    status: verified
+                    reason: ''
+                    word_sense_id: 0199a1c2-3d4e-7f80-9abc-def0123456cc
+                    verified_at: '2026-08-30T10:00:00Z'
+                  - term: asdfgh
+                    provided_meaning: ''
+                    status: rejected
+                    reason: We could not find "asdfgh" as an English word.
+                    word_sense_id: null
+                    verified_at: '2026-08-30T10:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 components:
   securitySchemes:
     BearerAuth:
@@ -4308,6 +4707,30 @@ components:
       $ref: ./components/srs.yaml#/CompleteReviewSessionRequest
     CompleteReviewSessionResult:
       $ref: ./components/srs.yaml#/CompleteReviewSessionResult
+    Badge:
+      $ref: ./components/gamification.yaml#/Badge
+    Streak:
+      $ref: ./components/gamification.yaml#/Streak
+    Quest:
+      $ref: ./components/gamification.yaml#/Quest
+    GamificationSummary:
+      $ref: ./components/gamification.yaml#/GamificationSummary
+    LeaderboardEntry:
+      $ref: ./components/gamification.yaml#/LeaderboardEntry
+    LeaderboardResponse:
+      $ref: ./components/gamification.yaml#/LeaderboardResponse
+    SetDailyGoalRequest:
+      $ref: ./components/gamification.yaml#/SetDailyGoalRequest
+    SetLeaderboardOptInRequest:
+      $ref: ./components/gamification.yaml#/SetLeaderboardOptInRequest
+    VocabUpload:
+      $ref: ./components/uploads.yaml#/VocabUpload
+    VocabUploadItem:
+      $ref: ./components/uploads.yaml#/VocabUploadItem
+    VocabUploadList:
+      $ref: ./components/uploads.yaml#/VocabUploadList
+    SubmitVocabUploadRequest:
+      $ref: ./components/uploads.yaml#/SubmitVocabUploadRequest
     ForecastItem:
       $ref: ./components/srs.yaml#/ForecastItem
     ForecastResponse:

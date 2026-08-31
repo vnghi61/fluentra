@@ -47,7 +47,7 @@ modules:
   - { name: lesson,       tier: learning, phase: 2, schema: learn,      owner: "@learning-team", depends_on: [content, cache] }
   - { name: learning,     tier: learning, phase: 2, schema: learn,      owner: "@learning-team", depends_on: [lesson, content, srs, cache, job] }
   - { name: srs,          tier: learning, phase: 2, schema: learn,      owner: "@learning-team", depends_on: [cache, job, content] }
-  - { name: vocabulary,   tier: learning, phase: 2, schema: skill,      owner: "@learning-team", depends_on: [content, srs, media, ai, search] }
+  - { name: vocabulary,   tier: learning, phase: 2, schema: skill,      owner: "@learning-team", depends_on: [content, lesson, srs, job, media, ai, search] }
   - { name: grammar,      tier: learning, phase: 3, schema: skill,      owner: "@learning-team", depends_on: [content, srs, ai, learning] }
   - { name: reading,      tier: learning, phase: 3, schema: skill,      owner: "@learning-team", depends_on: [content, questionbank, vocabulary, learning] }
   - { name: listening,    tier: learning, phase: 3, schema: skill,      owner: "@learning-team", depends_on: [content, media, questionbank, learning] }
@@ -55,7 +55,7 @@ modules:
   - { name: writing,      tier: learning, phase: 3, schema: skill,      owner: "@learning-team", depends_on: [ai, job, content, learning, notification] }
   - { name: questionbank, tier: learning, phase: 4, schema: assess,     owner: "@learning-team", depends_on: [content, ai, audit, search] }
   - { name: exam,         tier: learning, phase: 4, schema: assess,     owner: "@learning-team", depends_on: [questionbank, job, ai, writing, speaking, learning] }
-  - { name: gamification, tier: learning, phase: 3, schema: learn,      owner: "@learning-team", depends_on: [learning, srs, cache, job, notification] }
+  - { name: gamification, tier: learning, phase: 3, schema: learn,      owner: "@learning-team", depends_on: [learning, srs, user, cache, job, notification] }
 
   # ------------------------------------------------------------- commerce
   - { name: analytics,    tier: commerce, phase: 4, schema: analytics,  owner: "@data-team",     depends_on: [job, cache] }

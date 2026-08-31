@@ -124,10 +124,9 @@ export function PracticePage(): React.JSX.Element {
       ) : null}
 
       {/*
-        Named, not hidden. Vocabulary has a backend — lookup, search and decks —
-        and no screens yet, and a learner who came here from a button labelled
-        "Practice Vocabulary" is owed an answer rather than a blank space. This
-        card makes no promise about when.
+        This card said "Word lists are not here yet" for as long as there was no
+        screen behind it. There is one now, so it says what it does instead of
+        apologising for what it does not.
       */}
       <Card>
         <CardHeader>
@@ -138,25 +137,23 @@ export function PracticePage(): React.JSX.Element {
             </span>
           </div>
           <CardTitle className="text-base font-semibold">
-            {t("practice.vocabulary.title", "Word lists are not here yet")}
+            {t("practice.myWords.title", "Add your own words")}
           </CardTitle>
           <CardDescription>
-            {/*
-              The second sentence is only true for someone who has an account —
-              a guest's lessons schedule nothing — so they get the first half
-              and no claim that is false for them.
-            */}
-            {signedIn
-              ? t(
-                  "practice.vocabulary.desc",
-                  "Browsing and building decks is still being built. Words you meet in lessons are already scheduled for review above.",
-                )
-              : t(
-                  "practice.vocabulary.descGuest",
-                  "Browsing and building decks is still being built.",
-                )}
+            {t(
+              "practice.myWords.desc",
+              "Paste vocabulary from your own course. We check each word against a dictionary, write example sentences for it, and schedule it for review here.",
+            )}
           </CardDescription>
         </CardHeader>
+        <CardFooter className="pt-0">
+          <Link to="/practice/my-words">
+            <Button variant="secondary" className="gap-2">
+              <BookMarked className="h-4 w-4" aria-hidden="true" />
+              {t("uploads.openLink", "My words")}
+            </Button>
+          </Link>
+        </CardFooter>
       </Card>
     </div>
   );

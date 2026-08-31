@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PronounceButton } from "@/components/ui/pronounce-button";
 import { cn } from "@/lib/utils";
 
 export interface ExerciseGapFillProps {
@@ -35,6 +36,22 @@ export const ExerciseGapFill: React.FC<ExerciseGapFillProps> = ({
   const [answer, setAnswer] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // What the speaker says.
+  //
+  // Before the answer is in, the blank is a pause: reading the missing word out
+  // loud would hand the learner the answer and turn the exercise into a
+  // dictation. Afterwards the sentence is spoken whole, with the correct word
+  // in place, because hearing the finished sentence is the part worth hearing —
+  // and by then there is nothing left to give away.
+  const spokenSentence = [
+    sentenceBeforeBlank,
+    isSubmitted ? (expectedAnswer ?? "") : "...",
+    sentenceAfterBlank,
+  ]
+    .filter((part) => part.trim() !== "")
+    .join(" ")
+    .trim();
+
   useEffect(() => {
     if (!isSubmitted && inputRef.current) {
       inputRef.current.focus();
@@ -61,6 +78,16 @@ export const ExerciseGapFill: React.FC<ExerciseGapFillProps> = ({
 
       {/* Sentence with Gap Input */}
       <div className="p-6 rounded-2xl border border-border bg-surface-card shadow-sm space-y-4">
+        <div className="flex items-center justify-end">
+          <PronounceButton
+            text={spokenSentence}
+            label={
+              isSubmitted
+                ? t("runner.listenFullSentence", "Listen to the full sentence")
+                : t("runner.listenSentence", "Listen to the sentence")
+            }
+          />
+        </div>
         {/*
           Laid out as a wrapping flex row, not as inline text with a box dropped
           into it.

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { AlertCircle, RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -13,18 +14,26 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { lessonKeys } from "@/features/lesson";
+import { reviewKeys } from "@/features/review";
 import {
   CompletionScreen,
   SaveProgressPrompt,
+  ExerciseContextChoice,
   ExerciseFlashcard,
   ExerciseGapFill,
+  ExerciseListenType,
+  ExerciseMatch,
   ExerciseMultipleChoice,
+  ExerciseReorder,
   ActivityUnavailable,
   ExitDialog,
   learningApi,
+  learningKeys,
   RunnerHeader,
 } from "@/features/learning";
 import { useLesson } from "@/features/lesson";
+import { readExampleSentences } from "@/lib/examples";
 
 // The activity `config` is a free-form object in the spec, because its shape
 // belongs to whichever skill module authored the activity and the OpenAPI
@@ -48,6 +57,38 @@ interface GapFillConfig {
   expected_answer?: string;
 }
 
+interface ListenTypeConfig {
+  prompt?: string;
+  // The word the browser speaks. It is the answer, and it reaches the client
+  // because synthesis happens there — see ExerciseListenType for why that is a
+  // deliberate trade rather than an oversight.
+  audio_text?: string;
+  audio_url?: string;
+  ipa?: string;
+  hint?: string;
+}
+
+interface MatchConfig {
+  prompt?: string;
+  words?: { id: string; text: string }[];
+  definitions?: { id: string; text: string }[];
+  // No correct_pairs: the server redacts the matching key out of the body, the
+  // same way it redacts correct_option_id.
+}
+
+interface ReorderConfig {
+  prompt?: string;
+  tokens?: string[];
+  target_word?: string;
+}
+
+interface ContextChoiceConfig {
+  prompt?: string;
+  sentence?: string;
+  target_word?: string;
+  options?: { id: string; text: string }[];
+}
+
 interface FlashcardConfig {
   prompt?: string;
   target_word?: string;
@@ -55,6 +96,8 @@ interface FlashcardConfig {
   definition?: string;
   definition_vi?: string;
   example_sentence?: string;
+  example_sentences?: string[];
+  audio_url?: string;
 }
 
 /**
@@ -73,11 +116,15 @@ interface Verdict {
   correct?: boolean | null | undefined;
   feedback?: string | null | undefined;
   correct_answer?: string | null | undefined;
+  // Matching is the one kind that can be partly right, and "incorrect" is a
+  // poor description of three pairs out of four.
+  score?: number | null | undefined;
 }
 
 export function LessonPage(): React.JSX.Element {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const params: Record<string, string | undefined> = useParams({
     strict: false,
   });
@@ -162,6 +209,30 @@ export function LessonPage(): React.JSX.Element {
     };
   }, [currentActivity, isCompleted, signedIn]);
 
+  /**
+   * Drops every cache a graded answer has just made stale.
+   *
+   * Grading writes progress on the server — the activity, the lesson, the
+   * course rollup — and schedules review cards. None of that reached the
+   * screens that show it: TanStack Query had already cached the course and the
+   * dashboard, nothing here invalidated them, and a learner who answered every
+   * activity and pressed back saw the same "not started" course they had left.
+   * The work was saved; only the reading of it was stale, which is the worst
+   * version of the bug because it looks exactly like the work being lost.
+   *
+   * A guest has no progress to invalidate, and no cache entry keyed to them.
+   */
+  const invalidateProgress = () => {
+    if (!signedIn) return;
+    // Fire-and-forget: a refetch that fails must not fail the answer, which is
+    // already committed on the server.
+    void queryClient.invalidateQueries({ queryKey: learningKeys.all });
+    void queryClient.invalidateQueries({ queryKey: lessonKeys.all });
+    // Grading schedules review cards, so the due count on the dashboard and the
+    // review queue itself are both stale the moment an answer lands.
+    void queryClient.invalidateQueries({ queryKey: reviewKeys.all });
+  };
+
   const handleSubmit = async (responsePayload: Record<string, unknown>) => {
     if (signedIn && !currentAttemptId) return;
     if (!currentActivity) return;
@@ -188,6 +259,10 @@ export function LessonPage(): React.JSX.Element {
       if (result.correct) {
         setScoreCount((prev) => prev + 1);
       }
+      // On every graded answer, not only on the last one: a learner who leaves
+      // a lesson half-way has still made progress, and the course screen has to
+      // show it.
+      invalidateProgress();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : null;
       setSubmissionError(
@@ -284,6 +359,9 @@ export function LessonPage(): React.JSX.Element {
           score={scoreCount}
           totalActivities={activities.length}
           timeSpentSeconds={elapsedSeconds}
+          {...(lesson.next_lesson_id
+            ? { nextLessonId: lesson.next_lesson_id }
+            : {})}
           onRetryLesson={() => {
             setCurrentIndex(0);
             setScoreCount(0);
@@ -305,6 +383,10 @@ export function LessonPage(): React.JSX.Element {
   const mcConfig = rawConfig as MultipleChoiceConfig;
   const gapConfig = rawConfig as GapFillConfig;
   const fcConfig = rawConfig as FlashcardConfig;
+  const listenConfig = rawConfig as ListenTypeConfig;
+  const matchConfig = rawConfig as MatchConfig;
+  const reorderConfig = rawConfig as ReorderConfig;
+  const contextConfig = rawConfig as ContextChoiceConfig;
 
   // An exercise is renderable only when its config carries the fields it needs.
   // Everything else is ActivityUnavailable — there is no default question,
@@ -324,6 +406,32 @@ export function LessonPage(): React.JSX.Element {
     kind === "vocab_flashcard" &&
     typeof fcConfig.target_word === "string" &&
     typeof fcConfig.definition === "string";
+
+  const canRenderListenType =
+    kind === "vocab_listen_type" &&
+    typeof listenConfig.audio_text === "string" &&
+    listenConfig.audio_text !== "";
+
+  const canRenderMatch =
+    kind === "vocab_match" &&
+    Array.isArray(matchConfig.words) &&
+    Array.isArray(matchConfig.definitions) &&
+    matchConfig.words.length > 0 &&
+    // Unequal columns mean an authoring fault, and rendering it produces an
+    // exercise that cannot be completed however well the learner knows the words.
+    matchConfig.words.length === matchConfig.definitions.length;
+
+  const canRenderReorder =
+    kind === "vocab_reorder" &&
+    Array.isArray(reorderConfig.tokens) &&
+    reorderConfig.tokens.length > 1;
+
+  const canRenderContextChoice =
+    kind === "vocab_context_choice" &&
+    typeof contextConfig.sentence === "string" &&
+    contextConfig.sentence !== "" &&
+    Array.isArray(contextConfig.options) &&
+    contextConfig.options.length > 0;
 
   const selectedOptId =
     typeof lastSubmittedPayload?.selected_option_id === "string"
@@ -378,7 +486,11 @@ export function LessonPage(): React.JSX.Element {
         {!(signedIn && attemptStartFailed) &&
           !canRenderMultipleChoice &&
           !canRenderGapFill &&
-          !canRenderFlashcard && (
+          !canRenderFlashcard &&
+          !canRenderListenType &&
+          !canRenderMatch &&
+          !canRenderReorder &&
+          !canRenderContextChoice && (
             <ActivityUnavailable
               {...(kind !== undefined && { kind })}
               onSkip={handleContinue}
@@ -431,7 +543,12 @@ export function LessonPage(): React.JSX.Element {
             {...(fcConfig.definition_vi !== undefined && {
               definitionVi: fcConfig.definition_vi,
             })}
-            exampleSentence={fcConfig.example_sentence ?? ""}
+            exampleSentences={readExampleSentences(
+              fcConfig as unknown as Record<string, unknown>,
+            )}
+            {...(fcConfig.audio_url !== undefined && {
+              audioUrl: fcConfig.audio_url,
+            })}
             isLoading={isSubmitting || isAttemptStarting}
             isSubmitted={isSubmitted}
             isCorrect={submissionResult?.correct}
@@ -444,6 +561,92 @@ export function LessonPage(): React.JSX.Element {
               void handleSubmit({
                 text_answer: knewIt ? (fcConfig.target_word ?? "") : "",
               })
+            }
+            onContinue={handleContinue}
+          />
+        )}
+
+        {canRenderListenType && (
+          <ExerciseListenType
+            prompt={listenConfig.prompt ?? ""}
+            audioText={listenConfig.audio_text ?? ""}
+            {...(listenConfig.audio_url !== undefined && {
+              audioUrl: listenConfig.audio_url,
+            })}
+            {...(listenConfig.ipa !== undefined && { ipa: listenConfig.ipa })}
+            {...(listenConfig.hint !== undefined && { hint: listenConfig.hint })}
+            expectedAnswer={submissionResult?.correct_answer}
+            feedback={submissionResult?.feedback}
+            isSubmitted={isSubmitted}
+            isCorrect={submissionResult?.correct}
+            isLoading={isSubmitting || isAttemptStarting}
+            onSubmit={(answerText) =>
+              void handleSubmit({ text_answer: answerText })
+            }
+            onContinue={handleContinue}
+          />
+        )}
+
+        {canRenderMatch && (
+          <ExerciseMatch
+            prompt={matchConfig.prompt ?? ""}
+            words={matchConfig.words ?? []}
+            definitions={matchConfig.definitions ?? []}
+            feedback={submissionResult?.feedback}
+            {...(typeof submissionResult?.score === "number" && {
+              score: submissionResult.score,
+            })}
+            isSubmitted={isSubmitted}
+            isCorrect={submissionResult?.correct}
+            isLoading={isSubmitting || isAttemptStarting}
+            // No per-pair marking: the grade response reports a score and a
+            // verdict, not which pairs were right. Revealing that would mean
+            // adding a structured answer to GradeResult across every skill
+            // module, and the score already tells the learner how much of the
+            // set they knew.
+            onSubmit={(pairs) => void handleSubmit({ pairs })}
+            onContinue={handleContinue}
+          />
+        )}
+
+        {canRenderReorder && (
+          <ExerciseReorder
+            prompt={reorderConfig.prompt ?? ""}
+            tokens={reorderConfig.tokens ?? []}
+            {...(reorderConfig.target_word !== undefined && {
+              targetWord: reorderConfig.target_word,
+            })}
+            expectedAnswer={submissionResult?.correct_answer}
+            feedback={submissionResult?.feedback}
+            isSubmitted={isSubmitted}
+            isCorrect={submissionResult?.correct}
+            isLoading={isSubmitting || isAttemptStarting}
+            onSubmit={(sentence) =>
+              void handleSubmit({ text_answer: sentence })
+            }
+            onContinue={handleContinue}
+          />
+        )}
+
+        {canRenderContextChoice && (
+          <ExerciseContextChoice
+            prompt={contextConfig.prompt ?? ""}
+            sentence={contextConfig.sentence ?? ""}
+            {...(contextConfig.target_word !== undefined && {
+              targetWord: contextConfig.target_word,
+            })}
+            options={contextConfig.options ?? []}
+            correctOptionId={
+              submissionResult?.correct
+                ? selectedOptId
+                : (submissionResult?.correct_answer ?? undefined)
+            }
+            feedback={submissionResult?.feedback}
+            isSubmitted={isSubmitted}
+            isCorrect={submissionResult?.correct}
+            isLoading={isSubmitting || isAttemptStarting}
+            onSubmit={(selectedOptionId) =>
+              void handleSubmit({ selected_option_id: selectedOptionId })
             }
             onContinue={handleContinue}
           />

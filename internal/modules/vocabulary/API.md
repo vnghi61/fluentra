@@ -35,6 +35,9 @@ Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR
 | `POST` | `/api/v1/vocabulary/decks/{id}/words` | `self` | Add a word sense to a deck |
 | `DELETE` | `/api/v1/vocabulary/decks/{id}/words/{sense_id}` | `self` | Remove |
 | `POST` | `/api/v1/vocabulary/words/{sense_id}/state` | `self` | Mark known or ignored |
+| `POST` | `/api/v1/me/vocabulary/uploads` | `self` | Submit your own vocabulary to be checked |
+| `GET` | `/api/v1/me/vocabulary/uploads` | `self` | Your uploads, newest first |
+| `GET` | `/api/v1/me/vocabulary/uploads/{id}` | `self` | One upload, with every word and what became of it |
 | `POST` | `/api/v1/admin/vocabulary/words` | `content.create` | Create a word entry |
 <!-- END GENERATED: api-summary -->
 
@@ -114,6 +117,37 @@ Remove
 ### `POST /api/v1/vocabulary/words/{sense_id}/state`
 
 Mark known or ignored
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+### `POST /api/v1/me/vocabulary/uploads`
+
+Submit your own vocabulary to be checked
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 202 |
+| Errors | standard set |
+| Notes | Accepted, not applied: checking runs as a job so a learner never waits on a provider. |
+
+### `GET /api/v1/me/vocabulary/uploads`
+
+Your uploads, newest first
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+### `GET /api/v1/me/vocabulary/uploads/{id}`
+
+One upload, with every word and what became of it
 
 | | |
 |---|---|

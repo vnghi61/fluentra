@@ -83,6 +83,11 @@ func (m *Module) Reader() contract.Reader {
 	return m.service
 }
 
+// Author is the curriculum authoring surface a generator uses. Narrow on
+// purpose: it can create and fill a generated lesson, and it cannot unpublish
+// or delete one somebody wrote by hand.
+func (m *Module) Author() contract.Author { return m.service }
+
 // Service returns the underlying service instance.
 func (m *Module) Service() *service.Service {
 	return m.service

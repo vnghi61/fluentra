@@ -6,11 +6,11 @@ status: DONE
 phase: 2
 owner: "@learning-team"
 schema: skill
-tables: [words, word_senses, word_relations, decks, deck_items, user_word_state]
-depends_on: [content, srs, media, ai, search]
+tables: [words, word_senses, word_relations, decks, deck_items, user_word_state, vocab_uploads, vocab_upload_items]
+depends_on: [content, lesson, srs, job, media, ai, search]
 depended_on_by: [learning, reading, writing, grammar]
 spec_version: 1.0.0
-last_verified: 2026-08-25
+last_verified: 2026-08-30
 ---
 
 # vocabulary — AGENT.md
@@ -101,6 +101,19 @@ Migrations: `db/migrations/vocabulary/` · Queries: `db/queries/vocabulary/`
 
 <!-- END GENERATED: schema -->
 
+### Two tables the generated docs do not list yet
+
+| Table | Purpose |
+|---|---|
+| `skill.vocab_uploads` | One paste of a learner's own vocabulary, kept verbatim so a parser change can be re-run against the original |
+| `skill.vocab_upload_items` | One word from it, and what became of it — verified, rejected with a reason the learner reads, or still pending |
+
+Two tables rather than one because the two have different failure modes: the
+submission is finished the moment it is stored, and each word in it is a
+separate unit of work the verification job can succeed at, fail at or retry on
+its own. One table would mean a single unresolvable word marking the whole paste
+as failed.
+
 ## 6. HTTP endpoints
 
 Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openapi.yaml)
@@ -117,6 +130,9 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | `POST` | `/api/v1/vocabulary/decks/{id}/words` | `self` | Add a word sense to a deck |
 | `DELETE` | `/api/v1/vocabulary/decks/{id}/words/{sense_id}` | `self` | Remove |
 | `POST` | `/api/v1/vocabulary/words/{sense_id}/state` | `self` | Mark known or ignored |
+| `POST` | `/api/v1/me/vocabulary/uploads` | `self` | Submit your own vocabulary to be checked |
+| `GET` | `/api/v1/me/vocabulary/uploads` | `self` | Your uploads, newest first |
+| `GET` | `/api/v1/me/vocabulary/uploads/{id}` | `self` | One upload, with every word and what became of it |
 | `POST` | `/api/v1/admin/vocabulary/words` | `content.create` | Create a word entry |
 <!-- END GENERATED: endpoints -->
 

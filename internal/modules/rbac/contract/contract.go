@@ -35,6 +35,18 @@ type RoleReader interface {
 	PermissionsOf(ctx context.Context, userID uuid.UUID) ([]Permission, error)
 }
 
+// RoleMembers answers who holds a role.
+//
+// One caller, and a narrow interface rather than a method on RoleReader because
+// `auth` uses RoleReader when minting a token and has no business being able to
+// enumerate role holders.
+type RoleMembers interface {
+	// FirstHolderOf returns the longest-standing holder of a role, or
+	// uuid.Nil when nobody holds it. Ordered by grant time so the answer does
+	// not move when a second holder is added.
+	FirstHolderOf(ctx context.Context, role Role) (uuid.UUID, error)
+}
+
 // Event names published by this module.
 const (
 	EventRoleAssigned = "rbac.role_assigned"

@@ -84,6 +84,11 @@ const LearnPage = lazyRouteComponent(
   "LearnPage",
 );
 
+const MyWordsPage = lazyRouteComponent(
+  () => import("@/routes/MyWordsPage"),
+  "MyWordsPage",
+);
+
 const LessonPage = lazyRouteComponent(
   () => import("@/routes/LessonPage"),
   "LessonPage",
@@ -232,6 +237,20 @@ export const reviewRoute = createRoute({
   component: ReviewPage,
 });
 
+// A learner's own vocabulary. Signed-in only, like the review session: an
+// upload belongs to a person, and a guest has none.
+export const myWordsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/practice/my-words",
+  beforeLoad: () => {
+    const { status } = useAuthStore.getState();
+    if (status === "unauthenticated") {
+      throw redirect({ to: "/login" });
+    }
+  },
+  component: MyWordsPage,
+});
+
 export const progressRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/progress",
@@ -322,6 +341,7 @@ export const routeTree = rootRoute.addChildren([
   lessonRoute,
   practiceRoute,
   reviewRoute,
+  myWordsRoute,
   progressRoute,
   settingsRoute,
   adminRoute,

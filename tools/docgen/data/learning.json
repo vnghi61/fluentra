@@ -711,6 +711,9 @@
       { "method": "POST", "path": "/api/v1/vocabulary/decks/{id}/words", "permission": "self", "purpose": "Add a word sense to a deck", "success": "201", "errors": ["WORD_ALREADY_IN_DECK"] },
       { "method": "DELETE", "path": "/api/v1/vocabulary/decks/{id}/words/{sense_id}", "permission": "self", "purpose": "Remove", "success": "204" },
       { "method": "POST", "path": "/api/v1/vocabulary/words/{sense_id}/state", "permission": "self", "purpose": "Mark known or ignored", "success": "200" },
+      { "method": "POST", "path": "/api/v1/me/vocabulary/uploads", "permission": "self", "purpose": "Submit your own vocabulary to be checked", "success": "202", "notes": "Accepted, not applied: checking runs as a job so a learner never waits on a provider." },
+      { "method": "GET", "path": "/api/v1/me/vocabulary/uploads", "permission": "self", "purpose": "Your uploads, newest first", "success": "200" },
+      { "method": "GET", "path": "/api/v1/me/vocabulary/uploads/{id}", "permission": "self", "purpose": "One upload, with every word and what became of it", "success": "200" },
       { "method": "POST", "path": "/api/v1/admin/vocabulary/words", "permission": "content.create", "purpose": "Create a word entry", "success": "201" }
     ],
     "contract": [
@@ -1659,6 +1662,7 @@
       { "method": "GET", "path": "/api/v1/me/gamification", "permission": "self", "purpose": "XP, level, streak, badges, active quests", "success": "200" },
       { "method": "GET", "path": "/api/v1/me/streak", "permission": "self", "purpose": "Streak with the freeze state and the day boundary", "success": "200" },
       { "method": "POST", "path": "/api/v1/me/streak/freeze", "permission": "self", "purpose": "Use a freeze", "success": "200", "errors": ["NO_FREEZES_AVAILABLE"] },
+      { "method": "PUT", "path": "/api/v1/me/leaderboard-opt-in", "permission": "self", "purpose": "Join or leave the leaderboard", "success": "200", "notes": "The board is opt-in by decision, not by default: a name is shown to people the learner joined, never to everyone." },
       { "method": "GET", "path": "/api/v1/leaderboard", "permission": "self", "purpose": "Current league standings", "success": "200", "errors": ["LEADERBOARD_NOT_OPTED_IN"] },
       { "method": "PUT", "path": "/api/v1/me/daily-goal", "permission": "self", "purpose": "Set the daily XP goal", "success": "200" }
     ],

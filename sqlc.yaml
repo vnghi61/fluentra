@@ -432,3 +432,43 @@ sql:
               type: Time
               pointer: true
 
+  - engine: postgresql
+    queries: db/queries/gamification
+    # gamification owns tables in `learn` and reads none of anyone else's, but
+    # sqlc parses the whole DDL chain: the earlier `learn` migrations have to be
+    # here for the schema to be well-formed by the time this module's file runs.
+    schema:
+      - db/migrations/_bootstrap
+      - db/migrations/user
+      - db/migrations/content
+      - db/migrations/lesson
+      - db/migrations/learning
+      - db/migrations/srs
+      - db/migrations/gamification
+    gen:
+      go:
+        package: sqlc
+        out: internal/generated/gamification/sqlc
+        sql_package: pgx/v5
+        emit_pointers_for_null_types: true
+        overrides:
+          - db_type: uuid
+            go_type:
+              import: github.com/google/uuid
+              type: UUID
+          - db_type: uuid
+            nullable: true
+            go_type:
+              import: github.com/google/uuid
+              type: UUID
+              pointer: true
+          - db_type: timestamptz
+            go_type:
+              import: time
+              type: Time
+          - db_type: timestamptz
+            nullable: true
+            go_type:
+              import: time
+              type: Time
+              pointer: true

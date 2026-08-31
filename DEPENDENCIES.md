@@ -215,6 +215,13 @@ running component to get it is a decision someone should take on purpose.
 **Rule:** these SDK types **never** appear outside `internal/platform/ai/provider/<name>/`.
 Business code sees only `ai.Client` and task names.
 
+**As built, none of these SDKs is a dependency.** `internal/platform/ai` ships one
+adapter written against `net/http`, because Ollama, OpenRouter, Groq, LM Studio and
+vLLM all serve the same `POST {base}/chat/completions` — so a base URL and a model
+name choose between them, including the free and local ones, with no Go dependency
+and no vendor lock. Add an SDK when a provider-specific capability needs it
+(streaming, tool use, prompt caching), not before.
+
 ### 1.13 Observability
 
 | Concern | Chosen |

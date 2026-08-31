@@ -47,6 +47,11 @@
     "web/node_modules",
     "CHANGELOG.md",
     "PROMPT-*.md",
+    // Prompt templates. They are `.md` for the front-matter and the prose, but
+    // they are inputs to a model rather than documents: an H1 added to satisfy
+    // MD041 would be text the model reads. Their contract is the front-matter
+    // schema, which the prompt registry validates.
+    "internal/platform/ai/prompts",
     // Playwright writes error-context.md into every failed test's artifact
     // directory. It is generated, it is gitignored, and it has two <h1>s — so a
     // developer who ran the E2E suite locally would see docs-check fail on

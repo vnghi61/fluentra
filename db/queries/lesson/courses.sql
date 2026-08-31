@@ -72,3 +72,21 @@ SET title = $2,
     updated_at = now()
 WHERE id = $1
 RETURNING *;
+
+-- name: UpsertCourse :one
+-- The generator's course. Keyed on the slug, which is what makes re-running the
+-- job idempotent.
+--
+-- A separate query from CreateCourse on purpose: a human author creating a
+-- course whose slug is taken should be told so, not have their title silently
+-- overwrite somebody else's course.
+INSERT INTO learn.courses (slug, title, description, cefr_from, cefr_to, status, estimated_hours)
+VALUES ($1, $2, $3, $4, $5, 'published', $6)
+ON CONFLICT (slug) DO UPDATE
+SET title           = EXCLUDED.title,
+    description     = EXCLUDED.description,
+    cefr_from       = EXCLUDED.cefr_from,
+    cefr_to         = EXCLUDED.cefr_to,
+    estimated_hours = EXCLUDED.estimated_hours,
+    updated_at      = now()
+RETURNING *;

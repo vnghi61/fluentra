@@ -1,0 +1,189 @@
+# Gamification schemas: XP, levels, streaks, badges, quests and leaderboards.
+#
+# Nothing here identifies a learner beyond the display name they chose to show.
+# The leaderboard in particular carries no email and no avatar — see
+# BR-GAMIFICATION-07.
+
+Badge:
+  type: object
+  required: [code, name, tier, earned_at]
+  properties:
+    code:
+      type: string
+      example: week_streak
+    name:
+      type: string
+      example: Seven Days
+    description:
+      type: string
+      example: Studied seven days in a row.
+    tier:
+      type: string
+      enum: [bronze, silver, gold, platinum]
+      example: bronze
+    earned_at:
+      type: string
+      format: date-time
+
+Streak:
+  type: object
+  required: [current, longest, freezes_available, hours_remaining]
+  properties:
+    current:
+      type: integer
+      description: Days in a row, in the learner's own timezone.
+      example: 7
+    longest:
+      type: integer
+      example: 31
+    last_active_on:
+      type: string
+      format: date
+      nullable: true
+      description: The learner's local day, not the server's.
+      example: '2026-03-02'
+    freezes_available:
+      type: integer
+      example: 2
+    hours_remaining:
+      type: integer
+      description: >-
+        Hours left today to keep the streak alive. Zero when nothing is at
+        risk — the learner has already met their goal today, or has no streak
+        to lose.
+      example: 6
+
+Quest:
+  type: object
+  required: [code, name, progress, steps, reward_xp, expires_on]
+  properties:
+    code:
+      type: string
+      example: daily_practice
+    name:
+      type: string
+      example: Daily Practice
+    description:
+      type: string
+      example: Complete three activities today.
+    progress:
+      type: object
+      additionalProperties:
+        type: integer
+      description: Counters against the quest's steps.
+      example:
+        complete_activities: 2
+    steps:
+      type: object
+      additionalProperties:
+        type: integer
+      description: The target for each step.
+      example:
+        complete_activities: 3
+    reward_xp:
+      type: integer
+      example: 30
+    expires_on:
+      type: string
+      format: date
+      example: '2026-03-02'
+
+GamificationSummary:
+  type: object
+  required:
+    [total_xp, level, level_start_xp, next_level_xp, xp_today, daily_goal_xp, streak, badges, quests, league]
+  properties:
+    total_xp:
+      type: integer
+      format: int64
+      example: 1240
+    level:
+      type: integer
+      example: 5
+    level_start_xp:
+      type: integer
+      format: int64
+      description: Cumulative XP at which the current level began.
+      example: 1000
+    next_level_xp:
+      type: integer
+      format: int64
+      description: Cumulative XP at which the next level begins.
+      example: 1500
+    xp_today:
+      type: integer
+      format: int64
+      description: XP earned since midnight in the learner's own timezone.
+      example: 60
+    daily_goal_xp:
+      type: integer
+      description: >-
+        The XP a day must earn for it to count towards the streak. A streak
+        extends when this is met, not when the app is opened.
+      example: 50
+    streak:
+      $ref: '#/Streak'
+    badges:
+      type: array
+      items:
+        $ref: '#/Badge'
+    quests:
+      type: array
+      items:
+        $ref: '#/Quest'
+    league:
+      type: string
+      enum: [bronze, silver, gold, diamond]
+      description: The band this learner's weekly XP places them in.
+      example: silver
+
+LeaderboardEntry:
+  type: object
+  required: [rank, user_id, display_name, xp, is_self]
+  properties:
+    rank:
+      type: integer
+      example: 3
+    user_id:
+      type: string
+      format: uuid
+    display_name:
+      type: string
+      description: The name the learner chose to show. No other identifier is exposed.
+      example: Demo Learner
+    xp:
+      type: integer
+      example: 640
+    is_self:
+      type: boolean
+      example: false
+
+LeaderboardResponse:
+  type: object
+  required: [entries]
+  properties:
+    entries:
+      type: array
+      items:
+        $ref: '#/LeaderboardEntry'
+
+SetDailyGoalRequest:
+  type: object
+  required: [daily_goal_xp]
+  properties:
+    daily_goal_xp:
+      type: integer
+      minimum: 1
+      maximum: 1000
+      example: 50
+
+SetLeaderboardOptInRequest:
+  type: object
+  required: [opt_in]
+  properties:
+    opt_in:
+      type: boolean
+      description: >-
+        Leaderboards are opt-in. A learner who has not opted in is never ranked,
+        never stored in a snapshot, and never appears in anyone else's standings.
+      example: true

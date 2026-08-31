@@ -169,6 +169,16 @@ LessonDetail:
     id:
       type: string
       format: uuid
+    next_lesson_id:
+      type: string
+      format: uuid
+      nullable: true
+      description: >-
+        The lesson that follows this one in the course, or null when this is the
+        last one. Resolved on the server because the learner-facing route is
+        `/learn/lesson/{id}` and carries no course: a client holding only a
+        lesson id would have to fetch the whole catalogue to find what comes
+        next, and would still get it wrong across a unit boundary.
     unit_id:
       type: string
       format: uuid

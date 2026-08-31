@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/fluentra/fluentra/internal/generated/vocabulary/sqlc"
+	learningcontract "github.com/fluentra/fluentra/internal/modules/learning/contract"
 	"github.com/fluentra/fluentra/internal/modules/vocabulary/domain"
 	"github.com/fluentra/fluentra/internal/modules/vocabulary/repository"
 	"github.com/fluentra/fluentra/internal/modules/vocabulary/service"
@@ -492,6 +493,10 @@ type spyReviewScheduler struct {
 	versionIDs []uuid.UUID
 	suspended  bool
 	calls      int
+
+	// What the upload pipeline scheduled for review.
+	upsertedFor uuid.UUID
+	upserted    []learningcontract.ReviewItem
 }
 
 func (s *spyReviewScheduler) SetCardsSuspended(
@@ -557,4 +562,85 @@ func TestVocabulary_IgnoredWordAlsoStopsScheduling(t *testing.T) {
 
 	require.NoError(t, svc.SetWordState(context.Background(), userID, senseID, domain.StatusIgnored))
 	assert.True(t, spy.suspended)
+}
+
+// ListSensesForGeneration feeds the practice generator. Empty here: the
+// generator has its own tests, and every other test in this file is about a
+// path that never reaches it.
+func (f *fakeRepo) ListSensesForGeneration(
+	_ context.Context, _ int32,
+) ([]sqlc.ListSensesForGenerationRow, error) {
+	return nil, nil
+}
+
+// The upload pipeline's repository surface. Empty here: the pipeline has its
+// own tests, and every test in this file is about a path that never reaches it.
+
+func (f *fakeRepo) InsertUpload(
+	_ context.Context, _ sqlc.InsertUploadParams,
+) (sqlc.SkillVocabUpload, error) {
+	return sqlc.SkillVocabUpload{}, nil
+}
+
+func (f *fakeRepo) InsertUploadItem(
+	_ context.Context, _ sqlc.InsertUploadItemParams,
+) (sqlc.SkillVocabUploadItem, error) {
+	return sqlc.SkillVocabUploadItem{}, nil
+}
+
+func (f *fakeRepo) GetUpload(
+	_ context.Context, _, _ uuid.UUID,
+) (sqlc.SkillVocabUpload, error) {
+	return sqlc.SkillVocabUpload{}, nil
+}
+
+func (f *fakeRepo) ListUploadsByUser(
+	_ context.Context, _ uuid.UUID, _ int32,
+) ([]sqlc.ListUploadsByUserRow, error) {
+	return nil, nil
+}
+
+func (f *fakeRepo) ListUploadItems(
+	_ context.Context, _, _ uuid.UUID,
+) ([]sqlc.SkillVocabUploadItem, error) {
+	return nil, nil
+}
+
+func (f *fakeRepo) ClaimPendingUploadItems(
+	_ context.Context, _, _ int32,
+) ([]sqlc.SkillVocabUploadItem, error) {
+	return nil, nil
+}
+
+func (f *fakeRepo) MarkUploadItemVerified(
+	_ context.Context, _ uuid.UUID, _ *uuid.UUID, _, _ string,
+) (sqlc.SkillVocabUploadItem, error) {
+	return sqlc.SkillVocabUploadItem{}, nil
+}
+
+func (f *fakeRepo) MarkUploadItemRejected(
+	_ context.Context, _ uuid.UUID, _ string,
+) (sqlc.SkillVocabUploadItem, error) {
+	return sqlc.SkillVocabUploadItem{}, nil
+}
+
+func (f *fakeRepo) RecordUploadItemAttempt(_ context.Context, _ uuid.UUID, _ string) error {
+	return nil
+}
+
+func (f *fakeRepo) SetUploadDeck(_ context.Context, _, _ uuid.UUID) error { return nil }
+
+func (f *fakeRepo) CompleteFinishedUploads(
+	_ context.Context,
+) ([]sqlc.SkillVocabUpload, error) {
+	return nil, nil
+}
+
+// UpsertCards records what the upload pipeline scheduled for review.
+func (s *spyReviewScheduler) UpsertCards(
+	_ context.Context, userID uuid.UUID, items []learningcontract.ReviewItem,
+) error {
+	s.upsertedFor = userID
+	s.upserted = append(s.upserted, items...)
+	return nil
 }

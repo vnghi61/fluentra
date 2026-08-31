@@ -43,6 +43,7 @@ type Repository interface {
 	RevokeRole(ctx context.Context, userID uuid.UUID, role contract.Role) (bool, error)
 	LockAndCountRole(ctx context.Context, role contract.Role) (int, error)
 	DeleteAssignmentsForUser(ctx context.Context, userID uuid.UUID) (int, error)
+	FirstHolderOf(ctx context.Context, role contract.Role) (uuid.UUID, error)
 
 	WithTx(tx pgx.Tx) Repository
 }
@@ -261,3 +262,10 @@ func itoa(value int) string {
 	}
 	return string(digits)
 }
+
+// FirstHolderOf implements contract.RoleMembers.
+func (s *Service) FirstHolderOf(ctx context.Context, role contract.Role) (uuid.UUID, error) {
+	return s.repo.FirstHolderOf(ctx, role)
+}
+
+var _ contract.RoleMembers = (*Service)(nil)
