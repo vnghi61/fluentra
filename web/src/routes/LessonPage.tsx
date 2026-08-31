@@ -143,7 +143,6 @@ export function LessonPage(): React.JSX.Element {
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentAttemptId, setCurrentAttemptId] = useState<string | null>(null);
-  const [isAttemptStarting, setIsAttemptStarting] = useState(false);
   const [attemptStartFailed, setAttemptStartFailed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -173,6 +172,28 @@ export function LessonPage(): React.JSX.Element {
   const activities = lesson?.activities ?? [];
   const currentActivity = activities[currentIndex];
 
+  /**
+   * True while a signed-in learner has no attempt to submit against yet.
+   *
+   * Derived rather than stored, and that is the fix. It used to be a
+   * `isAttemptStarting` flag initialised to false and set only by
+   * handleContinue, so it covered activities 2..N and left the first one
+   * uncovered: during the startAttempt round trip the Check Answer button was
+   * live while handleSubmit's `if (signedIn && !currentAttemptId) return` threw
+   * the answer away in silence. No request, no error, nothing on screen -- the
+   * button just kept saying Check Answer.
+   *
+   * The window is one round trip wide. That was 81ms on the CI runner, which is
+   * how [mobile-android] lost the race on main while the other four projects
+   * won it, and it is the whole of the difference between a green suite and a
+   * learner whose first answer of every lesson does nothing.
+   *
+   * A derivation cannot disagree with the id it is derived from, which is what
+   * two pieces of state did. `attemptStartFailed` is excluded because that
+   * renders its own screen in place of the exercise.
+   */
+  const isAttemptPending = signedIn && !currentAttemptId && !attemptStartFailed;
+
   // Start attempt when current activity changes.
   //
   // Skipped entirely for a guest: there is no attempt to start, because there is
@@ -190,7 +211,6 @@ export function LessonPage(): React.JSX.Element {
         if (isMounted) {
           setCurrentAttemptId(res.attempt_id);
           setAttemptStartFailed(false);
-          setIsAttemptStarting(false);
         }
       })
       .catch(() => {
@@ -200,7 +220,6 @@ export function LessonPage(): React.JSX.Element {
           // attempt the server had never heard of, and lost.
           setCurrentAttemptId(null);
           setAttemptStartFailed(true);
-          setIsAttemptStarting(false);
         }
       });
 
@@ -234,8 +253,18 @@ export function LessonPage(): React.JSX.Element {
   };
 
   const handleSubmit = async (responsePayload: Record<string, unknown>) => {
-    if (signedIn && !currentAttemptId) return;
     if (!currentActivity) return;
+
+    // No attempt, no submission -- but say so. Returning quietly here is what
+    // turned a lost race into an invisible one: the answer was dropped, and the
+    // screen was identical to one where nothing had been clicked at all. The
+    // guard should now be unreachable, since the button is disabled for exactly
+    // as long as this is true. If it is ever reached again, the learner finds
+    // out, and the error banner already carries a Retry.
+    if (signedIn && !currentAttemptId) {
+      setSubmissionError(t("runner.attemptNotReady"));
+      return;
+    }
 
     setIsSubmitting(true);
     setSubmissionError(null);
@@ -290,11 +319,11 @@ export function LessonPage(): React.JSX.Element {
       setSubmissionError(null);
       setLastSubmittedPayload(null);
       setAttemptStartFailed(false);
-      // Only a signed-in learner is waiting on an attempt to be opened. For a
-      // guest nothing is being started, so leaving this true left every
-      // activity after the first with its Check Answer button disabled — the
-      // effect that would clear it returns early for them.
-      setIsAttemptStarting(signedIn);
+      // The previous activity's attempt does not belong to the next one, and
+      // leaving it here is what made a second flag necessary: two values that
+      // had to agree about whether an answer could be sent. Clearing it is both
+      // the guard and the truth.
+      setCurrentAttemptId(null);
       setCurrentIndex((prev) => prev + 1);
     } else {
       setElapsedSeconds(
@@ -369,7 +398,9 @@ export function LessonPage(): React.JSX.Element {
             setSubmissionResult(null);
             setSubmissionError(null);
             setLastSubmittedPayload(null);
-            setIsAttemptStarting(signedIn);
+            // Same reason as handleContinue: the attempt this learner finished
+            // the lesson on is not the one activity 1 is about to open.
+            setCurrentAttemptId(null);
             setIsCompleted(false);
           }}
         />
@@ -509,7 +540,7 @@ export function LessonPage(): React.JSX.Element {
             feedback={submissionResult?.feedback}
             isSubmitted={isSubmitted}
             isCorrect={submissionResult?.correct}
-            isLoading={isSubmitting || isAttemptStarting}
+            isLoading={isSubmitting || isAttemptPending}
             onSubmit={(selectedOptionId) =>
               void handleSubmit({ selected_option_id: selectedOptionId })
             }
@@ -526,7 +557,7 @@ export function LessonPage(): React.JSX.Element {
             feedback={submissionResult?.feedback}
             isSubmitted={isSubmitted}
             isCorrect={submissionResult?.correct}
-            isLoading={isSubmitting || isAttemptStarting}
+            isLoading={isSubmitting || isAttemptPending}
             onSubmit={(answerText) =>
               void handleSubmit({ text_answer: answerText })
             }
@@ -549,7 +580,7 @@ export function LessonPage(): React.JSX.Element {
             {...(fcConfig.audio_url !== undefined && {
               audioUrl: fcConfig.audio_url,
             })}
-            isLoading={isSubmitting || isAttemptStarting}
+            isLoading={isSubmitting || isAttemptPending}
             isSubmitted={isSubmitted}
             isCorrect={submissionResult?.correct}
             // The recall verdict is the answer. "I knew it" submits the word
@@ -574,12 +605,14 @@ export function LessonPage(): React.JSX.Element {
               audioUrl: listenConfig.audio_url,
             })}
             {...(listenConfig.ipa !== undefined && { ipa: listenConfig.ipa })}
-            {...(listenConfig.hint !== undefined && { hint: listenConfig.hint })}
+            {...(listenConfig.hint !== undefined && {
+              hint: listenConfig.hint,
+            })}
             expectedAnswer={submissionResult?.correct_answer}
             feedback={submissionResult?.feedback}
             isSubmitted={isSubmitted}
             isCorrect={submissionResult?.correct}
-            isLoading={isSubmitting || isAttemptStarting}
+            isLoading={isSubmitting || isAttemptPending}
             onSubmit={(answerText) =>
               void handleSubmit({ text_answer: answerText })
             }
@@ -598,7 +631,7 @@ export function LessonPage(): React.JSX.Element {
             })}
             isSubmitted={isSubmitted}
             isCorrect={submissionResult?.correct}
-            isLoading={isSubmitting || isAttemptStarting}
+            isLoading={isSubmitting || isAttemptPending}
             // No per-pair marking: the grade response reports a score and a
             // verdict, not which pairs were right. Revealing that would mean
             // adding a structured answer to GradeResult across every skill
@@ -620,7 +653,7 @@ export function LessonPage(): React.JSX.Element {
             feedback={submissionResult?.feedback}
             isSubmitted={isSubmitted}
             isCorrect={submissionResult?.correct}
-            isLoading={isSubmitting || isAttemptStarting}
+            isLoading={isSubmitting || isAttemptPending}
             onSubmit={(sentence) =>
               void handleSubmit({ text_answer: sentence })
             }
@@ -644,7 +677,7 @@ export function LessonPage(): React.JSX.Element {
             feedback={submissionResult?.feedback}
             isSubmitted={isSubmitted}
             isCorrect={submissionResult?.correct}
-            isLoading={isSubmitting || isAttemptStarting}
+            isLoading={isSubmitting || isAttemptPending}
             onSubmit={(selectedOptionId) =>
               void handleSubmit({ selected_option_id: selectedOptionId })
             }

@@ -441,6 +441,7 @@
     "activityUnavailableDesc": "Trình học chưa hỗ trợ dạng hoạt động này, hoặc nội dung của nó chưa đầy đủ.",
     "attemptFailedDesc": "Chúng tôi không mở được lượt làm bài nên câu trả lời của bạn chưa được ghi nhận. Hãy kiểm tra kết nối và thử lại.",
     "attemptFailedTitle": "Không bắt đầu được hoạt động",
+    "attemptNotReady": "Hoạt động này đang được mở. Hãy đợi một chút rồi bấm Thử lại.",
     "backToCourseBtn": "Về giáo trình",
     "checkBtn": "Kiểm tra",
     "completedDesc": "Bạn đã hoàn thành mọi hoạt động trong bài học này.",

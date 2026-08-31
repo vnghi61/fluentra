@@ -441,6 +441,7 @@
     "activityUnavailableDesc": "The runner does not support this activity yet, or its content is incomplete.",
     "attemptFailedDesc": "We could not open an attempt, so your answer could not be recorded. Check your connection and try again.",
     "attemptFailedTitle": "Could not start this activity",
+    "attemptNotReady": "This activity is still opening. Wait a moment and press Retry.",
     "backToCourseBtn": "Back to Syllabus",
     "checkBtn": "Check Answer",
     "completedDesc": "You finished every activity in this lesson.",
