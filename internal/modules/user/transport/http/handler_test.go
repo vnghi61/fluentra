@@ -208,11 +208,45 @@ func preferences() domain.Preferences {
 // newServer mounts the handler the way the composition root will, so the tests
 // exercise the real routing rather than calling handler methods directly.
 func newServer(accounts userhttp.Accounts) http.Handler {
+	return newServerWithAvatars(accounts, &fakeAvatars{})
+}
+
+// newServerWithAvatars is newServer for the tests that care what the avatar
+// surface returns. It is separate because avatar serving is the one route here
+// that reads another learner's data, and most tests have no opinion about it.
+func newServerWithAvatars(accounts userhttp.Accounts, avatars userhttp.Avatars) http.Handler {
 	router := chi.NewRouter()
 	router.Route("/api/v1", func(api chi.Router) {
-		userhttp.NewHandler(accounts).Routes(api)
+		userhttp.NewHandler(accounts, avatars).Routes(api)
 	})
 	return router
+}
+
+// fakeAvatars serves one image, or an error, for every asset id.
+type fakeAvatars struct {
+	body  string
+	asset domain.AvatarAsset
+	err   error
+
+	// gotVariant records what the handler resolved the ?size= parameter to.
+	gotVariant domain.AvatarVariant
+}
+
+func (f *fakeAvatars) AvatarBlob(
+	_ context.Context, assetID uuid.UUID, variant domain.AvatarVariant,
+) (io.ReadCloser, domain.AvatarAsset, error) {
+	f.gotVariant = variant
+	if f.err != nil {
+		return nil, domain.AvatarAsset{}, f.err
+	}
+	asset := f.asset
+	asset.AssetID = assetID
+	asset.Variant = variant
+	if asset.MimeType == "" {
+		asset.MimeType = "image/jpeg"
+	}
+	asset.ByteSize = int64(len(f.body))
+	return io.NopCloser(strings.NewReader(f.body)), asset, nil
 }
 
 // authenticated performs a request with actor in the context, standing in for

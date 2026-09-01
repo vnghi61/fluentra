@@ -36,6 +36,7 @@ type fakeRepo struct {
 	summaries   map[uuid.UUID]domain.Summary
 	exports     map[uuid.UUID]domain.ExportRequest
 	deletions   map[uuid.UUID]domain.DeletionRequest
+	avatars     map[string]domain.AvatarAsset
 
 	// calls counts every repository method by name. A test asserting "one
 	// query for N ids" asserts on this.
@@ -51,6 +52,7 @@ func newFakeRepo() *fakeRepo {
 		preferences: map[uuid.UUID]domain.Preferences{},
 		summaries:   map[uuid.UUID]domain.Summary{},
 		exports:     map[uuid.UUID]domain.ExportRequest{},
+		avatars:     map[string]domain.AvatarAsset{},
 		deletions:   map[uuid.UUID]domain.DeletionRequest{},
 		calls:       map[string]int{},
 		failOn:      map[string]error{},
@@ -761,4 +763,51 @@ func newUserFixture() contract.NewUser {
 		Locale:      "en",
 		Timezone:    timezoneHoChiMinh,
 	}
+}
+
+// avatarKey identifies one stored variant the way the primary key does.
+func avatarKey(assetID uuid.UUID, variant domain.AvatarVariant) string {
+	return assetID.String() + "/" + string(variant)
+}
+
+func (f *fakeRepo) InsertAvatarAsset(_ context.Context, asset domain.AvatarAsset) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.calls["InsertAvatarAsset"]++
+	if err := f.failOn["InsertAvatarAsset"]; err != nil {
+		return err
+	}
+	f.avatars[avatarKey(asset.AssetID, asset.Variant)] = asset
+	return nil
+}
+
+func (f *fakeRepo) GetAvatarAsset(
+	_ context.Context, assetID uuid.UUID, variant domain.AvatarVariant,
+) (domain.AvatarAsset, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.calls["GetAvatarAsset"]++
+	if err := f.failOn["GetAvatarAsset"]; err != nil {
+		return domain.AvatarAsset{}, err
+	}
+	asset, ok := f.avatars[avatarKey(assetID, variant)]
+	if !ok {
+		return domain.AvatarAsset{}, domain.ErrAvatarAssetNotFound
+	}
+	return asset, nil
+}
+
+func (f *fakeRepo) DeleteAvatarAssetsByAssetID(_ context.Context, assetID uuid.UUID) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.calls["DeleteAvatarAssetsByAssetID"]++
+	if err := f.failOn["DeleteAvatarAssetsByAssetID"]; err != nil {
+		return err
+	}
+	for _, variant := range []domain.AvatarVariant{
+		domain.AvatarVariantSmall, domain.AvatarVariantMedium, domain.AvatarVariantLarge,
+	} {
+		delete(f.avatars, avatarKey(assetID, variant))
+	}
+	return nil
 }

@@ -6,7 +6,7 @@ status: PLANNED
 phase: 1
 owner: "@backend-team"
 schema: core
-tables: [users, profiles, user_preferences, learning_profiles, user_deletions, user_exports]
+tables: [users, profiles, user_preferences, learning_profiles, user_deletions, user_exports, avatar_assets]
 depends_on: [storage, mailer, audit]
 depended_on_by: [auth, admin, learning, notification, subscription, gamification]
 spec_version: 1.0.0
@@ -146,6 +146,7 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | `PUT` | `/api/v1/me/preferences` | `self` | Replace preferences |
 | `POST` | `/api/v1/me/avatar/upload-intent` | `self` | Get a presigned URL for an avatar upload |
 | `PUT` | `/api/v1/me/avatar` | `self` | Confirm the uploaded avatar |
+| `GET` | `/api/v1/storage/avatars/{assetId}` | `authenticated` | Serve a stored avatar image |
 | `POST` | `/api/v1/me/export` | `self` | Request a data export |
 | `GET` | `/api/v1/me/export/{id}` | `self` | Get status of a data export request |
 | `DELETE` | `/api/v1/me` | `self` | Request account deletion (30-day grace) |
@@ -253,8 +254,15 @@ and fails `go-arch-lint` in CI.
 - `core.learning_profiles` has a table and queries but no endpoint. `GET /me` returns identity and
   profile only. It is wired in when onboarding needs it, rather than shipping a write path nothing
   calls.
-- Avatar upload lifecycle is implemented under `/api/v1/me/avatar/upload-intent` and `/api/v1/me/avatar`.
-  Avatar URLs are derived from the stored asset id through the storage facade (`/api/v1/storage/avatars/{assetID}`).
+- Avatar upload lifecycle is implemented under `/api/v1/me/avatar/upload-intent` and `/api/v1/me/avatar`,
+  and the images are served by `GET /api/v1/storage/avatars/{assetID}` with an optional `?size=sm|md|lg`.
+  That route proxies the bytes rather than redirecting to a presigned URL, so no bucket URL reaches the
+  browser, and any signed-in learner may read any avatar because a leaderboard shows the faces of everyone
+  the learner competes with.
+- `core.avatar_assets` holds one row per stored variant. It exists because the object key embeds the year
+  and month of the upload, so nothing could locate an avatar from its asset id alone: `avatar_url` named a
+  route that was never mounted, and cleanup of a replaced avatar guessed the old key from
+  `profiles.updated_at` and missed whenever anything else had touched the profile.
 - Account deletion is implemented under `DELETE /api/v1/me`, `POST /api/v1/me/deletion/cancel`, and `GET /api/v1/me/deletion/{id}`
   with a 30-day grace period, daily `DeletionExecutor` cron job (advisory lock `1_700_000_050`), and event-driven data purging
   and user anonymisation (`user.deletion_requested`, `user.deleted`).

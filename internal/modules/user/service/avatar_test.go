@@ -378,11 +378,26 @@ func TestConfirmAvatar_DeletesOldAvatarOnlyAfterNewIsVerifiedAndCommitted(t *tes
 	t.Parallel()
 	h, store := setupAvatarHarness(t)
 
-	// Set an existing avatar on the user's profile.
+	// Set an existing avatar on the user's profile, recorded the way
+	// ConfirmAvatar records one: a profile pointer and a row per variant.
+	//
+	// The row is what makes the delete possible. Cleanup used to rebuild the old
+	// key from profiles.updated_at, which is a guess -- rename yourself between
+	// two uploads and the delete aimed at the wrong month, so the object stayed
+	// in the bucket for ever. Seeding the row here is not test scaffolding; it
+	// is the state the real write path leaves behind.
 	oldAssetID := uuid.New()
 	oldKey := "users/" + h.actor.String() + "/2026/08/" + oldAssetID.String() + "_lg.jpg"
 	store.objects[oldKey] = createTestJPEG()
 	_, _ = h.repo.UpdateProfileAvatar(context.Background(), h.actor, &oldAssetID)
+	_ = h.repo.InsertAvatarAsset(context.Background(), domain.AvatarAsset{
+		AssetID:   oldAssetID,
+		Variant:   domain.AvatarVariantLarge,
+		UserID:    h.actor,
+		ObjectKey: oldKey,
+		MimeType:  mimeImageJPEG,
+		ByteSize:  int64(len(store.objects[oldKey])),
+	})
 
 	// Stage a new valid avatar upload.
 	newRawKey := "users/" + h.actor.String() + "/2026/08/new-avatar-raw.jpg"

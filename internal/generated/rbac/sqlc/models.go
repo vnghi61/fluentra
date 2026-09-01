@@ -189,6 +189,16 @@ func (ns NullCoreUserStatus) Value() (driver.Value, error) {
 	return string(ns.CoreUserStatus), nil
 }
 
+type CoreAvatarAsset struct {
+	AssetID   uuid.UUID
+	Variant   string
+	UserID    uuid.UUID
+	ObjectKey string
+	MimeType  string
+	ByteSize  int64
+	CreatedAt time.Time
+}
+
 type CoreLearningProfile struct {
 	ID                uuid.UUID
 	UserID            uuid.UUID

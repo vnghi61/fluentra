@@ -198,6 +198,16 @@ type CoreAdminAction struct {
 	OccurredAt time.Time
 }
 
+type CoreAvatarAsset struct {
+	AssetID   uuid.UUID
+	Variant   string
+	UserID    uuid.UUID
+	ObjectKey string
+	MimeType  string
+	ByteSize  int64
+	CreatedAt time.Time
+}
+
 type CoreFeatureFlag struct {
 	Key            string
 	Enabled        bool

@@ -638,3 +638,52 @@ func (r *Repository) SearchUsersAdmin(
 	}
 	return result, nil
 }
+
+// InsertAvatarAsset records where one processed avatar variant was stored.
+func (r *Repository) InsertAvatarAsset(ctx context.Context, asset domain.AvatarAsset) error {
+	err := r.queries.InsertAvatarAsset(ctx, sqlcuser.InsertAvatarAssetParams{
+		AssetID:   asset.AssetID,
+		Variant:   string(asset.Variant),
+		UserID:    asset.UserID,
+		ObjectKey: asset.ObjectKey,
+		MimeType:  asset.MimeType,
+		ByteSize:  asset.ByteSize,
+	})
+	if err != nil {
+		return fmt.Errorf("insert avatar asset: %w", err)
+	}
+	return nil
+}
+
+// GetAvatarAsset resolves an asset id and variant to the object behind it.
+func (r *Repository) GetAvatarAsset(
+	ctx context.Context, assetID uuid.UUID, variant domain.AvatarVariant,
+) (domain.AvatarAsset, error) {
+	row, err := r.queries.GetAvatarAsset(ctx, sqlcuser.GetAvatarAssetParams{
+		AssetID: assetID,
+		Variant: string(variant),
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.AvatarAsset{}, domain.ErrAvatarAssetNotFound
+		}
+		return domain.AvatarAsset{}, fmt.Errorf("get avatar asset: %w", err)
+	}
+	return domain.AvatarAsset{
+		AssetID:   row.AssetID,
+		Variant:   domain.AvatarVariant(row.Variant),
+		UserID:    row.UserID,
+		ObjectKey: row.ObjectKey,
+		MimeType:  row.MimeType,
+		ByteSize:  row.ByteSize,
+		CreatedAt: row.CreatedAt,
+	}, nil
+}
+
+// DeleteAvatarAssetsByAssetID drops every variant of one avatar.
+func (r *Repository) DeleteAvatarAssetsByAssetID(ctx context.Context, assetID uuid.UUID) error {
+	if err := r.queries.DeleteAvatarAssetsByAssetID(ctx, assetID); err != nil {
+		return fmt.Errorf("delete avatar assets: %w", err)
+	}
+	return nil
+}

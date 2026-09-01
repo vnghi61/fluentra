@@ -2,7 +2,9 @@ package http
 
 import (
 	"context"
+	"io"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -34,13 +36,31 @@ type Accounts interface {
 	GetDeletion(ctx context.Context, actorID, deletionID uuid.UUID) (domain.DeletionRequest, error)
 }
 
+// Avatars is the one surface here that reads something belonging to somebody
+// else, and it is a separate interface so that the promise Accounts makes above
+// stays literally true rather than approximately true.
+//
+// It takes an asset id and no actor id, because any signed-in learner may read
+// any avatar. That is what a leaderboard needs -- it shows the faces of everyone
+// the learner competes with, and cannot ask a permission question per row -- and
+// an avatar is not private to the person in it. The route is still behind
+// authentication; what is relaxed is whose avatar, not whether you are signed in.
+type Avatars interface {
+	AvatarBlob(
+		ctx context.Context, assetID uuid.UUID, variant domain.AvatarVariant,
+	) (io.ReadCloser, domain.AvatarAsset, error)
+}
+
 // Handler serves the user module's HTTP operations.
 type Handler struct {
 	accounts Accounts
+	avatars  Avatars
 }
 
 // NewHandler creates the handler.
-func NewHandler(accounts Accounts) *Handler { return &Handler{accounts: accounts} }
+func NewHandler(accounts Accounts, avatars Avatars) *Handler {
+	return &Handler{accounts: accounts, avatars: avatars}
+}
 
 // Routes mounts this module's operations on router. The paths are relative to
 // wherever the composition root mounts it, which is /api/v1.
@@ -58,6 +78,56 @@ func (h *Handler) Routes(router chi.Router) {
 		me.Post("/deletion/cancel", h.cancelDeletion)
 		me.Get("/deletion/{id}", h.getDeletion)
 	})
+
+	// Not under /me: this one is addressed by asset id and serves any learner's
+	// avatar. GET /me returns exactly this path in avatar_url.
+	router.Get("/storage/avatars/{assetId}", h.getAvatar)
+}
+
+// getAvatar streams a stored avatar image.
+func (h *Handler) getAvatar(writer http.ResponseWriter, request *http.Request) {
+	// Any signed-in learner may read any avatar; "any signed-in" is still a
+	// requirement, and it is checked here rather than left to the router group
+	// this happens to be mounted in. Every other handler in this module asks
+	// the same question, and a route whose only protection is its mount point
+	// loses that protection the first time somebody moves it.
+	if _, err := requireActor(request); err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+
+	assetID, err := uuid.Parse(chi.URLParam(request, "assetId"))
+	if err != nil {
+		httpx.WriteProblem(writer, request, apperr.New(
+			apperr.NotFound, "AVATAR_NOT_FOUND", "The avatar was not found."))
+		return
+	}
+
+	variant, err := domain.ParseAvatarVariant(request.URL.Query().Get("size"))
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+
+	body, asset, err := h.avatars.AvatarBlob(request.Context(), assetID, variant)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	defer func() { _ = body.Close() }()
+
+	writer.Header().Set("Content-Type", asset.MimeType)
+	writer.Header().Set("Content-Length", strconv.FormatInt(asset.ByteSize, 10))
+	// A new upload mints a new asset id, so the bytes behind one id never
+	// change. `private` because the response passed an authorization check:
+	// a shared cache must not hand it to the next person through the door.
+	writer.Header().Set("Cache-Control", "private, max-age=604800, immutable")
+	writer.WriteHeader(http.StatusOK)
+
+	// Past the header there is no way to report a failure -- the status is
+	// already sent -- so a truncated copy is dropped rather than dressed up as
+	// something the client can act on.
+	_, _ = io.Copy(writer, body)
 }
 
 // The preference and avatar members named in more than one of the lists below.
