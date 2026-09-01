@@ -1223,6 +1223,17 @@ type ClientInterface interface {
 	// Corresponds with POST /reviews/{card_id}/suspend (the `SuspendReviewCard` operationId).
 	SuspendReviewCard(ctx context.Context, cardId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// StorageGetAvatar Serve a stored avatar image.
+	//
+	// Streams the avatar bytes through the API. Any signed-in learner may read any avatar, which is what a leaderboard needs: it shows the faces of everyone the learner competes with, and cannot ask a permission question per row.
+	//
+	// The bytes are proxied rather than answered with a redirect to a presigned URL, so no bucket URL ever reaches the browser.
+	//
+	// `GET /me` returns this path in `avatar_url`. An asset id with no stored object is a 404, including for avatars uploaded before the object keys were recorded.
+	//
+	// Corresponds with GET /storage/avatars/{assetId} (the `StorageGetAvatar` operationId).
+	StorageGetAvatar(ctx context.Context, assetId openapi_types.UUID, params *StorageGetAvatarParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// SystemVersion Read the deployed API version.
 	//
 	// Returns the version associated with the running API build.
@@ -3662,6 +3673,27 @@ func (c *Client) ResetReviewCard(ctx context.Context, cardId openapi_types.UUID,
 // Corresponds with POST /reviews/{card_id}/suspend (the `SuspendReviewCard` operationId).
 func (c *Client) SuspendReviewCard(ctx context.Context, cardId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSuspendReviewCardRequest(c.Server, cardId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StorageGetAvatar Serve a stored avatar image.
+//
+// Streams the avatar bytes through the API. Any signed-in learner may read any avatar, which is what a leaderboard needs: it shows the faces of everyone the learner competes with, and cannot ask a permission question per row.
+//
+// The bytes are proxied rather than answered with a redirect to a presigned URL, so no bucket URL ever reaches the browser.
+//
+// `GET /me` returns this path in `avatar_url`. An asset id with no stored object is a 404, including for avatars uploaded before the object keys were recorded.
+//
+// Corresponds with GET /storage/avatars/{assetId} (the `StorageGetAvatar` operationId).
+func (c *Client) StorageGetAvatar(ctx context.Context, assetId openapi_types.UUID, params *StorageGetAvatarParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStorageGetAvatarRequest(c.Server, assetId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -7487,6 +7519,67 @@ func NewSuspendReviewCardRequest(server string, cardId openapi_types.UUID) (*htt
 	return req, nil
 }
 
+// NewStorageGetAvatarRequest constructs an http.Request for the StorageGetAvatar method
+func NewStorageGetAvatarRequest(server string, assetId openapi_types.UUID, params *StorageGetAvatarParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "assetId", assetId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/storage/avatars/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Size != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "size", *params.Size, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewSystemVersionRequest constructs an http.Request for the SystemVersion method
 func NewSystemVersionRequest(server string) (*http.Request, error) {
 	var err error
@@ -9168,6 +9261,19 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /reviews/{card_id}/suspend (the `SuspendReviewCard` operationId).
 	SuspendReviewCardWithResponse(ctx context.Context, cardId openapi_types.UUID, reqEditors ...RequestEditorFn) (*SuspendReviewCardResponse, error)
+
+	// StorageGetAvatarWithResponse Serve a stored avatar image.
+	//
+	// Streams the avatar bytes through the API. Any signed-in learner may read any avatar, which is what a leaderboard needs: it shows the faces of everyone the learner competes with, and cannot ask a permission question per row.
+	//
+	// The bytes are proxied rather than answered with a redirect to a presigned URL, so no bucket URL ever reaches the browser.
+	//
+	// `GET /me` returns this path in `avatar_url`. An asset id with no stored object is a 404, including for avatars uploaded before the object keys were recorded.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /storage/avatars/{assetId} (the `StorageGetAvatar` operationId).
+	StorageGetAvatarWithResponse(ctx context.Context, assetId openapi_types.UUID, params *StorageGetAvatarParams, reqEditors ...RequestEditorFn) (*StorageGetAvatarResponse, error)
 
 	// SystemVersionWithResponse Read the deployed API version.
 	//
@@ -15636,6 +15742,69 @@ func (r SuspendReviewCardResponse) ContentType() string {
 	return ""
 }
 
+// StorageGetAvatarResponse200Headers the declared response headers of an HTTP 200 response for StorageGetAvatar
+type StorageGetAvatarResponse200Headers struct {
+	CacheControl *string
+	XRequestId   *string
+}
+
+type StorageGetAvatarResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *StorageGetAvatarResponse200Headers
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r StorageGetAvatarResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r StorageGetAvatarResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r StorageGetAvatarResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r StorageGetAvatarResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StorageGetAvatarResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StorageGetAvatarResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StorageGetAvatarResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // SystemVersionResponse200Headers the declared response headers of an HTTP 200 response for SystemVersion
 type SystemVersionResponse200Headers struct {
 	XRequestId *string
@@ -18199,6 +18368,25 @@ func (c *ClientWithResponses) SuspendReviewCardWithResponse(ctx context.Context,
 		return nil, err
 	}
 	return ParseSuspendReviewCardResponse(rsp)
+}
+
+// StorageGetAvatarWithResponse Serve a stored avatar image.
+//
+// Streams the avatar bytes through the API. Any signed-in learner may read any avatar, which is what a leaderboard needs: it shows the faces of everyone the learner competes with, and cannot ask a permission question per row.
+//
+// The bytes are proxied rather than answered with a redirect to a presigned URL, so no bucket URL ever reaches the browser.
+//
+// `GET /me` returns this path in `avatar_url`. An asset id with no stored object is a 404, including for avatars uploaded before the object keys were recorded.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /storage/avatars/{assetId} (the `StorageGetAvatar` operationId).
+func (c *ClientWithResponses) StorageGetAvatarWithResponse(ctx context.Context, assetId openapi_types.UUID, params *StorageGetAvatarParams, reqEditors ...RequestEditorFn) (*StorageGetAvatarResponse, error) {
+	rsp, err := c.StorageGetAvatar(ctx, assetId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStorageGetAvatarResponse(rsp)
 }
 
 // SystemVersionWithResponse Read the deployed API version.
@@ -24345,6 +24533,66 @@ func ParseSuspendReviewCardResponse(rsp *http.Response) (*SuspendReviewCardRespo
 	switch {
 	case rsp.StatusCode == 200:
 		var headers SuspendReviewCardResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseStorageGetAvatarResponse parses an HTTP response from a StorageGetAvatarWithResponse call
+func ParseStorageGetAvatarResponse(rsp *http.Response) (*StorageGetAvatarResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StorageGetAvatarResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers StorageGetAvatarResponse200Headers
+		if values := rsp.Header.Values("Cache-Control"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "Cache-Control", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.CacheControl = &value
+		}
 		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
 			var value string
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
