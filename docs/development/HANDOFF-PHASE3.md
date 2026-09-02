@@ -7,6 +7,10 @@ last_verified: 2026-09-01
 
 # Phase 3 — session handoff
 
+> **Partly superseded.** WP13 and WP14-web are built; see
+> [phase-3-next-steps.md](phase-3-next-steps.md) for the current work order. §2 (production is
+> behind), §4 (traps) and §6 (open decisions) still hold.
+
 **Purpose.** What the next agent needs to start Phase 3 without re-deriving it, and what
 production needs before any of it is visible.
 
@@ -40,17 +44,21 @@ The gap that matters is between **merged** and **deployed**, and between **backe
 ### WP14 is half a feature
 
 The backend is complete and wired. The module is mounted in
-[`cmd/api/modules.go`](../../cmd/api/modules.go), four routes exist
-(`/me/gamification`, `/me/streak`, `/me/streak/freeze`, `/leaderboard`), all four are in
-`api/openapi/openapi.yaml`, and the generated TypeScript client already carries their types.
+[`cmd/api/modules.go`](../../cmd/api/modules.go), six routes exist
+(`/me/gamification`, `/me/streak`, `/me/streak/freeze`, `/me/daily-goal`,
+`/me/leaderboard-opt-in`, `/leaderboard`), all six are in `api/openapi/openapi.yaml`, and the
+generated TypeScript client already carries their types.
 
 `web/src/features/` contains `account`, `admin`, `auth`, `learning`, `lesson`, `review`,
-`vocabulary`. There is **no `gamification` directory**. The last unchecked line in
-[the module TODO](../../internal/modules/gamification/TODO.md) is "Gamification widgets in
-the web app".
+`vocabulary`. There is **no `gamification` directory**.
 
 That is the whole answer to "why does the dashboard have no XP bar and no leaderboard". It
 was built and never surfaced.
+
+> Built since, in `67d30cc`. Note also that the reasoning above originally cited an unticked
+> box in the module TODO as evidence — that was a bad inference. Those checkboxes are
+> generated from `tools/docgen/data/*.json` and are stale: every box in that file is unticked,
+> including work that shipped weeks ago. The missing directory was the real evidence.
 
 ---
 
@@ -59,7 +67,7 @@ was built and never surfaced.
 There is **no auto-migration on boot**. `cmd/api` does not call goose. Migrations are a
 deliberate manual step.
 
-### Four migrations are pending
+### Five migrations are pending
 
 | Version | Adds |
 |---|---|
@@ -67,6 +75,7 @@ deliberate manual step.
 | `1700000270` | vocabulary upload tables |
 | `1700000280` | `learn.courses.origin` |
 | `1700000290` | `learn.review_cards.last_review_at` |
+| `1700000400` | `core.avatar_assets` — added after this table was first written |
 
 The last two are **read by code already on `main`**. The catalogue query filters
 `AND origin = 'curriculum'`, and the FSRS scheduler reads `last_review_at`. Deploying the
