@@ -214,7 +214,7 @@ describe("DashboardPage (P10.1)", () => {
     expect(screen.getByRole("button", { name: /Đến trang luyện tập/i })).toBeInTheDocument();
   });
 
-  it("does NOT render any Phase 3 gamification elements (streak, XP, achievements)", async () => {
+  it("renders Phase 3 gamification widgets with real numbers", async () => {
     const data: DashboardResponse = {
       state: "in_progress",
       next_activity: {
@@ -232,16 +232,78 @@ describe("DashboardPage (P10.1)", () => {
 
     server.use(
       http.get("/api/v1/me/dashboard", () => HttpResponse.json(data)),
+      http.get("/api/v1/me/gamification", () =>
+        HttpResponse.json({
+          total_xp: 1240,
+          level: 5,
+          level_start_xp: 1000,
+          next_level_xp: 1500,
+          xp_today: 60,
+          daily_goal_xp: 50,
+          streak: {
+            current: 7,
+            longest: 31,
+            last_active_on: "2026-03-02",
+            freezes_available: 2,
+            hours_remaining: 6,
+          },
+          badges: [
+            {
+              code: "week_streak",
+              name: "Seven Days",
+              description: "Studied seven days in a row.",
+              tier: "bronze",
+              earned_at: "2026-03-01T08:15:00Z",
+            },
+          ],
+          quests: [
+            {
+              code: "daily_practice",
+              name: "Daily Practice",
+              description: "Complete three activities today.",
+              progress: { complete_activities: 2 },
+              steps: { complete_activities: 3 },
+              reward_xp: 30,
+              expires_on: "2026-03-02",
+            },
+          ],
+          league: "silver",
+        }),
+      ),
+      http.get("/api/v1/leaderboard", () =>
+        HttpResponse.json({
+          entries: [
+            {
+              rank: 1,
+              user_id: "0199a1c2-3d4e-7f80-9abc-def012345601",
+              display_name: "Top Learner",
+              xp: 250,
+              is_self: false,
+            },
+            {
+              rank: 2,
+              user_id: "0199a1c2-3d4e-7f80-9abc-def012345678",
+              display_name: "Demo Learner",
+              xp: 60,
+              is_self: true,
+            },
+          ],
+        }),
+      ),
     );
 
     await renderDashboard();
 
-    await screen.findByText("Lesson 1");
+    expect(await screen.findByText("Lesson 1")).toBeInTheDocument();
 
-    // Strictly ensure no lying zero-XP or streak counters
-    expect(screen.queryByText(/0 XP/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/streak/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/achievement/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/leaderboard/i)).not.toBeInTheDocument();
+    // Assert real gamification numbers after async query resolves
+    expect(await screen.findByText("1240 XP")).toBeInTheDocument();
+    expect(screen.getAllByText("Level 5").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("7")).toBeInTheDocument();
+    expect(screen.getByText("Best: 31 days")).toBeInTheDocument();
+    expect(screen.getByText("6h left today")).toBeInTheDocument();
+    expect(screen.getByText("Daily Practice")).toBeInTheDocument();
+    expect(screen.getByText("+30 XP")).toBeInTheDocument();
+    expect(await screen.findByText("Top Learner")).toBeInTheDocument();
   });
 });

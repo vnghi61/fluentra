@@ -28,11 +28,16 @@ func NewMockProvider(registry *Registry) *MockProvider {
 	return &MockProvider{registry: registry}
 }
 
+// Name returns the provider identifier.
+func (p *MockProvider) Name() string {
+	return ProviderMock
+}
+
 // MockModelName is what a mocked answer reports as its model, so a stored
 // verification can be told apart from a real one later.
 const MockModelName = "mock"
 
-// Complete returns a canned answer shaped like the task's output.
+// Complete implements Client interface.
 func (p *MockProvider) Complete(_ context.Context, req Request) (Response, error) {
 	// The template is still rendered and its errors still surface: a broken
 	// prompt should fail in development, where the mock is what runs, rather
