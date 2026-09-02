@@ -7,6 +7,10 @@ last_verified: 2026-09-02
 
 # Phase 3 — what to build next
 
+> **§2 superseded.** WP15 is connected as of `34ee4c9`; the current work order is
+> [phase-3-work-order-2.md](phase-3-work-order-2.md). §3 (open decisions) and §4 (traps) below
+> are still current.
+
 **Purpose.** The work order after `feat/gamification-web-and-ai-platform`. It supersedes the
 "What to do next" section of [HANDOFF-PHASE3.md](HANDOFF-PHASE3.md), which was written before
 WP13 and WP14-web existed.
