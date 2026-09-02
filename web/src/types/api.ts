@@ -628,6 +628,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/storage/avatars/{assetId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Serve a stored avatar image.
+         * @description Streams the avatar bytes through the API. Any signed-in learner may read any avatar, which is what a leaderboard needs: it shows the faces of everyone the learner competes with, and cannot ask a permission question per row.
+         *
+         *     The bytes are proxied rather than answered with a redirect to a presigned URL, so no bucket URL ever reaches the browser.
+         *
+         *     `GET /me` returns this path in `avatar_url`. An asset id with no stored object is a 404, including for avatars uploaded before the object keys were recorded.
+         */
+        get: operations["storageGetAvatar"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/me/export": {
         parameters: {
             query?: never;
@@ -5285,6 +5309,39 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    storageGetAvatar: {
+        parameters: {
+            query?: {
+                /** @description Which stored variant to serve: `sm` is 64 px, `md` 128 px, `lg` 256 px. Defaults to `md`. */
+                size?: "sm" | "md" | "lg";
+            };
+            header?: never;
+            path: {
+                /** @description The avatar asset id carried by `avatar_url`. */
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The avatar image. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    /** @description The asset id changes on every upload, so a stored image never changes and may be cached for a long time. */
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /** @example (binary JPEG data) */
+                    "image/jpeg": string;
+                };
+            };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
             422: components["responses"]["ValidationFailed"];

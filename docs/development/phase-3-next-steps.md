@@ -120,12 +120,26 @@ by the next `make docs`.
 **Do not read an unticked box as unbuilt work.** Read the code. When you finish something,
 tick it in the docgen data file and regenerate.
 
-### Adding an OpenAPI path is two steps
+### Adding an OpenAPI path writes generated code on both sides
 
-`go build` and `go test` both stay green while `make gen-check` fails, because the generated
-server and client are only refreshed by `make gen-api`. This was missed once already this
-week: a route was added to `openapi.yaml`, everything compiled, and CI caught the stale
-generated surface.
+One spec change, two generators, two gates:
+
+```bash
+make gen-api        # api/openapi/server.gen.go, client.gen.go
+make gen-web        # web/src/types/api.ts
+make gen-check      # backend half
+make gen-check-web  # frontend half — a separate target, and easy to forget
+```
+
+Both gates compare `git status`, so regenerating is not enough; the result has to be
+committed or they still fail.
+
+`go build`, `go test` and `tsc -b` all stay green through every one of these, because the old
+generated files are still valid code — they are simply missing the new operation. Adding
+`/storage/avatars/{assetId}` cost two CI rounds this week for exactly this: the first missed
+`gen-api`, the second missed `gen-web`. The comment on `gen-check-web` in the Makefile records
+the same failure from P1.2, which is a fair warning that reading it is cheaper than
+rediscovering it.
 
 ### Migration numbers are taken up to 1700000400
 
