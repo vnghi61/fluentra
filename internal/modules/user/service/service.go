@@ -34,6 +34,12 @@ type Repository interface {
 	UpdateProfile(ctx context.Context, userID uuid.UUID, change domain.ProfileChange) (domain.Profile, error)
 	UpdateProfileAvatar(ctx context.Context, userID uuid.UUID, avatarAssetID *uuid.UUID) (domain.Profile, error)
 
+	InsertAvatarAsset(ctx context.Context, asset domain.AvatarAsset) error
+	GetAvatarAsset(
+		ctx context.Context, assetID uuid.UUID, variant domain.AvatarVariant,
+	) (domain.AvatarAsset, error)
+	DeleteAvatarAssetsByAssetID(ctx context.Context, assetID uuid.UUID) error
+
 	GetPreferences(ctx context.Context, userID uuid.UUID) (domain.Preferences, error)
 	CreatePreferences(ctx context.Context, id, userID uuid.UUID) (domain.Preferences, error)
 	ReplacePreferences(ctx context.Context, preferences domain.Preferences) (domain.Preferences, error)

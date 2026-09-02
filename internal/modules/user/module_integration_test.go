@@ -632,7 +632,28 @@ func TestModule_AvatarUploadLifecycle(t *testing.T) {
 		t.Fatalf("decode me response: %v", err)
 	}
 	if me.Profile.AvatarURL == nil || !strings.HasPrefix(*me.Profile.AvatarURL, "/api/v1/storage/avatars/") {
-		t.Errorf("avatar_url = %v, want /api/v1/storage/avatars/...", me.Profile.AvatarURL)
+		t.Fatalf("avatar_url = %v, want /api/v1/storage/avatars/...", me.Profile.AvatarURL)
+	}
+
+	// And it has to actually serve an image.
+	//
+	// The prefix check above is all this test used to do, and it is the reason
+	// nobody noticed that no route was mounted at that path for months: a URL
+	// pointing at nothing passes a HasPrefix. Every avatar the API advertised
+	// was a 404 the moment a browser followed it.
+	avatarRecorder := request(t, router, http.MethodGet, *me.Profile.AvatarURL, actorID, "")
+	if avatarRecorder.Code != http.StatusOK {
+		t.Fatalf("GET %s: %d, body %s", *me.Profile.AvatarURL, avatarRecorder.Code, avatarRecorder.Body)
+	}
+	if got := avatarRecorder.Header().Get("Content-Type"); got != "image/jpeg" {
+		t.Errorf("avatar Content-Type = %q, want image/jpeg", got)
+	}
+	if avatarRecorder.Body.Len() == 0 {
+		t.Error("avatar body is empty")
+	}
+	// The bytes are the processed variant, not the raw upload echoed back.
+	if bytes.Equal(avatarRecorder.Body.Bytes(), jpegData) {
+		t.Error("avatar body is the raw upload; the stored variant should be re-encoded")
 	}
 
 	// 4. Verify outbox event written.

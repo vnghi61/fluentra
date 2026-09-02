@@ -8,11 +8,19 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/fluentra/fluentra/internal/platform/ai"
+)
+
+// fieldTerm is the prompt variable every vocabulary task fills in, and
+// termLeisure is the word these tests keep asking about.
+const (
+	fieldTerm   = "Term"
+	termLeisure = "leisure"
 )
 
 // verifyResult mirrors what the vocab_verify template asks the model for.
@@ -28,7 +36,7 @@ func verifyRequest() ai.Request {
 	return ai.Request{
 		Task: ai.TaskVerifyVocabulary,
 		Vars: map[string]any{
-			"Term":                 "leisure",
+			fieldTerm:              termLeisure,
 			"ProvidedMeaning":      "thời gian rảnh",
 			"DictionaryDefinition": "Time when one is not working or occupied; free time.",
 			"PartOfSpeech":         "noun",
@@ -271,4 +279,42 @@ type chatBody struct {
 	} `json:"messages"`
 	MaxTokens int  `json:"max_tokens"`
 	Stream    bool `json:"stream"`
+}
+
+func TestCache_ExactHashDeduplication(t *testing.T) {
+	cache := ai.NewMemoryCache()
+	ctx := context.Background()
+
+	key1 := ai.ComputeCacheKey(ai.TaskVerifyVocabulary, 1, map[string]any{fieldTerm: termLeisure})
+	key2 := ai.ComputeCacheKey(ai.TaskVerifyVocabulary, 1, map[string]any{fieldTerm: termLeisure})
+	key3 := ai.ComputeCacheKey(ai.TaskVerifyVocabulary, 1, map[string]any{fieldTerm: "work"})
+
+	assert.Equal(t, key1, key2, "same task and inputs must yield identical cache key")
+	assert.NotEqual(t, key1, key3, "different inputs must yield distinct cache keys")
+
+	_, found := cache.Get(ctx, key1)
+	assert.False(t, found)
+
+	cache.Set(ctx, key1, ai.Response{Text: `{"valid":true}`}, 1*time.Hour)
+
+	cached, found := cache.Get(ctx, key1)
+	assert.True(t, found)
+	assert.Equal(t, `{"valid":true}`, cached.Text)
+}
+
+func TestRouter_FallsBackWhenPrimaryFails(t *testing.T) {
+	registry, err := ai.NewRegistry()
+	require.NoError(t, err)
+
+	mock := ai.NewMockProvider(registry)
+	providerReg := ai.NewProviderRegistry(mock)
+
+	router := ai.NewRouter(ai.RouterOptions{
+		Prompts:   registry,
+		Providers: providerReg,
+	})
+
+	res, err := router.Complete(context.Background(), verifyRequest())
+	require.NoError(t, err)
+	assert.Contains(t, res.Text, "leisure")
 }

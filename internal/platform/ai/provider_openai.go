@@ -76,6 +76,11 @@ func NewOpenAICompatibleProvider(
 	}, nil
 }
 
+// Name returns the provider identifier.
+func (p *OpenAICompatibleProvider) Name() string {
+	return ProviderOpenAICompatible
+}
+
 type chatMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`

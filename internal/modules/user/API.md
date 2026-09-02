@@ -52,6 +52,7 @@ check, and there is a test that fails if a user-id route ever appears.
 | `PUT` | `/api/v1/me/preferences` | `self` | Replace preferences |
 | `POST` | `/api/v1/me/avatar/upload-intent` | `self` | Get a presigned URL for an avatar upload |
 | `PUT` | `/api/v1/me/avatar` | `self` | Confirm the uploaded avatar |
+| `GET` | `/api/v1/storage/avatars/{assetId}` | `authenticated` | Serve a stored avatar image |
 | `POST` | `/api/v1/me/export` | `self` | Request a data export |
 | `GET` | `/api/v1/me/export/{id}` | `self` | Get status of a data export request |
 | `DELETE` | `/api/v1/me` | `self` | Request account deletion (30-day grace) |
@@ -125,6 +126,16 @@ Confirm the uploaded avatar
 | Permission | `self` |
 | Success | 200 |
 | Errors | standard set |
+
+### `GET /api/v1/storage/avatars/{assetId}`
+
+Serve a stored avatar image
+
+| | |
+|---|---|
+| Permission | `authenticated` |
+| Success | 200 |
+| Errors | `AVATAR_NOT_FOUND` |
 
 ### `POST /api/v1/me/export`
 

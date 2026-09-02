@@ -1355,6 +1355,68 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+  /storage/avatars/{assetId}:
+    get:
+      tags: [user]
+      operationId: storageGetAvatar
+      summary: Serve a stored avatar image.
+      description: >-
+        Streams the avatar bytes through the API. Any signed-in learner may read
+        any avatar, which is what a leaderboard needs: it shows the faces of
+        everyone the learner competes with, and cannot ask a permission question
+        per row.
+
+
+        The bytes are proxied rather than answered with a redirect to a
+        presigned URL, so no bucket URL ever reaches the browser.
+
+
+        `GET /me` returns this path in `avatar_url`. An asset id with no stored
+        object is a 404, including for avatars uploaded before the object keys
+        were recorded.
+      x-permission: authenticated
+      parameters:
+        - name: assetId
+          in: path
+          required: true
+          description: The avatar asset id carried by `avatar_url`.
+          schema:
+            type: string
+            format: uuid
+        - name: size
+          in: query
+          required: false
+          description: >-
+            Which stored variant to serve: `sm` is 64 px, `md` 128 px, `lg`
+            256 px. Defaults to `md`.
+          schema:
+            type: string
+            enum: [sm, md, lg]
+            default: md
+      responses:
+        '200':
+          description: The avatar image.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+            Cache-Control:
+              description: >-
+                The asset id changes on every upload, so a stored image never
+                changes and may be cached for a long time.
+              schema:
+                type: string
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+              example: (binary JPEG data)
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
   /me/export:
     post:
       tags: [user]

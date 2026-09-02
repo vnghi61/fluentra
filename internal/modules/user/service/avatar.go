@@ -129,18 +129,18 @@ func (s *Service) ConfirmAvatar(
 		return Account{}, err
 	}
 
-	newAssetID, avatarKeys, err := s.storeProcessedAvatar(ctx, actorID, variants)
+	newAssetID, avatarAssets, err := s.storeProcessedAvatar(ctx, actorID, variants)
 	if err != nil {
 		return Account{}, err
 	}
 
 	existingProfile, err := s.repo.GetProfile(ctx, actorID)
 	if err != nil {
-		s.cleanupKeys(ctx, avatarKeys)
+		s.cleanupAssets(ctx, avatarAssets)
 		return Account{}, err
 	}
 
-	updatedProfile, err := s.commitAvatarUpdate(ctx, actorID, newAssetID, avatarKeys)
+	updatedProfile, err := s.commitAvatarUpdate(ctx, actorID, newAssetID, avatarAssets)
 	if err != nil {
 		return Account{}, err
 	}
@@ -208,43 +208,59 @@ func (s *Service) fetchAndProcessAvatar(ctx context.Context, objectKey string) (
 	return variants, nil
 }
 
+// storeProcessedAvatar writes each variant and reports where it put them.
+//
+// It used to return bare keys, which the caller used only to undo the writes if
+// the transaction failed. The keys were then dropped -- and with them the only
+// record of where the bytes were, since the key embeds the year and month of
+// the upload and nothing else remembers those. Returning assets rather than
+// keys is what lets commitAvatarUpdate write that record down.
 func (s *Service) storeProcessedAvatar(
 	ctx context.Context, actorID uuid.UUID, variants []AvatarVariant,
-) (uuid.UUID, []string, error) {
+) (uuid.UUID, []domain.AvatarAsset, error) {
 	newAssetID, err := s.newID(ctx)
 	if err != nil {
 		return uuid.Nil, nil, err
 	}
 
-	storedKeys := make([]string, 0, len(variants))
+	stored := make([]domain.AvatarAsset, 0, len(variants))
 	now := s.clock.Now()
 	for _, v := range variants {
 		keyAssetID := fmt.Sprintf("%s_%s", newAssetID.String(), v.Suffix)
 		avatarKey, err := storage.BuildKey("users", actorID.String(), now, keyAssetID, "jpg")
 		if err != nil {
-			s.cleanupKeys(ctx, storedKeys)
+			s.cleanupAssets(ctx, stored)
 			return uuid.Nil, nil, fmt.Errorf("build avatar key: %w", err)
 		}
 
+		size := int64(v.Buffer.Len())
 		if err := s.storage.Put(
-			ctx, storage.BucketAvatars, avatarKey, bytes.NewReader(v.Buffer.Bytes()), int64(v.Buffer.Len()), avatarImageMime,
+			ctx, storage.BucketAvatars, avatarKey, bytes.NewReader(v.Buffer.Bytes()), size, avatarImageMime,
 		); err != nil {
-			s.cleanupKeys(ctx, storedKeys)
+			s.cleanupAssets(ctx, stored)
 			return uuid.Nil, nil, fmt.Errorf("store processed avatar: %w", err)
 		}
-		storedKeys = append(storedKeys, avatarKey)
+		stored = append(stored, domain.AvatarAsset{
+			AssetID:   newAssetID,
+			Variant:   domain.AvatarVariant(v.Suffix),
+			UserID:    actorID,
+			ObjectKey: avatarKey,
+			MimeType:  avatarImageMime,
+			ByteSize:  size,
+		})
 	}
-	return newAssetID, storedKeys, nil
+	return newAssetID, stored, nil
 }
 
-func (s *Service) cleanupKeys(ctx context.Context, keys []string) {
-	for _, key := range keys {
-		_ = s.storage.Delete(ctx, storage.BucketAvatars, key)
+// cleanupAssets removes objects written by a confirmation that then failed.
+func (s *Service) cleanupAssets(ctx context.Context, assets []domain.AvatarAsset) {
+	for _, asset := range assets {
+		_ = s.storage.Delete(ctx, storage.BucketAvatars, asset.ObjectKey)
 	}
 }
 
 func (s *Service) commitAvatarUpdate(
-	ctx context.Context, actorID, newAssetID uuid.UUID, avatarKeys []string,
+	ctx context.Context, actorID, newAssetID uuid.UUID, avatarAssets []domain.AvatarAsset,
 ) (domain.Profile, error) {
 	var updatedProfile domain.Profile
 	err := dbx.InTx(ctx, s.pool, func(ctx context.Context, tx pgx.Tx) error {
@@ -254,6 +270,16 @@ func (s *Service) commitAvatarUpdate(
 			return updateErr
 		}
 		updatedProfile = up
+
+		// In the same transaction as the profile pointer. A profile naming an
+		// asset id with no rows behind it is precisely the state that made
+		// every avatar_url a 404, and it must not be reachable by a partial
+		// write either.
+		for _, asset := range avatarAssets {
+			if insertErr := repo.InsertAvatarAsset(ctx, asset); insertErr != nil {
+				return insertErr
+			}
+		}
 
 		_, eventErr := s.events.Write(ctx, tx, contract.Aggregate, contract.EventProfileUpdated,
 			contract.ProfileUpdated{
@@ -265,24 +291,69 @@ func (s *Service) commitAvatarUpdate(
 		return eventErr
 	})
 	if err != nil {
-		s.cleanupKeys(ctx, avatarKeys)
+		s.cleanupAssets(ctx, avatarAssets)
 		return domain.Profile{}, err
 	}
 	return updatedProfile, nil
 }
 
+// cleanupOldAvatar deletes the objects the replaced avatar left behind.
+//
+// It used to rebuild the old keys from `existingProfile.UpdatedAt`, which is a
+// guess and is wrong whenever anything else touched the profile in between --
+// change a display name, then upload a new avatar, and the delete was aimed at
+// a month the file was never in. The old objects then stayed in the bucket for
+// ever, paid for and unreachable.
+//
+// Now the keys are read back from the rows that recorded them. A failure to
+// delete is still swallowed: the new avatar is already committed, and refusing
+// the upload because an old file could not be tidied would trade a storage leak
+// for a lost change.
 func (s *Service) cleanupOldAvatar(
-	ctx context.Context, actorID uuid.UUID, existingProfile domain.Profile, newAssetID uuid.UUID,
+	ctx context.Context, _ uuid.UUID, existingProfile domain.Profile, newAssetID uuid.UUID,
 ) {
 	oldAssetID := existingProfile.AvatarAssetID
 	if oldAssetID == nil || *oldAssetID == newAssetID {
 		return
 	}
 	for _, sz := range AvatarSizes {
-		keyAssetID := fmt.Sprintf("%s_%s", oldAssetID.String(), sz.Suffix)
-		oldKey, buildErr := storage.BuildKey("users", actorID.String(), existingProfile.UpdatedAt, keyAssetID, "jpg")
-		if buildErr == nil {
-			_ = s.storage.Delete(ctx, storage.BucketAvatars, oldKey)
+		asset, err := s.repo.GetAvatarAsset(ctx, *oldAssetID, domain.AvatarVariant(sz.Suffix))
+		if err != nil {
+			continue
 		}
+		_ = s.storage.Delete(ctx, storage.BucketAvatars, asset.ObjectKey)
 	}
+	_ = s.repo.DeleteAvatarAssetsByAssetID(ctx, *oldAssetID)
+}
+
+// AvatarBlob opens the stored avatar behind an asset id.
+//
+// Any signed-in learner may read any avatar. That is deliberate and it is what
+// the leaderboard needs: a ranking that shows forty faces cannot ask forty
+// permission questions, and an avatar is already shown to everyone the learner
+// competes with. The bytes are proxied rather than redirected to a presigned
+// URL so that no bucket URL, signed or otherwise, ever reaches the browser.
+//
+// The caller owns the reader and must close it.
+func (s *Service) AvatarBlob(
+	ctx context.Context, assetID uuid.UUID, variant domain.AvatarVariant,
+) (io.ReadCloser, domain.AvatarAsset, error) {
+	if s.storage == nil {
+		return nil, domain.AvatarAsset{}, apperr.New(
+			apperr.Unavailable, "STORAGE_UNAVAILABLE", "Storage service is not configured.")
+	}
+
+	asset, err := s.repo.GetAvatarAsset(ctx, assetID, variant)
+	if err != nil {
+		return nil, domain.AvatarAsset{}, err
+	}
+
+	body, err := s.storage.Get(ctx, storage.BucketAvatars, asset.ObjectKey)
+	if err != nil {
+		// The row says the object is there and the bucket disagrees. That is a
+		// 404 to the caller -- there is no picture -- but it is not the same
+		// event as an unknown id, and the cause travels with it.
+		return nil, domain.AvatarAsset{}, domain.ErrAvatarAssetNotFound.WithCause(err)
+	}
+	return body, asset, nil
 }

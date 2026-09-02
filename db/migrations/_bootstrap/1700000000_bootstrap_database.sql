@@ -27,12 +27,32 @@ BEGIN
         CREATE EXTENSION IF NOT EXISTS btree_gin;
     END IF;
 
-    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'fluentra_app') THEN
+    -- Roles are cluster-wide, and `IF NOT EXISTS` around CREATE ROLE is a check
+    -- and an act with a gap between them. Two databases in one cluster migrating
+    -- at the same time both see the role missing, both create it, and the loser
+    -- fails the whole migration with
+    --
+    --     duplicate key value violates unique constraint "pg_authid_rolname_index"
+    --
+    -- That is not hypothetical: `go test -tags=integration ./...` runs packages
+    -- in parallel and several of them create and migrate a database of their
+    -- own, so CI failed on it intermittently with nothing to show for it in the
+    -- diff. The window is small, which is what made it a flake rather than a
+    -- bug somebody fixed.
+    --
+    -- Catching the conflict is the only race-free option: PostgreSQL has no
+    -- CREATE ROLE IF NOT EXISTS. Both codes are caught because the two sessions
+    -- can collide either on the name check (duplicate_object) or inside the
+    -- catalogue index (unique_violation), depending on how they interleave.
+    -- Extensions above are already written this way.
+    BEGIN
         CREATE ROLE fluentra_app NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION;
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'fluentra_migrator') THEN
+    EXCEPTION WHEN duplicate_object OR unique_violation THEN NULL;
+    END;
+    BEGIN
         CREATE ROLE fluentra_migrator NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION;
-    END IF;
+    EXCEPTION WHEN duplicate_object OR unique_violation THEN NULL;
+    END;
     EXECUTE format('GRANT fluentra_migrator TO %I', session_user);
     EXECUTE format('GRANT CONNECT ON DATABASE %I TO fluentra_app', current_database());
     -- The statements below run as fluentra_migrator, and creating a schema

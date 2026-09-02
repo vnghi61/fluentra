@@ -2,6 +2,10 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 
 import {
+  GamificationSummarySection,
+  useGamificationSummary,
+} from "@/features/gamification";
+import {
   ContinueLearningCard,
   DashboardError,
   DashboardSkeleton,
@@ -13,6 +17,7 @@ import {
 export function DashboardPage(): React.JSX.Element {
   const { t } = useTranslation();
   const { data, isLoading, isError, error, refetch } = useDashboard();
+  const { data: gamificationData } = useGamificationSummary();
 
   if (isLoading) {
     return <DashboardSkeleton />;
@@ -34,6 +39,13 @@ export function DashboardPage(): React.JSX.Element {
         </p>
       </header>
 
+      {/* Gamification Motivation Section (XP, Level, Streak, Quests, League) */}
+      {gamificationData && (
+        <section aria-label={t("gamification.sectionAria", "Learning Motivation & Progress")}>
+          <GamificationSummarySection summary={gamificationData} />
+        </section>
+      )}
+
       {/* Hero Card: 1. Continue Learning */}
       <section aria-label={t("dashboard.continue.title", "Continue Learning")}>
         <ContinueLearningCard dashboard={data} />
@@ -54,3 +66,4 @@ export function DashboardPage(): React.JSX.Element {
 }
 
 export default DashboardPage;
+

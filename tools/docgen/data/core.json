@@ -411,6 +411,7 @@
       { "method": "PUT", "path": "/api/v1/me/preferences", "permission": "self", "purpose": "Replace preferences", "success": "200" },
       { "method": "POST", "path": "/api/v1/me/avatar/upload-intent", "permission": "self", "purpose": "Get a presigned URL for an avatar upload", "success": "200", "errors": ["UNSUPPORTED_MEDIA_TYPE", "TOO_LARGE"] },
       { "method": "PUT", "path": "/api/v1/me/avatar", "permission": "self", "purpose": "Confirm the uploaded avatar", "success": "200" },
+      { "method": "GET", "path": "/api/v1/storage/avatars/{assetId}", "permission": "authenticated", "purpose": "Serve a stored avatar image", "success": "200", "errors": ["AVATAR_NOT_FOUND"] },
       { "method": "POST", "path": "/api/v1/me/export", "permission": "self", "purpose": "Request a data export", "success": "202" },
       { "method": "GET", "path": "/api/v1/me/export/{id}", "permission": "self", "purpose": "Get status of a data export request", "success": "200" },
       { "method": "DELETE", "path": "/api/v1/me", "permission": "self", "purpose": "Request account deletion (30-day grace)", "success": "202" },

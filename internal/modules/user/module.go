@@ -109,7 +109,7 @@ func New(deps Deps) *Module {
 
 	return &Module{
 		service:        users,
-		handler:        userhttp.NewHandler(users),
+		handler:        userhttp.NewHandler(users, users),
 		worker:         worker,
 		cleaner:        cleaner,
 		deletionExec:   deletionExec,
