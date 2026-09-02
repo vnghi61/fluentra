@@ -494,6 +494,7 @@
     "timeSpentLabel": "Thời gian"
   },
   "gamification": {
+    "sectionAria": "Động lực và tiến độ học tập",
     "activeQuestsCount": "{{count}} nhiệm vụ",
     "badgesCount": "{{count}} đã mở khóa",
     "badgesSubtitle": "Các mốc thành tựu bạn đã đạt được",

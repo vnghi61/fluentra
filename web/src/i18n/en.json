@@ -494,6 +494,7 @@
     "timeSpentLabel": "Time Spent"
   },
   "gamification": {
+    "sectionAria": "Learning Motivation & Progress",
     "activeQuestsCount": "{{count}} active",
     "badgesCount": "{{count}} unlocked",
     "badgesSubtitle": "Milestones you have unlocked",

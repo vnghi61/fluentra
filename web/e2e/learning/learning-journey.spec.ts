@@ -58,7 +58,9 @@ async function completeActivity(page: Page): Promise<void> {
 }
 
 test.describe("Phase 2 learning journeys", () => {
-  test("a learner enrols, finishes a lesson, and sees progress move", async ({ page }) => {
+  test("a learner enrols, finishes a lesson, and sees progress move", async ({
+    page,
+  }) => {
     const learner = newLearner("learn-road");
 
     await registerAndVerify(page, learner);
@@ -98,7 +100,9 @@ test.describe("Phase 2 learning journeys", () => {
     }
 
     // 5. The completion screen is the proof the lesson was finished.
-    await expect(page.getByText("Lesson Completed!")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("Lesson Completed!")).toBeVisible({
+      timeout: 15_000,
+    });
 
     // 6. Progress has moved: the activities the learner just completed are counted.
     await page.goto(routes.progress);
@@ -119,7 +123,9 @@ test.describe("Phase 2 learning journeys", () => {
     ).toBeVisible({ timeout: 15_000 });
   });
 
-  test("a learner clears the review queue with the keyboard alone", async ({ page }) => {
+  test("a learner clears the review queue with the keyboard alone", async ({
+    page,
+  }) => {
     const learner = newLearner("learn-review");
 
     await registerAndVerify(page, learner);
@@ -127,7 +133,9 @@ test.describe("Phase 2 learning journeys", () => {
 
     await page.getByRole("link", { name: "Explore Syllabus" }).click();
     await page.getByRole("link", { name: "Start Lesson" }).first().click();
-    await expect(page).toHaveURL(/\/learn\/lesson\/[0-9a-f-]{36}$/, { timeout: 15_000 });
+    await expect(page).toHaveURL(/\/learn\/lesson\/[0-9a-f-]{36}$/, {
+      timeout: 15_000,
+    });
 
     const counter = page.getByTestId("runner-step-counter");
     await expect(counter).toBeVisible({ timeout: 15_000 });
@@ -199,17 +207,33 @@ test.describe("Phase 2 learning journeys", () => {
     await expect(page.getByText("Reviews Due")).toBeVisible();
     await expect(page.getByText("Skill Progress")).toBeVisible();
 
-    // No gamification anywhere: P10 §7 cut the streak, XP and achievements, and
-    // a dashboard that grows one later should fail here first.
-    await expect(page.getByText(/streak/i)).toHaveCount(0);
-    await expect(page.getByText(/\bXP\b/)).toHaveCount(0);
-    await expect(page.getByText(/achievement/i)).toHaveCount(0);
+    // Gamification is here now, and this assertion used to say the opposite.
+    //
+    // P10 §7 cut the streak, XP and achievements, and this test was written as
+    // the tripwire for that decision: "a dashboard that grows one later should
+    // fail here first". WP14 grew one, deliberately, so the tripwire did its
+    // job and the decision behind it is the thing that changed. It is replaced
+    // rather than deleted, because a cut feature returning without anything
+    // noticing is exactly what it existed to prevent.
+    await expect(
+      page.getByRole("region", { name: /Learning Motivation & Progress/i }),
+    ).toBeVisible();
+
+    // What survives from the original is the rule it was really protecting:
+    // not one card on this screen is a zero dressed as a statistic. A learner
+    // who has done nothing is told what to do, so the streak card says so in
+    // words instead of showing them a 0.
+    await expect(
+      page.getByText(/Practice daily to start your streak/i),
+    ).toBeVisible();
 
     // The empty state is a route to somewhere, not a dead end.
     await page.getByRole("link", { name: "Explore Syllabus" }).click();
     await expect(page).toHaveURL(/\/learn$/);
     await expect(
-      page.getByRole("heading", { name: /Everyday English: A2–B1 Foundations/ }),
+      page.getByRole("heading", {
+        name: /Everyday English: A2–B1 Foundations/,
+      }),
     ).toBeVisible({ timeout: 15_000 });
   });
 });

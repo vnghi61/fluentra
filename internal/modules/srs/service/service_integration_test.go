@@ -214,8 +214,26 @@ func newIntegrationService(t *testing.T, now time.Time, timezone string) (*servi
 // partition, and the outbox carries the event.
 func TestIntegration_AttemptToReviewLoop(t *testing.T) {
 	// A late-evening `now` on purpose: it is the hour at which day-truncated
-	// scheduling used to put `hard` before `again`.
-	now := time.Date(2026, 8, 25, 23, 55, 0, 0, time.UTC)
+	// scheduling used to put `hard` before `again`. The hour is the fixture;
+	// the date must not be.
+	//
+	// It was `time.Date(2026, 8, 25, 23, 55, ...)`, and that passed every day
+	// until the first of September and then failed with
+	//
+	//	no partition of relation "review_logs" found for row
+	//
+	// with nobody touching the code. review_logs is partitioned by month and
+	// `learn.ensure_srs_partitions` only ever creates partitions *forward* from
+	// the current month, which is right for production -- rows are written at
+	// now() -- and fatal for a fixture pinned to a month the window has moved
+	// past. Anchoring to the wall clock keeps the row inside a partition that
+	// exists, today and every day after it.
+	//
+	// Step 4 moves the clock to the card's due date, a few days out. That can
+	// cross into next month, which is covered: the migration and the worker's
+	// rotate job both keep three months ahead.
+	today := time.Now().UTC()
+	now := time.Date(today.Year(), today.Month(), today.Day(), 23, 55, 0, 0, time.UTC)
 	svc, userID := newIntegrationService(t, now, tzUTC)
 	ctx := context.Background()
 
