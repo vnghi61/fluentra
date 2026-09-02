@@ -109,7 +109,10 @@ describe("MyWordsPage", () => {
 
     const box = await screen.findByLabelText(/paste your words/i);
     // Five lines: one duplicate, one page number, one divider.
-    await user.type(box, "leisure{Enter}habit{Enter}leisure{Enter}42{Enter}---");
+    await user.type(
+      box,
+      "leisure{Enter}habit{Enter}leisure{Enter}42{Enter}---",
+    );
 
     // Three of five is what the server's parser will find, and seeing it live
     // is less alarming than being told afterwards.
@@ -120,7 +123,9 @@ describe("MyWordsPage", () => {
 
   it("cannot be submitted with nothing to add", async () => {
     renderPage();
-    const button = await screen.findByRole("button", { name: /add these words/i });
+    const button = await screen.findByRole("button", {
+      name: /add these words/i,
+    });
     expect(button).toBeDisabled();
   });
 

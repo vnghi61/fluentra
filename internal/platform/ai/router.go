@@ -13,6 +13,7 @@ type Router struct {
 	providers *ProviderRegistry
 	cache     ResponseCache
 	cacheTTL  time.Duration
+	usage     UsageRecorder
 }
 
 // RouterOptions configures router behavior.
@@ -21,6 +22,7 @@ type RouterOptions struct {
 	Providers *ProviderRegistry
 	Cache     ResponseCache
 	CacheTTL  time.Duration
+	Usage     UsageRecorder
 }
 
 // NewRouter creates a new AI task router.
@@ -33,16 +35,22 @@ func NewRouter(opts RouterOptions) *Router {
 	if cacheTTL <= 0 {
 		cacheTTL = 24 * time.Hour
 	}
+	usage := opts.Usage
+	if usage == nil {
+		usage = NoopUsageRecorder{}
+	}
 	return &Router{
 		prompts:   opts.Prompts,
 		providers: opts.Providers,
 		cache:     cache,
 		cacheTTL:  cacheTTL,
+		usage:     usage,
 	}
 }
 
 // Complete implements Client interface.
 func (r *Router) Complete(ctx context.Context, req Request) (Response, error) {
+	start := time.Now()
 	if r.prompts == nil {
 		return Response{}, fmt.Errorf("ai: prompt registry not initialized")
 	}
@@ -55,6 +63,14 @@ func (r *Router) Complete(ctx context.Context, req Request) (Response, error) {
 	// 1. Consult exact-hash response cache
 	cacheKey := ComputeCacheKey(req.Task, tmpl.Version, req.Vars)
 	if cached, found := r.cache.Get(ctx, cacheKey); found {
+		r.record(ctx, RequestLog{
+			Task:      req.Task,
+			Provider:  "cache",
+			Model:     cached.Model,
+			LatencyMs: int(time.Since(start).Milliseconds()),
+			Status:    StatusCached,
+			CreatedAt: time.Now(),
+		})
 		return cached, nil
 	}
 
@@ -70,7 +86,17 @@ func (r *Router) Complete(ctx context.Context, req Request) (Response, error) {
 
 	res, err := r.executeWithRetry(ctx, primary, req)
 	if err == nil {
-		r.cache.Set(ctx, cacheKey, res, r.cacheTTL)
+		r.cache.Set(ctx, cacheKey, req.Task, res, r.cacheTTL)
+		r.record(ctx, RequestLog{
+			Task:             req.Task,
+			Provider:         primary.Name(),
+			Model:            res.Model,
+			PromptTokens:     res.PromptTokens,
+			CompletionTokens: res.CompletionTokens,
+			LatencyMs:        int(time.Since(start).Milliseconds()),
+			Status:           StatusSuccess,
+			CreatedAt:        time.Now(),
+		})
 		return res, nil
 	}
 
@@ -84,12 +110,40 @@ func (r *Router) Complete(ctx context.Context, req Request) (Response, error) {
 
 		res, fbErr := r.executeWithRetry(ctx, fallback, req)
 		if fbErr == nil {
-			r.cache.Set(ctx, cacheKey, res, r.cacheTTL)
+			r.cache.Set(ctx, cacheKey, req.Task, res, r.cacheTTL)
+			r.record(ctx, RequestLog{
+				Task:             req.Task,
+				Provider:         fallback.Name(),
+				Model:            res.Model,
+				PromptTokens:     res.PromptTokens,
+				CompletionTokens: res.CompletionTokens,
+				LatencyMs:        int(time.Since(start).Milliseconds()),
+				Status:           StatusSuccess,
+				CreatedAt:        time.Now(),
+			})
 			return res, nil
 		}
+		r.record(ctx, RequestLog{
+			Task:         req.Task,
+			Provider:     primary.Name(),
+			Model:        "",
+			LatencyMs:    int(time.Since(start).Milliseconds()),
+			Status:       StatusFailed,
+			ErrorMessage: fmt.Sprintf("all providers failed (primary: %v, fallback: %v)", err, fbErr),
+			CreatedAt:    time.Now(),
+		})
 		return Response{}, fmt.Errorf("ai: all providers failed (primary: %v, fallback: %w)", err, fbErr)
 	}
 
+	r.record(ctx, RequestLog{
+		Task:         req.Task,
+		Provider:     primary.Name(),
+		Model:        "",
+		LatencyMs:    int(time.Since(start).Milliseconds()),
+		Status:       StatusFailed,
+		ErrorMessage: err.Error(),
+		CreatedAt:    time.Now(),
+	})
 	return Response{}, fmt.Errorf("ai: provider %s failed for task %s: %w", primary.Name(), req.Task, err)
 }
 
@@ -123,4 +177,22 @@ func (r *Router) executeWithRetry(
 		}
 	}
 	return Response{}, lastErr
+}
+
+// record writes one usage entry, and never fails the request that produced it.
+//
+// The answer is already in the caller's hands by the time this runs; refusing it
+// because the bookkeeping failed would trade a served learner for a tidy table.
+// But it is logged rather than discarded: a recorder that errors on every call
+// leaves ai_requests empty, and an empty usage table reads exactly like an
+// unused feature. That is the reading that matters, because WP18's budgets are
+// enforced against these rows -- a quota with nothing recording spend is a quota
+// that never triggers.
+//
+// The nil check NewRouter already makes unnecessary is not repeated here.
+func (r *Router) record(ctx context.Context, entry RequestLog) {
+	if err := r.usage.Record(ctx, entry); err != nil {
+		slog.WarnContext(ctx, "ai: usage recording failed",
+			"error", err, "task", string(entry.Task), "status", string(entry.Status))
+	}
 }

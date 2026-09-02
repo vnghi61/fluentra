@@ -41,7 +41,12 @@ export function DashboardPage(): React.JSX.Element {
 
       {/* Gamification Motivation Section (XP, Level, Streak, Quests, League) */}
       {gamificationData && (
-        <section aria-label={t("gamification.sectionAria", "Learning Motivation & Progress")}>
+        <section
+          aria-label={t(
+            "gamification.sectionAria",
+            "Learning Motivation & Progress",
+          )}
+        >
           <GamificationSummarySection summary={gamificationData} />
         </section>
       )}
@@ -66,4 +71,3 @@ export function DashboardPage(): React.JSX.Element {
 }
 
 export default DashboardPage;
-

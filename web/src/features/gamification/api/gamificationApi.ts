@@ -8,11 +8,9 @@ export type GamificationSummary = components["schemas"]["GamificationSummary"];
 export type Streak = components["schemas"]["Streak"];
 export type Badge = components["schemas"]["Badge"];
 export type Quest = components["schemas"]["Quest"];
-export type LeaderboardResponse =
-  components["schemas"]["LeaderboardResponse"];
+export type LeaderboardResponse = components["schemas"]["LeaderboardResponse"];
 export type LeaderboardEntry = components["schemas"]["LeaderboardEntry"];
-export type SetDailyGoalRequest =
-  components["schemas"]["SetDailyGoalRequest"];
+export type SetDailyGoalRequest = components["schemas"]["SetDailyGoalRequest"];
 export type SetLeaderboardOptInRequest =
   components["schemas"]["SetLeaderboardOptInRequest"];
 
@@ -44,7 +42,9 @@ export const gamificationApi = {
     await apiFetch<void>("/api/v1/me/leaderboard-opt-in", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ opt_in: optIn } satisfies SetLeaderboardOptInRequest),
+      body: JSON.stringify({
+        opt_in: optIn,
+      } satisfies SetLeaderboardOptInRequest),
     });
   },
 
@@ -85,7 +85,9 @@ export function useUseStreakFreeze() {
     mutationFn: () => gamificationApi.useStreakFreeze(),
     onSuccess: (updatedStreak) => {
       queryClient.setQueryData(gamificationKeys.streak(), updatedStreak);
-      void queryClient.invalidateQueries({ queryKey: gamificationKeys.summary() });
+      void queryClient.invalidateQueries({
+        queryKey: gamificationKeys.summary(),
+      });
     },
   });
 }
@@ -118,8 +120,12 @@ export function useSetLeaderboardOptIn() {
   return useMutation({
     mutationFn: (optIn: boolean) => gamificationApi.setLeaderboardOptIn(optIn),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: gamificationKeys.leaderboard() });
-      void queryClient.invalidateQueries({ queryKey: gamificationKeys.summary() });
+      void queryClient.invalidateQueries({
+        queryKey: gamificationKeys.leaderboard(),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: gamificationKeys.summary(),
+      });
     },
   });
 }
@@ -128,10 +134,13 @@ export function useSetLeaderboardOptIn() {
 export function useSetDailyGoal() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (dailyGoalXP: number) => gamificationApi.setDailyGoal(dailyGoalXP),
+    mutationFn: (dailyGoalXP: number) =>
+      gamificationApi.setDailyGoal(dailyGoalXP),
     onSuccess: (summary) => {
       queryClient.setQueryData(gamificationKeys.summary(), summary);
-      void queryClient.invalidateQueries({ queryKey: gamificationKeys.streak() });
+      void queryClient.invalidateQueries({
+        queryKey: gamificationKeys.streak(),
+      });
     },
   });
 }

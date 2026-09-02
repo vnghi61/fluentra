@@ -59,7 +59,9 @@ describe("ProgressPage (P10.5)", () => {
     await renderProgress();
 
     expect(await screen.findByText("Learning Progress")).toBeInTheDocument();
-    expect(screen.getByText("No course progress recorded yet.")).toBeInTheDocument();
+    expect(
+      screen.getByText("No course progress recorded yet."),
+    ).toBeInTheDocument();
 
     // Inactive skills render "Not started yet"
     const notStartedBadges = screen.getAllByText("Not started yet");
@@ -101,7 +103,9 @@ describe("ProgressPage (P10.5)", () => {
     await renderProgress();
 
     expect(await screen.findByText("Course #1")).toBeInTheDocument();
-    expect(screen.getByText("12 / 40 Activities Completed")).toBeInTheDocument();
+    expect(
+      screen.getByText("12 / 40 Activities Completed"),
+    ).toBeInTheDocument();
 
     expect(screen.getByText("Vocabulary")).toBeInTheDocument();
     expect(screen.getByText("B1")).toBeInTheDocument();

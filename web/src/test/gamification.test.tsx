@@ -169,8 +169,12 @@ describe("Gamification Feature Slice (WP14)", () => {
 
     renderWithProviders(<LeaderboardWidget currentLeague="silver" />);
 
-    expect(await screen.findByText(/Compete with learners at your skill level/i)).toBeInTheDocument();
-    const joinButton = screen.getByRole("button", { name: /Join SILVER League/i });
+    expect(
+      await screen.findByText(/Compete with learners at your skill level/i),
+    ).toBeInTheDocument();
+    const joinButton = screen.getByRole("button", {
+      name: /Join SILVER League/i,
+    });
     expect(joinButton).toBeInTheDocument();
 
     await user.click(joinButton);
@@ -198,7 +202,9 @@ describe("Gamification Feature Slice (WP14)", () => {
     renderWithProviders(<BadgesWidget badges={badges} />);
 
     expect(screen.getByText("Seven Days")).toBeInTheDocument();
-    expect(screen.getByText("Studied seven days in a row.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Studied seven days in a row."),
+    ).toBeInTheDocument();
     expect(screen.getByText("Level Ten")).toBeInTheDocument();
     expect(screen.getByText("2 unlocked")).toBeInTheDocument();
   });
@@ -219,7 +225,9 @@ describe("Gamification Feature Slice (WP14)", () => {
     renderWithProviders(<QuestsWidget quests={quests} />);
 
     expect(screen.getByText("Daily Practice")).toBeInTheDocument();
-    expect(screen.getByText("Complete three activities today.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Complete three activities today."),
+    ).toBeInTheDocument();
     expect(screen.getByText("+30 XP")).toBeInTheDocument();
     expect(screen.getByText("2 / 3")).toBeInTheDocument();
   });

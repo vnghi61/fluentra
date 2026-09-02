@@ -3,23 +3,37 @@ import { Award, Lock, Medal } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Badge as UIBadge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Badge } from "../api/gamificationApi";
 
 export interface BadgesWidgetProps {
   badges?: Badge[];
 }
 
-const TIER_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  bronze: { bg: "bg-amber-700/10", text: "text-amber-700 dark:text-amber-400", border: "border-amber-700/30" },
-  silver: { bg: "bg-slate-400/10", text: "text-slate-600 dark:text-slate-300", border: "border-slate-400/30" },
-  gold: { bg: "bg-amber-400/10", text: "text-amber-500 dark:text-amber-300", border: "border-amber-400/30" },
-  platinum: { bg: "bg-indigo-500/10", text: "text-indigo-500 dark:text-indigo-300", border: "border-indigo-500/30" },
+const TIER_COLORS: Record<
+  string,
+  { bg: string; text: string; border: string }
+> = {
+  bronze: {
+    bg: "bg-amber-700/10",
+    text: "text-amber-700 dark:text-amber-400",
+    border: "border-amber-700/30",
+  },
+  silver: {
+    bg: "bg-slate-400/10",
+    text: "text-slate-600 dark:text-slate-300",
+    border: "border-slate-400/30",
+  },
+  gold: {
+    bg: "bg-amber-400/10",
+    text: "text-amber-500 dark:text-amber-300",
+    border: "border-amber-400/30",
+  },
+  platinum: {
+    bg: "bg-indigo-500/10",
+    text: "text-indigo-500 dark:text-indigo-300",
+    border: "border-indigo-500/30",
+  },
 };
 
 const defaultTierStyle = {
@@ -44,12 +58,18 @@ export const BadgesWidget: React.FC<BadgesWidgetProps> = ({ badges = [] }) => {
                 {t("gamification.badgesTitle", "Badges & Achievements")}
               </CardTitle>
               <p className="text-xs text-text-muted">
-                {t("gamification.badgesSubtitle", "Milestones you have unlocked")}
+                {t(
+                  "gamification.badgesSubtitle",
+                  "Milestones you have unlocked",
+                )}
               </p>
             </div>
           </div>
 
-          <UIBadge variant="secondary" className="px-2 py-0.5 text-xs font-semibold">
+          <UIBadge
+            variant="secondary"
+            className="px-2 py-0.5 text-xs font-semibold"
+          >
             {t("gamification.badgesCount", "{{count}} unlocked", {
               count: badges.length,
             })}
@@ -60,7 +80,10 @@ export const BadgesWidget: React.FC<BadgesWidgetProps> = ({ badges = [] }) => {
       <CardContent className="space-y-3 pt-0">
         {badges.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border/80 bg-surface/40 p-4 text-center">
-            <Lock className="mx-auto mb-2 h-6 w-6 text-text-muted" aria-hidden="true" />
+            <Lock
+              className="mx-auto mb-2 h-6 w-6 text-text-muted"
+              aria-hidden="true"
+            />
             <p className="text-xs text-text-muted">
               {t(
                 "gamification.noBadges",
@@ -81,16 +104,25 @@ export const BadgesWidget: React.FC<BadgesWidgetProps> = ({ badges = [] }) => {
                   className={`flex items-start gap-2.5 rounded-xl border p-2.5 ${tierStyle.border} ${tierStyle.bg}`}
                 >
                   <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface shadow-xs">
-                    <Medal className={`h-4 w-4 ${tierStyle.text}`} aria-hidden="true" />
+                    <Medal
+                      className={`h-4 w-4 ${tierStyle.text}`}
+                      aria-hidden="true"
+                    />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-1">
-                      <h4 className="text-xs font-bold text-text truncate">{badge.name}</h4>
-                      <span className={`text-[10px] font-bold uppercase tracking-wider ${tierStyle.text}`}>
+                      <h4 className="text-xs font-bold text-text truncate">
+                        {badge.name}
+                      </h4>
+                      <span
+                        className={`text-[10px] font-bold uppercase tracking-wider ${tierStyle.text}`}
+                      >
                         {badge.tier}
                       </span>
                     </div>
-                    <p className="text-[11px] text-text-muted line-clamp-1">{badge.description}</p>
+                    <p className="text-[11px] text-text-muted line-clamp-1">
+                      {badge.description}
+                    </p>
                   </div>
                 </div>
               );

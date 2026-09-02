@@ -140,7 +140,10 @@ export const ExerciseReorder: React.FC<ExerciseReorderProps> = ({
           <div className="flex items-center gap-1">
             <PronounceButton
               text={expectedAnswer}
-              label={t("runner.listenFullSentence", "Listen to the full sentence")}
+              label={t(
+                "runner.listenFullSentence",
+                "Listen to the full sentence",
+              )}
             />
             <span className="text-sm text-text-muted">
               {t("runner.listenFullSentence", "Listen to the full sentence")}

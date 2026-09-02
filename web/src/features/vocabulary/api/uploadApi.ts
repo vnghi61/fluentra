@@ -63,7 +63,9 @@ export function useSubmitUpload() {
   return useMutation({
     mutationFn: (text: string) => uploadApi.submit(text),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: vocabularyKeys.uploads() });
+      void queryClient.invalidateQueries({
+        queryKey: vocabularyKeys.uploads(),
+      });
     },
   });
 }

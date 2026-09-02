@@ -8,7 +8,8 @@ import { vocabularyKeys } from "./keys";
 export type WordSummary = components["schemas"]["WordSummary"];
 export type WordSearchResponse = components["schemas"]["WordSearchResponse"];
 export type WordDetail = components["schemas"]["WordDetail"];
-export type AddWordToDeckRequest = components["schemas"]["AddWordToDeckRequest"];
+export type AddWordToDeckRequest =
+  components["schemas"]["AddWordToDeckRequest"];
 export type DeckItem = components["schemas"]["DeckItem"];
 
 export const vocabularySearchKeys = {
@@ -27,12 +28,16 @@ export const searchApi = {
       q: q.trim(),
       limit: String(limit),
     });
-    return apiFetch<WordSearchResponse>(`/api/v1/vocabulary/search?${params.toString()}`);
+    return apiFetch<WordSearchResponse>(
+      `/api/v1/vocabulary/search?${params.toString()}`,
+    );
   },
 
   /** Fetch full word detail including its senses */
   async getWordDetail(lemma: string): Promise<WordDetail> {
-    return apiFetch<WordDetail>(`/api/v1/vocabulary/words/${encodeURIComponent(lemma)}`);
+    return apiFetch<WordDetail>(
+      `/api/v1/vocabulary/words/${encodeURIComponent(lemma)}`,
+    );
   },
 
   /** Add an existing dictionary sense to a deck (0 LLM model calls) */

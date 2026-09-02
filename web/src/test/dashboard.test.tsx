@@ -73,14 +73,26 @@ describe("DashboardPage (P10.1)", () => {
 
     // 1. Continue learning hero in not_started state
     expect(screen.getByText("Start Your English Journey")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Explore Syllabus/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Explore Syllabus/i }),
+    ).toBeInTheDocument();
 
     // 2. Reviews due in empty state (0 cards due)
-    expect(screen.getByText("Nothing due right now. New cards are scheduled as you finish lessons.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Go to practice/i })).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Nothing due right now. New cards are scheduled as you finish lessons.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Go to practice/i }),
+    ).toBeInTheDocument();
 
     // 3. Skill progress empty state
-    expect(screen.getByText("No skill data yet. Complete lessons and exercises to build your mastery profile.")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "No skill data yet. Complete lessons and exercises to build your mastery profile.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("renders the 4 states: 2. in_progress (mid-course learner with next activity and reviews due)", async () => {
@@ -120,14 +132,20 @@ describe("DashboardPage (P10.1)", () => {
     await renderDashboard();
 
     // Hero card renders next activity
-    expect(await screen.findByText("Academic Word List - Topic 1")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Academic Word List - Topic 1"),
+    ).toBeInTheDocument();
     expect(screen.getByText("~5 mins")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Continue Lesson/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Continue Lesson/i }),
+    ).toBeInTheDocument();
 
     // Reviews due renders count and start CTA
     expect(screen.getByText("12")).toBeInTheDocument();
     expect(screen.getByText("cards to review today")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Start Review/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Start Review/i }),
+    ).toBeInTheDocument();
 
     // Skill mastery renders progress bars
     expect(screen.getByText("Vocabulary")).toBeInTheDocument();
@@ -160,9 +178,17 @@ describe("DashboardPage (P10.1)", () => {
     await renderDashboard();
 
     expect(await screen.findByText("Course Completed")).toBeInTheDocument();
-    expect(screen.getAllByText("All Caught Up!").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText(/You have completed all activities in your enrolled course/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Review Lessons/i })).toBeInTheDocument();
+    expect(screen.getAllByText("All Caught Up!").length).toBeGreaterThanOrEqual(
+      1,
+    );
+    expect(
+      screen.getByText(
+        /You have completed all activities in your enrolled course/i,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Review Lessons/i }),
+    ).toBeInTheDocument();
   });
 
   it("renders the 4 states: 4. API error with retry functionality", async () => {
@@ -171,7 +197,10 @@ describe("DashboardPage (P10.1)", () => {
       http.get("/api/v1/me/dashboard", () => {
         attempts++;
         if (attempts === 1) {
-          return HttpResponse.json({ title: "Internal Error", status: 500 }, { status: 500 });
+          return HttpResponse.json(
+            { title: "Internal Error", status: 500 },
+            { status: 500 },
+          );
         }
         return HttpResponse.json({
           state: "not_started",
@@ -185,13 +214,17 @@ describe("DashboardPage (P10.1)", () => {
     await renderDashboard();
 
     // Should show error state
-    expect(await screen.findByText("Unable to Load Dashboard")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Unable to Load Dashboard"),
+    ).toBeInTheDocument();
     const retryBtn = screen.getByRole("button", { name: /Try again/i });
     expect(retryBtn).toBeInTheDocument();
 
     // Clicking retry recovers
     await user.click(retryBtn);
-    expect(await screen.findByText("Start Your English Journey")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Start Your English Journey"),
+    ).toBeInTheDocument();
   });
 
   it("renders cleanly in Vietnamese (vi)", async () => {
@@ -208,10 +241,18 @@ describe("DashboardPage (P10.1)", () => {
 
     await renderDashboard();
 
-    expect(await screen.findByText("Chào mừng đến với Fluentra")).toBeInTheDocument();
-    expect(screen.getByText("Bắt đầu hành trình tiếng Anh")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Khám phá giáo trình/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Đến trang luyện tập/i })).toBeInTheDocument();
+    expect(
+      await screen.findByText("Chào mừng đến với Fluentra"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Bắt đầu hành trình tiếng Anh"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Khám phá giáo trình/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Đến trang luyện tập/i }),
+    ).toBeInTheDocument();
   });
 
   it("renders Phase 3 gamification widgets with real numbers", async () => {

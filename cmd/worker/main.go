@@ -710,6 +710,7 @@ func startPracticeGenerator(
 		Model:    cfg.AI.Model,
 		APIKey:   cfg.AI.APIKey,
 		Timeout:  cfg.AI.Timeout,
+		Pool:     pool,
 	})
 	if err != nil {
 		slog.WarnContext(ctx, "no AI client; uploads will be verified against the dictionary alone",
