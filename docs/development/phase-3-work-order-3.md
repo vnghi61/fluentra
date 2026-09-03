@@ -7,6 +7,9 @@ last_verified: 2026-09-02
 
 # Phase 3 — work order 3
 
+> **§2 superseded.** All four items landed in PR #70; the current order is
+> [phase-3-work-order-4.md](phase-3-work-order-4.md).
+
 **Purpose.** The work after `7dc249b`, with four decisions now taken by the product owner.
 It replaces §2 of [phase-3-work-order-2.md](phase-3-work-order-2.md).
 
