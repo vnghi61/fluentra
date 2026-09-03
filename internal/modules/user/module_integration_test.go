@@ -635,13 +635,19 @@ func TestModule_AvatarUploadLifecycle(t *testing.T) {
 		t.Fatalf("avatar_url = %v, want /api/v1/storage/avatars/...", me.Profile.AvatarURL)
 	}
 
-	// And it has to actually serve an image.
+	// And it has to actually serve an image, to a caller with no credentials.
 	//
-	// The prefix check above is all this test used to do, and it is the reason
-	// nobody noticed that no route was mounted at that path for months: a URL
-	// pointing at nothing passes a HasPrefix. Every avatar the API advertised
-	// was a 404 the moment a browser followed it.
-	avatarRecorder := request(t, router, http.MethodGet, *me.Profile.AvatarURL, actorID, "")
+	// Two failures are pinned by this one line. The prefix check above is all
+	// this test used to do, and it is why nobody noticed that no route was
+	// mounted at that path for months: a URL pointing at nothing passes a
+	// HasPrefix. Then the route existed and required a session, and every
+	// avatar answered 401 -- because a browser fetches an image with <img src>,
+	// which sends no Authorization header, and this API has no cookie that
+	// reaches this path.
+	//
+	// `uuid.Nil` is the whole point: it makes this request the one a browser
+	// actually sends. Passing actorID here is what let the second failure ship.
+	avatarRecorder := request(t, router, http.MethodGet, *me.Profile.AvatarURL, uuid.Nil, "")
 	if avatarRecorder.Code != http.StatusOK {
 		t.Fatalf("GET %s: %d, body %s", *me.Profile.AvatarURL, avatarRecorder.Code, avatarRecorder.Body)
 	}

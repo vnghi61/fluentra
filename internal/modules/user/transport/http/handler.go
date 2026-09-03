@@ -86,16 +86,26 @@ func (h *Handler) Routes(router chi.Router) {
 
 // getAvatar streams a stored avatar image.
 func (h *Handler) getAvatar(writer http.ResponseWriter, request *http.Request) {
-	// Any signed-in learner may read any avatar; "any signed-in" is still a
-	// requirement, and it is checked here rather than left to the router group
-	// this happens to be mounted in. Every other handler in this module asks
-	// the same question, and a route whose only protection is its mount point
-	// loses that protection the first time somebody moves it.
-	if _, err := requireActor(request); err != nil {
-		httpx.WriteProblem(writer, request, err)
-		return
-	}
-
+	// No actor is required, and that is not an oversight.
+	//
+	// This route asked for one, and the result was that no avatar ever loaded.
+	// A browser fetches an image with <img src>, which cannot carry an
+	// Authorization header, and this API is Bearer-only -- the sole cookie is
+	// the refresh token, scoped to /api/v1/auth, so nothing on an image request
+	// identifies anybody. Every avatar on every screen answered 401 while the
+	// handler was, from its own point of view, working perfectly.
+	//
+	// So the protection is the id instead: a 128-bit UUID nobody can guess and
+	// that appears only in a response the owner already had. The guarantee is
+	// weaker than "any signed-in learner" by exactly the gap between an
+	// unguessable URL and a session, which is a small step from a decision
+	// already taken -- avatars are shown to every learner on the leaderboard.
+	//
+	// The alternative, a signed URL, was considered and refused: it changes on
+	// every page load, which discards the caching the Cache-Control below is
+	// there to get, and it puts a credential in a query string that lands in
+	// referrer headers and access logs. That trades a theoretical exposure for
+	// a routine one.
 	assetID, err := uuid.Parse(chi.URLParam(request, "assetId"))
 	if err != nil {
 		httpx.WriteProblem(writer, request, apperr.New(

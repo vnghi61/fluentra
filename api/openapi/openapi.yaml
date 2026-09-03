@@ -1361,20 +1361,25 @@ paths:
       operationId: storageGetAvatar
       summary: Serve a stored avatar image.
       description: >-
-        Streams the avatar bytes through the API. Any signed-in learner may read
-        any avatar, which is what a leaderboard needs: it shows the faces of
-        everyone the learner competes with, and cannot ask a permission question
-        per row.
+        Streams the avatar bytes through the API. `GET /me` returns this path in
+        `avatar_url`, and a leaderboard row returns it too.
+
+
+        Unauthenticated, because a browser loads an image with `<img src>` and
+        that request cannot carry an `Authorization` header. This API is
+        Bearer-only -- the one cookie is the refresh token, scoped to
+        `/api/v1/auth` -- so requiring a session here meant every avatar on
+        every screen answered 401. The protection is the 128-bit asset id, which
+        appears only in a response its owner already had.
 
 
         The bytes are proxied rather than answered with a redirect to a
         presigned URL, so no bucket URL ever reaches the browser.
 
 
-        `GET /me` returns this path in `avatar_url`. An asset id with no stored
-        object is a 404, including for avatars uploaded before the object keys
-        were recorded.
-      x-permission: authenticated
+        An asset id with no stored object is a 404, including for avatars
+        uploaded before the object keys were recorded.
+      security: []
       parameters:
         - name: assetId
           in: path
@@ -1411,8 +1416,6 @@ paths:
                 type: string
                 format: binary
               example: (binary JPEG data)
-        '401':
-          $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
         '422':
