@@ -20,7 +20,8 @@ SELECT
     u.*,
     COUNT(*) FILTER (WHERE i.status = 'verified')::integer AS verified_count,
     COUNT(*) FILTER (WHERE i.status = 'rejected')::integer AS rejected_count,
-    COUNT(*) FILTER (WHERE i.status = 'pending')::integer  AS pending_count
+    COUNT(*) FILTER (WHERE i.status = 'pending')::integer  AS pending_count,
+    COUNT(*) FILTER (WHERE i.status = 'queued')::integer   AS queued_count
 FROM skill.vocab_uploads u
 LEFT JOIN skill.vocab_upload_items i ON i.upload_id = u.id
 WHERE u.user_id = $1
@@ -82,7 +83,7 @@ WHERE id = $1 AND status = 'pending';
 UPDATE skill.vocab_uploads SET deck_id = $2 WHERE id = $1;
 
 -- name: CompleteFinishedUploads :many
--- Marks an upload completed once none of its items are still pending.
+-- Marks an upload completed once none of its items are still pending or queued.
 --
 -- Derived rather than counted down as items finish: a counter decremented by
 -- the job is a counter that drifts the first time a run dies half way, and the
@@ -92,7 +93,7 @@ SET status = 'completed', completed_at = now()
 WHERE u.status IN ('pending', 'processing')
   AND NOT EXISTS (
         SELECT 1 FROM skill.vocab_upload_items i
-        WHERE i.upload_id = u.id AND i.status = 'pending'
+        WHERE i.upload_id = u.id AND i.status IN ('pending', 'queued')
       )
   AND EXISTS (SELECT 1 FROM skill.vocab_upload_items i WHERE i.upload_id = u.id)
 RETURNING *;
@@ -100,3 +101,48 @@ RETURNING *;
 -- name: CountVerifiedItemsForUser :one
 SELECT COUNT(*)::bigint FROM skill.vocab_upload_items
 WHERE user_id = $1 AND status = 'verified';
+
+-- name: MarkUploadItemQueued :one
+UPDATE skill.vocab_upload_items
+SET status            = 'queued',
+    word_sense_id     = $2,
+    verified_by_model = '',
+    reason            = $3,
+    attempts          = attempts + 1
+WHERE id = $1 AND status IN ('pending', 'queued')
+RETURNING *;
+
+-- name: ClaimQueuedUploadItems :many
+SELECT * FROM skill.vocab_upload_items
+WHERE status = 'queued'
+  AND attempts < $1
+ORDER BY created_at ASC
+LIMIT $2
+FOR UPDATE SKIP LOCKED;
+
+-- name: MarkQueuedUploadItemVerified :one
+UPDATE skill.vocab_upload_items
+SET status            = 'verified',
+    verified_by_model = $2,
+    verified_at       = now(),
+    reason            = $3,
+    attempts          = attempts + 1
+WHERE id = $1 AND status = 'queued'
+RETURNING *;
+
+-- name: MarkQueuedUploadItemRejected :one
+UPDATE skill.vocab_upload_items
+SET status      = 'rejected',
+    reason      = $2,
+    verified_at = now(),
+    attempts    = attempts + 1
+WHERE id = $1 AND status = 'queued'
+RETURNING *;
+
+-- name: MarkQueuedUploadItemFailed :one
+UPDATE skill.vocab_upload_items
+SET status   = 'failed',
+    reason   = $2,
+    attempts = attempts + 1
+WHERE id = $1 AND status = 'queued'
+RETURNING *;

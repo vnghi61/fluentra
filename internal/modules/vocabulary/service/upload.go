@@ -118,6 +118,7 @@ type Upload struct {
 	Verified    int          `json:"verified_count"`
 	Rejected    int          `json:"rejected_count"`
 	Pending     int          `json:"pending_count"`
+	Queued      int          `json:"queued_count"`
 	DeckID      *uuid.UUID   `json:"deck_id,omitempty"`
 	CreatedAt   time.Time    `json:"created_at"`
 	CompletedAt *time.Time   `json:"completed_at,omitempty"`
@@ -198,6 +199,7 @@ func (u *Uploads) List(ctx context.Context, userID uuid.UUID, limit int32) ([]Up
 			Verified:    int(row.VerifiedCount),
 			Rejected:    int(row.RejectedCount),
 			Pending:     int(row.PendingCount),
+			Queued:      int(row.QueuedCount),
 			DeckID:      row.DeckID,
 			CreatedAt:   row.CreatedAt,
 			CompletedAt: row.CompletedAt,
@@ -239,6 +241,8 @@ func (u *Uploads) Get(ctx context.Context, userID, uploadID uuid.UUID) (Upload, 
 			upload.Rejected++
 		case statusPending:
 			upload.Pending++
+		case statusQueued:
+			upload.Queued++
 		}
 		upload.Items = append(upload.Items, UploadItem{
 			Term:            item.Term,
@@ -252,11 +256,13 @@ func (u *Uploads) Get(ctx context.Context, userID, uploadID uuid.UUID) (Upload, 
 	return upload, nil
 }
 
-// The item statuses, named because they are compared in three places.
+// The item statuses, named because they are compared in multiple places.
 const (
 	statusPending  = "pending"
 	statusVerified = "verified"
 	statusRejected = "rejected"
+	statusQueued   = "queued"
+	statusFailed   = "failed"
 )
 
 // VerifyPending is the scheduled entry point.
@@ -335,6 +341,18 @@ func (u *Uploads) verifyItem(ctx context.Context, item sqlc.SkillVocabUploadItem
 		return false, err
 	}
 
+	if model == "queued" {
+		senseID, err := u.materialise(ctx, item, entry, answer)
+		if err != nil {
+			return false, err
+		}
+		note := "Queued for background enrichment. Your flashcard is ready to review."
+		if _, err := u.repo.MarkUploadItemQueued(ctx, item.ID, &senseID, note); err != nil {
+			return false, fmt.Errorf("mark queued: %w", err)
+		}
+		return false, nil
+	}
+
 	if !answer.Valid {
 		reason := answer.Reason
 		if reason == "" {
@@ -355,9 +373,7 @@ func (u *Uploads) verifyItem(ctx context.Context, item sqlc.SkillVocabUploadItem
 	// learner's own gloss was off, and telling them that is more useful than
 	// refusing the word.
 	note := ""
-	if model == "queued" {
-		note = "Queued for background enrichment. Your flashcard is ready to review."
-	} else if !answer.MeaningMatches && item.ProvidedMeaning != "" {
+	if !answer.MeaningMatches && item.ProvidedMeaning != "" {
 		note = "Added. Your note did not quite match the usual meaning — " +
 			"the definition here is the dictionary's."
 	}
@@ -383,7 +399,7 @@ func (u *Uploads) judge(
 		}
 		return verdict{
 			Valid: true, Lemma: entry.Lemma, PartOfSpeech: entry.PartOfSpeech,
-			CEFRLevel: "B1", Definition: entry.Definition,
+			CEFRLevel: "", Definition: entry.Definition,
 			MeaningMatches: true, Examples: entry.Examples,
 		}, "dictionary", nil
 	}
@@ -403,14 +419,15 @@ func (u *Uploads) judge(
 		if errors.Is(err, ai.ErrQuotaExhausted) {
 			slog.WarnContext(ctx, "ai: quota exhausted across all providers; degrading word to queued flashcard",
 				"term", item.Term)
-			def := firstNonEmpty(item.ProvidedMeaning, entry.Definition, item.Term)
+			def := firstNonEmpty(entry.Definition, item.ProvidedMeaning, item.Term)
+			lemma := firstNonEmpty(entry.Lemma, strings.ToLower(strings.TrimSpace(item.Term)))
 			return verdict{
-				Valid:          true,
-				Lemma:          strings.ToLower(strings.TrimSpace(item.Term)),
-				PartOfSpeech:   firstNonEmpty(entry.PartOfSpeech, "noun"),
-				CEFRLevel:      "B1",
+				Valid:          false,
+				Lemma:          lemma,
+				PartOfSpeech:   entry.PartOfSpeech,
+				CEFRLevel:      "",
 				Definition:     def,
-				MeaningMatches: true,
+				MeaningMatches: false,
 				Examples:       entry.Examples,
 			}, "queued", nil
 		}
@@ -440,7 +457,7 @@ func (u *Uploads) materialise(
 	answer verdict,
 ) (uuid.UUID, error) {
 	lemma := firstNonEmpty(answer.Lemma, entry.Lemma, strings.ToLower(item.Term))
-	pos := firstNonEmpty(answer.PartOfSpeech, entry.PartOfSpeech, "noun")
+	pos := firstNonEmpty(answer.PartOfSpeech, entry.PartOfSpeech)
 	cefr := normaliseCEFR(answer.CEFRLevel)
 	definition := firstNonEmpty(answer.Definition, entry.Definition, item.ProvidedMeaning, item.Term)
 	if definition == "" {
@@ -623,13 +640,14 @@ func nilIfEmpty(value string) *string {
 }
 
 // normaliseCEFR keeps the level inside the check constraint. A model asked for
-// a level will occasionally answer "intermediate".
+// a level will occasionally answer "intermediate". When unassigned (e.g. queued words),
+// it returns empty string rather than fabricating "B1".
 func normaliseCEFR(level string) string {
 	switch strings.ToUpper(strings.TrimSpace(level)) {
 	case "A1", "A2", "B1", "B2", "C1", "C2":
 		return strings.ToUpper(strings.TrimSpace(level))
 	default:
-		return "B1"
+		return ""
 	}
 }
 
@@ -655,4 +673,210 @@ func truncateReason(reason string) string {
 		return reason
 	}
 	return reason[:limit] + "…"
+}
+
+// maxEnrichBatch is the maximum number of queued words to re-verify in one sweep.
+// Bounded to avoid exhausting daily quota and starving live traffic.
+const maxEnrichBatch = 20
+
+// maxEnrichAttempts retires an item that fails re-verification repeatedly.
+const maxEnrichAttempts = 3
+
+func (u *Uploads) quotaPermitsEnrichment(ctx context.Context) bool {
+	qc, ok := u.ai.(ai.QuotaChecker)
+	if !ok {
+		return true
+	}
+	hasQuota, err := qc.HasQuota(ctx, ai.TaskVerifyVocabulary)
+	if err != nil {
+		slog.WarnContext(ctx, "could not check AI quota; yielding enrichment sweep to live traffic",
+			"error", err)
+		return false
+	}
+	if !hasQuota {
+		slog.InfoContext(ctx, "ai: daily quota exhausted; enrichment sweep yielding to live traffic")
+		return false
+	}
+	return true
+}
+
+func (u *Uploads) handleEnrichFailure(ctx context.Context, item sqlc.SkillVocabUploadItem, enrichErr error) {
+	slog.WarnContext(ctx, "queued upload item enrichment failed",
+		"term", item.Term, "attempts", item.Attempts+1, "error", enrichErr)
+
+	if item.Attempts+1 >= maxEnrichAttempts {
+		reason := fmt.Sprintf(
+			"Verification could not be completed after %d attempts; retry stopped to avoid unbounded spend.",
+			maxEnrichAttempts,
+		)
+		if _, failErr := u.repo.MarkQueuedUploadItemFailed(ctx, item.ID, truncateReason(reason)); failErr != nil {
+			slog.WarnContext(ctx, "could not mark queued upload item failed", "item_id", item.ID, "error", failErr)
+		}
+	}
+}
+
+// EnrichQueued sweeps queued words and runs verification against the model
+// when quota is available.
+func (u *Uploads) EnrichQueued(ctx context.Context) error {
+	if u.ai == nil || u.dictionary == nil || u.content == nil || u.author == uuid.Nil {
+		slog.DebugContext(ctx, "upload enrichment is not configured; skipping")
+		return nil
+	}
+
+	if !u.quotaPermitsEnrichment(ctx) {
+		return nil
+	}
+
+	items, err := u.repo.ClaimQueuedUploadItems(ctx, maxEnrichAttempts, maxEnrichBatch)
+	if err != nil {
+		return fmt.Errorf("claim queued upload items: %w", err)
+	}
+	if len(items) == 0 {
+		return nil
+	}
+
+	verified := map[uuid.UUID]int{}
+	for _, item := range items {
+		ok, enrichErr := u.enrichItem(ctx, item)
+		if enrichErr != nil {
+			if errors.Is(enrichErr, ai.ErrQuotaExhausted) {
+				slog.WarnContext(ctx, "ai: quota exhausted during enrichment sweep; yielding to live traffic")
+				break
+			}
+			u.handleEnrichFailure(ctx, item, enrichErr)
+			continue
+		}
+		if ok {
+			verified[item.UserID]++
+		}
+	}
+
+	if _, err := u.repo.CompleteFinishedUploads(ctx); err != nil {
+		slog.WarnContext(ctx, "could not close finished uploads after enrichment", "error", err)
+	}
+
+	for userID, count := range verified {
+		u.publishVerified(ctx, userID, count)
+	}
+	return nil
+}
+
+func (u *Uploads) enrichItem(ctx context.Context, item sqlc.SkillVocabUploadItem) (bool, error) {
+	term := strings.TrimSpace(item.Term)
+	entry, err := u.dictionary.Lookup(ctx, term)
+	switch {
+	case err == nil:
+	case errors.Is(err, repository.ErrWordNotFound):
+		entry = repository.DictionaryEntry{}
+	default:
+		return false, fmt.Errorf("dictionary lookup: %w", err)
+	}
+
+	var answer verdict
+	request := ai.Request{
+		Task: ai.TaskVerifyVocabulary,
+		Vars: map[string]any{
+			"Term":                 item.Term,
+			"ProvidedMeaning":      item.ProvidedMeaning,
+			"DictionaryDefinition": entry.Definition,
+			"PartOfSpeech":         entry.PartOfSpeech,
+			"ExampleCount":         5,
+		},
+	}
+	if err := ai.CompleteJSON(ctx, u.ai, request, &answer); err != nil {
+		return false, err
+	}
+
+	if entry.Lemma != "" {
+		answer.Valid = true
+		if answer.Definition == "" {
+			answer.Definition = entry.Definition
+		}
+		if answer.PartOfSpeech == "" {
+			answer.PartOfSpeech = entry.PartOfSpeech
+		}
+	}
+
+	if !answer.Valid {
+		reason := answer.Reason
+		if reason == "" {
+			reason = fmt.Sprintf("We could not find %q as an English word.", term)
+		}
+		if _, err := u.repo.MarkQueuedUploadItemRejected(ctx, item.ID, truncateReason(reason)); err != nil {
+			return false, fmt.Errorf("mark queued item rejected: %w", err)
+		}
+		return false, nil
+	}
+
+	if item.WordSenseID != nil {
+		if err := u.enrichExistingSense(ctx, item, entry, answer); err != nil {
+			slog.WarnContext(ctx, "could not enrich existing sense", "term", term, "error", err)
+		}
+	}
+
+	note := ""
+	if !answer.MeaningMatches && item.ProvidedMeaning != "" {
+		note = "Added. Your note did not quite match the usual meaning — the definition here is the dictionary's."
+	}
+	if _, err := u.repo.MarkQueuedUploadItemVerified(ctx, item.ID, "ai", note); err != nil {
+		return false, fmt.Errorf("mark queued item verified: %w", err)
+	}
+	return true, nil
+}
+
+func (u *Uploads) enrichExistingSense(
+	ctx context.Context,
+	item sqlc.SkillVocabUploadItem,
+	entry repository.DictionaryEntry,
+	answer verdict,
+) error {
+	lemma := firstNonEmpty(answer.Lemma, entry.Lemma, strings.ToLower(item.Term))
+	pos := firstNonEmpty(answer.PartOfSpeech, entry.PartOfSpeech)
+	cefr := normaliseCEFR(answer.CEFRLevel)
+	definition := firstNonEmpty(answer.Definition, entry.Definition, item.ProvidedMeaning, item.Term)
+
+	_, err := u.repo.InsertWord(ctx, sqlc.InsertWordParams{
+		Lemma:     lemma,
+		Pos:       pos,
+		CefrLevel: cefr,
+		Ipa:       nilIfEmpty(entry.IPA),
+	})
+	if err != nil {
+		return fmt.Errorf("update word: %w", err)
+	}
+
+	examples := answer.Examples
+	if len(examples) == 0 {
+		examples = entry.Examples
+	}
+	body, err := json.Marshal(senseBody(lemma, pos, cefr, definition, item.ProvidedMeaning, entry, examples))
+	if err != nil {
+		return fmt.Errorf("marshal sense body: %w", err)
+	}
+	versionID, err := u.content.EnsurePublished(ctx, contentcontract.AuthorSpec{
+		Slug:      "user-vocab-" + slugPart(lemma) + "-" + slugPart(pos),
+		Kind:      "vocabulary_quiz",
+		CEFRLevel: cefr,
+		Body:      body,
+		AuthorID:  u.author,
+	})
+	if err != nil {
+		return fmt.Errorf("publish enriched content: %w", err)
+	}
+
+	examplesJSON, err := json.Marshal(toDomainExamples(examples))
+	if err != nil {
+		return fmt.Errorf("marshal examples: %w", err)
+	}
+
+	_, err = u.repo.UpdateWordSenseEnrichment(ctx, sqlc.UpdateWordSenseEnrichmentParams{
+		ID:               *item.WordSenseID,
+		ContentVersionID: &versionID,
+		Definition:       definition,
+		Examples:         examplesJSON,
+	})
+	if err != nil {
+		return fmt.Errorf("update sense enrichment: %w", err)
+	}
+	return nil
 }

@@ -400,13 +400,14 @@ func (p *namedProvider) Complete(_ context.Context, _ ai.Request) (ai.Response, 
 const (
 	testPrimaryLLM  = "primary-llm"
 	testFallbackLLM = "fallback-llm"
+	testFromPrimary = "from-primary"
 )
 
 func TestRouter_FallsBackWhenPrimaryQuotaExhausted(t *testing.T) {
 	registry, err := ai.NewRegistry()
 	require.NoError(t, err)
 
-	primary := &namedProvider{name: testPrimaryLLM, res: ai.Response{Text: "from-primary"}}
+	primary := &namedProvider{name: testPrimaryLLM, res: ai.Response{Text: testFromPrimary}}
 	fallback := &namedProvider{name: testFallbackLLM, res: ai.Response{Text: `{"valid": true, "reason": "from-fallback"}`}}
 
 	providerReg := ai.NewProviderRegistry(primary, fallback)
@@ -434,7 +435,7 @@ func TestRouter_AllProvidersQuotaExhausted(t *testing.T) {
 	registry, err := ai.NewRegistry()
 	require.NoError(t, err)
 
-	primary := &namedProvider{name: testPrimaryLLM, res: ai.Response{Text: "from-primary"}}
+	primary := &namedProvider{name: testPrimaryLLM, res: ai.Response{Text: testFromPrimary}}
 	fallback := &namedProvider{name: testFallbackLLM, res: ai.Response{Text: "from-fallback"}}
 
 	providerReg := ai.NewProviderRegistry(primary, fallback)
@@ -454,4 +455,40 @@ func TestRouter_AllProvidersQuotaExhausted(t *testing.T) {
 
 	_, err = router.Complete(context.Background(), verifyRequest())
 	assert.ErrorIs(t, err, ai.ErrQuotaExhausted)
+}
+
+func TestRouter_HasQuota(t *testing.T) {
+	registry, err := ai.NewRegistry()
+	require.NoError(t, err)
+
+	primary := &namedProvider{name: testPrimaryLLM, res: ai.Response{Text: testFromPrimary}}
+	providerReg := ai.NewProviderRegistry(primary)
+
+	budget := &mockBudgetChecker{
+		allowed: map[string]bool{
+			testPrimaryLLM: true,
+		},
+	}
+
+	router := ai.NewRouter(ai.RouterOptions{
+		Prompts:   registry,
+		Providers: providerReg,
+		Budget:    budget,
+	})
+
+	hasQuota, err := router.HasQuota(context.Background(), ai.TaskVerifyVocabulary)
+	require.NoError(t, err)
+	assert.True(t, hasQuota)
+
+	budget.allowed[testPrimaryLLM] = false
+	hasQuota, err = router.HasQuota(context.Background(), ai.TaskVerifyVocabulary)
+	require.NoError(t, err)
+	assert.False(t, hasQuota)
+}
+
+func TestNoopBudgetChecker_GetUsageOverview(t *testing.T) {
+	checker := ai.NoopBudgetChecker{}
+	items, err := checker.GetUsageOverview(context.Background())
+	require.NoError(t, err)
+	assert.Empty(t, items)
 }

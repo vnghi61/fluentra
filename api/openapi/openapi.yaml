@@ -1553,6 +1553,43 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+  /admin/ai/usage:
+    get:
+      tags: [admin]
+      operationId: adminGetAIUsage
+      summary: Retrieve current daily AI usage and quota status across providers.
+      description: >-
+        Returns today's aggregated requests and token counts against configured daily
+        limits for each provider and task pair, indicating which budgets are currently
+        exhausted.
+      x-permission: admin.dashboard
+      responses:
+        '200':
+          description: Usage and budget overview for today.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAIUsageResponse'
+              example:
+                items:
+                  - provider: openai_compatible
+                    task: vocab_verify
+                    requests_today: 45
+                    tokens_today: 12050
+                    daily_request_limit: 1000
+                    daily_token_limit: 500000
+                    is_exhausted: false
+                  - provider: fallback_llm
+                    task: vocab_verify
+                    requests_today: 200
+                    tokens_today: 98000
+                    daily_request_limit: 200
+                    daily_token_limit: 500000
+                    is_exhausted: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /admin/users:
     get:
       tags: [admin]
@@ -4686,6 +4723,10 @@ components:
       $ref: ./components/admin.yaml#/CreateFeatureFlagRequest
     UpdateFeatureFlagRequest:
       $ref: ./components/admin.yaml#/UpdateFeatureFlagRequest
+    AdminAIUsageResponse:
+      $ref: ./components/admin.yaml#/AdminAIUsageResponse
+    AdminAIUsageItem:
+      $ref: ./components/admin.yaml#/AdminAIUsageItem
     CEFRLevel:
       $ref: ./components/content.yaml#/CEFRLevel
     AuthoringStatus:

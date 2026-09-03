@@ -48,6 +48,7 @@ const generateInterval = 12 * time.Hour
 // The upload verification job. Hourly, because an upload a learner is waiting
 // on should feel answered rather than forgotten.
 const verifyUploadsLockID int64 = 1_700_000_271
+const enrichQueuedLockID int64 = 1_700_000_272
 
 const verifyUploadsInterval = time.Hour
 
@@ -171,7 +172,21 @@ func (m *Module) CronJobs() []job.CronJob {
 			Interval: verifyUploadsInterval,
 			Task:     m.uploads.VerifyPending,
 		},
+		{
+			Name:     "vocabulary.enrich_queued",
+			LockID:   enrichQueuedLockID,
+			Interval: verifyUploadsInterval,
+			Task:     m.uploads.EnrichQueued,
+		},
 	}
+}
+
+// EnrichQueued sweeps queued words and verifies them when quota is available.
+func (m *Module) EnrichQueued(ctx context.Context) error {
+	if m.uploads == nil {
+		return nil
+	}
+	return m.uploads.EnrichQueued(ctx)
 }
 
 // GenerateExercises runs the practice generator once. Exported so cmd/worker can

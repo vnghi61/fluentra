@@ -45,6 +45,15 @@ INSERT INTO skill.word_senses (
     $1, $2, $3, $4, $5, $6, $7, now(), now()
 ) RETURNING *;
 
+-- name: UpdateWordSenseEnrichment :one
+UPDATE skill.word_senses
+SET content_version_id = $2,
+    definition         = $3,
+    examples           = $4,
+    updated_at         = now()
+WHERE id = $1
+RETURNING *;
+
 -- name: ListSensesByWordID :many
 SELECT * FROM skill.word_senses
 WHERE word_id = $1

@@ -328,6 +328,7 @@
     "signOut": "Đăng xuất"
   },
   "page": {
+    "aiUsage": "Mức dùng AI",
     "accountSettings": "Cài đặt tài khoản",
     "administration": "Quản trị",
     "anUnexpectedErrorOccurredWhile": "Đã xảy ra lỗi không mong muốn khi tải thông tin tài khoản.",

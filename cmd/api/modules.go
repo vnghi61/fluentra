@@ -11,6 +11,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/fluentra/fluentra/internal/modules/admin"
+	adminsvc "github.com/fluentra/fluentra/internal/modules/admin/service"
 	"github.com/fluentra/fluentra/internal/modules/audit"
 	"github.com/fluentra/fluentra/internal/modules/auth"
 	authdomain "github.com/fluentra/fluentra/internal/modules/auth/domain"
@@ -31,6 +32,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/user"
 	"github.com/fluentra/fluentra/internal/modules/vocabulary"
 	vocabularycontract "github.com/fluentra/fluentra/internal/modules/vocabulary/contract"
+	"github.com/fluentra/fluentra/internal/platform/ai"
 	"github.com/fluentra/fluentra/internal/platform/cache"
 	"github.com/fluentra/fluentra/internal/platform/job"
 	"github.com/fluentra/fluentra/internal/platform/mailer"
@@ -194,6 +196,7 @@ func newIdentity(deps identityDeps) *identity {
 		SessionRevoker: assembled.auth.SessionRevoker(),
 		Audit:          assembled.audit.Recorder(),
 		Guard:          lazyGuard{of: assembled},
+		AIUsage:        aiUsageReporter{of: ai.NewDBBudgetChecker(deps.Pool)},
 	})
 
 	assembled.content = content.New(content.Deps{
@@ -458,4 +461,35 @@ func (a rateLimiterAdapter) Allow(
 		ResetIn:   result.ResetIn,
 		Degraded:  result.Degraded,
 	}, err
+}
+
+// aiUsageReporter adapts platform/ai's budget checker to the port admin
+// declares.
+//
+// The two structs carry the same six fields, and copying them is the price of
+// admin's service and transport layers depending on no platform package at all
+// -- a boundary .go-arch-lint.yml keeps for every admin component and which
+// importing platform/ai to borrow a type would have widened. The conversion
+// belongs here for the same reason lazyGuard does: the composition root is
+// where one component's shape is translated into another's.
+type aiUsageReporter struct{ of *ai.DBBudgetChecker }
+
+func (r aiUsageReporter) GetUsageOverview(ctx context.Context) ([]adminsvc.AIUsageStatus, error) {
+	rows, err := r.of.GetUsageOverview(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]adminsvc.AIUsageStatus, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, adminsvc.AIUsageStatus{
+			Provider:          row.Provider,
+			Task:              row.Task,
+			RequestsToday:     row.RequestsToday,
+			TokensToday:       row.TokensToday,
+			DailyRequestLimit: row.DailyRequestLimit,
+			DailyTokenLimit:   row.DailyTokenLimit,
+			IsExhausted:       row.IsExhausted,
+		})
+	}
+	return out, nil
 }

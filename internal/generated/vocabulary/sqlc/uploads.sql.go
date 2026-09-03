@@ -68,19 +68,66 @@ func (q *Queries) ClaimPendingUploadItems(ctx context.Context, arg ClaimPendingU
 	return items, nil
 }
 
+const claimQueuedUploadItems = `-- name: ClaimQueuedUploadItems :many
+SELECT id, upload_id, user_id, term, provided_meaning, status, reason, word_sense_id, verified_by_model, attempts, created_at, verified_at FROM skill.vocab_upload_items
+WHERE status = 'queued'
+  AND attempts < $1
+ORDER BY created_at ASC
+LIMIT $2
+FOR UPDATE SKIP LOCKED
+`
+
+type ClaimQueuedUploadItemsParams struct {
+	Attempts int32
+	Limit    int32
+}
+
+func (q *Queries) ClaimQueuedUploadItems(ctx context.Context, arg ClaimQueuedUploadItemsParams) ([]SkillVocabUploadItem, error) {
+	rows, err := q.db.Query(ctx, claimQueuedUploadItems, arg.Attempts, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SkillVocabUploadItem
+	for rows.Next() {
+		var i SkillVocabUploadItem
+		if err := rows.Scan(
+			&i.ID,
+			&i.UploadID,
+			&i.UserID,
+			&i.Term,
+			&i.ProvidedMeaning,
+			&i.Status,
+			&i.Reason,
+			&i.WordSenseID,
+			&i.VerifiedByModel,
+			&i.Attempts,
+			&i.CreatedAt,
+			&i.VerifiedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const completeFinishedUploads = `-- name: CompleteFinishedUploads :many
 UPDATE skill.vocab_uploads u
 SET status = 'completed', completed_at = now()
 WHERE u.status IN ('pending', 'processing')
   AND NOT EXISTS (
         SELECT 1 FROM skill.vocab_upload_items i
-        WHERE i.upload_id = u.id AND i.status = 'pending'
+        WHERE i.upload_id = u.id AND i.status IN ('pending', 'queued')
       )
   AND EXISTS (SELECT 1 FROM skill.vocab_upload_items i WHERE i.upload_id = u.id)
 RETURNING id, user_id, raw_text, deck_id, status, item_count, created_at, completed_at
 `
 
-// Marks an upload completed once none of its items are still pending.
+// Marks an upload completed once none of its items are still pending or queued.
 //
 // Derived rather than counted down as items finish: a counter decremented by
 // the job is a counter that drifts the first time a run dies half way, and the
@@ -270,7 +317,8 @@ SELECT
     u.id, u.user_id, u.raw_text, u.deck_id, u.status, u.item_count, u.created_at, u.completed_at,
     COUNT(*) FILTER (WHERE i.status = 'verified')::integer AS verified_count,
     COUNT(*) FILTER (WHERE i.status = 'rejected')::integer AS rejected_count,
-    COUNT(*) FILTER (WHERE i.status = 'pending')::integer  AS pending_count
+    COUNT(*) FILTER (WHERE i.status = 'pending')::integer  AS pending_count,
+    COUNT(*) FILTER (WHERE i.status = 'queued')::integer   AS queued_count
 FROM skill.vocab_uploads u
 LEFT JOIN skill.vocab_upload_items i ON i.upload_id = u.id
 WHERE u.user_id = $1
@@ -296,6 +344,7 @@ type ListUploadsByUserRow struct {
 	VerifiedCount int32
 	RejectedCount int32
 	PendingCount  int32
+	QueuedCount   int32
 }
 
 func (q *Queries) ListUploadsByUser(ctx context.Context, arg ListUploadsByUserParams) ([]ListUploadsByUserRow, error) {
@@ -319,6 +368,7 @@ func (q *Queries) ListUploadsByUser(ctx context.Context, arg ListUploadsByUserPa
 			&i.VerifiedCount,
 			&i.RejectedCount,
 			&i.PendingCount,
+			&i.QueuedCount,
 		); err != nil {
 			return nil, err
 		}
@@ -328,6 +378,149 @@ func (q *Queries) ListUploadsByUser(ctx context.Context, arg ListUploadsByUserPa
 		return nil, err
 	}
 	return items, nil
+}
+
+const markQueuedUploadItemFailed = `-- name: MarkQueuedUploadItemFailed :one
+UPDATE skill.vocab_upload_items
+SET status   = 'failed',
+    reason   = $2,
+    attempts = attempts + 1
+WHERE id = $1 AND status = 'queued'
+RETURNING id, upload_id, user_id, term, provided_meaning, status, reason, word_sense_id, verified_by_model, attempts, created_at, verified_at
+`
+
+type MarkQueuedUploadItemFailedParams struct {
+	ID     uuid.UUID
+	Reason string
+}
+
+func (q *Queries) MarkQueuedUploadItemFailed(ctx context.Context, arg MarkQueuedUploadItemFailedParams) (SkillVocabUploadItem, error) {
+	row := q.db.QueryRow(ctx, markQueuedUploadItemFailed, arg.ID, arg.Reason)
+	var i SkillVocabUploadItem
+	err := row.Scan(
+		&i.ID,
+		&i.UploadID,
+		&i.UserID,
+		&i.Term,
+		&i.ProvidedMeaning,
+		&i.Status,
+		&i.Reason,
+		&i.WordSenseID,
+		&i.VerifiedByModel,
+		&i.Attempts,
+		&i.CreatedAt,
+		&i.VerifiedAt,
+	)
+	return i, err
+}
+
+const markQueuedUploadItemRejected = `-- name: MarkQueuedUploadItemRejected :one
+UPDATE skill.vocab_upload_items
+SET status      = 'rejected',
+    reason      = $2,
+    verified_at = now(),
+    attempts    = attempts + 1
+WHERE id = $1 AND status = 'queued'
+RETURNING id, upload_id, user_id, term, provided_meaning, status, reason, word_sense_id, verified_by_model, attempts, created_at, verified_at
+`
+
+type MarkQueuedUploadItemRejectedParams struct {
+	ID     uuid.UUID
+	Reason string
+}
+
+func (q *Queries) MarkQueuedUploadItemRejected(ctx context.Context, arg MarkQueuedUploadItemRejectedParams) (SkillVocabUploadItem, error) {
+	row := q.db.QueryRow(ctx, markQueuedUploadItemRejected, arg.ID, arg.Reason)
+	var i SkillVocabUploadItem
+	err := row.Scan(
+		&i.ID,
+		&i.UploadID,
+		&i.UserID,
+		&i.Term,
+		&i.ProvidedMeaning,
+		&i.Status,
+		&i.Reason,
+		&i.WordSenseID,
+		&i.VerifiedByModel,
+		&i.Attempts,
+		&i.CreatedAt,
+		&i.VerifiedAt,
+	)
+	return i, err
+}
+
+const markQueuedUploadItemVerified = `-- name: MarkQueuedUploadItemVerified :one
+UPDATE skill.vocab_upload_items
+SET status            = 'verified',
+    verified_by_model = $2,
+    verified_at       = now(),
+    reason            = $3,
+    attempts          = attempts + 1
+WHERE id = $1 AND status = 'queued'
+RETURNING id, upload_id, user_id, term, provided_meaning, status, reason, word_sense_id, verified_by_model, attempts, created_at, verified_at
+`
+
+type MarkQueuedUploadItemVerifiedParams struct {
+	ID              uuid.UUID
+	VerifiedByModel string
+	Reason          string
+}
+
+func (q *Queries) MarkQueuedUploadItemVerified(ctx context.Context, arg MarkQueuedUploadItemVerifiedParams) (SkillVocabUploadItem, error) {
+	row := q.db.QueryRow(ctx, markQueuedUploadItemVerified, arg.ID, arg.VerifiedByModel, arg.Reason)
+	var i SkillVocabUploadItem
+	err := row.Scan(
+		&i.ID,
+		&i.UploadID,
+		&i.UserID,
+		&i.Term,
+		&i.ProvidedMeaning,
+		&i.Status,
+		&i.Reason,
+		&i.WordSenseID,
+		&i.VerifiedByModel,
+		&i.Attempts,
+		&i.CreatedAt,
+		&i.VerifiedAt,
+	)
+	return i, err
+}
+
+const markUploadItemQueued = `-- name: MarkUploadItemQueued :one
+UPDATE skill.vocab_upload_items
+SET status            = 'queued',
+    word_sense_id     = $2,
+    verified_by_model = '',
+    reason            = $3,
+    attempts          = attempts + 1
+WHERE id = $1 AND status IN ('pending', 'queued')
+RETURNING id, upload_id, user_id, term, provided_meaning, status, reason, word_sense_id, verified_by_model, attempts, created_at, verified_at
+`
+
+type MarkUploadItemQueuedParams struct {
+	ID          uuid.UUID
+	WordSenseID *uuid.UUID
+	Reason      string
+}
+
+func (q *Queries) MarkUploadItemQueued(ctx context.Context, arg MarkUploadItemQueuedParams) (SkillVocabUploadItem, error) {
+	row := q.db.QueryRow(ctx, markUploadItemQueued, arg.ID, arg.WordSenseID, arg.Reason)
+	var i SkillVocabUploadItem
+	err := row.Scan(
+		&i.ID,
+		&i.UploadID,
+		&i.UserID,
+		&i.Term,
+		&i.ProvidedMeaning,
+		&i.Status,
+		&i.Reason,
+		&i.WordSenseID,
+		&i.VerifiedByModel,
+		&i.Attempts,
+		&i.CreatedAt,
+		&i.VerifiedAt,
+	)
+	return i, err
 }
 
 const markUploadItemRejected = `-- name: MarkUploadItemRejected :one

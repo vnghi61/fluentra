@@ -734,6 +734,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/ai/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve current daily AI usage and quota status across providers.
+         * @description Returns today's aggregated requests and token counts against configured daily limits for each provider and task pair, indicating which budgets are currently exhausted.
+         */
+        get: operations["adminGetAIUsage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/users": {
         parameters: {
             query?: never;
@@ -2969,6 +2989,36 @@ export interface components {
             /** @example Second-generation streak calculation. */
             description: string;
         };
+        /** @description Current AI provider usage and budget status for today. */
+        AdminAIUsageResponse: {
+            items: components["schemas"]["AdminAIUsageItem"][];
+        };
+        /** @description Usage and budget status for a specific provider and task pair. */
+        AdminAIUsageItem: {
+            /** @example openai_compatible */
+            provider: string;
+            /** @example vocab_verify */
+            task: string;
+            /** @example 45 */
+            requests_today: number;
+            /** @example 12050 */
+            tokens_today: number;
+            /**
+             * @description Configured daily request limit, or null if unconstrained.
+             * @example 1000
+             */
+            daily_request_limit?: number | null;
+            /**
+             * @description Configured daily token limit, or null if unconstrained.
+             * @example 500000
+             */
+            daily_token_limit?: number | null;
+            /**
+             * @description True if today's usage has reached or exceeded any configured limit.
+             * @example false
+             */
+            is_exhausted: boolean;
+        };
         /**
          * @description CEFR proficiency level.
          * @enum {string}
@@ -3705,6 +3755,11 @@ export interface components {
             /** @example 1 */
             pending_count: number;
             /**
+             * @description How many words are queued for background enrichment.
+             * @example 0
+             */
+            queued_count?: number;
+            /**
              * Format: uuid
              * @description The learner's own deck the verified words land in. Null until the first word is verified — creating an empty deck for a paste that turns out to be nonsense leaves a deck nobody asked for.
              */
@@ -3731,7 +3786,7 @@ export interface components {
              * @example verified
              * @enum {string}
              */
-            status: "pending" | "verified" | "rejected" | "failed";
+            status: "pending" | "verified" | "rejected" | "failed" | "queued";
             /**
              * @description Why it was rejected, or a note about an accepted word whose meaning did not quite match. Addressed to the learner. Empty while pending.
              * @example
@@ -5488,6 +5543,52 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    adminGetAIUsage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Usage and budget overview for today. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "provider": "openai_compatible",
+                     *           "task": "vocab_verify",
+                     *           "requests_today": 45,
+                     *           "tokens_today": 12050,
+                     *           "daily_request_limit": 1000,
+                     *           "daily_token_limit": 500000,
+                     *           "is_exhausted": false
+                     *         },
+                     *         {
+                     *           "provider": "fallback_llm",
+                     *           "task": "vocab_verify",
+                     *           "requests_today": 200,
+                     *           "tokens_today": 98000,
+                     *           "daily_request_limit": 200,
+                     *           "daily_token_limit": 500000,
+                     *           "is_exhausted": true
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["AdminAIUsageResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
         };
     };
     adminListUsers: {

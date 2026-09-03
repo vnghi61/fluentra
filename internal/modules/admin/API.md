@@ -33,6 +33,7 @@ Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR
 | `POST` | `/api/v1/admin/users/{id}/reinstate` | `user.reinstate` | Return a suspended account to active |
 | `POST` | `/api/v1/admin/users/{id}/sessions/revoke` | `user.manage_sessions` | Sign a user out everywhere |
 | `GET` | `/api/v1/admin/flags` | `system.flags` | List every feature flag |
+| `GET` | `/api/v1/admin/ai/usage` | `admin.dashboard` | Read today's AI usage and budget headroom per provider |
 | `POST` | `/api/v1/admin/flags` | `system.flags` | Create a feature flag |
 | `PUT` | `/api/v1/admin/flags/{key}` | `system.flags` | Update a feature flag |
 | `DELETE` | `/api/v1/admin/flags/{key}` | `system.flags` | Delete a feature flag |
@@ -111,6 +112,17 @@ List every feature flag
 | Success | 200 |
 | Errors | standard set |
 | Notes | Unpaginated — the set is small by design |
+
+### `GET /api/v1/admin/ai/usage`
+
+Read today's AI usage and budget headroom per provider
+
+| | |
+|---|---|
+| Permission | `admin.dashboard` |
+| Success | 200 |
+| Errors | standard set |
+| Notes | A read over ai_usage and ai_budgets; shows an exhausted provider before a learner meets one |
 
 ### `POST /api/v1/admin/flags`
 

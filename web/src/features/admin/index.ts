@@ -5,3 +5,4 @@ export * from "./components/AdminUserDetailModal";
 export * from "./components/AdminActionReasonModal";
 export * from "./components/AdminFeatureFlags";
 export * from "./components/CreateFeatureFlagModal";
+export * from "./components/AdminAIUsage";
