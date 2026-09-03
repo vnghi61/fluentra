@@ -6,7 +6,7 @@ status: DONE
 phase: 3
 owner: "@learning-team"
 schema: learn
-tables: [xp_events, streaks, badges, badges_earned, quests, user_quests, leaderboard_snapshots]
+tables: [xp_events, xp_activity_high_water, streaks, badges, badges_earned, quests, user_quests, leaderboard_snapshots]
 depends_on: [learning, srs, user, cache, job, notification]
 depended_on_by: [notification, analytics, admin]
 spec_version: 1.0.0
@@ -189,7 +189,7 @@ and fails `go-arch-lint` in CI.
 4. **BR-GAMIFICATION-04** — Freezes are limited and replenish slowly; a freeze is consumed automatically at the day boundary if the goal was missed and one is available.
 5. **BR-GAMIFICATION-05** — Anti-farming: XP per source type is capped daily, and repeating the same activity yields diminishing returns.
 6. **BR-GAMIFICATION-06** — Badges are idempotent — earning conditions are re-evaluated safely and a badge is awarded once.
-7. **BR-GAMIFICATION-07** — Leaderboards are opt-in, display names only, and are league-based so a learner competes with peers rather than with the whole platform.
+7. **BR-GAMIFICATION-07** — Leaderboards are opt-in, carry the display name and avatar only, and are league-based so a learner competes with peers rather than with the whole platform.
 8. **BR-GAMIFICATION-08** — Gamification never blocks learning: running out of XP, freezes or league position must not prevent any learning action.
 9. **BR-GAMIFICATION-09** — Streak reminders respect quiet hours and are sent by `notification`, not from here.
 <!-- END GENERATED: rules -->

@@ -3,6 +3,7 @@ package service_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
@@ -25,13 +26,14 @@ import (
 // schema enforces: the XP idempotency key, and one badge per learner. The rest
 // of the surface is the minimum each test needs.
 type fakeRepo struct {
-	events  []sqlc.LearnXpEvent
-	streak  sqlc.LearnStreak
-	badges  []sqlc.LearnBadge
-	earned  map[uuid.UUID]bool
-	quests  []sqlc.ListOpenUserQuestsRow
-	broken  bool
-	freezes int
+	events    []sqlc.LearnXpEvent
+	streak    sqlc.LearnStreak
+	badges    []sqlc.LearnBadge
+	earned    map[uuid.UUID]bool
+	quests    []sqlc.ListOpenUserQuestsRow
+	broken    bool
+	freezes   int
+	highWater map[string]sqlc.GetActivityHighWaterRow
 
 	// Recorded for assertions.
 	extendCalls int
@@ -40,16 +42,20 @@ type fakeRepo struct {
 
 func newFakeRepo() *fakeRepo {
 	return &fakeRepo{
-		streak: sqlc.LearnStreak{DailyGoalXp: 50, FreezesAvailable: 2},
-		earned: map[uuid.UUID]bool{},
+		streak:    sqlc.LearnStreak{DailyGoalXp: 50, FreezesAvailable: 2},
+		earned:    map[uuid.UUID]bool{},
+		highWater: map[string]sqlc.GetActivityHighWaterRow{},
 	}
 }
 
 func (f *fakeRepo) AwardXP(_ context.Context, arg sqlc.AwardXPParams) (sqlc.LearnXpEvent, error) {
 	f.awardCalls++
-	// uq_xp_events_idempotency, in memory.
+	// uq_xp_events_unscored, in memory.
 	for _, existing := range f.events {
-		if existing.UserID == arg.UserID && existing.Source == arg.Source && existing.SourceID == arg.SourceID {
+		if existing.Source != "activity" &&
+			existing.UserID == arg.UserID &&
+			existing.Source == arg.Source &&
+			existing.SourceID == arg.SourceID {
 			return sqlc.LearnXpEvent{}, pgx.ErrNoRows
 		}
 	}
@@ -59,6 +65,39 @@ func (f *fakeRepo) AwardXP(_ context.Context, arg sqlc.AwardXPParams) (sqlc.Lear
 	}
 	f.events = append(f.events, event)
 	return event, nil
+}
+
+func (f *fakeRepo) GetActivityHighWater(
+	_ context.Context, userID uuid.UUID, activityID string,
+) (sqlc.GetActivityHighWaterRow, error) {
+	if f.highWater == nil {
+		return sqlc.GetActivityHighWaterRow{}, pgx.ErrNoRows
+	}
+	key := fmt.Sprintf("%s:%s", userID, activityID)
+	hw, ok := f.highWater[key]
+	if !ok {
+		return sqlc.GetActivityHighWaterRow{}, pgx.ErrNoRows
+	}
+	return hw, nil
+}
+
+func (f *fakeRepo) UpsertActivityHighWater(
+	_ context.Context, arg sqlc.UpsertActivityHighWaterParams,
+) (sqlc.LearnXpActivityHighWater, error) {
+	if f.highWater == nil {
+		f.highWater = make(map[string]sqlc.GetActivityHighWaterRow)
+	}
+	key := fmt.Sprintf("%s:%s", arg.UserID, arg.ActivityID)
+	f.highWater[key] = sqlc.GetActivityHighWaterRow{
+		BestScore: arg.BestScore,
+		XpGranted: arg.XpGranted,
+	}
+	return sqlc.LearnXpActivityHighWater{
+		UserID:     arg.UserID,
+		ActivityID: arg.ActivityID,
+		BestScore:  arg.BestScore,
+		XpGranted:  arg.XpGranted,
+	}, nil
 }
 
 func (f *fakeRepo) TotalXP(_ context.Context, userID uuid.UUID) (int64, error) {
@@ -315,7 +354,7 @@ func TestAward_PaysOnceForOneAction(t *testing.T) {
 	user, activity := uuid.New(), uuid.New().String()
 
 	first, err := svc.Award(context.Background(), contract.AwardRequest{
-		UserID: user, Source: string(domain.SourceActivity), SourceID: activity,
+		UserID: user, Source: string(domain.SourceActivity), SourceID: activity, Score: perfectScore(),
 	})
 	require.NoError(t, err)
 	assert.True(t, first.Awarded)
@@ -323,7 +362,7 @@ func TestAward_PaysOnceForOneAction(t *testing.T) {
 
 	// BR-GAMIFICATION-01: the same event redelivered.
 	second, err := svc.Award(context.Background(), contract.AwardRequest{
-		UserID: user, Source: string(domain.SourceActivity), SourceID: activity,
+		UserID: user, Source: string(domain.SourceActivity), SourceID: activity, Score: perfectScore(),
 	})
 	require.NoError(t, err)
 	assert.False(t, second.Awarded, "a redelivered event must not award again")
@@ -365,7 +404,7 @@ func TestAward_StopsAtTheDailyCapWithoutFailing(t *testing.T) {
 	})
 
 	outcome, err := svc.Award(context.Background(), contract.AwardRequest{
-		UserID: user, Source: string(domain.SourceActivity), SourceID: uuid.New().String(),
+		UserID: user, Source: string(domain.SourceActivity), SourceID: uuid.New().String(), Score: perfectScore(),
 	})
 	require.NoError(t, err, "a capped award is information, not a failure")
 	assert.False(t, outcome.Awarded)
@@ -405,7 +444,7 @@ func TestAward_EarnsABadgeExactlyOnce(t *testing.T) {
 
 	for i := 0; i < 3; i++ {
 		_, err := svc.Award(context.Background(), contract.AwardRequest{
-			UserID: user, Source: string(domain.SourceActivity), SourceID: uuid.New().String(),
+			UserID: user, Source: string(domain.SourceActivity), SourceID: uuid.New().String(), Score: perfectScore(),
 		})
 		require.NoError(t, err)
 	}
@@ -426,7 +465,7 @@ func TestAward_ABadgeWithAnUnknownCriteriaKindIsNotAwarded(t *testing.T) {
 	svc := newService(repo)
 
 	_, err := svc.Award(context.Background(), contract.AwardRequest{
-		UserID: uuid.New(), Source: string(domain.SourceActivity), SourceID: "a",
+		UserID: uuid.New(), Source: string(domain.SourceActivity), SourceID: "a", Score: perfectScore(),
 	})
 	require.NoError(t, err, "an unearnable badge must not fail the award")
 	assert.False(t, repo.earned[badgeID])
@@ -442,7 +481,7 @@ func TestRecordActivity_ExtendsTheStreakOnlyOnceTheGoalIsMet(t *testing.T) {
 
 	// 10 XP: short of the goal.
 	_, err := svc.RecordActivity(context.Background(), contract.AwardRequest{
-		UserID: user, Source: string(domain.SourceActivity), SourceID: uuid.New().String(),
+		UserID: user, Source: string(domain.SourceActivity), SourceID: uuid.New().String(), Score: perfectScore(),
 	})
 	require.NoError(t, err)
 	assert.Zero(t, repo.extendCalls, "BR-GAMIFICATION-03: opening the app is not a streak day")
@@ -450,7 +489,7 @@ func TestRecordActivity_ExtendsTheStreakOnlyOnceTheGoalIsMet(t *testing.T) {
 	// Two more clears it.
 	for i := 0; i < 2; i++ {
 		_, err := svc.RecordActivity(context.Background(), contract.AwardRequest{
-			UserID: user, Source: string(domain.SourceActivity), SourceID: uuid.New().String(),
+			UserID: user, Source: string(domain.SourceActivity), SourceID: uuid.New().String(), Score: perfectScore(),
 		})
 		require.NoError(t, err)
 	}
@@ -466,7 +505,7 @@ func TestRecordActivity_DoesNotExtendTwiceInOneDay(t *testing.T) {
 
 	for i := 0; i < 4; i++ {
 		_, err := svc.RecordActivity(context.Background(), contract.AwardRequest{
-			UserID: user, Source: string(domain.SourceActivity), SourceID: uuid.New().String(),
+			UserID: user, Source: string(domain.SourceActivity), SourceID: uuid.New().String(), Score: perfectScore(),
 		})
 		require.NoError(t, err)
 	}
@@ -555,13 +594,15 @@ func TestSweepStreaks_LeavesALiveStreakAlone(t *testing.T) {
 
 // ---------------------------------------------------------------- consumer
 
+const testSkillVocabulary = "vocabulary"
+
 func TestConsume_ActivityCompletedAwardsOncePerActivity(t *testing.T) {
 	repo := newFakeRepo()
 	svc := newService(repo)
 	user, activity := uuid.New(), uuid.New()
 
 	payload, err := json.Marshal(learningcontract.ActivityCompleted{
-		UserID: user, ActivityID: activity, Score: 100, Skill: "vocabulary",
+		UserID: user, ActivityID: activity, Score: 100, Skill: testSkillVocabulary,
 	})
 	require.NoError(t, err)
 
@@ -576,6 +617,64 @@ func TestConsume_ActivityCompletedAwardsOncePerActivity(t *testing.T) {
 	require.NoError(t, svc.Consume(context.Background(), delivery))
 
 	total, err := repo.TotalXP(context.Background(), user)
+	require.NoError(t, err)
+	assert.Equal(t, int64(10), total)
+}
+
+func TestActivity_GradedHighWaterMark(t *testing.T) {
+	repo := newFakeRepo()
+	svc := newService(repo)
+	user, activity := uuid.New(), uuid.New()
+
+	// 1. 80/100 grants 8
+	payload80, err := json.Marshal(learningcontract.ActivityCompleted{
+		UserID: user, ActivityID: activity, Score: 80, Skill: testSkillVocabulary,
+	})
+	require.NoError(t, err)
+	require.NoError(t, svc.Consume(context.Background(), service.Delivery{
+		ID: uuid.New(), Topic: learningcontract.EventActivityCompleted, Payload: payload80,
+	}))
+	total, err := repo.TotalXP(context.Background(), user)
+	require.NoError(t, err)
+	assert.Equal(t, int64(8), total)
+
+	// 2. Redelivered 80/100 grants 0 (still 8)
+	require.NoError(t, svc.Consume(context.Background(), service.Delivery{
+		ID: uuid.New(), Topic: learningcontract.EventActivityCompleted, Payload: payload80,
+	}))
+	total, err = repo.TotalXP(context.Background(), user)
+	require.NoError(t, err)
+	assert.Equal(t, int64(8), total)
+
+	// 3. Retaking to 100/100 grants 2, not 10 (total becomes 10)
+	payload100, err := json.Marshal(learningcontract.ActivityCompleted{
+		UserID: user, ActivityID: activity, Score: 100, Skill: testSkillVocabulary,
+	})
+	require.NoError(t, err)
+	require.NoError(t, svc.Consume(context.Background(), service.Delivery{
+		ID: uuid.New(), Topic: learningcontract.EventActivityCompleted, Payload: payload100,
+	}))
+	total, err = repo.TotalXP(context.Background(), user)
+	require.NoError(t, err)
+	assert.Equal(t, int64(10), total)
+
+	// 4. A third attempt at 100/100 grants nothing
+	require.NoError(t, svc.Consume(context.Background(), service.Delivery{
+		ID: uuid.New(), Topic: learningcontract.EventActivityCompleted, Payload: payload100,
+	}))
+	total, err = repo.TotalXP(context.Background(), user)
+	require.NoError(t, err)
+	assert.Equal(t, int64(10), total)
+
+	// 5. A worse retake (70/100) grants 0 and takes nothing back
+	payload70, err := json.Marshal(learningcontract.ActivityCompleted{
+		UserID: user, ActivityID: activity, Score: 70, Skill: testSkillVocabulary,
+	})
+	require.NoError(t, err)
+	require.NoError(t, svc.Consume(context.Background(), service.Delivery{
+		ID: uuid.New(), Topic: learningcontract.EventActivityCompleted, Payload: payload70,
+	}))
+	total, err = repo.TotalXP(context.Background(), user)
 	require.NoError(t, err)
 	assert.Equal(t, int64(10), total)
 }
@@ -614,7 +713,7 @@ func TestConsume_AdvancesAndPaysAQuest(t *testing.T) {
 
 	send := func() {
 		payload, err := json.Marshal(learningcontract.ActivityCompleted{
-			UserID: user, ActivityID: uuid.New(),
+			UserID: user, ActivityID: uuid.New(), Score: 100,
 		})
 		require.NoError(t, err)
 		require.NoError(t, svc.Consume(context.Background(), service.Delivery{
@@ -632,4 +731,19 @@ func TestConsume_AdvancesAndPaysAQuest(t *testing.T) {
 	total, err := repo.TotalXP(context.Background(), user)
 	require.NoError(t, err)
 	assert.Equal(t, int64(50), total)
+}
+
+// perfectScore is the graded result these tests assume when they are about
+// something else -- the daily cap, a badge, a streak.
+//
+// A graded award has to carry one. The service used to invent a score when none
+// was given, defaulting to a perfect 100, and that default was what kept these
+// tests passing after the flat-10 rule was replaced: 100/10 is 10, the number
+// they were originally written against. It also wrote best_score = 100 into a
+// table whose whole purpose is that the value never falls, so an invented
+// perfect score silenced every genuine attempt afterwards. Stating it here
+// keeps the tests honest about what they are assuming.
+func perfectScore() *int {
+	score := 100
+	return &score
 }

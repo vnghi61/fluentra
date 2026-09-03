@@ -291,6 +291,7 @@ func run(ctx context.Context) error {
 		return err
 	}
 	cron.Register(outboxPruner.CronJob())
+	cron.Register(ai.NewCachePruner(pool).CronJob())
 
 	workers := river.NewWorkers()
 	if err := startModules(

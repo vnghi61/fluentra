@@ -83,12 +83,12 @@ func (c *DBCache) Get(ctx context.Context, key string) (Response, bool) {
 	}
 
 	const query = `
-		SELECT response_text, model
+		SELECT response_text, model, provider
 		FROM ai.ai_cache_entries
 		WHERE cache_key = $1 AND expires_at > now()`
 
-	var text, model string
-	err := c.pool.QueryRow(ctx, query, key).Scan(&text, &model)
+	var text, model, provider string
+	err := c.pool.QueryRow(ctx, query, key).Scan(&text, &model, &provider)
 	if err != nil {
 		// A miss and a broken cache look identical to the caller, and they
 		// should: either way the provider answers and the learner is served.
@@ -102,8 +102,9 @@ func (c *DBCache) Get(ctx context.Context, key string) (Response, bool) {
 		return Response{}, false
 	}
 	return Response{
-		Text:  text,
-		Model: model,
+		Text:     text,
+		Model:    model,
+		Provider: provider,
 	}, true
 }
 
@@ -115,11 +116,12 @@ func (c *DBCache) Set(ctx context.Context, key string, task Task, res Response, 
 
 	const upsert = `
 		INSERT INTO ai.ai_cache_entries (
-			cache_key, task, model, response_text, expires_at, created_at
-		) VALUES ($1, $2, $3, $4, $5, now())
+			cache_key, task, model, provider, response_text, expires_at, created_at
+		) VALUES ($1, $2, $3, $4, $5, $6, now())
 		ON CONFLICT (cache_key) DO UPDATE
 		SET task = EXCLUDED.task,
 		    model = EXCLUDED.model,
+		    provider = EXCLUDED.provider,
 		    response_text = EXCLUDED.response_text,
 		    expires_at = EXCLUDED.expires_at,
 		    created_at = now()`
@@ -129,10 +131,22 @@ func (c *DBCache) Set(ctx context.Context, key string, task Task, res Response, 
 	// refusing it because the cache could not be written would trade a saved
 	// call for a lost one. Logged, though -- a write that always fails is a
 	// cache that never fills, and the only symptom is the bill.
-	if _, err := c.pool.Exec(ctx, upsert, key, string(task), res.Model, res.Text, expiresAt); err != nil {
+	if _, err := c.pool.Exec(ctx, upsert, key, string(task), res.Model, res.Provider, res.Text, expiresAt); err != nil {
 		slog.WarnContext(ctx, "ai: response cache write failed; the next identical request will pay again",
 			"error", err, "task", string(task))
 	}
+}
+
+// PruneExpired deletes cache rows that have outlived their TTL.
+func (c *DBCache) PruneExpired(ctx context.Context) (int64, error) {
+	if c.pool == nil {
+		return 0, nil
+	}
+	res, err := c.pool.Exec(ctx, `DELETE FROM ai.ai_cache_entries WHERE expires_at <= now()`)
+	if err != nil {
+		return 0, fmt.Errorf("ai: prune expired cache entries: %w", err)
+	}
+	return res.RowsAffected(), nil
 }
 
 // ComputeCacheKey calculates a deterministic SHA-256 hash for task, version and inputs.

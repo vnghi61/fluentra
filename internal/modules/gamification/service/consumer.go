@@ -84,10 +84,12 @@ func (s *Service) onActivityCompleted(ctx context.Context, delivery Delivery) er
 	// The activity id is the idempotency key, not the outbox event id: a
 	// learner redoing an activity should not be paid for it twice, and a
 	// redelivery must not either. Both are the same key, which is the point.
+	score := payload.Score
 	if _, err := s.RecordActivity(ctx, contract.AwardRequest{
 		UserID:   payload.UserID,
 		Source:   string(domain.SourceActivity),
 		SourceID: payload.ActivityID.String(),
+		Score:    &score,
 	}); err != nil {
 		return err
 	}

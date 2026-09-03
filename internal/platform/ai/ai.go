@@ -50,8 +50,9 @@ type Request struct {
 
 // Response is what a provider returned.
 type Response struct {
-	Text  string
-	Model string
+	Text     string
+	Model    string
+	Provider string
 	// Usage is best-effort: not every provider reports it, and a local one
 	// generally does not.
 	PromptTokens     int

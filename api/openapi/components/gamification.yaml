@@ -1,8 +1,7 @@
 # Gamification schemas: XP, levels, streaks, badges, quests and leaderboards.
 #
-# Nothing here identifies a learner beyond the display name they chose to show.
-# The leaderboard in particular carries no email and no avatar — see
-# BR-GAMIFICATION-07.
+# The leaderboard carries display name and avatar, but no email or other private
+# identifiers — see BR-GAMIFICATION-07.
 
 Badge:
   type: object
@@ -149,8 +148,13 @@ LeaderboardEntry:
       format: uuid
     display_name:
       type: string
-      description: The name the learner chose to show. No other identifier is exposed.
+      description: The name the learner chose to show.
       example: Demo Learner
+    avatar_url:
+      type: string
+      nullable: true
+      description: URL to the learner's avatar image, if one has been uploaded.
+      example: /api/v1/storage/avatars/01a06564-7bfb-7b37-bf03-54678ee722c5
     xp:
       type: integer
       example: 640

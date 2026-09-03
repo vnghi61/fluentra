@@ -1225,11 +1225,13 @@ type ClientInterface interface {
 
 	// StorageGetAvatar Serve a stored avatar image.
 	//
-	// Streams the avatar bytes through the API. Any signed-in learner may read any avatar, which is what a leaderboard needs: it shows the faces of everyone the learner competes with, and cannot ask a permission question per row.
+	// Streams the avatar bytes through the API. `GET /me` returns this path in `avatar_url`, and a leaderboard row returns it too.
+	//
+	// Unauthenticated, because a browser loads an image with `<img src>` and that request cannot carry an `Authorization` header. This API is Bearer-only -- the one cookie is the refresh token, scoped to `/api/v1/auth` -- so requiring a session here meant every avatar on every screen answered 401. The protection is the 128-bit asset id, which appears only in a response its owner already had.
 	//
 	// The bytes are proxied rather than answered with a redirect to a presigned URL, so no bucket URL ever reaches the browser.
 	//
-	// `GET /me` returns this path in `avatar_url`. An asset id with no stored object is a 404, including for avatars uploaded before the object keys were recorded.
+	// An asset id with no stored object is a 404, including for avatars uploaded before the object keys were recorded.
 	//
 	// Corresponds with GET /storage/avatars/{assetId} (the `StorageGetAvatar` operationId).
 	StorageGetAvatar(ctx context.Context, assetId openapi_types.UUID, params *StorageGetAvatarParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -3685,11 +3687,13 @@ func (c *Client) SuspendReviewCard(ctx context.Context, cardId openapi_types.UUI
 
 // StorageGetAvatar Serve a stored avatar image.
 //
-// Streams the avatar bytes through the API. Any signed-in learner may read any avatar, which is what a leaderboard needs: it shows the faces of everyone the learner competes with, and cannot ask a permission question per row.
+// Streams the avatar bytes through the API. `GET /me` returns this path in `avatar_url`, and a leaderboard row returns it too.
+//
+// Unauthenticated, because a browser loads an image with `<img src>` and that request cannot carry an `Authorization` header. This API is Bearer-only -- the one cookie is the refresh token, scoped to `/api/v1/auth` -- so requiring a session here meant every avatar on every screen answered 401. The protection is the 128-bit asset id, which appears only in a response its owner already had.
 //
 // The bytes are proxied rather than answered with a redirect to a presigned URL, so no bucket URL ever reaches the browser.
 //
-// `GET /me` returns this path in `avatar_url`. An asset id with no stored object is a 404, including for avatars uploaded before the object keys were recorded.
+// An asset id with no stored object is a 404, including for avatars uploaded before the object keys were recorded.
 //
 // Corresponds with GET /storage/avatars/{assetId} (the `StorageGetAvatar` operationId).
 func (c *Client) StorageGetAvatar(ctx context.Context, assetId openapi_types.UUID, params *StorageGetAvatarParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -9264,11 +9268,13 @@ type ClientWithResponsesInterface interface {
 
 	// StorageGetAvatarWithResponse Serve a stored avatar image.
 	//
-	// Streams the avatar bytes through the API. Any signed-in learner may read any avatar, which is what a leaderboard needs: it shows the faces of everyone the learner competes with, and cannot ask a permission question per row.
+	// Streams the avatar bytes through the API. `GET /me` returns this path in `avatar_url`, and a leaderboard row returns it too.
+	//
+	// Unauthenticated, because a browser loads an image with `<img src>` and that request cannot carry an `Authorization` header. This API is Bearer-only -- the one cookie is the refresh token, scoped to `/api/v1/auth` -- so requiring a session here meant every avatar on every screen answered 401. The protection is the 128-bit asset id, which appears only in a response its owner already had.
 	//
 	// The bytes are proxied rather than answered with a redirect to a presigned URL, so no bucket URL ever reaches the browser.
 	//
-	// `GET /me` returns this path in `avatar_url`. An asset id with no stored object is a 404, including for avatars uploaded before the object keys were recorded.
+	// An asset id with no stored object is a 404, including for avatars uploaded before the object keys were recorded.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -15751,19 +15757,12 @@ type StorageGetAvatarResponse200Headers struct {
 type StorageGetAvatarResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
-	ApplicationproblemJSON401 *Unauthorized
 	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
 	ApplicationproblemJSON404 *NotFound
 	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
 	ApplicationproblemJSON422 *ValidationFailed
 	// Headers200 the parsed response headers for an HTTP 200 response
 	Headers200 *StorageGetAvatarResponse200Headers
-}
-
-// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
-func (r StorageGetAvatarResponse) GetApplicationproblemJSON401() *Unauthorized {
-	return r.ApplicationproblemJSON401
 }
 
 // GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
@@ -18372,11 +18371,13 @@ func (c *ClientWithResponses) SuspendReviewCardWithResponse(ctx context.Context,
 
 // StorageGetAvatarWithResponse Serve a stored avatar image.
 //
-// Streams the avatar bytes through the API. Any signed-in learner may read any avatar, which is what a leaderboard needs: it shows the faces of everyone the learner competes with, and cannot ask a permission question per row.
+// Streams the avatar bytes through the API. `GET /me` returns this path in `avatar_url`, and a leaderboard row returns it too.
+//
+// Unauthenticated, because a browser loads an image with `<img src>` and that request cannot carry an `Authorization` header. This API is Bearer-only -- the one cookie is the refresh token, scoped to `/api/v1/auth` -- so requiring a session here meant every avatar on every screen answered 401. The protection is the 128-bit asset id, which appears only in a response its owner already had.
 //
 // The bytes are proxied rather than answered with a redirect to a presigned URL, so no bucket URL ever reaches the browser.
 //
-// `GET /me` returns this path in `avatar_url`. An asset id with no stored object is a 404, including for avatars uploaded before the object keys were recorded.
+// An asset id with no stored object is a 404, including for avatars uploaded before the object keys were recorded.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -24560,13 +24561,6 @@ func ParseStorageGetAvatarResponse(rsp *http.Response) (*StorageGetAvatarRespons
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON401 = &dest
-
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
 		var dest NotFound
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {

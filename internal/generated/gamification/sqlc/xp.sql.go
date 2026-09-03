@@ -16,7 +16,7 @@ import (
 const awardXP = `-- name: AwardXP :one
 INSERT INTO learn.xp_events (user_id, source, source_id, amount, multiplier)
 VALUES ($1, $2, $3, $4, $5)
-ON CONFLICT (user_id, source, source_id) DO NOTHING
+ON CONFLICT (user_id, source, source_id) WHERE source != 'activity' DO NOTHING
 RETURNING id, user_id, source, source_id, amount, multiplier, awarded_at
 `
 
@@ -28,10 +28,10 @@ type AwardXPParams struct {
 	Multiplier pgtype.Numeric
 }
 
-// BR-GAMIFICATION-01. The conflict path is DO NOTHING, so a redelivered event
-// inserts nothing and the caller sees no row — which is exactly the signal it
-// needs to skip publishing xp_awarded a second time. DO UPDATE would return a
-// row and make a redelivery indistinguishable from a first award.
+// BR-GAMIFICATION-01. The conflict path is DO NOTHING for unscored sources,
+// so a redelivered unscored event inserts nothing and caller sees no row.
+// For SourceActivity, anti-farming and idempotency are governed by
+// learn.xp_activity_high_water.
 func (q *Queries) AwardXP(ctx context.Context, arg AwardXPParams) (LearnXpEvent, error) {
 	row := q.db.QueryRow(ctx, awardXP,
 		arg.UserID,
@@ -72,6 +72,29 @@ func (q *Queries) CountAwardsFromSourceSince(ctx context.Context, arg CountAward
 	var awards int64
 	err := row.Scan(&awards)
 	return awards, err
+}
+
+const getActivityHighWater = `-- name: GetActivityHighWater :one
+SELECT best_score, xp_granted
+FROM learn.xp_activity_high_water
+WHERE user_id = $1 AND activity_id = $2
+`
+
+type GetActivityHighWaterParams struct {
+	UserID     uuid.UUID
+	ActivityID string
+}
+
+type GetActivityHighWaterRow struct {
+	BestScore int32
+	XpGranted int32
+}
+
+func (q *Queries) GetActivityHighWater(ctx context.Context, arg GetActivityHighWaterParams) (GetActivityHighWaterRow, error) {
+	row := q.db.QueryRow(ctx, getActivityHighWater, arg.UserID, arg.ActivityID)
+	var i GetActivityHighWaterRow
+	err := row.Scan(&i.BestScore, &i.XpGranted)
+	return i, err
 }
 
 const listXPEvents = `-- name: ListXPEvents :many
@@ -125,6 +148,41 @@ func (q *Queries) TotalXP(ctx context.Context, userID uuid.UUID) (int64, error) 
 	var total int64
 	err := row.Scan(&total)
 	return total, err
+}
+
+const upsertActivityHighWater = `-- name: UpsertActivityHighWater :one
+INSERT INTO learn.xp_activity_high_water (user_id, activity_id, best_score, xp_granted, updated_at)
+VALUES ($1, $2, $3, $4, now())
+ON CONFLICT (user_id, activity_id) DO UPDATE
+SET best_score = GREATEST(learn.xp_activity_high_water.best_score, EXCLUDED.best_score),
+    xp_granted = EXCLUDED.xp_granted,
+    updated_at = now()
+RETURNING user_id, activity_id, best_score, xp_granted, updated_at
+`
+
+type UpsertActivityHighWaterParams struct {
+	UserID     uuid.UUID
+	ActivityID string
+	BestScore  int32
+	XpGranted  int32
+}
+
+func (q *Queries) UpsertActivityHighWater(ctx context.Context, arg UpsertActivityHighWaterParams) (LearnXpActivityHighWater, error) {
+	row := q.db.QueryRow(ctx, upsertActivityHighWater,
+		arg.UserID,
+		arg.ActivityID,
+		arg.BestScore,
+		arg.XpGranted,
+	)
+	var i LearnXpActivityHighWater
+	err := row.Scan(
+		&i.UserID,
+		&i.ActivityID,
+		&i.BestScore,
+		&i.XpGranted,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const weeklyXPStandings = `-- name: WeeklyXPStandings :many

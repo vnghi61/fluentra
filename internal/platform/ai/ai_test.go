@@ -344,7 +344,7 @@ func TestRouter_RecordsUsageAndCachesResponses(t *testing.T) {
 	assert.Equal(t, res1.Text, res2.Text)
 	require.Len(t, recorder.logs, 2)
 	assert.Equal(t, ai.StatusCached, recorder.logs[1].Status)
-	assert.Equal(t, "cache", recorder.logs[1].Provider)
+	assert.Equal(t, "mock", recorder.logs[1].Provider)
 }
 
 func TestRouter_FallsBackWhenPrimaryFails(t *testing.T) {
@@ -373,4 +373,85 @@ func TestDBCache_NilPoolDoesNotPanic(t *testing.T) {
 
 	// Set should not panic
 	cache.Set(ctx, "key", ai.TaskVerifyVocabulary, ai.Response{Text: "hello"}, time.Hour)
+}
+
+type mockBudgetChecker struct {
+	allowed map[string]bool
+}
+
+func (m *mockBudgetChecker) CheckQuota(_ context.Context, provider string, _ ai.Task) (bool, error) {
+	if m.allowed == nil {
+		return true, nil
+	}
+	return m.allowed[provider], nil
+}
+
+type namedProvider struct {
+	name string
+	res  ai.Response
+	err  error
+}
+
+func (p *namedProvider) Name() string { return p.name }
+func (p *namedProvider) Complete(_ context.Context, _ ai.Request) (ai.Response, error) {
+	return p.res, p.err
+}
+
+const (
+	testPrimaryLLM  = "primary-llm"
+	testFallbackLLM = "fallback-llm"
+)
+
+func TestRouter_FallsBackWhenPrimaryQuotaExhausted(t *testing.T) {
+	registry, err := ai.NewRegistry()
+	require.NoError(t, err)
+
+	primary := &namedProvider{name: testPrimaryLLM, res: ai.Response{Text: "from-primary"}}
+	fallback := &namedProvider{name: testFallbackLLM, res: ai.Response{Text: `{"valid": true, "reason": "from-fallback"}`}}
+
+	providerReg := ai.NewProviderRegistry(primary, fallback)
+
+	budget := &mockBudgetChecker{
+		allowed: map[string]bool{
+			testPrimaryLLM:  false, // primary out of quota
+			testFallbackLLM: true,  // fallback has quota
+		},
+	}
+
+	router := ai.NewRouter(ai.RouterOptions{
+		Prompts:   registry,
+		Providers: providerReg,
+		Budget:    budget,
+	})
+
+	res, err := router.Complete(context.Background(), verifyRequest())
+	require.NoError(t, err)
+	assert.Equal(t, fallback.res.Text, res.Text)
+	assert.Equal(t, testFallbackLLM, res.Provider)
+}
+
+func TestRouter_AllProvidersQuotaExhausted(t *testing.T) {
+	registry, err := ai.NewRegistry()
+	require.NoError(t, err)
+
+	primary := &namedProvider{name: testPrimaryLLM, res: ai.Response{Text: "from-primary"}}
+	fallback := &namedProvider{name: testFallbackLLM, res: ai.Response{Text: "from-fallback"}}
+
+	providerReg := ai.NewProviderRegistry(primary, fallback)
+
+	budget := &mockBudgetChecker{
+		allowed: map[string]bool{
+			testPrimaryLLM:  false,
+			testFallbackLLM: false,
+		},
+	}
+
+	router := ai.NewRouter(ai.RouterOptions{
+		Prompts:   registry,
+		Providers: providerReg,
+		Budget:    budget,
+	})
+
+	_, err = router.Complete(context.Background(), verifyRequest())
+	assert.ErrorIs(t, err, ai.ErrQuotaExhausted)
 }

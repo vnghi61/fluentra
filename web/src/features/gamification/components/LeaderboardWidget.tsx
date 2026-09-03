@@ -190,7 +190,18 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
                   >
                     {entry.rank}
                   </span>
-                  <span className="truncate max-w-[140px] sm:max-w-[200px]">
+                  {entry.avatar_url ? (
+                    <img
+                      src={`${entry.avatar_url}${entry.avatar_url.includes("?") ? "&" : "?"}size=sm`}
+                      alt={entry.display_name}
+                      className="h-6 w-6 rounded-full object-cover border border-border/50"
+                    />
+                  ) : (
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+                      {entry.display_name ? entry.display_name.charAt(0).toUpperCase() : "?"}
+                    </div>
+                  )}
+                  <span className="truncate max-w-[120px] sm:max-w-[180px]">
                     {entry.display_name}
                     {entry.is_self && (
                       <span className="ml-1 text-[10px] text-text-muted">

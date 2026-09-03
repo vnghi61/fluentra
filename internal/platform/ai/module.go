@@ -31,9 +31,10 @@ type Config struct {
 	// Optional database pool for persistent response caching and usage recording.
 	Pool *pgxpool.Pool
 
-	// Optional overrides for cache, usage, or fallback providers.
+	// Optional overrides for cache, usage, budget or fallback providers.
 	Cache            ResponseCache
 	Usage            UsageRecorder
+	Budget           BudgetChecker
 	FallbackProvider string
 	FallbackBaseURL  string
 	FallbackModel    string
@@ -122,10 +123,21 @@ func New(config Config) (Client, error) {
 		}
 	}
 
+	// Budget checker selection
+	budget := config.Budget
+	if budget == nil {
+		if config.Pool != nil {
+			budget = NewDBBudgetChecker(config.Pool)
+		} else {
+			budget = NoopBudgetChecker{}
+		}
+	}
+
 	return NewRouter(RouterOptions{
 		Prompts:   registry,
 		Providers: providerReg,
 		Cache:     cache,
 		Usage:     usage,
+		Budget:    budget,
 	}), nil
 }

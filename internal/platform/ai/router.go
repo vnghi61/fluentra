@@ -14,6 +14,7 @@ type Router struct {
 	cache     ResponseCache
 	cacheTTL  time.Duration
 	usage     UsageRecorder
+	budget    BudgetChecker
 }
 
 // RouterOptions configures router behavior.
@@ -23,6 +24,7 @@ type RouterOptions struct {
 	Cache     ResponseCache
 	CacheTTL  time.Duration
 	Usage     UsageRecorder
+	Budget    BudgetChecker
 }
 
 // NewRouter creates a new AI task router.
@@ -39,12 +41,17 @@ func NewRouter(opts RouterOptions) *Router {
 	if usage == nil {
 		usage = NoopUsageRecorder{}
 	}
+	budget := opts.Budget
+	if budget == nil {
+		budget = NoopBudgetChecker{}
+	}
 	return &Router{
 		prompts:   opts.Prompts,
 		providers: opts.Providers,
 		cache:     cache,
 		cacheTTL:  cacheTTL,
 		usage:     usage,
+		budget:    budget,
 	}
 }
 
@@ -65,7 +72,7 @@ func (r *Router) Complete(ctx context.Context, req Request) (Response, error) {
 	if cached, found := r.cache.Get(ctx, cacheKey); found {
 		r.record(ctx, RequestLog{
 			Task:      req.Task,
-			Provider:  "cache",
+			Provider:  cached.Provider,
 			Model:     cached.Model,
 			LatencyMs: int(time.Since(start).Milliseconds()),
 			Status:    StatusCached,
@@ -78,38 +85,87 @@ func (r *Router) Complete(ctx context.Context, req Request) (Response, error) {
 		return Response{}, ErrDisabled
 	}
 
-	// 2. Try primary provider with retry
 	primary, err := r.providers.Primary()
 	if err != nil {
 		return Response{}, err
 	}
 
-	res, err := r.executeWithRetry(ctx, primary, req)
-	if err == nil {
-		r.cache.Set(ctx, cacheKey, req.Task, res, r.cacheTTL)
-		r.record(ctx, RequestLog{
-			Task:             req.Task,
-			Provider:         primary.Name(),
-			Model:            res.Model,
-			PromptTokens:     res.PromptTokens,
-			CompletionTokens: res.CompletionTokens,
-			LatencyMs:        int(time.Since(start).Milliseconds()),
-			Status:           StatusSuccess,
-			CreatedAt:        time.Now(),
-		})
-		return res, nil
+	// 2. Try primary provider if budget allows
+	primaryAllowed, primaryBudgetErr := r.budget.CheckQuota(ctx, primary.Name(), req.Task)
+	var primaryExecErr error
+	if primaryAllowed && primaryBudgetErr == nil {
+		res, err := r.executeWithRetry(ctx, primary, req)
+		if err == nil {
+			res.Provider = primary.Name()
+			r.cache.Set(ctx, cacheKey, req.Task, res, r.cacheTTL)
+			r.record(ctx, RequestLog{
+				Task:             req.Task,
+				Provider:         primary.Name(),
+				Model:            res.Model,
+				PromptTokens:     res.PromptTokens,
+				CompletionTokens: res.CompletionTokens,
+				LatencyMs:        int(time.Since(start).Milliseconds()),
+				Status:           StatusSuccess,
+				CreatedAt:        time.Now(),
+			})
+			return res, nil
+		}
+		primaryExecErr = err
+	} else if primaryBudgetErr != nil {
+		primaryExecErr = primaryBudgetErr
+	} else {
+		primaryExecErr = fmt.Errorf("provider %s quota exhausted", primary.Name())
 	}
 
-	// 3. Try fallback provider if primary failed
-	if fallback, ok := r.providers.Fallback(); ok {
-		slog.WarnContext(ctx, "ai: primary provider failed, attempting fallback",
-			"task", req.Task,
-			"primary", primary.Name(),
-			"fallback", fallback.Name(),
-			"error", err)
+	return r.executeFallback(ctx, req, cacheKey, primary, primaryExecErr, primaryAllowed, start)
+}
 
-		res, fbErr := r.executeWithRetry(ctx, fallback, req)
-		if fbErr == nil {
+func (r *Router) executeFallback(
+	ctx context.Context,
+	req Request,
+	cacheKey string,
+	primary Provider,
+	primaryErr error,
+	primaryAllowed bool,
+	start time.Time,
+) (Response, error) {
+	fallback, ok := r.providers.Fallback()
+	if !ok {
+		if !primaryAllowed {
+			r.record(ctx, RequestLog{
+				Task:         req.Task,
+				Provider:     primary.Name(),
+				LatencyMs:    int(time.Since(start).Milliseconds()),
+				Status:       StatusRateLimited,
+				ErrorMessage: ErrQuotaExhausted.Error(),
+				CreatedAt:    time.Now(),
+			})
+			return Response{}, ErrQuotaExhausted
+		}
+		r.record(ctx, RequestLog{
+			Task:         req.Task,
+			Provider:     primary.Name(),
+			Model:        "",
+			LatencyMs:    int(time.Since(start).Milliseconds()),
+			Status:       StatusFailed,
+			ErrorMessage: primaryErr.Error(),
+			CreatedAt:    time.Now(),
+		})
+		return Response{}, fmt.Errorf("ai: provider %s failed for task %s: %w", primary.Name(), req.Task, primaryErr)
+	}
+
+	slog.WarnContext(ctx, "ai: primary provider unavailable or failed, attempting fallback",
+		"task", req.Task,
+		"primary", primary.Name(),
+		"fallback", fallback.Name(),
+		"primary_error", primaryErr)
+
+	fallbackAllowed, fallbackBudgetErr := r.budget.CheckQuota(ctx, fallback.Name(), req.Task)
+	var fbErr error
+	if fallbackAllowed && fallbackBudgetErr == nil {
+		res, err := r.executeWithRetry(ctx, fallback, req)
+		if err == nil {
+			res.Provider = fallback.Name()
 			r.cache.Set(ctx, cacheKey, req.Task, res, r.cacheTTL)
 			r.record(ctx, RequestLog{
 				Task:             req.Task,
@@ -123,16 +179,24 @@ func (r *Router) Complete(ctx context.Context, req Request) (Response, error) {
 			})
 			return res, nil
 		}
+		fbErr = err
+	} else if fallbackBudgetErr != nil {
+		fbErr = fallbackBudgetErr
+	} else {
+		fbErr = fmt.Errorf("provider %s quota exhausted", fallback.Name())
+	}
+
+	// Both providers exhausted
+	if !primaryAllowed && !fallbackAllowed {
 		r.record(ctx, RequestLog{
 			Task:         req.Task,
 			Provider:     primary.Name(),
-			Model:        "",
 			LatencyMs:    int(time.Since(start).Milliseconds()),
-			Status:       StatusFailed,
-			ErrorMessage: fmt.Sprintf("all providers failed (primary: %v, fallback: %v)", err, fbErr),
+			Status:       StatusRateLimited,
+			ErrorMessage: ErrQuotaExhausted.Error(),
 			CreatedAt:    time.Now(),
 		})
-		return Response{}, fmt.Errorf("ai: all providers failed (primary: %v, fallback: %w)", err, fbErr)
+		return Response{}, ErrQuotaExhausted
 	}
 
 	r.record(ctx, RequestLog{
@@ -141,10 +205,10 @@ func (r *Router) Complete(ctx context.Context, req Request) (Response, error) {
 		Model:        "",
 		LatencyMs:    int(time.Since(start).Milliseconds()),
 		Status:       StatusFailed,
-		ErrorMessage: err.Error(),
+		ErrorMessage: fmt.Sprintf("all providers failed (primary: %v, fallback: %v)", primaryErr, fbErr),
 		CreatedAt:    time.Now(),
 	})
-	return Response{}, fmt.Errorf("ai: provider %s failed for task %s: %w", primary.Name(), req.Task, err)
+	return Response{}, fmt.Errorf("ai: all providers failed (primary: %v, fallback: %w)", primaryErr, fbErr)
 }
 
 func (r *Router) executeWithRetry(

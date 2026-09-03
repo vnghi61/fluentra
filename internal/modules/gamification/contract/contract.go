@@ -134,6 +134,8 @@ type AwardRequest struct {
 	UserID   uuid.UUID
 	Source   string
 	SourceID string
+	// Score is populated for graded items (SourceActivity) to calculate high-water delta awards.
+	Score *int
 	// Amount overrides the source's base rate when positive. Used by quests,
 	// whose reward is authored per quest, and by the verification job, which
 	// pays per word.

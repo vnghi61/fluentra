@@ -44,6 +44,35 @@ func BaseAward(source Source) int {
 	}
 }
 
+// CalculateActivityAward computes the incremental XP for a graded activity attempt.
+//
+// Its best score ever, divided by ten, granted as the increase over what it has
+// already granted (DECISIONS.md). 80/100 grants 8. Retaking to 100/100 grants 2,
+// not 10. A third attempt grants nothing. The award is never negative: a worse
+// retake takes nothing back.
+func CalculateActivityAward(score int, bestScore, xpAlreadyGranted int) (award int, newBest int, newGranted int) {
+	if score < 0 {
+		score = 0
+	}
+	if score > 100 {
+		score = 100
+	}
+
+	newBest = bestScore
+	if score > bestScore {
+		newBest = score
+	}
+
+	targetXP := newBest / 10
+	award = targetXP - xpAlreadyGranted
+	if award < 0 {
+		award = 0
+	}
+
+	newGranted = xpAlreadyGranted + award
+	return award, newBest, newGranted
+}
+
 // DailyCap is the most XP one source may pay a learner in a day
 // (BR-GAMIFICATION-05).
 //
