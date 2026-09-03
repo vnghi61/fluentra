@@ -7,6 +7,9 @@ last_verified: 2026-09-03
 
 # Phase 3 — work order 4
 
+> **§2 superseded.** All three items landed in PR #71; the current order is
+> [phase-3-work-order-5.md](phase-3-work-order-5.md).
+
 **Purpose.** The work after PR #70, with two more decisions taken. It replaces §2 of
 [phase-3-work-order-3.md](phase-3-work-order-3.md).
 
