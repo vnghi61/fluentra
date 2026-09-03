@@ -54,12 +54,13 @@ type SummaryResponse struct {
 
 // LeaderboardEntryResponse is one standing.
 //
-// Display name only — no email, no avatar, nothing that identifies a learner
-// beyond the name they chose to show (BR-GAMIFICATION-07).
+// Display name and avatar (BR-GAMIFICATION-07) — no email or private
+// profile fields.
 type LeaderboardEntryResponse struct {
 	Rank        int       `json:"rank"`
 	UserID      uuid.UUID `json:"user_id"`
 	DisplayName string    `json:"display_name"`
+	AvatarURL   *string   `json:"avatar_url,omitempty"`
 	XP          int       `json:"xp"`
 	IsSelf      bool      `json:"is_self"`
 }
@@ -134,8 +135,12 @@ func mapLeaderboard(entries []service.LeaderboardEntry) LeaderboardResponse {
 	rows := make([]LeaderboardEntryResponse, 0, len(entries))
 	for _, entry := range entries {
 		rows = append(rows, LeaderboardEntryResponse{
-			Rank: entry.Rank, UserID: entry.UserID, DisplayName: entry.DisplayName,
-			XP: entry.XP, IsSelf: entry.IsSelf,
+			Rank:        entry.Rank,
+			UserID:      entry.UserID,
+			DisplayName: entry.DisplayName,
+			AvatarURL:   entry.AvatarURL,
+			XP:          entry.XP,
+			IsSelf:      entry.IsSelf,
 		})
 	}
 	return LeaderboardResponse{Entries: rows}

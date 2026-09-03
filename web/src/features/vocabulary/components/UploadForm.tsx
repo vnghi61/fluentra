@@ -33,7 +33,18 @@ function countWords(text: string): number {
     if (line === "") continue;
 
     let term = line;
-    for (const separator of ["\t", " - ", " – ", " — ", " = ", ": ", " : ", "=", ";", "|"]) {
+    for (const separator of [
+      "\t",
+      " - ",
+      " – ",
+      " — ",
+      " = ",
+      ": ",
+      " : ",
+      "=",
+      ";",
+      "|",
+    ]) {
       const index = line.indexOf(separator);
       if (index > 0) {
         term = line.slice(0, index);

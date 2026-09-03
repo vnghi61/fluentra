@@ -355,7 +355,9 @@ func (u *Uploads) verifyItem(ctx context.Context, item sqlc.SkillVocabUploadItem
 	// learner's own gloss was off, and telling them that is more useful than
 	// refusing the word.
 	note := ""
-	if !answer.MeaningMatches && item.ProvidedMeaning != "" {
+	if model == "queued" {
+		note = "Queued for background enrichment. Your flashcard is ready to review."
+	} else if !answer.MeaningMatches && item.ProvidedMeaning != "" {
 		note = "Added. Your note did not quite match the usual meaning — " +
 			"the definition here is the dictionary's."
 	}
@@ -398,6 +400,20 @@ func (u *Uploads) judge(
 		},
 	}
 	if err := ai.CompleteJSON(ctx, u.ai, request, &answer); err != nil {
+		if errors.Is(err, ai.ErrQuotaExhausted) {
+			slog.WarnContext(ctx, "ai: quota exhausted across all providers; degrading word to queued flashcard",
+				"term", item.Term)
+			def := firstNonEmpty(item.ProvidedMeaning, entry.Definition, item.Term)
+			return verdict{
+				Valid:          true,
+				Lemma:          strings.ToLower(strings.TrimSpace(item.Term)),
+				PartOfSpeech:   firstNonEmpty(entry.PartOfSpeech, "noun"),
+				CEFRLevel:      "B1",
+				Definition:     def,
+				MeaningMatches: true,
+				Examples:       entry.Examples,
+			}, "queued", nil
+		}
 		return verdict{}, "", fmt.Errorf("verify %q: %w", item.Term, err)
 	}
 
@@ -426,7 +442,7 @@ func (u *Uploads) materialise(
 	lemma := firstNonEmpty(answer.Lemma, entry.Lemma, strings.ToLower(item.Term))
 	pos := firstNonEmpty(answer.PartOfSpeech, entry.PartOfSpeech, "noun")
 	cefr := normaliseCEFR(answer.CEFRLevel)
-	definition := firstNonEmpty(answer.Definition, entry.Definition)
+	definition := firstNonEmpty(answer.Definition, entry.Definition, item.ProvidedMeaning, item.Term)
 	if definition == "" {
 		return uuid.Nil, fmt.Errorf("no definition for %q", item.Term)
 	}

@@ -291,6 +291,7 @@ func run(ctx context.Context) error {
 		return err
 	}
 	cron.Register(outboxPruner.CronJob())
+	cron.Register(ai.NewCachePruner(pool).CronJob())
 
 	workers := river.NewWorkers()
 	if err := startModules(
@@ -710,6 +711,7 @@ func startPracticeGenerator(
 		Model:    cfg.AI.Model,
 		APIKey:   cfg.AI.APIKey,
 		Timeout:  cfg.AI.Timeout,
+		Pool:     pool,
 	})
 	if err != nil {
 		slog.WarnContext(ctx, "no AI client; uploads will be verified against the dictionary alone",

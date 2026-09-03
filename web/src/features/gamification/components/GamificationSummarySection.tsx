@@ -10,9 +10,9 @@ export interface GamificationSummarySectionProps {
   summary: GamificationSummary;
 }
 
-export const GamificationSummarySection: React.FC<GamificationSummarySectionProps> = ({
-  summary,
-}) => {
+export const GamificationSummarySection: React.FC<
+  GamificationSummarySectionProps
+> = ({ summary }) => {
   return (
     <div className="space-y-6">
       {/* Top Grid: XP/Level Progress + Streak Tracker */}

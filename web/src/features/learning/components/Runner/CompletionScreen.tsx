@@ -97,7 +97,10 @@ export const CompletionScreen: React.FC<CompletionScreenProps> = ({
                 params={{ lessonId: nextLessonId }}
                 className="w-full"
               >
-                <Button size="lg" className="w-full font-bold gap-2 min-h-[48px]">
+                <Button
+                  size="lg"
+                  className="w-full font-bold gap-2 min-h-[48px]"
+                >
                   {t("runner.nextLessonBtn", "Next lesson")}
                   <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </Button>

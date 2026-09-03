@@ -7,6 +7,10 @@ last_verified: 2026-09-02
 
 # Phase 3 — what to build next
 
+> **§2 superseded.** WP15 is connected as of `34ee4c9`; the current work order is
+> [phase-3-work-order-2.md](phase-3-work-order-2.md). §3 (open decisions) and §4 (traps) below
+> are still current.
+
 **Purpose.** The work order after `feat/gamification-web-and-ai-platform`. It supersedes the
 "What to do next" section of [HANDOFF-PHASE3.md](HANDOFF-PHASE3.md), which was written before
 WP13 and WP14-web existed.
@@ -27,12 +31,12 @@ ESLint, 256 web tests, bundle 193.6 kB of 200 kB.
 | WP12 — seed beyond vocabulary | not started |
 | WP13 — dictionary autocomplete | done |
 | WP14 — gamification | backend done, web done |
-| WP15 — `platform/ai` | built but **not connected** — see below |
-| WP16 — learner words | tables only, blocked on WP15 |
-| WP17 — explanations | blocked on WP15 |
-| WP18 — quota, warnings, queue | `ai.ai_budgets` exists, no code |
+| WP15 — `platform/ai` | connected (`Router`, `DBCache`, `DBUsageRecorder` wired in `cmd/worker`) |
+| WP16 — learner words | tables only, unblocked |
+| WP17 — explanations | unblocked |
+| WP18 — quota, warnings, queue | `ai.ai_budgets` exists, next up |
 | WP19 — admin | blocked on WP16 and WP18 |
-| WP20 / WP21 — four skills | blocked on WP15 |
+| WP20 / WP21 — four skills | blocked on WP18 |
 
 ### WP15 is wired to nothing
 

@@ -12,20 +12,36 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  useLeaderboard,
-  useSetLeaderboardOptIn,
-} from "../api/gamificationApi";
+import { useLeaderboard, useSetLeaderboardOptIn } from "../api/gamificationApi";
 
 export interface LeaderboardWidgetProps {
   currentLeague?: string;
 }
 
-const LEAGUE_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  bronze: { bg: "bg-amber-700/10", text: "text-amber-700 dark:text-amber-400", border: "border-amber-700/30" },
-  silver: { bg: "bg-slate-400/10", text: "text-slate-600 dark:text-slate-300", border: "border-slate-400/30" },
-  gold: { bg: "bg-amber-400/10", text: "text-amber-500 dark:text-amber-300", border: "border-amber-400/30" },
-  diamond: { bg: "bg-cyan-500/10", text: "text-cyan-500 dark:text-cyan-300", border: "border-cyan-500/30" },
+const LEAGUE_COLORS: Record<
+  string,
+  { bg: string; text: string; border: string }
+> = {
+  bronze: {
+    bg: "bg-amber-700/10",
+    text: "text-amber-700 dark:text-amber-400",
+    border: "border-amber-700/30",
+  },
+  silver: {
+    bg: "bg-slate-400/10",
+    text: "text-slate-600 dark:text-slate-300",
+    border: "border-slate-400/30",
+  },
+  gold: {
+    bg: "bg-amber-400/10",
+    text: "text-amber-500 dark:text-amber-300",
+    border: "border-amber-400/30",
+  },
+  diamond: {
+    bg: "bg-cyan-500/10",
+    text: "text-cyan-500 dark:text-cyan-300",
+    border: "border-cyan-500/30",
+  },
 };
 
 const defaultLeagueStyle = {
@@ -74,7 +90,10 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
         </CardHeader>
         <CardContent className="pt-0">
           <div className="rounded-xl border border-dashed border-border/80 bg-surface/50 p-4 text-center">
-            <Users className="mx-auto mb-2 h-7 w-7 text-primary/60" aria-hidden="true" />
+            <Users
+              className="mx-auto mb-2 h-7 w-7 text-primary/60"
+              aria-hidden="true"
+            />
             <p className="mb-3 text-xs text-text-muted">
               {t(
                 "gamification.optInNotice",
@@ -104,14 +123,20 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500 shadow-inner">
-              <Trophy className="h-5 w-5 fill-amber-500/20" aria-hidden="true" />
+              <Trophy
+                className="h-5 w-5 fill-amber-500/20"
+                aria-hidden="true"
+              />
             </div>
             <div>
               <CardTitle className="text-lg font-bold text-text">
                 {t("gamification.leaderboardTitle", "Weekly League")}
               </CardTitle>
               <p className="text-xs text-text-muted">
-                {t("gamification.standingsSubtitle", "Weekly standings snapshot")}
+                {t(
+                  "gamification.standingsSubtitle",
+                  "Weekly standings snapshot",
+                )}
               </p>
             </div>
           </div>
@@ -135,7 +160,10 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
           </div>
         ) : !data || data.entries.length === 0 ? (
           <p className="py-4 text-center text-xs text-text-muted">
-            {t("gamification.noEntries", "No standings available yet for this week.")}
+            {t(
+              "gamification.noEntries",
+              "No standings available yet for this week.",
+            )}
           </p>
         ) : (
           <div className="divide-y divide-border/40 rounded-xl border border-border/60 bg-surface/40">
@@ -162,7 +190,18 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
                   >
                     {entry.rank}
                   </span>
-                  <span className="truncate max-w-[140px] sm:max-w-[200px]">
+                  {entry.avatar_url ? (
+                    <img
+                      src={`${entry.avatar_url}${entry.avatar_url.includes("?") ? "&" : "?"}size=sm`}
+                      alt={entry.display_name}
+                      className="h-6 w-6 rounded-full object-cover border border-border/50"
+                    />
+                  ) : (
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+                      {entry.display_name ? entry.display_name.charAt(0).toUpperCase() : "?"}
+                    </div>
+                  )}
+                  <span className="truncate max-w-[120px] sm:max-w-[180px]">
                     {entry.display_name}
                     {entry.is_self && (
                       <span className="ml-1 text-[10px] text-text-muted">

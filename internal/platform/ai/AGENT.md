@@ -10,7 +10,7 @@ tables: [ai_requests, ai_usage, prompt_versions, ai_cache_entries, ai_budgets]
 depends_on: [cache, telemetry, job]
 depended_on_by: [writing, speaking, grammar, questionbank, content, reading, media, learning]
 spec_version: 1.0.0
-last_verified: 2026-08-29
+last_verified: 2026-09-02
 ---
 
 # ai — AGENT.md
@@ -23,20 +23,20 @@ last_verified: 2026-08-29
 
 ## 0. What is built — read this before anything below it
 
-The rest of this file is the module's **specification**. Most of it is not
-implemented. What exists today is a narrow slice, built for one caller: the
-vocabulary upload verification job, which runs on a schedule, processes a
-bounded batch and can afford to fail.
+The rest of this file is the module's **specification**. What exists today connects
+the vocabulary upload verification job through `Router`, backed by persistent PostgreSQL
+caching (`ai.ai_cache_entries`) and usage auditing (`ai.ai_requests`, `ai.ai_usage`).
 
 | Built | Not built |
 |---|---|
 | `ai.Client` — the one interface business code sees | Task routing by model tier |
 | Versioned prompt registry with front-matter settings | Quota (per user) and budget (global daily) |
-| `MockProvider` — offline, the default | Exact-hash and semantic caching |
-| `OpenAICompatibleProvider` — Ollama, OpenRouter, Groq, LM Studio, vLLM | Retry, backoff, circuit breaker, provider fallback chain |
+| `MockProvider` — offline, the default | Semantic caching (pgvector) |
+| `OpenAICompatibleProvider` — Ollama, OpenRouter, Groq, LM Studio, vLLM | Circuit breaker |
 | `CompleteJSON` — tolerant structured-output parsing | PII redaction, untrusted-content wrapping |
-| | Streaming, output repair pass, eval harness |
-| | The `ai` schema: `ai_requests`, `ai_usage`, `prompt_versions`, `ai_cache_entries`, `ai_budgets` |
+| `Router` — retry, backoff, provider fallback chain | Streaming, output repair pass, eval harness |
+| Exact-hash response caching (`MemoryCache` & `DBCache` on `ai.ai_cache_entries`) | |
+| Usage & request auditing (`DBUsageRecorder` on `ai.ai_requests` & `ai.ai_usage`) | |
 
 **Nothing on a request path, and nothing a learner is graded by, may use this
 module until the rest of the specification is built.** There is no budget

@@ -3,12 +3,7 @@ import { Clock, Flame, Shield, ShieldAlert } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useUseStreakFreeze } from "../api/gamificationApi";
 import type { Streak } from "../api/gamificationApi";
 
@@ -57,8 +52,13 @@ export const StreakWidget: React.FC<StreakWidgetProps> = ({ streak }) => {
               </CardTitle>
               <p className="text-xs text-text-muted">
                 {hasActiveStreak
-                  ? t("gamification.streakBest", "Best: {{longest}} days", { longest })
-                  : t("gamification.streakEmpty", "Practice daily to start your streak")}
+                  ? t("gamification.streakBest", "Best: {{longest}} days", {
+                      longest,
+                    })
+                  : t(
+                      "gamification.streakEmpty",
+                      "Practice daily to start your streak",
+                    )}
               </p>
             </div>
           </div>
@@ -78,7 +78,10 @@ export const StreakWidget: React.FC<StreakWidgetProps> = ({ streak }) => {
         {/* Day Boundary Countdown & Freezes info */}
         <div className="grid grid-cols-2 gap-2 text-xs">
           <div className="flex items-center gap-1.5 rounded-lg bg-surface/60 p-2 text-text-muted">
-            <Clock className="h-4 w-4 text-primary shrink-0" aria-hidden="true" />
+            <Clock
+              className="h-4 w-4 text-primary shrink-0"
+              aria-hidden="true"
+            />
             <span className="truncate">
               {hours_remaining > 0
                 ? t("gamification.hoursLeft", "{{hours}}h left today", {
@@ -91,9 +94,15 @@ export const StreakWidget: React.FC<StreakWidgetProps> = ({ streak }) => {
           <div className="flex items-center justify-between rounded-lg bg-surface/60 p-2 text-text-muted">
             <div className="flex items-center gap-1.5 truncate">
               {freezes_available > 0 ? (
-                <Shield className="h-4 w-4 text-emerald-500 shrink-0" aria-hidden="true" />
+                <Shield
+                  className="h-4 w-4 text-emerald-500 shrink-0"
+                  aria-hidden="true"
+                />
               ) : (
-                <ShieldAlert className="h-4 w-4 text-text-muted shrink-0" aria-hidden="true" />
+                <ShieldAlert
+                  className="h-4 w-4 text-text-muted shrink-0"
+                  aria-hidden="true"
+                />
               )}
               <span className="truncate">
                 {t("gamification.freezesCount", "{{count}} freeze", {

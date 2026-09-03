@@ -3,12 +3,7 @@ import { Compass, Gift } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import type { Quest } from "../api/gamificationApi";
 
@@ -32,12 +27,18 @@ export const QuestsWidget: React.FC<QuestsWidgetProps> = ({ quests = [] }) => {
                 {t("gamification.questsTitle", "Active Quests")}
               </CardTitle>
               <p className="text-xs text-text-muted">
-                {t("gamification.questsSubtitle", "Complete tasks to earn bonus XP")}
+                {t(
+                  "gamification.questsSubtitle",
+                  "Complete tasks to earn bonus XP",
+                )}
               </p>
             </div>
           </div>
 
-          <Badge variant="secondary" className="px-2 py-0.5 text-xs font-semibold">
+          <Badge
+            variant="secondary"
+            className="px-2 py-0.5 text-xs font-semibold"
+          >
             {t("gamification.activeQuestsCount", "{{count}} active", {
               count: quests.length,
             })}
@@ -48,7 +49,10 @@ export const QuestsWidget: React.FC<QuestsWidgetProps> = ({ quests = [] }) => {
       <CardContent className="space-y-3 pt-0">
         {quests.length === 0 ? (
           <p className="py-3 text-center text-xs text-text-muted">
-            {t("gamification.noQuests", "No active quests right now. Check back tomorrow!")}
+            {t(
+              "gamification.noQuests",
+              "No active quests right now. Check back tomorrow!",
+            )}
           </p>
         ) : (
           <div className="space-y-2.5">
@@ -61,7 +65,10 @@ export const QuestsWidget: React.FC<QuestsWidgetProps> = ({ quests = [] }) => {
                 for (const [key, target] of Object.entries(quest.steps)) {
                   if (typeof target === "number") {
                     totalTarget += target;
-                    const prog = (quest.progress as Record<string, number> | undefined)?.[key] ?? 0;
+                    const prog =
+                      (quest.progress as Record<string, number> | undefined)?.[
+                        key
+                      ] ?? 0;
                     currentProgress += Math.min(target, prog);
                   }
                 }
@@ -69,7 +76,10 @@ export const QuestsWidget: React.FC<QuestsWidgetProps> = ({ quests = [] }) => {
 
               const percentage =
                 totalTarget > 0
-                  ? Math.min(100, Math.round((currentProgress / totalTarget) * 100))
+                  ? Math.min(
+                      100,
+                      Math.round((currentProgress / totalTarget) * 100),
+                    )
                   : 0;
 
               return (
@@ -79,7 +89,9 @@ export const QuestsWidget: React.FC<QuestsWidgetProps> = ({ quests = [] }) => {
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <h4 className="text-xs font-bold text-text">{quest.name}</h4>
+                      <h4 className="text-xs font-bold text-text">
+                        {quest.name}
+                      </h4>
                       <p className="text-[11px] text-text-muted line-clamp-1">
                         {quest.description}
                       </p>

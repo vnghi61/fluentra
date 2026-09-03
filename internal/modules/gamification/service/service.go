@@ -90,43 +90,142 @@ const leaderboardPageSize = 50
 //     checking first, which races.
 //  3. Only then publish, evaluate badges and touch the streak, because only
 //     then is it certain that something actually happened.
-//
-// BR-GAMIFICATION-08: an error here is returned, but callers on the event path
-// log and acknowledge rather than failing the learning action behind it.
+type activityProgress struct {
+	base     int
+	newBest  int
+	newGrant int
+	done     bool
+	outcome  contract.AwardOutcome
+}
+
+func (s *Service) resolveActivityBase(ctx context.Context, req contract.AwardRequest) (activityProgress, error) {
+	bestScore := 0
+	xpGranted := 0
+	hw, err := s.repo.GetActivityHighWater(ctx, req.UserID, req.SourceID)
+	if err == nil {
+		bestScore = int(hw.BestScore)
+		xpGranted = int(hw.XpGranted)
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return activityProgress{}, err
+	}
+
+	// A graded award with no score is refused, not guessed.
+	//
+	// This branch used to reverse-engineer a score from req.Amount and, failing
+	// that, assume a perfect 100. Both are corruptions of the record the whole
+	// high-water design exists to protect: best_score never falls, so a
+	// fabricated 100 is permanent, and every genuine attempt afterwards -- an
+	// honest 80, a real improvement to 90 -- grants nothing for ever. The
+	// learner's XP would then measure a number nobody earned.
+	//
+	// The event path always supplies a score: ActivityCompleted.Score is a value
+	// type, so it is present even when it is zero, and zero is a real score that
+	// correctly grants nothing. Anything reaching here without one is a caller
+	// with a bug, and it should hear about it rather than have it papered over.
+	if req.Score == nil {
+		return activityProgress{}, apperr.New(apperr.Validation, "SCORE_REQUIRED",
+			"A graded activity award must carry a score.")
+	}
+	score := *req.Score
+
+	activityAward, actNewBest, actNewGrant := domain.CalculateActivityAward(score, bestScore, xpGranted)
+	if activityAward <= 0 {
+		if actNewBest > bestScore {
+			_, _ = s.repo.UpsertActivityHighWater(ctx, sqlc.UpsertActivityHighWaterParams{
+				UserID:     req.UserID,
+				ActivityID: req.SourceID,
+				//nolint:gosec // score is bounded between 0 and 100
+				BestScore: int32(actNewBest),
+				//nolint:gosec // xp is non-negative and bounded
+				XpGranted: int32(xpGranted),
+			})
+		}
+		total, totalErr := s.repo.TotalXP(ctx, req.UserID)
+		if totalErr != nil {
+			return activityProgress{}, totalErr
+		}
+		return activityProgress{
+			done: true,
+			outcome: contract.AwardOutcome{
+				Awarded: false,
+				TotalXP: total,
+				Level:   domain.LevelFor(total),
+			},
+		}, nil
+	}
+
+	return activityProgress{
+		base:     activityAward,
+		newBest:  actNewBest,
+		newGrant: actNewGrant,
+	}, nil
+}
+
+func (s *Service) calculateAwardBase(
+	ctx context.Context, req contract.AwardRequest, source domain.Source,
+) (int, activityProgress, bool, contract.AwardOutcome, error) {
+	if source == domain.SourceActivity {
+		act, err := s.resolveActivityBase(ctx, req)
+		if err != nil {
+			return 0, activityProgress{}, false, contract.AwardOutcome{}, err
+		}
+		if act.done {
+			return 0, act, true, act.outcome, nil
+		}
+		return act.base, act, false, contract.AwardOutcome{}, nil
+	}
+
+	base := req.Amount
+	if base <= 0 {
+		base = domain.BaseAward(source)
+	}
+	return base, activityProgress{}, false, contract.AwardOutcome{}, nil
+}
+
+func (s *Service) readDailyUsage(
+	ctx context.Context, userID uuid.UUID, source string,
+) (int64, int64, error) {
+	dayStart, err := s.startOfLearnerDay(ctx, userID)
+	if err != nil {
+		return 0, 0, err
+	}
+	earnedToday, err := s.repo.XPFromSourceSince(ctx, userID, source, dayStart)
+	if err != nil {
+		return 0, 0, err
+	}
+	awardsToday, err := s.repo.CountAwardsFromSourceSince(ctx, userID, source, dayStart)
+	if err != nil {
+		return 0, 0, err
+	}
+	return earnedToday, awardsToday, nil
+}
+
+// Award pays XP for one learning action (BR-GAMIFICATION-08).
+// Callers on the event path log and acknowledge rather than failing the learning action behind it.
 func (s *Service) Award(ctx context.Context, req contract.AwardRequest) (contract.AwardOutcome, error) {
 	if req.UserID == uuid.Nil {
 		return contract.AwardOutcome{}, apperr.New(
 			apperr.Validation, "GAMIFICATION_USER_REQUIRED", "An award needs a learner.")
 	}
 	if req.SourceID == "" {
-		// BR-GAMIFICATION-01 has no exceptions: without a key there is nothing
-		// to deduplicate on, and a redelivery would double-award silently.
 		return contract.AwardOutcome{}, apperr.New(
 			apperr.Validation, "GAMIFICATION_SOURCE_ID_REQUIRED",
 			"An award needs an idempotency key.")
 	}
 
 	source := domain.Source(req.Source)
-	base := req.Amount
-	if base <= 0 {
-		base = domain.BaseAward(source)
+	base, act, done, outcome, err := s.calculateAwardBase(ctx, req, source)
+	if err != nil {
+		return contract.AwardOutcome{}, err
+	}
+	if done {
+		return outcome, nil
 	}
 	if base <= 0 {
-		// An unknown source pays nothing. Not an error: a module publishing an
-		// event gamification has no rate for should not have its action fail.
 		return contract.AwardOutcome{}, nil
 	}
 
-	dayStart, err := s.startOfLearnerDay(ctx, req.UserID)
-	if err != nil {
-		return contract.AwardOutcome{}, err
-	}
-
-	earnedToday, err := s.repo.XPFromSourceSince(ctx, req.UserID, req.Source, dayStart)
-	if err != nil {
-		return contract.AwardOutcome{}, err
-	}
-	awardsToday, err := s.repo.CountAwardsFromSourceSince(ctx, req.UserID, req.Source, dayStart)
+	earnedToday, awardsToday, err := s.readDailyUsage(ctx, req.UserID, req.Source)
 	if err != nil {
 		return contract.AwardOutcome{}, err
 	}
@@ -137,7 +236,6 @@ func (s *Service) Award(ctx context.Context, req contract.AwardRequest) (contrac
 		if totalErr != nil {
 			return contract.AwardOutcome{}, totalErr
 		}
-		// Capped, not failed. The learning happened; the XP did not.
 		return contract.AwardOutcome{
 			Capped:  award.Capped,
 			TotalXP: total,
@@ -151,18 +249,14 @@ func (s *Service) Award(ctx context.Context, req contract.AwardRequest) (contrac
 	}
 
 	event, err := s.repo.AwardXP(ctx, sqlc.AwardXPParams{
-		UserID:   req.UserID,
-		Source:   req.Source,
-		SourceID: req.SourceID,
-		//nolint:gosec // bounded by DailyCap, whose largest value is 500
-		Amount:     int32(award.Amount),
+		UserID:     req.UserID,
+		Source:     req.Source,
+		SourceID:   req.SourceID,
+		Amount:     int32(award.Amount), //nolint:gosec // bounded by DailyCap, max 500
 		Multiplier: oneMultiplier(),
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			// The award already exists. Nothing happened, and nothing is
-			// published — a second xp_awarded for one action would show the
-			// learner the same points twice.
 			return contract.AwardOutcome{
 				TotalXP: before,
 				Level:   domain.LevelFor(before),
@@ -171,12 +265,37 @@ func (s *Service) Award(ctx context.Context, req contract.AwardRequest) (contrac
 		return contract.AwardOutcome{}, err
 	}
 
+	if source == domain.SourceActivity {
+		_, err := s.repo.UpsertActivityHighWater(ctx, sqlc.UpsertActivityHighWaterParams{
+			UserID:     req.UserID,
+			ActivityID: req.SourceID,
+			BestScore:  int32(act.newBest),  //nolint:gosec // score is bounded 0-100
+			XpGranted:  int32(act.newGrant), //nolint:gosec // bounded
+		})
+		if err != nil {
+			slog.WarnContext(ctx, "could not update activity high-water mark", "error", err)
+		}
+	}
+
 	total := before + int64(event.Amount)
 	levelBefore, levelAfter := domain.LevelFor(before), domain.LevelFor(total)
 
+	return s.publishAndNotify(
+		ctx, req, total, int(event.Amount), levelBefore, levelAfter, award.Capped,
+	), nil
+}
+
+func (s *Service) publishAndNotify(
+	ctx context.Context,
+	req contract.AwardRequest,
+	total int64,
+	amount int,
+	levelBefore, levelAfter int,
+	capped bool,
+) contract.AwardOutcome {
 	s.publish(ctx, contract.EventXPAwarded, contract.XPAwarded{
 		UserID:     req.UserID,
-		Amount:     int(event.Amount),
+		Amount:     amount,
 		Source:     req.Source,
 		SourceID:   req.SourceID,
 		TotalXP:    total,
@@ -198,12 +317,12 @@ func (s *Service) Award(ctx context.Context, req contract.AwardRequest) (contrac
 
 	return contract.AwardOutcome{
 		Awarded: true,
-		Amount:  int(event.Amount),
-		Capped:  award.Capped,
+		Amount:  amount,
+		Capped:  capped,
 		TotalXP: total,
 		Level:   levelAfter,
 		LevelUp: levelAfter > levelBefore,
-	}, nil
+	}
 }
 
 // RecordActivity is the whole of what one learning action does to gamification:
@@ -473,11 +592,12 @@ func (s *Service) SetLeaderboardOptIn(ctx context.Context, userID uuid.UUID, opt
 	return err
 }
 
-// LeaderboardEntry is one standing, with the display name resolved.
+// LeaderboardEntry is one standing, with the display name and avatar resolved.
 type LeaderboardEntry struct {
 	Rank        int       `json:"rank"`
 	UserID      uuid.UUID `json:"user_id"`
 	DisplayName string    `json:"display_name"`
+	AvatarURL   *string   `json:"avatar_url,omitempty"`
 	XP          int       `json:"xp"`
 	IsSelf      bool      `json:"is_self"`
 }
@@ -524,8 +644,8 @@ func (s *Service) Leaderboard(ctx context.Context, userID uuid.UUID) ([]Leaderbo
 
 // resolveNames turns snapshot rows into display entries.
 //
-// Display names only (BR-GAMIFICATION-07): no email, no avatar, nothing that
-// identifies a learner beyond the name they chose to show.
+// Display names and avatars only (BR-GAMIFICATION-07): no email or other
+// private profile attributes.
 func (s *Service) resolveNames(
 	ctx context.Context, rows []sqlc.LearnLeaderboardSnapshot, self uuid.UUID,
 ) []LeaderboardEntry {
@@ -548,12 +668,17 @@ func (s *Service) resolveNames(
 	entries := make([]LeaderboardEntry, 0, len(rows))
 	for _, row := range rows {
 		name := "Learner"
-		if summary, ok := names[row.UserID]; ok && summary.DisplayName != "" {
-			name = summary.DisplayName
+		var avatarURL *string
+		if summary, ok := names[row.UserID]; ok {
+			if summary.DisplayName != "" {
+				name = summary.DisplayName
+			}
+			avatarURL = summary.AvatarURL
 		}
 		entries = append(entries, LeaderboardEntry{
 			Rank: int(row.Rank), UserID: row.UserID, DisplayName: name,
-			XP: int(row.Xp), IsSelf: row.UserID == self,
+			AvatarURL: avatarURL,
+			XP:        int(row.Xp), IsSelf: row.UserID == self,
 		})
 	}
 	return entries

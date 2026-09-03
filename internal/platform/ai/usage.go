@@ -86,6 +86,13 @@ func (r *DBUsageRecorder) Record(ctx context.Context, entry RequestLog) error {
 		return err
 	}
 
+	// Cache hits and requests without a real external provider do not consume provider
+	// daily quotas. ai.ai_usage tracks daily volume for quota and budgeting against
+	// actual providers; recording "cache" or empty values would distort metrics.
+	if entry.Status == StatusCached || entry.Provider == "" || entry.Provider == "cache" {
+		return nil
+	}
+
 	const upsertUsage = `
 		INSERT INTO ai.ai_usage (
 			provider, model, task, usage_date, request_count,

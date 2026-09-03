@@ -637,11 +637,13 @@ export interface paths {
         };
         /**
          * Serve a stored avatar image.
-         * @description Streams the avatar bytes through the API. Any signed-in learner may read any avatar, which is what a leaderboard needs: it shows the faces of everyone the learner competes with, and cannot ask a permission question per row.
+         * @description Streams the avatar bytes through the API. `GET /me` returns this path in `avatar_url`, and a leaderboard row returns it too.
+         *
+         *     Unauthenticated, because a browser loads an image with `<img src>` and that request cannot carry an `Authorization` header. This API is Bearer-only -- the one cookie is the refresh token, scoped to `/api/v1/auth` -- so requiring a session here meant every avatar on every screen answered 401. The protection is the 128-bit asset id, which appears only in a response its owner already had.
          *
          *     The bytes are proxied rather than answered with a redirect to a presigned URL, so no bucket URL ever reaches the browser.
          *
-         *     `GET /me` returns this path in `avatar_url`. An asset id with no stored object is a 404, including for avatars uploaded before the object keys were recorded.
+         *     An asset id with no stored object is a 404, including for avatars uploaded before the object keys were recorded.
          */
         get: operations["storageGetAvatar"];
         put?: never;
@@ -3654,10 +3656,15 @@ export interface components {
             /** Format: uuid */
             user_id: string;
             /**
-             * @description The name the learner chose to show. No other identifier is exposed.
+             * @description The name the learner chose to show.
              * @example Demo Learner
              */
             display_name: string;
+            /**
+             * @description URL to the learner's avatar image, if one has been uploaded.
+             * @example /api/v1/storage/avatars/01a06564-7bfb-7b37-bf03-54678ee722c5
+             */
+            avatar_url?: string | null;
             /** @example 640 */
             xp: number;
             /** @example false */
@@ -5342,7 +5349,6 @@ export interface operations {
                     "image/jpeg": string;
                 };
             };
-            401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
             422: components["responses"]["ValidationFailed"];
         };

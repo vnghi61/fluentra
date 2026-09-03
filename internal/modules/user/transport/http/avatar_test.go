@@ -197,15 +197,31 @@ func TestGetAvatar_MalformedAssetIdIs404(t *testing.T) {
 	}
 }
 
-func TestGetAvatar_RequiresASession(t *testing.T) {
+func TestGetAvatar_ServesAnImageTagWithNoSession(t *testing.T) {
 	t.Parallel()
-	server := newServerWithAvatars(&fakeAccounts{}, &fakeAvatars{body: stubImageBody})
+	avatars := &fakeAvatars{body: stubImageBody}
+	server := newServerWithAvatars(&fakeAccounts{}, avatars)
 
-	// Any signed-in learner may read any avatar. "Any signed-in" is the half
-	// that still has to hold.
+	// This assertion used to be its own opposite, and that is the point of the
+	// comment.
+	//
+	// It read "an anonymous request was served an avatar" as a failure, and it
+	// was written after an earlier version of this test caught the handler
+	// trusting its mount point for authentication. Tightening it was the wrong
+	// correction: a browser loads an image with <img src>, that request cannot
+	// carry an Authorization header, and this API has no cookie that reaches
+	// this path. So the hardened route answered 401 to every avatar on every
+	// screen -- and every test still passed, because the tests sent a header no
+	// browser can send.
+	//
+	// A request with no credentials is what a real client makes here. That is
+	// what this asserts now.
 	recorder := anonymous(t, server, http.MethodGet, "/api/v1/storage/avatars/"+uuid.New().String(), "")
 
-	if recorder.Code == http.StatusOK {
-		t.Fatal("an anonymous request was served an avatar")
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body %s)", recorder.Code, recorder.Body)
+	}
+	if got := recorder.Body.String(); got != stubImageBody {
+		t.Errorf("body = %q, want %q", got, stubImageBody)
 	}
 }

@@ -10,7 +10,9 @@ import { WordAutocomplete } from "@/features/vocabulary";
 import i18n, { initI18n } from "@/i18n";
 import { server } from "./msw-server";
 
-function renderAutocomplete(props: React.ComponentProps<typeof WordAutocomplete>) {
+function renderAutocomplete(
+  props: React.ComponentProps<typeof WordAutocomplete>,
+) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
@@ -96,7 +98,10 @@ describe("WordAutocomplete Component (WP13)", () => {
       // If any AI endpoint is hit, record failure
       http.post("/api/v1/ai/*", () => {
         aiModelCalled = true;
-        return HttpResponse.json({ error: "AI should not be called" }, { status: 500 });
+        return HttpResponse.json(
+          { error: "AI should not be called" },
+          { status: 500 },
+        );
       }),
     );
 
@@ -139,7 +144,9 @@ describe("WordAutocomplete Component (WP13)", () => {
       await screen.findByText(/"unheardwordxyz" is not in the dictionary yet/i),
     ).toBeInTheDocument();
 
-    const customButton = screen.getByRole("button", { name: /Add as new custom word/i });
+    const customButton = screen.getByRole("button", {
+      name: /Add as new custom word/i,
+    });
     await user.click(customButton);
 
     expect(customSubmittedTerm).toBe("unheardwordxyz");

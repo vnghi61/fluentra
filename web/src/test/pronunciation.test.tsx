@@ -82,7 +82,10 @@ describe("PronounceButton", () => {
 
 describe("ExampleSentences", () => {
   const sentences = [
-    { text: "The pasta was absolutely delicious.", translation: "Món mì rất ngon." },
+    {
+      text: "The pasta was absolutely delicious.",
+      translation: "Món mì rất ngon.",
+    },
     { text: "That was the most delicious meal all year." },
     { text: "The soup smelled delicious." },
     { text: "She thanked him for the delicious bread." },
@@ -93,7 +96,9 @@ describe("ExampleSentences", () => {
     render(<ExampleSentences sentences={sentences} highlight="delicious" />);
 
     expect(screen.getByText(/The pasta was absolutely/)).toBeInTheDocument();
-    expect(screen.queryByText(/Everything on the menu/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Everything on the menu/),
+    ).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: /show more/i }));
 
@@ -120,10 +125,14 @@ describe("ExampleSentences", () => {
     render(<ExampleSentences sentences={sentences} />);
     expect(screen.queryByText("Món mì rất ngon.")).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: /show meaning/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /show meaning/i }),
+    );
     expect(screen.getByText("Món mì rất ngon.")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: /hide meaning/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /hide meaning/i }),
+    );
     expect(screen.queryByText("Món mì rất ngon.")).not.toBeInTheDocument();
   });
 
@@ -140,7 +149,10 @@ describe("readExampleSentences", () => {
     expect(
       readExampleSentences({
         example_sentences: [
-          { sentence: "He reads at leisure.", sentence_vi: "Anh ấy đọc lúc rảnh." },
+          {
+            sentence: "He reads at leisure.",
+            sentence_vi: "Anh ấy đọc lúc rảnh.",
+          },
         ],
       }),
     ).toEqual([
@@ -157,7 +169,9 @@ describe("readExampleSentences", () => {
           { sentence: "A sentence.", audio_url: "https://example.test/a.mp3" },
         ],
       }),
-    ).toEqual([{ text: "A sentence.", audioUrl: "https://example.test/a.mp3" }]);
+    ).toEqual([
+      { text: "A sentence.", audioUrl: "https://example.test/a.mp3" },
+    ]);
   });
 
   it("still reads the first version of the list, which was English-only", () => {

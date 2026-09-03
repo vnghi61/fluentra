@@ -3,12 +3,7 @@ import { CheckCircle2, Sparkles, Target, Zap } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import type { GamificationSummary } from "../api/gamificationApi";
 
@@ -51,8 +46,13 @@ export const XPProgressBar: React.FC<XPProgressBarProps> = ({ summary }) => {
                 <CardTitle className="text-lg font-bold text-text">
                   {t("gamification.levelTitle", "Level {{level}}", { level })}
                 </CardTitle>
-                <Badge variant="secondary" className="px-2 py-0.5 text-xs font-semibold">
-                  {t("gamification.xpCount", "{{count}} XP", { count: total_xp })}
+                <Badge
+                  variant="secondary"
+                  className="px-2 py-0.5 text-xs font-semibold"
+                >
+                  {t("gamification.xpCount", "{{count}} XP", {
+                    count: total_xp,
+                  })}
                 </Badge>
               </div>
               <p className="text-xs text-text-muted">
@@ -75,7 +75,10 @@ export const XPProgressBar: React.FC<XPProgressBarProps> = ({ summary }) => {
             title={t("gamification.dailyGoalTooltip", "Daily XP Goal")}
           >
             {goalReached ? (
-              <CheckCircle2 className="h-3.5 w-3.5 text-success" aria-hidden="true" />
+              <CheckCircle2
+                className="h-3.5 w-3.5 text-success"
+                aria-hidden="true"
+              />
             ) : (
               <Target className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
             )}
@@ -93,27 +96,38 @@ export const XPProgressBar: React.FC<XPProgressBarProps> = ({ summary }) => {
         {/* Level Progress Bar */}
         <div className="space-y-1">
           <div className="flex justify-between text-xs font-medium text-text-muted">
-            <span>{t("gamification.levelLabel", "Level {{level}}", { level })}</span>
+            <span>
+              {t("gamification.levelLabel", "Level {{level}}", { level })}
+            </span>
             <span>{levelPercentage}%</span>
           </div>
           <Progress
             value={levelPercentage}
             className="h-2.5 bg-surface-raised"
-            aria-label={t("gamification.levelProgressAria", "Progress towards Level {{level}}", {
-              level: level + 1,
-            })}
+            aria-label={t(
+              "gamification.levelProgressAria",
+              "Progress towards Level {{level}}",
+              {
+                level: level + 1,
+              },
+            )}
           />
         </div>
 
         {/* Daily Goal Sub-bar */}
         <div className="flex items-center justify-between rounded-lg bg-surface/60 px-3 py-2 text-xs">
           <div className="flex items-center gap-1.5 text-text-muted">
-            <Sparkles className="h-3.5 w-3.5 text-amber-500" aria-hidden="true" />
+            <Sparkles
+              className="h-3.5 w-3.5 text-amber-500"
+              aria-hidden="true"
+            />
             <span>{t("gamification.dailyGoal", "Daily Goal")}</span>
           </div>
           <span className="font-semibold text-text">
             {goalReached
-              ? t("gamification.goalAchieved", "Achieved ({{today}} XP)", { today: xp_today })
+              ? t("gamification.goalAchieved", "Achieved ({{today}} XP)", {
+                  today: xp_today,
+                })
               : t("gamification.goalRemaining", "{{remaining}} XP remaining", {
                   remaining: Math.max(0, daily_goal_xp - xp_today),
                 })}

@@ -129,7 +129,13 @@ describe("Progress Component (P6.3)", () => {
     expect(progress).toHaveAttribute("aria-valuetext", "100%");
 
     rerender(
-      <Progress value={-20} min={0} max={100} aria-label="Test progress" data-testid="progress-clamp" />,
+      <Progress
+        value={-20}
+        min={0}
+        max={100}
+        aria-label="Test progress"
+        data-testid="progress-clamp"
+      />,
     );
     progress = screen.getByRole("progressbar");
     expect(progress).toHaveAttribute("aria-valuenow", "0");
@@ -152,7 +158,9 @@ describe("Progress Component (P6.3)", () => {
   });
 
   it("supports variant styling and motion-reduce animation class", () => {
-    const { container } = render(<Progress value={45} variant="success" aria-label="Variant test" />);
+    const { container } = render(
+      <Progress value={45} variant="success" aria-label="Variant test" />,
+    );
 
     const indicator = container.querySelector(".bg-success");
     expect(indicator).not.toBeNull();

@@ -224,7 +224,10 @@ describe("Design System Tokens (P6.1)", () => {
   it("keeps the focus ring visible against every surface (>= 3:1)", () => {
     for (const bg of ["color-surface", "color-surface-card"]) {
       for (const [mode, vars] of modes) {
-        const ratio = contrast(resolve("color-primary", vars), resolve(bg, vars));
+        const ratio = contrast(
+          resolve("color-primary", vars),
+          resolve(bg, vars),
+        );
         expect(
           ratio,
           `${mode}: focus ring --color-primary on --${bg} is ${ratio.toFixed(2)}:1, needs >= 3:1`,

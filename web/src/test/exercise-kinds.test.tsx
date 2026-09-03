@@ -231,9 +231,7 @@ describe("ExerciseContextChoice", () => {
     const onSubmit = vi.fn();
     render(<ExerciseContextChoice {...props} onSubmit={onSubmit} />);
 
-    await userEvent.click(
-      screen.getByRole("radio", { name: /not working/i }),
-    );
+    await userEvent.click(screen.getByRole("radio", { name: /not working/i }));
     await userEvent.click(screen.getByRole("button", { name: /check/i }));
 
     expect(onSubmit).toHaveBeenCalledWith("opt_free_time");

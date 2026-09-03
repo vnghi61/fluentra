@@ -708,6 +708,14 @@ type LearnUserQuest struct {
 	CompletedAt *time.Time
 }
 
+type LearnXpActivityHighWater struct {
+	UserID     uuid.UUID
+	ActivityID string
+	BestScore  int32
+	XpGranted  int32
+	UpdatedAt  time.Time
+}
+
 type LearnXpEvent struct {
 	ID         uuid.UUID
 	UserID     uuid.UUID

@@ -1,11 +1,25 @@
 -- name: AwardXP :one
--- BR-GAMIFICATION-01. The conflict path is DO NOTHING, so a redelivered event
--- inserts nothing and the caller sees no row — which is exactly the signal it
--- needs to skip publishing xp_awarded a second time. DO UPDATE would return a
--- row and make a redelivery indistinguishable from a first award.
+-- BR-GAMIFICATION-01. The conflict path is DO NOTHING for unscored sources,
+-- so a redelivered unscored event inserts nothing and caller sees no row.
+-- For SourceActivity, anti-farming and idempotency are governed by
+-- learn.xp_activity_high_water.
 INSERT INTO learn.xp_events (user_id, source, source_id, amount, multiplier)
 VALUES ($1, $2, $3, $4, $5)
-ON CONFLICT (user_id, source, source_id) DO NOTHING
+ON CONFLICT (user_id, source, source_id) WHERE source != 'activity' DO NOTHING
+RETURNING *;
+
+-- name: GetActivityHighWater :one
+SELECT best_score, xp_granted
+FROM learn.xp_activity_high_water
+WHERE user_id = $1 AND activity_id = $2;
+
+-- name: UpsertActivityHighWater :one
+INSERT INTO learn.xp_activity_high_water (user_id, activity_id, best_score, xp_granted, updated_at)
+VALUES ($1, $2, $3, $4, now())
+ON CONFLICT (user_id, activity_id) DO UPDATE
+SET best_score = GREATEST(learn.xp_activity_high_water.best_score, EXCLUDED.best_score),
+    xp_granted = EXCLUDED.xp_granted,
+    updated_at = now()
 RETURNING *;
 
 -- name: TotalXP :one

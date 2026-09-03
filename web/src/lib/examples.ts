@@ -14,7 +14,9 @@ export interface ExampleSentence {
 }
 
 function trimmed(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim() !== "" ? value.trim() : undefined;
+  return typeof value === "string" && value.trim() !== ""
+    ? value.trim()
+    : undefined;
 }
 
 /**

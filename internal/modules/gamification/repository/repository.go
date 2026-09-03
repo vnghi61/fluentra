@@ -20,6 +20,10 @@ import (
 type Repository interface {
 	// XP.
 	AwardXP(ctx context.Context, arg sqlc.AwardXPParams) (sqlc.LearnXpEvent, error)
+	GetActivityHighWater(ctx context.Context, userID uuid.UUID, activityID string) (sqlc.GetActivityHighWaterRow, error)
+	UpsertActivityHighWater(
+		ctx context.Context, arg sqlc.UpsertActivityHighWaterParams,
+	) (sqlc.LearnXpActivityHighWater, error)
 	TotalXP(ctx context.Context, userID uuid.UUID) (int64, error)
 	XPSince(ctx context.Context, userID uuid.UUID, since time.Time) (int64, error)
 	XPFromSourceSince(ctx context.Context, userID uuid.UUID, source string, since time.Time) (int64, error)
@@ -95,6 +99,27 @@ func (r *pgxRepository) AwardXP(ctx context.Context, arg sqlc.AwardXPParams) (sq
 		return sqlc.LearnXpEvent{}, ErrNoPool
 	}
 	return r.q.AwardXP(ctx, arg)
+}
+
+func (r *pgxRepository) GetActivityHighWater(
+	ctx context.Context, userID uuid.UUID, activityID string,
+) (sqlc.GetActivityHighWaterRow, error) {
+	if r.q == nil {
+		return sqlc.GetActivityHighWaterRow{}, ErrNoPool
+	}
+	return r.q.GetActivityHighWater(ctx, sqlc.GetActivityHighWaterParams{
+		UserID:     userID,
+		ActivityID: activityID,
+	})
+}
+
+func (r *pgxRepository) UpsertActivityHighWater(
+	ctx context.Context, arg sqlc.UpsertActivityHighWaterParams,
+) (sqlc.LearnXpActivityHighWater, error) {
+	if r.q == nil {
+		return sqlc.LearnXpActivityHighWater{}, ErrNoPool
+	}
+	return r.q.UpsertActivityHighWater(ctx, arg)
 }
 
 func (r *pgxRepository) TotalXP(ctx context.Context, userID uuid.UUID) (int64, error) {
