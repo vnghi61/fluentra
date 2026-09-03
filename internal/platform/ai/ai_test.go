@@ -60,6 +60,19 @@ func TestRegistry_LoadsTheVersionedTemplate(t *testing.T) {
 	assert.Zero(t, tmpl.Temperature, "verification must not be creative")
 }
 
+func TestRegistry_LoadsExplainAnswerTemplate(t *testing.T) {
+	registry, err := ai.NewRegistry()
+	require.NoError(t, err)
+
+	tmpl, err := registry.Get(ai.TaskExplainAnswer)
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, tmpl.Version)
+	assert.True(t, tmpl.JSONOutput)
+	assert.Equal(t, 1024, tmpl.MaxTokens)
+	assert.InDelta(t, 0.2, tmpl.Temperature, 0.001)
+}
+
 func TestRegistry_RendersTheCallersVariables(t *testing.T) {
 	registry, err := ai.NewRegistry()
 	require.NoError(t, err)

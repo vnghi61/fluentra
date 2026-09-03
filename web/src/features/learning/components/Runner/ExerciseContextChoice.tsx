@@ -22,6 +22,8 @@ import type { OptionItem } from "./ExerciseMultipleChoice";
  * the sentence gets a card of its own with the word highlighted and audible,
  * rather than being squeezed into the prompt line.
  */
+import type { AnswerExplanation } from "./ExerciseShell";
+
 export interface ExerciseContextChoiceProps {
   prompt: string;
   /** The sentence the word appears in. */
@@ -33,6 +35,7 @@ export interface ExerciseContextChoiceProps {
   isSubmitted: boolean;
   isCorrect?: boolean | null | undefined;
   isLoading?: boolean;
+  explanation?: AnswerExplanation | null | undefined;
   onSubmit: (selectedOptionId: string) => void;
   onContinue: () => void;
 }
@@ -66,6 +69,7 @@ export const ExerciseContextChoice: React.FC<ExerciseContextChoiceProps> = ({
   isSubmitted,
   isCorrect,
   isLoading = false,
+  explanation,
   onSubmit,
   onContinue,
 }) => {
@@ -144,7 +148,11 @@ export const ExerciseContextChoice: React.FC<ExerciseContextChoiceProps> = ({
       </div>
 
       {isSubmitted && (
-        <ExerciseFeedback isCorrect={isCorrect} feedback={feedback} />
+        <ExerciseFeedback
+          isCorrect={isCorrect}
+          feedback={feedback}
+          explanation={explanation}
+        />
       )}
 
       <ExerciseActions

@@ -65,6 +65,18 @@ type ProgressDTO struct {
 	UpdatedAt   time.Time  `json:"updated_at"`
 }
 
+// AnswerExplanationDTO represents an explanation for an answer to a question version.
+type AnswerExplanationDTO struct {
+	ID               uuid.UUID `json:"id"`
+	ContentVersionID uuid.UUID `json:"content_version_id"`
+	UserAnswer       string    `json:"user_answer"`
+	IsCorrect        bool      `json:"is_correct"`
+	Text             string    `json:"text"`
+	TextVi           string    `json:"text_vi"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+}
+
 // UpsertProgressParams holds fields to create or update progress.
 type UpsertProgressParams struct {
 	UserID      uuid.UUID
@@ -609,6 +621,64 @@ func toProgressDTO(row sqlc.LearnProgress) *ProgressDTO {
 		CreatedAt:   row.CreatedAt,
 		UpdatedAt:   row.UpdatedAt,
 	}
+}
+
+// GetAnswerExplanation returns a cached explanation for a question version and learner answer.
+func (r *Repository) GetAnswerExplanation(
+	ctx context.Context, contentVersionID uuid.UUID, userAnswer string,
+) (*AnswerExplanationDTO, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	row, err := r.queries.GetAnswerExplanation(ctx, sqlc.GetAnswerExplanationParams{
+		ContentVersionID: contentVersionID,
+		UserAnswer:       userAnswer,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, mapPgError(err)
+	}
+	return &AnswerExplanationDTO{
+		ID:               row.ID,
+		ContentVersionID: row.ContentVersionID,
+		UserAnswer:       row.UserAnswer,
+		IsCorrect:        row.IsCorrect,
+		Text:             row.ExplanationEn,
+		TextVi:           row.ExplanationVi,
+		CreatedAt:        row.CreatedAt,
+		UpdatedAt:        row.UpdatedAt,
+	}, nil
+}
+
+// UpsertAnswerExplanation inserts or updates an explanation for a question version and learner answer.
+func (r *Repository) UpsertAnswerExplanation(
+	ctx context.Context, explanation AnswerExplanationDTO,
+) (*AnswerExplanationDTO, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	row, err := r.queries.UpsertAnswerExplanation(ctx, sqlc.UpsertAnswerExplanationParams{
+		ContentVersionID: explanation.ContentVersionID,
+		UserAnswer:       explanation.UserAnswer,
+		IsCorrect:        explanation.IsCorrect,
+		ExplanationEn:    explanation.Text,
+		ExplanationVi:    explanation.TextVi,
+	})
+	if err != nil {
+		return nil, mapPgError(err)
+	}
+	return &AnswerExplanationDTO{
+		ID:               row.ID,
+		ContentVersionID: row.ContentVersionID,
+		UserAnswer:       row.UserAnswer,
+		IsCorrect:        row.IsCorrect,
+		Text:             row.ExplanationEn,
+		TextVi:           row.ExplanationVi,
+		CreatedAt:        row.CreatedAt,
+		UpdatedAt:        row.UpdatedAt,
+	}, nil
 }
 
 func mapPgError(err error) error {

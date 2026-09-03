@@ -5,9 +5,12 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -20,6 +23,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/learning/repository"
 	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
 	srscontract "github.com/fluentra/fluentra/internal/modules/srs/contract"
+	"github.com/fluentra/fluentra/internal/platform/ai"
 	"github.com/fluentra/fluentra/internal/platform/cache"
 	"github.com/fluentra/fluentra/internal/platform/telemetry"
 	"github.com/fluentra/fluentra/internal/shared/clock"
@@ -80,6 +84,12 @@ type Repository interface {
 	UpsertSkillMastery(
 		ctx context.Context, userID uuid.UUID, skill, level string, confidence float64,
 	) (*domain.SkillMastery, error)
+	GetAnswerExplanation(
+		ctx context.Context, contentVersionID uuid.UUID, userAnswer string,
+	) (*repository.AnswerExplanationDTO, error)
+	UpsertAnswerExplanation(
+		ctx context.Context, explanation repository.AnswerExplanationDTO,
+	) (*repository.AnswerExplanationDTO, error)
 	// WithTx returns this repository bound to tx. It returns the interface, not
 	// the concrete struct: returning *repository.Repository dropped every
 	// decorator the service had been given the moment the grading transaction
@@ -116,8 +126,9 @@ type SubmitAttemptResultDTO struct {
 	Feedback  *string   `json:"feedback"`
 	// What the learner should have said. Empty until they have submitted, which
 	// is the whole reason it travels here and not in the lesson body.
-	CorrectAnswer *string `json:"correct_answer,omitempty"`
-	Async         bool    `json:"async"`
+	CorrectAnswer *string                     `json:"correct_answer,omitempty"`
+	Async         bool                        `json:"async"`
+	Explanation   *contract.AnswerExplanation `json:"explanation,omitempty"`
 }
 
 // AttemptDetailDTO models the complete attempt view returned by GET /attempts/{id}.
@@ -155,6 +166,7 @@ type Deps struct {
 	NewID    func() (uuid.UUID, error)
 	Caches   LearningCaches
 	Env      string
+	AI       ai.Client
 }
 
 // Service coordinates attempt execution, grading, progress rollups, and event emission.
@@ -171,6 +183,7 @@ type Service struct {
 	newID    func() (uuid.UUID, error)
 	caches   LearningCaches
 	env      string
+	ai       ai.Client
 }
 
 // New constructs a new Service.
@@ -198,6 +211,7 @@ func New(deps Deps) *Service {
 		newID:    idGen,
 		caches:   deps.Caches,
 		env:      deps.Env,
+		ai:       deps.AI,
 	}
 }
 
@@ -324,7 +338,7 @@ func (s *Service) SubmitAttempt(
 		}, nil
 	}
 
-	return s.completeSynchronousGrading(ctx, userID, attempt, activity, gradeResult)
+	return s.completeSynchronousGrading(ctx, userID, attempt, activity, gradeResult, response)
 }
 
 func (s *Service) checkEarlySubmissionState(
@@ -466,6 +480,7 @@ func (s *Service) completeSynchronousGrading(
 	attempt *domain.Attempt,
 	activity *lessoncontract.ActivityHierarchy,
 	gradeResult contract.GradeResult,
+	response json.RawMessage,
 ) (*SubmitAttemptResultDTO, error) {
 	now := s.clock.Now().UTC()
 	durationMs := safeDurationMs(attempt.CreatedAt, now)
@@ -524,6 +539,17 @@ func (s *Service) completeSynchronousGrading(
 		answer := gradeResult.CorrectAnswer
 		result.CorrectAnswer = &answer
 	}
+	if gradeResult.Explanation != nil {
+		result.Explanation = gradeResult.Explanation
+	} else {
+		userAnswer := extractUserAnswer(response)
+		if userAnswer == "" && len(attempt.Response) > 0 {
+			userAnswer = extractUserAnswer(attempt.Response)
+		}
+		result.Explanation = s.resolveExplanation(
+			ctx, activity.ContentVersionID, userAnswer, gradeResult.CorrectAnswer, gradeResult.Correct, activity.Config,
+		)
+	}
 	return result, nil
 }
 
@@ -533,11 +559,12 @@ func (s *Service) completeSynchronousGrading(
 // and no status to move through, and returning a shape that looks like a stored
 // attempt would invite a caller to treat it as one.
 type PreviewGradeResultDTO struct {
-	Correct       bool    `json:"correct"`
-	Score         int     `json:"score"`
-	MaxScore      int     `json:"max_score"`
-	Feedback      string  `json:"feedback"`
-	CorrectAnswer *string `json:"correct_answer,omitempty"`
+	Correct       bool                        `json:"correct"`
+	Score         int                         `json:"score"`
+	MaxScore      int                         `json:"max_score"`
+	Feedback      string                      `json:"feedback"`
+	CorrectAnswer *string                     `json:"correct_answer,omitempty"`
+	Explanation   *contract.AnswerExplanation `json:"explanation,omitempty"`
 }
 
 // GradePreview grades a response and records nothing.
@@ -596,7 +623,218 @@ func (s *Service) GradePreview(
 		answer := result.CorrectAnswer
 		preview.CorrectAnswer = &answer
 	}
+	if result.Explanation != nil {
+		preview.Explanation = result.Explanation
+	} else {
+		userAnswer := extractUserAnswer(response)
+		preview.Explanation = s.resolveExplanation(
+			ctx, activity.ContentVersionID, userAnswer, result.CorrectAnswer, result.Correct, activity.Config,
+		)
+	}
 	return preview, nil
+}
+
+func (s *Service) resolveExplanation(
+	ctx context.Context,
+	contentVersionID uuid.UUID,
+	userAnswer string,
+	correctAnswer string,
+	isCorrect bool,
+	config json.RawMessage,
+) *contract.AnswerExplanation {
+	if contentVersionID == uuid.Nil || strings.TrimSpace(userAnswer) == "" {
+		return nil
+	}
+	// The same normalisation the grader applies, and for the same reason.
+	//
+	// Grading compares with strings.TrimSpace(strings.ToLower(...)), so "Habit"
+	// and "habit" are one answer as far as the learner is concerned. Keying the
+	// cache on the untouched string made them two: two rows, two provider calls,
+	// and two explanations of an answer the system had already decided were
+	// identical. On a free daily quota that is spend for nothing.
+	userAnswer = normaliseAnswerKey(userAnswer)
+
+	if cached := s.getCachedExplanation(ctx, contentVersionID, userAnswer); cached != nil {
+		return cached
+	}
+
+	if s.ai == nil || !checkExplanationQuota(ctx, s.ai) {
+		return nil
+	}
+
+	question, contextDetails := extractQuestionAndContext(config)
+	expl := requestExplanation(ctx, s.ai, question, userAnswer, correctAnswer, contextDetails, isCorrect)
+	if expl == nil {
+		return nil
+	}
+
+	s.storeExplanation(ctx, contentVersionID, userAnswer, isCorrect, expl)
+	return expl
+}
+
+func (s *Service) getCachedExplanation(
+	ctx context.Context, contentVersionID uuid.UUID, userAnswer string,
+) *contract.AnswerExplanation {
+	if s.repo == nil {
+		return nil
+	}
+	cached, err := s.repo.GetAnswerExplanation(ctx, contentVersionID, userAnswer)
+	if err != nil {
+		slog.WarnContext(ctx, "failed to check cached answer explanation", "error", err)
+		return nil
+	}
+	if cached != nil {
+		return &contract.AnswerExplanation{
+			Text:   cached.Text,
+			TextVi: cached.TextVi,
+		}
+	}
+	return nil
+}
+
+func (s *Service) storeExplanation(
+	ctx context.Context,
+	contentVersionID uuid.UUID,
+	userAnswer string,
+	isCorrect bool,
+	expl *contract.AnswerExplanation,
+) {
+	if s.repo == nil || expl == nil {
+		return
+	}
+	_, err := s.repo.UpsertAnswerExplanation(ctx, repository.AnswerExplanationDTO{
+		ContentVersionID: contentVersionID,
+		UserAnswer:       userAnswer,
+		IsCorrect:        isCorrect,
+		Text:             expl.Text,
+		TextVi:           expl.TextVi,
+	})
+	if err != nil {
+		slog.WarnContext(ctx, "failed to store answer explanation in database", "error", err)
+	}
+}
+
+func checkExplanationQuota(ctx context.Context, client ai.Client) bool {
+	qc, ok := client.(ai.QuotaChecker)
+	if !ok {
+		return true
+	}
+	hasQuota, err := qc.HasQuota(ctx, ai.TaskExplainAnswer)
+	if err != nil {
+		slog.WarnContext(ctx, "could not check AI quota for explanation; skipping", "error", err)
+		return false
+	}
+	if !hasQuota {
+		slog.InfoContext(ctx, "ai: quota exhausted for explain_answer; skipping explanation")
+		return false
+	}
+	return true
+}
+
+func requestExplanation(
+	ctx context.Context,
+	client ai.Client,
+	question, userAnswer, correctAnswer, contextDetails string,
+	isCorrect bool,
+) *contract.AnswerExplanation {
+	var res struct {
+		Text   string `json:"text"`
+		TextVi string `json:"text_vi"`
+	}
+	req := ai.Request{
+		Task: ai.TaskExplainAnswer,
+		Vars: map[string]any{
+			"Question":      question,
+			"UserAnswer":    userAnswer,
+			"CorrectAnswer": correctAnswer,
+			"IsCorrect":     isCorrect,
+			"Context":       contextDetails,
+		},
+	}
+
+	if err := ai.CompleteJSON(ctx, client, req, &res); err != nil {
+		if errors.Is(err, ai.ErrQuotaExhausted) {
+			slog.WarnContext(ctx, "ai: quota exhausted while generating explanation; yielding")
+		} else {
+			slog.WarnContext(ctx, "failed to generate answer explanation", "error", err)
+		}
+		return nil
+	}
+
+	text := strings.TrimSpace(res.Text)
+	textVi := strings.TrimSpace(res.TextVi)
+	if text == "" || textVi == "" {
+		return nil
+	}
+
+	return &contract.AnswerExplanation{
+		Text:   text,
+		TextVi: textVi,
+	}
+}
+
+func extractQuestionAndContext(config json.RawMessage) (string, string) {
+	if len(config) == 0 {
+		return "English exercise", ""
+	}
+	var m map[string]any
+	if err := json.Unmarshal(config, &m); err != nil {
+		return "English exercise", ""
+	}
+
+	question := "English vocabulary and grammar question"
+	if p, ok := m["prompt"].(string); ok && strings.TrimSpace(p) != "" {
+		question = strings.TrimSpace(p)
+	} else if w, ok := m["word"].(string); ok && strings.TrimSpace(w) != "" {
+		question = fmt.Sprintf("Meaning of word '%s'", strings.TrimSpace(w))
+	} else if tw, ok := m["target_word"].(string); ok && strings.TrimSpace(tw) != "" {
+		question = fmt.Sprintf("Meaning of word '%s'", strings.TrimSpace(tw))
+	}
+
+	var contextParts []string
+	if sb, ok := m["sentence_before"].(string); ok && strings.TrimSpace(sb) != "" {
+		sa, _ := m["sentence_after"].(string)
+		contextParts = append(contextParts, fmt.Sprintf("Sentence: %s ___ %s", strings.TrimSpace(sb), strings.TrimSpace(sa)))
+	}
+	if def, ok := m["definition"].(string); ok && strings.TrimSpace(def) != "" {
+		contextParts = append(contextParts, fmt.Sprintf("Definition: %s", strings.TrimSpace(def)))
+	}
+	if defVi, ok := m["definition_vi"].(string); ok && strings.TrimSpace(defVi) != "" {
+		contextParts = append(contextParts, fmt.Sprintf("Vietnamese meaning: %s", strings.TrimSpace(defVi)))
+	}
+
+	return question, strings.Join(contextParts, "\n")
+}
+
+func extractUserAnswer(response json.RawMessage) string {
+	if len(response) == 0 {
+		return ""
+	}
+	var resp struct {
+		Answer           string            `json:"answer"`
+		SelectedOption   string            `json:"selected_option"`
+		SelectedOptionID string            `json:"selected_option_id"`
+		Text             string            `json:"text"`
+		TextAnswer       string            `json:"text_answer"`
+		Pairs            map[string]string `json:"pairs"`
+	}
+	if err := json.Unmarshal(response, &resp); err != nil {
+		return strings.TrimSpace(string(response))
+	}
+	for _, a := range []string{resp.SelectedOptionID, resp.SelectedOption, resp.TextAnswer, resp.Answer, resp.Text} {
+		if strings.TrimSpace(a) != "" {
+			return strings.TrimSpace(a)
+		}
+	}
+	if len(resp.Pairs) > 0 {
+		var pairs []string
+		for k, v := range resp.Pairs {
+			pairs = append(pairs, fmt.Sprintf("%s:%s", k, v))
+		}
+		sort.Strings(pairs)
+		return strings.Join(pairs, ",")
+	}
+	return ""
 }
 
 // executeRollupTx performs the atomic update of the attempt, progress scopes, and outbox event emissions.
@@ -1658,4 +1896,13 @@ func (s *Service) invalidateLearningCaches(ctx context.Context, userID uuid.UUID
 				"user_id", userID, "error", err)
 		}
 	}
+}
+
+// normaliseAnswerKey folds an answer to the form the grader compares.
+//
+// Kept beside resolveExplanation rather than exported: it exists so the
+// explanation cache agrees with grading about what counts as the same answer,
+// and nothing else should be tempted to reuse it as a general normaliser.
+func normaliseAnswerKey(answer string) string {
+	return strings.TrimSpace(strings.ToLower(answer))
 }

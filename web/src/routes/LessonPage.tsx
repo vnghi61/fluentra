@@ -119,6 +119,13 @@ interface Verdict {
   // Matching is the one kind that can be partly right, and "incorrect" is a
   // poor description of three pairs out of four.
   score?: number | null | undefined;
+  explanation?:
+    | {
+        text: string;
+        text_vi: string;
+      }
+    | null
+    | undefined;
 }
 
 export function LessonPage(): React.JSX.Element {
@@ -538,6 +545,7 @@ export function LessonPage(): React.JSX.Element {
                 : (submissionResult?.correct_answer ?? undefined)
             }
             feedback={submissionResult?.feedback}
+            explanation={submissionResult?.explanation}
             isSubmitted={isSubmitted}
             isCorrect={submissionResult?.correct}
             isLoading={isSubmitting || isAttemptPending}
@@ -555,6 +563,7 @@ export function LessonPage(): React.JSX.Element {
             sentenceAfterBlank={gapConfig.sentence_after ?? ""}
             expectedAnswer={gapConfig.expected_answer ?? ""}
             feedback={submissionResult?.feedback}
+            explanation={submissionResult?.explanation}
             isSubmitted={isSubmitted}
             isCorrect={submissionResult?.correct}
             isLoading={isSubmitting || isAttemptPending}
@@ -610,6 +619,7 @@ export function LessonPage(): React.JSX.Element {
             })}
             expectedAnswer={submissionResult?.correct_answer}
             feedback={submissionResult?.feedback}
+            explanation={submissionResult?.explanation}
             isSubmitted={isSubmitted}
             isCorrect={submissionResult?.correct}
             isLoading={isSubmitting || isAttemptPending}
@@ -626,6 +636,7 @@ export function LessonPage(): React.JSX.Element {
             words={matchConfig.words ?? []}
             definitions={matchConfig.definitions ?? []}
             feedback={submissionResult?.feedback}
+            explanation={submissionResult?.explanation}
             {...(typeof submissionResult?.score === "number" && {
               score: submissionResult.score,
             })}
@@ -651,6 +662,7 @@ export function LessonPage(): React.JSX.Element {
             })}
             expectedAnswer={submissionResult?.correct_answer}
             feedback={submissionResult?.feedback}
+            explanation={submissionResult?.explanation}
             isSubmitted={isSubmitted}
             isCorrect={submissionResult?.correct}
             isLoading={isSubmitting || isAttemptPending}
@@ -675,6 +687,7 @@ export function LessonPage(): React.JSX.Element {
                 : (submissionResult?.correct_answer ?? undefined)
             }
             feedback={submissionResult?.feedback}
+            explanation={submissionResult?.explanation}
             isSubmitted={isSubmitted}
             isCorrect={submissionResult?.correct}
             isLoading={isSubmitting || isAttemptPending}

@@ -315,6 +315,33 @@ func (q *Queries) EnsurePartitions(ctx context.Context, dollar_1 int32) (int32, 
 	return created_count, err
 }
 
+const getAnswerExplanation = `-- name: GetAnswerExplanation :one
+SELECT id, content_version_id, user_answer, is_correct, explanation_en, explanation_vi, created_at, updated_at
+FROM learn.answer_explanations
+WHERE content_version_id = $1 AND user_answer = $2
+`
+
+type GetAnswerExplanationParams struct {
+	ContentVersionID uuid.UUID
+	UserAnswer       string
+}
+
+func (q *Queries) GetAnswerExplanation(ctx context.Context, arg GetAnswerExplanationParams) (LearnAnswerExplanation, error) {
+	row := q.db.QueryRow(ctx, getAnswerExplanation, arg.ContentVersionID, arg.UserAnswer)
+	var i LearnAnswerExplanation
+	err := row.Scan(
+		&i.ID,
+		&i.ContentVersionID,
+		&i.UserAnswer,
+		&i.IsCorrect,
+		&i.ExplanationEn,
+		&i.ExplanationVi,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getAttemptByID = `-- name: GetAttemptByID :one
 SELECT id, created_at, updated_at, user_id, activity_id, idempotency_key,
        response, score, max_score, grader, duration_ms, status
@@ -846,6 +873,47 @@ func (q *Queries) UpdateProgress(ctx context.Context, arg UpdateProgressParams) 
 		&i.Status,
 		&i.Score,
 		&i.CompletedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const upsertAnswerExplanation = `-- name: UpsertAnswerExplanation :one
+INSERT INTO learn.answer_explanations (content_version_id, user_answer, is_correct, explanation_en, explanation_vi, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, now(), now())
+ON CONFLICT (content_version_id, user_answer) DO UPDATE
+SET is_correct = EXCLUDED.is_correct,
+    explanation_en = EXCLUDED.explanation_en,
+    explanation_vi = EXCLUDED.explanation_vi,
+    updated_at = now()
+RETURNING id, content_version_id, user_answer, is_correct, explanation_en, explanation_vi, created_at, updated_at
+`
+
+type UpsertAnswerExplanationParams struct {
+	ContentVersionID uuid.UUID
+	UserAnswer       string
+	IsCorrect        bool
+	ExplanationEn    string
+	ExplanationVi    string
+}
+
+func (q *Queries) UpsertAnswerExplanation(ctx context.Context, arg UpsertAnswerExplanationParams) (LearnAnswerExplanation, error) {
+	row := q.db.QueryRow(ctx, upsertAnswerExplanation,
+		arg.ContentVersionID,
+		arg.UserAnswer,
+		arg.IsCorrect,
+		arg.ExplanationEn,
+		arg.ExplanationVi,
+	)
+	var i LearnAnswerExplanation
+	err := row.Scan(
+		&i.ID,
+		&i.ContentVersionID,
+		&i.UserAnswer,
+		&i.IsCorrect,
+		&i.ExplanationEn,
+		&i.ExplanationVi,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

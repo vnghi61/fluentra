@@ -314,12 +314,14 @@
       { "name": "attempts", "purpose": "One try at an activity", "notes": "Partitioned monthly. `user_id`, `activity_id`, `response` jsonb, `score`, `max_score`, `grader`, `duration_ms`, `status`" },
       { "name": "learning_sessions", "purpose": "A study session", "notes": "`user_id`, `started_at`, `ended_at`, `activities_completed`, `minutes`" },
       { "name": "placement_results", "purpose": "Placement outcome", "notes": "`user_id`, `estimated_level`, `per_skill` jsonb, `taken_at`" },
-      { "name": "skill_mastery", "purpose": "Per-skill mastery estimate", "notes": "`user_id`, `skill`, `level`, `confidence`, `updated_at`" }
+      { "name": "skill_mastery", "purpose": "Per-skill mastery estimate", "notes": "`user_id`, `skill`, `level`, `confidence`, `updated_at`" },
+      { "name": "answer_explanations", "purpose": "Cached AI answer explanations", "notes": "`content_version_id`, `user_answer` unique, `text`, `text_vi`, `is_correct`" }
     ],
     "indexes": [
       "`uq_progress_user_scope` — the read path for every dashboard",
       "`idx_attempts_user_activity_time` — attempt history",
-      "`idx_attempts_activity_time` — item statistics for `questionbank`"
+      "`idx_attempts_activity_time` — item statistics for `questionbank`",
+      "`uq_answer_explanations` — unique on (content_version_id, user_answer) for lazy deduplication"
     ],
     "endpoints": [
       { "method": "POST", "path": "/api/v1/courses/{id}/enroll", "permission": "self", "purpose": "Enrol", "success": "201", "errors": ["ALREADY_ENROLLED", "COURSE_NOT_FOUND"] },

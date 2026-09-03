@@ -25,24 +25,32 @@ type SubmitAttemptRequest struct {
 
 // SubmitAttemptResponse matches the OpenAPI schema for POST /attempts/{id}/submit (200 & 202).
 type SubmitAttemptResponse struct {
-	AttemptID     uuid.UUID `json:"attempt_id"`
-	Status        string    `json:"status"`
-	Score         *int      `json:"score"`
-	MaxScore      *int      `json:"max_score"`
-	Correct       *bool     `json:"correct"`
-	Feedback      *string   `json:"feedback"`
-	CorrectAnswer *string   `json:"correct_answer,omitempty"`
+	AttemptID     uuid.UUID                  `json:"attempt_id"`
+	Status        string                     `json:"status"`
+	Score         *int                       `json:"score"`
+	MaxScore      *int                       `json:"max_score"`
+	Correct       *bool                      `json:"correct"`
+	Feedback      *string                    `json:"feedback"`
+	CorrectAnswer *string                    `json:"correct_answer,omitempty"`
+	Explanation   *AnswerExplanationResponse `json:"explanation,omitempty"`
+}
+
+// AnswerExplanationResponse matches the OpenAPI schema for AnswerExplanation.
+type AnswerExplanationResponse struct {
+	Text   string `json:"text"`
+	TextVi string `json:"text_vi"`
 }
 
 // PreviewGradeResponse matches the OpenAPI schema for POST /activities/{id}/grade.
 //
 // No attempt id and no status, because nothing was created and nothing moved.
 type PreviewGradeResponse struct {
-	Correct       bool    `json:"correct"`
-	Score         int     `json:"score"`
-	MaxScore      int     `json:"max_score"`
-	Feedback      string  `json:"feedback"`
-	CorrectAnswer *string `json:"correct_answer,omitempty"`
+	Correct       bool                       `json:"correct"`
+	Score         int                        `json:"score"`
+	MaxScore      int                        `json:"max_score"`
+	Feedback      string                     `json:"feedback"`
+	CorrectAnswer *string                    `json:"correct_answer,omitempty"`
+	Explanation   *AnswerExplanationResponse `json:"explanation,omitempty"`
 	// Saved is always false. It is stated rather than implied because the whole
 	// contract of this endpoint is what it does not do, and a client that reads
 	// this field cannot mistake a preview for a recorded attempt.
@@ -50,12 +58,20 @@ type PreviewGradeResponse struct {
 }
 
 func toPreviewGradeResponse(dto *service.PreviewGradeResultDTO) PreviewGradeResponse {
+	var explanation *AnswerExplanationResponse
+	if dto.Explanation != nil {
+		explanation = &AnswerExplanationResponse{
+			Text:   dto.Explanation.Text,
+			TextVi: dto.Explanation.TextVi,
+		}
+	}
 	return PreviewGradeResponse{
 		Correct:       dto.Correct,
 		Score:         dto.Score,
 		MaxScore:      dto.MaxScore,
 		Feedback:      dto.Feedback,
 		CorrectAnswer: dto.CorrectAnswer,
+		Explanation:   explanation,
 		Saved:         false,
 	}
 }
@@ -85,6 +101,13 @@ func toStartAttemptResponse(dto *service.StartAttemptDTO) StartAttemptResponse {
 }
 
 func toSubmitAttemptResponse(dto *service.SubmitAttemptResultDTO) SubmitAttemptResponse {
+	var explanation *AnswerExplanationResponse
+	if dto.Explanation != nil {
+		explanation = &AnswerExplanationResponse{
+			Text:   dto.Explanation.Text,
+			TextVi: dto.Explanation.TextVi,
+		}
+	}
 	return SubmitAttemptResponse{
 		AttemptID:     dto.AttemptID,
 		Status:        dto.Status,
@@ -93,6 +116,7 @@ func toSubmitAttemptResponse(dto *service.SubmitAttemptResultDTO) SubmitAttemptR
 		Correct:       dto.Correct,
 		Feedback:      dto.Feedback,
 		CorrectAnswer: dto.CorrectAnswer,
+		Explanation:   explanation,
 	}
 }
 

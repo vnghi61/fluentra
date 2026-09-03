@@ -6,7 +6,7 @@ status: DONE
 phase: 2
 owner: "@learning-team"
 schema: learn
-tables: [enrollments, progress, attempts, learning_sessions, placement_results, skill_mastery]
+tables: [enrollments, progress, attempts, learning_sessions, placement_results, skill_mastery, answer_explanations]
 depends_on: [lesson, content, srs, cache, job]
 depended_on_by: [gamification, analytics, admin, exam, vocabulary, grammar, reading, listening, speaking, writing]
 spec_version: 1.0.0
@@ -111,12 +111,14 @@ Migrations: `db/migrations/learning/` · Queries: `db/queries/learning/`
 | `learn.learning_sessions` | A study session | `user_id`, `started_at`, `ended_at`, `activities_completed`, `minutes` |
 | `learn.placement_results` | Placement outcome | `user_id`, `estimated_level`, `per_skill` jsonb, `taken_at` |
 | `learn.skill_mastery` | Per-skill mastery estimate | `user_id`, `skill`, `level`, `confidence`, `updated_at` |
+| `learn.answer_explanations` | Cached AI answer explanations | `content_version_id`, `user_answer` unique, `text`, `text_vi`, `is_correct` |
 
 **Indexes of note**
 
 - `uq_progress_user_scope` — the read path for every dashboard
 - `idx_attempts_user_activity_time` — attempt history
 - `idx_attempts_activity_time` — item statistics for `questionbank`
+- `uq_answer_explanations` — unique on (content_version_id, user_answer) for lazy deduplication
 <!-- END GENERATED: schema -->
 
 ## 6. HTTP endpoints

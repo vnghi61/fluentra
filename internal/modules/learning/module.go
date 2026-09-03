@@ -19,6 +19,7 @@ import (
 	learninghttp "github.com/fluentra/fluentra/internal/modules/learning/transport/http"
 	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
 	srscontract "github.com/fluentra/fluentra/internal/modules/srs/contract"
+	"github.com/fluentra/fluentra/internal/platform/ai"
 	"github.com/fluentra/fluentra/internal/platform/job"
 	"github.com/fluentra/fluentra/internal/platform/telemetry"
 	"github.com/fluentra/fluentra/internal/shared/clock"
@@ -48,6 +49,7 @@ type Deps struct {
 	Metrics       telemetry.Instruments
 	Caches        service.LearningCaches
 	Env           string
+	AI            ai.Client
 }
 
 // Module represents the learning module, assembled.
@@ -116,6 +118,7 @@ func New(deps Deps) *Module {
 		Clock:    timekeeper,
 		Caches:   deps.Caches,
 		Env:      deps.Env,
+		AI:       deps.AI,
 	})
 
 	var handler *learninghttp.Handler

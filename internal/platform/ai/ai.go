@@ -37,6 +37,8 @@ type Task string
 const (
 	// TaskVerifyVocabulary checks one uploaded word and writes examples for it.
 	TaskVerifyVocabulary Task = "vocab_verify"
+	// TaskExplainAnswer explains why an answer is correct or incorrect with word meaning and Vietnamese.
+	TaskExplainAnswer Task = "explain_answer"
 )
 
 // Request is one unit of work.

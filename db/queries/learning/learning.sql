@@ -188,3 +188,19 @@ LIMIT 1;
 
 -- name: EnsurePartitions :one
 SELECT learn.ensure_partitions($1::integer) AS created_count;
+
+-- name: GetAnswerExplanation :one
+SELECT id, content_version_id, user_answer, is_correct, explanation_en, explanation_vi, created_at, updated_at
+FROM learn.answer_explanations
+WHERE content_version_id = $1 AND user_answer = $2;
+
+-- name: UpsertAnswerExplanation :one
+INSERT INTO learn.answer_explanations (content_version_id, user_answer, is_correct, explanation_en, explanation_vi, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, now(), now())
+ON CONFLICT (content_version_id, user_answer) DO UPDATE
+SET is_correct = EXCLUDED.is_correct,
+    explanation_en = EXCLUDED.explanation_en,
+    explanation_vi = EXCLUDED.explanation_vi,
+    updated_at = now()
+RETURNING id, content_version_id, user_answer, is_correct, explanation_en, explanation_vi, created_at, updated_at;
+

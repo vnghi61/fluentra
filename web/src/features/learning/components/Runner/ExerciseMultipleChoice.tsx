@@ -5,6 +5,8 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+import { type AnswerExplanation } from "./ExerciseShell";
+
 export interface OptionItem {
   id: string;
   text: string;
@@ -18,6 +20,7 @@ export interface ExerciseMultipleChoiceProps {
   isSubmitted: boolean;
   isCorrect?: boolean | null | undefined;
   isLoading?: boolean;
+  explanation?: AnswerExplanation | null | undefined;
   onSubmit: (selectedOptionId: string) => void;
   onContinue: () => void;
 }
@@ -30,6 +33,7 @@ export const ExerciseMultipleChoice: React.FC<ExerciseMultipleChoiceProps> = ({
   isSubmitted,
   isCorrect,
   isLoading = false,
+  explanation,
   onSubmit,
   onContinue,
 }) => {
@@ -171,6 +175,22 @@ export const ExerciseMultipleChoice: React.FC<ExerciseMultipleChoiceProps> = ({
           </div>
           {feedback && (
             <p className="mt-1 text-sm text-text font-normal">{feedback}</p>
+          )}
+          {explanation && (
+            <div className="mt-3 pt-3 border-t border-border/40 space-y-2 text-sm">
+              <div className="flex items-start gap-2">
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-primary/10 text-primary shrink-0 mt-0.5">
+                  EN
+                </span>
+                <p className="text-text/90 font-medium leading-relaxed">{explanation.text}</p>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-accent/20 text-accent shrink-0 mt-0.5">
+                  VI
+                </span>
+                <p className="text-text-muted leading-relaxed">{explanation.text_vi}</p>
+              </div>
+            </div>
           )}
         </div>
       )}
