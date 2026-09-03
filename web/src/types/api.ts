@@ -3406,6 +3406,7 @@ export interface components {
             correct_answer?: string | null;
             /** @example Correct! Well done. */
             feedback?: string | null;
+            explanation?: components["schemas"]["AnswerExplanation"];
         };
         /** @description The outcome of grading that recorded nothing. There is no attempt id and no status, because nothing was created and nothing moved. */
         PreviewGradeResult: {
@@ -3427,6 +3428,19 @@ export interface components {
              * @example false
              */
             saved: boolean;
+            explanation?: components["schemas"]["AnswerExplanation"];
+        };
+        AnswerExplanation: {
+            /**
+             * @description Explanation in English of the word's meaning, correct answer, and why.
+             * @example 'Leisure' means free time for enjoyment. Option A is correct because it directly refers to time spent away from work.
+             */
+            text: string;
+            /**
+             * @description Explanation in Vietnamese.
+             * @example 'Leisure' có nghĩa là thời gian rảnh rỗi để thư giãn. Đáp án A đúng vì nó trực tiếp chỉ thời gian không phải làm việc.
+             */
+            text_vi: string;
         };
         AttemptDetail: {
             /** Format: uuid */

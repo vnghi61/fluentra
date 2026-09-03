@@ -41,6 +41,7 @@ export interface ExerciseMatchProps {
   isSubmitted: boolean;
   isCorrect?: boolean | null | undefined;
   isLoading?: boolean;
+  explanation?: import("./ExerciseShell").AnswerExplanation | null | undefined;
   onSubmit: (pairs: Record<string, string>) => void;
   onContinue: () => void;
 }
@@ -55,6 +56,7 @@ export const ExerciseMatch: React.FC<ExerciseMatchProps> = ({
   isSubmitted,
   isCorrect,
   isLoading = false,
+  explanation,
   onSubmit,
   onContinue,
 }) => {
@@ -244,6 +246,7 @@ export const ExerciseMatch: React.FC<ExerciseMatchProps> = ({
           isCorrect={isCorrect}
           feedback={feedback}
           score={score}
+          explanation={explanation}
         />
       )}
 

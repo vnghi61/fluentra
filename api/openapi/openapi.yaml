@@ -4787,6 +4787,8 @@ components:
       $ref: ./components/learning.yaml#/SubmitAttemptResult
     PreviewGradeResult:
       $ref: ./components/learning.yaml#/PreviewGradeResult
+    AnswerExplanation:
+      $ref: ./components/learning.yaml#/AnswerExplanation
     AttemptDetail:
       $ref: ./components/learning.yaml#/AttemptDetail
     StartSessionRequest:

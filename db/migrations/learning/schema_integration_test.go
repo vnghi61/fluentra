@@ -961,6 +961,7 @@ func assertLearningObjectsExist(t *testing.T, pool *pgxpool.Pool, want bool) {
 		"learning_sessions",
 		"placement_results",
 		"skill_mastery",
+		"answer_explanations",
 	}
 	for _, table := range tables {
 		var exists bool
@@ -985,5 +986,35 @@ func assertLearningObjectsExist(t *testing.T, pool *pgxpool.Pool, want bool) {
 	}
 	if funcExists != want {
 		t.Errorf("learn.ensure_partitions function exists = %v, want %v", funcExists, want)
+	}
+}
+
+func TestAnswerExplanationsTable_UniqueConstraint(t *testing.T) {
+	pool := migratedPool(t)
+	ctx := context.Background()
+
+	contentVersionID := "00000000-0000-0000-0000-000000000001"
+	userAnswer := "opt_a"
+
+	_, err := pool.Exec(ctx, `
+		INSERT INTO learn.answer_explanations (content_version_id, user_answer, is_correct, explanation_en, explanation_vi)
+		VALUES ($1, $2, true, 'English explanation', 'Vietnamese explanation')
+		ON CONFLICT (content_version_id, user_answer) DO NOTHING
+	`, contentVersionID, userAnswer)
+	if err != nil {
+		t.Fatalf("insert explanation: %v", err)
+	}
+
+	// Attempt duplicate insertion without ON CONFLICT must fail unique constraint
+	_, err = pool.Exec(ctx, `
+		INSERT INTO learn.answer_explanations (content_version_id, user_answer, is_correct, explanation_en, explanation_vi)
+		VALUES ($1, $2, false, 'Duplicate English', 'Duplicate Vietnamese')
+	`, contentVersionID, userAnswer)
+	if err == nil {
+		t.Fatalf("expected unique constraint violation on duplicate (content_version_id, user_answer)")
+	}
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code != "23505" {
+		t.Fatalf("expected unique violation 23505, got %s: %v", pgErr.Code, err)
 	}
 }

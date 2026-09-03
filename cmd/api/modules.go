@@ -117,6 +117,9 @@ type identityDeps struct {
 	// Instruments are the shared metric instruments, wired into the modules that
 	// record to them (auth lockouts and refresh reuse).
 	Instruments telemetry.Instruments
+
+	// AI is the provider client for AI tasks (explanations, etc.).
+	AI ai.Client
 }
 
 // newIdentity constructs the modules in dependency order — audit, then rbac,
@@ -255,6 +258,7 @@ func newIdentity(deps identityDeps) *identity {
 		Metrics:       deps.Instruments,
 		DeclaredKinds: vocabularycontract.GradedKinds(),
 		Env:           deps.Env,
+		AI:            deps.AI,
 	})
 
 	return assembled

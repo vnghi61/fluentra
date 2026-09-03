@@ -480,6 +480,17 @@ type LearnActivity struct {
 	UpdatedAt        time.Time
 }
 
+type LearnAnswerExplanation struct {
+	ID               uuid.UUID
+	ContentVersionID uuid.UUID
+	UserAnswer       string
+	IsCorrect        bool
+	ExplanationEn    string
+	ExplanationVi    string
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+}
+
 type LearnAttempt struct {
 	ID             uuid.UUID
 	CreatedAt      time.Time

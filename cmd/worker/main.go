@@ -108,6 +108,23 @@ type workerConfig struct {
 		Model    string        `koanf:"model"`
 		APIKey   string        `koanf:"api_key"`
 		Timeout  time.Duration `koanf:"timeout"`
+
+		// The second provider the router falls back to, and the reason the
+		// quota model has a provider dimension at all.
+		//
+		// ai.Config has carried these fields since the router was written and
+		// nothing read them, so only one provider could ever be configured --
+		// which quietly reduced "every provider is exhausted", the one warning
+		// the product asked for by name, to "the only provider is exhausted".
+		//
+		// Left empty, there is no fallback and the router behaves exactly as
+		// before. That is the right default: a second free provider is a
+		// deliberate choice with its own key and its own budget rows.
+		FallbackProvider string        `koanf:"fallback_provider"`
+		FallbackBaseURL  string        `koanf:"fallback_base_url"`
+		FallbackModel    string        `koanf:"fallback_model"`
+		FallbackAPIKey   string        `koanf:"fallback_api_key"`
+		FallbackTimeout  time.Duration `koanf:"fallback_timeout"`
 	} `koanf:"ai"`
 	OTP struct {
 		HMACKey string `koanf:"hmac_key"`
@@ -175,6 +192,16 @@ func configOptions() config.Options {
 			"ai.model":    "",
 			"ai.api_key":  "",
 			"ai.timeout":  "120s",
+			// Declared even though they are empty: config.Load only accepts an
+			// environment variable whose key appears in Defaults, Required or
+			// EnvSections, so AI_FALLBACK_PROVIDER would be dropped in silence
+			// without these lines and the fallback would stay unconfigurable
+			// for a reason nothing reports.
+			"ai.fallback_provider": "",
+			"ai.fallback_base_url": "",
+			"ai.fallback_model":    "",
+			"ai.fallback_api_key":  "",
+			"ai.fallback_timeout":  "120s",
 		},
 		Required: []config.RequiredKey{
 			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},
@@ -711,7 +738,14 @@ func startPracticeGenerator(
 		Model:    cfg.AI.Model,
 		APIKey:   cfg.AI.APIKey,
 		Timeout:  cfg.AI.Timeout,
-		Pool:     pool,
+
+		FallbackProvider: cfg.AI.FallbackProvider,
+		FallbackBaseURL:  cfg.AI.FallbackBaseURL,
+		FallbackModel:    cfg.AI.FallbackModel,
+		FallbackAPIKey:   cfg.AI.FallbackAPIKey,
+		FallbackTimeout:  cfg.AI.FallbackTimeout,
+
+		Pool: pool,
 	})
 	if err != nil {
 		slog.WarnContext(ctx, "no AI client; uploads will be verified against the dictionary alone",

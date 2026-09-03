@@ -34,6 +34,7 @@ export interface ExerciseReorderProps {
   isSubmitted: boolean;
   isCorrect?: boolean | null | undefined;
   isLoading?: boolean;
+  explanation?: import("./ExerciseShell").AnswerExplanation | null | undefined;
   onSubmit: (sentence: string) => void;
   onContinue: () => void;
 }
@@ -47,6 +48,7 @@ export const ExerciseReorder: React.FC<ExerciseReorderProps> = ({
   isSubmitted,
   isCorrect,
   isLoading = false,
+  explanation,
   onSubmit,
   onContinue,
 }) => {
@@ -171,6 +173,7 @@ export const ExerciseReorder: React.FC<ExerciseReorderProps> = ({
           isCorrect={isCorrect}
           expectedAnswer={expectedAnswer}
           feedback={feedback}
+          explanation={explanation}
         />
       )}
 

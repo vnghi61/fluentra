@@ -34,6 +34,7 @@ export interface ExerciseListenTypeProps {
   isSubmitted: boolean;
   isCorrect?: boolean | null | undefined;
   isLoading?: boolean;
+  explanation?: import("./ExerciseShell").AnswerExplanation | null | undefined;
   onSubmit: (answerText: string) => void;
   onContinue: () => void;
 }
@@ -49,6 +50,7 @@ export const ExerciseListenType: React.FC<ExerciseListenTypeProps> = ({
   isSubmitted,
   isCorrect,
   isLoading = false,
+  explanation,
   onSubmit,
   onContinue,
 }) => {
@@ -134,6 +136,7 @@ export const ExerciseListenType: React.FC<ExerciseListenTypeProps> = ({
           isCorrect={isCorrect}
           expectedAnswer={expectedAnswer}
           feedback={feedback}
+          explanation={explanation}
         />
       )}
 

@@ -100,9 +100,16 @@ type GradeResult struct {
 	// For a choice-based activity this is the option's id, because that is what
 	// the renderer needs to mark the right row. Empty when the activity has no
 	// single answer worth showing.
-	CorrectAnswer string       `json:"correct_answer,omitempty"`
-	Async         bool         `json:"async"`
-	ReviewItems   []ReviewItem `json:"review_items,omitempty"`
+	CorrectAnswer string             `json:"correct_answer,omitempty"`
+	Async         bool               `json:"async"`
+	ReviewItems   []ReviewItem       `json:"review_items,omitempty"`
+	Explanation   *AnswerExplanation `json:"explanation,omitempty"`
+}
+
+// AnswerExplanation models an explanation in English and Vietnamese for an exercise answer.
+type AnswerExplanation struct {
+	Text   string `json:"text"`
+	TextVi string `json:"text_vi"`
 }
 
 // ExerciseGrader is implemented by every skill module to grade domain-specific exercises.

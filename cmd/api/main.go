@@ -23,6 +23,7 @@ import (
 	authdomain "github.com/fluentra/fluentra/internal/modules/auth/domain"
 	authservice "github.com/fluentra/fluentra/internal/modules/auth/service"
 	"github.com/fluentra/fluentra/internal/modules/auth/service/oauth/google"
+	"github.com/fluentra/fluentra/internal/platform/ai"
 	"github.com/fluentra/fluentra/internal/platform/cache"
 	"github.com/fluentra/fluentra/internal/platform/job"
 	"github.com/fluentra/fluentra/internal/platform/mailer"
@@ -148,6 +149,13 @@ type applicationConfig struct {
 	Resend struct {
 		APIKey string `koanf:"api_key"`
 	} `koanf:"resend"`
+	AI struct {
+		Provider string        `koanf:"provider"`
+		BaseURL  string        `koanf:"base_url"`
+		Model    string        `koanf:"model"`
+		APIKey   string        `koanf:"api_key"`
+		Timeout  time.Duration `koanf:"timeout"`
+	} `koanf:"ai"`
 }
 
 func main() {
@@ -259,9 +267,12 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("create job client: %w", err)
 	}
 
+	aiClient := initAIClient(ctx, cfg, pool)
+
 	modules := newIdentity(identityDeps{
 		Pool:        pool,
 		Redis:       redisClient,
+		AI:          aiClient,
 		Cache:       cache.NewRedisCache[[]string](redisClient),
 		Limiter:     cache.NewRedisLimiter(redisClient),
 		Storage:     newStorageStore(storageClient, cfg.Storage.UsePostPolicy),
@@ -565,4 +576,20 @@ func newAPIMailSender(cfg applicationConfig, pool *pgxpool.Pool) mailer.Sender {
 		From:     cfg.Mail.From,
 		DevMode:  cfg.SMTP.DevMode,
 	}, renderer, suppressions, recorder)
+}
+
+func initAIClient(ctx context.Context, cfg applicationConfig, pool *pgxpool.Pool) ai.Client {
+	aiClient, err := ai.New(ai.Config{
+		Provider: cfg.AI.Provider,
+		BaseURL:  cfg.AI.BaseURL,
+		Model:    cfg.AI.Model,
+		APIKey:   cfg.AI.APIKey,
+		Timeout:  cfg.AI.Timeout,
+		Pool:     pool,
+	})
+	if err != nil {
+		slog.WarnContext(ctx, "could not initialize AI client; running without AI explanations", "error", err)
+		return nil
+	}
+	return aiClient
 }

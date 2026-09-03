@@ -20,6 +20,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/learning/repository"
 	"github.com/fluentra/fluentra/internal/modules/learning/service"
 	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
+	"github.com/fluentra/fluentra/internal/platform/ai"
 	"github.com/fluentra/fluentra/internal/shared/apperr"
 	"github.com/fluentra/fluentra/internal/shared/clock"
 )
@@ -40,6 +41,7 @@ type fakeLearningRepo struct {
 	enrollments  map[string]*domain.Enrollment
 	sessions     map[uuid.UUID]*domain.LearningSession
 	mastery      map[string]*domain.SkillMastery
+	explanations map[string]*repository.AnswerExplanationDTO
 	claimErr     error
 	queryCounter atomic.Int64
 	// afterGet lets a test order itself against the reads the service makes,
@@ -49,11 +51,12 @@ type fakeLearningRepo struct {
 
 func newFakeRepo() *fakeLearningRepo {
 	return &fakeLearningRepo{
-		attempts:    make(map[uuid.UUID]*domain.Attempt),
-		progress:    make(map[string]*repository.ProgressDTO),
-		enrollments: make(map[string]*domain.Enrollment),
-		sessions:    make(map[uuid.UUID]*domain.LearningSession),
-		mastery:     make(map[string]*domain.SkillMastery),
+		attempts:     make(map[uuid.UUID]*domain.Attempt),
+		progress:     make(map[string]*repository.ProgressDTO),
+		enrollments:  make(map[string]*domain.Enrollment),
+		sessions:     make(map[uuid.UUID]*domain.LearningSession),
+		mastery:      make(map[string]*domain.SkillMastery),
+		explanations: make(map[string]*repository.AnswerExplanationDTO),
 	}
 }
 
@@ -467,6 +470,31 @@ func (f *fakeLearningRepo) UpsertSkillMastery(
 	f.mastery[k] = m
 	copied := *m
 	return &copied, nil
+}
+
+func (f *fakeLearningRepo) GetAnswerExplanation(
+	_ context.Context, contentVersionID uuid.UUID, userAnswer string,
+) (*repository.AnswerExplanationDTO, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	key := contentVersionID.String() + ":" + userAnswer
+	e, ok := f.explanations[key]
+	if !ok {
+		return nil, nil
+	}
+	copied := *e
+	return &copied, nil
+}
+
+func (f *fakeLearningRepo) UpsertAnswerExplanation(
+	_ context.Context, explanation repository.AnswerExplanationDTO,
+) (*repository.AnswerExplanationDTO, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	key := explanation.ContentVersionID.String() + ":" + explanation.UserAnswer
+	cp := explanation
+	f.explanations[key] = &cp
+	return &cp, nil
 }
 
 func (f *fakeLearningRepo) WithTx(_ pgx.Tx) service.Repository {
@@ -1502,5 +1530,311 @@ func TestSubmitAttempt_DuplicateWaitsForTheClaimHolder(t *testing.T) {
 	if won.res.Status != dup.res.Status ||
 		won.res.Score == nil || dup.res.Score == nil || *won.res.Score != *dup.res.Score {
 		t.Errorf("different bodies for one submission: %+v vs %+v", won.res, dup.res)
+	}
+}
+
+type fakeAIClient struct {
+	mu       sync.Mutex
+	calls    int
+	hasQuota bool
+	quotaErr error
+	complete func(ctx context.Context, req ai.Request) (ai.Response, error)
+}
+
+func (f *fakeAIClient) HasQuota(_ context.Context, _ ai.Task) (bool, error) {
+	if f.quotaErr != nil {
+		return false, f.quotaErr
+	}
+	return f.hasQuota, nil
+}
+
+func (f *fakeAIClient) Complete(ctx context.Context, req ai.Request) (ai.Response, error) {
+	f.mu.Lock()
+	f.calls++
+	f.mu.Unlock()
+	if f.complete != nil {
+		return f.complete(ctx, req)
+	}
+	return ai.Response{
+		Text: `{"text": "English explanation", "text_vi": "Giai thich tieng Viet"}`,
+	}, nil
+}
+
+const testExplanationText = "English explanation"
+
+func TestSubmitAttempt_GeneratesExplanationLazilyAndCaches(t *testing.T) {
+	repo := newFakeRepo()
+	reader := &fakeLessonReader{
+		calls:     map[string]int{},
+		hierarchy: make(map[uuid.UUID]*lessoncontract.ActivityHierarchy),
+	}
+	graders := domain.NewGraderRegistry()
+	_ = graders.Register(testKindQuiz, domain.NewFakeGrader())
+
+	aiClient := &fakeAIClient{hasQuota: true}
+	svc := service.New(service.Deps{
+		Repo:    repo,
+		Lesson:  reader,
+		Graders: graders,
+		Events:  &fakeEventWriter{},
+		AI:      aiClient,
+	})
+
+	activityID := uuid.New()
+	contentVersionID := uuid.New()
+	reader.hierarchy[activityID] = &lessoncontract.ActivityHierarchy{
+		ActivityID:       activityID,
+		ContentVersionID: contentVersionID,
+		Kind:             testKindQuiz,
+		Config:           json.RawMessage(`{"prompt": "Select the correct option"}`),
+	}
+
+	ctx := context.Background()
+	user1 := uuid.New()
+	att1, err := svc.StartAttempt(ctx, user1, activityID)
+	if err != nil {
+		t.Fatalf("start attempt 1: %v", err)
+	}
+
+	// First learner answers with opt_a -> AI is called once, stored in repo
+	res1, err := svc.SubmitAttempt(ctx, user1, att1.AttemptID, uuid.New(),
+		json.RawMessage(`{"selected_option_id": "opt_a"}`))
+	if err != nil {
+		t.Fatalf("submit attempt 1: %v", err)
+	}
+	if res1.Explanation == nil {
+		t.Fatal("expected explanation to be generated for learner 1")
+	}
+	if res1.Explanation.Text != testExplanationText || res1.Explanation.TextVi != "Giai thich tieng Viet" {
+		t.Errorf("unexpected explanation: %+v", res1.Explanation)
+	}
+	if aiClient.calls != 1 {
+		t.Errorf("expected 1 AI call, got %d", aiClient.calls)
+	}
+
+	// Verify repo has cached the explanation under (contentVersionID, "opt_a")
+	cached, err := repo.GetAnswerExplanation(ctx, contentVersionID, "opt_a")
+	if err != nil || cached == nil {
+		t.Fatalf("expected cached explanation in repo, got err=%v, cached=%v", err, cached)
+	}
+
+	// Second learner answers same question with same answer -> fetched from DB cache, 0 new AI calls
+	user2 := uuid.New()
+	att2, err := svc.StartAttempt(ctx, user2, activityID)
+	if err != nil {
+		t.Fatalf("start attempt 2: %v", err)
+	}
+	res2, err := svc.SubmitAttempt(ctx, user2, att2.AttemptID, uuid.New(),
+		json.RawMessage(`{"selected_option_id": "opt_a"}`))
+	if err != nil {
+		t.Fatalf("submit attempt 2: %v", err)
+	}
+	if res2.Explanation == nil || res2.Explanation.Text != testExplanationText {
+		t.Fatalf("expected explanation from cache, got %+v", res2.Explanation)
+	}
+	if aiClient.calls != 1 {
+		t.Errorf("expected still 1 AI call (cached), got %d", aiClient.calls)
+	}
+}
+
+// The grader treats "Habit" and "habit" as one answer, so the explanation cache
+// has to as well.
+//
+// It did not: the key was the answer with only its whitespace trimmed, so the
+// same answer typed with a capital produced a second row and a second provider
+// call. On a free daily quota that is spend for nothing, and it grows with every
+// learner who happens to hold shift.
+func TestSubmitAttempt_ExplanationCacheIgnoresCaseTheGraderIgnores(t *testing.T) {
+	repo := newFakeRepo()
+	reader := &fakeLessonReader{
+		calls:     map[string]int{},
+		hierarchy: make(map[uuid.UUID]*lessoncontract.ActivityHierarchy),
+	}
+	graders := domain.NewGraderRegistry()
+	_ = graders.Register(testKindQuiz, domain.NewFakeGrader())
+
+	aiClient := &fakeAIClient{hasQuota: true}
+	svc := service.New(service.Deps{
+		Repo:    repo,
+		Lesson:  reader,
+		Graders: graders,
+		Events:  &fakeEventWriter{},
+		AI:      aiClient,
+	})
+
+	activityID := uuid.New()
+	contentVersionID := uuid.New()
+	reader.hierarchy[activityID] = &lessoncontract.ActivityHierarchy{
+		ActivityID:       activityID,
+		ContentVersionID: contentVersionID,
+		Kind:             testKindQuiz,
+		Config:           json.RawMessage(`{"prompt": "Type the word"}`),
+	}
+
+	ctx := context.Background()
+	for _, answer := range []string{"habit", "Habit", "  HABIT  "} {
+		user := uuid.New()
+		attempt, err := svc.StartAttempt(ctx, user, activityID)
+		if err != nil {
+			t.Fatalf("start attempt for %q: %v", answer, err)
+		}
+		body := json.RawMessage(`{"text_answer": "` + answer + `"}`)
+		if _, err := svc.SubmitAttempt(ctx, user, attempt.AttemptID, uuid.New(), body); err != nil {
+			t.Fatalf("submit %q: %v", answer, err)
+		}
+	}
+
+	if aiClient.calls != 1 {
+		t.Errorf("expected 1 AI call for three spellings of the same answer, got %d", aiClient.calls)
+	}
+}
+
+func TestSubmitAttempt_DifferentAnswerGeneratesNewExplanation(t *testing.T) {
+	repo := newFakeRepo()
+	reader := &fakeLessonReader{
+		calls:     map[string]int{},
+		hierarchy: make(map[uuid.UUID]*lessoncontract.ActivityHierarchy),
+	}
+	graders := domain.NewGraderRegistry()
+	_ = graders.Register(testKindQuiz, domain.NewFakeGrader())
+
+	aiClient := &fakeAIClient{hasQuota: true}
+	svc := service.New(service.Deps{
+		Repo:    repo,
+		Lesson:  reader,
+		Graders: graders,
+		Events:  &fakeEventWriter{},
+		AI:      aiClient,
+	})
+
+	activityID := uuid.New()
+	contentVersionID := uuid.New()
+	reader.hierarchy[activityID] = &lessoncontract.ActivityHierarchy{
+		ActivityID:       activityID,
+		ContentVersionID: contentVersionID,
+		Kind:             testKindQuiz,
+		Config:           json.RawMessage(`{"prompt": "Select the correct option"}`),
+	}
+
+	ctx := context.Background()
+	user1 := uuid.New()
+	att1, err := svc.StartAttempt(ctx, user1, activityID)
+	if err != nil {
+		t.Fatalf("start attempt 1: %v", err)
+	}
+	_, err = svc.SubmitAttempt(ctx, user1, att1.AttemptID, uuid.New(),
+		json.RawMessage(`{"selected_option_id": "opt_a"}`))
+	if err != nil {
+		t.Fatalf("submit attempt 1: %v", err)
+	}
+	if aiClient.calls != 1 {
+		t.Fatalf("expected 1 call after first answer, got %d", aiClient.calls)
+	}
+
+	// Another learner answers same question with DIFFERENT answer opt_b -> new AI call
+	user2 := uuid.New()
+	att2, err := svc.StartAttempt(ctx, user2, activityID)
+	if err != nil {
+		t.Fatalf("start attempt 2: %v", err)
+	}
+	res2, err := svc.SubmitAttempt(ctx, user2, att2.AttemptID, uuid.New(),
+		json.RawMessage(`{"selected_option_id": "opt_b"}`))
+	if err != nil {
+		t.Fatalf("submit attempt 2: %v", err)
+	}
+	if res2.Explanation == nil {
+		t.Fatal("expected explanation for opt_b")
+	}
+	if aiClient.calls != 2 {
+		t.Errorf("expected 2 AI calls after different answer, got %d", aiClient.calls)
+	}
+}
+
+func TestSubmitAttempt_GracefulFallbackOnQuotaExhausted(t *testing.T) {
+	repo := newFakeRepo()
+	reader := &fakeLessonReader{
+		calls:     map[string]int{},
+		hierarchy: make(map[uuid.UUID]*lessoncontract.ActivityHierarchy),
+	}
+	graders := domain.NewGraderRegistry()
+	_ = graders.Register(testKindQuiz, domain.NewFakeGrader())
+
+	// Quota is exhausted
+	aiClient := &fakeAIClient{hasQuota: false}
+	svc := service.New(service.Deps{
+		Repo:    repo,
+		Lesson:  reader,
+		Graders: graders,
+		Events:  &fakeEventWriter{},
+		AI:      aiClient,
+	})
+
+	activityID := uuid.New()
+	reader.hierarchy[activityID] = &lessoncontract.ActivityHierarchy{
+		ActivityID:       activityID,
+		ContentVersionID: uuid.New(),
+		Kind:             testKindQuiz,
+		Config:           json.RawMessage(`{"prompt": "Select option"}`),
+	}
+
+	ctx := context.Background()
+	user := uuid.New()
+	att, err := svc.StartAttempt(ctx, user, activityID)
+	if err != nil {
+		t.Fatalf("start attempt: %v", err)
+	}
+
+	res, err := svc.SubmitAttempt(ctx, user, att.AttemptID, uuid.New(),
+		json.RawMessage(`{"selected_option_id": "opt_a"}`))
+	if err != nil {
+		t.Fatalf("attempt must succeed even when quota is exhausted: %v", err)
+	}
+	if res.Status != domain.StatusGraded {
+		t.Errorf("expected status graded, got %s", res.Status)
+	}
+	if res.Explanation != nil {
+		t.Errorf("expected explanation to be nil on quota exhaustion, got %+v", res.Explanation)
+	}
+	if aiClient.calls != 0 {
+		t.Errorf("expected 0 AI calls when quota exhausted, got %d", aiClient.calls)
+	}
+}
+
+func TestGradePreview_AttachesExplanation(t *testing.T) {
+	repo := newFakeRepo()
+	reader := &fakeLessonReader{
+		calls:     map[string]int{},
+		hierarchy: make(map[uuid.UUID]*lessoncontract.ActivityHierarchy),
+	}
+	graders := domain.NewGraderRegistry()
+	_ = graders.Register(testKindQuiz, domain.NewFakeGrader())
+
+	aiClient := &fakeAIClient{hasQuota: true}
+	svc := service.New(service.Deps{
+		Repo:    repo,
+		Lesson:  reader,
+		Graders: graders,
+		Events:  &fakeEventWriter{},
+		AI:      aiClient,
+	})
+
+	activityID := uuid.New()
+	reader.hierarchy[activityID] = &lessoncontract.ActivityHierarchy{
+		ActivityID:       activityID,
+		ContentVersionID: uuid.New(),
+		Kind:             testKindQuiz,
+		Config:           json.RawMessage(`{"prompt": "Preview question"}`),
+	}
+
+	ctx := context.Background()
+	preview, err := svc.GradePreview(ctx, activityID, json.RawMessage(`{"selected_option_id": "opt_a"}`))
+	if err != nil {
+		t.Fatalf("grade preview: %v", err)
+	}
+	if preview.Explanation == nil {
+		t.Fatal("expected explanation on preview grade")
+	}
+	if preview.Explanation.Text != "English explanation" {
+		t.Errorf("unexpected preview explanation: %+v", preview.Explanation)
 	}
 }

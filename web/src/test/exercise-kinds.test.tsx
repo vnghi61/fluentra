@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   ExerciseContextChoice,
+  ExerciseFeedback,
   ExerciseListenType,
   ExerciseMatch,
   ExerciseReorder,
@@ -243,3 +244,37 @@ describe("ExerciseContextChoice", () => {
     expect(screen.getByText("leisure").tagName).toBe("STRONG");
   });
 });
+
+describe("ExerciseFeedback with Answer Explanation", () => {
+  it("renders bilingual explanation with EN and VI tags when explanation is present", () => {
+    render(
+      <ExerciseFeedback
+        isCorrect={false}
+        expectedAnswer="option_b"
+        explanation={{
+          text: "Because 'option_b' accurately fits the context of free time.",
+          text_vi: "Bởi vì 'option_b' phù hợp với ngữ cảnh thời gian rảnh.",
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        "Because 'option_b' accurately fits the context of free time.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Bởi vì 'option_b' phù hợp với ngữ cảnh thời gian rảnh."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("EN")).toBeInTheDocument();
+    expect(screen.getByText("VI")).toBeInTheDocument();
+  });
+
+  it("gracefully falls back when explanation is null without errors", () => {
+    render(<ExerciseFeedback isCorrect={true} explanation={null} />);
+
+    expect(screen.queryByText("EN")).not.toBeInTheDocument();
+    expect(screen.queryByText("VI")).not.toBeInTheDocument();
+  });
+});
+
