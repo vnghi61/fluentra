@@ -7,6 +7,9 @@ last_verified: 2026-09-02
 
 # Phase 3 — work order 2
 
+> **§2 superseded.** Four decisions have since been taken; the current order is
+> [phase-3-work-order-3.md](phase-3-work-order-3.md).
+
 **Purpose.** What to build after `34ee4c9`. It replaces §2 of
 [phase-3-next-steps.md](phase-3-next-steps.md); §3 (open decisions) and §4 (traps) there are
 still current and still worth reading.
