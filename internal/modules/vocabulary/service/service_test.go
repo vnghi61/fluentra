@@ -18,6 +18,8 @@ import (
 	"github.com/fluentra/fluentra/internal/shared/clock"
 )
 
+const statusQueued = "queued"
+
 type fakeRepo struct {
 	words      map[uuid.UUID]sqlc.SkillWord
 	senses     map[uuid.UUID]sqlc.SkillWordSense
@@ -358,6 +360,42 @@ func (f *fakeRepo) ListDeckWords(_ context.Context, deckID uuid.UUID, _, _ int32
 		}
 	}
 	return result, nil
+}
+
+func (f *fakeRepo) UpdateWordSenseEnrichment(
+	_ context.Context, arg sqlc.UpdateWordSenseEnrichmentParams,
+) (sqlc.SkillWordSense, error) {
+	return sqlc.SkillWordSense{ID: arg.ID}, nil
+}
+
+func (f *fakeRepo) MarkUploadItemQueued(
+	_ context.Context, id uuid.UUID, _ *uuid.UUID, _ string,
+) (sqlc.SkillVocabUploadItem, error) {
+	return sqlc.SkillVocabUploadItem{ID: id, Status: statusQueued}, nil
+}
+
+func (f *fakeRepo) ClaimQueuedUploadItems(
+	_ context.Context, _, _ int32,
+) ([]sqlc.SkillVocabUploadItem, error) {
+	return nil, nil
+}
+
+func (f *fakeRepo) MarkQueuedUploadItemVerified(
+	_ context.Context, id uuid.UUID, _, _ string,
+) (sqlc.SkillVocabUploadItem, error) {
+	return sqlc.SkillVocabUploadItem{ID: id, Status: "verified"}, nil
+}
+
+func (f *fakeRepo) MarkQueuedUploadItemRejected(
+	_ context.Context, id uuid.UUID, _ string,
+) (sqlc.SkillVocabUploadItem, error) {
+	return sqlc.SkillVocabUploadItem{ID: id, Status: "rejected"}, nil
+}
+
+func (f *fakeRepo) MarkQueuedUploadItemFailed(
+	_ context.Context, id uuid.UUID, _ string,
+) (sqlc.SkillVocabUploadItem, error) {
+	return sqlc.SkillVocabUploadItem{ID: id, Status: "failed"}, nil
 }
 
 func TestVocabulary_LookupWord_And_Senses(t *testing.T) {

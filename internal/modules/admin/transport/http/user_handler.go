@@ -63,7 +63,7 @@ func (h *Handler) searchUsers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := map[string]any{
-		"items": items,
+		keyItems: items,
 	}
 	if nextCursor != "" {
 		resp["next_cursor"] = nextCursor

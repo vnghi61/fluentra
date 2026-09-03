@@ -65,6 +65,11 @@ type Client interface {
 	Complete(ctx context.Context, req Request) (Response, error)
 }
 
+// QuotaChecker reports whether any provider has quota remaining for a given task.
+type QuotaChecker interface {
+	HasQuota(ctx context.Context, task Task) (bool, error)
+}
+
 // ErrDisabled is returned when no provider is configured.
 //
 // A distinct error rather than a nil client, so a caller can tell "AI is turned

@@ -328,6 +328,7 @@
     "signOut": "Sign out"
   },
   "page": {
+    "aiUsage": "AI Usage",
     "accountSettings": "Account Settings",
     "administration": "Administration",
     "anUnexpectedErrorOccurredWhile": "An unexpected error occurred while loading account details.",

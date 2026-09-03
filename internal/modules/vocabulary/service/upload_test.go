@@ -25,7 +25,10 @@ import (
 // resolve must eventually stop being retried.
 
 // keyValid is the field the vocab_verify template asks the model to set.
-const keyValid = "valid"
+const (
+	keyValid  = "valid"
+	keyReason = "reason"
+)
 
 // ---------------------------------------------------------------- fakes
 
@@ -79,23 +82,40 @@ func (s *stubContentAuthor) EnsurePublished(
 	return s.id, nil
 }
 
+type stubQuotaAI struct {
+	stubAI
+	hasQuota bool
+}
+
+func (s *stubQuotaAI) HasQuota(_ context.Context, _ ai.Task) (bool, error) {
+	return s.hasQuota, nil
+}
+
 // uploadRepo records what the pipeline did to each item.
 type uploadRepo struct {
 	*fakeRepo
 
-	pending  []sqlc.SkillVocabUploadItem
-	verified map[uuid.UUID]string
-	rejected map[uuid.UUID]string
-	attempts map[uuid.UUID]string
+	pending        []sqlc.SkillVocabUploadItem
+	verified       map[uuid.UUID]string
+	rejected       map[uuid.UUID]string
+	attempts       map[uuid.UUID]string
+	queued         map[uuid.UUID]string
+	enrichVerified map[uuid.UUID]string
+	enrichRejected map[uuid.UUID]string
+	enrichFailed   map[uuid.UUID]string
 }
 
 func newUploadRepo(items ...sqlc.SkillVocabUploadItem) *uploadRepo {
 	return &uploadRepo{
-		fakeRepo: newFakeRepo(),
-		pending:  items,
-		verified: map[uuid.UUID]string{},
-		rejected: map[uuid.UUID]string{},
-		attempts: map[uuid.UUID]string{},
+		fakeRepo:       newFakeRepo(),
+		pending:        items,
+		verified:       map[uuid.UUID]string{},
+		rejected:       map[uuid.UUID]string{},
+		attempts:       map[uuid.UUID]string{},
+		queued:         map[uuid.UUID]string{},
+		enrichVerified: map[uuid.UUID]string{},
+		enrichRejected: map[uuid.UUID]string{},
+		enrichFailed:   map[uuid.UUID]string{},
 	}
 }
 
@@ -124,6 +144,40 @@ func (r *uploadRepo) RecordUploadItemAttempt(
 ) error {
 	r.attempts[id] = reason
 	return nil
+}
+
+func (r *uploadRepo) MarkUploadItemQueued(
+	_ context.Context, id uuid.UUID, _ *uuid.UUID, reason string,
+) (sqlc.SkillVocabUploadItem, error) {
+	r.queued[id] = reason
+	return sqlc.SkillVocabUploadItem{ID: id, Status: statusQueued}, nil
+}
+
+func (r *uploadRepo) ClaimQueuedUploadItems(
+	_ context.Context, _, _ int32,
+) ([]sqlc.SkillVocabUploadItem, error) {
+	return r.pending, nil
+}
+
+func (r *uploadRepo) MarkQueuedUploadItemVerified(
+	_ context.Context, id uuid.UUID, model, _ string,
+) (sqlc.SkillVocabUploadItem, error) {
+	r.enrichVerified[id] = model
+	return sqlc.SkillVocabUploadItem{ID: id, Status: "verified"}, nil
+}
+
+func (r *uploadRepo) MarkQueuedUploadItemRejected(
+	_ context.Context, id uuid.UUID, reason string,
+) (sqlc.SkillVocabUploadItem, error) {
+	r.enrichRejected[id] = reason
+	return sqlc.SkillVocabUploadItem{ID: id, Status: "rejected"}, nil
+}
+
+func (r *uploadRepo) MarkQueuedUploadItemFailed(
+	_ context.Context, id uuid.UUID, reason string,
+) (sqlc.SkillVocabUploadItem, error) {
+	r.enrichFailed[id] = reason
+	return sqlc.SkillVocabUploadItem{ID: id, Status: "failed"}, nil
 }
 
 // ------------------------------------------------------------- fixtures
@@ -230,7 +284,7 @@ func TestVerifyPending_RejectsAWordNeitherSourceRecognises(t *testing.T) {
 	entry := item("asdfgh", "")
 	repo := newUploadRepo(entry)
 	refusal, err := json.Marshal(map[string]any{
-		keyValid: false, "reason": "That does not look like an English word.",
+		keyValid: false, keyReason: "That does not look like an English word.",
 	})
 	require.NoError(t, err)
 
@@ -335,4 +389,128 @@ func TestVerifyPending_DoesNothingWhenUnconfigured(t *testing.T) {
 	assert.Empty(t, repo.verified)
 	assert.Empty(t, repo.rejected)
 	assert.Empty(t, repo.attempts)
+}
+
+func TestVerifyPending_QuotaExhausted_MarksQueuedAndFlashcardCreated(t *testing.T) {
+	entry := item(wordLeisure, "time off")
+	repo := newUploadRepo(entry)
+	dict := &stubDictionary{entries: map[string]repository.DictionaryEntry{
+		wordLeisure: leisureEntry(),
+	}}
+
+	uploads, author := newPipeline(t, repo, dict, &stubAI{err: ai.ErrQuotaExhausted})
+	require.NoError(t, uploads.VerifyPending(context.Background()))
+
+	// Item must be marked queued, not verified and not rejected.
+	assert.Contains(t, repo.queued, entry.ID)
+	assert.Empty(t, repo.verified)
+	assert.Empty(t, repo.rejected)
+
+	// Flashcard must be created and published so learner can review.
+	require.NotEmpty(t, author.published)
+	assert.Equal(t, "", author.published[0].CEFRLevel,
+		"queued word must not fabricate B1 level when model was never asked")
+}
+
+func TestEnrichQueued_YieldsWhenNoQuota(t *testing.T) {
+	entry := item(wordLeisure, "")
+	entry.Status = statusQueued
+	repo := newUploadRepo(entry)
+	dict := &stubDictionary{entries: map[string]repository.DictionaryEntry{
+		wordLeisure: leisureEntry(),
+	}}
+
+	model := &stubQuotaAI{
+		stubAI:   stubAI{reply: accepted(t)},
+		hasQuota: false,
+	}
+	uploads, _ := newPipeline(t, repo, dict, model)
+
+	require.NoError(t, uploads.EnrichQueued(context.Background()))
+	assert.Equal(t, 0, model.calls, "must yield immediately without calling model")
+	assert.Empty(t, repo.enrichVerified)
+}
+
+func TestEnrichQueued_Success(t *testing.T) {
+	entry := item(wordLeisure, "")
+	entry.Status = statusQueued
+	senseID := uuid.New()
+	entry.WordSenseID = &senseID
+	repo := newUploadRepo(entry)
+	dict := &stubDictionary{entries: map[string]repository.DictionaryEntry{
+		wordLeisure: leisureEntry(),
+	}}
+
+	model := &stubQuotaAI{
+		stubAI:   stubAI{reply: accepted(t)},
+		hasQuota: true,
+	}
+	uploads, author := newPipeline(t, repo, dict, model)
+
+	require.NoError(t, uploads.EnrichQueued(context.Background()))
+	assert.Contains(t, repo.enrichVerified, entry.ID)
+	assert.NotEmpty(t, author.published)
+}
+
+func TestEnrichQueued_QuotaExhausted_BreaksLoop(t *testing.T) {
+	entry1 := item(wordLeisure, "")
+	entry1.Status = statusQueued
+	entry2 := item("bank", "")
+	entry2.Status = statusQueued
+	repo := newUploadRepo(entry1, entry2)
+	dict := &stubDictionary{entries: map[string]repository.DictionaryEntry{
+		wordLeisure: leisureEntry(),
+		"bank":      leisureEntry(),
+	}}
+
+	model := &stubQuotaAI{
+		stubAI:   stubAI{err: ai.ErrQuotaExhausted},
+		hasQuota: true,
+	}
+	uploads, _ := newPipeline(t, repo, dict, model)
+
+	require.NoError(t, uploads.EnrichQueued(context.Background()))
+	assert.Equal(t, 1, model.calls, "should break loop on first quota exhaustion")
+	assert.Empty(t, repo.enrichFailed, "quota exhaustion should not fail the item")
+}
+
+func TestEnrichQueued_MaxAttempts_TransitionsToFailed(t *testing.T) {
+	entry := item(wordLeisure, "")
+	entry.Status = statusQueued
+	entry.Attempts = 2 // will become attempt 3
+	repo := newUploadRepo(entry)
+	dict := &stubDictionary{entries: map[string]repository.DictionaryEntry{
+		wordLeisure: leisureEntry(),
+	}}
+
+	model := &stubQuotaAI{
+		stubAI:   stubAI{err: errors.New("500 upstream model failure")},
+		hasQuota: true,
+	}
+	uploads, _ := newPipeline(t, repo, dict, model)
+
+	require.NoError(t, uploads.EnrichQueued(context.Background()))
+	assert.Contains(t, repo.enrichFailed, entry.ID, "3rd failed attempt must transition to failed status")
+}
+
+func TestEnrichQueued_InvalidWord_MarksRejected(t *testing.T) {
+	entry := item("notawordxyz", "")
+	entry.Status = statusQueued
+	repo := newUploadRepo(entry)
+	dict := &stubDictionary{}
+
+	invalidReply, err := json.Marshal(map[string]any{
+		"valid":   false,
+		keyReason: "Not an English word.",
+	})
+	require.NoError(t, err)
+
+	model := &stubQuotaAI{
+		stubAI:   stubAI{reply: string(invalidReply)},
+		hasQuota: true,
+	}
+	uploads, _ := newPipeline(t, repo, dict, model)
+
+	require.NoError(t, uploads.EnrichQueued(context.Background()))
+	assert.Contains(t, repo.enrichRejected, entry.ID, "invalid word must be rejected")
 }

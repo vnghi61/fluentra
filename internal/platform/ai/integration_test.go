@@ -61,7 +61,7 @@ func newTestPool(t *testing.T) *pgxpool.Pool {
 	}
 	t.Cleanup(pool.Close)
 	if _, err := pool.Exec(context.Background(),
-		"TRUNCATE ai.ai_cache_entries, ai.ai_requests, ai.ai_usage"); err != nil {
+		"TRUNCATE ai.ai_cache_entries, ai.ai_requests, ai.ai_usage, ai.ai_budgets"); err != nil {
 		t.Fatalf("reset: %v", err)
 	}
 	return pool
@@ -146,4 +146,64 @@ func TestDBUsageRecorder_RejectsAStatusTheConstraintDoesNotAllow(t *testing.T) {
 	var count int
 	require.NoError(t, pool.QueryRow(ctx, `SELECT count(*) FROM ai.ai_requests`).Scan(&count))
 	assert.Equal(t, 0, count, "a refused insert must leave nothing behind")
+}
+
+// The quota queries are raw SQL, and until this file nothing ran either of them
+// against a real schema.
+//
+// Only NoopBudgetChecker had a test, and it answers without touching the
+// database. The real one carries a LEFT JOIN over a grouped subquery and a FULL
+// OUTER JOIN with a CASE, against columns two migrations added -- exactly the
+// shape where a rename compiles, passes every unit test, and then fails inside
+// the router, where a query error is deliberately treated as "deny" and the
+// visible symptom is not an error but learners being refused.
+func TestDBBudgetChecker_EnforcesTheConfiguredCeiling(t *testing.T) {
+	pool := newTestPool(t)
+	ctx := context.Background()
+	checker := ai.NewDBBudgetChecker(pool)
+
+	// No budget row: permitted. A table nobody has filled in imposes no ceiling,
+	// which is the right default and the reason §4 of the work order says to
+	// seed this table before the first real call.
+	allowed, err := checker.CheckQuota(ctx, "probe-provider", ai.TaskVerifyVocabulary)
+	require.NoError(t, err)
+	assert.True(t, allowed, "a provider with no budget row is not capped")
+
+	_, err = pool.Exec(ctx, `
+		INSERT INTO ai.ai_budgets (provider, task, daily_request_limit, daily_token_limit, is_active)
+		VALUES ($1, $2, 2, 1000000, true)`,
+		"probe-provider", string(ai.TaskVerifyVocabulary))
+	require.NoError(t, err)
+
+	allowed, err = checker.CheckQuota(ctx, "probe-provider", ai.TaskVerifyVocabulary)
+	require.NoError(t, err)
+	assert.True(t, allowed, "under the limit is permitted")
+
+	// Two requests today reaches a limit of two.
+	_, err = pool.Exec(ctx, `
+		INSERT INTO ai.ai_usage (provider, model, task, usage_date, request_count,
+			total_prompt_tokens, total_completion_tokens, updated_at)
+		VALUES ($1, 'm', $2, CURRENT_DATE, 2, 10, 10, now())`,
+		"probe-provider", string(ai.TaskVerifyVocabulary))
+	require.NoError(t, err)
+
+	allowed, err = checker.CheckQuota(ctx, "probe-provider", ai.TaskVerifyVocabulary)
+	require.NoError(t, err)
+	assert.False(t, allowed, "at the limit is refused")
+
+	// And the admin view reports the same thing, from the same rows.
+	overview, err := checker.GetUsageOverview(ctx)
+	require.NoError(t, err)
+
+	var found bool
+	for _, item := range overview {
+		if item.Provider != "probe-provider" {
+			continue
+		}
+		found = true
+		assert.Equal(t, int64(2), item.RequestsToday)
+		assert.True(t, item.IsExhausted,
+			"the admin has to see the exhaustion the router is already enforcing")
+	}
+	assert.True(t, found, "the overview must include a provider that has usage today")
 }

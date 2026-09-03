@@ -111,6 +111,7 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | `POST` | `/api/v1/admin/users/{id}/reinstate` | `user.reinstate` | Return a suspended account to active |
 | `POST` | `/api/v1/admin/users/{id}/sessions/revoke` | `user.manage_sessions` | Sign a user out everywhere |
 | `GET` | `/api/v1/admin/flags` | `system.flags` | List every feature flag |
+| `GET` | `/api/v1/admin/ai/usage` | `admin.dashboard` | Read today's AI usage and budget headroom per provider |
 | `POST` | `/api/v1/admin/flags` | `system.flags` | Create a feature flag |
 | `PUT` | `/api/v1/admin/flags/{key}` | `system.flags` | Update a feature flag |
 | `DELETE` | `/api/v1/admin/flags/{key}` | `system.flags` | Delete a feature flag |

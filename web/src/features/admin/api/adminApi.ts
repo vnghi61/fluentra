@@ -15,6 +15,9 @@ export type CreateFeatureFlagRequest =
   components["schemas"]["CreateFeatureFlagRequest"];
 export type UpdateFeatureFlagRequest =
   components["schemas"]["UpdateFeatureFlagRequest"];
+export type AdminAIUsageResponse =
+  components["schemas"]["AdminAIUsageResponse"];
+export type AdminAIUsageItem = components["schemas"]["AdminAIUsageItem"];
 
 /**
  * The parameters `adminSearchUsers` actually takes.
@@ -127,5 +130,10 @@ export const adminApi = {
     return apiFetch<void>(`/api/v1/admin/flags/${key}`, {
       method: "DELETE",
     });
+  },
+
+  /** Get today's AI usage and budget status across providers */
+  async getAIUsage(): Promise<AdminAIUsageResponse> {
+    return apiFetch<AdminAIUsageResponse>("/api/v1/admin/ai/usage");
   },
 };

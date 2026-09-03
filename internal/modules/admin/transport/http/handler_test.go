@@ -78,6 +78,9 @@ type fakeAdminService struct {
 
 	listFlagsResp []admincontract.FeatureFlag
 	flagResp      admincontract.FeatureFlag
+
+	aiUsageResp []adminsvc.AIUsageStatus
+	aiUsageErr  error
 }
 
 func (f *fakeAdminService) SearchUsers(
@@ -153,6 +156,10 @@ func (f *fakeAdminService) DeleteFlag(_ context.Context, key string) error {
 	f.deleteFlagCalled = true
 	f.seenFlagKey = key
 	return nil
+}
+
+func (f *fakeAdminService) GetAIUsage(_ context.Context) ([]adminsvc.AIUsageStatus, error) {
+	return f.aiUsageResp, f.aiUsageErr
 }
 
 func newServer(svc adminhttp.AdminService, guard adminhttp.Guard) http.Handler {
@@ -261,7 +268,7 @@ func TestDeleteFlag_Returns204NoContent(t *testing.T) {
 	svc := &fakeAdminService{}
 	guard := newFakeGuard("system.flags")
 	srv := newServer(svc, guard)
-	actor := &httpx.Actor{UserID: testAdminID, Role: "admin"}
+	actor := &httpx.Actor{UserID: testAdminID, Role: roleAdmin}
 
 	rec := doRequest(srv, "DELETE", "/admin/flags/my-flag", "", actor)
 	if rec.Code != http.StatusNoContent {
@@ -282,7 +289,7 @@ func TestSuspendUser_Success(t *testing.T) {
 	svc := &fakeAdminService{}
 	guard := newFakeGuard("user.suspend")
 	srv := newServer(svc, guard)
-	actor := &httpx.Actor{UserID: testAdminID, Role: "admin"}
+	actor := &httpx.Actor{UserID: testAdminID, Role: roleAdmin}
 
 	body := `{"reason":"Violating community guidelines multiple times"}`
 	rec := doRequest(srv, "POST", "/admin/users/"+testTargetID.String()+"/suspend", body, actor)
@@ -306,5 +313,56 @@ func TestSuspendUser_Success(t *testing.T) {
 	}
 	if resp["status"] != "suspended" {
 		t.Fatalf("expected status 'suspended', got %v", resp["status"])
+	}
+}
+
+func TestAdminGetAIUsage_Success(t *testing.T) {
+	reqLimit := 1000
+	tokenLimit := int64(500000)
+	svc := &fakeAdminService{
+		aiUsageResp: []adminsvc.AIUsageStatus{
+			{
+				Provider:          "openai_compatible",
+				Task:              "vocab_verify",
+				RequestsToday:     45,
+				TokensToday:       12050,
+				DailyRequestLimit: &reqLimit,
+				DailyTokenLimit:   &tokenLimit,
+				IsExhausted:       false,
+			},
+		},
+	}
+	guard := newFakeGuard("admin.dashboard")
+	srv := newServer(svc, guard)
+	actor := &httpx.Actor{UserID: testAdminID, Role: roleAdmin}
+
+	rec := doRequest(srv, httpMethodGet, "/admin/ai/usage", "", actor)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK, got %d", rec.Code)
+	}
+
+	var resp struct {
+		Items []adminhttp.AdminAIUsageItemDTO `json:"items"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to decode JSON response: %v", err)
+	}
+	if len(resp.Items) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(resp.Items))
+	}
+	if resp.Items[0].Provider != "openai_compatible" || resp.Items[0].Task != "vocab_verify" {
+		t.Fatalf("unexpected item content: %+v", resp.Items[0])
+	}
+}
+
+func TestAdminGetAIUsage_Forbidden(t *testing.T) {
+	svc := &fakeAdminService{}
+	guard := newFakeGuard("some.other.permission")
+	srv := newServer(svc, guard)
+	actor := &httpx.Actor{UserID: testAdminID, Role: roleAdmin}
+
+	rec := doRequest(srv, httpMethodGet, "/admin/ai/usage", "", actor)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 Forbidden, got %d", rec.Code)
 	}
 }

@@ -587,6 +587,46 @@ func (q *Queries) SearchWords(ctx context.Context, arg SearchWordsParams) ([]Ski
 	return items, nil
 }
 
+const updateWordSenseEnrichment = `-- name: UpdateWordSenseEnrichment :one
+UPDATE skill.word_senses
+SET content_version_id = $2,
+    definition         = $3,
+    examples           = $4,
+    updated_at         = now()
+WHERE id = $1
+RETURNING id, word_id, content_version_id, definition, definition_vi, register, domain, examples, created_at, updated_at
+`
+
+type UpdateWordSenseEnrichmentParams struct {
+	ID               uuid.UUID
+	ContentVersionID *uuid.UUID
+	Definition       string
+	Examples         []byte
+}
+
+func (q *Queries) UpdateWordSenseEnrichment(ctx context.Context, arg UpdateWordSenseEnrichmentParams) (SkillWordSense, error) {
+	row := q.db.QueryRow(ctx, updateWordSenseEnrichment,
+		arg.ID,
+		arg.ContentVersionID,
+		arg.Definition,
+		arg.Examples,
+	)
+	var i SkillWordSense
+	err := row.Scan(
+		&i.ID,
+		&i.WordID,
+		&i.ContentVersionID,
+		&i.Definition,
+		&i.DefinitionVi,
+		&i.Register,
+		&i.Domain,
+		&i.Examples,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const upsertUserWordState = `-- name: UpsertUserWordState :one
 INSERT INTO skill.user_word_state (
     user_id, word_sense_id, status, first_seen_at, updated_at

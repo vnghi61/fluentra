@@ -1,13 +1,17 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Flag, Shield, Users } from "lucide-react";
-import { AdminUserList, AdminFeatureFlags } from "@/features/admin";
+import { Flag, Gauge, Shield, Users } from "lucide-react";
+import {
+  AdminUserList,
+  AdminFeatureFlags,
+  AdminAIUsage,
+} from "@/features/admin";
 import {
   PERMISSIONS,
   usePermissions,
 } from "@/features/admin/model/permissions";
 
-type AdminTab = "users" | "flags";
+type AdminTab = "users" | "flags" | "ai";
 
 export function AdminPage(): React.JSX.Element {
   const { t } = useTranslation();
@@ -35,6 +39,18 @@ export function AdminPage(): React.JSX.Element {
             key: "flags" as AdminTab,
             label: t("page.featureFlags", "Feature Flags"),
             icon: Flag,
+          },
+        ]
+      : []),
+    // The whole point of the AI usage view is that an administrator sees a
+    // provider run out before a learner meets a queued word, and a component
+    // that is exported but never rendered shows nobody anything.
+    ...(can(PERMISSIONS.adminDashboard)
+      ? [
+          {
+            key: "ai" as AdminTab,
+            label: t("page.aiUsage", "AI Usage"),
+            icon: Gauge,
           },
         ]
       : []),
@@ -103,6 +119,7 @@ export function AdminPage(): React.JSX.Element {
           <>
             {visible === "users" && <AdminUserList />}
             {visible === "flags" && <AdminFeatureFlags />}
+            {visible === "ai" && <AdminAIUsage />}
           </>
         )}
       </div>

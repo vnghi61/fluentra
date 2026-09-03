@@ -31,6 +31,7 @@ type Deps struct {
 	SessionRevoker authcontract.SessionRevoker
 	Audit          auditcontract.Recorder
 	Guard          Guard
+	AIUsage        adminsvc.AIUsageReporter
 }
 
 // Module is the admin module.
@@ -55,6 +56,7 @@ func New(deps Deps) *Module {
 		SessionRevoker: deps.SessionRevoker,
 		Audit:          deps.Audit,
 		Clock:          timekeeper,
+		AIUsage:        deps.AIUsage,
 	})
 
 	handler := adminhttp.NewHandler(service, deps.Guard)

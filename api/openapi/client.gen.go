@@ -124,6 +124,13 @@ type ClientInterface interface {
 	// Corresponds with POST /activities/{id}/grade (the `GradeActivityPreview` operationId).
 	GradeActivityPreview(ctx context.Context, id openapi_types.UUID, body GradeActivityPreviewJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AdminGetAIUsage Retrieve current daily AI usage and quota status across providers.
+	//
+	// Returns today's aggregated requests and token counts against configured daily limits for each provider and task pair, indicating which budgets are currently exhausted.
+	//
+	// Corresponds with GET /admin/ai/usage (the `AdminGetAIUsage` operationId).
+	AdminGetAIUsage(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AuditSearchLogs Search the audit trail.
 	//
 	// Returns audit entries newest first, within a bounded time window.
@@ -1386,6 +1393,23 @@ func (c *Client) GradeActivityPreviewWithBody(ctx context.Context, id openapi_ty
 // Corresponds with POST /activities/{id}/grade (the `GradeActivityPreview` operationId).
 func (c *Client) GradeActivityPreview(ctx context.Context, id openapi_types.UUID, body GradeActivityPreviewJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGradeActivityPreviewRequest(c.Server, id, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminGetAIUsage Retrieve current daily AI usage and quota status across providers.
+//
+// Returns today's aggregated requests and token counts against configured daily limits for each provider and task pair, indicating which budgets are currently exhausted.
+//
+// Corresponds with GET /admin/ai/usage (the `AdminGetAIUsage` operationId).
+func (c *Client) AdminGetAIUsage(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminGetAIUsageRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -4001,6 +4025,33 @@ func NewGradeActivityPreviewRequestWithBody(server string, id openapi_types.UUID
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewAdminGetAIUsageRequest constructs an http.Request for the AdminGetAIUsage method
+func NewAdminGetAIUsageRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/ai/usage")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -8061,6 +8112,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /activities/{id}/grade (the `GradeActivityPreview` operationId).
 	GradeActivityPreviewWithResponse(ctx context.Context, id openapi_types.UUID, body GradeActivityPreviewJSONRequestBody, reqEditors ...RequestEditorFn) (*GradeActivityPreviewResponse, error)
 
+	// AdminGetAIUsageWithResponse Retrieve current daily AI usage and quota status across providers.
+	//
+	// Returns today's aggregated requests and token counts against configured daily limits for each provider and task pair, indicating which budgets are currently exhausted.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/ai/usage (the `AdminGetAIUsage` operationId).
+	AdminGetAIUsageWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AdminGetAIUsageResponse, error)
+
 	// AuditSearchLogsWithResponse Search the audit trail.
 	//
 	// Returns audit entries newest first, within a bounded time window.
@@ -9543,6 +9603,61 @@ func (r GradeActivityPreviewResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GradeActivityPreviewResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type AdminGetAIUsageResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AdminAIUsageResponse
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AdminGetAIUsageResponse) GetJSON200() *AdminAIUsageResponse {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AdminGetAIUsageResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminGetAIUsageResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminGetAIUsageResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminGetAIUsageResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminGetAIUsageResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminGetAIUsageResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -16450,6 +16565,21 @@ func (c *ClientWithResponses) GradeActivityPreviewWithResponse(ctx context.Conte
 	return ParseGradeActivityPreviewResponse(rsp)
 }
 
+// AdminGetAIUsageWithResponse Retrieve current daily AI usage and quota status across providers.
+//
+// Returns today's aggregated requests and token counts against configured daily limits for each provider and task pair, indicating which budgets are currently exhausted.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/ai/usage (the `AdminGetAIUsage` operationId).
+func (c *ClientWithResponses) AdminGetAIUsageWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AdminGetAIUsageResponse, error) {
+	rsp, err := c.AdminGetAIUsage(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminGetAIUsageResponse(rsp)
+}
+
 // AuditSearchLogsWithResponse Search the audit trail.
 //
 // Returns audit entries newest first, within a bounded time window.
@@ -18706,6 +18836,46 @@ func ParseGradeActivityPreviewResponse(rsp *http.Response) (*GradeActivityPrevie
 			headers.XRequestId = &value
 		}
 		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAdminGetAIUsageResponse parses an HTTP response from a AdminGetAIUsageWithResponse call
+func ParseAdminGetAIUsageResponse(rsp *http.Response) (*AdminGetAIUsageResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminGetAIUsageResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AdminAIUsageResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
 	}
 
 	return response, nil

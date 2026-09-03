@@ -260,3 +260,24 @@ func (r *Router) record(ctx context.Context, entry RequestLog) {
 			"error", err, "task", string(entry.Task), "status", string(entry.Status))
 	}
 }
+
+// HasQuota reports whether any configured provider has available quota for task.
+func (r *Router) HasQuota(ctx context.Context, task Task) (bool, error) {
+	if r.budget == nil || r.providers == nil {
+		return true, nil
+	}
+	primary, err := r.providers.Primary()
+	if err == nil {
+		allowed, checkErr := r.budget.CheckQuota(ctx, primary.Name(), task)
+		if checkErr == nil && allowed {
+			return true, nil
+		}
+	}
+	if fallback, ok := r.providers.Fallback(); ok {
+		allowed, checkErr := r.budget.CheckQuota(ctx, fallback.Name(), task)
+		if checkErr == nil && allowed {
+			return true, nil
+		}
+	}
+	return false, nil
+}

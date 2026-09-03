@@ -18,7 +18,7 @@ VocabUploadItem:
       example: thời gian rảnh
     status:
       type: string
-      enum: [pending, verified, rejected, failed]
+      enum: [pending, verified, rejected, failed, queued]
       example: verified
     reason:
       type: string
@@ -65,6 +65,10 @@ VocabUpload:
     pending_count:
       type: integer
       example: 1
+    queued_count:
+      type: integer
+      description: How many words are queued for background enrichment.
+      example: 0
     deck_id:
       type: string
       format: uuid

@@ -17,6 +17,32 @@ import (
 	"github.com/fluentra/fluentra/internal/shared/dbx"
 )
 
+// AIUsageStatus is one provider-and-task row of today's AI consumption.
+//
+// Declared here rather than reused from platform/ai, and the arch lint is what
+// asked for it: m_admin_service and m_admin_http are allowed contracts and their
+// own layers, and no platform package at all. That is deliberate across the
+// whole file -- admin reads what other components publish and calls no
+// capability directly -- so importing platform/ai to borrow a struct would have
+// widened a boundary for the sake of six fields.
+//
+// The composition root converts. That is the same shape as every other seam in
+// cmd/api.
+type AIUsageStatus struct {
+	Provider          string
+	Task              string
+	RequestsToday     int64
+	TokensToday       int64
+	DailyRequestLimit *int
+	DailyTokenLimit   *int64
+	IsExhausted       bool
+}
+
+// AIUsageReporter queries AI consumption and quota status across providers.
+type AIUsageReporter interface {
+	GetUsageOverview(ctx context.Context) ([]AIUsageStatus, error)
+}
+
 // Repository is the persistence layer needed by admin service.
 type Repository interface {
 	LogAdminAction(
@@ -45,6 +71,7 @@ type Service struct {
 	sessionRevoker authcontract.SessionRevoker
 	audit          auditcontract.Recorder
 	clock          clock.Clock
+	aiUsage        AIUsageReporter
 }
 
 // Deps are the service collaborators.
@@ -56,6 +83,7 @@ type Deps struct {
 	SessionRevoker authcontract.SessionRevoker
 	Audit          auditcontract.Recorder
 	Clock          clock.Clock
+	AIUsage        AIUsageReporter
 }
 
 // New creates a new admin service.
@@ -72,5 +100,14 @@ func New(deps Deps) *Service {
 		sessionRevoker: deps.SessionRevoker,
 		audit:          deps.Audit,
 		clock:          timekeeper,
+		aiUsage:        deps.AIUsage,
 	}
+}
+
+// GetAIUsage returns current daily usage and quota status for all configured AI providers and tasks.
+func (s *Service) GetAIUsage(ctx context.Context) ([]AIUsageStatus, error) {
+	if s.aiUsage == nil {
+		return []AIUsageStatus{}, nil
+	}
+	return s.aiUsage.GetUsageOverview(ctx)
 }

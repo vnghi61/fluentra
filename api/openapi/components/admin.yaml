@@ -239,3 +239,46 @@ UpdateFeatureFlagRequest:
       type: string
       minLength: 1
       example: Second-generation streak calculation.
+
+AdminAIUsageResponse:
+  type: object
+  description: >-
+    Current AI provider usage and budget status for today.
+  required: [items]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/AdminAIUsageItem'
+
+AdminAIUsageItem:
+  type: object
+  description: >-
+    Usage and budget status for a specific provider and task pair.
+  required: [provider, task, requests_today, tokens_today, is_exhausted]
+  properties:
+    provider:
+      type: string
+      example: openai_compatible
+    task:
+      type: string
+      example: vocab_verify
+    requests_today:
+      type: integer
+      example: 45
+    tokens_today:
+      type: integer
+      example: 12050
+    daily_request_limit:
+      type: [integer, 'null']
+      description: Configured daily request limit, or null if unconstrained.
+      example: 1000
+    daily_token_limit:
+      type: [integer, 'null']
+      description: Configured daily token limit, or null if unconstrained.
+      example: 500000
+    is_exhausted:
+      type: boolean
+      description: True if today's usage has reached or exceeded any configured limit.
+      example: false
+

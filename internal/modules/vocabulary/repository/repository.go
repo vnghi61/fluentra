@@ -51,6 +51,24 @@ type Repository interface {
 	MarkUploadItemRejected(ctx context.Context, id uuid.UUID, reason string) (sqlc.SkillVocabUploadItem, error)
 	RecordUploadItemAttempt(ctx context.Context, id uuid.UUID, reason string) error
 	SetUploadDeck(ctx context.Context, uploadID, deckID uuid.UUID) error
+	UpdateWordSenseEnrichment(
+		ctx context.Context, arg sqlc.UpdateWordSenseEnrichmentParams,
+	) (sqlc.SkillWordSense, error)
+	MarkUploadItemQueued(
+		ctx context.Context, id uuid.UUID, senseID *uuid.UUID, reason string,
+	) (sqlc.SkillVocabUploadItem, error)
+	ClaimQueuedUploadItems(
+		ctx context.Context, maxAttempts, limit int32,
+	) ([]sqlc.SkillVocabUploadItem, error)
+	MarkQueuedUploadItemVerified(
+		ctx context.Context, id uuid.UUID, model, reason string,
+	) (sqlc.SkillVocabUploadItem, error)
+	MarkQueuedUploadItemRejected(
+		ctx context.Context, id uuid.UUID, reason string,
+	) (sqlc.SkillVocabUploadItem, error)
+	MarkQueuedUploadItemFailed(
+		ctx context.Context, id uuid.UUID, reason string,
+	) (sqlc.SkillVocabUploadItem, error)
 	CompleteFinishedUploads(ctx context.Context) ([]sqlc.SkillVocabUpload, error)
 
 	WithTx(tx pgx.Tx) Repository
@@ -266,4 +284,57 @@ func (r *pgxRepository) CompleteFinishedUploads(
 	ctx context.Context,
 ) ([]sqlc.SkillVocabUpload, error) {
 	return r.q.CompleteFinishedUploads(ctx)
+}
+
+func (r *pgxRepository) UpdateWordSenseEnrichment(
+	ctx context.Context, arg sqlc.UpdateWordSenseEnrichmentParams,
+) (sqlc.SkillWordSense, error) {
+	return r.q.UpdateWordSenseEnrichment(ctx, arg)
+}
+
+func (r *pgxRepository) MarkUploadItemQueued(
+	ctx context.Context, id uuid.UUID, senseID *uuid.UUID, reason string,
+) (sqlc.SkillVocabUploadItem, error) {
+	return r.q.MarkUploadItemQueued(ctx, sqlc.MarkUploadItemQueuedParams{
+		ID:          id,
+		WordSenseID: senseID,
+		Reason:      reason,
+	})
+}
+
+func (r *pgxRepository) ClaimQueuedUploadItems(
+	ctx context.Context, maxAttempts, limit int32,
+) ([]sqlc.SkillVocabUploadItem, error) {
+	return r.q.ClaimQueuedUploadItems(ctx, sqlc.ClaimQueuedUploadItemsParams{
+		Attempts: maxAttempts,
+		Limit:    limit,
+	})
+}
+
+func (r *pgxRepository) MarkQueuedUploadItemVerified(
+	ctx context.Context, id uuid.UUID, model, reason string,
+) (sqlc.SkillVocabUploadItem, error) {
+	return r.q.MarkQueuedUploadItemVerified(ctx, sqlc.MarkQueuedUploadItemVerifiedParams{
+		ID:              id,
+		VerifiedByModel: model,
+		Reason:          reason,
+	})
+}
+
+func (r *pgxRepository) MarkQueuedUploadItemRejected(
+	ctx context.Context, id uuid.UUID, reason string,
+) (sqlc.SkillVocabUploadItem, error) {
+	return r.q.MarkQueuedUploadItemRejected(ctx, sqlc.MarkQueuedUploadItemRejectedParams{
+		ID:     id,
+		Reason: reason,
+	})
+}
+
+func (r *pgxRepository) MarkQueuedUploadItemFailed(
+	ctx context.Context, id uuid.UUID, reason string,
+) (sqlc.SkillVocabUploadItem, error) {
+	return r.q.MarkQueuedUploadItemFailed(ctx, sqlc.MarkQueuedUploadItemFailedParams{
+		ID:     id,
+		Reason: reason,
+	})
 }

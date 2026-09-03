@@ -26,7 +26,7 @@ func (h *Handler) listFlags(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httpx.WriteJSON(w, r, http.StatusOK, map[string]any{
-		"items": flags,
+		keyItems: flags,
 	})
 }
 

@@ -21,6 +21,7 @@ export const PERMISSIONS = {
   userReinstate: "user.reinstate",
   userManageSessions: "user.manage_sessions",
   systemFlags: "system.flags",
+  adminDashboard: "admin.dashboard",
 } as const;
 
 export interface PermissionState {

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { server } from "./msw-server";
 import { AdminUserList } from "@/features/admin/components/AdminUserList";
 import { AdminFeatureFlags } from "@/features/admin/components/AdminFeatureFlags";
@@ -66,6 +67,7 @@ describe("Admin Shell & Operations", () => {
             "user.reinstate",
             "user.manage_sessions",
             "system.flags",
+            "admin.dashboard",
           ],
         }),
       ),
@@ -390,5 +392,89 @@ describe("Admin permission gating", () => {
     expect(
       await screen.findByText(/no administrative permissions/i),
     ).toBeInTheDocument();
+  });
+});
+
+describe("Admin AI usage", () => {
+  // The component existed, was exported, and was rendered by nothing.
+  //
+  // That is the third time on this project: the gamification widgets shipped
+  // with no directory to render them, the avatar route was advertised with
+  // nothing mounted at it, and this screen was reachable only by importing it
+  // in a test. An admin surface nobody can open tells nobody anything, which is
+  // the entire point of a view whose job is to show a provider running out
+  // before a learner meets a queued word.
+  //
+  // It is also the only admin component that uses react-query, so it needs the
+  // provider the app root supplies in main.tsx. The sibling screens fetch by
+  // hand and render without one, which is why no existing test needed this.
+  function renderAdmin() {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    return render(
+      <QueryClientProvider client={client}>
+        <AdminPage />
+      </QueryClientProvider>,
+    );
+  }
+
+  it("shows today's usage and marks an exhausted provider", async () => {
+    server.use(
+      // Only admin.dashboard: the AI tab is then the sole section, so it is the
+      // one shown and no other screen's requests enter the picture.
+      http.get("/api/v1/me/permissions", () =>
+        HttpResponse.json({
+          roles: ["admin"],
+          permissions: ["admin.dashboard"],
+        }),
+      ),
+      http.get("/api/v1/admin/ai/usage", () =>
+        HttpResponse.json({
+          items: [
+            {
+              provider: "openai_compatible",
+              task: "vocab_verify",
+              requests_today: 45,
+              tokens_today: 12050,
+              daily_request_limit: 1000,
+              daily_token_limit: 500000,
+              is_exhausted: false,
+            },
+            {
+              provider: "fallback_llm",
+              task: "vocab_verify",
+              requests_today: 200,
+              tokens_today: 98000,
+              daily_request_limit: 200,
+              daily_token_limit: 500000,
+              is_exhausted: true,
+            },
+          ],
+        }),
+      ),
+    );
+
+    renderAdmin();
+
+    expect(await screen.findByText(/openai_compatible/)).toBeInTheDocument();
+    expect(screen.getByText(/fallback_llm/)).toBeInTheDocument();
+  });
+
+  it("hides the section from an admin without admin.dashboard", async () => {
+    server.use(
+      http.get("/api/v1/me/permissions", () =>
+        HttpResponse.json({ roles: ["admin"], permissions: ["user.list"] }),
+      ),
+    );
+
+    renderAdmin();
+
+    expect(
+      await screen.findByRole("button", { name: /Learner Management/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /AI Usage/i }),
+    ).not.toBeInTheDocument();
   });
 });

@@ -97,10 +97,97 @@ func (b *DBBudgetChecker) CheckQuota(ctx context.Context, provider string, task 
 	return true, nil
 }
 
+// UsageStatus represents current daily usage against configured limits for a provider and task.
+type UsageStatus struct {
+	Provider          string
+	Task              string
+	RequestsToday     int64
+	TokensToday       int64
+	DailyRequestLimit *int
+	DailyTokenLimit   *int64
+	IsExhausted       bool
+}
+
+// UsageReporter provides a view of current AI consumption across providers and tasks.
+type UsageReporter interface {
+	GetUsageOverview(ctx context.Context) ([]UsageStatus, error)
+}
+
+// GetUsageOverview queries ai.ai_budgets and ai.ai_usage to summarize today's consumption.
+func (b *DBBudgetChecker) GetUsageOverview(ctx context.Context) ([]UsageStatus, error) {
+	if b.pool == nil {
+		return []UsageStatus{}, nil
+	}
+
+	const query = `
+		SELECT
+			COALESCE(NULLIF(b.provider, ''), NULLIF(u.provider, ''), 'unknown') AS provider,
+			COALESCE(b.task, u.task) AS task,
+			COALESCE(u.requests_today, 0)::bigint AS requests_today,
+			COALESCE(u.tokens_today, 0)::bigint AS tokens_today,
+			b.daily_request_limit,
+			b.daily_token_limit,
+			CASE 
+				WHEN b.daily_request_limit IS NOT NULL AND b.daily_request_limit > 0 
+				     AND COALESCE(u.requests_today, 0) >= b.daily_request_limit THEN true
+				WHEN b.daily_token_limit IS NOT NULL AND b.daily_token_limit > 0 
+				     AND COALESCE(u.tokens_today, 0) >= b.daily_token_limit THEN true
+				ELSE false
+			END AS is_exhausted
+		FROM ai.ai_budgets b
+		FULL OUTER JOIN (
+			SELECT
+				provider,
+				task,
+				SUM(request_count)::bigint AS requests_today,
+				SUM(total_prompt_tokens + total_completion_tokens)::bigint AS tokens_today
+			FROM ai.ai_usage
+			WHERE usage_date = CURRENT_DATE
+			GROUP BY provider, task
+		) u ON b.provider = u.provider AND b.task = u.task
+		WHERE b.is_active IS NULL OR b.is_active = true
+		ORDER BY provider, task`
+
+	rows, err := b.pool.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("query ai usage overview: %w", err)
+	}
+	defer rows.Close()
+
+	var result []UsageStatus
+	for rows.Next() {
+		var item UsageStatus
+		if err := rows.Scan(
+			&item.Provider,
+			&item.Task,
+			&item.RequestsToday,
+			&item.TokensToday,
+			&item.DailyRequestLimit,
+			&item.DailyTokenLimit,
+			&item.IsExhausted,
+		); err != nil {
+			return nil, fmt.Errorf("scan ai usage row: %w", err)
+		}
+		result = append(result, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate ai usage rows: %w", err)
+	}
+	if result == nil {
+		result = []UsageStatus{}
+	}
+	return result, nil
+}
+
 // NoopBudgetChecker always permits requests (offline development and unit tests).
 type NoopBudgetChecker struct{}
 
 // CheckQuota always returns true.
 func (NoopBudgetChecker) CheckQuota(_ context.Context, _ string, _ Task) (bool, error) {
 	return true, nil
+}
+
+// GetUsageOverview returns empty usage for testing.
+func (NoopBudgetChecker) GetUsageOverview(_ context.Context) ([]UsageStatus, error) {
+	return []UsageStatus{}, nil
 }

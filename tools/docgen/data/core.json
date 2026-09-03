@@ -925,6 +925,7 @@
       { "method": "POST", "path": "/api/v1/admin/users/{id}/reinstate", "permission": "user.reinstate", "purpose": "Return a suspended account to active", "success": "200", "notes": "Reason required; sessions are not restored" },
       { "method": "POST", "path": "/api/v1/admin/users/{id}/sessions/revoke", "permission": "user.manage_sessions", "purpose": "Sign a user out everywhere", "success": "200", "notes": "Reason required; status is unchanged" },
       { "method": "GET", "path": "/api/v1/admin/flags", "permission": "system.flags", "purpose": "List every feature flag", "success": "200", "notes": "Unpaginated — the set is small by design" },
+      { "method": "GET", "path": "/api/v1/admin/ai/usage", "permission": "admin.dashboard", "purpose": "Read today's AI usage and budget headroom per provider", "success": "200", "notes": "A read over ai_usage and ai_budgets; shows an exhausted provider before a learner meets one" },
       { "method": "POST", "path": "/api/v1/admin/flags", "permission": "system.flags", "purpose": "Create a feature flag", "success": "201", "notes": "`owner` and a future `expires_on` are required" },
       { "method": "PUT", "path": "/api/v1/admin/flags/{key}", "permission": "system.flags", "purpose": "Update a feature flag", "success": "200", "notes": "Visible within one 30 s cache generation" },
       { "method": "DELETE", "path": "/api/v1/admin/flags/{key}", "permission": "system.flags", "purpose": "Delete a feature flag", "success": "204", "notes": "Evaluations of the key then return false" },

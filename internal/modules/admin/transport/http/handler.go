@@ -17,6 +17,8 @@ import (
 	"github.com/fluentra/fluentra/internal/shared/httpx"
 )
 
+const keyItems = "items"
+
 // Guard is the authorization surface these handlers need.
 type Guard interface {
 	Require(ctx context.Context, permission string) error
@@ -35,6 +37,7 @@ type AdminService interface {
 	CreateFlag(ctx context.Context, req service.CreateFlagRequest) (admincontract.FeatureFlag, error)
 	UpdateFlag(ctx context.Context, key string, req service.UpdateFlagRequest) (admincontract.FeatureFlag, error)
 	DeleteFlag(ctx context.Context, key string) error
+	GetAIUsage(ctx context.Context) ([]service.AIUsageStatus, error)
 }
 
 // Handler serves HTTP endpoints for the admin module.
@@ -50,6 +53,7 @@ func NewHandler(service AdminService, guard Guard) *Handler {
 
 // Routes registers admin routes on chi.Router.
 func (h *Handler) Routes(router chi.Router) {
+	router.Get("/admin/ai/usage", h.getAIUsage)
 	router.Get("/admin/users", h.searchUsers)
 	router.Get("/admin/users/{id}", h.getUser)
 	router.Post("/admin/users/{id}/suspend", h.suspendUser)
