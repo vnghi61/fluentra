@@ -232,8 +232,18 @@ test fails if one is added without documentation.
 
 **Seed `ai.ai_budgets` before the first real call.** `CheckQuota` returns true when it finds
 no row, which is the right default for a table nobody has filled in and means the ceiling does
-not exist until a row says so. One row per `(provider, task)` — and there are now two tasks,
-`verify_vocabulary` and `explain_answer`.
+not exist until a row says so. One row per `(provider, task)` — and there are now two tasks.
+The values are the **task strings**, not the Go constant names: `vocab_verify` and
+`explain_answer`, from `internal/platform/ai/ai.go`. A row naming `verify_vocabulary` matches
+nothing and silently leaves that task uncapped.
+
+**And `provider` is the adapter name, not the deployment.** `OpenAICompatibleProvider.Name()`
+returns the constant `"openai_compatible"` whatever base URL it was built with, so a Groq
+primary and an OpenRouter fallback are one provider to `CheckQuota`, to `DBUsageRecorder` and
+to the admin usage screen. One row covers both, their usage is summed, and the sentence in
+`.env.example` telling you to give the fallback its own budget rows describes something the
+code cannot currently express. Worth fixing — probably by naming a provider at configuration
+time rather than in the adapter — but not in this work order unless the exam work stalls.
 
 **Verify the mock is gone.** The worker says so at start-up when it falls back:
 
