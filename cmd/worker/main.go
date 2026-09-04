@@ -99,32 +99,30 @@ type workerConfig struct {
 		Endpoint    string `koanf:"exporter_otlp_endpoint"`
 		ServiceName string `koanf:"service_name"`
 	} `koanf:"otel"`
-	// The AI provider the upload verification uses. Every field is optional:
-	// the default is the offline mock, and a deployment that configures nothing
-	// still verifies uploads against the free dictionary.
 	AI struct {
-		Provider string        `koanf:"provider"`
-		BaseURL  string        `koanf:"base_url"`
-		Model    string        `koanf:"model"`
-		APIKey   string        `koanf:"api_key"`
-		Timeout  time.Duration `koanf:"timeout"`
+		Provider1Name    string        `koanf:"provider_1_name"`
+		Provider1BaseURL string        `koanf:"provider_1_base_url"`
+		Provider1Model   string        `koanf:"provider_1_model"`
+		Provider1APIKey  string        `koanf:"provider_1_api_key"`
+		Provider1Timeout time.Duration `koanf:"provider_1_timeout"`
 
-		// The second provider the router falls back to, and the reason the
-		// quota model has a provider dimension at all.
-		//
-		// ai.Config has carried these fields since the router was written and
-		// nothing read them, so only one provider could ever be configured --
-		// which quietly reduced "every provider is exhausted", the one warning
-		// the product asked for by name, to "the only provider is exhausted".
-		//
-		// Left empty, there is no fallback and the router behaves exactly as
-		// before. That is the right default: a second free provider is a
-		// deliberate choice with its own key and its own budget rows.
-		FallbackProvider string        `koanf:"fallback_provider"`
-		FallbackBaseURL  string        `koanf:"fallback_base_url"`
-		FallbackModel    string        `koanf:"fallback_model"`
-		FallbackAPIKey   string        `koanf:"fallback_api_key"`
-		FallbackTimeout  time.Duration `koanf:"fallback_timeout"`
+		Provider2Name    string        `koanf:"provider_2_name"`
+		Provider2BaseURL string        `koanf:"provider_2_base_url"`
+		Provider2Model   string        `koanf:"provider_2_model"`
+		Provider2APIKey  string        `koanf:"provider_2_api_key"`
+		Provider2Timeout time.Duration `koanf:"provider_2_timeout"`
+
+		Provider3Name    string        `koanf:"provider_3_name"`
+		Provider3BaseURL string        `koanf:"provider_3_base_url"`
+		Provider3Model   string        `koanf:"provider_3_model"`
+		Provider3APIKey  string        `koanf:"provider_3_api_key"`
+		Provider3Timeout time.Duration `koanf:"provider_3_timeout"`
+
+		Provider4Name    string        `koanf:"provider_4_name"`
+		Provider4BaseURL string        `koanf:"provider_4_base_url"`
+		Provider4Model   string        `koanf:"provider_4_model"`
+		Provider4APIKey  string        `koanf:"provider_4_api_key"`
+		Provider4Timeout time.Duration `koanf:"provider_4_timeout"`
 	} `koanf:"ai"`
 	OTP struct {
 		HMACKey string `koanf:"hmac_key"`
@@ -151,8 +149,40 @@ type workerConfig struct {
 	} `koanf:"resend"`
 }
 
+func (cfg workerConfig) aiProviders() []ai.ProviderConfig {
+	slots := []ai.ProviderConfig{
+		{
+			Name: cfg.AI.Provider1Name, BaseURL: cfg.AI.Provider1BaseURL, Model: cfg.AI.Provider1Model,
+			APIKey: cfg.AI.Provider1APIKey, Timeout: cfg.AI.Provider1Timeout,
+		},
+		{
+			Name: cfg.AI.Provider2Name, BaseURL: cfg.AI.Provider2BaseURL, Model: cfg.AI.Provider2Model,
+			APIKey: cfg.AI.Provider2APIKey, Timeout: cfg.AI.Provider2Timeout,
+		},
+		{
+			Name: cfg.AI.Provider3Name, BaseURL: cfg.AI.Provider3BaseURL, Model: cfg.AI.Provider3Model,
+			APIKey: cfg.AI.Provider3APIKey, Timeout: cfg.AI.Provider3Timeout,
+		},
+		{
+			Name: cfg.AI.Provider4Name, BaseURL: cfg.AI.Provider4BaseURL, Model: cfg.AI.Provider4Model,
+			APIKey: cfg.AI.Provider4APIKey, Timeout: cfg.AI.Provider4Timeout,
+		},
+	}
+	var res []ai.ProviderConfig
+	for _, s := range slots {
+		if strings.TrimSpace(s.Name) != "" {
+			res = append(res, s)
+		}
+	}
+	return res
+}
+
 // configOptions declares every key this binary reads. A key absent from here
 // cannot reach the config tree, and `.env.example` is its documentation.
+// defaultAITimeout is the per-slot bound. Generous on purpose: this runs in a
+// job, and a local model on modest hardware is slow rather than broken.
+const defaultAITimeout = "120s"
+
 func configOptions() config.Options {
 	return config.Options{
 		Defaults: map[string]any{
@@ -183,25 +213,27 @@ func configOptions() config.Options {
 			"smtp.dev_mode":                   true,
 			"mail.transport":                  "smtp",
 			"mail.from":                       "no-reply@fluentra.local",
-			"resend.api_key":                  "",
-			// The offline mock by default, so `make dev` verifies uploads with
-			// no key and no internet. It accepts every word it is given, so a
-			// real deployment must set AI_PROVIDER.
-			"ai.provider": "mock",
-			"ai.base_url": "",
-			"ai.model":    "",
-			"ai.api_key":  "",
-			"ai.timeout":  "120s",
-			// Declared even though they are empty: config.Load only accepts an
-			// environment variable whose key appears in Defaults, Required or
-			// EnvSections, so AI_FALLBACK_PROVIDER would be dropped in silence
-			// without these lines and the fallback would stay unconfigurable
-			// for a reason nothing reports.
-			"ai.fallback_provider": "",
-			"ai.fallback_base_url": "",
-			"ai.fallback_model":    "",
-			"ai.fallback_api_key":  "",
-			"ai.fallback_timeout":  "120s",
+			// Four numbered provider slots. Slot 1 defaults to mock.
+			"ai.provider_1_name":     "mock",
+			"ai.provider_1_base_url": "",
+			"ai.provider_1_model":    "",
+			"ai.provider_1_api_key":  "",
+			"ai.provider_1_timeout":  defaultAITimeout,
+			"ai.provider_2_name":     "",
+			"ai.provider_2_base_url": "",
+			"ai.provider_2_model":    "",
+			"ai.provider_2_api_key":  "",
+			"ai.provider_2_timeout":  defaultAITimeout,
+			"ai.provider_3_name":     "",
+			"ai.provider_3_base_url": "",
+			"ai.provider_3_model":    "",
+			"ai.provider_3_api_key":  "",
+			"ai.provider_3_timeout":  defaultAITimeout,
+			"ai.provider_4_name":     "",
+			"ai.provider_4_base_url": "",
+			"ai.provider_4_model":    "",
+			"ai.provider_4_api_key":  "",
+			"ai.provider_4_timeout":  defaultAITimeout,
 		},
 		Required: []config.RequiredKey{
 			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},
@@ -484,7 +516,7 @@ func startModules(
 			"error", err)
 	}
 
-	startPracticeGenerator(ctx, cfg, pool, cron, rbacModule, lessonModule, srsModule)
+	startPracticeGenerator(ctx, cfg, pool, cron, rbacModule, lessonModule, srsModule, workers)
 
 	if err := startGamification(pool, bus, cron); err != nil {
 		return err
@@ -607,13 +639,13 @@ func startRiverWorker(
 	if err := worker.Start(ctx, provider.Instruments()); err != nil {
 		return nil, err
 	}
-	slog.Info("river worker consuming", "count", 1)
+	slog.Info("river worker consuming", "count", 2)
 	return worker, nil
 }
 
 // registerJobKinds is where a module's job handlers are counted.
 func registerJobKinds(_ *river.Workers) int {
-	return 1
+	return 2
 }
 
 // newStorageStore validates the storage configuration and builds the facade.
@@ -720,6 +752,7 @@ func startPracticeGenerator(
 	rbacModule *rbac.Module,
 	lessonModule *lesson.Module,
 	srsModule *srs.Module,
+	workers *river.Workers,
 ) {
 	author, err := rbacModule.RoleMembers().FirstHolderOf(ctx, rbaccontract.RoleAdmin)
 	if err != nil {
@@ -733,19 +766,8 @@ func startPracticeGenerator(
 	// the dictionary alone, which still answers the question that matters most
 	// — whether the word exists.
 	aiClient, err := ai.New(ai.Config{
-		Provider: cfg.AI.Provider,
-		BaseURL:  cfg.AI.BaseURL,
-		Model:    cfg.AI.Model,
-		APIKey:   cfg.AI.APIKey,
-		Timeout:  cfg.AI.Timeout,
-
-		FallbackProvider: cfg.AI.FallbackProvider,
-		FallbackBaseURL:  cfg.AI.FallbackBaseURL,
-		FallbackModel:    cfg.AI.FallbackModel,
-		FallbackAPIKey:   cfg.AI.FallbackAPIKey,
-		FallbackTimeout:  cfg.AI.FallbackTimeout,
-
-		Pool: pool,
+		Providers: cfg.aiProviders(),
+		Pool:      pool,
 	})
 	if err != nil {
 		slog.WarnContext(ctx, "no AI client; uploads will be verified against the dictionary alone",
@@ -766,6 +788,8 @@ func startPracticeGenerator(
 		AI:                aiClient,
 		Reviews:           srsModule.CardWriter(),
 	})
+
+	river.AddWorker(workers, vocabularyModule.VerifyUploadWorker())
 
 	for _, scheduled := range vocabularyModule.CronJobs() {
 		cron.Register(scheduled)

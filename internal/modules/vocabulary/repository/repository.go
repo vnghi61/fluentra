@@ -45,6 +45,9 @@ type Repository interface {
 	ListUploadsByUser(ctx context.Context, userID uuid.UUID, limit int32) ([]sqlc.ListUploadsByUserRow, error)
 	ListUploadItems(ctx context.Context, uploadID, userID uuid.UUID) ([]sqlc.SkillVocabUploadItem, error)
 	ClaimPendingUploadItems(ctx context.Context, maxAttempts, limit int32) ([]sqlc.SkillVocabUploadItem, error)
+	ClaimPendingUploadItemsByUploadID(
+		ctx context.Context, uploadID uuid.UUID, maxAttempts, limit int32,
+	) ([]sqlc.SkillVocabUploadItem, error)
 	MarkUploadItemVerified(
 		ctx context.Context, id uuid.UUID, senseID *uuid.UUID, model, reason string,
 	) (sqlc.SkillVocabUploadItem, error)
@@ -253,6 +256,16 @@ func (r *pgxRepository) ClaimPendingUploadItems(
 ) ([]sqlc.SkillVocabUploadItem, error) {
 	return r.q.ClaimPendingUploadItems(ctx, sqlc.ClaimPendingUploadItemsParams{
 		Attempts: maxAttempts, Limit: limit,
+	})
+}
+
+func (r *pgxRepository) ClaimPendingUploadItemsByUploadID(
+	ctx context.Context, uploadID uuid.UUID, maxAttempts, limit int32,
+) ([]sqlc.SkillVocabUploadItem, error) {
+	return r.q.ClaimPendingUploadItemsByUploadID(ctx, sqlc.ClaimPendingUploadItemsByUploadIDParams{
+		UploadID: uploadID,
+		Attempts: maxAttempts,
+		Limit:    limit,
 	})
 }
 

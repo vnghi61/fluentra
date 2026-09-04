@@ -150,12 +150,58 @@ type applicationConfig struct {
 		APIKey string `koanf:"api_key"`
 	} `koanf:"resend"`
 	AI struct {
-		Provider string        `koanf:"provider"`
-		BaseURL  string        `koanf:"base_url"`
-		Model    string        `koanf:"model"`
-		APIKey   string        `koanf:"api_key"`
-		Timeout  time.Duration `koanf:"timeout"`
+		Provider1Name    string        `koanf:"provider_1_name"`
+		Provider1BaseURL string        `koanf:"provider_1_base_url"`
+		Provider1Model   string        `koanf:"provider_1_model"`
+		Provider1APIKey  string        `koanf:"provider_1_api_key"`
+		Provider1Timeout time.Duration `koanf:"provider_1_timeout"`
+
+		Provider2Name    string        `koanf:"provider_2_name"`
+		Provider2BaseURL string        `koanf:"provider_2_base_url"`
+		Provider2Model   string        `koanf:"provider_2_model"`
+		Provider2APIKey  string        `koanf:"provider_2_api_key"`
+		Provider2Timeout time.Duration `koanf:"provider_2_timeout"`
+
+		Provider3Name    string        `koanf:"provider_3_name"`
+		Provider3BaseURL string        `koanf:"provider_3_base_url"`
+		Provider3Model   string        `koanf:"provider_3_model"`
+		Provider3APIKey  string        `koanf:"provider_3_api_key"`
+		Provider3Timeout time.Duration `koanf:"provider_3_timeout"`
+
+		Provider4Name    string        `koanf:"provider_4_name"`
+		Provider4BaseURL string        `koanf:"provider_4_base_url"`
+		Provider4Model   string        `koanf:"provider_4_model"`
+		Provider4APIKey  string        `koanf:"provider_4_api_key"`
+		Provider4Timeout time.Duration `koanf:"provider_4_timeout"`
 	} `koanf:"ai"`
+}
+
+func (cfg applicationConfig) aiProviders() []ai.ProviderConfig {
+	slots := []ai.ProviderConfig{
+		{
+			Name: cfg.AI.Provider1Name, BaseURL: cfg.AI.Provider1BaseURL, Model: cfg.AI.Provider1Model,
+			APIKey: cfg.AI.Provider1APIKey, Timeout: cfg.AI.Provider1Timeout,
+		},
+		{
+			Name: cfg.AI.Provider2Name, BaseURL: cfg.AI.Provider2BaseURL, Model: cfg.AI.Provider2Model,
+			APIKey: cfg.AI.Provider2APIKey, Timeout: cfg.AI.Provider2Timeout,
+		},
+		{
+			Name: cfg.AI.Provider3Name, BaseURL: cfg.AI.Provider3BaseURL, Model: cfg.AI.Provider3Model,
+			APIKey: cfg.AI.Provider3APIKey, Timeout: cfg.AI.Provider3Timeout,
+		},
+		{
+			Name: cfg.AI.Provider4Name, BaseURL: cfg.AI.Provider4BaseURL, Model: cfg.AI.Provider4Model,
+			APIKey: cfg.AI.Provider4APIKey, Timeout: cfg.AI.Provider4Timeout,
+		},
+	}
+	var res []ai.ProviderConfig
+	for _, s := range slots {
+		if strings.TrimSpace(s.Name) != "" {
+			res = append(res, s)
+		}
+	}
+	return res
 }
 
 func main() {
@@ -373,6 +419,10 @@ const (
 
 // configOptions declares every key this binary reads. A key absent from here
 // cannot reach the config tree, and `.env.example` is its documentation.
+// defaultAITimeout is the per-slot bound. Generous on purpose: this runs in a
+// job, and a local model on modest hardware is slow rather than broken.
+const defaultAITimeout = "120s"
+
 func configOptions() config.Options {
 	return config.Options{
 		Defaults: map[string]any{
@@ -420,6 +470,26 @@ func configOptions() config.Options {
 			"oauth.google_issuer":            "https://accounts.google.com",
 			"oauth.jwks_cache_ttl":           "6h",
 			"oauth.state_ttl":                "10m",
+			"ai.provider_1_name":             "mock",
+			"ai.provider_1_base_url":         "",
+			"ai.provider_1_model":            "",
+			"ai.provider_1_api_key":          "",
+			"ai.provider_1_timeout":          defaultAITimeout,
+			"ai.provider_2_name":             "",
+			"ai.provider_2_base_url":         "",
+			"ai.provider_2_model":            "",
+			"ai.provider_2_api_key":          "",
+			"ai.provider_2_timeout":          defaultAITimeout,
+			"ai.provider_3_name":             "",
+			"ai.provider_3_base_url":         "",
+			"ai.provider_3_model":            "",
+			"ai.provider_3_api_key":          "",
+			"ai.provider_3_timeout":          defaultAITimeout,
+			"ai.provider_4_name":             "",
+			"ai.provider_4_base_url":         "",
+			"ai.provider_4_model":            "",
+			"ai.provider_4_api_key":          "",
+			"ai.provider_4_timeout":          defaultAITimeout,
 		},
 		Required: []config.RequiredKey{
 			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},
@@ -580,12 +650,8 @@ func newAPIMailSender(cfg applicationConfig, pool *pgxpool.Pool) mailer.Sender {
 
 func initAIClient(ctx context.Context, cfg applicationConfig, pool *pgxpool.Pool) ai.Client {
 	aiClient, err := ai.New(ai.Config{
-		Provider: cfg.AI.Provider,
-		BaseURL:  cfg.AI.BaseURL,
-		Model:    cfg.AI.Model,
-		APIKey:   cfg.AI.APIKey,
-		Timeout:  cfg.AI.Timeout,
-		Pool:     pool,
+		Providers: cfg.aiProviders(),
+		Pool:      pool,
 	})
 	if err != nil {
 		slog.WarnContext(ctx, "could not initialize AI client; running without AI explanations", "error", err)

@@ -20,6 +20,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/vocabulary/repository"
 	"github.com/fluentra/fluentra/internal/platform/ai"
 	"github.com/fluentra/fluentra/internal/shared/apperr"
+	"github.com/fluentra/fluentra/internal/shared/dbx"
 )
 
 // A learner's own vocabulary: pasted in, checked on a schedule, and turned into
@@ -62,6 +63,11 @@ type verdict struct {
 	Examples       []string `json:"examples"`
 }
 
+// JobEnqueuer schedules background River jobs within database transactions.
+type JobEnqueuer interface {
+	EnqueueVerifyUploadTx(ctx context.Context, tx pgx.Tx, uploadID uuid.UUID) error
+}
+
 // UploadDeps are the collaborators the upload pipeline needs beyond the service.
 type UploadDeps struct {
 	// Dictionary is authoritative on whether a word exists and on its IPA and
@@ -78,6 +84,10 @@ type UploadDeps struct {
 	AuthorID uuid.UUID
 	// Pool writes the outbox row that tells gamification to pay XP.
 	Pool OutboxTx
+	// Beginner starts transactions for atomic upload storage and River job enqueueing.
+	Beginner dbx.Beginner
+	// Enqueuer schedules the immediate verification job.
+	Enqueuer JobEnqueuer
 }
 
 // Uploads runs the learner-upload pipeline.
@@ -93,7 +103,9 @@ type Uploads struct {
 	// published on its own row rather than joined to the verification, because
 	// the verification is several statements across three modules and there is
 	// no single transaction to join.
-	pool OutboxTx
+	pool     OutboxTx
+	beginner dbx.Beginner
+	enqueuer JobEnqueuer
 }
 
 // NewUploads constructs the pipeline.
@@ -107,6 +119,8 @@ func NewUploads(svc *Service, repo repository.Repository, deps UploadDeps) *Uplo
 		author:     deps.AuthorID,
 		events:     svc.events,
 		pool:       deps.Pool,
+		beginner:   deps.Beginner,
+		enqueuer:   deps.Enqueuer,
 	}
 }
 
@@ -135,10 +149,10 @@ type UploadItem struct {
 	VerifiedAt      *time.Time `json:"verified_at,omitempty"`
 }
 
-// Submit stores a learner's pasted vocabulary.
+// Submit stores a learner's pasted vocabulary within a transaction and enqueues verification.
 //
-// Deliberately fast and deliberately dumb: it parses, writes, and returns. No
-// dictionary, no model, no deck. Everything that can fail slowly happens in the
+// Deliberately fast: it parses, writes, enqueues the River job in the same transaction, and returns.
+// No dictionary, no model, no deck. Everything that can fail slowly happens in the
 // job, which is why a learner pasting three hundred words gets an answer in
 // milliseconds rather than a request that times out half way through.
 func (u *Uploads) Submit(ctx context.Context, userID uuid.UUID, rawText string) (Upload, error) {
@@ -149,30 +163,78 @@ func (u *Uploads) Submit(ctx context.Context, userID uuid.UUID, rawText string) 
 				"optionally followed by its meaning.")
 	}
 
-	upload, err := u.repo.InsertUpload(ctx, sqlc.InsertUploadParams{
-		UserID:    userID,
-		RawText:   rawText,
-		ItemCount: int32(len(entries)), //nolint:gosec // bounded by MaxUploadEntries
-	})
-	if err != nil {
-		return Upload{}, fmt.Errorf("store upload: %w", err)
-	}
+	var (
+		upload sqlc.SkillVocabUpload
+		stored int
+	)
 
-	stored := 0
-	for _, entry := range entries {
-		if _, err := u.repo.InsertUploadItem(ctx, sqlc.InsertUploadItemParams{
-			UploadID:        upload.ID,
-			UserID:          userID,
-			Term:            entry.Term,
-			ProvidedMeaning: entry.Meaning,
-		}); err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				// The unique constraint caught a duplicate the parser did not.
-				continue
+	if u.beginner != nil {
+		err := dbx.InTx(ctx, u.beginner, func(txCtx context.Context, tx pgx.Tx) error {
+			txRepo := u.repo.WithTx(tx)
+			var createErr error
+			upload, createErr = txRepo.InsertUpload(txCtx, sqlc.InsertUploadParams{
+				UserID:    userID,
+				RawText:   rawText,
+				ItemCount: int32(len(entries)), //nolint:gosec // bounded by MaxUploadEntries
+			})
+			if createErr != nil {
+				return fmt.Errorf("store upload: %w", createErr)
 			}
-			return Upload{}, fmt.Errorf("store upload item %q: %w", entry.Term, err)
+
+			stored = 0
+			for _, entry := range entries {
+				if _, itemErr := txRepo.InsertUploadItem(txCtx, sqlc.InsertUploadItemParams{
+					UploadID:        upload.ID,
+					UserID:          userID,
+					Term:            entry.Term,
+					ProvidedMeaning: entry.Meaning,
+				}); itemErr != nil {
+					if errors.Is(itemErr, pgx.ErrNoRows) {
+						// The unique constraint caught a duplicate the parser did not.
+						continue
+					}
+					return fmt.Errorf("store upload item %q: %w", entry.Term, itemErr)
+				}
+				stored++
+			}
+
+			if u.enqueuer != nil {
+				if enqueueErr := u.enqueuer.EnqueueVerifyUploadTx(txCtx, tx, upload.ID); enqueueErr != nil {
+					return fmt.Errorf("enqueue verify upload job: %w", enqueueErr)
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return Upload{}, fmt.Errorf("submit upload: %w", err)
 		}
-		stored++
+	} else {
+		var err error
+		upload, err = u.repo.InsertUpload(ctx, sqlc.InsertUploadParams{
+			UserID:    userID,
+			RawText:   rawText,
+			ItemCount: int32(len(entries)), //nolint:gosec // bounded by MaxUploadEntries
+		})
+		if err != nil {
+			return Upload{}, fmt.Errorf("store upload: %w", err)
+		}
+
+		stored = 0
+		for _, entry := range entries {
+			if _, itemErr := u.repo.InsertUploadItem(ctx, sqlc.InsertUploadItemParams{
+				UploadID:        upload.ID,
+				UserID:          userID,
+				Term:            entry.Term,
+				ProvidedMeaning: entry.Meaning,
+			}); itemErr != nil {
+				if errors.Is(itemErr, pgx.ErrNoRows) {
+					// The unique constraint caught a duplicate the parser did not.
+					continue
+				}
+				return Upload{}, fmt.Errorf("store upload item %q: %w", entry.Term, itemErr)
+			}
+			stored++
+		}
 	}
 
 	return Upload{
@@ -297,6 +359,48 @@ func (u *Uploads) VerifyPending(ctx context.Context) error {
 			// retried for ever.
 			slog.WarnContext(ctx, "upload item verification failed",
 				"term", item.Term, "error", err)
+			if recErr := u.repo.RecordUploadItemAttempt(ctx, item.ID, truncateReason(err.Error())); recErr != nil {
+				slog.WarnContext(ctx, "could not record verification attempt",
+					"item_id", item.ID, "error", recErr)
+			}
+			continue
+		}
+		if ok {
+			verified[item.UserID]++
+		}
+	}
+
+	if _, err := u.repo.CompleteFinishedUploads(ctx); err != nil {
+		slog.WarnContext(ctx, "could not close finished uploads", "error", err)
+	}
+
+	for userID, count := range verified {
+		u.publishVerified(ctx, userID, count)
+	}
+	return nil
+}
+
+// VerifyUpload processes verification for a specific upload immediately.
+func (u *Uploads) VerifyUpload(ctx context.Context, uploadID uuid.UUID) error {
+	if u.dictionary == nil || u.content == nil || u.author == uuid.Nil {
+		slog.DebugContext(ctx, "upload verification is not configured; skipping", "upload_id", uploadID)
+		return nil
+	}
+
+	items, err := u.repo.ClaimPendingUploadItemsByUploadID(ctx, uploadID, maxVerifyAttempts, verifyBatch)
+	if err != nil {
+		return fmt.Errorf("claim pending upload items for %s: %w", uploadID, err)
+	}
+	if len(items) == 0 {
+		return nil
+	}
+
+	verified := map[uuid.UUID]int{}
+	for _, item := range items {
+		ok, err := u.verifyItem(ctx, item)
+		if err != nil {
+			slog.WarnContext(ctx, "upload item verification failed",
+				"term", item.Term, "upload_id", uploadID, "error", err)
 			if recErr := u.repo.RecordUploadItemAttempt(ctx, item.ID, truncateReason(err.Error())); recErr != nil {
 				slog.WarnContext(ctx, "could not record verification attempt",
 					"item_id", item.ID, "error", recErr)

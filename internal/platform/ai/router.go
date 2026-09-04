@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 )
 
@@ -129,8 +130,8 @@ func (r *Router) executeFallback(
 	primaryAllowed bool,
 	start time.Time,
 ) (Response, error) {
-	fallback, ok := r.providers.Fallback()
-	if !ok {
+	fallbacks := r.providers.Fallbacks()
+	if len(fallbacks) == 0 {
 		if !primaryAllowed {
 			r.record(ctx, RequestLog{
 				Task:         req.Task,
@@ -154,15 +155,31 @@ func (r *Router) executeFallback(
 		return Response{}, fmt.Errorf("ai: provider %s failed for task %s: %w", primary.Name(), req.Task, primaryErr)
 	}
 
-	slog.WarnContext(ctx, "ai: primary provider unavailable or failed, attempting fallback",
-		"task", req.Task,
-		"primary", primary.Name(),
-		"fallback", fallback.Name(),
-		"primary_error", primaryErr)
+	allExhausted := !primaryAllowed
+	var errMsgs []string
+	if primaryErr != nil {
+		errMsgs = append(errMsgs, fmt.Sprintf("primary (%s): %v", primary.Name(), primaryErr))
+	}
 
-	fallbackAllowed, fallbackBudgetErr := r.budget.CheckQuota(ctx, fallback.Name(), req.Task)
-	var fbErr error
-	if fallbackAllowed && fallbackBudgetErr == nil {
+	for _, fallback := range fallbacks {
+		slog.WarnContext(ctx, "ai: attempting fallback provider",
+			"task", req.Task,
+			"primary", primary.Name(),
+			"fallback", fallback.Name(),
+			"previous_error", primaryErr)
+
+		fallbackAllowed, fallbackBudgetErr := r.budget.CheckQuota(ctx, fallback.Name(), req.Task)
+		if !fallbackAllowed {
+			errMsgs = append(errMsgs, fmt.Sprintf("fallback (%s): quota exhausted", fallback.Name()))
+			continue
+		}
+		allExhausted = false
+
+		if fallbackBudgetErr != nil {
+			errMsgs = append(errMsgs, fmt.Sprintf("fallback (%s) budget check failed: %v", fallback.Name(), fallbackBudgetErr))
+			continue
+		}
+
 		res, err := r.executeWithRetry(ctx, fallback, req)
 		if err == nil {
 			res.Provider = fallback.Name()
@@ -179,15 +196,11 @@ func (r *Router) executeFallback(
 			})
 			return res, nil
 		}
-		fbErr = err
-	} else if fallbackBudgetErr != nil {
-		fbErr = fallbackBudgetErr
-	} else {
-		fbErr = fmt.Errorf("provider %s quota exhausted", fallback.Name())
+
+		errMsgs = append(errMsgs, fmt.Sprintf("fallback (%s): %v", fallback.Name(), err))
 	}
 
-	// Both providers exhausted
-	if !primaryAllowed && !fallbackAllowed {
+	if allExhausted {
 		r.record(ctx, RequestLog{
 			Task:         req.Task,
 			Provider:     primary.Name(),
@@ -199,16 +212,17 @@ func (r *Router) executeFallback(
 		return Response{}, ErrQuotaExhausted
 	}
 
+	combinedErr := strings.Join(errMsgs, ", ")
 	r.record(ctx, RequestLog{
 		Task:         req.Task,
 		Provider:     primary.Name(),
 		Model:        "",
 		LatencyMs:    int(time.Since(start).Milliseconds()),
 		Status:       StatusFailed,
-		ErrorMessage: fmt.Sprintf("all providers failed (primary: %v, fallback: %v)", primaryErr, fbErr),
+		ErrorMessage: fmt.Sprintf("all providers failed (%s)", combinedErr),
 		CreatedAt:    time.Now(),
 	})
-	return Response{}, fmt.Errorf("ai: all providers failed (primary: %v, fallback: %w)", primaryErr, fbErr)
+	return Response{}, fmt.Errorf("ai: all providers failed (%s)", combinedErr)
 }
 
 func (r *Router) executeWithRetry(
@@ -273,7 +287,7 @@ func (r *Router) HasQuota(ctx context.Context, task Task) (bool, error) {
 			return true, nil
 		}
 	}
-	if fallback, ok := r.providers.Fallback(); ok {
+	for _, fallback := range r.providers.Fallbacks() {
 		allowed, checkErr := r.budget.CheckQuota(ctx, fallback.Name(), task)
 		if checkErr == nil && allowed {
 			return true, nil

@@ -239,6 +239,7 @@ components:
   m_vocabulary_domain:     { in: modules/vocabulary/domain }
   m_vocabulary_repository: { in: modules/vocabulary/repository }
   m_vocabulary_service:    { in: modules/vocabulary/service }
+  m_vocabulary_job:        { in: modules/vocabulary/job }
   m_vocabulary_http:       { in: modules/vocabulary/transport/http }
   m_grammar:       { in: modules/grammar/** }
   m_reading:       { in: modules/reading/** }
@@ -436,7 +437,8 @@ deps:
   # MODULE_INDEX.md 3 carries it, added in the same commit as this line.
   m_vocabulary_service:    { mayDependOn: [m_vocabulary_domain, m_vocabulary_repository, c_vocabulary, c_content, c_lesson, c_srs, c_learning, g_vocabulary, p_cache, p_media, p_ai, p_search, p_telemetry] }
   m_vocabulary_http:       { mayDependOn: [m_vocabulary_domain, m_vocabulary_service, c_vocabulary] }
-  m_vocabulary:            { mayDependOn: [m_vocabulary_domain, m_vocabulary_repository, m_vocabulary_service, m_vocabulary_http, c_vocabulary, c_content, c_lesson, c_srs, c_learning, g_vocabulary, p_cache, p_job, p_media, p_ai, p_search, p_telemetry] }
+  m_vocabulary_job:        { mayDependOn: [m_vocabulary_domain, m_vocabulary_repository, c_vocabulary, p_job, p_ai, p_telemetry], anyVendorDeps: true }
+  m_vocabulary:            { mayDependOn: [m_vocabulary_domain, m_vocabulary_repository, m_vocabulary_service, m_vocabulary_job, m_vocabulary_http, c_vocabulary, c_content, c_lesson, c_srs, c_learning, g_vocabulary, p_cache, p_job, p_media, p_ai, p_search, p_telemetry] }
   m_grammar:      { mayDependOn: [p_cache, p_ai, p_telemetry, c_content, c_srs, c_learning] }
   m_reading:      { mayDependOn: [p_cache, p_telemetry, c_content, c_questionbank, c_vocabulary, c_learning] }
   m_listening:    { mayDependOn: [p_cache, p_media, p_storage, p_telemetry, c_content, c_questionbank, c_learning] }

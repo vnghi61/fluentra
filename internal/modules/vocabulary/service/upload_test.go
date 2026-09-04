@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -125,6 +127,24 @@ func (r *uploadRepo) ClaimPendingUploadItems(
 	return r.pending, nil
 }
 
+// The limit is honoured rather than ignored: a fake that returns everything
+// however small the batch is cannot fail when the caller stops passing one.
+func (r *uploadRepo) ClaimPendingUploadItemsByUploadID(
+	_ context.Context, uploadID uuid.UUID, _, limit int32,
+) ([]sqlc.SkillVocabUploadItem, error) {
+	var items []sqlc.SkillVocabUploadItem
+	for _, it := range r.pending {
+		if it.UploadID != uploadID {
+			continue
+		}
+		if limit > 0 && len(items) >= int(limit) {
+			break
+		}
+		items = append(items, it)
+	}
+	return items, nil
+}
+
 func (r *uploadRepo) MarkUploadItemVerified(
 	_ context.Context, id uuid.UUID, _ *uuid.UUID, model, _ string,
 ) (sqlc.SkillVocabUploadItem, error) {
@@ -225,6 +245,48 @@ func newPipeline(
 	}), author
 }
 
+type stubEnqueuer struct {
+	enqueued []uuid.UUID
+}
+
+func (e *stubEnqueuer) EnqueueVerifyUploadTx(_ context.Context, _ pgx.Tx, uploadID uuid.UUID) error {
+	e.enqueued = append(e.enqueued, uploadID)
+	return nil
+}
+
+type fakeTx struct {
+	pgx.Tx
+}
+
+func (fakeTx) Commit(context.Context) error   { return nil }
+func (fakeTx) Rollback(context.Context) error { return nil }
+
+type stubPool struct{}
+
+func (stubPool) BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error) {
+	return fakeTx{}, nil
+}
+
+func (stubPool) Exec(context.Context, string, ...any) (pgconn.CommandTag, error) {
+	return pgconn.CommandTag{}, nil
+}
+
+func (r *uploadRepo) WithTx(_ pgx.Tx) repository.Repository {
+	return r
+}
+
+func (r *uploadRepo) InsertUpload(
+	_ context.Context, arg sqlc.InsertUploadParams,
+) (sqlc.SkillVocabUpload, error) {
+	return sqlc.SkillVocabUpload{
+		ID:        uuid.New(),
+		UserID:    arg.UserID,
+		RawText:   arg.RawText,
+		ItemCount: arg.ItemCount,
+		Status:    "pending",
+	}, nil
+}
+
 // -------------------------------------------------------------- submitting
 
 func TestSubmit_RefusesTextWithNoWordsInIt(t *testing.T) {
@@ -233,6 +295,49 @@ func TestSubmit_RefusesTextWithNoWordsInIt(t *testing.T) {
 
 	_, err := uploads.Submit(context.Background(), uuid.New(), "---\n42\n\n")
 	require.Error(t, err, "a paste of dividers and page numbers is a mistake, not an upload")
+}
+
+func TestSubmit_EnqueuesVerificationJobInTx(t *testing.T) {
+	repo := newUploadRepo()
+	enqueuer := &stubEnqueuer{}
+	pool := stubPool{}
+
+	svc := service.New(service.Deps{Repo: repo})
+	uploads := service.NewUploads(svc, repo, service.UploadDeps{
+		Pool:     pool,
+		Beginner: pool,
+		Enqueuer: enqueuer,
+	})
+
+	userID := uuid.New()
+	res, err := uploads.Submit(context.Background(), userID, "leisure - free time\nserendipity")
+	require.NoError(t, err)
+	assert.NotEmpty(t, res.ID)
+	assert.Equal(t, 2, res.ItemCount)
+	require.Len(t, enqueuer.enqueued, 1)
+	assert.Equal(t, res.ID, enqueuer.enqueued[0])
+}
+
+func TestVerifyUpload_VerifiesPendingWordsForSpecificUpload(t *testing.T) {
+	uploadID1 := uuid.New()
+	uploadID2 := uuid.New()
+
+	item1 := item(wordLeisure, "thời gian rảnh")
+	item1.UploadID = uploadID1
+	item2 := item("ephemeral", "lasting for a very short time")
+	item2.UploadID = uploadID2
+
+	repo := newUploadRepo(item1, item2)
+	dict := &stubDictionary{entries: map[string]repository.DictionaryEntry{
+		wordLeisure: leisureEntry(),
+	}}
+	uploads, author := newPipeline(t, repo, dict, &stubAI{reply: accepted(t)})
+
+	require.NoError(t, uploads.VerifyUpload(context.Background(), uploadID1))
+
+	assert.Contains(t, repo.verified, item1.ID)
+	assert.NotContains(t, repo.verified, item2.ID, "items from other uploads should not be touched")
+	require.Len(t, author.published, 1)
 }
 
 // ------------------------------------------------------------ verifying

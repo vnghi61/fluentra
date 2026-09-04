@@ -68,6 +68,60 @@ func (q *Queries) ClaimPendingUploadItems(ctx context.Context, arg ClaimPendingU
 	return items, nil
 }
 
+const claimPendingUploadItemsByUploadID = `-- name: ClaimPendingUploadItemsByUploadID :many
+SELECT id, upload_id, user_id, term, provided_meaning, status, reason, word_sense_id, verified_by_model, attempts, created_at, verified_at FROM skill.vocab_upload_items
+WHERE upload_id = $1 AND status = 'pending' AND attempts < $2
+ORDER BY created_at, id
+LIMIT $3
+FOR UPDATE SKIP LOCKED
+`
+
+type ClaimPendingUploadItemsByUploadIDParams struct {
+	UploadID uuid.UUID
+	Attempts int32
+	Limit    int32
+}
+
+// The immediate verification job's input: one upload's pending words.
+//
+// Bounded like ClaimPendingUploadItems is, and for a sharper reason. An upload
+// carries up to MaxUploadEntries (300) words and each one is a model call with
+// its own timeout, so an unbounded claim would hold one of the `ai` queue's few
+// slots for hours while every other learner's words waited behind it. The job
+// takes a batch; the hourly sweep collects whatever is left.
+func (q *Queries) ClaimPendingUploadItemsByUploadID(ctx context.Context, arg ClaimPendingUploadItemsByUploadIDParams) ([]SkillVocabUploadItem, error) {
+	rows, err := q.db.Query(ctx, claimPendingUploadItemsByUploadID, arg.UploadID, arg.Attempts, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SkillVocabUploadItem
+	for rows.Next() {
+		var i SkillVocabUploadItem
+		if err := rows.Scan(
+			&i.ID,
+			&i.UploadID,
+			&i.UserID,
+			&i.Term,
+			&i.ProvidedMeaning,
+			&i.Status,
+			&i.Reason,
+			&i.WordSenseID,
+			&i.VerifiedByModel,
+			&i.Attempts,
+			&i.CreatedAt,
+			&i.VerifiedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const claimQueuedUploadItems = `-- name: ClaimQueuedUploadItems :many
 SELECT id, upload_id, user_id, term, provided_meaning, status, reason, word_sense_id, verified_by_model, attempts, created_at, verified_at FROM skill.vocab_upload_items
 WHERE status = 'queued'

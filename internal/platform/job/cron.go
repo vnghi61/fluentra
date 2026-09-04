@@ -71,6 +71,10 @@ func (s *CronScheduler) Start(ctx context.Context) {
 }
 
 func (s *CronScheduler) runJobLoop(ctx context.Context, job CronJob) {
+	// Execute once immediately at startup so pending scheduled work is processed
+	// without waiting out the first interval.
+	s.executeWithLock(ctx, job)
+
 	ticker := time.NewTicker(job.Interval)
 	defer ticker.Stop()
 

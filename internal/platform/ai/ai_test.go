@@ -3,6 +3,7 @@ package ai_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -414,6 +415,13 @@ const (
 	testPrimaryLLM  = "primary-llm"
 	testFallbackLLM = "fallback-llm"
 	testFromPrimary = "from-primary"
+
+	// The three-provider chain the named-provider work exists to make possible.
+	// Named because a typo in a repeated literal produces a registry lookup that
+	// fails for a reason the assertion cannot show.
+	nameCerebras = "cerebras"
+	nameGroq     = "groq"
+	nameGemini   = "gemini"
 )
 
 func TestRouter_FallsBackWhenPrimaryQuotaExhausted(t *testing.T) {
@@ -504,4 +512,128 @@ func TestNoopBudgetChecker_GetUsageOverview(t *testing.T) {
 	items, err := checker.GetUsageOverview(context.Background())
 	require.NoError(t, err)
 	assert.Empty(t, items)
+}
+
+func TestProviderRegistry_DistinctRealProviders(t *testing.T) {
+	registry, err := ai.NewRegistry()
+	require.NoError(t, err)
+
+	cerebras, err := ai.NewOpenAICompatibleProvider(ai.OpenAICompatibleConfig{
+		Name:    nameCerebras,
+		BaseURL: "https://api.cerebras.ai/v1",
+		Model:   "llama3.1-8b",
+	}, registry)
+	require.NoError(t, err)
+	assert.Equal(t, nameCerebras, cerebras.Name())
+
+	groq, err := ai.NewOpenAICompatibleProvider(ai.OpenAICompatibleConfig{
+		Name:    nameGroq,
+		BaseURL: "https://api.groq.com/openai/v1",
+		Model:   "llama-3.1-8b-instant",
+	}, registry)
+	require.NoError(t, err)
+	assert.Equal(t, nameGroq, groq.Name())
+
+	gemini, err := ai.NewOpenAICompatibleProvider(ai.OpenAICompatibleConfig{
+		Name:    nameGemini,
+		BaseURL: "https://generativelanguage.googleapis.com/v1beta/openai",
+		Model:   "gemini-1.5-flash",
+	}, registry)
+	require.NoError(t, err)
+	assert.Equal(t, nameGemini, gemini.Name())
+
+	providerReg := ai.NewProviderRegistry(cerebras, groq, gemini)
+
+	primary, err := providerReg.Primary()
+	require.NoError(t, err)
+	assert.Equal(t, nameCerebras, primary.Name())
+	assert.Same(t, cerebras, primary)
+
+	fallbacks := providerReg.Fallbacks()
+	require.Len(t, fallbacks, 2)
+	assert.Equal(t, nameGroq, fallbacks[0].Name())
+	assert.Same(t, groq, fallbacks[0])
+	assert.Equal(t, nameGemini, fallbacks[1].Name())
+	assert.Same(t, gemini, fallbacks[1])
+
+	firstFb, ok := providerReg.Fallback()
+	assert.True(t, ok)
+	assert.Same(t, groq, firstFb)
+
+	// Verify no overwriting happened
+	p1, err := providerReg.Get(nameCerebras)
+	require.NoError(t, err)
+	assert.Same(t, cerebras, p1)
+
+	p2, err := providerReg.Get(nameGroq)
+	require.NoError(t, err)
+	assert.Same(t, groq, p2)
+
+	p3, err := providerReg.Get(nameGemini)
+	require.NoError(t, err)
+	assert.Same(t, gemini, p3)
+}
+
+func TestRouter_ThreeProviderFallbackChain(t *testing.T) {
+	registry, err := ai.NewRegistry()
+	require.NoError(t, err)
+
+	p1 := &namedProvider{name: nameCerebras, err: errors.New("connection reset")}
+	p2 := &namedProvider{name: nameGroq, res: ai.Response{Text: "from groq"}}
+	p3 := &namedProvider{name: nameGemini, res: ai.Response{Text: `{"valid": true, "reason": "from-gemini"}`}}
+
+	providerReg := ai.NewProviderRegistry(p1, p2, p3)
+
+	budget := &mockBudgetChecker{
+		allowed: map[string]bool{
+			nameCerebras: true,
+			nameGroq:     false, // quota exhausted
+			nameGemini:   true,  // available
+		},
+	}
+
+	router := ai.NewRouter(ai.RouterOptions{
+		Prompts:   registry,
+		Providers: providerReg,
+		Budget:    budget,
+	})
+
+	res, err := router.Complete(context.Background(), verifyRequest())
+	require.NoError(t, err)
+	assert.Equal(t, p3.res.Text, res.Text)
+	assert.Equal(t, nameGemini, res.Provider)
+}
+
+func TestRouter_HasQuota_MultiFallback(t *testing.T) {
+	registry, err := ai.NewRegistry()
+	require.NoError(t, err)
+
+	p1 := &namedProvider{name: nameCerebras}
+	p2 := &namedProvider{name: nameGroq}
+	p3 := &namedProvider{name: nameGemini}
+
+	providerReg := ai.NewProviderRegistry(p1, p2, p3)
+
+	budget := &mockBudgetChecker{
+		allowed: map[string]bool{
+			nameCerebras: false,
+			nameGroq:     false,
+			nameGemini:   true,
+		},
+	}
+
+	router := ai.NewRouter(ai.RouterOptions{
+		Prompts:   registry,
+		Providers: providerReg,
+		Budget:    budget,
+	})
+
+	hasQuota, err := router.HasQuota(context.Background(), ai.TaskVerifyVocabulary)
+	require.NoError(t, err)
+	assert.True(t, hasQuota, "gemini has quota, so chain has quota")
+
+	budget.allowed[nameGemini] = false
+	hasQuota, err = router.HasQuota(context.Background(), ai.TaskVerifyVocabulary)
+	require.NoError(t, err)
+	assert.False(t, hasQuota, "all providers exhausted")
 }

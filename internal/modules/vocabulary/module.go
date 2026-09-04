@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -15,6 +16,7 @@ import (
 	contentcontract "github.com/fluentra/fluentra/internal/modules/content/contract"
 	srscontract "github.com/fluentra/fluentra/internal/modules/srs/contract"
 	"github.com/fluentra/fluentra/internal/modules/vocabulary/contract"
+	vocabjob "github.com/fluentra/fluentra/internal/modules/vocabulary/job"
 	"github.com/fluentra/fluentra/internal/modules/vocabulary/repository"
 	"github.com/fluentra/fluentra/internal/modules/vocabulary/service"
 	vocabularyhttp "github.com/fluentra/fluentra/internal/modules/vocabulary/transport/http"
@@ -63,6 +65,9 @@ type Deps struct {
 	Content contentcontract.Reader
 	Reviews srscontract.CardWriter
 
+	// Enqueuer schedules background River jobs within database transactions.
+	Enqueuer job.Enqueuer
+
 	// The practice generator's dependencies. All three are optional and are
 	// supplied only by cmd/worker: the API serves no route that generates
 	// exercises, and a module built without them simply has no generator.
@@ -93,6 +98,7 @@ type Module struct {
 	grader    *service.Grader
 	generator *service.Generator
 	uploads   *service.Uploads
+	worker    *vocabjob.VerifyUploadWorker
 }
 
 // New constructs and wires the vocabulary module.
@@ -120,12 +126,19 @@ func New(deps Deps) *Module {
 	// in this module's own tables.
 	grader := service.NewGrader(deps.Content, repo)
 
+	var enqueuer service.JobEnqueuer
+	if deps.Enqueuer != nil {
+		enqueuer = jobEnqueuerAdapter{enqueuer: deps.Enqueuer}
+	}
+
 	uploads := service.NewUploads(srv, repo, service.UploadDeps{
 		Dictionary: deps.Dictionary,
 		AI:         deps.AI,
 		Content:    deps.ContentAuthor,
 		AuthorID:   deps.GeneratorAuthorID,
 		Pool:       deps.Pool,
+		Beginner:   deps.Pool,
+		Enqueuer:   enqueuer,
 	})
 
 	var handler *vocabularyhttp.Handler
@@ -137,6 +150,8 @@ func New(deps Deps) *Module {
 		}
 	}
 
+	worker := vocabjob.NewVerifyUploadWorker(uploads)
+
 	return &Module{
 		pool:    deps.Pool,
 		clock:   timekeeper,
@@ -145,12 +160,18 @@ func New(deps Deps) *Module {
 		handler: handler,
 		grader:  grader,
 		uploads: uploads,
+		worker:  worker,
 		generator: service.NewGenerator(repo, service.GeneratorDeps{
 			Content:  deps.ContentAuthor,
 			Lessons:  deps.LessonAuthor,
 			AuthorID: deps.GeneratorAuthorID,
 		}),
 	}
+}
+
+// VerifyUploadWorker returns the River worker for verifying uploaded vocabulary.
+func (m *Module) VerifyUploadWorker() *vocabjob.VerifyUploadWorker {
+	return m.worker
 }
 
 // CronJobs returns the scheduled work this module owns.
@@ -296,4 +317,17 @@ type outboxTx struct{ inner service.OutboxTx }
 
 func (t outboxTx) Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error) {
 	return t.inner.Exec(ctx, sql, arguments...)
+}
+
+// jobEnqueuerAdapter adapts job.Enqueuer to service.JobEnqueuer.
+type jobEnqueuerAdapter struct {
+	enqueuer job.Enqueuer
+}
+
+func (a jobEnqueuerAdapter) EnqueueVerifyUploadTx(ctx context.Context, tx pgx.Tx, uploadID uuid.UUID) error {
+	args := vocabjob.VerifyUploadArgs{
+		UploadID: uploadID,
+	}
+	_, err := a.enqueuer.EnqueueTx(ctx, tx, args, nil)
+	return err
 }

@@ -17,7 +17,7 @@ type Provider interface {
 type ProviderRegistry struct {
 	providers map[string]Provider
 	primary   string
-	fallback  string
+	fallbacks []string
 }
 
 // NewProviderRegistry creates a new registry with registered providers.
@@ -31,9 +31,7 @@ func NewProviderRegistry(primary Provider, fallbacks ...Provider) *ProviderRegis
 	}
 	for _, fb := range fallbacks {
 		if fb != nil {
-			if reg.fallback == "" {
-				reg.fallback = fb.Name()
-			}
+			reg.fallbacks = append(reg.fallbacks, fb.Name())
 			reg.providers[fb.Name()] = fb
 		}
 	}
@@ -56,11 +54,22 @@ func (r *ProviderRegistry) Primary() (Provider, error) {
 	return r.Get(r.primary)
 }
 
-// Fallback returns the fallback provider if available.
+// Fallback returns the first fallback provider if available.
 func (r *ProviderRegistry) Fallback() (Provider, bool) {
-	if r.fallback == "" {
+	if len(r.fallbacks) == 0 {
 		return nil, false
 	}
-	p, ok := r.providers[r.fallback]
+	p, ok := r.providers[r.fallbacks[0]]
 	return p, ok
+}
+
+// Fallbacks returns all registered fallback providers in configured order.
+func (r *ProviderRegistry) Fallbacks() []Provider {
+	var list []Provider
+	for _, name := range r.fallbacks {
+		if p, ok := r.providers[name]; ok {
+			list = append(list, p)
+		}
+	}
+	return list
 }

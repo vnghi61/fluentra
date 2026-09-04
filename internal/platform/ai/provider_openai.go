@@ -24,6 +24,9 @@ import (
 // sanctions plain HTTP for the OpenAI-compatible providers, and doing it this
 // way adds no Go dependency at all.
 type OpenAICompatibleConfig struct {
+	// Name is the provider identifier (e.g. "cerebras", "groq", "gemini", "ollama").
+	// When empty, it defaults to ProviderOpenAICompatible ("openai_compatible").
+	Name string
 	// BaseURL is the API root, without a trailing slash. For example:
 	//   Ollama      http://localhost:11434/v1
 	//   OpenRouter  https://openrouter.ai/api/v1
@@ -78,6 +81,9 @@ func NewOpenAICompatibleProvider(
 
 // Name returns the provider identifier.
 func (p *OpenAICompatibleProvider) Name() string {
+	if p.config.Name != "" {
+		return p.config.Name
+	}
 	return ProviderOpenAICompatible
 }
 
