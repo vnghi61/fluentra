@@ -637,3 +637,81 @@ func TestRouter_HasQuota_MultiFallback(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, hasQuota, "all providers exhausted")
 }
+
+// unknownQuotaBudget mirrors DBBudgetChecker's fail-closed contract: a check
+// that errors returns (false, err), so "refused" and "could not tell" arrive in
+// the same boolean.
+type unknownQuotaBudget struct{ err error }
+
+func (b unknownQuotaBudget) CheckQuota(_ context.Context, _ string, _ ai.Task) (bool, error) {
+	return false, b.err
+}
+
+func (b unknownQuotaBudget) GetUsageOverview(_ context.Context) ([]ai.UsageStatus, error) {
+	return nil, nil
+}
+
+func TestRouter_BudgetCheckFailureIsNotReportedAsQuotaExhausted(t *testing.T) {
+	// ErrQuotaExhausted is load-bearing downstream: vocabulary keeps the word as
+	// a queued flashcard and tells the learner it is waiting for background
+	// enrichment, and learning drops the explanation without a word. A database
+	// that will not answer must not produce that story.
+	prompts, err := ai.NewRegistry()
+	require.NoError(t, err)
+
+	router := ai.NewRouter(ai.RouterOptions{
+		Prompts: prompts,
+		Providers: ai.NewProviderRegistry(
+			&namedProvider{name: nameCerebras, res: ai.Response{Text: "{}"}},
+			&namedProvider{name: nameGroq, res: ai.Response{Text: "{}"}},
+		),
+		Usage:  ai.NoopUsageRecorder{},
+		Budget: unknownQuotaBudget{err: errors.New("connection refused")},
+	})
+
+	_, err = router.Complete(context.Background(), ai.Request{
+		Task: ai.TaskVerifyVocabulary,
+		Vars: verifyVars(),
+	})
+
+	require.Error(t, err)
+	assert.NotErrorIs(t, err, ai.ErrQuotaExhausted,
+		"a budget check that could not run is not a budget that ran out")
+	assert.Contains(t, err.Error(), "connection refused",
+		"the fault the operator has to fix must survive to the error")
+}
+
+func TestRouter_EveryProviderGenuinelyOutOfQuotaStillReportsExhausted(t *testing.T) {
+	// The other half of the same distinction: when every budget row really says
+	// no, ErrQuotaExhausted is the right answer and the queue path depends on it.
+	prompts, err := ai.NewRegistry()
+	require.NoError(t, err)
+
+	router := ai.NewRouter(ai.RouterOptions{
+		Prompts: prompts,
+		Providers: ai.NewProviderRegistry(
+			&namedProvider{name: nameCerebras, res: ai.Response{Text: "{}"}},
+			&namedProvider{name: nameGroq, res: ai.Response{Text: "{}"}},
+		),
+		Usage: ai.NoopUsageRecorder{},
+		Budget: &mockBudgetChecker{allowed: map[string]bool{
+			nameCerebras: false,
+			nameGroq:     false,
+		}},
+	})
+
+	_, err = router.Complete(context.Background(), ai.Request{
+		Task: ai.TaskVerifyVocabulary,
+		Vars: verifyVars(),
+	})
+
+	assert.ErrorIs(t, err, ai.ErrQuotaExhausted)
+}
+
+// verifyVars is the smallest set vocab_verify.v1.md renders without complaint.
+func verifyVars() map[string]any {
+	return map[string]any{
+		"Term": "leisure", "ProvidedMeaning": "free time",
+		"DictionaryDefinition": "", "PartOfSpeech": "", "ExampleCount": 1,
+	}
+}

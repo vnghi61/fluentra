@@ -163,65 +163,34 @@ func (u *Uploads) Submit(ctx context.Context, userID uuid.UUID, rawText string) 
 				"optionally followed by its meaning.")
 	}
 
+	if u.beginner == nil {
+		return Upload{}, fmt.Errorf("submit upload: no transaction source configured")
+	}
+
 	var (
 		upload sqlc.SkillVocabUpload
 		stored int
 	)
 
-	if u.beginner != nil {
-		err := dbx.InTx(ctx, u.beginner, func(txCtx context.Context, tx pgx.Tx) error {
-			txRepo := u.repo.WithTx(tx)
-			var createErr error
-			upload, createErr = txRepo.InsertUpload(txCtx, sqlc.InsertUploadParams{
-				UserID:    userID,
-				RawText:   rawText,
-				ItemCount: int32(len(entries)), //nolint:gosec // bounded by MaxUploadEntries
-			})
-			if createErr != nil {
-				return fmt.Errorf("store upload: %w", createErr)
-			}
-
-			stored = 0
-			for _, entry := range entries {
-				if _, itemErr := txRepo.InsertUploadItem(txCtx, sqlc.InsertUploadItemParams{
-					UploadID:        upload.ID,
-					UserID:          userID,
-					Term:            entry.Term,
-					ProvidedMeaning: entry.Meaning,
-				}); itemErr != nil {
-					if errors.Is(itemErr, pgx.ErrNoRows) {
-						// The unique constraint caught a duplicate the parser did not.
-						continue
-					}
-					return fmt.Errorf("store upload item %q: %w", entry.Term, itemErr)
-				}
-				stored++
-			}
-
-			if u.enqueuer != nil {
-				if enqueueErr := u.enqueuer.EnqueueVerifyUploadTx(txCtx, tx, upload.ID); enqueueErr != nil {
-					return fmt.Errorf("enqueue verify upload job: %w", enqueueErr)
-				}
-			}
-			return nil
-		})
-		if err != nil {
-			return Upload{}, fmt.Errorf("submit upload: %w", err)
-		}
-	} else {
-		var err error
-		upload, err = u.repo.InsertUpload(ctx, sqlc.InsertUploadParams{
+	// One transaction for the rows and the job that will read them. The job is
+	// enqueued through River's own InsertTx, so either the words exist and
+	// something is coming for them, or neither happened -- never a job pointing
+	// at an upload that was rolled back, and never words nothing will collect.
+	err := dbx.InTx(ctx, u.beginner, func(txCtx context.Context, tx pgx.Tx) error {
+		txRepo := u.repo.WithTx(tx)
+		var createErr error
+		upload, createErr = txRepo.InsertUpload(txCtx, sqlc.InsertUploadParams{
 			UserID:    userID,
 			RawText:   rawText,
 			ItemCount: int32(len(entries)), //nolint:gosec // bounded by MaxUploadEntries
 		})
-		if err != nil {
-			return Upload{}, fmt.Errorf("store upload: %w", err)
+		if createErr != nil {
+			return fmt.Errorf("store upload: %w", createErr)
 		}
 
 		stored = 0
 		for _, entry := range entries {
-			if _, itemErr := u.repo.InsertUploadItem(ctx, sqlc.InsertUploadItemParams{
+			if _, itemErr := txRepo.InsertUploadItem(txCtx, sqlc.InsertUploadItemParams{
 				UploadID:        upload.ID,
 				UserID:          userID,
 				Term:            entry.Term,
@@ -231,10 +200,23 @@ func (u *Uploads) Submit(ctx context.Context, userID uuid.UUID, rawText string) 
 					// The unique constraint caught a duplicate the parser did not.
 					continue
 				}
-				return Upload{}, fmt.Errorf("store upload item %q: %w", entry.Term, itemErr)
+				return fmt.Errorf("store upload item %q: %w", entry.Term, itemErr)
 			}
 			stored++
 		}
+
+		if u.enqueuer == nil {
+			// cmd/api always supplies one. A deployment without it still stores
+			// the words, and the hourly sweep is what finds them.
+			return nil
+		}
+		if enqueueErr := u.enqueuer.EnqueueVerifyUploadTx(txCtx, tx, upload.ID); enqueueErr != nil {
+			return fmt.Errorf("enqueue verify upload job: %w", enqueueErr)
+		}
+		return nil
+	})
+	if err != nil {
+		return Upload{}, fmt.Errorf("submit upload: %w", err)
 	}
 
 	return Upload{

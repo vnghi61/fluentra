@@ -242,29 +242,55 @@ func newPipeline(
 		AI:         model,
 		Content:    author,
 		AuthorID:   uuid.New(),
+		// Submit writes its rows and enqueues its job in one transaction, so a
+		// pipeline without a transaction source cannot submit. Supplied here so
+		// the fixture is the shape cmd/api actually builds.
+		Beginner: stubPool{},
 	}), author
 }
 
 type stubEnqueuer struct {
 	enqueued []uuid.UUID
+	err      error
 }
 
 func (e *stubEnqueuer) EnqueueVerifyUploadTx(_ context.Context, _ pgx.Tx, uploadID uuid.UUID) error {
+	if e.err != nil {
+		return e.err
+	}
 	e.enqueued = append(e.enqueued, uploadID)
 	return nil
 }
 
 type fakeTx struct {
 	pgx.Tx
+	outcome *string
 }
 
-func (fakeTx) Commit(context.Context) error   { return nil }
-func (fakeTx) Rollback(context.Context) error { return nil }
+func (t fakeTx) Commit(context.Context) error {
+	if t.outcome != nil {
+		*t.outcome = "commit"
+	}
+	return nil
+}
 
-type stubPool struct{}
+func (t fakeTx) Rollback(context.Context) error {
+	if t.outcome != nil {
+		*t.outcome = "rollback"
+	}
+	return nil
+}
 
-func (stubPool) BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error) {
-	return fakeTx{}, nil
+// stubPool records how the transaction ended.
+//
+// It cannot prove the rows disappeared -- uploadRepo has no transaction to undo
+// and WithTx hands back itself -- so this pins the half a unit test can reach:
+// a failed enqueue rolls back rather than commits. That the rollback discards
+// the rows is Postgres's job, and the integration suite's.
+type stubPool struct{ outcome *string }
+
+func (p stubPool) BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error) {
+	return fakeTx{outcome: p.outcome}, nil
 }
 
 func (stubPool) Exec(context.Context, string, ...any) (pgconn.CommandTag, error) {
@@ -316,6 +342,39 @@ func TestSubmit_EnqueuesVerificationJobInTx(t *testing.T) {
 	assert.Equal(t, 2, res.ItemCount)
 	require.Len(t, enqueuer.enqueued, 1)
 	assert.Equal(t, res.ID, enqueuer.enqueued[0])
+}
+
+func TestSubmit_RollsBackWhenTheJobCannotBeEnqueued(t *testing.T) {
+	// The transaction exists for this case and no other. Words stored with no
+	// job to collect them wait for the hourly sweep with nothing telling the
+	// learner why, and that is the outcome the rollback removes.
+	outcome := ""
+	pool := stubPool{outcome: &outcome}
+	repo := newUploadRepo()
+
+	svc := service.New(service.Deps{Repo: repo})
+	uploads := service.NewUploads(svc, repo, service.UploadDeps{
+		Pool:     pool,
+		Beginner: pool,
+		Enqueuer: &stubEnqueuer{err: errors.New("river is unreachable")},
+	})
+
+	_, err := uploads.Submit(context.Background(), uuid.New(), "leisure - free time")
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "river is unreachable",
+		"the reason the submission failed must reach the caller")
+	assert.Equal(t, "rollback", outcome, "a failed enqueue must not commit the words")
+}
+
+func TestSubmit_RefusedWithoutATransactionSource(t *testing.T) {
+	repo := newUploadRepo()
+	svc := service.New(service.Deps{Repo: repo})
+	uploads := service.NewUploads(svc, repo, service.UploadDeps{})
+
+	_, err := uploads.Submit(context.Background(), uuid.New(), "leisure - free time")
+
+	require.Error(t, err, "storing words outside a transaction is not a supported shape")
 }
 
 func TestVerifyUpload_VerifiesPendingWordsForSpecificUpload(t *testing.T) {
