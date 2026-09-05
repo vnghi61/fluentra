@@ -32,7 +32,7 @@ caching (`ai.ai_cache_entries`), budget enforcement (`ai.ai_budgets`), and usage
 | `ai.Client` — the one interface business code sees | Task routing by model tier |
 | Versioned prompt registry with front-matter settings | Semantic caching (pgvector) |
 | `MockProvider` — offline, the default | Circuit breaker |
-| `OpenAICompatibleProvider` with named instances (Cerebras, Groq, Gemini, Ollama) | PII redaction, untrusted-content wrapping |
+| `OpenAICompatibleProvider` with named instances (Cerebras, Groq, Mistral, Ollama) | PII redaction, untrusted-content wrapping |
 | `CompleteJSON` — tolerant structured-output parsing | Streaming, output repair pass, eval harness |
 | `Router` — retry, backoff, multi-provider fallback chain | Quota per user — `ai.Request` carries no user id and `ai.ai_requests.user_id` is always NULL |
 | 4 numbered provider slots (`AI_PROVIDER_1_*` .. `AI_PROVIDER_4_*`) | |

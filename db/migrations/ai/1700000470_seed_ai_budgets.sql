@@ -5,9 +5,15 @@
 DELETE FROM ai.ai_usage;
 DELETE FROM ai.ai_budgets;
 
--- 2. Seed fresh budget rows per (provider, task) under new names with binding limits
+-- 2. Seed fresh budget rows per (provider, task) under the new names.
+--
+-- A provider with no row here is permitted WITHOUT LIMIT: CheckQuota returns
+-- true when it finds no row, which is the right default for a table nobody has
+-- filled in and the wrong thing to discover in a bill. So a slot configured in
+-- AI_PROVIDER_n_NAME that is absent from this list has no ceiling at all.
+-- Adding a provider to the chain means adding its two rows here.
 -- Tasks are 'vocab_verify' and 'explain_answer'.
--- Providers: cerebras, groq, gemini, ollama, mock.
+-- Providers: cerebras, groq, mistral, ollama, mock.
 INSERT INTO ai.ai_budgets (provider, task, daily_request_limit, daily_token_limit, is_active)
 VALUES
     -- Cerebras
@@ -18,17 +24,9 @@ VALUES
     ('groq', 'vocab_verify', 1000, 1000000, true),
     ('groq', 'explain_answer', 500, 1000000, true),
 
-    -- Gemini
-    ('gemini', 'vocab_verify', 1000, 1000000, true),
-    ('gemini', 'explain_answer', 500, 1000000, true),
-
-    -- Ollama
-    ('ollama', 'vocab_verify', 5000, 5000000, true),
-    ('ollama', 'explain_answer', 2000, 5000000, true),
-
-    -- Mock
-    ('mock', 'vocab_verify', 10000, 10000000, true),
-    ('mock', 'explain_answer', 10000, 10000000, true)
+    -- Mistral
+    ('mistral', 'vocab_verify', 1000, 1000000, true),
+    ('mistral', 'explain_answer', 500, 1000000, true)
 ON CONFLICT (provider, task) DO UPDATE
 SET daily_request_limit = EXCLUDED.daily_request_limit,
     daily_token_limit   = EXCLUDED.daily_token_limit,
@@ -39,5 +37,5 @@ SET daily_request_limit = EXCLUDED.daily_request_limit,
 
 -- +goose Down
 -- +goose StatementBegin
-DELETE FROM ai.ai_budgets WHERE provider IN ('cerebras', 'groq', 'gemini', 'ollama', 'mock');
+DELETE FROM ai.ai_budgets WHERE provider IN ('cerebras', 'groq', 'mistral');
 -- +goose StatementEnd
