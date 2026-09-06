@@ -437,7 +437,14 @@ deps:
   # MODULE_INDEX.md 3 carries it, added in the same commit as this line.
   m_vocabulary_service:    { mayDependOn: [m_vocabulary_domain, m_vocabulary_repository, c_vocabulary, c_content, c_lesson, c_srs, c_learning, g_vocabulary, p_cache, p_media, p_ai, p_search, p_telemetry] }
   m_vocabulary_http:       { mayDependOn: [m_vocabulary_domain, m_vocabulary_service, c_vocabulary] }
-  m_vocabulary_job:        { mayDependOn: [m_vocabulary_domain, m_vocabulary_repository, c_vocabulary, p_job, p_ai, p_telemetry], anyVendorDeps: true }
+  # m_vocabulary_service is here because the composition root injects it: the
+  # worker declares its own UploadVerifier interface, but module.go hands it a
+  # *service.Uploads, and deepScan reads the injection rather than the import.
+  # Modelling it is the point of having deepScan on -- a dependency that exists
+  # only at the composition root is still a dependency, and hiding it behind a
+  # function value to quiet the linter would be working around the invariant
+  # rather than declaring it.
+  m_vocabulary_job:        { mayDependOn: [m_vocabulary_domain, m_vocabulary_repository, m_vocabulary_service, c_vocabulary, p_job, p_ai, p_telemetry], anyVendorDeps: true }
   m_vocabulary:            { mayDependOn: [m_vocabulary_domain, m_vocabulary_repository, m_vocabulary_service, m_vocabulary_job, m_vocabulary_http, c_vocabulary, c_content, c_lesson, c_srs, c_learning, g_vocabulary, p_cache, p_job, p_media, p_ai, p_search, p_telemetry] }
   m_grammar:      { mayDependOn: [p_cache, p_ai, p_telemetry, c_content, c_srs, c_learning] }
   m_reading:      { mayDependOn: [p_cache, p_telemetry, c_content, c_questionbank, c_vocabulary, c_learning] }
