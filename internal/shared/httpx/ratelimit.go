@@ -255,7 +255,7 @@ func (r *RateLimiter) bucketsFor(request *http.Request) []bucket {
 		}
 		return charged
 
-	case isUploadPath(path):
+	case isUploadPath(path) && isWriteMethod(request.Method):
 		return []bucket{{
 			key:    r.key("upload", "user", subjectOf(actor, signedIn, address)),
 			limit:  r.config.UploadPerHour,
@@ -336,4 +336,24 @@ func isChallengeIssuing(path string) bool {
 
 func isUploadPath(path string) bool {
 	return strings.Contains(path, "/uploads") || strings.HasSuffix(path, "/avatar")
+}
+
+// isWriteMethod separates uploading from looking at what you uploaded.
+//
+// The upload class is thirty an hour because storing a file is expensive and
+// because it is the shape an abuser reaches for. Reading the list back is
+// neither, and it shares the path: GET /me/vocabulary/uploads contains
+// "/uploads" just as the POST does. Charged together, the My Words page spent
+// the whole hourly budget on its own polling -- thirty seconds apart, a hundred
+// and twenty an hour against a ceiling of thirty -- and a learner who had added
+// three words was refused for the rest of the hour by their own open tab.
+// Worse where it matters most: while a word is still pending the page keeps
+// polling, so the failure arrived exactly when the feature was working.
+func isWriteMethod(method string) bool {
+	switch method {
+	case http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete:
+		return true
+	default:
+		return false
+	}
 }

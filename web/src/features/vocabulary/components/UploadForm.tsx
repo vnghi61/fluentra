@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 import { useSubmitUpload } from "../api/uploadApi";
+import type { WordSummary } from "../api/searchApi";
+import { WordAutocomplete } from "./WordAutocomplete";
 
 /**
  * Pasting your own vocabulary in.
@@ -19,10 +21,18 @@ import { useSubmitUpload } from "../api/uploadApi";
  * many words were found, not how many lines were pasted: duplicates and page
  * numbers are dropped, and seeing that happen live is less alarming than being
  * told afterwards that twelve of thirty lines were ignored.
+ *
+ * Above it, a single-word field that searches the dictionary as you type. It
+ * writes into the same box rather than submitting on its own, so adding six
+ * words one at a time is still one upload -- and the learner can see and edit
+ * what they picked before it is sent.
  */
 export interface UploadFormProps {
   onSubmitted?: () => void;
 }
+
+/** The line separator the box and the server's parser both work in. */
+const NEWLINE = "\n";
 
 /** Counts what the server's parser will find, using the same rules. */
 function countWords(text: string): number {
@@ -77,8 +87,55 @@ export const UploadForm: React.FC<UploadFormProps> = ({ onSubmitted }) => {
     });
   };
 
+  /**
+   * Puts a chosen word into the box, on its own line and only once.
+   *
+   * The list is what gets submitted, so a word picked from the dropdown has to
+   * end up there and nowhere else. Appending a duplicate would be dropped by
+   * the parser anyway, but the count beside the button would jump and then not
+   * change, which reads as a broken button.
+   */
+  const appendTerm = (term: string) => {
+    const trimmed = term.trim();
+    if (trimmed === "") return;
+
+    const already = text
+      .split(NEWLINE)
+      .some((line) => line.trim().toLowerCase() === trimmed.toLowerCase());
+    if (already) return;
+
+    setText((current) =>
+      current === "" || current.endsWith(NEWLINE)
+        ? `${current}${trimmed}${NEWLINE}`
+        : `${current}${NEWLINE}${trimmed}${NEWLINE}`,
+    );
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <label
+          htmlFor="vocab-single-add"
+          className="block text-sm font-semibold text-text"
+        >
+          {t("uploads.searchLabel", "Look a word up")}
+        </label>
+        <WordAutocomplete
+          onSelectWord={(word: WordSummary) => appendTerm(word.lemma)}
+          onCustomSubmit={appendTerm}
+          placeholder={t(
+            "uploads.searchPlaceholder",
+            "Type a word — we suggest from the dictionary",
+          )}
+        />
+        <p className="text-xs text-text-muted">
+          {t(
+            "uploads.searchHint",
+            "Pick a suggestion and it drops into the list below. A word we do not have yet can be added anyway.",
+          )}
+        </p>
+      </div>
+
       <div className="space-y-2">
         <label
           htmlFor="vocab-upload"

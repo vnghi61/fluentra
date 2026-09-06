@@ -28,12 +28,28 @@ export const uploadApi = {
 };
 
 /**
+ * How long the list keeps asking, and how often.
+ *
+ * Submitting now enqueues the verification job in the same transaction as the
+ * words, so the answer arrives in seconds rather than on the next turn of an
+ * hourly sweep. Three seconds is fast enough to feel immediate and slow enough
+ * not to be a load test of one's own account.
+ *
+ * The cap is the part that was missing. Polling ran while anything was pending
+ * and nothing bounded it, so a word that never finished -- worker stopped, no
+ * provider configured -- was asked about for ever. Twenty polls is a minute; if
+ * a word is still pending after that, something is wrong upstream and asking a
+ * two-hundredth time will not fix it. The list still shows what it knows, and a
+ * reload starts a fresh minute.
+ */
+const UPLOAD_POLL_MS = 3_000;
+const UPLOAD_POLL_LIMIT = 20;
+
+/**
  * A learner's uploads.
  *
- * Refetched on a timer while anything is still pending, because the checking
- * happens in an hourly job and the screen would otherwise show "12 waiting"
- * until the page was reloaded by hand. The timer stops once nothing is pending,
- * so a finished list is not polled for ever.
+ * Refetched on a timer while anything is still pending, so the screen does not
+ * sit on "12 waiting" until somebody reloads it by hand.
  */
 export function useUploads(enabled: boolean) {
   return useQuery({
@@ -43,7 +59,12 @@ export function useUploads(enabled: boolean) {
     refetchInterval: (query) => {
       const items = query.state.data?.items ?? [];
       const waiting = items.some((upload) => (upload.pending_count ?? 0) > 0);
-      return waiting ? 30_000 : false;
+      if (!waiting) return false;
+      // dataUpdateCount counts successful fetches, the first one included, so
+      // this is "stop after UPLOAD_POLL_LIMIT answers" rather than an interval
+      // that outlives the tab.
+      if (query.state.dataUpdateCount > UPLOAD_POLL_LIMIT) return false;
+      return UPLOAD_POLL_MS;
     },
   });
 }
