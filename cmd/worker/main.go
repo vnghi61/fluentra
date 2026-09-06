@@ -42,6 +42,7 @@ import (
 	"github.com/fluentra/fluentra/internal/platform/storage"
 	"github.com/fluentra/fluentra/internal/platform/telemetry"
 	"github.com/fluentra/fluentra/internal/shared/config"
+	"github.com/fluentra/fluentra/internal/shared/dbx"
 	"github.com/fluentra/fluentra/internal/shared/eventbus"
 	"github.com/fluentra/fluentra/internal/shared/outbox"
 )
@@ -63,7 +64,8 @@ type workerConfig struct {
 		Port string `koanf:"port"`
 	} `koanf:"http"`
 	Database struct {
-		DSN string `koanf:"dsn"`
+		DSN      string `koanf:"dsn"`
+		MaxConns int    `koanf:"max_conns"`
 	} `koanf:"db"`
 	Redis struct {
 		URL string `koanf:"url"`
@@ -314,7 +316,7 @@ func run(ctx context.Context) error {
 		return err
 	}
 
-	pool, err := openPool(ctx, cfg.Database.DSN, provider.Instruments())
+	pool, err := openPool(ctx, cfg.Database.DSN, provider.Instruments(), cfg.Database.MaxConns)
 	if err != nil {
 		return err
 	}
@@ -685,11 +687,16 @@ func storageHost(endpoint string) string {
 
 // openPool creates the connection pool with the query tracer and pool gauge
 // attached, so the database metrics the alert rules rely on are actually emitted.
-func openPool(ctx context.Context, dsn string, instruments telemetry.Instruments) (*pgxpool.Pool, error) {
+func openPool(ctx context.Context, dsn string, instruments telemetry.Instruments, maxConns int) (*pgxpool.Pool, error) {
 	poolConfig, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
 		return nil, fmt.Errorf("parse database configuration: %w", err)
 	}
+	resolved, err := dbx.ResolveMaxConns(maxConns, poolConfig.MaxConns, dbx.DSNSetsMaxConns(dsn))
+	if err != nil {
+		return nil, err
+	}
+	poolConfig.MaxConns = resolved
 	poolConfig.ConnConfig.Tracer = telemetry.NewDBQueryTracer(nil, instruments)
 	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {

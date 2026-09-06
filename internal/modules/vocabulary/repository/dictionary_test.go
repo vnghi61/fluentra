@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -120,4 +121,76 @@ func TestFreeDictionary_RejectsABlankTermWithoutCallingOut(t *testing.T) {
 	client := repository.NewFreeDictionaryAPI("http://127.0.0.1:0")
 	_, err := client.Lookup(context.Background(), "   ")
 	assert.ErrorIs(t, err, repository.ErrWordNotFound)
+}
+
+func TestFreeDictionary_FallsBackToDatamuseWhenPrimaryFails(t *testing.T) {
+	primaryServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "bad gateway", http.StatusBadGateway)
+	}))
+	defer primaryServer.Close()
+
+	datamuseServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "habit", r.URL.Query().Get("sp"))
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`[{` +
+			`"word":"habit",` +
+			`"tags":["n","v","ipa_pron:hˈæbʌt"],` +
+			`"defs":["n\tAn action performed on a regular basis."]` +
+			`}]`))
+	}))
+	defer datamuseServer.Close()
+
+	client := repository.NewFreeDictionaryAPI(primaryServer.URL).WithDatamuseURL(datamuseServer.URL)
+	entry, err := client.Lookup(context.Background(), "habit")
+	require.NoError(t, err)
+
+	assert.Equal(t, "habit", entry.Lemma)
+	assert.Equal(t, "/hˈæbʌt/", entry.IPA)
+	assert.Equal(t, "noun", entry.PartOfSpeech)
+	assert.Equal(t, "An action performed on a regular basis.", entry.Definition)
+}
+
+func TestFreeDictionary_FallsBackToDatamuseAndReturnsNotFoundWhenMissing(t *testing.T) {
+	primaryServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "upstream timeout", http.StatusGatewayTimeout)
+	}))
+	defer primaryServer.Close()
+
+	datamuseServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`[]`))
+	}))
+	defer datamuseServer.Close()
+
+	client := repository.NewFreeDictionaryAPI(primaryServer.URL).WithDatamuseURL(datamuseServer.URL)
+	_, err := client.Lookup(context.Background(), "nonexistentwordxyz")
+	assert.ErrorIs(t, err, repository.ErrWordNotFound)
+}
+
+// TestFreeDictionary_LiveDatamuseFallback calls api.datamuse.com for real, and
+// is opt-in for that reason.
+//
+// `testing.Short()` was the wrong guard. The fast loop passes -short, but CI
+// runs `go test -race -tags=integration ./...` without it, so this reached the
+// live service on every run — and would have passed almost always, which is the
+// worse kind of flake: a red build with no relation to the change that
+// triggered it, and no obvious cause when someone goes looking. Run it on
+// purpose instead:
+//
+//	DICTIONARY_LIVE_TEST=1 go test ./internal/modules/vocabulary/repository/ -run Live
+func TestFreeDictionary_LiveDatamuseFallback(t *testing.T) {
+	if os.Getenv("DICTIONARY_LIVE_TEST") == "" {
+		t.Skip("set DICTIONARY_LIVE_TEST=1 to call the live Datamuse API")
+	}
+	primaryServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "upstream down", http.StatusBadGateway)
+	}))
+	defer primaryServer.Close()
+
+	client := repository.NewFreeDictionaryAPI(primaryServer.URL).WithDatamuseURL("https://api.datamuse.com/words")
+	entry, err := client.Lookup(context.Background(), "work")
+	require.NoError(t, err)
+	assert.Equal(t, "work", entry.Lemma)
+	assert.NotEmpty(t, entry.Definition)
+	assert.NotEmpty(t, entry.PartOfSpeech)
 }

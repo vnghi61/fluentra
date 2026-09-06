@@ -30,6 +30,7 @@ import (
 	"github.com/fluentra/fluentra/internal/platform/storage"
 	"github.com/fluentra/fluentra/internal/platform/telemetry"
 	"github.com/fluentra/fluentra/internal/shared/config"
+	"github.com/fluentra/fluentra/internal/shared/dbx"
 	"github.com/fluentra/fluentra/internal/shared/httpx"
 )
 
@@ -62,7 +63,8 @@ type applicationConfig struct {
 		AllowedOrigins string `koanf:"allowed_origins"`
 	} `koanf:"cors"`
 	Database struct {
-		DSN string `koanf:"dsn"`
+		DSN      string `koanf:"dsn"`
+		MaxConns int    `koanf:"max_conns"`
 	} `koanf:"db"`
 	Redis struct {
 		URL string `koanf:"url"`
@@ -215,6 +217,42 @@ func main() {
 	}
 }
 
+// openPool builds the connection pool with the query tracer and the pool gauge
+// attached, so the database metrics the alert rules read are actually emitted.
+//
+// Extracted from run, which the complexity gate had outgrown, and shaped like
+// cmd/worker's function of the same name: the two binaries were already doing
+// the same four steps in two places, and only one of them had a name for it.
+func openPool(
+	ctx context.Context, dsn string, configuredMaxConns int, instruments telemetry.Instruments,
+) (*pgxpool.Pool, error) {
+	poolConfig, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		return nil, fmt.Errorf("parse database configuration: %w", err)
+	}
+
+	maxConns, err := dbx.ResolveMaxConns(configuredMaxConns, poolConfig.MaxConns, dbx.DSNSetsMaxConns(dsn))
+	if err != nil {
+		return nil, err
+	}
+	poolConfig.MaxConns = maxConns
+
+	poolConfig.ConnConfig.Tracer = telemetry.NewDBQueryTracer(
+		otelpgx.NewTracer(otelpgx.WithDisableConnectionDetailsInAttributes()),
+		instruments,
+	)
+
+	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
+	if err != nil {
+		return nil, fmt.Errorf("create database pool: %w", err)
+	}
+	if _, err := instruments.ObserveDBPoolConnections(pool); err != nil {
+		// Losing the gauge is not a reason to refuse startup; queries still work.
+		slog.Warn("db pool gauge not registered", "error", err)
+	}
+	return pool, nil
+}
+
 func run(ctx context.Context) error {
 	cfg, err := loadConfig(ctx)
 	if err != nil {
@@ -232,21 +270,9 @@ func run(ctx context.Context) error {
 		return err
 	}
 
-	poolConfig, err := pgxpool.ParseConfig(cfg.Database.DSN)
+	pool, err := openPool(ctx, cfg.Database.DSN, cfg.Database.MaxConns, provider.Instruments())
 	if err != nil {
-		return fmt.Errorf("parse database configuration: %w", err)
-	}
-	poolConfig.ConnConfig.Tracer = telemetry.NewDBQueryTracer(
-		otelpgx.NewTracer(otelpgx.WithDisableConnectionDetailsInAttributes()),
-		provider.Instruments(),
-	)
-	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
-	if err != nil {
-		return fmt.Errorf("create database pool: %w", err)
-	}
-	if _, err := provider.Instruments().ObserveDBPoolConnections(pool); err != nil {
-		// Losing the gauge is not a reason to refuse startup; queries still work.
-		slog.Warn("db pool gauge not registered", "error", err)
+		return err
 	}
 
 	redisOptions, err := redis.ParseURL(cfg.Redis.URL)

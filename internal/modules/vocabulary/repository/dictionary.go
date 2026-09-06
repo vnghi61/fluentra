@@ -69,13 +69,16 @@ var ErrWordNotFound = errors.New("vocabulary: no dictionary entry")
 // because it returns the two things a flashcard wants and the seed never had: an
 // IPA transcription, and a link to a human pronunciation.
 type FreeDictionaryAPI struct {
-	baseURL string
-	client  *http.Client
+	baseURL         string
+	datamuseURL     string
+	client          *http.Client
+	fallbackEnabled bool
 }
 
 const (
 	freeDictionaryBaseURL = "https://api.dictionaryapi.dev/api/v2/entries/en"
-	dictionaryTimeout     = 15 * time.Second
+	datamuseBaseURL       = "https://api.datamuse.com/words"
+	dictionaryTimeout     = 5 * time.Second
 	// The response for a common word is a few kilobytes; the cap is four
 	// hundred times that and exists only so a misbehaving upstream cannot
 	// exhaust memory.
@@ -85,13 +88,24 @@ const (
 // NewFreeDictionaryAPI builds the client. An empty baseURL uses the public API;
 // tests pass their own server.
 func NewFreeDictionaryAPI(baseURL string) *FreeDictionaryAPI {
+	fallbackEnabled := false
 	if strings.TrimSpace(baseURL) == "" {
 		baseURL = freeDictionaryBaseURL
+		fallbackEnabled = true
 	}
 	return &FreeDictionaryAPI{
-		baseURL: strings.TrimRight(baseURL, "/"),
-		client:  &http.Client{Timeout: dictionaryTimeout},
+		baseURL:         strings.TrimRight(baseURL, "/"),
+		datamuseURL:     datamuseBaseURL,
+		client:          &http.Client{Timeout: dictionaryTimeout},
+		fallbackEnabled: fallbackEnabled,
 	}
+}
+
+// WithDatamuseURL sets a custom Datamuse endpoint, primarily for testing.
+func (d *FreeDictionaryAPI) WithDatamuseURL(u string) *FreeDictionaryAPI {
+	d.datamuseURL = strings.TrimRight(u, "/")
+	d.fallbackEnabled = true
+	return d
 }
 
 // The upstream response, named for what it is rather than mapped field by field
@@ -116,6 +130,13 @@ type dictionaryAPIEntry struct {
 	} `json:"meanings"`
 }
 
+type datamuseEntry struct {
+	Word  string   `json:"word"`
+	Score int      `json:"score"`
+	Tags  []string `json:"tags"`
+	Defs  []string `json:"defs"`
+}
+
 // Lookup asks the dictionary about one word.
 func (d *FreeDictionaryAPI) Lookup(ctx context.Context, word string) (DictionaryEntry, error) {
 	term := strings.TrimSpace(strings.ToLower(word))
@@ -123,6 +144,30 @@ func (d *FreeDictionaryAPI) Lookup(ctx context.Context, word string) (Dictionary
 		return DictionaryEntry{}, ErrWordNotFound
 	}
 
+	entry, err := d.lookupPrimary(ctx, term)
+	if err == nil {
+		return entry, nil
+	}
+	if errors.Is(err, ErrWordNotFound) {
+		return DictionaryEntry{}, ErrWordNotFound
+	}
+
+	// If primary failed with a transport/server error (e.g. timeout or 5xx)
+	// and fallback is enabled, fall back to Datamuse.
+	if d.fallbackEnabled {
+		fallbackEntry, fallbackErr := d.lookupDatamuse(ctx, term)
+		if fallbackErr == nil {
+			return fallbackEntry, nil
+		}
+		if errors.Is(fallbackErr, ErrWordNotFound) {
+			return DictionaryEntry{}, ErrWordNotFound
+		}
+	}
+
+	return DictionaryEntry{}, err
+}
+
+func (d *FreeDictionaryAPI) lookupPrimary(ctx context.Context, term string) (DictionaryEntry, error) {
 	endpoint := d.baseURL + "/" + url.PathEscape(term)
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
@@ -157,6 +202,110 @@ func (d *FreeDictionaryAPI) Lookup(ctx context.Context, word string) (Dictionary
 		return DictionaryEntry{}, ErrWordNotFound
 	}
 	return mapDictionaryEntry(entries[0]), nil
+}
+
+func (d *FreeDictionaryAPI) lookupDatamuse(ctx context.Context, term string) (DictionaryEntry, error) {
+	datamuseURL := d.datamuseURL
+	if datamuseURL == "" {
+		datamuseURL = datamuseBaseURL
+	}
+	endpoint := datamuseURL + "?sp=" + url.QueryEscape(term) + "&md=dpr&ipa=1"
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return DictionaryEntry{}, fmt.Errorf("build datamuse request: %w", err)
+	}
+
+	response, err := d.client.Do(request)
+	if err != nil {
+		return DictionaryEntry{}, fmt.Errorf("call datamuse: %w", err)
+	}
+	defer func() { _ = response.Body.Close() }()
+
+	if response.StatusCode == http.StatusNotFound {
+		return DictionaryEntry{}, ErrWordNotFound
+	}
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		return DictionaryEntry{}, fmt.Errorf("datamuse returned %d for %q", response.StatusCode, term)
+	}
+
+	payload, err := io.ReadAll(io.LimitReader(response.Body, dictionaryMaxBytes))
+	if err != nil {
+		return DictionaryEntry{}, fmt.Errorf("read datamuse response: %w", err)
+	}
+
+	var items []datamuseEntry
+	if err := json.Unmarshal(payload, &items); err != nil {
+		return DictionaryEntry{}, fmt.Errorf("decode datamuse response: %w", err)
+	}
+
+	var match *datamuseEntry
+	for i := range items {
+		if strings.EqualFold(items[i].Word, term) {
+			match = &items[i]
+			break
+		}
+	}
+	if match == nil {
+		return DictionaryEntry{}, ErrWordNotFound
+	}
+
+	return mapDatamuseEntry(*match), nil
+}
+
+func mapDatamuseEntry(raw datamuseEntry) DictionaryEntry {
+	entry := DictionaryEntry{
+		Lemma: raw.Word,
+	}
+
+	for _, tag := range raw.Tags {
+		if strings.HasPrefix(tag, "ipa_pron:") {
+			rawIPA := strings.TrimPrefix(tag, "ipa_pron:")
+			if rawIPA != "" && entry.IPA == "" {
+				entry.IPA = "/" + rawIPA + "/"
+			}
+		} else if entry.PartOfSpeech == "" {
+			if pos := mapDatamusePOS(tag); pos != "" {
+				entry.PartOfSpeech = pos
+			}
+		}
+	}
+
+	for _, defStr := range raw.Defs {
+		parts := strings.SplitN(defStr, "\t", 2)
+		var pos, defText string
+		if len(parts) == 2 {
+			pos = mapDatamusePOS(parts[0])
+			defText = strings.TrimSpace(parts[1])
+		} else {
+			defText = strings.TrimSpace(defStr)
+		}
+
+		if entry.Definition == "" && defText != "" {
+			entry.Definition = defText
+			if entry.PartOfSpeech == "" && pos != "" {
+				entry.PartOfSpeech = pos
+			}
+		}
+	}
+
+	return entry
+}
+
+func mapDatamusePOS(tag string) string {
+	switch strings.ToLower(strings.TrimSpace(tag)) {
+	case "n":
+		return "noun"
+	case "v":
+		return "verb"
+	case "adj":
+		return "adjective"
+	case "adv":
+		return "adverb"
+	case "prop":
+		return "proper noun"
+	default:
+		return ""
+	}
 }
 
 // mapDictionaryEntry takes the first usable value for each field.

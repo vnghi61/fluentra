@@ -117,3 +117,51 @@ func (*fakeTx) Exec(context.Context, string, ...any) (pgconn.CommandTag, error) 
 func (*fakeTx) Query(context.Context, string, ...any) (pgx.Rows, error) { return nil, nil }
 func (*fakeTx) QueryRow(context.Context, string, ...any) pgx.Row        { return nil }
 func (*fakeTx) Conn() *pgx.Conn                                         { return nil }
+
+func TestResolveMaxConns_AConfiguredValueWins(t *testing.T) {
+	got, err := ResolveMaxConns(12, 4, false)
+	if err != nil || got != 12 {
+		t.Fatalf("ResolveMaxConns(12, 4, false) = %d, %v; want 12, nil", got, err)
+	}
+}
+
+func TestResolveMaxConns_RefusesAValueTooLargeToExpress(t *testing.T) {
+	// int32(3_000_000_000) is negative, and a pool built from it fails to open
+	// with a message naming neither the key nor the value.
+	if _, err := ResolveMaxConns(3_000_000_000, 4, false); err == nil {
+		t.Fatal("a pool size larger than int32 was accepted")
+	}
+}
+
+func TestResolveMaxConns_LeavesTheDSNsOwnSizeAlone(t *testing.T) {
+	// pool_max_conns=10 against a pooler that allows ten is a deliberate
+	// choice. Raising it to the floor is how one service starves the others.
+	got, err := ResolveMaxConns(0, 10, true)
+	if err != nil || got != 10 {
+		t.Fatalf("an explicit pool_max_conns=10 became %d (%v)", got, err)
+	}
+}
+
+func TestResolveMaxConns_TheFloorAppliesToTheDefaultOnly(t *testing.T) {
+	// pgxpool defaults to max(4, NumCPU); on a one-CPU instance that is four,
+	// and seventeen cron jobs each holding one at start-up cannot all finish.
+	got, err := ResolveMaxConns(0, 4, false)
+	if err != nil || got != MaxConnsFloor {
+		t.Fatalf("the default of 4 became %d (%v); want the floor %d", got, err, MaxConnsFloor)
+	}
+
+	// A generous default is not lowered to meet it.
+	got, err = ResolveMaxConns(0, 64, false)
+	if err != nil || got != 64 {
+		t.Fatalf("a default of 64 became %d (%v)", got, err)
+	}
+}
+
+func TestDSNSetsMaxConns(t *testing.T) {
+	if !DSNSetsMaxConns("postgres://h/db?pool_max_conns=10") {
+		t.Error("an explicit pool_max_conns was not detected")
+	}
+	if DSNSetsMaxConns("postgres://h/db?sslmode=disable") {
+		t.Error("a DSN without a pool size was read as setting one")
+	}
+}
