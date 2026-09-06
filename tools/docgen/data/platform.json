@@ -469,7 +469,8 @@
     "decisions": [
       { "question": "River, Asynq, or a broker?", "choice": "River", "why": "Transactional enqueue is worth more to us than raw throughput; see the comparison in ARCHITECTURE §11.1 and ADR-0010" },
       { "question": "Job args: IDs or full payloads?", "choice": "IDs", "why": "A payload captured at enqueue time is stale by the time the job runs; re-reading is correct and keeps the queue table small" },
-      { "question": "One queue or several?", "choice": "Five, by workload shape", "why": "A three-minute transcode must not delay a notification; separate queues give independent concurrency and independent alerting" }
+      { "question": "One queue or several?", "choice": "Five, by workload shape", "why": "A three-minute transcode must not delay a notification; separate queues give independent concurrency and independent alerting" },
+      { "question": "Run cron jobs once at startup?", "choice": "Yes, before the ticker", "why": "A fresh deployment otherwise waits out a whole interval doing nothing, which is an hour for upload verification. The advisory lock still stops two instances colliding, and the orchestrator's restart backoff bounds how often a crash-loop can repeat the call" }
     ],
     "adrs": [{ "id": "ADR-0010", "file": "ADR-0010-job-queue-river.md", "title": "River (Postgres) for background jobs" }],
     "todo": [

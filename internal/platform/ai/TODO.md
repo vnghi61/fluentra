@@ -10,7 +10,7 @@ tables: [ai_requests, ai_usage, prompt_versions, ai_cache_entries, ai_budgets]
 depends_on: [cache, telemetry, job]
 depended_on_by: [writing, speaking, grammar, questionbank, content, reading, media, learning]
 spec_version: 1.0.0
-last_verified: 2026-08-06
+last_verified: 2026-09-04
 ---
 
 # ai — TODO

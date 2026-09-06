@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 )
 
@@ -92,8 +93,14 @@ func (r *Router) Complete(ctx context.Context, req Request) (Response, error) {
 
 	// 2. Try primary provider if budget allows
 	primaryAllowed, primaryBudgetErr := r.budget.CheckQuota(ctx, primary.Name(), req.Task)
+	primaryVerdict := classifyQuota(primaryAllowed, primaryBudgetErr)
 	var primaryExecErr error
-	if primaryAllowed && primaryBudgetErr == nil {
+	switch primaryVerdict {
+	case quotaUnknown:
+		primaryExecErr = primaryBudgetErr
+	case quotaExhausted:
+		primaryExecErr = fmt.Errorf("provider %s quota exhausted", primary.Name())
+	case quotaAllowed:
 		res, err := r.executeWithRetry(ctx, primary, req)
 		if err == nil {
 			res.Provider = primary.Name()
@@ -111,13 +118,42 @@ func (r *Router) Complete(ctx context.Context, req Request) (Response, error) {
 			return res, nil
 		}
 		primaryExecErr = err
-	} else if primaryBudgetErr != nil {
-		primaryExecErr = primaryBudgetErr
-	} else {
-		primaryExecErr = fmt.Errorf("provider %s quota exhausted", primary.Name())
 	}
 
-	return r.executeFallback(ctx, req, cacheKey, primary, primaryExecErr, primaryAllowed, start)
+	return r.executeFallback(ctx, req, cacheKey, primary, primaryExecErr, primaryVerdict, start)
+}
+
+// quotaVerdict is what a budget check actually told us.
+//
+// CheckQuota fails closed: a check that errors returns (false, err), so "this
+// provider is out of budget" and "we could not find out" arrive in the same
+// boolean. Collapsing them is not cosmetic. ErrQuotaExhausted is what makes
+// vocabulary keep a word as a queued flashcard with a note promising background
+// enrichment, and what makes learning drop an explanation without complaint --
+// so a database outage reaches the learner as "your daily limit is used up",
+// and the operator reads a quota problem in the logs while the real fault is a
+// connection that will not open.
+type quotaVerdict int
+
+const (
+	// quotaAllowed means the provider may be called.
+	quotaAllowed quotaVerdict = iota
+	// quotaExhausted means a budget row says no. This one is a real ceiling.
+	quotaExhausted
+	// quotaUnknown means the check itself failed. Fail closed, but never claim
+	// this was a quota.
+	quotaUnknown
+)
+
+func classifyQuota(allowed bool, err error) quotaVerdict {
+	switch {
+	case err != nil:
+		return quotaUnknown
+	case !allowed:
+		return quotaExhausted
+	default:
+		return quotaAllowed
+	}
 }
 
 func (r *Router) executeFallback(
@@ -126,12 +162,12 @@ func (r *Router) executeFallback(
 	cacheKey string,
 	primary Provider,
 	primaryErr error,
-	primaryAllowed bool,
+	primaryVerdict quotaVerdict,
 	start time.Time,
 ) (Response, error) {
-	fallback, ok := r.providers.Fallback()
-	if !ok {
-		if !primaryAllowed {
+	fallbacks := r.providers.Fallbacks()
+	if len(fallbacks) == 0 {
+		if primaryVerdict == quotaExhausted {
 			r.record(ctx, RequestLog{
 				Task:         req.Task,
 				Provider:     primary.Name(),
@@ -154,15 +190,39 @@ func (r *Router) executeFallback(
 		return Response{}, fmt.Errorf("ai: provider %s failed for task %s: %w", primary.Name(), req.Task, primaryErr)
 	}
 
-	slog.WarnContext(ctx, "ai: primary provider unavailable or failed, attempting fallback",
-		"task", req.Task,
-		"primary", primary.Name(),
-		"fallback", fallback.Name(),
-		"primary_error", primaryErr)
+	// Only a chain where *every* link reported a real budget ceiling is an
+	// exhausted chain. One link whose check could not be answered makes the
+	// outcome unknown, and unknown must not be dressed up as ErrQuotaExhausted.
+	allExhausted := primaryVerdict == quotaExhausted
+	var errMsgs []string
+	if primaryErr != nil {
+		errMsgs = append(errMsgs, fmt.Sprintf("primary (%s): %v", primary.Name(), primaryErr))
+	}
 
-	fallbackAllowed, fallbackBudgetErr := r.budget.CheckQuota(ctx, fallback.Name(), req.Task)
-	var fbErr error
-	if fallbackAllowed && fallbackBudgetErr == nil {
+	for _, fallback := range fallbacks {
+		slog.WarnContext(ctx, "ai: attempting fallback provider",
+			"task", req.Task,
+			"primary", primary.Name(),
+			"fallback", fallback.Name(),
+			"previous_error", primaryErr)
+
+		fallbackAllowed, fallbackBudgetErr := r.budget.CheckQuota(ctx, fallback.Name(), req.Task)
+		switch classifyQuota(fallbackAllowed, fallbackBudgetErr) {
+		case quotaUnknown:
+			// Checked before `allowed`, because a failed check returns false for
+			// both. Testing the boolean first made this branch unreachable and
+			// reported a database outage as an exhausted budget.
+			allExhausted = false
+			errMsgs = append(errMsgs,
+				fmt.Sprintf("fallback (%s) budget check failed: %v", fallback.Name(), fallbackBudgetErr))
+			continue
+		case quotaExhausted:
+			errMsgs = append(errMsgs, fmt.Sprintf("fallback (%s): quota exhausted", fallback.Name()))
+			continue
+		case quotaAllowed:
+			allExhausted = false
+		}
+
 		res, err := r.executeWithRetry(ctx, fallback, req)
 		if err == nil {
 			res.Provider = fallback.Name()
@@ -179,15 +239,11 @@ func (r *Router) executeFallback(
 			})
 			return res, nil
 		}
-		fbErr = err
-	} else if fallbackBudgetErr != nil {
-		fbErr = fallbackBudgetErr
-	} else {
-		fbErr = fmt.Errorf("provider %s quota exhausted", fallback.Name())
+
+		errMsgs = append(errMsgs, fmt.Sprintf("fallback (%s): %v", fallback.Name(), err))
 	}
 
-	// Both providers exhausted
-	if !primaryAllowed && !fallbackAllowed {
+	if allExhausted {
 		r.record(ctx, RequestLog{
 			Task:         req.Task,
 			Provider:     primary.Name(),
@@ -199,16 +255,17 @@ func (r *Router) executeFallback(
 		return Response{}, ErrQuotaExhausted
 	}
 
+	combinedErr := strings.Join(errMsgs, ", ")
 	r.record(ctx, RequestLog{
 		Task:         req.Task,
 		Provider:     primary.Name(),
 		Model:        "",
 		LatencyMs:    int(time.Since(start).Milliseconds()),
 		Status:       StatusFailed,
-		ErrorMessage: fmt.Sprintf("all providers failed (primary: %v, fallback: %v)", primaryErr, fbErr),
+		ErrorMessage: fmt.Sprintf("all providers failed (%s)", combinedErr),
 		CreatedAt:    time.Now(),
 	})
-	return Response{}, fmt.Errorf("ai: all providers failed (primary: %v, fallback: %w)", primaryErr, fbErr)
+	return Response{}, fmt.Errorf("ai: all providers failed (%s)", combinedErr)
 }
 
 func (r *Router) executeWithRetry(
@@ -273,7 +330,7 @@ func (r *Router) HasQuota(ctx context.Context, task Task) (bool, error) {
 			return true, nil
 		}
 	}
-	if fallback, ok := r.providers.Fallback(); ok {
+	for _, fallback := range r.providers.Fallbacks() {
 		allowed, checkErr := r.budget.CheckQuota(ctx, fallback.Name(), task)
 		if checkErr == nil && allowed {
 			return true, nil

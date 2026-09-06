@@ -161,10 +161,10 @@ func TestLoadConfig_RejectsUnusableJobSettings(t *testing.T) {
 }
 
 // TestRegisterJobKinds_IsTheSinglePlaceP1Adds asserts that registered job kinds
-// includes the active workers (user.data_export).
+// includes the active workers (user.data_export, vocabulary.verify_upload).
 func TestRegisterJobKinds_IsTheSinglePlaceP1Adds(t *testing.T) {
-	if got := registerJobKinds(river.NewWorkers()); got != 1 {
-		t.Errorf("registered kinds = %d; want 1", got)
+	if got := registerJobKinds(river.NewWorkers()); got != 2 {
+		t.Errorf("registered kinds = %d; want 2", got)
 	}
 }
 

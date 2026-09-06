@@ -396,3 +396,47 @@ func TestRouter_TheProbesAreNotRateLimited(t *testing.T) {
 		t.Errorf("a versioned endpoint returned %d after exceeding the budget, want 429", lastCode)
 	}
 }
+
+// TestRateLimit_ReadingYourUploadsIsNotUploading pins the fix for a learner who
+// added three words and was refused for the rest of the hour.
+//
+// GET and POST share the path, and the upload budget is thirty an hour. The My
+// Words page polls the list every thirty seconds while a word is still being
+// checked, which is a hundred and twenty requests an hour by itself, so the
+// page exhausted the learner's upload budget without them touching anything --
+// and did it while the feature was working, because polling only runs while
+// something is pending.
+func TestRateLimit_ReadingYourUploadsIsNotUploading(t *testing.T) {
+	const uploadBudget = 3
+
+	limiter := newCountingLimiter()
+	guarded := httpx.RateLimit(httpx.RateLimitConfig{
+		Limiter:            limiter,
+		UploadPerHour:      uploadBudget,
+		AnonymousPerMinute: 1000,
+	}).Middleware(&okHandler{})
+
+	const address = "203.0.113.44:5000"
+	const path = "/api/v1/me/vocabulary/uploads"
+
+	// Far more reads than the upload budget: the page's own polling.
+	for i := range uploadBudget * 10 {
+		recorder := send(t, guarded, http.MethodGet, path, address, nil)
+		if recorder.Code != http.StatusOK {
+			t.Fatalf("read %d of the upload list was refused with %d", i+1, recorder.Code)
+		}
+	}
+
+	// The write budget is untouched by all that reading.
+	for i := range uploadBudget {
+		recorder := send(t, guarded, http.MethodPost, path, address, nil)
+		if recorder.Code != http.StatusOK {
+			t.Fatalf("upload %d was refused with %d after only reads", i+1, recorder.Code)
+		}
+	}
+
+	over := send(t, guarded, http.MethodPost, path, address, nil)
+	if over.Code != http.StatusTooManyRequests {
+		t.Errorf("the upload past the budget returned %d, want 429 -- the cap must still bind", over.Code)
+	}
+}

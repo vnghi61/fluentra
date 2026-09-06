@@ -22,6 +22,12 @@ import (
 // outage P8.2 paid to learn about happening quietly.
 const cronQueue = "cron"
 
+// defaultCronConcurrency limits how many periodic jobs may hold lock connections
+// concurrently. Without this, starting N cron loops simultaneously at startup
+// acquires N pool connections for advisory locks, deadlocking any job.Task that
+// needs to acquire a second connection from the same pool.
+const defaultCronConcurrency = 2
+
 // CronJob represents a scheduled background task.
 type CronJob struct {
 	Name     string
@@ -36,6 +42,7 @@ type CronScheduler struct {
 	instruments telemetry.Instruments
 	jobs        []CronJob
 	mu          sync.Mutex
+	sem         chan struct{}
 }
 
 // NewCronScheduler creates a cron scheduler facade.
@@ -43,7 +50,10 @@ type CronScheduler struct {
 // Instruments are optional so tests and the migrate path can build a scheduler
 // without a meter; a zero Instruments records nothing.
 func NewCronScheduler(pool *pgxpool.Pool) *CronScheduler {
-	return &CronScheduler{pool: pool}
+	return &CronScheduler{
+		pool: pool,
+		sem:  make(chan struct{}, defaultCronConcurrency),
+	}
 }
 
 // WithInstruments returns the scheduler with metrics enabled.
@@ -71,6 +81,10 @@ func (s *CronScheduler) Start(ctx context.Context) {
 }
 
 func (s *CronScheduler) runJobLoop(ctx context.Context, job CronJob) {
+	// Execute once immediately at startup so pending scheduled work is processed
+	// without waiting out the first interval.
+	s.executeWithLock(ctx, job)
+
 	ticker := time.NewTicker(job.Interval)
 	defer ticker.Stop()
 
@@ -87,6 +101,15 @@ func (s *CronScheduler) runJobLoop(ctx context.Context, job CronJob) {
 func (s *CronScheduler) executeWithLock(ctx context.Context, job CronJob) {
 	if s.pool == nil {
 		return
+	}
+
+	if s.sem != nil {
+		select {
+		case s.sem <- struct{}{}:
+			defer func() { <-s.sem }()
+		case <-ctx.Done():
+			return
+		}
 	}
 
 	conn, err := s.pool.Acquire(ctx)

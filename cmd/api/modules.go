@@ -227,10 +227,11 @@ func newIdentity(deps identityDeps) *identity {
 	})
 
 	assembled.vocabulary = vocabulary.New(vocabulary.Deps{
-		Pool:    deps.Pool,
-		Guard:   lazyGuard{of: assembled},
-		Content: assembled.content.Reader(),
-		Reviews: assembled.srs.CardWriter(),
+		Pool:     deps.Pool,
+		Guard:    lazyGuard{of: assembled},
+		Content:  assembled.content.Reader(),
+		Reviews:  assembled.srs.CardWriter(),
+		Enqueuer: deps.Enqueuer,
 		// No Dictionary and no AI here on purpose: the API stores an upload and
 		// returns, and the worker verifies it. A dictionary call on the request
 		// path would make submitting three hundred words a request that times

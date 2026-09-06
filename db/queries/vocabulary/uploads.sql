@@ -146,3 +146,17 @@ SET status   = 'failed',
     attempts = attempts + 1
 WHERE id = $1 AND status = 'queued'
 RETURNING *;
+
+-- name: ClaimPendingUploadItemsByUploadID :many
+-- The immediate verification job's input: one upload's pending words.
+--
+-- Bounded like ClaimPendingUploadItems is, and for a sharper reason. An upload
+-- carries up to MaxUploadEntries (300) words and each one is a model call with
+-- its own timeout, so an unbounded claim would hold one of the `ai` queue's few
+-- slots for hours while every other learner's words waited behind it. The job
+-- takes a batch; the hourly sweep collects whatever is left.
+SELECT * FROM skill.vocab_upload_items
+WHERE upload_id = $1 AND status = 'pending' AND attempts < $2
+ORDER BY created_at, id
+LIMIT $3
+FOR UPDATE SKIP LOCKED;

@@ -7,6 +7,10 @@ last_verified: 2026-09-03
 
 # Phase 3 — work order 5
 
+> **§2 and §3 superseded.** WP17 landed in PR #72; the current order is
+> [phase-3-work-order-6.md](phase-3-work-order-6.md). §4 (configuring a provider) is restated
+> there; §5 (production migrations) is done and retired.
+
 **Purpose.** The work after PR #71, with three decisions taken. It replaces §2 of
 [phase-3-work-order-4.md](phase-3-work-order-4.md).
 

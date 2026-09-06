@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -24,10 +26,23 @@ import (
 // that refuses must not silently accept one, and a word that nothing can
 // resolve must eventually stop being retried.
 
-// keyValid is the field the vocab_verify template asks the model to set.
+// The fields the vocab_verify template asks the model to set, and the fixture
+// words. Named because a typo in a repeated literal produces a test that
+// passes for the wrong reason.
 const (
-	keyValid  = "valid"
-	keyReason = "reason"
+	keyValid          = "valid"
+	keyReason         = "reason"
+	keyLemma          = "lemma"
+	keyPartOfSpeech   = "part_of_speech"
+	keyCEFRLevel      = "cefr_level"
+	keyDefinition     = "definition"
+	keyDefinitionVi   = "definition_vi"
+	keyMeaningMatches = "meaning_matches"
+	keyExamples       = "examples"
+
+	posNoun  = "noun"
+	wordTime = "time"
+	wordBook = "book"
 )
 
 // ---------------------------------------------------------------- fakes
@@ -123,6 +138,24 @@ func (r *uploadRepo) ClaimPendingUploadItems(
 	_ context.Context, _, _ int32,
 ) ([]sqlc.SkillVocabUploadItem, error) {
 	return r.pending, nil
+}
+
+// The limit is honoured rather than ignored: a fake that returns everything
+// however small the batch is cannot fail when the caller stops passing one.
+func (r *uploadRepo) ClaimPendingUploadItemsByUploadID(
+	_ context.Context, uploadID uuid.UUID, _, limit int32,
+) ([]sqlc.SkillVocabUploadItem, error) {
+	var items []sqlc.SkillVocabUploadItem
+	for _, it := range r.pending {
+		if it.UploadID != uploadID {
+			continue
+		}
+		if limit > 0 && len(items) >= int(limit) {
+			break
+		}
+		items = append(items, it)
+	}
+	return items, nil
 }
 
 func (r *uploadRepo) MarkUploadItemVerified(
@@ -222,7 +255,75 @@ func newPipeline(
 		AI:         model,
 		Content:    author,
 		AuthorID:   uuid.New(),
+		// Submit writes its rows and enqueues its job in one transaction, so a
+		// pipeline without a transaction source cannot submit. Supplied here so
+		// the fixture is the shape cmd/api actually builds.
+		Beginner: stubPool{},
 	}), author
+}
+
+type stubEnqueuer struct {
+	enqueued []uuid.UUID
+	err      error
+}
+
+func (e *stubEnqueuer) EnqueueVerifyUploadTx(_ context.Context, _ pgx.Tx, uploadID uuid.UUID) error {
+	if e.err != nil {
+		return e.err
+	}
+	e.enqueued = append(e.enqueued, uploadID)
+	return nil
+}
+
+type fakeTx struct {
+	pgx.Tx
+	outcome *string
+}
+
+func (t fakeTx) Commit(context.Context) error {
+	if t.outcome != nil {
+		*t.outcome = "commit"
+	}
+	return nil
+}
+
+func (t fakeTx) Rollback(context.Context) error {
+	if t.outcome != nil {
+		*t.outcome = "rollback"
+	}
+	return nil
+}
+
+// stubPool records how the transaction ended.
+//
+// It cannot prove the rows disappeared -- uploadRepo has no transaction to undo
+// and WithTx hands back itself -- so this pins the half a unit test can reach:
+// a failed enqueue rolls back rather than commits. That the rollback discards
+// the rows is Postgres's job, and the integration suite's.
+type stubPool struct{ outcome *string }
+
+func (p stubPool) BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error) {
+	return fakeTx{outcome: p.outcome}, nil
+}
+
+func (stubPool) Exec(context.Context, string, ...any) (pgconn.CommandTag, error) {
+	return pgconn.CommandTag{}, nil
+}
+
+func (r *uploadRepo) WithTx(_ pgx.Tx) repository.Repository {
+	return r
+}
+
+func (r *uploadRepo) InsertUpload(
+	_ context.Context, arg sqlc.InsertUploadParams,
+) (sqlc.SkillVocabUpload, error) {
+	return sqlc.SkillVocabUpload{
+		ID:        uuid.New(),
+		UserID:    arg.UserID,
+		RawText:   arg.RawText,
+		ItemCount: arg.ItemCount,
+		Status:    "pending",
+	}, nil
 }
 
 // -------------------------------------------------------------- submitting
@@ -233,6 +334,82 @@ func TestSubmit_RefusesTextWithNoWordsInIt(t *testing.T) {
 
 	_, err := uploads.Submit(context.Background(), uuid.New(), "---\n42\n\n")
 	require.Error(t, err, "a paste of dividers and page numbers is a mistake, not an upload")
+}
+
+func TestSubmit_EnqueuesVerificationJobInTx(t *testing.T) {
+	repo := newUploadRepo()
+	enqueuer := &stubEnqueuer{}
+	pool := stubPool{}
+
+	svc := service.New(service.Deps{Repo: repo})
+	uploads := service.NewUploads(svc, repo, service.UploadDeps{
+		Pool:     pool,
+		Beginner: pool,
+		Enqueuer: enqueuer,
+	})
+
+	userID := uuid.New()
+	res, err := uploads.Submit(context.Background(), userID, "leisure - free time\nserendipity")
+	require.NoError(t, err)
+	assert.NotEmpty(t, res.ID)
+	assert.Equal(t, 2, res.ItemCount)
+	require.Len(t, enqueuer.enqueued, 1)
+	assert.Equal(t, res.ID, enqueuer.enqueued[0])
+}
+
+func TestSubmit_RollsBackWhenTheJobCannotBeEnqueued(t *testing.T) {
+	// The transaction exists for this case and no other. Words stored with no
+	// job to collect them wait for the hourly sweep with nothing telling the
+	// learner why, and that is the outcome the rollback removes.
+	outcome := ""
+	pool := stubPool{outcome: &outcome}
+	repo := newUploadRepo()
+
+	svc := service.New(service.Deps{Repo: repo})
+	uploads := service.NewUploads(svc, repo, service.UploadDeps{
+		Pool:     pool,
+		Beginner: pool,
+		Enqueuer: &stubEnqueuer{err: errors.New("river is unreachable")},
+	})
+
+	_, err := uploads.Submit(context.Background(), uuid.New(), "leisure - free time")
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "river is unreachable",
+		"the reason the submission failed must reach the caller")
+	assert.Equal(t, "rollback", outcome, "a failed enqueue must not commit the words")
+}
+
+func TestSubmit_RefusedWithoutATransactionSource(t *testing.T) {
+	repo := newUploadRepo()
+	svc := service.New(service.Deps{Repo: repo})
+	uploads := service.NewUploads(svc, repo, service.UploadDeps{})
+
+	_, err := uploads.Submit(context.Background(), uuid.New(), "leisure - free time")
+
+	require.Error(t, err, "storing words outside a transaction is not a supported shape")
+}
+
+func TestVerifyUpload_VerifiesPendingWordsForSpecificUpload(t *testing.T) {
+	uploadID1 := uuid.New()
+	uploadID2 := uuid.New()
+
+	item1 := item(wordLeisure, "thời gian rảnh")
+	item1.UploadID = uploadID1
+	item2 := item("ephemeral", "lasting for a very short time")
+	item2.UploadID = uploadID2
+
+	repo := newUploadRepo(item1, item2)
+	dict := &stubDictionary{entries: map[string]repository.DictionaryEntry{
+		wordLeisure: leisureEntry(),
+	}}
+	uploads, author := newPipeline(t, repo, dict, &stubAI{reply: accepted(t)})
+
+	require.NoError(t, uploads.VerifyUpload(context.Background(), uploadID1))
+
+	assert.Contains(t, repo.verified, item1.ID)
+	assert.NotContains(t, repo.verified, item2.ID, "items from other uploads should not be touched")
+	require.Len(t, author.published, 1)
 }
 
 // ------------------------------------------------------------ verifying
@@ -513,4 +690,55 @@ func TestEnrichQueued_InvalidWord_MarksRejected(t *testing.T) {
 
 	require.NoError(t, uploads.EnrichQueued(context.Background()))
 	assert.Contains(t, repo.enrichRejected, entry.ID, "invalid word must be rejected")
+}
+
+func TestVerify_AWordPastedWithNoMeaningStillGetsVietnamese(t *testing.T) {
+	// The case that matters: a bare list. Nobody typing thirty words writes a
+	// gloss for each, and before the model was asked for one, definition_vi was
+	// left null and the flashcard showed the learner nothing in their own
+	// language — for most of what they paste.
+	repo := newUploadRepo(item(wordTime, ""))
+	dict := &stubDictionary{entries: map[string]repository.DictionaryEntry{
+		wordTime: {Lemma: "time", PartOfSpeech: posNoun, Definition: "The indefinite continued progress of existence."},
+	}}
+	reply := map[string]any{
+		keyValid: true, "reason": "", keyLemma: "time", keyPartOfSpeech: posNoun,
+		keyCEFRLevel: "A1", keyDefinition: "The indefinite continued progress of existence.",
+		keyDefinitionVi: "thời gian", keyMeaningMatches: true,
+		keyExamples: []string{"We do not have much time."},
+	}
+	body, err := json.Marshal(reply)
+	require.NoError(t, err)
+
+	uploads, author := newPipeline(t, repo, dict, &stubAI{reply: string(body)})
+	require.NoError(t, uploads.VerifyPending(context.Background()))
+
+	require.Len(t, author.published, 1)
+	var published map[string]any
+	require.NoError(t, json.Unmarshal(author.published[0].Body, &published))
+	assert.Equal(t, "thời gian", published["definition_vi"])
+}
+
+func TestVerify_TheLearnersOwnWordingWinsOverTheModels(t *testing.T) {
+	// Their note is what they will recognise, and it is theirs. The model's
+	// gloss is the fallback, not the correction.
+	repo := newUploadRepo(item(wordBook, "quyển sách của tôi"))
+	dict := &stubDictionary{entries: map[string]repository.DictionaryEntry{
+		wordBook: {Lemma: "book", PartOfSpeech: posNoun, Definition: "A written work."},
+	}}
+	reply := map[string]any{
+		keyValid: true, keyLemma: "book", keyPartOfSpeech: posNoun, keyCEFRLevel: "A1",
+		keyDefinition: "A written work.", keyDefinitionVi: "sách",
+		keyMeaningMatches: true, keyExamples: []string{"She read the book."},
+	}
+	body, err := json.Marshal(reply)
+	require.NoError(t, err)
+
+	uploads, author := newPipeline(t, repo, dict, &stubAI{reply: string(body)})
+	require.NoError(t, uploads.VerifyPending(context.Background()))
+
+	require.Len(t, author.published, 1)
+	var published map[string]any
+	require.NoError(t, json.Unmarshal(author.published[0].Body, &published))
+	assert.Equal(t, "quyển sách của tôi", published["definition_vi"])
 }

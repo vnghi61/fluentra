@@ -20,6 +20,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/vocabulary/repository"
 	"github.com/fluentra/fluentra/internal/platform/ai"
 	"github.com/fluentra/fluentra/internal/shared/apperr"
+	"github.com/fluentra/fluentra/internal/shared/dbx"
 )
 
 // A learner's own vocabulary: pasted in, checked on a schedule, and turned into
@@ -58,8 +59,14 @@ type verdict struct {
 	PartOfSpeech   string   `json:"part_of_speech"`
 	CEFRLevel      string   `json:"cefr_level"`
 	Definition     string   `json:"definition"`
+	DefinitionVi   string   `json:"definition_vi"`
 	MeaningMatches bool     `json:"meaning_matches"`
 	Examples       []string `json:"examples"`
+}
+
+// JobEnqueuer schedules background River jobs within database transactions.
+type JobEnqueuer interface {
+	EnqueueVerifyUploadTx(ctx context.Context, tx pgx.Tx, uploadID uuid.UUID) error
 }
 
 // UploadDeps are the collaborators the upload pipeline needs beyond the service.
@@ -78,6 +85,10 @@ type UploadDeps struct {
 	AuthorID uuid.UUID
 	// Pool writes the outbox row that tells gamification to pay XP.
 	Pool OutboxTx
+	// Beginner starts transactions for atomic upload storage and River job enqueueing.
+	Beginner dbx.Beginner
+	// Enqueuer schedules the immediate verification job.
+	Enqueuer JobEnqueuer
 }
 
 // Uploads runs the learner-upload pipeline.
@@ -93,7 +104,9 @@ type Uploads struct {
 	// published on its own row rather than joined to the verification, because
 	// the verification is several statements across three modules and there is
 	// no single transaction to join.
-	pool OutboxTx
+	pool     OutboxTx
+	beginner dbx.Beginner
+	enqueuer JobEnqueuer
 }
 
 // NewUploads constructs the pipeline.
@@ -107,6 +120,8 @@ func NewUploads(svc *Service, repo repository.Repository, deps UploadDeps) *Uplo
 		author:     deps.AuthorID,
 		events:     svc.events,
 		pool:       deps.Pool,
+		beginner:   deps.Beginner,
+		enqueuer:   deps.Enqueuer,
 	}
 }
 
@@ -135,10 +150,10 @@ type UploadItem struct {
 	VerifiedAt      *time.Time `json:"verified_at,omitempty"`
 }
 
-// Submit stores a learner's pasted vocabulary.
+// Submit stores a learner's pasted vocabulary within a transaction and enqueues verification.
 //
-// Deliberately fast and deliberately dumb: it parses, writes, and returns. No
-// dictionary, no model, no deck. Everything that can fail slowly happens in the
+// Deliberately fast: it parses, writes, enqueues the River job in the same transaction, and returns.
+// No dictionary, no model, no deck. Everything that can fail slowly happens in the
 // job, which is why a learner pasting three hundred words gets an answer in
 // milliseconds rather than a request that times out half way through.
 func (u *Uploads) Submit(ctx context.Context, userID uuid.UUID, rawText string) (Upload, error) {
@@ -149,30 +164,60 @@ func (u *Uploads) Submit(ctx context.Context, userID uuid.UUID, rawText string) 
 				"optionally followed by its meaning.")
 	}
 
-	upload, err := u.repo.InsertUpload(ctx, sqlc.InsertUploadParams{
-		UserID:    userID,
-		RawText:   rawText,
-		ItemCount: int32(len(entries)), //nolint:gosec // bounded by MaxUploadEntries
-	})
-	if err != nil {
-		return Upload{}, fmt.Errorf("store upload: %w", err)
+	if u.beginner == nil {
+		return Upload{}, fmt.Errorf("submit upload: no transaction source configured")
 	}
 
-	stored := 0
-	for _, entry := range entries {
-		if _, err := u.repo.InsertUploadItem(ctx, sqlc.InsertUploadItemParams{
-			UploadID:        upload.ID,
-			UserID:          userID,
-			Term:            entry.Term,
-			ProvidedMeaning: entry.Meaning,
-		}); err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				// The unique constraint caught a duplicate the parser did not.
-				continue
-			}
-			return Upload{}, fmt.Errorf("store upload item %q: %w", entry.Term, err)
+	var (
+		upload sqlc.SkillVocabUpload
+		stored int
+	)
+
+	// One transaction for the rows and the job that will read them. The job is
+	// enqueued through River's own InsertTx, so either the words exist and
+	// something is coming for them, or neither happened -- never a job pointing
+	// at an upload that was rolled back, and never words nothing will collect.
+	err := dbx.InTx(ctx, u.beginner, func(txCtx context.Context, tx pgx.Tx) error {
+		txRepo := u.repo.WithTx(tx)
+		var createErr error
+		upload, createErr = txRepo.InsertUpload(txCtx, sqlc.InsertUploadParams{
+			UserID:    userID,
+			RawText:   rawText,
+			ItemCount: int32(len(entries)), //nolint:gosec // bounded by MaxUploadEntries
+		})
+		if createErr != nil {
+			return fmt.Errorf("store upload: %w", createErr)
 		}
-		stored++
+
+		stored = 0
+		for _, entry := range entries {
+			if _, itemErr := txRepo.InsertUploadItem(txCtx, sqlc.InsertUploadItemParams{
+				UploadID:        upload.ID,
+				UserID:          userID,
+				Term:            entry.Term,
+				ProvidedMeaning: entry.Meaning,
+			}); itemErr != nil {
+				if errors.Is(itemErr, pgx.ErrNoRows) {
+					// The unique constraint caught a duplicate the parser did not.
+					continue
+				}
+				return fmt.Errorf("store upload item %q: %w", entry.Term, itemErr)
+			}
+			stored++
+		}
+
+		if u.enqueuer == nil {
+			// cmd/api always supplies one. A deployment without it still stores
+			// the words, and the hourly sweep is what finds them.
+			return nil
+		}
+		if enqueueErr := u.enqueuer.EnqueueVerifyUploadTx(txCtx, tx, upload.ID); enqueueErr != nil {
+			return fmt.Errorf("enqueue verify upload job: %w", enqueueErr)
+		}
+		return nil
+	})
+	if err != nil {
+		return Upload{}, fmt.Errorf("submit upload: %w", err)
 	}
 
 	return Upload{
@@ -297,6 +342,48 @@ func (u *Uploads) VerifyPending(ctx context.Context) error {
 			// retried for ever.
 			slog.WarnContext(ctx, "upload item verification failed",
 				"term", item.Term, "error", err)
+			if recErr := u.repo.RecordUploadItemAttempt(ctx, item.ID, truncateReason(err.Error())); recErr != nil {
+				slog.WarnContext(ctx, "could not record verification attempt",
+					"item_id", item.ID, "error", recErr)
+			}
+			continue
+		}
+		if ok {
+			verified[item.UserID]++
+		}
+	}
+
+	if _, err := u.repo.CompleteFinishedUploads(ctx); err != nil {
+		slog.WarnContext(ctx, "could not close finished uploads", "error", err)
+	}
+
+	for userID, count := range verified {
+		u.publishVerified(ctx, userID, count)
+	}
+	return nil
+}
+
+// VerifyUpload processes verification for a specific upload immediately.
+func (u *Uploads) VerifyUpload(ctx context.Context, uploadID uuid.UUID) error {
+	if u.dictionary == nil || u.content == nil || u.author == uuid.Nil {
+		slog.DebugContext(ctx, "upload verification is not configured; skipping", "upload_id", uploadID)
+		return nil
+	}
+
+	items, err := u.repo.ClaimPendingUploadItemsByUploadID(ctx, uploadID, maxVerifyAttempts, verifyBatch)
+	if err != nil {
+		return fmt.Errorf("claim pending upload items for %s: %w", uploadID, err)
+	}
+	if len(items) == 0 {
+		return nil
+	}
+
+	verified := map[uuid.UUID]int{}
+	for _, item := range items {
+		ok, err := u.verifyItem(ctx, item)
+		if err != nil {
+			slog.WarnContext(ctx, "upload item verification failed",
+				"term", item.Term, "upload_id", uploadID, "error", err)
 			if recErr := u.repo.RecordUploadItemAttempt(ctx, item.ID, truncateReason(err.Error())); recErr != nil {
 				slog.WarnContext(ctx, "could not record verification attempt",
 					"item_id", item.ID, "error", recErr)
@@ -490,7 +577,8 @@ func (u *Uploads) materialise(
 	// The sense's own content version, which is what a review card points at.
 	// Without it the card has nothing to render and the learner meets "this
 	// card has no content yet".
-	body, err := json.Marshal(senseBody(lemma, pos, cefr, definition, item.ProvidedMeaning, entry, examples))
+	gloss := firstNonEmpty(item.ProvidedMeaning, answer.DefinitionVi)
+	body, err := json.Marshal(senseBody(lemma, pos, cefr, definition, gloss, entry, examples))
 	if err != nil {
 		return uuid.Nil, err
 	}
@@ -507,8 +595,12 @@ func (u *Uploads) materialise(
 
 	sense, err := u.service.CreateSense(ctx, domain.WordSense{
 		WordID: word.ID, ContentVersionID: &versionID,
-		Definition:   definition,
-		DefinitionVi: nilIfEmpty(item.ProvidedMeaning),
+		Definition: definition,
+		// The learner's own note first, because it is the wording they will
+		// recognise, and it is theirs. The model's gloss is the fallback, and
+		// it is the only Vietnamese a bare word list ever gets -- pasting
+		// "time" with no meaning used to store nothing here at all.
+		DefinitionVi: nilIfEmpty(firstNonEmpty(item.ProvidedMeaning, answer.DefinitionVi)),
 		Examples:     toDomainExamples(examples),
 	})
 	if err != nil {
@@ -577,7 +669,7 @@ func (u *Uploads) publishVerified(ctx context.Context, userID uuid.UUID, count i
 
 // senseBody is what the flashcard and the review card render.
 func senseBody(
-	lemma, pos, cefr, definition, learnerNote string,
+	lemma, pos, cefr, definition, gloss string,
 	entry repository.DictionaryEntry,
 	examples []string,
 ) map[string]any {
@@ -602,11 +694,12 @@ func senseBody(
 	if entry.AudioURL != "" {
 		body["audio_url"] = entry.AudioURL
 	}
-	// The learner's own note, shown as the gloss. It is theirs, so it is what
-	// they will recognise — and it is labelled as their own rather than
-	// presented as the dictionary's.
-	if learnerNote != "" {
-		body["definition_vi"] = learnerNote
+	// The Vietnamese shown on the back of the card: the learner's own note when
+	// they wrote one, because that is the wording they will recognise, and the
+	// model's gloss otherwise. A bare word list used to reach the flashcard with
+	// no Vietnamese at all, which is most of what a learner pastes.
+	if gloss != "" {
+		body["definition_vi"] = gloss
 	}
 	if len(sentences) > 0 {
 		body["example_sentences"] = sentences
@@ -849,7 +942,8 @@ func (u *Uploads) enrichExistingSense(
 	if len(examples) == 0 {
 		examples = entry.Examples
 	}
-	body, err := json.Marshal(senseBody(lemma, pos, cefr, definition, item.ProvidedMeaning, entry, examples))
+	gloss := firstNonEmpty(item.ProvidedMeaning, answer.DefinitionVi)
+	body, err := json.Marshal(senseBody(lemma, pos, cefr, definition, gloss, entry, examples))
 	if err != nil {
 		return fmt.Errorf("marshal sense body: %w", err)
 	}

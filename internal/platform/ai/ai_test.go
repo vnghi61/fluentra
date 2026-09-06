@@ -3,6 +3,7 @@ package ai_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -54,7 +55,11 @@ func TestRegistry_LoadsTheVersionedTemplate(t *testing.T) {
 	tmpl, err := registry.Get(ai.TaskVerifyVocabulary)
 	require.NoError(t, err)
 
-	assert.Equal(t, 1, tmpl.Version)
+	// Two, deliberately: v2 asks for the Vietnamese gloss beside the English
+	// definition. Both files ship, and the registry serving the newer one is
+	// what invalidates the answers cached under v1 rather than serving them for
+	// ever. Bumping this number is meant to be a visible act.
+	assert.Equal(t, 2, tmpl.Version)
 	assert.True(t, tmpl.JSONOutput, "the task is parsed, not displayed, so the front matter must say so")
 	assert.Equal(t, 2048, tmpl.MaxTokens, "read from the template's front matter, not hard-coded in Go")
 	assert.Zero(t, tmpl.Temperature, "verification must not be creative")
@@ -414,6 +419,13 @@ const (
 	testPrimaryLLM  = "primary-llm"
 	testFallbackLLM = "fallback-llm"
 	testFromPrimary = "from-primary"
+
+	// The three-provider chain the named-provider work exists to make possible.
+	// Named because a typo in a repeated literal produces a registry lookup that
+	// fails for a reason the assertion cannot show.
+	nameCerebras = "cerebras"
+	nameGroq     = "groq"
+	nameGemini   = "gemini"
 )
 
 func TestRouter_FallsBackWhenPrimaryQuotaExhausted(t *testing.T) {
@@ -504,4 +516,206 @@ func TestNoopBudgetChecker_GetUsageOverview(t *testing.T) {
 	items, err := checker.GetUsageOverview(context.Background())
 	require.NoError(t, err)
 	assert.Empty(t, items)
+}
+
+func TestProviderRegistry_DistinctRealProviders(t *testing.T) {
+	registry, err := ai.NewRegistry()
+	require.NoError(t, err)
+
+	cerebras, err := ai.NewOpenAICompatibleProvider(ai.OpenAICompatibleConfig{
+		Name:    nameCerebras,
+		BaseURL: "https://api.cerebras.ai/v1",
+		Model:   "llama3.1-8b",
+	}, registry)
+	require.NoError(t, err)
+	assert.Equal(t, nameCerebras, cerebras.Name())
+
+	groq, err := ai.NewOpenAICompatibleProvider(ai.OpenAICompatibleConfig{
+		Name:    nameGroq,
+		BaseURL: "https://api.groq.com/openai/v1",
+		Model:   "llama-3.1-8b-instant",
+	}, registry)
+	require.NoError(t, err)
+	assert.Equal(t, nameGroq, groq.Name())
+
+	gemini, err := ai.NewOpenAICompatibleProvider(ai.OpenAICompatibleConfig{
+		Name:    nameGemini,
+		BaseURL: "https://generativelanguage.googleapis.com/v1beta/openai",
+		Model:   "gemini-1.5-flash",
+	}, registry)
+	require.NoError(t, err)
+	assert.Equal(t, nameGemini, gemini.Name())
+
+	providerReg := ai.NewProviderRegistry(cerebras, groq, gemini)
+
+	primary, err := providerReg.Primary()
+	require.NoError(t, err)
+	assert.Equal(t, nameCerebras, primary.Name())
+	assert.Same(t, cerebras, primary)
+
+	fallbacks := providerReg.Fallbacks()
+	require.Len(t, fallbacks, 2)
+	assert.Equal(t, nameGroq, fallbacks[0].Name())
+	assert.Same(t, groq, fallbacks[0])
+	assert.Equal(t, nameGemini, fallbacks[1].Name())
+	assert.Same(t, gemini, fallbacks[1])
+
+	firstFb, ok := providerReg.Fallback()
+	assert.True(t, ok)
+	assert.Same(t, groq, firstFb)
+
+	// Verify no overwriting happened
+	p1, err := providerReg.Get(nameCerebras)
+	require.NoError(t, err)
+	assert.Same(t, cerebras, p1)
+
+	p2, err := providerReg.Get(nameGroq)
+	require.NoError(t, err)
+	assert.Same(t, groq, p2)
+
+	p3, err := providerReg.Get(nameGemini)
+	require.NoError(t, err)
+	assert.Same(t, gemini, p3)
+}
+
+func TestRouter_ThreeProviderFallbackChain(t *testing.T) {
+	registry, err := ai.NewRegistry()
+	require.NoError(t, err)
+
+	p1 := &namedProvider{name: nameCerebras, err: errors.New("connection reset")}
+	p2 := &namedProvider{name: nameGroq, res: ai.Response{Text: "from groq"}}
+	p3 := &namedProvider{name: nameGemini, res: ai.Response{Text: `{"valid": true, "reason": "from-gemini"}`}}
+
+	providerReg := ai.NewProviderRegistry(p1, p2, p3)
+
+	budget := &mockBudgetChecker{
+		allowed: map[string]bool{
+			nameCerebras: true,
+			nameGroq:     false, // quota exhausted
+			nameGemini:   true,  // available
+		},
+	}
+
+	router := ai.NewRouter(ai.RouterOptions{
+		Prompts:   registry,
+		Providers: providerReg,
+		Budget:    budget,
+	})
+
+	res, err := router.Complete(context.Background(), verifyRequest())
+	require.NoError(t, err)
+	assert.Equal(t, p3.res.Text, res.Text)
+	assert.Equal(t, nameGemini, res.Provider)
+}
+
+func TestRouter_HasQuota_MultiFallback(t *testing.T) {
+	registry, err := ai.NewRegistry()
+	require.NoError(t, err)
+
+	p1 := &namedProvider{name: nameCerebras}
+	p2 := &namedProvider{name: nameGroq}
+	p3 := &namedProvider{name: nameGemini}
+
+	providerReg := ai.NewProviderRegistry(p1, p2, p3)
+
+	budget := &mockBudgetChecker{
+		allowed: map[string]bool{
+			nameCerebras: false,
+			nameGroq:     false,
+			nameGemini:   true,
+		},
+	}
+
+	router := ai.NewRouter(ai.RouterOptions{
+		Prompts:   registry,
+		Providers: providerReg,
+		Budget:    budget,
+	})
+
+	hasQuota, err := router.HasQuota(context.Background(), ai.TaskVerifyVocabulary)
+	require.NoError(t, err)
+	assert.True(t, hasQuota, "gemini has quota, so chain has quota")
+
+	budget.allowed[nameGemini] = false
+	hasQuota, err = router.HasQuota(context.Background(), ai.TaskVerifyVocabulary)
+	require.NoError(t, err)
+	assert.False(t, hasQuota, "all providers exhausted")
+}
+
+// unknownQuotaBudget mirrors DBBudgetChecker's fail-closed contract: a check
+// that errors returns (false, err), so "refused" and "could not tell" arrive in
+// the same boolean.
+type unknownQuotaBudget struct{ err error }
+
+func (b unknownQuotaBudget) CheckQuota(_ context.Context, _ string, _ ai.Task) (bool, error) {
+	return false, b.err
+}
+
+func (b unknownQuotaBudget) GetUsageOverview(_ context.Context) ([]ai.UsageStatus, error) {
+	return nil, nil
+}
+
+func TestRouter_BudgetCheckFailureIsNotReportedAsQuotaExhausted(t *testing.T) {
+	// ErrQuotaExhausted is load-bearing downstream: vocabulary keeps the word as
+	// a queued flashcard and tells the learner it is waiting for background
+	// enrichment, and learning drops the explanation without a word. A database
+	// that will not answer must not produce that story.
+	prompts, err := ai.NewRegistry()
+	require.NoError(t, err)
+
+	router := ai.NewRouter(ai.RouterOptions{
+		Prompts: prompts,
+		Providers: ai.NewProviderRegistry(
+			&namedProvider{name: nameCerebras, res: ai.Response{Text: "{}"}},
+			&namedProvider{name: nameGroq, res: ai.Response{Text: "{}"}},
+		),
+		Usage:  ai.NoopUsageRecorder{},
+		Budget: unknownQuotaBudget{err: errors.New("connection refused")},
+	})
+
+	_, err = router.Complete(context.Background(), ai.Request{
+		Task: ai.TaskVerifyVocabulary,
+		Vars: verifyVars(),
+	})
+
+	require.Error(t, err)
+	assert.NotErrorIs(t, err, ai.ErrQuotaExhausted,
+		"a budget check that could not run is not a budget that ran out")
+	assert.Contains(t, err.Error(), "connection refused",
+		"the fault the operator has to fix must survive to the error")
+}
+
+func TestRouter_EveryProviderGenuinelyOutOfQuotaStillReportsExhausted(t *testing.T) {
+	// The other half of the same distinction: when every budget row really says
+	// no, ErrQuotaExhausted is the right answer and the queue path depends on it.
+	prompts, err := ai.NewRegistry()
+	require.NoError(t, err)
+
+	router := ai.NewRouter(ai.RouterOptions{
+		Prompts: prompts,
+		Providers: ai.NewProviderRegistry(
+			&namedProvider{name: nameCerebras, res: ai.Response{Text: "{}"}},
+			&namedProvider{name: nameGroq, res: ai.Response{Text: "{}"}},
+		),
+		Usage: ai.NoopUsageRecorder{},
+		Budget: &mockBudgetChecker{allowed: map[string]bool{
+			nameCerebras: false,
+			nameGroq:     false,
+		}},
+	})
+
+	_, err = router.Complete(context.Background(), ai.Request{
+		Task: ai.TaskVerifyVocabulary,
+		Vars: verifyVars(),
+	})
+
+	assert.ErrorIs(t, err, ai.ErrQuotaExhausted)
+}
+
+// verifyVars is the smallest set vocab_verify.v1.md renders without complaint.
+func verifyVars() map[string]any {
+	return map[string]any{
+		"Term": "leisure", "ProvidedMeaning": "free time",
+		"DictionaryDefinition": "", "PartOfSpeech": "", "ExampleCount": 1,
+	}
 }

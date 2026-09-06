@@ -26,6 +26,7 @@ contract belongs in a repository-level ADR instead — see [`/DECISIONS.md`](../
 | River, Asynq, or a broker? | River | Transactional enqueue is worth more to us than raw throughput; see the comparison in ARCHITECTURE §11.1 and ADR-0010 |
 | Job args: IDs or full payloads? | IDs | A payload captured at enqueue time is stale by the time the job runs; re-reading is correct and keeps the queue table small |
 | One queue or several? | Five, by workload shape | A three-minute transcode must not delay a notification; separate queues give independent concurrency and independent alerting |
+| Run cron jobs once at startup? | Yes, before the ticker | A fresh deployment otherwise waits out a whole interval doing nothing, which is an hour for upload verification. The advisory lock still stops two instances colliding, and the orchestrator's restart backoff bounds how often a crash-loop can repeat the call |
 <!-- END GENERATED: decisions -->
 
 ## Related repository ADRs

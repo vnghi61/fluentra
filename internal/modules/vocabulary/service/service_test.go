@@ -650,6 +650,12 @@ func (f *fakeRepo) ClaimPendingUploadItems(
 	return nil, nil
 }
 
+func (f *fakeRepo) ClaimPendingUploadItemsByUploadID(
+	_ context.Context, _ uuid.UUID, _, _ int32,
+) ([]sqlc.SkillVocabUploadItem, error) {
+	return nil, nil
+}
+
 func (f *fakeRepo) MarkUploadItemVerified(
 	_ context.Context, _ uuid.UUID, _ *uuid.UUID, _, _ string,
 ) (sqlc.SkillVocabUploadItem, error) {
