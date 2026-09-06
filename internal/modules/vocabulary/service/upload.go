@@ -59,6 +59,7 @@ type verdict struct {
 	PartOfSpeech   string   `json:"part_of_speech"`
 	CEFRLevel      string   `json:"cefr_level"`
 	Definition     string   `json:"definition"`
+	DefinitionVi   string   `json:"definition_vi"`
 	MeaningMatches bool     `json:"meaning_matches"`
 	Examples       []string `json:"examples"`
 }
@@ -576,7 +577,8 @@ func (u *Uploads) materialise(
 	// The sense's own content version, which is what a review card points at.
 	// Without it the card has nothing to render and the learner meets "this
 	// card has no content yet".
-	body, err := json.Marshal(senseBody(lemma, pos, cefr, definition, item.ProvidedMeaning, entry, examples))
+	gloss := firstNonEmpty(item.ProvidedMeaning, answer.DefinitionVi)
+	body, err := json.Marshal(senseBody(lemma, pos, cefr, definition, gloss, entry, examples))
 	if err != nil {
 		return uuid.Nil, err
 	}
@@ -593,8 +595,12 @@ func (u *Uploads) materialise(
 
 	sense, err := u.service.CreateSense(ctx, domain.WordSense{
 		WordID: word.ID, ContentVersionID: &versionID,
-		Definition:   definition,
-		DefinitionVi: nilIfEmpty(item.ProvidedMeaning),
+		Definition: definition,
+		// The learner's own note first, because it is the wording they will
+		// recognise, and it is theirs. The model's gloss is the fallback, and
+		// it is the only Vietnamese a bare word list ever gets -- pasting
+		// "time" with no meaning used to store nothing here at all.
+		DefinitionVi: nilIfEmpty(firstNonEmpty(item.ProvidedMeaning, answer.DefinitionVi)),
 		Examples:     toDomainExamples(examples),
 	})
 	if err != nil {
@@ -663,7 +669,7 @@ func (u *Uploads) publishVerified(ctx context.Context, userID uuid.UUID, count i
 
 // senseBody is what the flashcard and the review card render.
 func senseBody(
-	lemma, pos, cefr, definition, learnerNote string,
+	lemma, pos, cefr, definition, gloss string,
 	entry repository.DictionaryEntry,
 	examples []string,
 ) map[string]any {
@@ -688,11 +694,12 @@ func senseBody(
 	if entry.AudioURL != "" {
 		body["audio_url"] = entry.AudioURL
 	}
-	// The learner's own note, shown as the gloss. It is theirs, so it is what
-	// they will recognise — and it is labelled as their own rather than
-	// presented as the dictionary's.
-	if learnerNote != "" {
-		body["definition_vi"] = learnerNote
+	// The Vietnamese shown on the back of the card: the learner's own note when
+	// they wrote one, because that is the wording they will recognise, and the
+	// model's gloss otherwise. A bare word list used to reach the flashcard with
+	// no Vietnamese at all, which is most of what a learner pastes.
+	if gloss != "" {
+		body["definition_vi"] = gloss
 	}
 	if len(sentences) > 0 {
 		body["example_sentences"] = sentences
@@ -935,7 +942,8 @@ func (u *Uploads) enrichExistingSense(
 	if len(examples) == 0 {
 		examples = entry.Examples
 	}
-	body, err := json.Marshal(senseBody(lemma, pos, cefr, definition, item.ProvidedMeaning, entry, examples))
+	gloss := firstNonEmpty(item.ProvidedMeaning, answer.DefinitionVi)
+	body, err := json.Marshal(senseBody(lemma, pos, cefr, definition, gloss, entry, examples))
 	if err != nil {
 		return fmt.Errorf("marshal sense body: %w", err)
 	}

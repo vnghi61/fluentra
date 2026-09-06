@@ -26,10 +26,23 @@ import (
 // that refuses must not silently accept one, and a word that nothing can
 // resolve must eventually stop being retried.
 
-// keyValid is the field the vocab_verify template asks the model to set.
+// The fields the vocab_verify template asks the model to set, and the fixture
+// words. Named because a typo in a repeated literal produces a test that
+// passes for the wrong reason.
 const (
-	keyValid  = "valid"
-	keyReason = "reason"
+	keyValid          = "valid"
+	keyReason         = "reason"
+	keyLemma          = "lemma"
+	keyPartOfSpeech   = "part_of_speech"
+	keyCEFRLevel      = "cefr_level"
+	keyDefinition     = "definition"
+	keyDefinitionVi   = "definition_vi"
+	keyMeaningMatches = "meaning_matches"
+	keyExamples       = "examples"
+
+	posNoun  = "noun"
+	wordTime = "time"
+	wordBook = "book"
 )
 
 // ---------------------------------------------------------------- fakes
@@ -677,4 +690,55 @@ func TestEnrichQueued_InvalidWord_MarksRejected(t *testing.T) {
 
 	require.NoError(t, uploads.EnrichQueued(context.Background()))
 	assert.Contains(t, repo.enrichRejected, entry.ID, "invalid word must be rejected")
+}
+
+func TestVerify_AWordPastedWithNoMeaningStillGetsVietnamese(t *testing.T) {
+	// The case that matters: a bare list. Nobody typing thirty words writes a
+	// gloss for each, and before the model was asked for one, definition_vi was
+	// left null and the flashcard showed the learner nothing in their own
+	// language — for most of what they paste.
+	repo := newUploadRepo(item(wordTime, ""))
+	dict := &stubDictionary{entries: map[string]repository.DictionaryEntry{
+		wordTime: {Lemma: "time", PartOfSpeech: posNoun, Definition: "The indefinite continued progress of existence."},
+	}}
+	reply := map[string]any{
+		keyValid: true, "reason": "", keyLemma: "time", keyPartOfSpeech: posNoun,
+		keyCEFRLevel: "A1", keyDefinition: "The indefinite continued progress of existence.",
+		keyDefinitionVi: "thời gian", keyMeaningMatches: true,
+		keyExamples: []string{"We do not have much time."},
+	}
+	body, err := json.Marshal(reply)
+	require.NoError(t, err)
+
+	uploads, author := newPipeline(t, repo, dict, &stubAI{reply: string(body)})
+	require.NoError(t, uploads.VerifyPending(context.Background()))
+
+	require.Len(t, author.published, 1)
+	var published map[string]any
+	require.NoError(t, json.Unmarshal(author.published[0].Body, &published))
+	assert.Equal(t, "thời gian", published["definition_vi"])
+}
+
+func TestVerify_TheLearnersOwnWordingWinsOverTheModels(t *testing.T) {
+	// Their note is what they will recognise, and it is theirs. The model's
+	// gloss is the fallback, not the correction.
+	repo := newUploadRepo(item(wordBook, "quyển sách của tôi"))
+	dict := &stubDictionary{entries: map[string]repository.DictionaryEntry{
+		wordBook: {Lemma: "book", PartOfSpeech: posNoun, Definition: "A written work."},
+	}}
+	reply := map[string]any{
+		keyValid: true, keyLemma: "book", keyPartOfSpeech: posNoun, keyCEFRLevel: "A1",
+		keyDefinition: "A written work.", keyDefinitionVi: "sách",
+		keyMeaningMatches: true, keyExamples: []string{"She read the book."},
+	}
+	body, err := json.Marshal(reply)
+	require.NoError(t, err)
+
+	uploads, author := newPipeline(t, repo, dict, &stubAI{reply: string(body)})
+	require.NoError(t, uploads.VerifyPending(context.Background()))
+
+	require.Len(t, author.published, 1)
+	var published map[string]any
+	require.NoError(t, json.Unmarshal(author.published[0].Body, &published))
+	assert.Equal(t, "quyển sách của tôi", published["definition_vi"])
 }
