@@ -40,9 +40,16 @@ const (
 	keyMeaningMatches = "meaning_matches"
 	keyExamples       = "examples"
 
-	posNoun  = "noun"
-	wordTime = "time"
-	wordBook = "book"
+	keySentence   = "sentence"
+	keySentenceVi = "sentence_vi"
+
+	posNoun        = "noun"
+	posProperNoun  = "proper noun"
+	wordTyme       = "tyme"
+	wordTime       = "time"
+	wordBook       = "book"
+	wordApple      = "apple"
+	defWrittenWork = "A written work."
 )
 
 // ---------------------------------------------------------------- fakes
@@ -118,6 +125,8 @@ type uploadRepo struct {
 	enrichVerified map[uuid.UUID]string
 	enrichRejected map[uuid.UUID]string
 	enrichFailed   map[uuid.UUID]string
+	uploads        map[uuid.UUID]sqlc.SkillVocabUpload
+	uploadItems    map[uuid.UUID][]sqlc.ListUploadItemsRow
 }
 
 func newUploadRepo(items ...sqlc.SkillVocabUploadItem) *uploadRepo {
@@ -131,7 +140,25 @@ func newUploadRepo(items ...sqlc.SkillVocabUploadItem) *uploadRepo {
 		enrichVerified: map[uuid.UUID]string{},
 		enrichRejected: map[uuid.UUID]string{},
 		enrichFailed:   map[uuid.UUID]string{},
+		uploads:        map[uuid.UUID]sqlc.SkillVocabUpload{},
+		uploadItems:    map[uuid.UUID][]sqlc.ListUploadItemsRow{},
 	}
+}
+
+func (r *uploadRepo) GetUpload(ctx context.Context, id, userID uuid.UUID) (sqlc.SkillVocabUpload, error) {
+	if u, ok := r.uploads[id]; ok {
+		return u, nil
+	}
+	return r.fakeRepo.GetUpload(ctx, id, userID)
+}
+
+func (r *uploadRepo) ListUploadItems(
+	ctx context.Context, uploadID, userID uuid.UUID,
+) ([]sqlc.ListUploadItemsRow, error) {
+	if it, ok := r.uploadItems[uploadID]; ok {
+		return it, nil
+	}
+	return r.fakeRepo.ListUploadItems(ctx, uploadID, userID)
 }
 
 func (r *uploadRepo) ClaimPendingUploadItems(
@@ -196,7 +223,7 @@ func (r *uploadRepo) MarkQueuedUploadItemVerified(
 	_ context.Context, id uuid.UUID, model, _ string,
 ) (sqlc.SkillVocabUploadItem, error) {
 	r.enrichVerified[id] = model
-	return sqlc.SkillVocabUploadItem{ID: id, Status: "verified"}, nil
+	return sqlc.SkillVocabUploadItem{ID: id, Status: statusVerified}, nil
 }
 
 func (r *uploadRepo) MarkQueuedUploadItemRejected(
@@ -236,8 +263,12 @@ func accepted(t *testing.T) string {
 		keyValid: true, "lemma": wordLeisure, "part_of_speech": "noun",
 		"cefr_level": "B1", "definition": "Free time.",
 		"meaning_matches": true,
-		"examples": []string{
-			"He reads at leisure.", "She has little leisure.", "Leisure time is short.",
+		// Objects, not strings: v4 asks for each sentence with its Vietnamese,
+		// and the flashcard's reveal button has nothing to show without it.
+		"examples": []map[string]string{
+			{keySentence: "He reads at leisure.", keySentenceVi: "Anh ấy đọc lúc rảnh."},
+			{keySentence: "She has little leisure.", keySentenceVi: "Cô ấy có ít thời gian rảnh."},
+			{keySentence: "Leisure time is short.", keySentenceVi: "Thời gian rảnh thì ngắn."},
 		},
 	})
 	require.NoError(t, err)
@@ -705,7 +736,9 @@ func TestVerify_AWordPastedWithNoMeaningStillGetsVietnamese(t *testing.T) {
 		keyValid: true, "reason": "", keyLemma: "time", keyPartOfSpeech: posNoun,
 		keyCEFRLevel: "A1", keyDefinition: "The indefinite continued progress of existence.",
 		keyDefinitionVi: "thời gian", keyMeaningMatches: true,
-		keyExamples: []string{"We do not have much time."},
+		keyExamples: []map[string]string{
+			{keySentence: "We do not have much time.", keySentenceVi: "Chúng ta không có nhiều thời gian."},
+		},
 	}
 	body, err := json.Marshal(reply)
 	require.NoError(t, err)
@@ -724,12 +757,15 @@ func TestVerify_TheLearnersOwnWordingWinsOverTheModels(t *testing.T) {
 	// gloss is the fallback, not the correction.
 	repo := newUploadRepo(item(wordBook, "quyển sách của tôi"))
 	dict := &stubDictionary{entries: map[string]repository.DictionaryEntry{
-		wordBook: {Lemma: "book", PartOfSpeech: posNoun, Definition: "A written work."},
+		wordBook: {Lemma: wordBook, PartOfSpeech: posNoun, Definition: defWrittenWork},
 	}}
 	reply := map[string]any{
-		keyValid: true, keyLemma: "book", keyPartOfSpeech: posNoun, keyCEFRLevel: "A1",
-		keyDefinition: "A written work.", keyDefinitionVi: "sách",
-		keyMeaningMatches: true, keyExamples: []string{"She read the book."},
+		keyValid: true, keyLemma: wordBook, keyPartOfSpeech: posNoun, keyCEFRLevel: "A1",
+		keyDefinition: defWrittenWork, keyDefinitionVi: "sách",
+		keyMeaningMatches: true,
+		keyExamples: []map[string]string{
+			{keySentence: "She read the book.", keySentenceVi: "Cô ấy đã đọc quyển sách."},
+		},
 	}
 	body, err := json.Marshal(reply)
 	require.NoError(t, err)
@@ -741,4 +777,133 @@ func TestVerify_TheLearnersOwnWordingWinsOverTheModels(t *testing.T) {
 	var published map[string]any
 	require.NoError(t, json.Unmarshal(author.published[0].Body, &published))
 	assert.Equal(t, "quyển sách của tôi", published["definition_vi"])
+}
+
+func TestVerify_ModelTopicCreatesTopicDeck(t *testing.T) {
+	entry := item(wordApple, "")
+	repo := newUploadRepo(entry)
+	dict := &stubDictionary{entries: map[string]repository.DictionaryEntry{
+		wordApple: {Lemma: wordApple, PartOfSpeech: posNoun, Definition: "A round fruit."},
+	}}
+	reply := map[string]any{
+		keyValid: true, keyLemma: wordApple, keyPartOfSpeech: posNoun, keyCEFRLevel: "A1",
+		keyDefinition: "A round fruit.", keyDefinitionVi: "quả táo",
+		"topic": "food", keyMeaningMatches: true,
+		keyExamples: []map[string]string{
+			{keySentence: "She ate an apple.", keySentenceVi: "Cô ấy đã ăn một quả táo."},
+		},
+	}
+	body, err := json.Marshal(reply)
+	require.NoError(t, err)
+
+	uploads, _ := newPipeline(t, repo, dict, &stubAI{reply: string(body)})
+	require.NoError(t, uploads.VerifyPending(context.Background()))
+
+	// Assert that a deck with slug "my-words-food" was created
+	foundFoodDeck := false
+	for _, deck := range repo.decks {
+		if deck.Slug == "my-words-food" {
+			foundFoodDeck = true
+			assert.Equal(t, "My words: Food", deck.Name)
+			break
+		}
+	}
+	assert.True(t, foundFoodDeck, "deck my-words-food should be created for food words")
+}
+
+func TestUpload_GetIncludesEnrichedDetails(t *testing.T) {
+	uploadID := uuid.New()
+	userID := uuid.New()
+	def := "A written work."
+	defVi := "sách"
+	topic := "study"
+	type exItem struct {
+		Sentence string `json:"sentence"`
+	}
+	exBytes, _ := json.Marshal([]exItem{{Sentence: "She read a book."}})
+
+	repo := newUploadRepo()
+	repo.uploads[uploadID] = sqlc.SkillVocabUpload{
+		ID:        uploadID,
+		UserID:    userID,
+		ItemCount: 1,
+		Status:    "completed",
+	}
+	repo.uploadItems[uploadID] = []sqlc.ListUploadItemsRow{
+		{
+			ID:           uuid.New(),
+			UploadID:     uploadID,
+			UserID:       userID,
+			Term:         "book",
+			Status:       "verified",
+			Definition:   &def,
+			DefinitionVi: &defVi,
+			Topic:        &topic,
+			Examples:     exBytes,
+		},
+	}
+
+	uploads, _ := newPipeline(t, repo, &stubDictionary{}, &stubAI{})
+	res, err := uploads.Get(context.Background(), userID, uploadID)
+	require.NoError(t, err)
+	require.Len(t, res.Items, 1)
+
+	assert.Equal(t, "book", res.Items[0].Term)
+	assert.Equal(t, def, res.Items[0].Definition)
+	assert.Equal(t, defVi, res.Items[0].DefinitionVi)
+	assert.Equal(t, topic, res.Items[0].Topic)
+	require.Len(t, res.Items[0].Examples, 1)
+	assert.Equal(t, "She read a book.", res.Items[0].Examples[0])
+}
+
+func TestVerify_ANameIsNotAWord(t *testing.T) {
+	// "tyme" is a misspelling of "time" that the free dictionaries carry as a
+	// male given name. It reached a learner's deck with an IPA, five example
+	// sentences and a review card. Refused here rather than left to the model,
+	// because the part of speech is a value we already hold.
+	repo := newUploadRepo(item(wordTyme, ""))
+	dict := &stubDictionary{entries: map[string]repository.DictionaryEntry{
+		wordTyme: {Lemma: wordTyme, PartOfSpeech: posProperNoun, Definition: "A male given name."},
+	}}
+	reply := map[string]any{
+		keyValid: true, keyLemma: wordTyme, keyPartOfSpeech: posProperNoun,
+		keyCEFRLevel: "C1", keyDefinition: "A male given name.",
+		keyDefinitionVi: "tên riêng", keyMeaningMatches: true,
+		keyExamples: []map[string]string{{keySentence: "Tyme arrived.", keySentenceVi: "Tyme đã đến."}},
+	}
+	body, err := json.Marshal(reply)
+	require.NoError(t, err)
+
+	uploads, author := newPipeline(t, repo, dict, &stubAI{reply: string(body)})
+	require.NoError(t, uploads.VerifyPending(context.Background()))
+
+	assert.Contains(t, repo.rejected, repo.pending[0].ID, "a given name is not a vocabulary entry")
+	assert.Empty(t, author.published, "nothing should be published for a name")
+}
+
+func TestVerify_ExampleSentencesCarryTheirTranslation(t *testing.T) {
+	// The flashcard has a reveal button under each sentence, and
+	// domain.ExampleSentence has carried SentenceVi since the table was
+	// written. Until v4 asked for it, every learner-added word gave that
+	// button nothing to show.
+	repo := newUploadRepo(item(wordLeisure, ""))
+	dict := &stubDictionary{entries: map[string]repository.DictionaryEntry{
+		wordLeisure: leisureEntry(),
+	}}
+	uploads, author := newPipeline(t, repo, dict, &stubAI{reply: accepted(t)})
+	require.NoError(t, uploads.VerifyPending(context.Background()))
+
+	require.Len(t, author.published, 1)
+	var published map[string]any
+	require.NoError(t, json.Unmarshal(author.published[0].Body, &published))
+
+	sentences, ok := published["example_sentences"].([]any)
+	require.True(t, ok, "the body must carry example_sentences")
+	require.NotEmpty(t, sentences)
+
+	first, ok := sentences[0].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "He reads at leisure.", first[keySentence])
+	assert.Equal(t, "Anh ấy đọc lúc rảnh.", first[keySentenceVi],
+		"web/src/lib/examples.ts reads sentence_vi; without it the reveal button stays hidden")
 }

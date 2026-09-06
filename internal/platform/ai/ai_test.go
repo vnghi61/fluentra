@@ -55,11 +55,12 @@ func TestRegistry_LoadsTheVersionedTemplate(t *testing.T) {
 	tmpl, err := registry.Get(ai.TaskVerifyVocabulary)
 	require.NoError(t, err)
 
-	// Two, deliberately: v2 asks for the Vietnamese gloss beside the English
-	// definition. Both files ship, and the registry serving the newer one is
-	// what invalidates the answers cached under v1 rather than serving them for
+	// Four, deliberately: v4 refuses a dictionary entry whose only sense is a
+	// proper noun, and asks for each example sentence with its Vietnamese. All
+	// files ship, and the registry serving the newest one is what invalidates
+	// the answers cached under previous versions rather than serving them for
 	// ever. Bumping this number is meant to be a visible act.
-	assert.Equal(t, 2, tmpl.Version)
+	assert.Equal(t, 4, tmpl.Version)
 	assert.True(t, tmpl.JSONOutput, "the task is parsed, not displayed, so the front matter must say so")
 	assert.Equal(t, 2048, tmpl.MaxTokens, "read from the template's front matter, not hard-coded in Go")
 	assert.Zero(t, tmpl.Temperature, "verification must not be creative")

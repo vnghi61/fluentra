@@ -3813,6 +3813,23 @@ export interface components {
             word_sense_id?: string | null;
             /** Format: date-time */
             verified_at?: string | null;
+            /**
+             * @description The definition of the word as determined by dictionary or model.
+             * @example Time when one is not working or occupied; free time.
+             */
+            definition?: string;
+            /**
+             * @description Vietnamese gloss for the word.
+             * @example thời gian rảnh
+             */
+            definition_vi?: string;
+            /**
+             * @description The topic or domain of the word (e.g. food, home, science, work).
+             * @example other
+             */
+            topic?: string;
+            /** @description Example sentences illustrating the word in context. */
+            examples?: string[];
         };
         VocabUploadList: {
             items: components["schemas"]["VocabUpload"][];
@@ -7347,6 +7364,8 @@ export interface operations {
         parameters: {
             query?: {
                 limit?: number;
+                /** @description Filter due cards to a specific deck. When omitted, all due cards are eligible. */
+                deck_id?: string;
             };
             header?: never;
             path?: never;

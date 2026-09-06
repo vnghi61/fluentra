@@ -35,6 +35,23 @@ VocabUploadItem:
       type: string
       format: date-time
       nullable: true
+    definition:
+      type: string
+      description: The definition of the word as determined by dictionary or model.
+      example: Time when one is not working or occupied; free time.
+    definition_vi:
+      type: string
+      description: Vietnamese gloss for the word.
+      example: thời gian rảnh
+    topic:
+      type: string
+      description: The topic or domain of the word (e.g. food, home, science, work).
+      example: other
+    examples:
+      type: array
+      items:
+        type: string
+      description: Example sentences illustrating the word in context.
 
 VocabUpload:
   type: object

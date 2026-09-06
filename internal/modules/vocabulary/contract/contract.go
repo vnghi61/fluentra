@@ -63,7 +63,6 @@ type Reader interface {
 // process at boot — both deliberate, both avoidable.
 func GradedKinds() []string {
 	return []string{
-		"vocabulary_quiz",
 		"vocab_multiple_choice",
 		"vocab_gap_fill",
 		"vocab_flashcard",

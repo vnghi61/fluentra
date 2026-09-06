@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	grammarcontract "github.com/fluentra/fluentra/internal/modules/grammar/contract"
 	"github.com/fluentra/fluentra/internal/modules/user/contract"
 	vocabularycontract "github.com/fluentra/fluentra/internal/modules/vocabulary/contract"
 )
@@ -84,6 +85,9 @@ func TestSeededKindsAreGradable(t *testing.T) {
 	for _, kind := range vocabularycontract.GradedKinds() {
 		gradable[kind] = true
 	}
+	for _, kind := range grammarcontract.GradedKinds() {
+		gradable[kind] = true
+	}
 
 	seeded := make(map[string]bool)
 	for _, unit := range courseSeedData.Units {
@@ -102,13 +106,15 @@ func TestSeededKindsAreGradable(t *testing.T) {
 	// and cannot do, and a kind the runner supports that nothing seeds is a
 	// renderer no one has ever seen work.
 	runnerKinds := map[string]bool{
-		"vocab_multiple_choice": true,
-		"vocab_gap_fill":        true,
-		"vocab_flashcard":       true,
-		"vocab_listen_type":     true,
-		"vocab_match":           true,
-		"vocab_reorder":         true,
-		"vocab_context_choice":  true,
+		"vocab_multiple_choice":      true,
+		"vocab_gap_fill":             true,
+		"vocab_flashcard":            true,
+		"vocab_listen_type":          true,
+		"vocab_match":                true,
+		"vocab_reorder":              true,
+		"vocab_context_choice":       true,
+		"grammar_tense_choice":       true,
+		"grammar_sentence_transform": true,
 	}
 	for kind := range seeded {
 		if !runnerKinds[kind] {
@@ -177,7 +183,7 @@ func assertActivityIsGradable(t *testing.T, lessonTitle string, act seedActivity
 		return
 	}
 
-	if act.Kind != "vocab_multiple_choice" && act.Kind != kindContextChoice {
+	if act.Kind != "vocab_multiple_choice" && act.Kind != kindContextChoice && act.Kind != kindGrammarTenseChoice {
 		return
 	}
 

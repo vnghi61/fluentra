@@ -366,6 +366,7 @@ sql:
       - db/migrations/lesson
       - db/migrations/learning
       - db/migrations/srs
+      - db/migrations/vocabulary
     gen:
       go:
         package: sqlc

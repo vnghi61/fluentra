@@ -70,6 +70,7 @@ func ex(sentence, vietnamese string) seedExample {
 // config keys below are the contract the lesson runner reads.
 const (
 	skillVocabulary = "vocabulary"
+	skillGrammar    = "grammar"
 
 	kindMultipleChoice = "vocab_multiple_choice"
 	kindGapFill        = "vocab_gap_fill"
@@ -79,6 +80,9 @@ const (
 	kindMatch         = "vocab_match"
 	kindReorder       = "vocab_reorder"
 	kindContextChoice = "vocab_context_choice"
+
+	kindGrammarTenseChoice       = "grammar_tense_choice"
+	kindGrammarSentenceTransform = "grammar_sentence_transform"
 
 	cfgOptions         = "options"
 	cfgOptionID        = "id"
@@ -808,93 +812,78 @@ var courseSeedData = seedCourse{
 				},
 				{
 					Position:         4,
-					Title:            "Hobbies, Weekend & Social Life",
-					SkillFocus:       skillVocabulary,
+					Title:            "Hobbies, Weekend & Grammar in Use",
+					SkillFocus:       skillGrammar,
 					EstimatedMinutes: 20,
 					Activities: []seedActivity{
 						{
 							Position: 1,
-							Kind:     kindMultipleChoice,
+							Kind:     kindGrammarTenseChoice,
 							Config: map[string]any{
-								bodyKeyPrompt: "Which word describes having or showing imagination and original ideas?",
+								bodyKeyPrompt: "Choose the correct verb form for a regular weekend habit:",
 								cfgOptions: []map[string]string{
-									{cfgOptionID: "opt_creative", cfgOptionText: "Creative"},
-									{cfgOptionID: "opt_curious", cfgOptionText: "Curious"},
-									{cfgOptionID: "opt_formal", cfgOptionText: "Formal"},
-									{cfgOptionID: "opt_elderly", cfgOptionText: "Elderly"},
+									option("opt_goes", "goes"),
+									option("opt_went", "went"),
+									option("opt_had_gone", "had gone"),
+									option("opt_going", "going"),
 								},
-								cfgCorrectOptionID: "opt_creative",
+								cfgCorrectOptionID: "opt_goes",
 							},
 							Body: map[string]any{
-								bodyKeyPrompt:        "Which word describes having or showing imagination and original ideas?",
-								bodyKeyCorrectAnswer: "opt_creative",
-								bodyKeyAcceptable:    acceptable("creative", "opt_creative"),
+								bodyKeyPrompt:        "Choose the correct verb form for a regular weekend habit:",
+								bodyKeyCorrectAnswer: "opt_goes",
+								cfgCorrectOptionID:   "opt_goes",
+								bodyKeyAcceptable:    acceptable("opt_goes", "goes"),
 							},
 						},
 						{
 							Position: 2,
-							Kind:     kindGapFill,
+							Kind:     kindGrammarSentenceTransform,
 							Config: map[string]any{
-								bodyKeyPrompt:     "Fill in the blank:",
-								cfgSentenceBefore: "Photography and painting are wonderful",
-								cfgSentenceAfter:  "hobbies that allow people to express themselves.",
-								cfgExpectedAnswer: "creative",
+								bodyKeyPrompt:     "Transform the sentence using the present perfect continuous form:",
+								cfgSentenceBefore: "She started painting at 9 AM and is still painting now. She",
+								cfgSentenceAfter:  "since 9 AM.",
+								cfgExpectedAnswer: "has been painting",
 							},
 							Body: map[string]any{
-								bodyKeyPrompt:        "Fill in the blank:",
-								bodyKeyCorrectAnswer: "creative",
-								bodyKeyAcceptable:    acceptable("creative"),
+								bodyKeyPrompt:        "Transform the sentence using the present perfect continuous form:",
+								bodyKeyCorrectAnswer: "has been painting",
+								bodyKeyAcceptable:    acceptable("has been painting", "has been painting."),
 							},
 						},
 						{
 							Position: 3,
-							Kind:     kindFlashcard,
+							Kind:     kindGrammarTenseChoice,
 							Config: map[string]any{
-								bodyKeyPrompt:      "Flashcard Review:",
-								cfgTargetWord:      "Leisure",
-								cfgDefinitionVI:    "Khoảng thời gian không phải làm việc; thời gian rảnh.",
-								cfgIPA:             "/ˈleʒ.ər/",
-								cfgDefinition:      "Time when one is not working or occupied; free time.",
-								cfgExampleSentence: "He enjoys reading science fiction novels in his leisure time.",
-								cfgExampleSentences: []seedExample{
-									ex("He enjoys reading science fiction novels in his leisure time.",
-										"Anh ấy thích đọc tiểu thuyết khoa học viễn tưởng lúc rảnh rỗi."),
-									ex("The hotel offers a range of leisure activities for families.",
-										"Khách sạn có nhiều hoạt động giải trí dành cho gia đình."),
-									ex("She spends her leisure hours painting in the garden.",
-										"Cô ấy dành những giờ rảnh để vẽ trong vườn."),
-									ex("There is little leisure in his week between work and study.",
-										"Tuần của anh ấy còn rất ít thời gian rảnh giữa việc làm và việc học."),
-									ex("The town built a new leisure centre near the river.",
-										"Thị trấn xây một trung tâm giải trí mới gần sông."),
+								bodyKeyPrompt: "Select the sentence with the correct past continuous tense:",
+								cfgOptions: []map[string]string{
+									option("opt_was_reading", "He was reading a book when the phone rang."),
+									option("opt_is_reading", "He is reading a book when the phone rang."),
+									option("opt_readed", "He readed a book when the phone rang."),
+									option("opt_has_read", "He has read a book when the phone rang."),
 								},
+								cfgCorrectOptionID: "opt_was_reading",
 							},
 							Body: map[string]any{
-								bodyKeyPrompt:        "Flashcard review for leisure",
-								bodyKeyCorrectAnswer: "leisure",
-								bodyKeyAcceptable:    acceptable("leisure", "good"),
+								bodyKeyPrompt:        "Select the sentence with the correct past continuous tense:",
+								bodyKeyCorrectAnswer: "opt_was_reading",
+								cfgCorrectOptionID:   "opt_was_reading",
+								bodyKeyAcceptable:    acceptable("opt_was_reading", "was reading"),
 							},
 						},
 						{
 							Position: 4,
-							Kind:     kindContextChoice,
+							Kind:     kindGrammarSentenceTransform,
 							Config: map[string]any{
-								bodyKeyPrompt: "What does the word mean in this sentence?",
-								cfgSentence:   "He spends his leisure time restoring old bicycles.",
-								cfgTargetWord: "leisure",
-								cfgOptions: []map[string]string{
-									option("opt_free_time", "Time when you are not working"),
-									option("opt_paid_work", "Time you are paid to work"),
-									option("opt_travel", "Time spent travelling for business"),
-									option("opt_study", "Time set aside for formal study"),
-								},
+								bodyKeyPrompt:     "Rewrite the sentence in the passive voice:",
+								cfgSentenceBefore: "Many creative people practice photography. Photography",
+								cfgSentenceAfter:  "by many creative people.",
+								cfgExpectedAnswer: "is practiced",
 							},
 							Body: map[string]any{
-								bodyKeyPrompt:        "Meaning of leisure in context",
-								bodyKeyCorrectAnswer: "opt_free_time",
-								cfgCorrectOptionID:   "opt_free_time",
-								bodyKeyAcceptable:    acceptable("opt_free_time", "leisure"),
-								bodyKeyWordLemmas:    []string{"leisure"},
+								bodyKeyPrompt:        "Rewrite the sentence in the passive voice:",
+								bodyKeyCorrectAnswer: "is practiced",
+								bodyKeyAcceptable:    acceptable("is practiced", "is practiced.", "is practised", "is practised."),
 							},
 						},
 					},

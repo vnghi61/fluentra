@@ -3534,6 +3534,13 @@ paths:
             type: integer
             default: 20
             maximum: 100
+        - name: deck_id
+          in: query
+          required: false
+          description: Filter due cards to a specific deck. When omitted, all due cards are eligible.
+          schema:
+            type: string
+            format: uuid
       responses:
         '200':
           description: Active review session cards.

@@ -46,3 +46,21 @@ _Nothing deferred._
 - Morphological analyser
 - Image mnemonics
 <!-- END GENERATED: todo-future -->
+
+## Done in work order 8
+
+- [x] **A topic on every learner-added word.** `vocab_verify` asks for one from a closed
+      list, `normaliseTopic` refuses anything outside it, and the sense carries it in
+      `skill.word_senses.domain` — a column that had existed since `1700000230` with nothing
+      writing to it. The learner's own choice is their deck membership: `my-words-<topic>`
+      rather than the single `my-words` deck every word used to land in.
+- [x] **The upload list shows what was decided, not what was typed.** `VocabUploadItem` now
+      carries the definition, the Vietnamese gloss and the examples, so the screen stops
+      repeating the learner's own note back at them.
+- [x] **`vocabulary_quiz` dropped from `GradedKinds()`.** It was declared and seeded by
+      nothing, and the seed's bidirectional check compares the seed against the runner, so
+      nothing could ever have caught it.
+
+The Phase 2 boxes above are unticked because docgen renders every generated item that way —
+words, senses, decks, dictionary lookup and the four graders all shipped in Phase 2. Read the
+code for status, not the box (`phase-3-next-steps.md` §4).

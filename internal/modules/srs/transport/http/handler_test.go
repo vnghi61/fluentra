@@ -54,6 +54,12 @@ func (f *fakeService) DueCards(
 	return nil, nil
 }
 
+func (f *fakeService) DueCardsByDeck(
+	ctx context.Context, userID uuid.UUID, limit int32, _ *uuid.UUID,
+) ([]contract.ReviewCardSummary, error) {
+	return f.DueCards(ctx, userID, limit)
+}
+
 func (f *fakeService) AnswerCard(
 	ctx context.Context, userID, cardID uuid.UUID, grade string, elapsedMs int) (service.AnswerResult, error,
 ) {

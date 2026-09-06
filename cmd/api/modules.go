@@ -19,6 +19,8 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/auth/service/oauth/google"
 	"github.com/fluentra/fluentra/internal/modules/content"
 	"github.com/fluentra/fluentra/internal/modules/gamification"
+	"github.com/fluentra/fluentra/internal/modules/grammar"
+	grammarcontract "github.com/fluentra/fluentra/internal/modules/grammar/contract"
 	"github.com/fluentra/fluentra/internal/modules/learning"
 	learningcontract "github.com/fluentra/fluentra/internal/modules/learning/contract"
 	learningdomain "github.com/fluentra/fluentra/internal/modules/learning/domain"
@@ -54,6 +56,7 @@ type identity struct {
 	learning   *learning.Module
 	srs        *srs.Module
 	vocabulary *vocabulary.Module
+	grammar    *grammar.Module
 	//nolint:unused // read through Routes and by the dashboard's Reader.
 	gamification *gamification.Module
 
@@ -248,6 +251,10 @@ func newIdentity(deps identityDeps) *identity {
 		Users: assembled.user.Reader(),
 	})
 
+	assembled.grammar = grammar.New(grammar.Deps{
+		Content: assembled.content.Reader(),
+	})
+
 	assembled.learning = learning.New(learning.Deps{
 		Pool:          deps.Pool,
 		Caches:        newLearningCaches(deps.Redis),
@@ -255,9 +262,9 @@ func newIdentity(deps identityDeps) *identity {
 		Lesson:        assembled.lesson.Reader(),
 		SRSDue:        assembled.srs.QueueReader(),
 		SRSCards:      assembled.srs.CardWriter(),
-		Graders:       vocabularyGraders(assembled.vocabulary.Grader()),
+		Graders:       buildGraders(assembled.vocabulary.Grader(), assembled.grammar.Grader()),
 		Metrics:       deps.Instruments,
-		DeclaredKinds: vocabularycontract.GradedKinds(),
+		DeclaredKinds: buildDeclaredKinds(),
 		Env:           deps.Env,
 		AI:            deps.AI,
 	})
@@ -265,17 +272,54 @@ func newIdentity(deps identityDeps) *identity {
 	return assembled
 }
 
+// buildDeclaredKinds returns all activity kinds declared across skill modules.
+func buildDeclaredKinds() []string {
+	kinds := make([]string, 0, len(vocabularycontract.GradedKinds())+len(grammarcontract.GradedKinds()))
+	kinds = append(kinds, vocabularycontract.GradedKinds()...)
+	kinds = append(kinds, grammarcontract.GradedKinds()...)
+	return kinds
+}
+
+// buildGraders combines graders from skill modules.
+func buildGraders(
+	vocabGrader learningcontract.ExerciseGrader,
+	grammarGrader learningcontract.ExerciseGrader,
+) map[string]learningcontract.ExerciseGrader {
+	return mergeGraders(
+		vocabularyGraders(vocabGrader),
+		grammarGraders(grammarGrader),
+	)
+}
+
 // vocabularyGraders registers one grader under every kind it claims.
-//
-// The map and DeclaredKinds are built from the same list on purpose: a kind
-// declared with no grader behind it fails the process at boot, and building the
-// two from one source is what makes that impossible to do by accident.
 func vocabularyGraders(grader learningcontract.ExerciseGrader) map[string]learningcontract.ExerciseGrader {
 	graders := make(map[string]learningcontract.ExerciseGrader, len(vocabularycontract.GradedKinds()))
 	for _, kind := range vocabularycontract.GradedKinds() {
 		graders[kind] = grader
 	}
 	return graders
+}
+
+func grammarGraders(grader learningcontract.ExerciseGrader) map[string]learningcontract.ExerciseGrader {
+	graders := make(map[string]learningcontract.ExerciseGrader, len(grammarcontract.GradedKinds()))
+	for _, kind := range grammarcontract.GradedKinds() {
+		graders[kind] = grader
+	}
+	return graders
+}
+
+func mergeGraders(maps ...map[string]learningcontract.ExerciseGrader) map[string]learningcontract.ExerciseGrader {
+	total := 0
+	for _, m := range maps {
+		total += len(m)
+	}
+	merged := make(map[string]learningcontract.ExerciseGrader, total)
+	for _, m := range maps {
+		for k, v := range m {
+			merged[k] = v
+		}
+	}
+	return merged
 }
 
 func newSRSCaches(client redis.Cmdable) srsservice.SRSCaches {

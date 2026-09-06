@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, useSearch } from "@tanstack/react-router";
 import { AlertCircle, ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -36,7 +36,17 @@ const noGrades: GradeCounts = { again: 0, hard: 0, good: 0, easy: 0 };
 export function ReviewPage(): React.JSX.Element {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { data: sessionData, isLoading, isError, refetch } = useReviewSession();
+  const searchParams: Record<string, unknown> = useSearch({ strict: false });
+  const deckId =
+    typeof searchParams.deck_id === "string" && searchParams.deck_id !== ""
+      ? searchParams.deck_id
+      : undefined;
+  const {
+    data: sessionData,
+    isLoading,
+    isError,
+    refetch,
+  } = useReviewSession(deckId);
 
   // `cards` is required in ReviewSessionResponse; it is absent here only while the
   // query resolves, which the loading branch below handles. There is deliberately

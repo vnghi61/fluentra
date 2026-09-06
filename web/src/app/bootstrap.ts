@@ -37,7 +37,20 @@ export async function initApp(): Promise<void> {
     // A refresh that genuinely fails means there is no session to resume. That
     // is the ordinary state for a first-time visitor, and it is now also the
     // state a signed-out guest browses in.
-    useAuthStore.getState().clearAuth();
+    //
+    // Only while nothing has signed in meanwhile. This request outlives the
+    // paint budget above, so on a cold host it is still in flight while the
+    // learner reaches the login form and signs in — and when it finally fails,
+    // clearing unconditionally threw away the session they had just created.
+    // The symptom was a sign-in that appeared to do nothing until the page was
+    // reloaded, intermittently, because it only happens when the boot refresh
+    // loses the race and then fails.
+    //
+    // `idle` is exactly "the boot refresh has not resolved either way". Signing
+    // in sets `authenticated`, and this must not touch that.
+    if (useAuthStore.getState().status === "idle") {
+      useAuthStore.getState().clearAuth();
+    }
   });
 
   await Promise.race([

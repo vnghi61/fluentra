@@ -7405,6 +7405,18 @@ func NewGetReviewSessionRequest(server string, params *GetReviewSessionParams) (
 
 		}
 
+		if params.DeckId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "deck_id", *params.DeckId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if encoded := queryValues.Encode(); encoded != "" {
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}

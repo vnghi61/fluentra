@@ -30,9 +30,16 @@ ORDER BY u.created_at DESC
 LIMIT $2;
 
 -- name: ListUploadItems :many
-SELECT * FROM skill.vocab_upload_items
-WHERE upload_id = $1 AND user_id = $2
-ORDER BY created_at, term;
+SELECT
+    i.*,
+    s.definition,
+    s.definition_vi,
+    s.domain AS topic,
+    s.examples
+FROM skill.vocab_upload_items i
+LEFT JOIN skill.word_senses s ON s.id = i.word_sense_id
+WHERE i.upload_id = $1 AND i.user_id = $2
+ORDER BY i.created_at, i.term;
 
 -- name: ClaimPendingUploadItems :many
 -- The verification job's input.

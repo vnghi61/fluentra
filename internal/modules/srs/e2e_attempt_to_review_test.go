@@ -123,6 +123,12 @@ func (f *fakeSRSRepo) ListDueCards(
 	return result, nil
 }
 
+func (f *fakeSRSRepo) ListDueCardsByDeck(
+	ctx context.Context, userID, _ uuid.UUID, dueBefore time.Time, limit int32,
+) ([]sqlc.LearnReviewCard, error) {
+	return f.ListDueCards(ctx, userID, dueBefore, limit)
+}
+
 func (f *fakeSRSRepo) CountDueCards(_ context.Context, userID uuid.UUID, dueBefore time.Time) (int64, error) {
 	var count int64
 	for _, card := range f.cards {

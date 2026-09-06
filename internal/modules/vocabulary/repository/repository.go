@@ -43,7 +43,7 @@ type Repository interface {
 	InsertUploadItem(ctx context.Context, arg sqlc.InsertUploadItemParams) (sqlc.SkillVocabUploadItem, error)
 	GetUpload(ctx context.Context, id, userID uuid.UUID) (sqlc.SkillVocabUpload, error)
 	ListUploadsByUser(ctx context.Context, userID uuid.UUID, limit int32) ([]sqlc.ListUploadsByUserRow, error)
-	ListUploadItems(ctx context.Context, uploadID, userID uuid.UUID) ([]sqlc.SkillVocabUploadItem, error)
+	ListUploadItems(ctx context.Context, uploadID, userID uuid.UUID) ([]sqlc.ListUploadItemsRow, error)
 	ClaimPendingUploadItems(ctx context.Context, maxAttempts, limit int32) ([]sqlc.SkillVocabUploadItem, error)
 	ClaimPendingUploadItemsByUploadID(
 		ctx context.Context, uploadID uuid.UUID, maxAttempts, limit int32,
@@ -247,7 +247,7 @@ func (r *pgxRepository) ListUploadsByUser(
 
 func (r *pgxRepository) ListUploadItems(
 	ctx context.Context, uploadID, userID uuid.UUID,
-) ([]sqlc.SkillVocabUploadItem, error) {
+) ([]sqlc.ListUploadItemsRow, error) {
 	return r.q.ListUploadItems(ctx, sqlc.ListUploadItemsParams{UploadID: uploadID, UserID: userID})
 }
 

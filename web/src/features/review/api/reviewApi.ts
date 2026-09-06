@@ -16,9 +16,12 @@ export type ForecastResponse = components["schemas"]["ForecastResponse"];
 export type ForecastItem = components["schemas"]["ForecastItem"];
 
 export const reviewApi = {
-  /** Fetch the current review session card queue */
-  async getSession(): Promise<ReviewSessionResponse> {
-    return apiFetch<ReviewSessionResponse>("/api/v1/reviews/session");
+  /** Fetch the current review session card queue, optionally filtered by deck */
+  async getSession(deckId?: string): Promise<ReviewSessionResponse> {
+    const url = deckId
+      ? `/api/v1/reviews/session?deck_id=${encodeURIComponent(deckId)}`
+      : "/api/v1/reviews/session";
+    return apiFetch<ReviewSessionResponse>(url);
   },
 
   /** Fetch the count of due cards */
@@ -51,10 +54,10 @@ export const reviewApi = {
   },
 };
 
-export function useReviewSession() {
+export function useReviewSession(deckId?: string) {
   return useQuery({
-    queryKey: reviewKeys.session(),
-    queryFn: () => reviewApi.getSession(),
+    queryKey: reviewKeys.session(deckId),
+    queryFn: () => reviewApi.getSession(deckId),
   });
 }
 

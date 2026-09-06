@@ -17,13 +17,7 @@ import { Button } from "@/components/ui/button";
 export const AdminAIUsage: React.FC = () => {
   const { t } = useTranslation();
 
-  const {
-    data,
-    isLoading,
-    isFetching,
-    error,
-    refetch,
-  } = useQuery({
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["admin", "ai-usage"],
     queryFn: () => adminApi.getAIUsage(),
   });

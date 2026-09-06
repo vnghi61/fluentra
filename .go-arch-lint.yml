@@ -241,7 +241,8 @@ components:
   m_vocabulary_service:    { in: modules/vocabulary/service }
   m_vocabulary_job:        { in: modules/vocabulary/job }
   m_vocabulary_http:       { in: modules/vocabulary/transport/http }
-  m_grammar:       { in: modules/grammar/** }
+  m_grammar:         { in: modules/grammar }
+  m_grammar_service: { in: modules/grammar/service }
   m_reading:       { in: modules/reading/** }
   m_listening:     { in: modules/listening/** }
   m_speaking:      { in: modules/speaking/** }
@@ -423,6 +424,7 @@ deps:
   m_learning:            { mayDependOn: [m_learning_domain, m_learning_repository, m_learning_service, m_learning_http, m_learning_job, c_learning, c_lesson, c_content, c_srs, g_learning, p_cache, p_job, p_telemetry, p_ai] }
   c_srs:           { mayDependOn: [c_learning] }
   c_vocabulary:    { mayDependOn: [c_learning] }
+  c_grammar:       { mayDependOn: [c_learning] }
   m_srs_domain:     { mayDependOn: [c_srs] }
   m_srs_repository: { mayDependOn: [m_srs_domain, c_srs, g_srs] }
   m_srs_service:    { mayDependOn: [m_srs_domain, m_srs_repository, c_srs, c_user, c_content, c_learning, g_srs, p_cache, p_job, p_telemetry] }
@@ -446,7 +448,8 @@ deps:
   # rather than declaring it.
   m_vocabulary_job:        { mayDependOn: [m_vocabulary_domain, m_vocabulary_repository, m_vocabulary_service, c_vocabulary, p_job, p_ai, p_telemetry], anyVendorDeps: true }
   m_vocabulary:            { mayDependOn: [m_vocabulary_domain, m_vocabulary_repository, m_vocabulary_service, m_vocabulary_job, m_vocabulary_http, c_vocabulary, c_content, c_lesson, c_srs, c_learning, g_vocabulary, p_cache, p_job, p_media, p_ai, p_search, p_telemetry] }
-  m_grammar:      { mayDependOn: [p_cache, p_ai, p_telemetry, c_content, c_srs, c_learning] }
+  m_grammar_service: { mayDependOn: [c_grammar, c_content, c_srs, c_learning, p_cache, p_ai, p_telemetry] }
+  m_grammar:         { mayDependOn: [m_grammar_service, c_grammar, c_content, c_srs, c_learning, p_cache, p_ai, p_telemetry] }
   m_reading:      { mayDependOn: [p_cache, p_telemetry, c_content, c_questionbank, c_vocabulary, c_learning] }
   m_listening:    { mayDependOn: [p_cache, p_media, p_storage, p_telemetry, c_content, c_questionbank, c_learning] }
   m_speaking:     { mayDependOn: [p_media, p_ai, p_storage, p_job, p_telemetry, c_content, c_learning] }
