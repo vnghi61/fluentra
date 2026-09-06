@@ -32,6 +32,7 @@ agent knows what is already handled and what is deliberately deferred.
 
 ## Phase 3
 
+- [x] Work Order 8: Deck-by-deck review sessions (`GET /reviews/session?deck_id=...`) via `ListDueCardsByDeck`
 - [ ] Workload load-balancing across days
 - [ ] Heat map
 - [ ] `review.due_soon` reminder job

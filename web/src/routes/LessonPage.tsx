@@ -171,7 +171,7 @@ export function LessonPage(): React.JSX.Element {
   // looking around should not be asked again on the next lesson's last screen.
   const [savePromptDismissed, setSavePromptDismissed] = useState(false);
   const [isExitDialogOpen, setIsExitDialogOpen] = useState(false);
-  const [startTime] = useState(() => Date.now());
+  const [startTime, setStartTime] = useState(() => Date.now());
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   // `activities` is required on the lesson response; it is absent here only
@@ -409,6 +409,8 @@ export function LessonPage(): React.JSX.Element {
             // the lesson on is not the one activity 1 is about to open.
             setCurrentAttemptId(null);
             setIsCompleted(false);
+            setStartTime(Date.now());
+            setElapsedSeconds(0);
           }}
         />
       </>
@@ -430,13 +432,13 @@ export function LessonPage(): React.JSX.Element {
   // Everything else is ActivityUnavailable — there is no default question,
   // because a default question is somebody else's question.
   const canRenderMultipleChoice =
-    kind === "vocab_multiple_choice" &&
+    (kind === "vocab_multiple_choice" || kind === "grammar_tense_choice") &&
     typeof mcConfig.prompt === "string" &&
     Array.isArray(mcConfig.options) &&
     mcConfig.options.length > 0;
 
   const canRenderGapFill =
-    kind === "vocab_gap_fill" &&
+    (kind === "vocab_gap_fill" || kind === "grammar_sentence_transform") &&
     typeof gapConfig.expected_answer === "string" &&
     gapConfig.expected_answer !== "";
 

@@ -264,7 +264,9 @@ describe("ExerciseFeedback with Answer Explanation", () => {
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Bởi vì 'option_b' phù hợp với ngữ cảnh thời gian rảnh."),
+      screen.getByText(
+        "Bởi vì 'option_b' phù hợp với ngữ cảnh thời gian rảnh.",
+      ),
     ).toBeInTheDocument();
     expect(screen.getByText("EN")).toBeInTheDocument();
     expect(screen.getByText("VI")).toBeInTheDocument();
@@ -277,4 +279,3 @@ describe("ExerciseFeedback with Answer Explanation", () => {
     expect(screen.queryByText("VI")).not.toBeInTheDocument();
   });
 });
-

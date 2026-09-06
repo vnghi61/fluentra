@@ -21,15 +21,20 @@ agent knows what is already handled and what is deliberately deferred.
 <!-- BEGIN GENERATED: todo -->
 ## Phase 2
 
-- [ ] Words, senses, relations, decks and learner state
-- [ ] Dictionary lookup and search
-- [ ] Deck CRUD with entitlement limits
-- [ ] Recognition, recall, spelling and cloze graders
-- [ ] Review item production feeding `srs`
+- [x] Words, senses, relations, decks and learner state
+- [x] Dictionary lookup and search
+- [x] Deck CRUD with entitlement limits
+- [x] Recognition, recall, spelling and cloze graders
+- [x] Review item production feeding `srs`
 - [ ] TTS pronunciation pre-generation
 - [ ] Audio URL resolution: `content.Reader` exposes no media-asset lookup, so `audio_url` is null. It needs a `c_content` method returning a playable link for a `content.media_assets` object key; do not format a URL in this module
 - [ ] Seed audio: the 200 senses P11.1 authors carry IPA, definitions and examples but no audio, because there is nothing to point `audio_asset_id` at until the lookup above exists. P11.1's acceptance asks for audio that resolves, and it is the one part of that task still open
 - [ ] Seed dictionary of 2,000 A1–B1 senses
+
+## Phase 3
+
+- [x] Work Order 8: AI topic assignment (`vocab_verify.v3`), domain storage, topic decks `my-words-<topic>`, rich upload items with definitions/glosses/examples
+- [x] Work Order 8: Dropped obsolete `vocabulary_quiz` from `contract.GradedKinds()`
 <!-- END GENERATED: todo -->
 
 ## Deferred (deliberately not doing yet)

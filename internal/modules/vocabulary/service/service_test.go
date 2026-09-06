@@ -18,7 +18,10 @@ import (
 	"github.com/fluentra/fluentra/internal/shared/clock"
 )
 
-const statusQueued = "queued"
+const (
+	statusQueued   = "queued"
+	statusVerified = "verified"
+)
 
 type fakeRepo struct {
 	words      map[uuid.UUID]sqlc.SkillWord
@@ -383,7 +386,7 @@ func (f *fakeRepo) ClaimQueuedUploadItems(
 func (f *fakeRepo) MarkQueuedUploadItemVerified(
 	_ context.Context, id uuid.UUID, _, _ string,
 ) (sqlc.SkillVocabUploadItem, error) {
-	return sqlc.SkillVocabUploadItem{ID: id, Status: "verified"}, nil
+	return sqlc.SkillVocabUploadItem{ID: id, Status: statusVerified}, nil
 }
 
 func (f *fakeRepo) MarkQueuedUploadItemRejected(
@@ -640,7 +643,7 @@ func (f *fakeRepo) ListUploadsByUser(
 
 func (f *fakeRepo) ListUploadItems(
 	_ context.Context, _, _ uuid.UUID,
-) ([]sqlc.SkillVocabUploadItem, error) {
+) ([]sqlc.ListUploadItemsRow, error) {
 	return nil, nil
 }
 

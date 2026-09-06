@@ -21,6 +21,9 @@ type Repository interface {
 	ListDueCards(
 		ctx context.Context, userID uuid.UUID, dueBefore time.Time, limit int32,
 	) ([]sqlc.LearnReviewCard, error)
+	ListDueCardsByDeck(
+		ctx context.Context, userID, deckID uuid.UUID, dueBefore time.Time, limit int32,
+	) ([]sqlc.LearnReviewCard, error)
 	CountDueCards(ctx context.Context, userID uuid.UUID, dueBefore time.Time) (int64, error)
 	ForecastDueCards(
 		ctx context.Context, userID uuid.UUID, timezone string, until time.Time,
@@ -92,6 +95,17 @@ func (r *pgxRepository) ListDueCards(
 ) ([]sqlc.LearnReviewCard, error) {
 	return r.q.ListDueCards(ctx, sqlc.ListDueCardsParams{
 		UserID: userID,
+		DueAt:  dueBefore,
+		Limit:  limit,
+	})
+}
+
+func (r *pgxRepository) ListDueCardsByDeck(
+	ctx context.Context, userID, deckID uuid.UUID, dueBefore time.Time, limit int32,
+) ([]sqlc.LearnReviewCard, error) {
+	return r.q.ListDueCardsByDeck(ctx, sqlc.ListDueCardsByDeckParams{
+		UserID: userID,
+		DeckID: deckID,
 		DueAt:  dueBefore,
 		Limit:  limit,
 	})

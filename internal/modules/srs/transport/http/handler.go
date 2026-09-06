@@ -5,6 +5,7 @@ import (
 	"context"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -31,6 +32,9 @@ type Guard interface {
 type SRSService interface {
 	DueCount(ctx context.Context, userID uuid.UUID) (int, error)
 	DueCards(ctx context.Context, userID uuid.UUID, limit int32) ([]contract.ReviewCardSummary, error)
+	DueCardsByDeck(
+		ctx context.Context, userID uuid.UUID, limit int32, deckID *uuid.UUID,
+	) ([]contract.ReviewCardSummary, error)
 	AnswerCard(ctx context.Context, userID, cardID uuid.UUID, grade string, elapsedMs int) (service.AnswerResult, error)
 	SuspendCard(ctx context.Context, userID, cardID uuid.UUID) (contract.ReviewCardSummary, error)
 	ResetCard(ctx context.Context, userID, cardID uuid.UUID) (contract.ReviewCardSummary, error)
@@ -82,7 +86,17 @@ func (h *Handler) getReviewSession(w http.ResponseWriter, r *http.Request) {
 		limit = int32(val)
 	}
 
-	cards, err := h.service.DueCards(ctx, actor.UserID, limit)
+	var deckID *uuid.UUID
+	if deckStr := strings.TrimSpace(r.URL.Query().Get("deck_id")); deckStr != "" {
+		parsed, err := uuid.Parse(deckStr)
+		if err != nil {
+			httpx.WriteProblem(w, r, apperr.New(apperr.BadRequest, "INVALID_DECK_ID", "deck_id must be a valid UUID."))
+			return
+		}
+		deckID = &parsed
+	}
+
+	cards, err := h.service.DueCardsByDeck(ctx, actor.UserID, limit, deckID)
 	if err != nil {
 		httpx.WriteProblem(w, r, err)
 		return

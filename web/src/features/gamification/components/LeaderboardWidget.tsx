@@ -198,7 +198,9 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
                     />
                   ) : (
                     <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
-                      {entry.display_name ? entry.display_name.charAt(0).toUpperCase() : "?"}
+                      {entry.display_name
+                        ? entry.display_name.charAt(0).toUpperCase()
+                        : "?"}
                     </div>
                   )}
                   <span className="truncate max-w-[120px] sm:max-w-[180px]">

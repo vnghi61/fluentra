@@ -25,7 +25,7 @@ agent knows what is already handled and what is deliberately deferred.
 - [ ] Rules with examples and common errors
 - [ ] Error tagging consuming writing and speaking events
 - [ ] Weakness profile with decay
-- [ ] Drill types and graders
+- [x] Drill types and graders (`grammar_tense_choice`, `grammar_sentence_transform`, `learning.ExerciseGrader` implementation in WO8)
 - [ ] Grounded `grammar.explain` with a citation check
 - [ ] Seed taxonomy covering A1–B2
 <!-- END GENERATED: todo -->

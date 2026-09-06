@@ -203,6 +203,65 @@ func (q *Queries) ListDueCards(ctx context.Context, arg ListDueCardsParams) ([]L
 	return items, nil
 }
 
+const listDueCardsByDeck = `-- name: ListDueCardsByDeck :many
+SELECT c.id, c.user_id, c.content_version_id, c.skill, c.stability, c.difficulty, c.due_at, c.reps, c.lapses, c.state, c.suspended_at, c.created_at, c.updated_at, c.last_review_at FROM learn.review_cards c
+JOIN skill.word_senses ws ON ws.content_version_id = c.content_version_id
+JOIN skill.deck_items di ON di.word_sense_id = ws.id
+WHERE c.user_id = $1
+  AND di.deck_id = $2
+  AND c.suspended_at IS NULL
+  AND c.due_at <= $3
+ORDER BY c.due_at ASC, c.id ASC
+LIMIT $4
+`
+
+type ListDueCardsByDeckParams struct {
+	UserID uuid.UUID
+	DeckID uuid.UUID
+	DueAt  time.Time
+	Limit  int32
+}
+
+func (q *Queries) ListDueCardsByDeck(ctx context.Context, arg ListDueCardsByDeckParams) ([]LearnReviewCard, error) {
+	rows, err := q.db.Query(ctx, listDueCardsByDeck,
+		arg.UserID,
+		arg.DeckID,
+		arg.DueAt,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []LearnReviewCard
+	for rows.Next() {
+		var i LearnReviewCard
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.ContentVersionID,
+			&i.Skill,
+			&i.Stability,
+			&i.Difficulty,
+			&i.DueAt,
+			&i.Reps,
+			&i.Lapses,
+			&i.State,
+			&i.SuspendedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.LastReviewAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const resetReviewCard = `-- name: ResetReviewCard :one
 UPDATE learn.review_cards SET
     stability = $3,

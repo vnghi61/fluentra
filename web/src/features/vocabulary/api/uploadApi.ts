@@ -8,6 +8,14 @@ import { vocabularyKeys } from "./keys";
 export type VocabUpload = components["schemas"]["VocabUpload"];
 export type VocabUploadItem = components["schemas"]["VocabUploadItem"];
 export type VocabUploadList = components["schemas"]["VocabUploadList"];
+export type Deck = components["schemas"]["Deck"];
+export type DeckListResponse = components["schemas"]["DeckListResponse"];
+
+export const deckApi = {
+  async list(): Promise<DeckListResponse> {
+    return apiFetch<DeckListResponse>("/api/v1/vocabulary/decks");
+  },
+};
 
 export const uploadApi = {
   /** Submit a paste of vocabulary. Returns before anything is checked. */
@@ -78,6 +86,14 @@ export function useUpload(id: string | undefined) {
   });
 }
 
+export function useDecks(enabled: boolean) {
+  return useQuery({
+    queryKey: vocabularyKeys.decks(),
+    queryFn: () => deckApi.list(),
+    enabled,
+  });
+}
+
 /** Submits a paste and refreshes the list it belongs to. */
 export function useSubmitUpload() {
   const queryClient = useQueryClient();
@@ -86,6 +102,9 @@ export function useSubmitUpload() {
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: vocabularyKeys.uploads(),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: vocabularyKeys.decks(),
       });
     },
   });

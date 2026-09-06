@@ -323,9 +323,16 @@ func (q *Queries) InsertUploadItem(ctx context.Context, arg InsertUploadItemPara
 }
 
 const listUploadItems = `-- name: ListUploadItems :many
-SELECT id, upload_id, user_id, term, provided_meaning, status, reason, word_sense_id, verified_by_model, attempts, created_at, verified_at FROM skill.vocab_upload_items
-WHERE upload_id = $1 AND user_id = $2
-ORDER BY created_at, term
+SELECT
+    i.id, i.upload_id, i.user_id, i.term, i.provided_meaning, i.status, i.reason, i.word_sense_id, i.verified_by_model, i.attempts, i.created_at, i.verified_at,
+    s.definition,
+    s.definition_vi,
+    s.domain AS topic,
+    s.examples
+FROM skill.vocab_upload_items i
+LEFT JOIN skill.word_senses s ON s.id = i.word_sense_id
+WHERE i.upload_id = $1 AND i.user_id = $2
+ORDER BY i.created_at, i.term
 `
 
 type ListUploadItemsParams struct {
@@ -333,15 +340,34 @@ type ListUploadItemsParams struct {
 	UserID   uuid.UUID
 }
 
-func (q *Queries) ListUploadItems(ctx context.Context, arg ListUploadItemsParams) ([]SkillVocabUploadItem, error) {
+type ListUploadItemsRow struct {
+	ID              uuid.UUID
+	UploadID        uuid.UUID
+	UserID          uuid.UUID
+	Term            string
+	ProvidedMeaning string
+	Status          string
+	Reason          string
+	WordSenseID     *uuid.UUID
+	VerifiedByModel string
+	Attempts        int32
+	CreatedAt       time.Time
+	VerifiedAt      *time.Time
+	Definition      *string
+	DefinitionVi    *string
+	Topic           *string
+	Examples        []byte
+}
+
+func (q *Queries) ListUploadItems(ctx context.Context, arg ListUploadItemsParams) ([]ListUploadItemsRow, error) {
 	rows, err := q.db.Query(ctx, listUploadItems, arg.UploadID, arg.UserID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []SkillVocabUploadItem
+	var items []ListUploadItemsRow
 	for rows.Next() {
-		var i SkillVocabUploadItem
+		var i ListUploadItemsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.UploadID,
@@ -355,6 +381,10 @@ func (q *Queries) ListUploadItems(ctx context.Context, arg ListUploadItemsParams
 			&i.Attempts,
 			&i.CreatedAt,
 			&i.VerifiedAt,
+			&i.Definition,
+			&i.DefinitionVi,
+			&i.Topic,
+			&i.Examples,
 		); err != nil {
 			return nil, err
 		}

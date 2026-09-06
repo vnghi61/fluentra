@@ -125,36 +125,59 @@ const UploadRow: React.FC<{ upload: VocabUpload }> = ({ upload }) => {
         <div className="border-t border-border-subtle p-4">
           {detail.isLoading && <Skeleton className="h-16 w-full rounded-lg" />}
           {detail.data && (
-            <ul className="space-y-1.5">
-              {(detail.data.items ?? []).map((item) => (
-                <li
-                  key={item.term}
-                  className="flex items-start justify-between gap-3 text-sm"
-                >
-                  <div className="space-y-0.5">
-                    <span className="font-medium text-text">{item.term}</span>
-                    {item.provided_meaning && (
-                      <span className="text-text-muted">
-                        {" "}
-                        — {item.provided_meaning}
-                      </span>
-                    )}
-                    {/* The reason is written for the learner, so it is shown
-                        rather than reduced to a status chip. */}
-                    {item.reason && (
-                      <p className="text-xs text-text-muted">{item.reason}</p>
-                    )}
-                  </div>
-                  <span
-                    className={cn(
-                      "shrink-0 rounded-md border px-2 py-0.5 text-xs font-semibold",
-                      statusStyles[item.status] ?? statusStyles["pending"],
-                    )}
+            <ul className="space-y-3">
+              {(detail.data.items ?? []).map((item) => {
+                const gloss = item.definition_vi || item.provided_meaning;
+                return (
+                  <li
+                    key={item.term}
+                    className="flex items-start justify-between gap-3 text-sm p-2 rounded-lg bg-surface hover:bg-surface-subtle transition-colors"
                   >
-                    {t(`uploads.status.${item.status}`, item.status)}
-                  </span>
-                </li>
-              ))}
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-semibold text-text">
+                          {item.term}
+                        </span>
+                        {gloss && (
+                          <span className="text-text-muted">— {gloss}</span>
+                        )}
+                        {item.topic && (
+                          <span className="inline-block rounded bg-primary/10 border border-primary/20 px-1.5 py-0.5 text-[10px] font-medium text-primary uppercase tracking-wider">
+                            {item.topic}
+                          </span>
+                        )}
+                      </div>
+                      {item.definition && (
+                        <p className="text-xs text-text-muted">
+                          {item.definition}
+                        </p>
+                      )}
+                      {item.examples && item.examples.length > 0 && (
+                        <ul className="mt-1 space-y-0.5 border-l-2 border-border-subtle pl-2 text-xs text-text-muted">
+                          {item.examples.slice(0, 2).map((ex, idx) => (
+                            <li key={idx} className="italic">
+                              “{ex}”
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {/* The reason is written for the learner, so it is shown
+                          rather than reduced to a status chip. */}
+                      {item.reason && (
+                        <p className="text-xs text-text-muted">{item.reason}</p>
+                      )}
+                    </div>
+                    <span
+                      className={cn(
+                        "shrink-0 rounded-md border px-2 py-0.5 text-xs font-semibold",
+                        statusStyles[item.status] ?? statusStyles["pending"],
+                      )}
+                    >
+                      {t(`uploads.status.${item.status}`, item.status)}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>

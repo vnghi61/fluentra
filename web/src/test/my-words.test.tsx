@@ -1,4 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  RouterProvider,
+} from "@tanstack/react-router";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
@@ -11,17 +18,33 @@ import { useAuthStore } from "@/stores/authStore";
 
 import { server } from "./msw-server";
 
-function renderPage() {
+async function renderPage() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  return render(
-    <I18nextProvider i18n={i18n}>
-      <QueryClientProvider client={client}>
-        <MyWordsPage />
-      </QueryClientProvider>
-    </I18nextProvider>,
-  );
+  const rootRoute = createRootRoute();
+  const myWordsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/practice/my-words",
+    component: () => (
+      <I18nextProvider i18n={i18n}>
+        <QueryClientProvider client={client}>
+          <MyWordsPage />
+        </QueryClientProvider>
+      </I18nextProvider>
+    ),
+  });
+  const reviewRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/practice/review",
+    component: () => <div>review session</div>,
+  });
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([myWordsRoute, reviewRoute]),
+    history: createMemoryHistory({ initialEntries: ["/practice/my-words"] }),
+  });
+  await router.load();
+  return render(<RouterProvider router={router} />);
 }
 
 function signIn() {
@@ -44,6 +67,11 @@ describe("MyWordsPage", () => {
     submitted = [];
 
     server.use(
+      http.get("/api/v1/vocabulary/decks", () =>
+        HttpResponse.json({
+          decks: [],
+        }),
+      ),
       http.get("/api/v1/me/vocabulary/uploads", () =>
         HttpResponse.json({
           items: [
@@ -105,7 +133,7 @@ describe("MyWordsPage", () => {
 
   it("counts the words it will actually store, not the lines pasted", async () => {
     const user = userEvent.setup();
-    renderPage();
+    await renderPage();
 
     const box = await screen.findByLabelText(/paste your words/i);
     // Five lines: one duplicate, one page number, one divider.
@@ -122,7 +150,7 @@ describe("MyWordsPage", () => {
   });
 
   it("cannot be submitted with nothing to add", async () => {
-    renderPage();
+    await renderPage();
     const button = await screen.findByRole("button", {
       name: /add these words/i,
     });
@@ -131,7 +159,7 @@ describe("MyWordsPage", () => {
 
   it("sends the paste and clears the box", async () => {
     const user = userEvent.setup();
-    renderPage();
+    await renderPage();
 
     const box = await screen.findByLabelText(/paste your words/i);
     await user.type(box, "leisure - free time{Enter}habit");
@@ -143,7 +171,7 @@ describe("MyWordsPage", () => {
   });
 
   it("shows what became of an earlier upload", async () => {
-    renderPage();
+    await renderPage();
 
     // The counts lead: the question after pasting is "did it work".
     expect(await screen.findByText(/2 added/i)).toBeInTheDocument();
@@ -152,7 +180,7 @@ describe("MyWordsPage", () => {
 
   it("loads the words themselves only once a row is opened", async () => {
     const user = userEvent.setup();
-    renderPage();
+    await renderPage();
 
     expect(screen.queryByText("leisure")).not.toBeInTheDocument();
 

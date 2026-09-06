@@ -58,6 +58,7 @@ type verdict struct {
 	Lemma          string   `json:"lemma"`
 	PartOfSpeech   string   `json:"part_of_speech"`
 	CEFRLevel      string   `json:"cefr_level"`
+	Topic          string   `json:"topic"`
 	Definition     string   `json:"definition"`
 	DefinitionVi   string   `json:"definition_vi"`
 	MeaningMatches bool     `json:"meaning_matches"`
@@ -148,6 +149,10 @@ type UploadItem struct {
 	Reason          string     `json:"reason,omitempty"`
 	WordSenseID     *uuid.UUID `json:"word_sense_id,omitempty"`
 	VerifiedAt      *time.Time `json:"verified_at,omitempty"`
+	Definition      string     `json:"definition,omitempty"`
+	DefinitionVi    string     `json:"definition_vi,omitempty"`
+	Topic           string     `json:"topic,omitempty"`
+	Examples        []string   `json:"examples,omitempty"`
 }
 
 // Submit stores a learner's pasted vocabulary within a transaction and enqueues verification.
@@ -289,6 +294,17 @@ func (u *Uploads) Get(ctx context.Context, userID, uploadID uuid.UUID) (Upload, 
 		case statusQueued:
 			upload.Queued++
 		}
+		var examples []string
+		if len(item.Examples) > 0 {
+			var parsed []domain.ExampleSentence
+			if err := json.Unmarshal(item.Examples, &parsed); err == nil {
+				for _, ex := range parsed {
+					if ex.Sentence != "" {
+						examples = append(examples, ex.Sentence)
+					}
+				}
+			}
+		}
 		upload.Items = append(upload.Items, UploadItem{
 			Term:            item.Term,
 			ProvidedMeaning: item.ProvidedMeaning,
@@ -296,6 +312,10 @@ func (u *Uploads) Get(ctx context.Context, userID, uploadID uuid.UUID) (Upload, 
 			Reason:          item.Reason,
 			WordSenseID:     item.WordSenseID,
 			VerifiedAt:      item.VerifiedAt,
+			Definition:      derefOrEmpty(item.Definition),
+			DefinitionVi:    derefOrEmpty(item.DefinitionVi),
+			Topic:           derefOrEmpty(item.Topic),
+			Examples:        examples,
 		})
 	}
 	return upload, nil
@@ -593,6 +613,12 @@ func (u *Uploads) materialise(
 		return uuid.Nil, fmt.Errorf("publish sense content: %w", err)
 	}
 
+	topic := normaliseTopic(answer.Topic)
+	var domainTopic *string
+	if topic != "" {
+		domainTopic = &topic
+	}
+
 	sense, err := u.service.CreateSense(ctx, domain.WordSense{
 		WordID: word.ID, ContentVersionID: &versionID,
 		Definition: definition,
@@ -601,6 +627,7 @@ func (u *Uploads) materialise(
 		// it is the only Vietnamese a bare word list ever gets -- pasting
 		// "time" with no meaning used to store nothing here at all.
 		DefinitionVi: nilIfEmpty(firstNonEmpty(item.ProvidedMeaning, answer.DefinitionVi)),
+		Domain:       domainTopic,
 		Examples:     toDomainExamples(examples),
 	})
 	if err != nil {
@@ -610,7 +637,7 @@ func (u *Uploads) materialise(
 	// Their own deck, and their own review card. Both best-effort: the word is
 	// verified either way, and losing a deck link is recoverable where losing
 	// the verification is not.
-	if deckID, err := u.ensureDeck(ctx, item.UserID, item.UploadID); err == nil {
+	if deckID, err := u.ensureDeck(ctx, item.UserID, item.UploadID, topic); err == nil {
 		if err := u.service.AddWordToDeck(ctx, deckID, sense.ID); err != nil {
 			slog.WarnContext(ctx, "could not add verified word to deck",
 				"term", item.Term, "error", err)
@@ -631,20 +658,28 @@ func (u *Uploads) materialise(
 }
 
 // ensureDeck finds or creates the learner's own deck and links it to the upload.
-func (u *Uploads) ensureDeck(ctx context.Context, userID, uploadID uuid.UUID) (uuid.UUID, error) {
+func (u *Uploads) ensureDeck(ctx context.Context, userID, uploadID uuid.UUID, topic string) (uuid.UUID, error) {
+	slug := uploadDeckSlug
+	name := uploadDeckName
+	description := "Words you added yourself, checked and ready to review."
+	if topic != "" {
+		slug = "my-words-" + topic
+		name = "My words: " + strings.ToUpper(topic[:1]) + topic[1:]
+		description = fmt.Sprintf("Words you added yourself in topic %s, checked and ready to review.", topic)
+	}
+
 	decks, err := u.repo.ListDecksByUser(ctx, &userID)
 	if err != nil {
 		return uuid.Nil, err
 	}
 	for _, deck := range decks {
-		if deck.Slug == uploadDeckSlug {
+		if deck.Slug == slug {
 			_ = u.repo.SetUploadDeck(ctx, uploadID, deck.ID)
 			return deck.ID, nil
 		}
 	}
 
-	description := "Words you added yourself, checked and ready to review."
-	deck, err := u.service.CreateDeck(ctx, &userID, uploadDeckSlug, uploadDeckName, &description, false)
+	deck, err := u.service.CreateDeck(ctx, &userID, slug, name, &description, false)
 	if err != nil {
 		return uuid.Nil, err
 	}
@@ -742,6 +777,34 @@ func normaliseCEFR(level string) string {
 	default:
 		return ""
 	}
+}
+
+var validTopics = map[string]struct{}{
+	"food":    {},
+	"home":    {},
+	"science": {},
+	"work":    {},
+	"travel":  {},
+	"study":   {},
+	"health":  {},
+	"nature":  {},
+	"art":     {},
+	"other":   {},
+}
+
+func normaliseTopic(raw string) string {
+	t := strings.ToLower(strings.TrimSpace(raw))
+	if _, ok := validTopics[t]; ok {
+		return t
+	}
+	return ""
+}
+
+func derefOrEmpty(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }
 
 func slugPart(s string) string {

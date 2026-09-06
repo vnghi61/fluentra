@@ -2,7 +2,7 @@
 module: grammar
 tier: learning
 group: modules
-status: PLANNED
+status: IN_PROGRESS
 phase: 3
 owner: "@learning-team"
 schema: skill
@@ -10,7 +10,7 @@ tables: [grammar_points, grammar_rules, grammar_exercises, error_tags, user_gram
 depends_on: [content, srs, ai, learning]
 depended_on_by: [writing, speaking, learning, exam]
 spec_version: 1.0.0
-last_verified: 2026-08-06
+last_verified: 2026-09-06
 ---
 
 # grammar — AGENT.md
@@ -25,7 +25,7 @@ last_verified: 2026-08-06
 | Path | `internal/modules/grammar` |
 | Schema | `skill` |
 | Delivery phase | 3 |
-| Status | **PLANNED** |
+| Status | **IN_PROGRESS** |
 | Owner | @learning-team |
 
 ---

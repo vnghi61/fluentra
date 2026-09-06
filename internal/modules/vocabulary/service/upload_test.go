@@ -40,9 +40,11 @@ const (
 	keyMeaningMatches = "meaning_matches"
 	keyExamples       = "examples"
 
-	posNoun  = "noun"
-	wordTime = "time"
-	wordBook = "book"
+	posNoun        = "noun"
+	wordTime       = "time"
+	wordBook       = "book"
+	wordApple      = "apple"
+	defWrittenWork = "A written work."
 )
 
 // ---------------------------------------------------------------- fakes
@@ -118,6 +120,8 @@ type uploadRepo struct {
 	enrichVerified map[uuid.UUID]string
 	enrichRejected map[uuid.UUID]string
 	enrichFailed   map[uuid.UUID]string
+	uploads        map[uuid.UUID]sqlc.SkillVocabUpload
+	uploadItems    map[uuid.UUID][]sqlc.ListUploadItemsRow
 }
 
 func newUploadRepo(items ...sqlc.SkillVocabUploadItem) *uploadRepo {
@@ -131,7 +135,25 @@ func newUploadRepo(items ...sqlc.SkillVocabUploadItem) *uploadRepo {
 		enrichVerified: map[uuid.UUID]string{},
 		enrichRejected: map[uuid.UUID]string{},
 		enrichFailed:   map[uuid.UUID]string{},
+		uploads:        map[uuid.UUID]sqlc.SkillVocabUpload{},
+		uploadItems:    map[uuid.UUID][]sqlc.ListUploadItemsRow{},
 	}
+}
+
+func (r *uploadRepo) GetUpload(ctx context.Context, id, userID uuid.UUID) (sqlc.SkillVocabUpload, error) {
+	if u, ok := r.uploads[id]; ok {
+		return u, nil
+	}
+	return r.fakeRepo.GetUpload(ctx, id, userID)
+}
+
+func (r *uploadRepo) ListUploadItems(
+	ctx context.Context, uploadID, userID uuid.UUID,
+) ([]sqlc.ListUploadItemsRow, error) {
+	if it, ok := r.uploadItems[uploadID]; ok {
+		return it, nil
+	}
+	return r.fakeRepo.ListUploadItems(ctx, uploadID, userID)
 }
 
 func (r *uploadRepo) ClaimPendingUploadItems(
@@ -196,7 +218,7 @@ func (r *uploadRepo) MarkQueuedUploadItemVerified(
 	_ context.Context, id uuid.UUID, model, _ string,
 ) (sqlc.SkillVocabUploadItem, error) {
 	r.enrichVerified[id] = model
-	return sqlc.SkillVocabUploadItem{ID: id, Status: "verified"}, nil
+	return sqlc.SkillVocabUploadItem{ID: id, Status: statusVerified}, nil
 }
 
 func (r *uploadRepo) MarkQueuedUploadItemRejected(
@@ -724,11 +746,11 @@ func TestVerify_TheLearnersOwnWordingWinsOverTheModels(t *testing.T) {
 	// gloss is the fallback, not the correction.
 	repo := newUploadRepo(item(wordBook, "quyển sách của tôi"))
 	dict := &stubDictionary{entries: map[string]repository.DictionaryEntry{
-		wordBook: {Lemma: "book", PartOfSpeech: posNoun, Definition: "A written work."},
+		wordBook: {Lemma: wordBook, PartOfSpeech: posNoun, Definition: defWrittenWork},
 	}}
 	reply := map[string]any{
-		keyValid: true, keyLemma: "book", keyPartOfSpeech: posNoun, keyCEFRLevel: "A1",
-		keyDefinition: "A written work.", keyDefinitionVi: "sách",
+		keyValid: true, keyLemma: wordBook, keyPartOfSpeech: posNoun, keyCEFRLevel: "A1",
+		keyDefinition: defWrittenWork, keyDefinitionVi: "sách",
 		keyMeaningMatches: true, keyExamples: []string{"She read the book."},
 	}
 	body, err := json.Marshal(reply)
@@ -741,4 +763,79 @@ func TestVerify_TheLearnersOwnWordingWinsOverTheModels(t *testing.T) {
 	var published map[string]any
 	require.NoError(t, json.Unmarshal(author.published[0].Body, &published))
 	assert.Equal(t, "quyển sách của tôi", published["definition_vi"])
+}
+
+func TestVerify_ModelTopicCreatesTopicDeck(t *testing.T) {
+	entry := item(wordApple, "")
+	repo := newUploadRepo(entry)
+	dict := &stubDictionary{entries: map[string]repository.DictionaryEntry{
+		wordApple: {Lemma: wordApple, PartOfSpeech: posNoun, Definition: "A round fruit."},
+	}}
+	reply := map[string]any{
+		keyValid: true, keyLemma: wordApple, keyPartOfSpeech: posNoun, keyCEFRLevel: "A1",
+		keyDefinition: "A round fruit.", keyDefinitionVi: "quả táo",
+		"topic": "food", keyMeaningMatches: true,
+		keyExamples: []string{"She ate an apple."},
+	}
+	body, err := json.Marshal(reply)
+	require.NoError(t, err)
+
+	uploads, _ := newPipeline(t, repo, dict, &stubAI{reply: string(body)})
+	require.NoError(t, uploads.VerifyPending(context.Background()))
+
+	// Assert that a deck with slug "my-words-food" was created
+	foundFoodDeck := false
+	for _, deck := range repo.decks {
+		if deck.Slug == "my-words-food" {
+			foundFoodDeck = true
+			assert.Equal(t, "My words: Food", deck.Name)
+			break
+		}
+	}
+	assert.True(t, foundFoodDeck, "deck my-words-food should be created for food words")
+}
+
+func TestUpload_GetIncludesEnrichedDetails(t *testing.T) {
+	uploadID := uuid.New()
+	userID := uuid.New()
+	def := "A written work."
+	defVi := "sách"
+	topic := "study"
+	type exItem struct {
+		Sentence string `json:"sentence"`
+	}
+	exBytes, _ := json.Marshal([]exItem{{Sentence: "She read a book."}})
+
+	repo := newUploadRepo()
+	repo.uploads[uploadID] = sqlc.SkillVocabUpload{
+		ID:        uploadID,
+		UserID:    userID,
+		ItemCount: 1,
+		Status:    "completed",
+	}
+	repo.uploadItems[uploadID] = []sqlc.ListUploadItemsRow{
+		{
+			ID:           uuid.New(),
+			UploadID:     uploadID,
+			UserID:       userID,
+			Term:         "book",
+			Status:       "verified",
+			Definition:   &def,
+			DefinitionVi: &defVi,
+			Topic:        &topic,
+			Examples:     exBytes,
+		},
+	}
+
+	uploads, _ := newPipeline(t, repo, &stubDictionary{}, &stubAI{})
+	res, err := uploads.Get(context.Background(), userID, uploadID)
+	require.NoError(t, err)
+	require.Len(t, res.Items, 1)
+
+	assert.Equal(t, "book", res.Items[0].Term)
+	assert.Equal(t, def, res.Items[0].Definition)
+	assert.Equal(t, defVi, res.Items[0].DefinitionVi)
+	assert.Equal(t, topic, res.Items[0].Topic)
+	require.Len(t, res.Items[0].Examples, 1)
+	assert.Equal(t, "She read a book.", res.Items[0].Examples[0])
 }

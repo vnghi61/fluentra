@@ -37,6 +37,17 @@ WHERE user_id = $1
 ORDER BY due_at ASC, id ASC
 LIMIT $3;
 
+-- name: ListDueCardsByDeck :many
+SELECT c.* FROM learn.review_cards c
+JOIN skill.word_senses ws ON ws.content_version_id = c.content_version_id
+JOIN skill.deck_items di ON di.word_sense_id = ws.id
+WHERE c.user_id = $1
+  AND di.deck_id = $2
+  AND c.suspended_at IS NULL
+  AND c.due_at <= $3
+ORDER BY c.due_at ASC, c.id ASC
+LIMIT $4;
+
 -- name: CountDueCards :one
 SELECT COUNT(*)::bigint FROM learn.review_cards
 WHERE user_id = $1

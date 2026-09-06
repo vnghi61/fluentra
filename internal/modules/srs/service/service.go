@@ -265,6 +265,13 @@ func (s *Service) DueCount(ctx context.Context, userID uuid.UUID) (int, error) {
 
 // DueCards returns active due cards up to the specified limit.
 func (s *Service) DueCards(ctx context.Context, userID uuid.UUID, limit int32) ([]contract.ReviewCardSummary, error) {
+	return s.DueCardsByDeck(ctx, userID, limit, nil)
+}
+
+// DueCardsByDeck returns active due cards up to the specified limit, optionally filtered by deck.
+func (s *Service) DueCardsByDeck(
+	ctx context.Context, userID uuid.UUID, limit int32, deckID *uuid.UUID,
+) ([]contract.ReviewCardSummary, error) {
 	if limit <= 0 {
 		limit = defaultDueCardLimit
 	}
@@ -275,7 +282,13 @@ func (s *Service) DueCards(ctx context.Context, userID uuid.UUID, limit int32) (
 	now := s.clock.Now().UTC()
 	cutoff := s.resolveLocalDayCutoff(ctx, userID, now)
 
-	rows, err := s.repo.ListDueCards(ctx, userID, cutoff, limit)
+	var rows []sqlc.LearnReviewCard
+	var err error
+	if deckID != nil {
+		rows, err = s.repo.ListDueCardsByDeck(ctx, userID, *deckID, cutoff, limit)
+	} else {
+		rows, err = s.repo.ListDueCards(ctx, userID, cutoff, limit)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to list due cards: %w", err)
 	}

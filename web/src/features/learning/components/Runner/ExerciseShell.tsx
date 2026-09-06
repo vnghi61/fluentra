@@ -91,13 +91,17 @@ export const ExerciseFeedback: React.FC<ExerciseFeedbackProps> = ({
             <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-primary/10 text-primary shrink-0 mt-0.5">
               EN
             </span>
-            <p className="text-text/90 font-medium leading-relaxed">{explanation.text}</p>
+            <p className="text-text/90 font-medium leading-relaxed">
+              {explanation.text}
+            </p>
           </div>
           <div className="flex items-start gap-2">
             <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-accent/20 text-accent shrink-0 mt-0.5">
               VI
             </span>
-            <p className="text-text-muted leading-relaxed">{explanation.text_vi}</p>
+            <p className="text-text-muted leading-relaxed">
+              {explanation.text_vi}
+            </p>
           </div>
         </div>
       )}

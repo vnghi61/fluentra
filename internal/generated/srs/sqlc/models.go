@@ -656,3 +656,89 @@ type LearnSrsParam struct {
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 }
+
+type SkillDeck struct {
+	ID          uuid.UUID
+	OwnerID     *uuid.UUID
+	Slug        string
+	Name        string
+	Description *string
+	IsPublic    bool
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+type SkillDeckItem struct {
+	ID          uuid.UUID
+	DeckID      uuid.UUID
+	WordSenseID uuid.UUID
+	CreatedAt   time.Time
+}
+
+type SkillUserWordState struct {
+	ID          uuid.UUID
+	UserID      uuid.UUID
+	WordSenseID uuid.UUID
+	Status      string
+	FirstSeenAt time.Time
+	UpdatedAt   time.Time
+}
+
+type SkillVocabUpload struct {
+	ID          uuid.UUID
+	UserID      uuid.UUID
+	RawText     string
+	DeckID      *uuid.UUID
+	Status      string
+	ItemCount   int32
+	CreatedAt   time.Time
+	CompletedAt *time.Time
+}
+
+type SkillVocabUploadItem struct {
+	ID              uuid.UUID
+	UploadID        uuid.UUID
+	UserID          uuid.UUID
+	Term            string
+	ProvidedMeaning string
+	Status          string
+	Reason          string
+	WordSenseID     *uuid.UUID
+	VerifiedByModel string
+	Attempts        int32
+	CreatedAt       time.Time
+	VerifiedAt      *time.Time
+}
+
+type SkillWord struct {
+	ID            uuid.UUID
+	Lemma         string
+	Pos           string
+	CefrLevel     string
+	FrequencyRank *int32
+	Ipa           *string
+	AudioAssetID  *uuid.UUID
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+type SkillWordRelation struct {
+	ID         uuid.UUID
+	FromWordID uuid.UUID
+	ToWordID   uuid.UUID
+	Relation   string
+	CreatedAt  time.Time
+}
+
+type SkillWordSense struct {
+	ID               uuid.UUID
+	WordID           uuid.UUID
+	ContentVersionID *uuid.UUID
+	Definition       string
+	DefinitionVi     *string
+	Register         *string
+	Domain           *string
+	Examples         []byte
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+}
