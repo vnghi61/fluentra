@@ -10,10 +10,10 @@ last_verified: 2026-09-04
 **Purpose.** The work after PR #72, with three decisions taken. It replaces §2 of
 [phase-3-work-order-5.md](phase-3-work-order-5.md).
 
-> **Runs alongside [phase-3-work-order-7.md](phase-3-work-order-7.md)**, which fixes the AI
-> provider chain and is a separate branch. Neither supersedes the other. This order keeps
-> `1700000460`; that one takes `1700000470` and above, because a duplicate goose number breaks
-> the run for whichever branch merges second.
+> **Superseded by [phase-3-work-order-8.md](phase-3-work-order-8.md).** This order was never
+> started; its WP12 work is §5 of that one, unchanged, with the learner's own vocabulary ahead
+> of it. `1700000460` is left unclaimed there — work order 7 took `1700000470`, and 8 takes
+> `1700000480` and above.
 
 **Read first.** [phase-3-plan.md](phase-3-plan.md) is the specification.
 [phase-3-next-steps.md](phase-3-next-steps.md) §4 holds the traps — the two codegen gates, the
