@@ -25,7 +25,7 @@ agent knows what is already handled and what is deliberately deferred.
 - [ ] Rules with examples and common errors
 - [ ] Error tagging consuming writing and speaking events
 - [ ] Weakness profile with decay
-- [x] Drill types and graders (`grammar_tense_choice`, `grammar_sentence_transform`, `learning.ExerciseGrader` implementation in WO8)
+- [ ] Drill types and graders
 - [ ] Grounded `grammar.explain` with a citation check
 - [ ] Seed taxonomy covering A1–B2
 <!-- END GENERATED: todo -->
@@ -43,3 +43,10 @@ _Nothing deferred._
 - Contrastive explanations for Vietnamese speakers specifically
 - Automatic drill generation from a learner's own errors
 <!-- END GENERATED: todo-future -->
+
+## Done in work order 8
+
+- [x] **Drill types and graders.** `grammar_tense_choice` and `grammar_sentence_transform`,
+      graded by this module's own `learning.ExerciseGrader` — the first grader in the project
+      that is not vocabulary's, which is what finally gives `cmd/api`'s start-up validation of
+      the grader registry something to fail on (ADR-0015).

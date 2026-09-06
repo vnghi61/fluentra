@@ -32,7 +32,6 @@ agent knows what is already handled and what is deliberately deferred.
 
 ## Phase 3
 
-- [x] Work Order 8: Deck-by-deck review sessions (`GET /reviews/session?deck_id=...`) via `ListDueCardsByDeck`
 - [ ] Workload load-balancing across days
 - [ ] Heat map
 - [ ] `review.due_soon` reminder job
@@ -56,3 +55,10 @@ _Nothing deferred._
 - Cross-skill interference modelling
 - Offline review queue
 <!-- END GENERATED: todo-future -->
+
+## Done in work order 8
+
+- [x] **Deck-by-deck review sessions.** `ListDueCardsByDeck` joins `review_cards` through
+      `word_senses` and `deck_items`, so no column was added to `learn.review_cards`. The deck
+      is optional and absent still means every due card — the dashboard's "Reviews Due" count
+      answers that question and must not be narrowed silently.
