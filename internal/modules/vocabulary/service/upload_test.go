@@ -40,7 +40,12 @@ const (
 	keyMeaningMatches = "meaning_matches"
 	keyExamples       = "examples"
 
+	keySentence   = "sentence"
+	keySentenceVi = "sentence_vi"
+
 	posNoun        = "noun"
+	posProperNoun  = "proper noun"
+	wordTyme       = "tyme"
 	wordTime       = "time"
 	wordBook       = "book"
 	wordApple      = "apple"
@@ -258,8 +263,12 @@ func accepted(t *testing.T) string {
 		keyValid: true, "lemma": wordLeisure, "part_of_speech": "noun",
 		"cefr_level": "B1", "definition": "Free time.",
 		"meaning_matches": true,
-		"examples": []string{
-			"He reads at leisure.", "She has little leisure.", "Leisure time is short.",
+		// Objects, not strings: v4 asks for each sentence with its Vietnamese,
+		// and the flashcard's reveal button has nothing to show without it.
+		"examples": []map[string]string{
+			{keySentence: "He reads at leisure.", keySentenceVi: "Anh ấy đọc lúc rảnh."},
+			{keySentence: "She has little leisure.", keySentenceVi: "Cô ấy có ít thời gian rảnh."},
+			{keySentence: "Leisure time is short.", keySentenceVi: "Thời gian rảnh thì ngắn."},
 		},
 	})
 	require.NoError(t, err)
@@ -727,7 +736,9 @@ func TestVerify_AWordPastedWithNoMeaningStillGetsVietnamese(t *testing.T) {
 		keyValid: true, "reason": "", keyLemma: "time", keyPartOfSpeech: posNoun,
 		keyCEFRLevel: "A1", keyDefinition: "The indefinite continued progress of existence.",
 		keyDefinitionVi: "thời gian", keyMeaningMatches: true,
-		keyExamples: []string{"We do not have much time."},
+		keyExamples: []map[string]string{
+			{keySentence: "We do not have much time.", keySentenceVi: "Chúng ta không có nhiều thời gian."},
+		},
 	}
 	body, err := json.Marshal(reply)
 	require.NoError(t, err)
@@ -751,7 +762,10 @@ func TestVerify_TheLearnersOwnWordingWinsOverTheModels(t *testing.T) {
 	reply := map[string]any{
 		keyValid: true, keyLemma: wordBook, keyPartOfSpeech: posNoun, keyCEFRLevel: "A1",
 		keyDefinition: defWrittenWork, keyDefinitionVi: "sách",
-		keyMeaningMatches: true, keyExamples: []string{"She read the book."},
+		keyMeaningMatches: true,
+		keyExamples: []map[string]string{
+			{keySentence: "She read the book.", keySentenceVi: "Cô ấy đã đọc quyển sách."},
+		},
 	}
 	body, err := json.Marshal(reply)
 	require.NoError(t, err)
@@ -775,7 +789,9 @@ func TestVerify_ModelTopicCreatesTopicDeck(t *testing.T) {
 		keyValid: true, keyLemma: wordApple, keyPartOfSpeech: posNoun, keyCEFRLevel: "A1",
 		keyDefinition: "A round fruit.", keyDefinitionVi: "quả táo",
 		"topic": "food", keyMeaningMatches: true,
-		keyExamples: []string{"She ate an apple."},
+		keyExamples: []map[string]string{
+			{keySentence: "She ate an apple.", keySentenceVi: "Cô ấy đã ăn một quả táo."},
+		},
 	}
 	body, err := json.Marshal(reply)
 	require.NoError(t, err)
@@ -838,4 +854,56 @@ func TestUpload_GetIncludesEnrichedDetails(t *testing.T) {
 	assert.Equal(t, topic, res.Items[0].Topic)
 	require.Len(t, res.Items[0].Examples, 1)
 	assert.Equal(t, "She read a book.", res.Items[0].Examples[0])
+}
+
+func TestVerify_ANameIsNotAWord(t *testing.T) {
+	// "tyme" is a misspelling of "time" that the free dictionaries carry as a
+	// male given name. It reached a learner's deck with an IPA, five example
+	// sentences and a review card. Refused here rather than left to the model,
+	// because the part of speech is a value we already hold.
+	repo := newUploadRepo(item(wordTyme, ""))
+	dict := &stubDictionary{entries: map[string]repository.DictionaryEntry{
+		wordTyme: {Lemma: wordTyme, PartOfSpeech: posProperNoun, Definition: "A male given name."},
+	}}
+	reply := map[string]any{
+		keyValid: true, keyLemma: wordTyme, keyPartOfSpeech: posProperNoun,
+		keyCEFRLevel: "C1", keyDefinition: "A male given name.",
+		keyDefinitionVi: "tên riêng", keyMeaningMatches: true,
+		keyExamples: []map[string]string{{keySentence: "Tyme arrived.", keySentenceVi: "Tyme đã đến."}},
+	}
+	body, err := json.Marshal(reply)
+	require.NoError(t, err)
+
+	uploads, author := newPipeline(t, repo, dict, &stubAI{reply: string(body)})
+	require.NoError(t, uploads.VerifyPending(context.Background()))
+
+	assert.Contains(t, repo.rejected, repo.pending[0].ID, "a given name is not a vocabulary entry")
+	assert.Empty(t, author.published, "nothing should be published for a name")
+}
+
+func TestVerify_ExampleSentencesCarryTheirTranslation(t *testing.T) {
+	// The flashcard has a reveal button under each sentence, and
+	// domain.ExampleSentence has carried SentenceVi since the table was
+	// written. Until v4 asked for it, every learner-added word gave that
+	// button nothing to show.
+	repo := newUploadRepo(item(wordLeisure, ""))
+	dict := &stubDictionary{entries: map[string]repository.DictionaryEntry{
+		wordLeisure: leisureEntry(),
+	}}
+	uploads, author := newPipeline(t, repo, dict, &stubAI{reply: accepted(t)})
+	require.NoError(t, uploads.VerifyPending(context.Background()))
+
+	require.Len(t, author.published, 1)
+	var published map[string]any
+	require.NoError(t, json.Unmarshal(author.published[0].Body, &published))
+
+	sentences, ok := published["example_sentences"].([]any)
+	require.True(t, ok, "the body must carry example_sentences")
+	require.NotEmpty(t, sentences)
+
+	first, ok := sentences[0].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "He reads at leisure.", first[keySentence])
+	assert.Equal(t, "Anh ấy đọc lúc rảnh.", first[keySentenceVi],
+		"web/src/lib/examples.ts reads sentence_vi; without it the reveal button stays hidden")
 }

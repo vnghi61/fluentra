@@ -53,16 +53,28 @@ const (
 
 // verdict is what the model is asked for, and mirrors the vocab_verify template.
 type verdict struct {
-	Valid          bool     `json:"valid"`
-	Reason         string   `json:"reason"`
-	Lemma          string   `json:"lemma"`
-	PartOfSpeech   string   `json:"part_of_speech"`
-	CEFRLevel      string   `json:"cefr_level"`
-	Topic          string   `json:"topic"`
-	Definition     string   `json:"definition"`
-	DefinitionVi   string   `json:"definition_vi"`
-	MeaningMatches bool     `json:"meaning_matches"`
-	Examples       []string `json:"examples"`
+	Valid          bool           `json:"valid"`
+	Reason         string         `json:"reason"`
+	Lemma          string         `json:"lemma"`
+	PartOfSpeech   string         `json:"part_of_speech"`
+	CEFRLevel      string         `json:"cefr_level"`
+	Topic          string         `json:"topic"`
+	Definition     string         `json:"definition"`
+	DefinitionVi   string         `json:"definition_vi"`
+	MeaningMatches bool           `json:"meaning_matches"`
+	Examples       []modelExample `json:"examples"`
+}
+
+// modelExample is one example sentence and its translation.
+//
+// The English used to arrive alone, and domain.ExampleSentence has carried
+// SentenceVi since the table was written -- so the flashcard had a reveal
+// button with nothing behind it for every word a learner added. The dictionary
+// supplies no translations either, which is why its examples are still strings
+// and are mapped in with an empty one rather than pretending.
+type modelExample struct {
+	Sentence   string `json:"sentence"`
+	SentenceVi string `json:"sentence_vi"`
 }
 
 // JobEnqueuer schedules background River jobs within database transactions.
@@ -460,6 +472,8 @@ func (u *Uploads) verifyItem(ctx context.Context, item sqlc.SkillVocabUploadItem
 		return false, nil
 	}
 
+	answer = refuseProperNouns(answer, entry, term)
+
 	if !answer.Valid {
 		reason := answer.Reason
 		if reason == "" {
@@ -507,7 +521,7 @@ func (u *Uploads) judge(
 		return verdict{
 			Valid: true, Lemma: entry.Lemma, PartOfSpeech: entry.PartOfSpeech,
 			CEFRLevel: "", Definition: entry.Definition,
-			MeaningMatches: true, Examples: entry.Examples,
+			MeaningMatches: true, Examples: fromDictionaryExamples(entry.Examples),
 		}, "dictionary", nil
 	}
 
@@ -535,7 +549,7 @@ func (u *Uploads) judge(
 				CEFRLevel:      "",
 				Definition:     def,
 				MeaningMatches: false,
-				Examples:       entry.Examples,
+				Examples:       fromDictionaryExamples(entry.Examples),
 			}, "queued", nil
 		}
 		return verdict{}, "", fmt.Errorf("verify %q: %w", item.Term, err)
@@ -573,7 +587,7 @@ func (u *Uploads) materialise(
 
 	examples := answer.Examples
 	if len(examples) == 0 {
-		examples = entry.Examples
+		examples = fromDictionaryExamples(entry.Examples)
 	}
 
 	// The word itself. Shared across learners: two people uploading "leisure"
@@ -706,11 +720,18 @@ func (u *Uploads) publishVerified(ctx context.Context, userID uuid.UUID, count i
 func senseBody(
 	lemma, pos, cefr, definition, gloss string,
 	entry repository.DictionaryEntry,
-	examples []string,
+	examples []modelExample,
 ) map[string]any {
 	sentences := make([]map[string]any, 0, len(examples))
 	for _, example := range examples {
-		sentences = append(sentences, map[string]any{"sentence": example})
+		row := map[string]any{"sentence": example.Sentence}
+		// Omitted rather than written empty: web/src/lib/examples.ts reads a
+		// missing sentence_vi as "no translation" and hides the reveal button,
+		// while an empty string is a translation that says nothing.
+		if example.SentenceVi != "" {
+			row["sentence_vi"] = example.SentenceVi
+		}
+		sentences = append(sentences, row)
 	}
 
 	body := map[string]any{
@@ -738,17 +759,67 @@ func senseBody(
 	}
 	if len(sentences) > 0 {
 		body["example_sentences"] = sentences
-		body["example_sentence"] = examples[0]
+		body["example_sentence"] = examples[0].Sentence
 	}
 	return body
 }
 
-func toDomainExamples(examples []string) []domain.ExampleSentence {
+func toDomainExamples(examples []modelExample) []domain.ExampleSentence {
 	out := make([]domain.ExampleSentence, 0, len(examples))
 	for _, example := range examples {
-		out = append(out, domain.ExampleSentence{Sentence: example})
+		sentence := domain.ExampleSentence{Sentence: example.Sentence}
+		if example.SentenceVi != "" {
+			vi := example.SentenceVi
+			sentence.SentenceVi = &vi
+		}
+		out = append(out, sentence)
 	}
 	return out
+}
+
+// fromDictionaryExamples adapts the dictionary's bare sentences.
+//
+// It writes no translation, and that is the honest result: the free dictionary
+// has none, and inventing one here would put words in a learner's language that
+// nothing produced.
+func fromDictionaryExamples(sentences []string) []modelExample {
+	out := make([]modelExample, 0, len(sentences))
+	for _, sentence := range sentences {
+		out = append(out, modelExample{Sentence: sentence})
+	}
+	return out
+}
+
+// refuseProperNouns turns a name into a rejection, whatever the model said.
+//
+// The free dictionaries carry given names, surnames and place names, so "tyme"
+// comes back as "A male given name" and a misspelling of "time" became a
+// vocabulary entry with an IPA, five example sentences and a review card. The
+// template tells the model to refuse those; this does not depend on it obeying,
+// because the part of speech is a value we already hold and a name is not a
+// word anyone is learning English to learn.
+func refuseProperNouns(answer verdict, entry repository.DictionaryEntry, term string) verdict {
+	if !isProperNoun(answer.PartOfSpeech) && !isProperNoun(entry.PartOfSpeech) {
+		return answer
+	}
+	answer.Valid = false
+	if answer.Reason == "" {
+		answer.Reason = fmt.Sprintf(
+			"%q is a name rather than an English word. If you meant a different word, check the spelling.", term)
+	}
+	return answer
+}
+
+// isProperNoun reports whether a part of speech names something rather than
+// meaning something. Both spellings appear: the free dictionary writes "proper
+// noun", Datamuse's tag maps to the same, and models return either.
+func isProperNoun(pos string) bool {
+	switch strings.ToLower(strings.TrimSpace(pos)) {
+	case "proper noun", "propernoun", "proper-noun", "name":
+		return true
+	default:
+		return false
+	}
 }
 
 func firstNonEmpty(values ...string) string {
@@ -1003,7 +1074,7 @@ func (u *Uploads) enrichExistingSense(
 
 	examples := answer.Examples
 	if len(examples) == 0 {
-		examples = entry.Examples
+		examples = fromDictionaryExamples(entry.Examples)
 	}
 	gloss := firstNonEmpty(item.ProvidedMeaning, answer.DefinitionVi)
 	body, err := json.Marshal(senseBody(lemma, pos, cefr, definition, gloss, entry, examples))
