@@ -78,7 +78,15 @@ export function LoginForm({ onSuccess }: LoginFormProps): React.JSX.Element {
         </p>
       </div>
 
-      <GoogleButton onError={(msg) => setServerError(msg)} />
+      {/* onSuccess is forwarded, not dropped. Signing in with Google stores a
+          session exactly as the password path does, but nothing navigated
+          afterwards: the popup closed, the spinner stopped, and the learner sat
+          on the login form already signed in. Reloading appeared to fix it
+          because the boot refresh then restored the session they already had. */}
+      <GoogleButton
+        onError={(msg) => setServerError(msg)}
+        {...(onSuccess && { onSuccess })}
+      />
 
       <div className="relative flex items-center justify-center">
         <div className="absolute inset-0 flex items-center">

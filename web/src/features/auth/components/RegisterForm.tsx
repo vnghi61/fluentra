@@ -26,10 +26,20 @@ import { getErrorMessage } from "@/lib/errors/catalogue";
 
 export interface RegisterFormProps {
   onChallengeIssued: (challenge: Challenge, email: string) => void;
+  /**
+   * Called when Google signs somebody in from this form.
+   *
+   * Registering by email issues a challenge and finishes on the OTP screen, so
+   * this form had no success of its own. Google has no OTP step -- it returns a
+   * session there and then -- and without somewhere to report that, the learner
+   * was left on the registration form already signed in.
+   */
+  onGoogleSuccess?: (() => void) | undefined;
 }
 
 export function RegisterForm({
   onChallengeIssued,
+  onGoogleSuccess,
 }: RegisterFormProps): React.JSX.Element {
   const { t } = useTranslation();
   const [serverError, setServerError] = React.useState<string | null>(null);
@@ -85,7 +95,10 @@ export function RegisterForm({
         </p>
       </div>
 
-      <GoogleButton onError={(msg) => setServerError(msg)} />
+      <GoogleButton
+        onError={(msg) => setServerError(msg)}
+        {...(onGoogleSuccess && { onSuccess: onGoogleSuccess })}
+      />
 
       <div className="relative flex items-center justify-center">
         <div className="absolute inset-0 flex items-center">

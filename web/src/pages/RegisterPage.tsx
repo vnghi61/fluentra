@@ -33,6 +33,7 @@ export function RegisterPage(): React.JSX.Element {
           onChallengeIssued={(challenge, email) => {
             setChallengeState({ challenge, email });
           }}
+          onGoogleSuccess={() => void navigate({ to: "/" })}
         />
       )}
     </div>
