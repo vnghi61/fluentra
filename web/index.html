@@ -2,7 +2,10 @@
 <html lang="en" class="h-full">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
     <meta name="color-scheme" content="light dark" />
     <title>Fluentra</title>
 
@@ -13,10 +16,29 @@
       and the artwork carries a white ground anyway (see web/AGENT.md).
       theme-color is the primary blue the design system already defines.
     -->
+    <!--
+      The type file, fetched alongside the CSS rather than after it. The browser
+      cannot discover a @font-face url until the stylesheet has parsed, which on
+      a cold host is a second of the interface set in the system font and then
+      reflowing. crossorigin is required even same-origin: fonts are fetched in
+      CORS mode, and a preload without it downloads the file twice.
+    -->
+    <link
+      rel="preload"
+      href="/fonts/inter-var.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+
     <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-180x180.png" />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/apple-touch-icon-180x180.png"
+    />
     <link rel="manifest" href="/site.webmanifest" />
     <meta name="theme-color" content="#2563eb" />
     <!--

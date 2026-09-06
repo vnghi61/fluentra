@@ -1,6 +1,41 @@
 @import "tailwindcss";
 
 /*
+ * Inter, self-hosted.
+ *
+ * The CSP in deploy/nginx/nginx.conf is `font-src 'self' data:`, so a Google
+ * Fonts link would be blocked and the page would fall back in silence. The file
+ * ships from web/public/fonts instead.
+ *
+ * It is one variable file cut to what Fluentra actually renders: Latin,
+ * Vietnamese, and the IPA the pronunciation line prints. Two things decided
+ * that shape.
+ *
+ * The IPA is why Inter and not one of the Vietnamese-first faces. Fluentra
+ * prints /wˈɜɫd/ under a headword, and Be Vietnam Pro, Roboto, Open Sans,
+ * Lexend, Manrope and Plus Jakarta Sans are all missing ɜ, ɫ and the stress
+ * mark — measured with fontTools against the full files, not assumed. A missing
+ * glyph is substituted by whatever the operating system has, so the phonetic
+ * line renders in two typefaces at once, differently on every machine.
+ *
+ * The subset is why one file rather than Google's three. Their latin-ext block
+ * is 83 kB, most of it European Latin this product never sets, and the IPA is
+ * buried inside it. Cut to Latin, Vietnamese, IPA and the punctuation the UI
+ * uses, with the optical-size axis pinned, the whole family in every weight
+ * from 100 to 900 is 109 kB in a single request.
+ *
+ * `mark` and `mkmk` are kept deliberately: Vietnamese stacks a tone over a
+ * vowel modifier (ế, ộ, ữ), and without mark positioning those collide.
+ */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/inter-var.woff2") format("woff2-variations");
+}
+
+/*
  * Dark mode is driven by a class on <html>, set by the inline script in
  * index.html before first paint. A media-query-only scheme cannot honour an
  * explicit user choice, and a JS-only one flashes.
@@ -8,6 +43,17 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
+  /*
+   * Tailwind's default sans stack is the system UI font, which meant Fluentra
+   * had never made a typographic choice: it rendered in Segoe UI on Windows, in
+   * San Francisco on a Mac, and in whatever Android supplied — three different
+   * products. The system stack stays behind Inter as the fallback for the
+   * moment before the file lands, and for anyone it fails to reach.
+   */
+  --font-sans:
+    "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+
   --color-primary: #2563eb;
   --color-primary-fg: #ffffff;
   --color-primary-hover: #1d4ed8;
@@ -110,5 +156,6 @@
 body {
   background-color: var(--surface);
   color: var(--text);
+  font-family: var(--font-sans);
   @apply antialiased;
 }

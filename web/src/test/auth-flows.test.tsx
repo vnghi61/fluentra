@@ -582,3 +582,83 @@ describe("Auth Flows (Tasks 1, 3, 4, 5, 6, 7, 8)", () => {
     });
   });
 });
+
+describe("Signing in with Google from the forms that host the button", () => {
+  beforeEach(() => {
+    useAuthStore.getState().clearAuth();
+  });
+
+  /** Drives a Google sign-in to the point where the popup reports success. */
+  async function signInWithGoogle() {
+    const user = userEvent.setup();
+    server.use(
+      http.get("/api/v1/auth/oauth/google/start", () =>
+        HttpResponse.json({
+          authorization_url: "https://accounts.google.com/o/oauth2/v2/auth",
+        }),
+      ),
+    );
+    const openSpy = vi
+      .spyOn(window, "open")
+      .mockReturnValue({ focus: vi.fn(), closed: false } as unknown as Window);
+
+    await user.click(
+      screen.getByRole("button", { name: /continue with google/i }),
+    );
+    await waitFor(() => expect(openSpy).toHaveBeenCalled());
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          origin: window.location.origin,
+          data: {
+            type: "GOOGLE_AUTH_SUCCESS",
+            session: {
+              access_token: "google-token",
+              token_type: "Bearer",
+              expires_in: 900,
+              user_id: "user-google-1",
+              role: "user",
+            },
+          },
+        }),
+      );
+    });
+  }
+
+  // The existing GoogleButton test hands onSuccess straight to the button, so
+  // it passes whether or not anything forwards it. These render the forms the
+  // pages actually render, which is where the callback was being dropped: the
+  // session was stored, the spinner stopped, and the learner sat on the login
+  // screen already signed in until they reloaded.
+  it("tells the login page it succeeded", async () => {
+    const onSuccess = vi.fn();
+    await renderWithRouter(<LoginForm onSuccess={onSuccess} />);
+
+    await signInWithGoogle();
+
+    await waitFor(() => {
+      expect(useAuthStore.getState().status).toBe("authenticated");
+    });
+    expect(onSuccess).toHaveBeenCalled();
+  });
+
+  it("tells the register page it succeeded", async () => {
+    // Registering by email ends on the OTP screen, so this form had no success
+    // of its own. Google returns a session with no OTP step and needs one.
+    const onGoogleSuccess = vi.fn();
+    await renderWithRouter(
+      <RegisterForm
+        onChallengeIssued={vi.fn()}
+        onGoogleSuccess={onGoogleSuccess}
+      />,
+    );
+
+    await signInWithGoogle();
+
+    await waitFor(() => {
+      expect(useAuthStore.getState().status).toBe("authenticated");
+    });
+    expect(onGoogleSuccess).toHaveBeenCalled();
+  });
+});
