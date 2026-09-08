@@ -524,3 +524,41 @@ func (r *Repository) GetTaxonomyByNamespaceCode(ctx context.Context, namespace, 
 	}
 	return toDomainTaxonomy(row), nil
 }
+
+// ListContentItemsFiltered retrieves a paginated slice of items with optional status/kind filters.
+func (r *Repository) ListContentItemsFiltered(
+	ctx context.Context,
+	status, kind, query *string,
+	limit, offset int32,
+) ([]domain.Item, error) {
+	rows, err := r.queries.ListContentItemsFiltered(ctx, sqlccontent.ListContentItemsFilteredParams{
+		Status:       status,
+		Kind:         kind,
+		Query:        query,
+		ResultLimit:  limit,
+		ResultOffset: offset,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list content items filtered: %w", err)
+	}
+	items := make([]domain.Item, len(rows))
+	for i, row := range rows {
+		items[i] = toDomainItem(row)
+	}
+	return items, nil
+}
+
+// CountContentItemsFiltered counts items matching optional status/kind filters.
+func (r *Repository) CountContentItemsFiltered(
+	ctx context.Context, status, kind, query *string,
+) (int64, error) {
+	count, err := r.queries.CountContentItemsFiltered(ctx, sqlccontent.CountContentItemsFilteredParams{
+		Status: status,
+		Kind:   kind,
+		Query:  query,
+	})
+	if err != nil {
+		return 0, fmt.Errorf("count content items filtered: %w", err)
+	}
+	return count, nil
+}

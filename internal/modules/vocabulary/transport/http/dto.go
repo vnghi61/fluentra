@@ -217,3 +217,140 @@ func mapDeckDTO(d domain.Deck) DeckDTO {
 		CreatedAt:   d.CreatedAt,
 	}
 }
+
+// AdminWordDTO models a word in the admin list view.
+type AdminWordDTO struct {
+	ID            uuid.UUID  `json:"id"`
+	Lemma         string     `json:"lemma"`
+	POS           string     `json:"pos"`
+	CEFRLevel     string     `json:"cefr_level"`
+	FrequencyRank *int       `json:"frequency_rank,omitempty"`
+	IPA           *string    `json:"ipa,omitempty"`
+	AudioAssetID  *uuid.UUID `json:"audio_asset_id,omitempty"`
+	SensesCount   int        `json:"senses_count"`
+	IsUploaded    bool       `json:"is_uploaded"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
+}
+
+// AdminWordListResponse models response for GET /admin/vocabulary/words.
+type AdminWordListResponse struct {
+	Items  []AdminWordDTO `json:"items"`
+	Total  int            `json:"total"`
+	Limit  int            `json:"limit"`
+	Offset int            `json:"offset"`
+}
+
+// LearnerWordQueueItemDTO models an item in the admin learner words review queue.
+type LearnerWordQueueItemDTO struct {
+	// upload_item_id, not id: LearnerWordQueueItem declares it required under
+	// that name, and the row is one item inside an upload rather than an entity
+	// of its own. Emitting `id` left the queue table keyed on undefined.
+	ID               uuid.UUID            `json:"upload_item_id"`
+	UploadID         uuid.UUID            `json:"upload_id"`
+	UserID           uuid.UUID            `json:"user_id"`
+	Term             string               `json:"term"`
+	ProvidedMeaning  *string              `json:"provided_meaning,omitempty"`
+	Status           string               `json:"status"`
+	VerifiedByModel  *string              `json:"verified_by_model,omitempty"`
+	Reason           *string              `json:"reason,omitempty"`
+	Attempts         int                  `json:"attempts"`
+	VerifiedAt       *time.Time           `json:"verified_at,omitempty"`
+	CreatedAt        time.Time            `json:"created_at"`
+	WordSenseID      *uuid.UUID           `json:"word_sense_id,omitempty"`
+	WordID           *uuid.UUID           `json:"word_id,omitempty"`
+	ContentVersionID *uuid.UUID           `json:"content_version_id,omitempty"`
+	Definition       *string              `json:"definition,omitempty"`
+	DefinitionVi     *string              `json:"definition_vi,omitempty"`
+	Topic            *string              `json:"topic,omitempty"`
+	Examples         []ExampleSentenceDTO `json:"examples"`
+	DeckID           *uuid.UUID           `json:"deck_id,omitempty"`
+	DeckName         *string              `json:"deck_name,omitempty"`
+}
+
+// LearnerWordQueueListResponse models response for GET /admin/vocabulary/queue.
+type LearnerWordQueueListResponse struct {
+	Items  []LearnerWordQueueItemDTO `json:"items"`
+	Total  int                       `json:"total"`
+	Limit  int                       `json:"limit"`
+	Offset int                       `json:"offset"`
+}
+
+// UpdateWordSenseRequest models payload for PATCH /admin/vocabulary/senses/{id}.
+type UpdateWordSenseRequest struct {
+	Definition   *string               `json:"definition,omitempty"`
+	DefinitionVi *string               `json:"definition_vi,omitempty"`
+	Topic        *string               `json:"topic,omitempty"`
+	Examples     *[]ExampleSentenceDTO `json:"examples,omitempty"`
+}
+
+func mapAdminWordDTO(w domain.AdminWord) AdminWordDTO {
+	return AdminWordDTO{
+		ID:            w.ID,
+		Lemma:         w.Lemma,
+		POS:           string(w.POS),
+		CEFRLevel:     string(w.CEFRLevel),
+		FrequencyRank: w.FrequencyRank,
+		IPA:           w.IPA,
+		AudioAssetID:  w.AudioAssetID,
+		SensesCount:   w.SensesCount,
+		IsUploaded:    w.IsUploaded,
+		CreatedAt:     w.CreatedAt,
+		UpdatedAt:     w.UpdatedAt,
+	}
+}
+
+func mapLearnerWordQueueItemDTO(q domain.LearnerWordQueueItem) LearnerWordQueueItemDTO {
+	ex := make([]ExampleSentenceDTO, 0, len(q.Examples))
+	for _, e := range q.Examples {
+		ex = append(ex, ExampleSentenceDTO{
+			Sentence:   e.Sentence,
+			SentenceVi: e.SentenceVi,
+			AudioURL:   e.AudioURL,
+		})
+	}
+	return LearnerWordQueueItemDTO{
+		ID:               q.ID,
+		UploadID:         q.UploadID,
+		UserID:           q.UserID,
+		Term:             q.Term,
+		ProvidedMeaning:  q.ProvidedMeaning,
+		Status:           q.Status,
+		VerifiedByModel:  q.VerifiedByModel,
+		Reason:           q.Reason,
+		Attempts:         q.Attempts,
+		VerifiedAt:       q.VerifiedAt,
+		CreatedAt:        q.CreatedAt,
+		WordSenseID:      q.WordSenseID,
+		WordID:           q.WordID,
+		ContentVersionID: q.ContentVersionID,
+		Definition:       q.Definition,
+		DefinitionVi:     q.DefinitionVi,
+		Topic:            q.Topic,
+		Examples:         ex,
+		DeckID:           q.DeckID,
+		DeckName:         q.DeckName,
+	}
+}
+
+func mapWordSenseDTO(s domain.WordSense) WordSenseDTO {
+	examples := make([]ExampleSentenceDTO, 0, len(s.Examples))
+	for _, e := range s.Examples {
+		examples = append(examples, ExampleSentenceDTO{
+			Sentence:   e.Sentence,
+			SentenceVi: e.SentenceVi,
+			AudioURL:   e.AudioURL,
+		})
+	}
+	return WordSenseDTO{
+		ID:               s.ID,
+		WordID:           s.WordID,
+		ContentVersionID: s.ContentVersionID,
+		Definition:       s.Definition,
+		DefinitionVi:     s.DefinitionVi,
+		Register:         s.Register,
+		Domain:           s.Domain,
+		Examples:         examples,
+		CreatedAt:        s.CreatedAt,
+	}
+}

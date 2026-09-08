@@ -1,16 +1,10 @@
 import React from "react";
-import { Crown, Trophy, UserCheck, Users } from "lucide-react";
+import { Crown, Trophy, UserCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLeaderboard, useSetLeaderboardOptIn } from "../api/gamificationApi";
 
@@ -54,68 +48,18 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
   currentLeague = "bronze",
 }) => {
   const { t } = useTranslation();
-  const { data, isLoading, error } = useLeaderboard();
+  const { data, isLoading } = useLeaderboard();
   const optInMutation = useSetLeaderboardOptIn();
 
-  const isNotOptedIn =
-    typeof error === "object" &&
-    error !== null &&
-    "problem" in error &&
-    (error as { problem: { status: number } }).problem.status === 403;
+  // Opting in decides whether a learner *appears* in the standings, not
+  // whether they may read them. This used to render an entirely separate
+  // screen — a pitch where the board should be — because the endpoint refused
+  // a non-participant with a 403.
+  const optedIn = data?.opted_in ?? true;
 
   const leagueStyle =
     (currentLeague ? LEAGUE_COLORS[currentLeague.toLowerCase()] : null) ??
     defaultLeagueStyle;
-
-  if (isNotOptedIn) {
-    return (
-      <Card className="border-border/60 bg-gradient-to-br from-surface-card to-surface/40 shadow-sm">
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary shadow-inner">
-              <Trophy className="h-5 w-5" aria-hidden="true" />
-            </div>
-            <div>
-              <CardTitle className="text-lg font-bold text-text">
-                {t("gamification.leaderboardTitle", "Weekly League")}
-              </CardTitle>
-              <CardDescription>
-                {t(
-                  "gamification.optInDesc",
-                  "Compete with learners at your skill level and climb the ranks.",
-                )}
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div className="rounded-xl border border-dashed border-border/80 bg-surface/50 p-4 text-center">
-            <Users
-              className="mx-auto mb-2 h-7 w-7 text-primary/60"
-              aria-hidden="true"
-            />
-            <p className="mb-3 text-xs text-text-muted">
-              {t(
-                "gamification.optInNotice",
-                "Leagues are opt-in. Only your display name and weekly XP are shown to peers.",
-              )}
-            </p>
-            <Button
-              size="sm"
-              className="gap-2 font-semibold"
-              onClick={() => optInMutation.mutate(true)}
-              disabled={optInMutation.isPending}
-            >
-              <UserCheck className="h-4 w-4" aria-hidden="true" />
-              {t("gamification.joinLeague", "Join {{league}} League", {
-                league: currentLeague.toUpperCase(),
-              })}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <Card className="border-border/60 bg-gradient-to-br from-surface-card to-surface/40 shadow-sm">
@@ -152,6 +96,28 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
       </CardHeader>
 
       <CardContent className="space-y-2 pt-0">
+        {!isLoading && !optedIn && (
+          <div className="flex flex-col gap-2 rounded-xl border border-dashed border-border/80 bg-surface/50 p-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-text-muted">
+              {t("gamification.notInLeagueYet")}{" "}
+              {t(
+                "gamification.optInNotice",
+                "Leagues are opt-in. Only your display name and weekly XP are shown to peers.",
+              )}
+            </p>
+            <Button
+              size="sm"
+              className="shrink-0 gap-2 font-semibold"
+              onClick={() => optInMutation.mutate(true)}
+              disabled={optInMutation.isPending}
+            >
+              <UserCheck className="h-4 w-4" aria-hidden="true" />
+              {t("gamification.joinLeague", "Join {{league}} League", {
+                league: currentLeague.toUpperCase(),
+              })}
+            </Button>
+          </div>
+        )}
         {isLoading ? (
           <div className="space-y-2">
             <Skeleton className="h-8 w-full" />

@@ -25,7 +25,7 @@ type GamificationService interface {
 	UseFreeze(ctx context.Context, userID uuid.UUID) (contract.Streak, error)
 	SetDailyGoal(ctx context.Context, userID uuid.UUID, goal int) error
 	SetLeaderboardOptIn(ctx context.Context, userID uuid.UUID, optIn bool) error
-	Leaderboard(ctx context.Context, userID uuid.UUID) ([]service.LeaderboardEntry, error)
+	Leaderboard(ctx context.Context, userID uuid.UUID) (service.LeaderboardView, error)
 }
 
 // Handler serves the gamification endpoints.
@@ -155,12 +155,12 @@ func (h *Handler) getLeaderboard(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	entries, err := h.service.Leaderboard(r.Context(), userID)
+	view, err := h.service.Leaderboard(r.Context(), userID)
 	if err != nil {
-		// LEADERBOARD_NOT_OPTED_IN reaches the learner as a 403 with its own
-		// code, so the screen can offer the opt-in rather than showing an error.
 		httpx.WriteProblem(w, r, err)
 		return
 	}
-	httpx.WriteJSON(w, r, http.StatusOK, mapLeaderboard(entries))
+	// Always 200, opted in or not. The board is the same either way; `opted_in`
+	// is what tells the screen whether to offer the join button above it.
+	httpx.WriteJSON(w, r, http.StatusOK, mapLeaderboard(view))
 }

@@ -12,6 +12,43 @@ import (
 	"github.com/google/uuid"
 )
 
+const countUsersAdmin = `-- name: CountUsersAdmin :one
+SELECT COUNT(*)::bigint
+FROM core.users u
+JOIN core.profiles p ON p.user_id = u.id
+JOIN core.user_preferences pref ON pref.user_id = u.id
+WHERE ($1::text = '' OR u.email ILIKE $1 || '%')
+  AND ($2::text = '' OR p.display_name ILIKE '%' || $2 || '%')
+  AND ($3::text = '' OR u.status::text = $3)
+  AND ($4::timestamptz IS NULL OR u.created_at >= $4::timestamptz)
+  AND ($5::timestamptz IS NULL OR u.created_at <= $5::timestamptz)
+`
+
+type CountUsersAdminParams struct {
+	EmailPrefix   string
+	DisplayName   string
+	Status        string
+	CreatedAfter  *time.Time
+	CreatedBefore *time.Time
+}
+
+// CountUsersAdmin counts every account matching the same filters the search
+// applies, without the cursor. The cursor is deliberately absent: it narrows the
+// result to one page, and the whole point of this count is the size of the set
+// the page is a window onto.
+func (q *Queries) CountUsersAdmin(ctx context.Context, arg CountUsersAdminParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countUsersAdmin,
+		arg.EmailPrefix,
+		arg.DisplayName,
+		arg.Status,
+		arg.CreatedAfter,
+		arg.CreatedBefore,
+	)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const createUser = `-- name: CreateUser :one
 INSERT INTO core.users (id, email, status)
 VALUES ($1, $2, $3)

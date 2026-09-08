@@ -35,6 +35,9 @@ type fakeRepo struct {
 	freezes   int
 	highWater map[string]sqlc.GetActivityHighWaterRow
 
+	// This week's snapshot rows, for the leaderboard tests.
+	standings []sqlc.LearnLeaderboardSnapshot
+
 	// Recorded for assertions.
 	extendCalls int
 	awardCalls  int
@@ -291,7 +294,7 @@ func (f *fakeRepo) UpsertLeaderboardEntry(
 func (f *fakeRepo) ListLeaderboard(
 	_ context.Context, _ string, _ time.Time, _ int32,
 ) ([]sqlc.LearnLeaderboardSnapshot, error) {
-	return nil, nil
+	return f.standings, nil
 }
 
 func (f *fakeRepo) GetLeaderboardEntry(
@@ -746,4 +749,43 @@ func TestConsume_AdvancesAndPaysAQuest(t *testing.T) {
 func perfectScore() *int {
 	score := 100
 	return &score
+}
+
+// ------------------------------------------------------------- leaderboard
+
+// TestLeaderboard_IsVisibleWithoutJoiningIt.
+//
+// Reading the standings used to require opting into them, which asked a learner
+// to publish their own display name and weekly XP before they could see what
+// they were being asked to join. Nothing in the board is theirs to protect:
+// every row in it belongs to somebody who chose to be there, and the snapshot
+// carries a display name, an avatar and an XP total and nothing else.
+func TestLeaderboard_IsVisibleWithoutJoiningIt(t *testing.T) {
+	other := uuid.New()
+	repo := newFakeRepo()
+	repo.streak.LeaderboardOptIn = false
+	repo.standings = []sqlc.LearnLeaderboardSnapshot{
+		{UserID: other, League: "bronze", Rank: 1, Xp: 910},
+	}
+
+	view, err := newService(repo).Leaderboard(context.Background(), uuid.New())
+
+	require.NoError(t, err, "a learner who has not joined must still see the board")
+	assert.False(t, view.OptedIn, "and must be told they are not in it")
+	require.Len(t, view.Entries, 1)
+	assert.Equal(t, other, view.Entries[0].UserID)
+	assert.False(t, view.Entries[0].IsSelf)
+}
+
+// TestLeaderboard_SaysSoWhenTheCallerIsInIt is the other half: the flag is what
+// the screen uses to decide whether to offer the join button, so it has to
+// distinguish the two cases rather than always reading false.
+func TestLeaderboard_SaysSoWhenTheCallerIsInIt(t *testing.T) {
+	repo := newFakeRepo()
+	repo.streak.LeaderboardOptIn = true
+
+	view, err := newService(repo).Leaderboard(context.Background(), uuid.New())
+
+	require.NoError(t, err)
+	assert.True(t, view.OptedIn)
 }

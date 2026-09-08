@@ -41,8 +41,14 @@ type mockContentService struct {
 		reviewerID, itemID uuid.UUID,
 		req service.ReviewDecisionRequest,
 	) (domain.Version, error)
-	publishFn func(ctx context.Context, actorID, itemID uuid.UUID) (domain.Version, error)
-	archiveFn func(ctx context.Context, actorID, itemID uuid.UUID) (domain.Item, error)
+	publishFn        func(ctx context.Context, actorID, itemID uuid.UUID) (domain.Version, error)
+	archiveFn        func(ctx context.Context, actorID, itemID uuid.UUID) (domain.Item, error)
+	listAdminItemsFn func(
+		ctx context.Context, status, kind, query *string, limit, offset int,
+	) ([]domain.Item, int64, error)
+	getAdminItemDetailFn func(
+		ctx context.Context, id uuid.UUID,
+	) (domain.Item, []domain.Version, error)
 }
 
 func (m *mockContentService) GetPublishedVersionBySlug(ctx context.Context, slug string) (*contract.Version, error) {
@@ -114,6 +120,24 @@ func (m *mockContentService) Archive(ctx context.Context, actorID, itemID uuid.U
 		return m.archiveFn(ctx, actorID, itemID)
 	}
 	return domain.Item{}, nil
+}
+
+func (m *mockContentService) ListAdminItems(
+	ctx context.Context, status, kind, query *string, limit, offset int,
+) ([]domain.Item, int64, error) {
+	if m.listAdminItemsFn != nil {
+		return m.listAdminItemsFn(ctx, status, kind, query, limit, offset)
+	}
+	return []domain.Item{}, 0, nil
+}
+
+func (m *mockContentService) GetAdminItemDetail(
+	ctx context.Context, id uuid.UUID,
+) (domain.Item, []domain.Version, error) {
+	if m.getAdminItemDetailFn != nil {
+		return m.getAdminItemDetailFn(ctx, id)
+	}
+	return domain.Item{}, []domain.Version{}, nil
 }
 
 type mockGuard struct {

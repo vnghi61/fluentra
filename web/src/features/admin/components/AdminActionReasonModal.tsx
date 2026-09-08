@@ -71,10 +71,7 @@ export const AdminActionReasonModal: React.FC<AdminActionReasonModalProps> = ({
         setError(
           err instanceof Error
             ? err.message
-            : t(
-                "admin.failedToPerformAdministrativeAction",
-                "Failed to perform administrative action.",
-              ),
+            : t("admin.failedToPerformAdministrativeAction"),
         );
       }
     } finally {
@@ -137,10 +134,7 @@ export const AdminActionReasonModal: React.FC<AdminActionReasonModalProps> = ({
               id="action-reason"
               rows={3}
               {...register("reason")}
-              placeholder={t(
-                "admin.stateTheJustificationForThis",
-                "State the justification for this administrative action...",
-              )}
+              placeholder={t("admin.stateTheJustificationForThis")}
               className="w-full rounded-lg border border-border-subtle bg-surface-muted p-3 text-base md:text-sm text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary"
               aria-invalid={!!errors.reason}
             />
@@ -158,13 +152,13 @@ export const AdminActionReasonModal: React.FC<AdminActionReasonModalProps> = ({
               onClick={handleClose}
               disabled={isSubmitting}
             >
-              {t("admin.cancel", "Cancel")}
+              {t("admin.cancel")}
             </Button>
             <Button type="submit" variant={variant} disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {t("admin.executing", "Executing...")}
+                  {t("admin.executing")}
                 </>
               ) : (
                 actionButtonLabel

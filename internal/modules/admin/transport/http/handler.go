@@ -28,10 +28,11 @@ type Guard interface {
 type AdminService interface {
 	SearchUsers(
 		ctx context.Context, filter usercontract.UserFilter, cursor string, limit int,
-	) ([]usercontract.UserSummary, string, error)
+	) (usercontract.UserPage, error)
 	GetUserByID(ctx context.Context, actorID uuid.UUID, targetID uuid.UUID) (*usercontract.UserDetail, error)
 	SuspendUser(ctx context.Context, actorID uuid.UUID, targetID uuid.UUID, reason string) error
 	ReinstateUser(ctx context.Context, actorID uuid.UUID, targetID uuid.UUID, reason string) error
+	SoftDeleteUser(ctx context.Context, actorID uuid.UUID, targetID uuid.UUID, reason string) error
 	RevokeUserSessions(ctx context.Context, actorID uuid.UUID, targetID uuid.UUID, reason string) error
 	ListFlags(ctx context.Context) ([]admincontract.FeatureFlag, error)
 	CreateFlag(ctx context.Context, req service.CreateFlagRequest) (admincontract.FeatureFlag, error)
@@ -58,6 +59,7 @@ func (h *Handler) Routes(router chi.Router) {
 	router.Get("/admin/users/{id}", h.getUser)
 	router.Post("/admin/users/{id}/suspend", h.suspendUser)
 	router.Post("/admin/users/{id}/reinstate", h.reinstateUser)
+	router.Post("/admin/users/{id}/delete", h.softDeleteUser)
 	router.Post("/admin/users/{id}/sessions/revoke", h.revokeSessions)
 
 	router.Get("/admin/flags", h.listFlags)

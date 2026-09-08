@@ -25,7 +25,7 @@ func (s *Service) SearchUsers(
 	filter usercontract.UserFilter,
 	cursor string,
 	limit int,
-) ([]usercontract.UserSummary, string, error) {
+) (usercontract.UserPage, error) {
 	return s.userReader.SearchUsers(ctx, filter, cursor, limit)
 }
 
@@ -92,6 +92,63 @@ func (s *Service) SuspendUser(
 	if s.audit != nil {
 		s.audit.Record(ctx, auditcontract.Entry{
 			Action:     "admin.user_suspended",
+			TargetType: targetTypeUser,
+			TargetID:   targetID.String(),
+			Meta: map[string]any{
+				metaActorID: actorID.String(),
+				metaReason:  trimmedReason,
+			},
+		})
+	}
+
+	return nil
+}
+
+// SoftDeleteUser starts the 30-day deletion grace period on another account,
+// logs the admin action, revokes sessions and audits.
+//
+// It is a suspension plus a clock, and the difference matters at the call site:
+// SuspendUser is undone by ReinstateUser; this is undone only by the account's
+// owner cancelling it, and only within the grace period. The reason requirement
+// is therefore the same as suspension's and the confirmation in front of it is
+// not.
+func (s *Service) SoftDeleteUser(
+	ctx context.Context,
+	actorID uuid.UUID,
+	targetID uuid.UUID,
+	reason string,
+) error {
+	if actorID == targetID {
+		return admindomain.ErrSelfAdminActionForbidden
+	}
+
+	trimmedReason := strings.TrimSpace(reason)
+	if len(trimmedReason) < 10 {
+		return admindomain.ErrReasonRequired
+	}
+
+	// Same order and same reasoning as SuspendUser: the justification is written
+	// before the act, so an act that happened is never missing its reason.
+	if _, err := s.repo.LogAdminAction(ctx, actorID, targetID, "soft_delete", trimmedReason); err != nil {
+		return err
+	}
+
+	if err := s.userManager.SoftDeleteUser(ctx, targetID, actorID, trimmedReason); err != nil {
+		return err
+	}
+
+	// user.deletion_requested already asks for a session revocation downstream.
+	// Doing it here too is deliberate: the outbox is asynchronous, and the point
+	// of this endpoint is that the account cannot be logged into once it returns.
+	if s.sessionRevoker != nil {
+		if _, err := s.sessionRevoker.RevokeAll(ctx, targetID); err != nil {
+			return err
+		}
+	}
+
+	if s.audit != nil {
+		s.audit.Record(ctx, auditcontract.Entry{
+			Action:     "admin.user_soft_deleted",
 			TargetType: targetTypeUser,
 			TargetID:   targetID.String(),
 			Meta: map[string]any{

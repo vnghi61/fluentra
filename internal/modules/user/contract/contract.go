@@ -153,16 +153,36 @@ type UserDetail struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
+// UserPage is one page of an administrative search, and how large the set it
+// came from is.
+//
+// Total is separate from len(Items) on purpose. The list is cursor-paginated, so
+// a page carries no idea of its own position or of how many pages follow — the
+// footer read "15 learners" whatever the search matched, which is the count of
+// one page presented as the count of everything.
+type UserPage struct {
+	Items      []UserSummary
+	NextCursor string
+	Total      int
+}
+
 // AdminReader reads users for administrative administration screens.
 type AdminReader interface {
-	SearchUsers(ctx context.Context, filter UserFilter, cursor string, limit int) ([]UserSummary, string, error)
+	SearchUsers(ctx context.Context, filter UserFilter, cursor string, limit int) (UserPage, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (*UserDetail, error)
 }
 
-// AdminManager manages user account state (suspension, reinstatement).
+// AdminManager manages user account state (suspension, reinstatement, deletion).
+//
+// SoftDeleteUser is the administrator's counterpart to the learner's own
+// RequestDeletion: the same 30-day grace period, the same deletion request row,
+// the same executor. It is separate from SuspendUser because the two are not
+// degrees of the same thing — a suspension is undone by ReinstateUser, and a
+// soft delete runs out into erasure unless the owner cancels it.
 type AdminManager interface {
 	SuspendUser(ctx context.Context, id uuid.UUID, actorID uuid.UUID, reason string) error
 	ReinstateUser(ctx context.Context, id uuid.UUID, actorID uuid.UUID, reason string) error
+	SoftDeleteUser(ctx context.Context, id uuid.UUID, actorID uuid.UUID, reason string) error
 }
 
 // Event names published by this module. They are strings rather than a Go type

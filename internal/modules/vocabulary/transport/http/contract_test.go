@@ -290,6 +290,83 @@ func TestContract_RequestBodiesUsedByTheTestsAreValid(t *testing.T) {
 // endpoint. GET /vocabulary/decks/{id}/words was exactly that: a working handler
 // on a path no OpenAPI document published, so it existed for nobody generating
 // a client. This test is why that cannot happen again silently.
+// The three admin reads below assert response *shape*, not just that the path
+// exists. The path list at the bottom of this file was extended for these
+// endpoints and nothing else was, which is how the queue shipped emitting `id`
+// for a field the spec requires as `upload_item_id`: both sides compiled, the
+// suite was green, and every row in the browser was keyed on undefined.
+
+func TestContract_AdminWordListMatchesTheSpec(t *testing.T) {
+	spec := loadSpec(t)
+	svc := &fakeVocabService{
+		listAdminWordsFn: func() ([]domain.AdminWord, int64, error) {
+			return []domain.AdminWord{{
+				ID:          uuid.MustParse(contractWordID),
+				Lemma:       "meticulous",
+				POS:         "adjective",
+				CEFRLevel:   "B2",
+				SensesCount: 1,
+				IsUploaded:  true,
+				CreatedAt:   time.Date(2026, 8, 1, 9, 0, 0, 0, time.UTC),
+				UpdatedAt:   time.Date(2026, 8, 1, 9, 0, 0, 0, time.UTC),
+			}}, 1, nil
+		},
+	}
+
+	recorder := call(t, svc, http.MethodGet, "/admin/vocabulary/words?source=upload", "", http.StatusOK)
+	assertMatchesSchema(t,
+		responseSchema(t, spec, "/admin/vocabulary/words", http.MethodGet, http.StatusOK),
+		recorder.Body.Bytes())
+}
+
+func TestContract_LearnerWordQueueMatchesTheSpec(t *testing.T) {
+	spec := loadSpec(t)
+	definition := "Showing great attention to detail."
+	svc := &fakeVocabService{
+		listQueueFn: func() ([]domain.LearnerWordQueueItem, int64, error) {
+			return []domain.LearnerWordQueueItem{{
+				ID:          uuid.MustParse(contractSense),
+				UploadID:    uuid.MustParse(contractDeckID),
+				UserID:      uuid.MustParse(contractUserID),
+				Term:        "meticulous",
+				Status:      "verified",
+				Attempts:    1,
+				CreatedAt:   time.Date(2026, 8, 1, 9, 0, 0, 0, time.UTC),
+				WordSenseID: ptr(uuid.MustParse(contractSense)),
+				Definition:  &definition,
+				Examples:    []domain.ExampleSentence{},
+			}}, 1, nil
+		},
+	}
+
+	recorder := call(t, svc, http.MethodGet, "/admin/vocabulary/queue", "", http.StatusOK)
+	assertMatchesSchema(t,
+		responseSchema(t, spec, "/admin/vocabulary/queue", http.MethodGet, http.StatusOK),
+		recorder.Body.Bytes())
+}
+
+func TestContract_UpdateWordSenseMatchesTheSpec(t *testing.T) {
+	spec := loadSpec(t)
+	svc := &fakeVocabService{
+		updateWordSenseFn: func(id uuid.UUID) (domain.WordSense, error) {
+			return domain.WordSense{
+				ID:         id,
+				WordID:     uuid.MustParse(contractWordID),
+				Definition: "Showing great attention to detail.",
+				Examples:   []domain.ExampleSentence{},
+				CreatedAt:  time.Date(2026, 8, 1, 9, 0, 0, 0, time.UTC),
+			}, nil
+		},
+	}
+
+	recorder := call(t, svc, http.MethodPatch,
+		"/admin/vocabulary/senses/"+contractSense,
+		`{"definition":"Showing great attention to detail."}`, http.StatusOK)
+	assertMatchesSchema(t,
+		responseSchema(t, spec, "/admin/vocabulary/senses/{id}", http.MethodPatch, http.StatusOK),
+		recorder.Body.Bytes())
+}
+
 func TestContract_EveryRoutedPathIsInTheSpec(t *testing.T) {
 	spec := loadSpec(t)
 
@@ -305,7 +382,12 @@ func TestContract_EveryRoutedPathIsInTheSpec(t *testing.T) {
 		{pathDeckWords, http.MethodPost},
 		{"/vocabulary/decks/{id}/words/{sense_id}", http.MethodDelete},
 		{"/vocabulary/words/{sense_id}/state", http.MethodPost},
+		{"/admin/vocabulary/words", http.MethodGet},
 		{"/admin/vocabulary/words", http.MethodPost},
+		{"/admin/vocabulary/words/{id}", http.MethodDelete},
+		{"/admin/vocabulary/queue", http.MethodGet},
+		{"/admin/vocabulary/senses/{id}", http.MethodPatch},
+		{"/admin/vocabulary/senses/{id}", http.MethodDelete},
 	}
 
 	for _, route := range routed {

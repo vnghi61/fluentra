@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -39,6 +40,10 @@ type ContentService interface {
 	Review(ctx context.Context, reviewerID, itemID uuid.UUID, req service.ReviewDecisionRequest) (domain.Version, error)
 	Publish(ctx context.Context, actorID, itemID uuid.UUID) (domain.Version, error)
 	Archive(ctx context.Context, actorID, itemID uuid.UUID) (domain.Item, error)
+	ListAdminItems(
+		ctx context.Context, status, kind, query *string, limit, offset int,
+	) ([]domain.Item, int64, error)
+	GetAdminItemDetail(ctx context.Context, id uuid.UUID) (domain.Item, []domain.Version, error)
 }
 
 // Handler serves HTTP endpoints for the content module.
@@ -67,6 +72,8 @@ func (h *Handler) Routes(router chi.Router) {
 
 // AdminRoutes mounts staff/authoring content endpoints under the admin router.
 func (h *Handler) AdminRoutes(router chi.Router) {
+	router.Get("/admin/content", h.adminListContent)
+	router.Get("/admin/content/{id}", h.adminGetContent)
 	router.Post("/admin/content", h.createItem)
 	router.Put("/admin/content/{id}/draft", h.updateDraft)
 	router.Post("/admin/content/{id}/submit", h.submitForReview)
@@ -341,4 +348,86 @@ func (h *Handler) archive(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httpx.WriteJSON(w, r, http.StatusOK, toContentItemResponse(item))
+}
+
+func (h *Handler) adminListContent(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if err := h.guard.Require(ctx, PermContentEdit); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	var statusPtr *string
+	if s := r.URL.Query().Get("status"); s != "" {
+		statusPtr = &s
+	}
+	var kindPtr *string
+	if k := r.URL.Query().Get("kind"); k != "" {
+		kindPtr = &k
+	}
+	var queryPtr *string
+	if q := strings.TrimSpace(r.URL.Query().Get("q")); q != "" {
+		queryPtr = &q
+	}
+	limit := 20
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
+			limit = parsed
+		}
+	}
+	offset := 0
+	if o := r.URL.Query().Get("offset"); o != "" {
+		if parsed, err := strconv.Atoi(o); err == nil && parsed >= 0 {
+			offset = parsed
+		}
+	}
+
+	items, total, err := h.service.ListAdminItems(ctx, statusPtr, kindPtr, queryPtr, limit, offset)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	respItems := make([]ContentItemResponse, len(items))
+	for i, item := range items {
+		respItems[i] = toContentItemResponse(item)
+	}
+
+	httpx.WriteJSON(w, r, http.StatusOK, AdminContentItemListResponse{
+		Items:  respItems,
+		Total:  int(total),
+		Limit:  limit,
+		Offset: offset,
+	})
+}
+
+func (h *Handler) adminGetContent(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if err := h.guard.Require(ctx, PermContentEdit); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	idStr := chi.URLParam(r, "id")
+	itemID, err := uuid.Parse(idStr)
+	if err != nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Validation, "INVALID_ID", "Invalid content item ID."))
+		return
+	}
+
+	item, versions, err := h.service.GetAdminItemDetail(ctx, itemID)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	respVersions := make([]ContentVersionResponse, len(versions))
+	for i, v := range versions {
+		respVersions[i] = toDomainVersionResponse(v)
+	}
+
+	httpx.WriteJSON(w, r, http.StatusOK, AdminContentItemDetailResponse{
+		ContentItemResponse: toContentItemResponse(item),
+		Versions:            respVersions,
+	})
 }

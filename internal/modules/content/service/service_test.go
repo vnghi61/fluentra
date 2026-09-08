@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -138,6 +139,44 @@ func (f *fakeRepo) ListItemsByOwner(
 func (f *fakeRepo) DeleteItem(_ context.Context, id uuid.UUID) error {
 	delete(f.items, id)
 	return nil
+}
+
+func (f *fakeRepo) ListContentItemsFiltered(
+	_ context.Context, status, kind, query *string, _, _ int32,
+) ([]domain.Item, error) {
+	var list []domain.Item
+	for _, item := range f.items {
+		if status != nil && string(item.Status) != *status {
+			continue
+		}
+		if kind != nil && item.Kind != *kind {
+			continue
+		}
+		if query != nil && !strings.HasPrefix(strings.ToLower(item.Slug), strings.ToLower(*query)) {
+			continue
+		}
+		list = append(list, item)
+	}
+	return list, nil
+}
+
+func (f *fakeRepo) CountContentItemsFiltered(
+	_ context.Context, status, kind, query *string,
+) (int64, error) {
+	var count int64
+	for _, item := range f.items {
+		if status != nil && string(item.Status) != *status {
+			continue
+		}
+		if kind != nil && item.Kind != *kind {
+			continue
+		}
+		if query != nil && !strings.HasPrefix(strings.ToLower(item.Slug), strings.ToLower(*query)) {
+			continue
+		}
+		count++
+	}
+	return count, nil
 }
 
 func (f *fakeRepo) CreateVersion(

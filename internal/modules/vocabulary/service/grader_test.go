@@ -33,6 +33,9 @@ const (
 
 	// A word the fixtures reuse; goconst objects to the literal repeating.
 	wordMeticulous = "meticulous"
+
+	// Same reason: the part of speech every word fixture is built with.
+	posAdjective = "adjective"
 )
 
 func TestVocabularyGrader_CorrectAnswer(t *testing.T) {

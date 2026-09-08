@@ -37,6 +37,12 @@ type fakeVocabService struct {
 	listDeckWordsFn      func(ctx context.Context, deckID uuid.UUID, limit, offset int32) ([]domain.DeckItem, error)
 	setWordStateFn       func(ctx context.Context, userID, wordSenseID uuid.UUID, status domain.WordStatus) error
 	getWordStateFn       func(ctx context.Context, userID, wordSenseID uuid.UUID) (domain.UserWordState, error)
+
+	withdrawWordFn    func(id uuid.UUID) error
+	withdrawSenseFn   func(id uuid.UUID) error
+	listQueueFn       func() ([]domain.LearnerWordQueueItem, int64, error)
+	updateWordSenseFn func(id uuid.UUID) (domain.WordSense, error)
+	listAdminWordsFn  func() ([]domain.AdminWord, int64, error)
 }
 
 func (f *fakeVocabService) LookupWord(ctx context.Context, lemma string) ([]domain.Word, error) {
@@ -127,6 +133,47 @@ func (f *fakeVocabService) GetWordState(
 		return f.getWordStateFn(ctx, userID, wordSenseID)
 	}
 	return domain.UserWordState{UserID: userID, WordSenseID: wordSenseID, Status: domain.StatusNew}, nil
+}
+
+func (f *fakeVocabService) ListAdminWords(
+	_ context.Context, _ *string, _ *string, _, _ int,
+) ([]domain.AdminWord, int64, error) {
+	if f.listAdminWordsFn != nil {
+		return f.listAdminWordsFn()
+	}
+	return nil, 0, nil
+}
+
+func (f *fakeVocabService) WithdrawWord(_ context.Context, id uuid.UUID) error {
+	if f.withdrawWordFn != nil {
+		return f.withdrawWordFn(id)
+	}
+	return nil
+}
+
+func (f *fakeVocabService) UpdateWordSenseAdmin(
+	_ context.Context, id uuid.UUID, _, _, _ *string, _ []domain.ExampleSentence,
+) (domain.WordSense, error) {
+	if f.updateWordSenseFn != nil {
+		return f.updateWordSenseFn(id)
+	}
+	return domain.WordSense{}, nil
+}
+
+func (f *fakeVocabService) WithdrawWordSense(_ context.Context, id uuid.UUID) error {
+	if f.withdrawSenseFn != nil {
+		return f.withdrawSenseFn(id)
+	}
+	return nil
+}
+
+func (f *fakeVocabService) ListLearnerWordsQueueAdmin(
+	_ context.Context, _, _ *string, _, _ int,
+) ([]domain.LearnerWordQueueItem, int64, error) {
+	if f.listQueueFn != nil {
+		return f.listQueueFn()
+	}
+	return nil, 0, nil
 }
 
 func setupTestRouter(svc vocabularyhttp.VocabularyService) chi.Router {

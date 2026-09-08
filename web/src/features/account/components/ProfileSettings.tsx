@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,18 +17,36 @@ import { AvatarUploadModal } from "./AvatarUploadModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { countryOptions, timezoneOptions } from "@/lib/locales";
 
 interface ProfileSettingsProps {
   initialProfile: UserProfile;
   onProfileUpdated?: (profile: UserProfile) => void;
 }
 
+/** One class string for both selects, so they cannot drift apart. */
+const SELECT_CLASS =
+  "flex h-11 min-h-[44px] w-full rounded-lg border border-border-subtle " +
+  "bg-surface-card px-3 text-base text-text focus:outline-none " +
+  "focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50";
+
 export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
   initialProfile,
   onProfileUpdated,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [profile, setProfile] = useState<UserProfile>(initialProfile);
+
+  // Memoised: the country list is ~200 Intl lookups plus a locale-aware sort,
+  // and this form re-renders on every keystroke.
+  const countries = useMemo(
+    () => countryOptions(i18n.language),
+    [i18n.language],
+  );
+  const timezones = useMemo(
+    () => timezoneOptions(profile.profile.timezone),
+    [profile.profile.timezone],
+  );
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{
@@ -242,15 +260,24 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
           <div className="space-y-2">
             <Label htmlFor="country" className="flex items-center gap-2">
               <Globe className="h-4 w-4 text-text-muted" />
-              Country (ISO 2-letter code)
+              {t("account.country")}
             </Label>
-            <Input
+            {/* A list, not a text box. The server stores an ISO alpha-2 code and
+                validated only the length, so "US" and "XX" were equally
+                acceptable and "Viet Nam" was rejected for being too long. */}
+            <select
               id="country"
               {...register("country")}
-              placeholder="e.g. VN, US, JP"
-              maxLength={2}
               aria-invalid={!!errors.country}
-            />
+              className={SELECT_CLASS}
+            >
+              <option value="">{t("account.countryUnset")}</option>
+              {countries.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
             {errors.country && (
               <p className="text-xs text-danger-accent">
                 {errors.country.message}
@@ -260,15 +287,22 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
 
           {/* Timezone */}
           <div className="space-y-2">
-            <Label htmlFor="timezone">
-              {t("account.timezone", "Timezone")}
-            </Label>
-            <Input
+            <Label htmlFor="timezone">{t("account.timezone")}</Label>
+            {/* Every zone here is one this browser can resolve, so a learner
+                cannot store a name that makes their own review schedule land on
+                the wrong local day. */}
+            <select
               id="timezone"
               {...register("timezone")}
-              placeholder="e.g. Asia/Ho_Chi_Minh"
               aria-invalid={!!errors.timezone}
-            />
+              className={SELECT_CLASS}
+            >
+              {timezones.map((zone) => (
+                <option key={zone} value={zone}>
+                  {zone.replace(/_/g, " ")}
+                </option>
+              ))}
+            </select>
             {errors.timezone && (
               <p className="text-xs text-danger-accent">
                 {errors.timezone.message}

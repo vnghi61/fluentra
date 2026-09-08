@@ -61,10 +61,7 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
           setError(
             err instanceof Error
               ? err.message
-              : t(
-                  "admin.failedToLoadUserDetails",
-                  "Failed to load user details.",
-                ),
+              : t("admin.failedToLoadUserDetails"),
           );
           setIsLoading(false);
         }
@@ -111,7 +108,7 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
               className="text-lg font-semibold text-text flex items-center gap-2"
             >
               <User className="h-5 w-5 text-primary-accent" />
-              {t("admin.learnerAccountDetails", "Learner Account Details")}
+              {t("admin.learnerAccountDetails")}
             </h2>
             <button
               type="button"
@@ -182,14 +179,12 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
               {/* Meta Grid */}
               <div className="grid grid-cols-2 gap-4 text-xs">
                 <div className="rounded-lg border border-border-subtle bg-surface-card/40 p-3 space-y-1">
-                  <span className="text-text-muted">
-                    {t("admin.userId", "User ID")}
-                  </span>
+                  <span className="text-text-muted">{t("admin.userId")}</span>
                   <p className="font-mono text-text truncate">{detail.id}</p>
                 </div>
                 <div className="rounded-lg border border-border-subtle bg-surface-card/40 p-3 space-y-1">
                   <span className="text-text-muted">
-                    {t("admin.languageLocale", "Language / Locale")}
+                    {t("admin.languageLocale")}
                   </span>
                   <p className="text-text flex items-center gap-1">
                     <Globe className="h-3.5 w-3.5 text-text-muted" />
@@ -197,14 +192,12 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
                   </p>
                 </div>
                 <div className="rounded-lg border border-border-subtle bg-surface-card/40 p-3 space-y-1">
-                  <span className="text-text-muted">
-                    {t("admin.timezone", "Timezone")}
-                  </span>
+                  <span className="text-text-muted">{t("admin.timezone")}</span>
                   <p className="text-text">{detail.timezone}</p>
                 </div>
                 <div className="rounded-lg border border-border-subtle bg-surface-card/40 p-3 space-y-1">
                   <span className="text-text-muted">
-                    {t("admin.registered", "Registered")}
+                    {t("admin.registered")}
                   </span>
                   <p className="text-text flex items-center gap-1">
                     <Clock className="h-3.5 w-3.5 text-text-muted" />
@@ -216,7 +209,7 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
               {/* Administrative Actions */}
               <div className="border-t border-border-subtle pt-4 space-y-3">
                 <h4 className="text-xs font-semibold uppercase tracking-wider text-text-muted">
-                  {t("admin.administrativeControls", "Administrative Controls")}
+                  {t("admin.administrativeControls")}
                 </h4>
                 <div className="flex flex-wrap gap-3">
                   {detail.status === "active" &&
@@ -228,7 +221,7 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
                       onClick={() => setActionType("suspend")}
                     >
                       <Ban className="mr-1.5 h-3.5 w-3.5" />
-                      {t("admin.suspendUser", "Suspend User")}
+                      {t("admin.suspendUser")}
                     </Button>
                   ) : detail.status === "suspended" &&
                     can(PERMISSIONS.userReinstate) ? (
@@ -240,7 +233,7 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
                       className="border-success/40 text-success-accent hover:bg-success/10"
                     >
                       <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
-                      {t("admin.reinstateUser", "Reinstate User")}
+                      {t("admin.reinstateUser")}
                     </Button>
                   ) : null}
 
@@ -252,10 +245,7 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
                       onClick={() => setActionType("revoke_sessions")}
                     >
                       <LogOut className="mr-1.5 h-3.5 w-3.5" />
-                      {t(
-                        "admin.revokeActiveSessions",
-                        "Revoke Active Sessions",
-                      )}
+                      {t("admin.revokeActiveSessions")}
                     </Button>
                   )}
                 </div>
@@ -270,33 +260,24 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
           isOpen={true}
           title={
             actionType === "suspend"
-              ? t("admin.suspendAccount", "Suspend Account")
+              ? t("admin.suspendAccount")
               : actionType === "reinstate"
-                ? t("admin.reinstateAccount", "Reinstate Account")
-                : t("admin.revokeActiveSessions", "Revoke Active Sessions")
+                ? t("admin.reinstateAccount")
+                : t("admin.revokeActiveSessions")
           }
           description={
             actionType === "suspend"
-              ? t(
-                  "admin.suspendingWillImmediatelyBlockLogin",
-                  "Suspending will immediately block login and terminate all active sessions.",
-                )
+              ? t("admin.suspendingWillImmediatelyBlockLogin")
               : actionType === "reinstate"
-                ? t(
-                    "admin.reinstatingRestoresFullAccountAccess",
-                    "Reinstating restores full account access. Active sessions are not restored.",
-                  )
-                : t(
-                    "admin.signsTheUserOutOf",
-                    "Signs the user out of all active devices without changing account status.",
-                  )
+                ? t("admin.reinstatingRestoresFullAccountAccess")
+                : t("admin.signsTheUserOutOf")
           }
           actionButtonLabel={
             actionType === "suspend"
-              ? t("admin.confirmSuspension", "Confirm Suspension")
+              ? t("admin.confirmSuspension")
               : actionType === "reinstate"
-                ? t("admin.confirmReinstatement", "Confirm Reinstatement")
-                : t("admin.revokeAllSessions", "Revoke All Sessions")
+                ? t("admin.confirmReinstatement")
+                : t("admin.revokeAllSessions")
           }
           variant={actionType === "suspend" ? "destructive" : "primary"}
           onClose={() => setActionType(null)}

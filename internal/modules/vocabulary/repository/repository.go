@@ -74,6 +74,17 @@ type Repository interface {
 	) (sqlc.SkillVocabUploadItem, error)
 	CompleteFinishedUploads(ctx context.Context) ([]sqlc.SkillVocabUpload, error)
 
+	// Admin dictionary and queue inspection
+	ListWordsAdmin(ctx context.Context, arg sqlc.ListWordsAdminParams) ([]sqlc.ListWordsAdminRow, error)
+	CountWordsAdmin(ctx context.Context, arg sqlc.CountWordsAdminParams) (int64, error)
+	UpdateWordSenseAdmin(ctx context.Context, arg sqlc.UpdateWordSenseAdminParams) (sqlc.SkillWordSense, error)
+	DeleteWordSense(ctx context.Context, id uuid.UUID) error
+	DeleteWord(ctx context.Context, id uuid.UUID) error
+	ListLearnerWordsQueueAdmin(
+		ctx context.Context, arg sqlc.ListLearnerWordsQueueAdminParams,
+	) ([]sqlc.ListLearnerWordsQueueAdminRow, error)
+	CountLearnerWordsQueueAdmin(ctx context.Context, arg sqlc.CountLearnerWordsQueueAdminParams) (int64, error)
+
 	WithTx(tx pgx.Tx) Repository
 }
 
@@ -350,4 +361,40 @@ func (r *pgxRepository) MarkQueuedUploadItemFailed(
 		ID:     id,
 		Reason: reason,
 	})
+}
+
+func (r *pgxRepository) ListWordsAdmin(
+	ctx context.Context, arg sqlc.ListWordsAdminParams,
+) ([]sqlc.ListWordsAdminRow, error) {
+	return r.q.ListWordsAdmin(ctx, arg)
+}
+
+func (r *pgxRepository) CountWordsAdmin(ctx context.Context, arg sqlc.CountWordsAdminParams) (int64, error) {
+	return r.q.CountWordsAdmin(ctx, arg)
+}
+
+func (r *pgxRepository) UpdateWordSenseAdmin(
+	ctx context.Context, arg sqlc.UpdateWordSenseAdminParams,
+) (sqlc.SkillWordSense, error) {
+	return r.q.UpdateWordSenseAdmin(ctx, arg)
+}
+
+func (r *pgxRepository) DeleteWordSense(ctx context.Context, id uuid.UUID) error {
+	return r.q.DeleteWordSense(ctx, id)
+}
+
+func (r *pgxRepository) DeleteWord(ctx context.Context, id uuid.UUID) error {
+	return r.q.DeleteWord(ctx, id)
+}
+
+func (r *pgxRepository) ListLearnerWordsQueueAdmin(
+	ctx context.Context, arg sqlc.ListLearnerWordsQueueAdminParams,
+) ([]sqlc.ListLearnerWordsQueueAdminRow, error) {
+	return r.q.ListLearnerWordsQueueAdmin(ctx, arg)
+}
+
+func (r *pgxRepository) CountLearnerWordsQueueAdmin(
+	ctx context.Context, arg sqlc.CountLearnerWordsQueueAdminParams,
+) (int64, error) {
+	return r.q.CountLearnerWordsQueueAdmin(ctx, arg)
 }

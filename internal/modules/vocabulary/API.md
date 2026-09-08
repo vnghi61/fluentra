@@ -38,7 +38,12 @@ Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR
 | `POST` | `/api/v1/me/vocabulary/uploads` | `self` | Submit your own vocabulary to be checked |
 | `GET` | `/api/v1/me/vocabulary/uploads` | `self` | Your uploads, newest first |
 | `GET` | `/api/v1/me/vocabulary/uploads/{id}` | `self` | One upload, with every word and what became of it |
+| `GET` | `/api/v1/admin/vocabulary/words` | `content.edit` | List vocabulary words with source filter |
 | `POST` | `/api/v1/admin/vocabulary/words` | `content.create` | Create a word entry |
+| `DELETE` | `/api/v1/admin/vocabulary/words/{id}` | `content.edit` | Withdraw a word from the shared dictionary |
+| `GET` | `/api/v1/admin/vocabulary/queue` | `content.edit` | List learner-contributed words queue |
+| `PATCH` | `/api/v1/admin/vocabulary/senses/{id}` | `content.edit` | Update a word sense definition or examples |
+| `DELETE` | `/api/v1/admin/vocabulary/senses/{id}` | `content.edit` | Withdraw one sense from the shared dictionary |
 <!-- END GENERATED: api-summary -->
 
 ## Endpoint detail
@@ -155,6 +160,16 @@ One upload, with every word and what became of it
 | Success | 200 |
 | Errors | standard set |
 
+### `GET /api/v1/admin/vocabulary/words`
+
+List vocabulary words with source filter
+
+| | |
+|---|---|
+| Permission | `content.edit` |
+| Success | 200 |
+| Errors | standard set |
+
 ### `POST /api/v1/admin/vocabulary/words`
 
 Create a word entry
@@ -163,6 +178,46 @@ Create a word entry
 |---|---|
 | Permission | `content.create` |
 | Success | 201 |
+| Errors | standard set |
+
+### `DELETE /api/v1/admin/vocabulary/words/{id}`
+
+Withdraw a word from the shared dictionary
+
+| | |
+|---|---|
+| Permission | `content.edit` |
+| Success | 204 |
+| Errors | standard set |
+
+### `GET /api/v1/admin/vocabulary/queue`
+
+List learner-contributed words queue
+
+| | |
+|---|---|
+| Permission | `content.edit` |
+| Success | 200 |
+| Errors | standard set |
+
+### `PATCH /api/v1/admin/vocabulary/senses/{id}`
+
+Update a word sense definition or examples
+
+| | |
+|---|---|
+| Permission | `content.edit` |
+| Success | 200 |
+| Errors | standard set |
+
+### `DELETE /api/v1/admin/vocabulary/senses/{id}`
+
+Withdraw one sense from the shared dictionary
+
+| | |
+|---|---|
+| Permission | `content.edit` |
+| Success | 204 |
 | Errors | standard set |
 
 <!-- END GENERATED: api-detail -->

@@ -164,12 +164,19 @@ LeaderboardEntry:
 
 LeaderboardResponse:
   type: object
-  required: [entries]
+  required: [entries, opted_in]
   properties:
     entries:
       type: array
       items:
         $ref: '#/LeaderboardEntry'
+    opted_in:
+      type: boolean
+      description: >-
+        Whether the caller appears in these standings. Not a permission: the
+        board is returned either way. It is what lets the screen offer the join
+        button above a board it is already showing.
+      example: false
 
 SetDailyGoalRequest:
   type: object

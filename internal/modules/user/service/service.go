@@ -93,6 +93,7 @@ type Repository interface {
 		cursorTime *time.Time,
 		limit int,
 	) ([]SearchUserRow, error)
+	CountUsersAdmin(ctx context.Context, filter contract.UserFilter) (int64, error)
 
 	WithTx(tx pgx.Tx) Repository
 }

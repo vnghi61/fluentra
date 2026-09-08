@@ -187,9 +187,12 @@ describe("Account Management Settings (P5.2)", () => {
       const user = userEvent.setup();
       render(<PreferencesSettings initialPreferences={mockPreferences} />);
 
-      const goalInput = screen.getByLabelText(/Daily Study Goal/i);
-      await user.clear(goalInput);
-      await user.type(goalInput, "45");
+      // A select now, not a number box: the field offers the goals the server
+      // accepts rather than trusting a learner not to type 1130.
+      await user.selectOptions(
+        screen.getByLabelText(/Daily Study Goal/i),
+        "45",
+      );
 
       const saveBtn = screen.getByRole("button", { name: /Save Preferences/i });
       await user.click(saveBtn);

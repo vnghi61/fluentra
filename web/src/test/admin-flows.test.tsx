@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { server } from "./msw-server";
+import i18n, { initI18n } from "@/i18n";
 import { AdminUserList } from "@/features/admin/components/AdminUserList";
 import { AdminFeatureFlags } from "@/features/admin/components/AdminFeatureFlags";
 import { AdminPage } from "@/pages/AdminPage";
@@ -24,6 +25,15 @@ const sampleUser2 = {
   avatar_url: null,
   status: "suspended",
   created_at: "2026-08-05T10:00:00Z",
+};
+
+const sampleUser3 = {
+  id: "33333333-3333-3333-3333-333333333333",
+  email: "learner3@example.com",
+  display_name: "Learner Three",
+  avatar_url: null,
+  status: "active",
+  created_at: "2026-08-07T10:00:00Z",
 };
 
 const sampleUserDetail = {
@@ -50,7 +60,10 @@ const sampleFlag = {
 };
 
 describe("Admin Shell & Operations", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    initI18n("en");
+    await i18n.changeLanguage("en");
+
     // Default mock handlers for admin endpoints
     server.use(
       // The admin screens ask what the caller may do before rendering any of
@@ -66,6 +79,7 @@ describe("Admin Shell & Operations", () => {
             "user.suspend",
             "user.reinstate",
             "user.manage_sessions",
+            "user.delete",
             "system.flags",
             "admin.dashboard",
           ],
@@ -223,7 +237,9 @@ describe("Admin Shell & Operations", () => {
       expect(screen.getByText("Learner One")).toBeInTheDocument();
     });
 
-    await user.click(screen.getByRole("button", { name: /Inspect/i }));
+    await user.click(
+      screen.getAllByRole("button", { name: /Inspect account/i })[0]!,
+    );
 
     await waitFor(() => {
       expect(screen.getByText("Learner Account Details")).toBeInTheDocument();
@@ -231,6 +247,287 @@ describe("Admin Shell & Operations", () => {
       expect(screen.getByText("vi-VN")).toBeInTheDocument();
       expect(screen.getByText("Asia/Ho_Chi_Minh")).toBeInTheDocument();
     });
+  });
+
+  it("locks a login straight from the row, and records why", async () => {
+    let suspended: { id: string; reason: string } | null = null;
+    server.use(
+      http.post(
+        "/api/v1/admin/users/:id/suspend",
+        async ({ params, request }) => {
+          const body = (await request.json()) as { reason: string };
+          suspended = { id: String(params["id"]), reason: body.reason };
+          return HttpResponse.json({ id: params["id"], status: "suspended" });
+        },
+      ),
+    );
+
+    const user = userEvent.setup();
+    render(<AdminUserList />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Learner One")).toBeInTheDocument();
+    });
+
+    await user.click(
+      screen.getAllByRole("button", { name: /Lock login/i })[0]!,
+    );
+
+    // The reason is not optional decoration: the server refuses under ten
+    // characters, so the row action has to collect one before it can fire.
+    const textarea = await screen.findByPlaceholderText(
+      /State the justification/i,
+    );
+    await user.type(textarea, "Repeated spam reports confirmed by moderation");
+    await user.click(screen.getByRole("button", { name: /Suspend User/i }));
+
+    await waitFor(() => {
+      expect(suspended).not.toBeNull();
+    });
+    expect(suspended!.id).toBe("11111111-1111-1111-1111-111111111111");
+    expect(suspended!.reason.length).toBeGreaterThanOrEqual(10);
+  });
+
+  it("soft-deletes an account from the row, and says what that costs", async () => {
+    let deleted: { id: string; reason: string } | null = null;
+    server.use(
+      http.post(
+        "/api/v1/admin/users/:id/delete",
+        async ({ params, request }) => {
+          const body = (await request.json()) as { reason: string };
+          deleted = { id: String(params["id"]), reason: body.reason };
+          return HttpResponse.json({
+            id: params["id"],
+            status: "pending_deletion",
+          });
+        },
+      ),
+    );
+
+    const user = userEvent.setup();
+    render(<AdminUserList />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Learner One")).toBeInTheDocument();
+    });
+
+    await user.click(
+      screen.getAllByRole("button", { name: /Soft-delete account/i })[0]!,
+    );
+
+    // The administrator is told the two things that are easy to get wrong: the
+    // sessions end now, and they cannot undo it afterwards.
+    expect(
+      await screen.findByText(/erased after 30 days unless its owner cancels/i),
+    ).toBeInTheDocument();
+
+    const textarea = screen.getByPlaceholderText(/State the justification/i);
+    await user.type(textarea, "Account closure requested by the owner");
+    // Scoped to the dialog: the row icon that opened it carries the same
+    // accessible name, which is right for both and ambiguous for a global query.
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: /Soft-delete account/i,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(deleted).not.toBeNull();
+    });
+    expect(deleted!.id).toBe("11111111-1111-1111-1111-111111111111");
+  });
+
+  it("reports how many accounts match, not how many are on the page", async () => {
+    server.use(
+      http.get("/api/v1/admin/users", () =>
+        HttpResponse.json({
+          items: [sampleUser1],
+          total: 1284,
+          next_cursor: "cursor_page_2",
+        }),
+      ),
+    );
+
+    render(<AdminUserList />);
+
+    // The footer counted the rows it was handed, so it read "1 learner" for a
+    // search matching 1284 — the size of one page presented as the whole set.
+    expect(await screen.findByText(/1284/)).toBeInTheDocument();
+  });
+
+  it("locks a batch under one justification, and refuses to invent one", async () => {
+    const suspended: string[] = [];
+    server.use(
+      http.get("/api/v1/admin/users", () =>
+        HttpResponse.json({
+          items: [sampleUser1, sampleUser3],
+          total: 2,
+          next_cursor: undefined,
+        }),
+      ),
+      http.post("/api/v1/admin/users/:id/suspend", ({ params }) => {
+        suspended.push(String(params["id"]));
+        return HttpResponse.json({ id: params["id"], status: "suspended" });
+      }),
+    );
+
+    const user = userEvent.setup();
+    render(<AdminUserList />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Learner One")).toBeInTheDocument();
+    });
+
+    // Re-queried each time: ticking a box re-renders the rows, so a node
+    // captured before the first click is detached by the second.
+    expect(screen.getAllByLabelText(/Select this account/i)).toHaveLength(2);
+    for (let i = 0; i < 2; i++) {
+      await user.click(screen.getAllByLabelText(/Select this account/i)[i]!);
+    }
+
+    await user.selectOptions(
+      screen.getByLabelText(/Action for 2 selected/i),
+      "suspend",
+    );
+
+    // The same sentence is recorded against every account in the batch, so the
+    // modal asks for one before anything happens rather than after.
+    const textarea = await screen.findByPlaceholderText(
+      /State the justification/i,
+    );
+    await user.type(
+      textarea,
+      "Coordinated spam campaign from one address book",
+    );
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: /Lock login for the selected/i,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(suspended).toHaveLength(2);
+    });
+    expect(suspended).toContain(sampleUser1.id);
+    expect(suspended).toContain(sampleUser3.id);
+  });
+
+  it("names the accounts a batch could not change rather than counting them", async () => {
+    server.use(
+      http.get("/api/v1/admin/users", () =>
+        HttpResponse.json({
+          items: [sampleUser1, sampleUser3],
+          total: 2,
+          next_cursor: undefined,
+        }),
+      ),
+      http.post("/api/v1/admin/users/:id/suspend", ({ params }) => {
+        // One of the two refuses. A batch that half-applied and says only
+        // "1 failed" leaves the administrator to find out which by running it
+        // again — on the account that already succeeded.
+        if (String(params["id"]) === sampleUser3.id) {
+          return HttpResponse.json(
+            { status: 422, code: "INVALID_STATE_TRANSITION" },
+            { status: 422 },
+          );
+        }
+        return HttpResponse.json({ id: params["id"], status: "suspended" });
+      }),
+    );
+
+    const user = userEvent.setup();
+    render(<AdminUserList />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Learner One")).toBeInTheDocument();
+    });
+
+    // Re-queried each time: ticking a box re-renders the rows, so a node
+    // captured before the first click is detached by the second.
+    expect(screen.getAllByLabelText(/Select this account/i)).toHaveLength(2);
+    for (let i = 0; i < 2; i++) {
+      await user.click(screen.getAllByLabelText(/Select this account/i)[i]!);
+    }
+    await user.selectOptions(
+      screen.getByLabelText(/Action for 2 selected/i),
+      "suspend",
+    );
+    await user.type(
+      await screen.findByPlaceholderText(/State the justification/i),
+      "Coordinated spam campaign from one address book",
+    );
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: /Lock login for the selected/i,
+      }),
+    );
+
+    // The banner names the one that failed. "Learner Three" is also its own
+    // table row, so the assertion is on the list item the banner renders.
+    expect(await screen.findByText(/1 of 2 succeeded/i)).toBeInTheDocument();
+    const failedItems = screen
+      .getAllByRole("listitem")
+      .map((li) => li.textContent);
+    expect(failedItems).toContain("Learner Three");
+    expect(failedItems).not.toContain("Learner One");
+  });
+
+  it("offers no soft delete to an administrator without user.delete", async () => {
+    server.use(
+      http.get("/api/v1/me/permissions", () =>
+        HttpResponse.json({
+          roles: ["admin"],
+          permissions: [
+            "admin.dashboard",
+            "user.list",
+            "user.read",
+            "user.suspend",
+          ],
+        }),
+      ),
+    );
+
+    render(<AdminUserList />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Learner One")).toBeInTheDocument();
+    });
+
+    // Hiding it is half the control; the endpoint requires the permission too.
+    // But a control that answers 403 is the fault this screen was written to
+    // avoid, and soft deletion is the one where a 403 arrives after the
+    // administrator has already typed a justification.
+    expect(
+      screen.queryByRole("button", { name: /Soft-delete account/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getAllByRole("button", { name: /Lock login/i }).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("offers a suspended account reinstatement, and never a second suspension", async () => {
+    // sampleUser2 is suspended, and the default handler only serves it on the
+    // second page. Serving it first keeps this about the row, not the paging.
+    server.use(
+      http.get("/api/v1/admin/users", () =>
+        HttpResponse.json({ items: [sampleUser2], next_cursor: undefined }),
+      ),
+    );
+
+    render(<AdminUserList />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Learner Two")).toBeInTheDocument();
+    });
+
+    // Exact names, not substrings: "Unlock login (reinstate)" contains "Lock
+    // login", so a loose matcher here would pass for the wrong reason.
+    expect(
+      screen.getByRole("button", { name: "Unlock login (reinstate)" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Lock login (suspend)" }),
+    ).not.toBeInTheDocument();
   });
 
   it("enforces reason of at least 10 characters for administrative suspension", async () => {
@@ -241,7 +538,9 @@ describe("Admin Shell & Operations", () => {
       expect(screen.getByText("Learner One")).toBeInTheDocument();
     });
 
-    await user.click(screen.getByRole("button", { name: /Inspect/i }));
+    await user.click(
+      screen.getAllByRole("button", { name: /Inspect account/i })[0]!,
+    );
 
     await waitFor(() => {
       expect(
@@ -301,7 +600,9 @@ describe("Admin Shell & Operations", () => {
       expect(screen.getByText("Learner One")).toBeInTheDocument();
     });
 
-    await user.click(screen.getByRole("button", { name: /Inspect/i }));
+    await user.click(
+      screen.getAllByRole("button", { name: /Inspect account/i })[0]!,
+    );
 
     await waitFor(() => {
       expect(

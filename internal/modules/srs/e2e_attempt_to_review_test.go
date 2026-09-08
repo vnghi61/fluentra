@@ -200,6 +200,26 @@ func (f *fakeSRSRepo) SuspendReviewCard(_ context.Context, id, userID uuid.UUID)
 	return card, nil
 }
 
+func (f *fakeSRSRepo) SuspendReviewCardsByContentVersion(
+	_ context.Context, contentVersionIDs []uuid.UUID,
+) ([]uuid.UUID, error) {
+	wanted := make(map[uuid.UUID]struct{}, len(contentVersionIDs))
+	for _, id := range contentVersionIDs {
+		wanted[id] = struct{}{}
+	}
+	var touched []uuid.UUID
+	for id, card := range f.cards {
+		if _, ok := wanted[card.ContentVersionID]; !ok || card.SuspendedAt != nil {
+			continue
+		}
+		now := time.Now().UTC()
+		card.SuspendedAt = &now
+		f.cards[id] = card
+		touched = append(touched, card.UserID)
+	}
+	return touched, nil
+}
+
 func (f *fakeSRSRepo) SetReviewCardsSuspended(
 	_ context.Context, userID uuid.UUID, contentVersionIDs []uuid.UUID, suspended bool,
 ) (int64, error) {

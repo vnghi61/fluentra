@@ -61,6 +61,16 @@ _Nothing deferred._
       nothing, and the seed's bidirectional check compares the seed against the runner, so
       nothing could ever have caught it.
 
+## Done in work order 9
+
+- [x] **Vocabulary administration & withdrawal.** Added `GET /admin/vocabulary/words` (with source filter for seed vs learner upload) and `DELETE /admin/vocabulary/words/{id}` to withdraw words and senses from the shared dictionary.
+- [x] **Learner words queue inspection & moderation.** Added `GET /admin/vocabulary/queue` displaying model verification verdicts, target decks, and sense metadata.
+- [x] **Word sense editing & sense withdrawal.** Added `PATCH /admin/vocabulary/senses/{id}` to correct definitions, Vietnamese glosses, topics, or examples, and `DELETE /admin/vocabulary/senses/{id}`.
+- [x] **Withdrawal decision.** Recorded in `DECISIONS.md`: withdrawal suspends every review card
+  on the material first, across all learners, and only then deletes the sense. Archiving the
+  content version was the first answer and BR-CONTENT-01 forbids it — a published
+  `content_versions` row cannot be updated at all.
+
 The Phase 2 boxes above are unticked because docgen renders every generated item that way —
 words, senses, decks, dictionary lookup and the four graders all shipped in Phase 2. Read the
 code for status, not the box (`phase-3-next-steps.md` §4).
