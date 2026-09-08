@@ -30,6 +30,11 @@ const (
 	PermUserReinstate      Permission = "user.reinstate"
 	PermUserManageSessions Permission = "user.manage_sessions"
 	PermUserImpersonate    Permission = "user.impersonate"
+	// Soft deletion is not suspension with a longer name, so it is not
+	// PermUserSuspend: a suspension is undone by a second administrator in one
+	// click, and this opens a 30-day grace period that ends in erasure and that
+	// only the account's owner can cancel (1700000480).
+	PermUserDelete Permission = "user.delete"
 
 	// audit
 	PermAuditRead   Permission = "audit.read"
@@ -65,7 +70,8 @@ const (
 func All() []Permission {
 	return []Permission{
 		PermRBACRead, PermRBACAssign,
-		PermUserList, PermUserRead, PermUserSuspend, PermUserReinstate, PermUserManageSessions, PermUserImpersonate,
+		PermUserList, PermUserRead, PermUserSuspend, PermUserReinstate, PermUserManageSessions,
+		PermUserImpersonate, PermUserDelete,
 		PermAuditRead, PermAuditExport, PermAuditManage,
 		PermAdminDashboard, PermModerationRead, PermModerationAct,
 		PermSystemFlags, PermSystemJobs,
