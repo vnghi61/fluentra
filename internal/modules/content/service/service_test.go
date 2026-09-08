@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
+	"strings"
 	"testing"
 	"time"
 
@@ -28,6 +30,12 @@ type fakeRepo struct {
 	reviews     map[uuid.UUID]domain.Review
 	tags        map[uuid.UUID][]domain.TaxonomyTag
 	queriesRun  int
+
+	// what the last ListContentItemsFiltered call was given. The window is
+	// narrowed from int to int32 on the way to the driver, and an unbounded
+	// value would wrap to a negative LIMIT rather than fail.
+	lastAdminLimit  int32
+	lastAdminOffset int32
 
 	// what the last BrowsePublishedVersions call was given, so a test can
 	// assert the clamp reaches the query rather than stopping at the service.
@@ -138,6 +146,45 @@ func (f *fakeRepo) ListItemsByOwner(
 func (f *fakeRepo) DeleteItem(_ context.Context, id uuid.UUID) error {
 	delete(f.items, id)
 	return nil
+}
+
+func (f *fakeRepo) ListContentItemsFiltered(
+	_ context.Context, status, kind, query *string, limit, offset int32,
+) ([]domain.Item, error) {
+	f.lastAdminLimit, f.lastAdminOffset = limit, offset
+	var list []domain.Item
+	for _, item := range f.items {
+		if status != nil && string(item.Status) != *status {
+			continue
+		}
+		if kind != nil && item.Kind != *kind {
+			continue
+		}
+		if query != nil && !strings.HasPrefix(strings.ToLower(item.Slug), strings.ToLower(*query)) {
+			continue
+		}
+		list = append(list, item)
+	}
+	return list, nil
+}
+
+func (f *fakeRepo) CountContentItemsFiltered(
+	_ context.Context, status, kind, query *string,
+) (int64, error) {
+	var count int64
+	for _, item := range f.items {
+		if status != nil && string(item.Status) != *status {
+			continue
+		}
+		if kind != nil && item.Kind != *kind {
+			continue
+		}
+		if query != nil && !strings.HasPrefix(strings.ToLower(item.Slug), strings.ToLower(*query)) {
+			continue
+		}
+		count++
+	}
+	return count, nil
 }
 
 func (f *fakeRepo) CreateVersion(
@@ -713,5 +760,56 @@ func TestGetManyVersionsSingleQuery(t *testing.T) {
 	// caught because the singular method also increments queriesRun.
 	if repo.queriesRun != 2 {
 		t.Errorf("queriesRun = %d, want exactly 2 (versions + batch tags)", repo.queriesRun)
+	}
+}
+
+// TestListAdminItems_ClampsThePageWindow.
+//
+// `limit` and `offset` arrive as platform ints and reach the driver as int32.
+// The clamp is what makes that conversion sound, and it used to sit above the
+// conversion as a reassignment rather than around it — safe, but nothing at the
+// conversion said so, and CodeQL read it as an unbounded narrowing.
+//
+// The values below are the ones that matter: 2^31 does not fit an int32 at all,
+// and a bare conversion turns it into a negative LIMIT, which Postgres rejects.
+func TestListAdminItems_ClampsThePageWindow(t *testing.T) {
+	repo := newFakeRepo()
+	svc := service.New(service.Deps{Repo: repo})
+	ctx := context.Background()
+
+	cases := []struct {
+		name       string
+		limit      int
+		offset     int
+		wantLimit  int32
+		wantOffset int32
+	}{
+		{"a sane window is passed through", 50, 100, 50, 100},
+		{"no window asks for the default", 0, 0, 20, 0},
+		{"a negative limit asks for the default", -1, 0, 20, 0},
+		{"an oversized limit is capped", 5000, 0, 100, 0},
+		{"a deep offset is passed through", 20, 999_999, 20, 999_999},
+		{"a value beyond int32 never reaches the driver", 1 << 31, 1 << 31, 100, math.MaxInt32},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, _, err := svc.ListAdminItems(ctx, nil, nil, nil, tc.limit, tc.offset); err != nil {
+				t.Fatalf("ListAdminItems: %v", err)
+			}
+			if repo.lastAdminLimit != tc.wantLimit {
+				t.Errorf("limit = %d, want %d", repo.lastAdminLimit, tc.wantLimit)
+			}
+			if repo.lastAdminOffset != tc.wantOffset {
+				t.Errorf("offset = %d, want %d", repo.lastAdminOffset, tc.wantOffset)
+			}
+			if repo.lastAdminLimit <= 0 {
+				t.Errorf("limit reached the driver as %d; a non-positive LIMIT is rejected by Postgres",
+					repo.lastAdminLimit)
+			}
+			if repo.lastAdminOffset < 0 {
+				t.Errorf("offset reached the driver as %d", repo.lastAdminOffset)
+			}
+		})
 	}
 }

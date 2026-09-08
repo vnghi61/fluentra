@@ -133,3 +133,27 @@ func toDomainVersionResponse(v domain.Version) ContentVersionResponse {
 		PublishedAt: v.PublishedAt,
 	}
 }
+
+// AdminContentItemListResponse is the response for GET /admin/content.
+//
+// limit and offset are echoed because AdminContentItemList declares them
+// required. A paginated list that does not say which page it is has to be
+// counted by the caller, and the two sibling admin lists already echo them.
+type AdminContentItemListResponse struct {
+	Items  []ContentItemResponse `json:"items"`
+	Total  int                   `json:"total"`
+	Limit  int                   `json:"limit"`
+	Offset int                   `json:"offset"`
+}
+
+// AdminContentItemDetailResponse is the response for GET /admin/content/{id}.
+//
+// The item's fields are inline rather than nested under an `item` key, which is
+// what AdminContentItemDetail declares: an item plus its version history, not a
+// wrapper around one. The first version nested them, and every field the detail
+// screen reads — status, kind, and the id it posts every transition to — was
+// undefined in the browser while both sides compiled.
+type AdminContentItemDetailResponse struct {
+	ContentItemResponse
+	Versions []ContentVersionResponse `json:"versions"`
+}

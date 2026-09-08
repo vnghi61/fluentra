@@ -133,7 +133,12 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | `POST` | `/api/v1/me/vocabulary/uploads` | `self` | Submit your own vocabulary to be checked |
 | `GET` | `/api/v1/me/vocabulary/uploads` | `self` | Your uploads, newest first |
 | `GET` | `/api/v1/me/vocabulary/uploads/{id}` | `self` | One upload, with every word and what became of it |
+| `GET` | `/api/v1/admin/vocabulary/words` | `content.edit` | List vocabulary words with source filter |
 | `POST` | `/api/v1/admin/vocabulary/words` | `content.create` | Create a word entry |
+| `DELETE` | `/api/v1/admin/vocabulary/words/{id}` | `content.edit` | Withdraw a word from the shared dictionary |
+| `GET` | `/api/v1/admin/vocabulary/queue` | `content.edit` | List learner-contributed words queue |
+| `PATCH` | `/api/v1/admin/vocabulary/senses/{id}` | `content.edit` | Update a word sense definition or examples |
+| `DELETE` | `/api/v1/admin/vocabulary/senses/{id}` | `content.edit` | Withdraw one sense from the shared dictionary |
 <!-- END GENERATED: endpoints -->
 
 ## 7. Folder map

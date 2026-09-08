@@ -602,18 +602,27 @@ type LeaderboardEntry struct {
 	IsSelf      bool      `json:"is_self"`
 }
 
+// LeaderboardView is the standings plus whether the caller is in them.
+type LeaderboardView struct {
+	Entries []LeaderboardEntry
+	// OptedIn is the caller's own participation, not a permission. The screen
+	// uses it to offer the join button above a board it is already showing.
+	OptedIn bool
+}
+
 // Leaderboard returns the current week's standings for a learner's league.
 //
-// Opt-in is checked here as well as in the snapshot build (BR-GAMIFICATION-07):
-// the build decides who appears, and this decides who may look.
-func (s *Service) Leaderboard(ctx context.Context, userID uuid.UUID) ([]LeaderboardEntry, error) {
+// Opt-in decides who *appears*, not who may look (BR-GAMIFICATION-07 governs
+// the build). It used to decide both, and refused a non-participant with a 403
+// — which meant a learner had to publish their own name and weekly XP before
+// they could find out what they were being asked to join.
+//
+// Nothing is disclosed by showing it. Every learner in the snapshot opted in,
+// and the build already restricts the row to display name, avatar and XP.
+func (s *Service) Leaderboard(ctx context.Context, userID uuid.UUID) (LeaderboardView, error) {
 	streak, err := s.repo.EnsureStreak(ctx, userID)
 	if err != nil {
-		return nil, err
-	}
-	if !streak.LeaderboardOptIn {
-		return nil, apperr.New(apperr.Forbidden, "LEADERBOARD_NOT_OPTED_IN",
-			"Join the leaderboard to see the standings.")
+		return LeaderboardView{}, err
 	}
 
 	week := domain.WeekStart(domain.LocalDay(s.clock.Now(), s.timezoneOf(ctx, userID)))
@@ -623,23 +632,26 @@ func (s *Service) Leaderboard(ctx context.Context, userID uuid.UUID) ([]Leaderbo
 	case err == nil:
 		league = own.League
 	case errors.Is(err, pgx.ErrNoRows):
-		// Not yet ranked this week — opted in after the build, or no XP yet.
-		// Their own league is computed from this week's XP so they see the
-		// board they will join rather than an empty screen.
+		// Not ranked this week — not opted in, opted in after the build, or no
+		// XP yet. Their league is computed from this week's XP so they see the
+		// board they would join rather than an empty screen.
 		weekXP, xpErr := s.repo.XPSince(ctx, userID, week)
 		if xpErr != nil {
-			return nil, xpErr
+			return LeaderboardView{}, xpErr
 		}
 		league = domain.League(int(weekXP))
 	default:
-		return nil, err
+		return LeaderboardView{}, err
 	}
 
 	rows, err := s.repo.ListLeaderboard(ctx, league, week, leaderboardPageSize)
 	if err != nil {
-		return nil, err
+		return LeaderboardView{}, err
 	}
-	return s.resolveNames(ctx, rows, userID), nil
+	return LeaderboardView{
+		Entries: s.resolveNames(ctx, rows, userID),
+		OptedIn: streak.LeaderboardOptIn,
+	}, nil
 }
 
 // resolveNames turns snapshot rows into display entries.

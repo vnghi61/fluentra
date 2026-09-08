@@ -240,6 +240,31 @@ func (f *fakeRepo) SetReviewCardsSuspended(
 	return affected, nil
 }
 
+func (f *fakeRepo) SuspendReviewCardsByContentVersion(
+	_ context.Context, contentVersionIDs []uuid.UUID,
+) ([]uuid.UUID, error) {
+	wanted := make(map[uuid.UUID]struct{}, len(contentVersionIDs))
+	for _, id := range contentVersionIDs {
+		wanted[id] = struct{}{}
+	}
+	// Mirrors the query: already-suspended cards are skipped, so they are not
+	// reported as affected and their suspended_at is not moved.
+	var touched []uuid.UUID
+	for id, card := range f.cards {
+		if _, ok := wanted[card.ContentVersionID]; !ok {
+			continue
+		}
+		if card.SuspendedAt != nil {
+			continue
+		}
+		at := fakeNow
+		card.SuspendedAt = &at
+		f.cards[id] = card
+		touched = append(touched, card.UserID)
+	}
+	return touched, nil
+}
+
 func (f *fakeRepo) ResetReviewCard(_ context.Context, arg sqlc.ResetReviewCardParams) (sqlc.LearnReviewCard, error) {
 	card, ok := f.cards[arg.ID]
 	if !ok || card.UserID != arg.UserID {

@@ -21,7 +21,7 @@ func (s *Service) SearchUsers(
 	filter contract.UserFilter,
 	cursor string,
 	limit int,
-) ([]contract.UserSummary, string, error) {
+) (contract.UserPage, error) {
 	if limit <= 0 {
 		limit = 20
 	}
@@ -34,7 +34,7 @@ func (s *Service) SearchUsers(
 	if cursor != "" {
 		cID, cTime, err := parseCursor(cursor)
 		if err != nil {
-			return nil, "", fmt.Errorf("invalid cursor: %w", err)
+			return contract.UserPage{}, fmt.Errorf("invalid cursor: %w", err)
 		}
 		cursorID = &cID
 		cursorTime = &cTime
@@ -43,7 +43,15 @@ func (s *Service) SearchUsers(
 	// Fetch limit + 1 to check if next_cursor exists
 	rows, err := s.repo.SearchUsersAdmin(ctx, filter, cursorID, cursorTime, limit+1)
 	if err != nil {
-		return nil, "", err
+		return contract.UserPage{}, err
+	}
+
+	// Counted with the same filters and without the cursor: the cursor is what
+	// narrows the result to one page, and this is the size of the set that page
+	// is a window onto.
+	total, err := s.repo.CountUsersAdmin(ctx, filter)
+	if err != nil {
+		return contract.UserPage{}, err
 	}
 
 	var nextCursor string
@@ -64,7 +72,11 @@ func (s *Service) SearchUsers(
 		})
 	}
 
-	return summaries, nextCursor, nil
+	return contract.UserPage{
+		Items:      summaries,
+		NextCursor: nextCursor,
+		Total:      int(total),
+	}, nil
 }
 
 // GetUserByID implements contract.AdminReader.

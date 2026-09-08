@@ -725,6 +725,13 @@ func (f *fakeRepo) UpdateUserStatus(_ context.Context, userID uuid.UUID, status 
 	return nil
 }
 
+func (f *fakeRepo) CountUsersAdmin(_ context.Context, _ contract.UserFilter) (int64, error) {
+	if err := f.record("CountUsersAdmin"); err != nil {
+		return 0, err
+	}
+	return 0, nil
+}
+
 func (f *fakeRepo) SearchUsersAdmin(
 	_ context.Context,
 	_ contract.UserFilter,

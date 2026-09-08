@@ -44,6 +44,8 @@ export interface AppShellProps {
   banner?: React.ReactNode;
   /** The learner's own name, for the account menu's greeting. */
   displayName?: string | undefined;
+  /** The learner's uploaded avatar, when the profile has loaded one. */
+  avatarUrl?: string | undefined;
 }
 
 /**
@@ -101,6 +103,7 @@ export const AppShell: React.FC<AppShellProps> = ({
   controls,
   banner,
   displayName,
+  avatarUrl,
 }) => {
   const { t } = useTranslation();
   const signedIn = status === "authenticated";
@@ -117,6 +120,7 @@ export const AppShell: React.FC<AppShellProps> = ({
         <AccountMenu
           role={user.role}
           displayName={displayName}
+          avatarUrl={avatarUrl}
           onLogout={onLogout}
         />
       </React.Suspense>

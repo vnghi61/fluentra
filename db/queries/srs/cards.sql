@@ -120,3 +120,18 @@ ORDER BY 1;
 
 -- name: EnsureSRSPartitions :one
 SELECT learn.ensure_srs_partitions($1::integer) AS created_count;
+
+-- SuspendReviewCardsByContentVersion suspends a card for EVERY learner holding
+-- it, which is what withdrawing shared material requires: skill.word_senses is
+-- one row shared across everyone who added the word, so taking it out of the
+-- dictionary has to take it out of every queue, not one.
+--
+-- It returns the affected user_ids because the due-count cache is keyed per
+-- learner and a global write cannot otherwise name whose entry went stale.
+-- name: SuspendReviewCardsByContentVersion :many
+UPDATE learn.review_cards SET
+    suspended_at = now(),
+    updated_at = now()
+WHERE content_version_id = ANY(@content_version_ids::uuid[])
+  AND suspended_at IS NULL
+RETURNING user_id;

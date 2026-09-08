@@ -58,6 +58,11 @@ type ReviewScheduler interface {
 	// learner's own verified word is worth reviewing, and without a card it is
 	// stored and never seen again.
 	UpsertCards(ctx context.Context, userID uuid.UUID, items []learningcontract.ReviewItem) error
+	// SuspendCardsByContentVersion stops scheduling a piece of content for every
+	// learner holding it. Withdrawal needs this and SetCardsSuspended cannot
+	// serve it: a sense is one row shared across every learner who added the
+	// word, so the withdrawal is not one learner's decision about themselves.
+	SuspendCardsByContentVersion(ctx context.Context, contentVersionIDs []uuid.UUID) (int, error)
 }
 
 // OutboxTx is the database transaction interface needed to write outbox events.
@@ -631,4 +636,271 @@ func mapDomainDeck(row sqlc.SkillDeck, count int) domain.Deck {
 		CreatedAt:   row.CreatedAt,
 		UpdatedAt:   row.UpdatedAt,
 	}
+}
+
+// ListAdminWords returns a paginated list of words for administrative review.
+func (s *Service) ListAdminWords(
+	ctx context.Context, query, source *string, limit, offset int,
+) ([]domain.AdminWord, int64, error) {
+	if limit <= 0 {
+		limit = defaultSearchLimit
+	} else if limit > maxSearchLimit {
+		limit = maxSearchLimit
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	rows, err := s.repo.ListWordsAdmin(ctx, sqlc.ListWordsAdminParams{
+		Query:        query,
+		Source:       source,
+		ResultLimit:  int32(limit),
+		ResultOffset: int32(offset),
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("list words admin: %w", err)
+	}
+
+	total, err := s.repo.CountWordsAdmin(ctx, sqlc.CountWordsAdminParams{
+		Query:  query,
+		Source: source,
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("count words admin: %w", err)
+	}
+
+	words := make([]domain.AdminWord, len(rows))
+	for i, r := range rows {
+		var freqRank *int
+		if r.FrequencyRank != nil {
+			v := int(*r.FrequencyRank)
+			freqRank = &v
+		}
+		words[i] = domain.AdminWord{
+			ID:            r.ID,
+			Lemma:         r.Lemma,
+			POS:           domain.PartOfSpeech(r.Pos),
+			CEFRLevel:     domain.CEFRLevel(r.CefrLevel),
+			FrequencyRank: freqRank,
+			IPA:           r.Ipa,
+			AudioAssetID:  r.AudioAssetID,
+			SensesCount:   int(r.SensesCount),
+			IsUploaded:    r.IsUploaded,
+			CreatedAt:     r.CreatedAt,
+			UpdatedAt:     r.UpdatedAt,
+		}
+	}
+
+	return words, total, nil
+}
+
+// WithdrawWord takes a word and all of its senses out of the shared dictionary.
+//
+// The order matters and is not an implementation detail. skill.word_senses
+// cascades to skill.deck_items and skill.user_word_state, but learn.review_cards
+// carries no foreign key to it — the tables are in different schemas owned by
+// different modules — so deleting the sense first leaves every learner holding a
+// card that still resolves, because content.content_versions is untouched too.
+// The word vanishes from the dictionary and keeps appearing in the review queue.
+//
+// Suspending first is also the safe order to fail in. If the delete fails after
+// the suspend, the word is hidden but still present, and the admin can retry.
+// The reverse leaves it deleted and still scheduled, which nothing can repair.
+func (s *Service) WithdrawWord(ctx context.Context, id uuid.UUID) error {
+	// A DELETE that never reads reports 204 for a word that never existed —
+	// `DELETE ... WHERE id = $1` affects no rows and raises nothing — so the 404
+	// the spec declares would be unreachable and a mistyped id would look like a
+	// successful withdrawal.
+	if _, err := s.repo.GetWordByID(ctx, id); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return apperr.New(apperr.NotFound, "WORD_NOT_FOUND", "Word not found.")
+		}
+		return fmt.Errorf("get word by id: %w", err)
+	}
+
+	senses, err := s.repo.ListSensesByWordID(ctx, id)
+	if err != nil {
+		return fmt.Errorf("list senses by word id: %w", err)
+	}
+
+	versionIDs := make([]uuid.UUID, 0, len(senses))
+	for _, sense := range senses {
+		if sense.ContentVersionID != nil {
+			versionIDs = append(versionIDs, *sense.ContentVersionID)
+		}
+	}
+
+	if err := s.suspendWithdrawnCards(ctx, versionIDs); err != nil {
+		return err
+	}
+
+	if err := s.repo.DeleteWord(ctx, id); err != nil {
+		return fmt.Errorf("delete word: %w", err)
+	}
+	return nil
+}
+
+// UpdateWordSenseAdmin updates definition, translation, domain or examples of a word sense.
+func (s *Service) UpdateWordSenseAdmin(
+	ctx context.Context,
+	id uuid.UUID,
+	definition, definitionVi, domainVal *string,
+	examples []domain.ExampleSentence,
+) (domain.WordSense, error) {
+	var examplesBytes []byte
+	if examples != nil {
+		b, err := json.Marshal(examples)
+		if err != nil {
+			return domain.WordSense{}, fmt.Errorf("marshal examples: %w", err)
+		}
+		examplesBytes = b
+	}
+
+	row, err := s.repo.UpdateWordSenseAdmin(ctx, sqlc.UpdateWordSenseAdminParams{
+		ID:           id,
+		Definition:   definition,
+		DefinitionVi: definitionVi,
+		Domain:       domainVal,
+		Examples:     examplesBytes,
+	})
+	if err != nil {
+		return domain.WordSense{}, fmt.Errorf("update word sense admin: %w", err)
+	}
+
+	return mapDomainSense(row), nil
+}
+
+// WithdrawWordSense takes one sense out of the shared dictionary, suspending
+// every review card that points at it first. See WithdrawWord for why the order
+// is what it is.
+func (s *Service) WithdrawWordSense(ctx context.Context, id uuid.UUID) error {
+	sense, err := s.repo.GetSenseByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return apperr.New(apperr.NotFound, "SENSE_NOT_FOUND", "Word sense not found.")
+		}
+		return fmt.Errorf("get sense by id: %w", err)
+	}
+
+	var versionIDs []uuid.UUID
+	if sense.ContentVersionID != nil {
+		versionIDs = []uuid.UUID{*sense.ContentVersionID}
+	}
+
+	if err := s.suspendWithdrawnCards(ctx, versionIDs); err != nil {
+		return err
+	}
+
+	if err := s.repo.DeleteWordSense(ctx, id); err != nil {
+		return fmt.Errorf("delete word sense: %w", err)
+	}
+	return nil
+}
+
+// suspendWithdrawnCards stops every learner's card on the given content versions.
+//
+// A nil scheduler is a refusal, not a skip. Everywhere else in this module srs is
+// optional because the worst case is a card that is not scheduled; here the worst
+// case is a word deleted from under a live queue, so an unwired scheduler has to
+// stop the withdrawal rather than let it proceed half-done.
+func (s *Service) suspendWithdrawnCards(ctx context.Context, versionIDs []uuid.UUID) error {
+	if len(versionIDs) == 0 {
+		return nil
+	}
+	if s.reviews == nil {
+		return apperr.New(
+			apperr.Internal,
+			"REVIEW_SCHEDULER_UNAVAILABLE",
+			"Cannot withdraw material while the review scheduler is unavailable.",
+		)
+	}
+	if _, err := s.reviews.SuspendCardsByContentVersion(ctx, versionIDs); err != nil {
+		return fmt.Errorf("suspend review cards for withdrawn material: %w", err)
+	}
+	return nil
+}
+
+// ListLearnerWordsQueueAdmin returns the paginated queue of learner-uploaded words for inspection.
+func (s *Service) ListLearnerWordsQueueAdmin(
+	ctx context.Context,
+	status, query *string,
+	limit, offset int,
+) ([]domain.LearnerWordQueueItem, int64, error) {
+	if limit <= 0 {
+		limit = defaultSearchLimit
+	} else if limit > maxSearchLimit {
+		limit = maxSearchLimit
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	rows, err := s.repo.ListLearnerWordsQueueAdmin(ctx, sqlc.ListLearnerWordsQueueAdminParams{
+		Status:       status,
+		Query:        query,
+		ResultLimit:  int32(limit),
+		ResultOffset: int32(offset),
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("list learner words queue admin: %w", err)
+	}
+
+	total, err := s.repo.CountLearnerWordsQueueAdmin(ctx, sqlc.CountLearnerWordsQueueAdminParams{
+		Status: status,
+		Query:  query,
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("count learner words queue admin: %w", err)
+	}
+
+	items := make([]domain.LearnerWordQueueItem, len(rows))
+	for i, r := range rows {
+		var meaning *string
+		if r.ProvidedMeaning != "" {
+			m := r.ProvidedMeaning
+			meaning = &m
+		}
+		var model *string
+		if r.VerifiedByModel != "" {
+			m := r.VerifiedByModel
+			model = &m
+		}
+		var reason *string
+		if r.Reason != "" {
+			rs := r.Reason
+			reason = &rs
+		}
+		var ex []domain.ExampleSentence
+		if len(r.Examples) > 0 {
+			_ = json.Unmarshal(r.Examples, &ex)
+		}
+		if ex == nil {
+			ex = []domain.ExampleSentence{}
+		}
+
+		items[i] = domain.LearnerWordQueueItem{
+			ID:               r.UploadItemID,
+			UploadID:         r.UploadID,
+			UserID:           r.UserID,
+			Term:             r.Term,
+			ProvidedMeaning:  meaning,
+			Status:           r.Status,
+			VerifiedByModel:  model,
+			Reason:           reason,
+			Attempts:         int(r.Attempts),
+			VerifiedAt:       r.VerifiedAt,
+			CreatedAt:        r.CreatedAt,
+			WordSenseID:      r.WordSenseID,
+			WordID:           r.WordID,
+			ContentVersionID: r.ContentVersionID,
+			Definition:       r.Definition,
+			DefinitionVi:     r.DefinitionVi,
+			Topic:            r.Topic,
+			Examples:         ex,
+			DeckID:           r.DeckID,
+			DeckName:         r.DeckName,
+		}
+	}
+
+	return items, total, nil
 }

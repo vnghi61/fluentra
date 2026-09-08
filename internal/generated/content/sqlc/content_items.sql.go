@@ -11,6 +11,27 @@ import (
 	"github.com/google/uuid"
 )
 
+const countContentItemsFiltered = `-- name: CountContentItemsFiltered :one
+SELECT COUNT(*)::bigint
+FROM content.content_items
+WHERE ($1::text IS NULL OR status = $1)
+  AND ($2::text IS NULL OR kind = $2)
+  AND ($3::text IS NULL OR slug ILIKE $3 || '%')
+`
+
+type CountContentItemsFilteredParams struct {
+	Status *string
+	Kind   *string
+	Query  *string
+}
+
+func (q *Queries) CountContentItemsFiltered(ctx context.Context, arg CountContentItemsFilteredParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countContentItemsFiltered, arg.Status, arg.Kind, arg.Query)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const createContentItem = `-- name: CreateContentItem :one
 INSERT INTO content.content_items (id, kind, slug, status, owner_id)
 VALUES ($1, $2, $3, $4, $5)
@@ -116,6 +137,59 @@ type ListContentItemsByOwnerParams struct {
 
 func (q *Queries) ListContentItemsByOwner(ctx context.Context, arg ListContentItemsByOwnerParams) ([]ContentContentItem, error) {
 	rows, err := q.db.Query(ctx, listContentItemsByOwner, arg.OwnerID, arg.ResultLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ContentContentItem
+	for rows.Next() {
+		var i ContentContentItem
+		if err := rows.Scan(
+			&i.ID,
+			&i.Kind,
+			&i.Slug,
+			&i.CurrentVersionID,
+			&i.Status,
+			&i.OwnerID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listContentItemsFiltered = `-- name: ListContentItemsFiltered :many
+SELECT id, kind, slug, current_version_id, status, owner_id, created_at, updated_at
+FROM content.content_items
+WHERE ($1::text IS NULL OR status = $1)
+  AND ($2::text IS NULL OR kind = $2)
+  AND ($3::text IS NULL OR slug ILIKE $3 || '%')
+ORDER BY updated_at DESC, id DESC
+LIMIT $5 OFFSET $4
+`
+
+type ListContentItemsFilteredParams struct {
+	Status       *string
+	Kind         *string
+	Query        *string
+	ResultOffset int32
+	ResultLimit  int32
+}
+
+func (q *Queries) ListContentItemsFiltered(ctx context.Context, arg ListContentItemsFilteredParams) ([]ContentContentItem, error) {
+	rows, err := q.db.Query(ctx, listContentItemsFiltered,
+		arg.Status,
+		arg.Kind,
+		arg.Query,
+		arg.ResultOffset,
+		arg.ResultLimit,
+	)
 	if err != nil {
 		return nil, err
 	}

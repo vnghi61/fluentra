@@ -313,3 +313,173 @@ CreateWordRequest:
       type: array
       items:
         $ref: '#/SenseInput'
+
+AdminWordSummary:
+  type: object
+  required: [id, lemma, pos, cefr_level, is_uploaded, senses_count, created_at, updated_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+    lemma:
+      type: string
+      example: articulate
+    pos:
+      type: string
+      example: verb
+    cefr_level:
+      type: string
+      example: C1
+    frequency_rank:
+      type: integer
+      nullable: true
+      example: 4500
+    ipa:
+      type: string
+      nullable: true
+      example: /ɑːˈtɪk.jə.leɪt/
+    audio_asset_id:
+      type: string
+      format: uuid
+      nullable: true
+    is_uploaded:
+      type: boolean
+      example: true
+    senses_count:
+      type: integer
+      example: 2
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+
+AdminWordList:
+  type: object
+  required: [items, total, limit, offset]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/AdminWordSummary'
+    total:
+      type: integer
+    limit:
+      type: integer
+    offset:
+      type: integer
+
+LearnerWordQueueItem:
+  type: object
+  required: [upload_item_id, upload_id, user_id, term, status, attempts, created_at]
+  properties:
+    upload_item_id:
+      type: string
+      format: uuid
+    upload_id:
+      type: string
+      format: uuid
+    user_id:
+      type: string
+      format: uuid
+    term:
+      type: string
+      example: serendipity
+    provided_meaning:
+      type: string
+      nullable: true
+      example: May mắn bất ngờ
+    status:
+      type: string
+      enum: [pending, verified, rejected, queued, failed]
+      example: verified
+    verified_by_model:
+      type: string
+      nullable: true
+      example: gpt-4o-mini
+    reason:
+      type: string
+      nullable: true
+      example: Valid English term matching definition.
+    attempts:
+      type: integer
+      example: 1
+    verified_at:
+      type: string
+      format: date-time
+      nullable: true
+    created_at:
+      type: string
+      format: date-time
+    word_sense_id:
+      type: string
+      format: uuid
+      nullable: true
+    word_id:
+      type: string
+      format: uuid
+      nullable: true
+    content_version_id:
+      type: string
+      format: uuid
+      nullable: true
+    definition:
+      type: string
+      nullable: true
+      example: The occurrence of events by chance in a happy way.
+    definition_vi:
+      type: string
+      nullable: true
+      example: Sự tình cờ may mắn.
+    topic:
+      type: string
+      nullable: true
+      example: psychology
+    examples:
+      type: array
+      items:
+        $ref: '#/ExampleSentence'
+    deck_id:
+      type: string
+      format: uuid
+      nullable: true
+    deck_name:
+      type: string
+      nullable: true
+      example: Advanced Vocabulary
+
+LearnerWordQueueList:
+  type: object
+  required: [items, total, limit, offset]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/LearnerWordQueueItem'
+    total:
+      type: integer
+    limit:
+      type: integer
+    offset:
+      type: integer
+
+UpdateWordSenseRequest:
+  type: object
+  properties:
+    definition:
+      type: string
+      example: The occurrence of events by chance in a happy way.
+    definition_vi:
+      type: string
+      nullable: true
+      example: Sự tình cờ may mắn.
+    topic:
+      type: string
+      nullable: true
+      example: psychology
+    examples:
+      type: array
+      items:
+        $ref: '#/ExampleSentence'
+

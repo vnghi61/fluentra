@@ -1655,6 +1655,7 @@ paths:
                     avatar_url: null
                     status: active
                     created_at: '2026-08-01T09:15:00Z'
+                total: 1284
                 next_cursor: MjAyNi0wOC0wMVQwOToxNTowMFo
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
@@ -1741,6 +1742,55 @@ paths:
               example:
                 id: 0199a1c2-3d4e-7f80-9abc-def012345678
                 status: suspended
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /admin/users/{id}/delete:
+    post:
+      tags: [admin]
+      operationId: adminSoftDeleteUser
+      summary: Soft-delete a user account and revoke active sessions.
+      description: >-
+        Moves the account to `pending_deletion`, opening the same 30-day grace
+        period the owner's own deletion request opens, and ends every active
+        session so the account cannot be signed into while it runs out.
+
+
+        This is not a suspension with a different name. A suspension is undone by
+        `adminReinstateUser`; this is undone only by the account's owner
+        cancelling within the grace period, after which the deletion executor
+        erases the account. An administrator deleting their own account is refused
+        with 403 `SELF_ADMIN_ACTION_FORBIDDEN` — the self-service path exists for
+        that. An account already pending deletion is refused with 422.
+      x-permission: user.delete
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The account to soft-delete. May not be the caller's own.
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminActionRequest'
+            example:
+              reason: Account closure requested by the owner over verified support email.
+      responses:
+        '200':
+          description: The account is pending deletion and its sessions are gone.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserStatusChanged'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def012345678
+                status: pending_deletion
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -2811,6 +2861,69 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
   /admin/content:
+    get:
+      tags: [content]
+      operationId: adminListContent
+      summary: List and filter content items for authoring.
+      description: Returns a paginated list of content items filtered by authoring status or kind.
+      x-permission: content.edit
+      parameters:
+        - name: status
+          in: query
+          description: Filter by authoring status.
+          schema:
+            $ref: '#/components/schemas/AuthoringStatus'
+        - name: kind
+          in: query
+          description: Filter by content kind.
+          schema:
+            type: string
+        - name: q
+          in: query
+          description: Filter by slug prefix.
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Maximum items to return.
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          description: Items to skip before returning.
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Paginated content items.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminContentItemList'
+              example:
+                items:
+                  - id: 0199a1c2-3d4e-7f80-9abc-def012345601
+                    kind: vocab_word
+                    slug: environment-n-1
+                    current_version_id: 0199a1c2-3d4e-7f80-9abc-def012345602
+                    status: in_review
+                    owner_id: 0199a1c2-3d4e-7f80-9abc-def012345603
+                    created_at: '2026-08-01T09:00:00Z'
+                    updated_at: '2026-08-02T11:30:00Z'
+                total: 1
+                limit: 20
+                offset: 0
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
     post:
       tags: [content]
       operationId: adminCreateContent
@@ -2850,6 +2963,60 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '409':
           $ref: '#/components/responses/Conflict'
+  /admin/content/{id}:
+    get:
+      tags: [content]
+      operationId: adminGetContent
+      summary: Get content item details including all versions.
+      description: Returns a single content item record with its complete version history.
+      x-permission: content.edit
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Content item UUID.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Content item with version history.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminContentItemDetail'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def012345601
+                kind: vocab_word
+                slug: environment-n-1
+                current_version_id: 0199a1c2-3d4e-7f80-9abc-def012345602
+                status: in_review
+                owner_id: 0199a1c2-3d4e-7f80-9abc-def012345603
+                created_at: '2026-08-01T09:00:00Z'
+                updated_at: '2026-08-02T11:30:00Z'
+                versions:
+                  - id: 0199a1c2-3d4e-7f80-9abc-def012345602
+                    item_id: 0199a1c2-3d4e-7f80-9abc-def012345601
+                    version: 2
+                    kind: vocab_word
+                    body:
+                      word: environment
+                      definition: The natural world, as a whole or in a particular area.
+                    cefr_level: B1
+                    status: in_review
+                    created_at: '2026-08-02T11:30:00Z'
+                    updated_at: '2026-08-02T11:30:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /admin/content/{id}/draft:
     put:
       tags: [content]
@@ -4139,6 +4306,65 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
   /admin/vocabulary/words:
+    get:
+      tags: [vocabulary]
+      operationId: adminListWords
+      summary: List vocabulary words with source filter.
+      description: Returns vocabulary words, filterable by origin ('upload' for learner uploads, 'seed' for system dictionary).
+      x-permission: content.edit
+      parameters:
+        - name: source
+          in: query
+          description: Origin filter ('upload' or 'seed').
+          schema:
+            type: string
+            enum: [upload, seed]
+        - name: q
+          in: query
+          description: Search term query for lemma prefix.
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Paginated word list.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminWordList'
+              example:
+                items:
+                  - id: 0199a1c2-3d4e-7f80-9abc-def01234567b
+                    lemma: meticulous
+                    pos: adjective
+                    cefr_level: B2
+                    frequency_rank: 4821
+                    ipa: /məˈtɪkjələs/
+                    is_uploaded: true
+                    senses_count: 1
+                    created_at: '2026-08-01T09:00:00Z'
+                    updated_at: '2026-08-01T09:00:00Z'
+                total: 1
+                limit: 20
+                offset: 0
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
     post:
       tags: [vocabulary]
       operationId: adminCreateWord
@@ -4186,6 +4412,180 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '409':
           $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /admin/vocabulary/words/{id}:
+    delete:
+      tags: [vocabulary]
+      operationId: adminWithdrawWord
+      summary: Withdraw a word entry from the shared dictionary.
+      description: >-
+        Removes a word and all of its senses from the shared dictionary. Every review card
+        pointing at the withdrawn material is suspended first, for every learner holding one,
+        and deck membership and per-learner word state are removed with the senses.
+      x-permission: content.edit
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Word withdrawn from dictionary.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /admin/vocabulary/queue:
+    get:
+      tags: [vocabulary]
+      operationId: adminListLearnerWordsQueue
+      summary: List learner uploaded words and model verification decisions.
+      description: Inspection queue of words added by learners, showing model decisions and target decks.
+      x-permission: content.edit
+      parameters:
+        - name: status
+          in: query
+          description: Filter by upload item status.
+          schema:
+            type: string
+            enum: [pending, verified, rejected, queued, failed]
+        - name: q
+          in: query
+          description: Search term query.
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Paginated learner-word queue items.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LearnerWordQueueList'
+              example:
+                items:
+                  - upload_item_id: 0199a1c2-3d4e-7f80-9abc-def012345610
+                    upload_id: 0199a1c2-3d4e-7f80-9abc-def012345611
+                    user_id: 0199a1c2-3d4e-7f80-9abc-def012345612
+                    term: meticulous
+                    provided_meaning: Tỉ mỉ
+                    status: verified
+                    verified_by_model: mistral-small-latest
+                    attempts: 1
+                    verified_at: '2026-08-01T09:05:00Z'
+                    created_at: '2026-08-01T09:00:00Z'
+                    word_sense_id: 0199a1c2-3d4e-7f80-9abc-def01234567c
+                    definition: Showing great attention to detail.
+                    definition_vi: Tỉ mỉ, cẩn thận.
+                    topic: work
+                    examples:
+                      - sentence: She kept meticulous records of every transaction.
+                        sentence_vi: Cô ấy lưu giữ hồ sơ tỉ mỉ về mọi giao dịch.
+                    deck_id: 0199a1c2-3d4e-7f80-9abc-def012345613
+                    deck_name: My Words — Work
+                total: 1
+                limit: 20
+                offset: 0
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /admin/vocabulary/senses/{id}:
+    patch:
+      tags: [vocabulary]
+      operationId: adminUpdateWordSense
+      summary: Correct a word sense definition, gloss, topic or examples.
+      description: Updates dictionary sense metadata that the model or author got wrong.
+      x-permission: content.edit
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateWordSenseRequest'
+      responses:
+        '200':
+          description: Sense updated.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WordSense'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def01234567c
+                word_id: 0199a1c2-3d4e-7f80-9abc-def01234567b
+                definition: Showing great attention to detail.
+                definition_vi: Tỉ mỉ, cẩn thận.
+                domain: work
+                examples:
+                  - sentence: She kept meticulous records of every transaction.
+                    sentence_vi: Cô ấy lưu giữ hồ sơ tỉ mỉ về mọi giao dịch.
+                created_at: '2026-08-01T09:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags: [vocabulary]
+      operationId: adminWithdrawWordSense
+      summary: Withdraw a specific sense from the shared dictionary.
+      description: >-
+        Removes one sense from the shared dictionary. Every review card pointing at it is
+        suspended first, for every learner holding one, and deck membership and per-learner
+        word state are removed with the sense.
+      x-permission: content.edit
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Sense withdrawn.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalServerError'
   /me/gamification:
@@ -4399,9 +4799,15 @@ paths:
       summary: This week's standings for the caller's league.
       description: >-
         A weekly snapshot, not a live ranking, so the standings do not shuffle
-        mid-week. A caller who has not opted in receives
-        `LEADERBOARD_NOT_OPTED_IN` so the screen can offer the opt-in rather
-        than showing an error.
+        mid-week.
+
+
+        Opt-in decides who *appears* in the standings, not who may read them.
+        Every learner listed chose to be there, and the snapshot carries only a
+        display name, an avatar and a weekly XP total — so a learner who has not
+        joined sees the same board, with `opted_in: false` and no row of their
+        own. It used to be a 403, which asked a learner to publish their name
+        and weekly XP before they could see what they were joining.
       x-permission: self
       responses:
         '200':
@@ -4414,6 +4820,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/LeaderboardResponse'
               example:
+                opted_in: true
                 entries:
                   - rank: 1
                     user_id: 0199a1c2-3d4e-7f80-9abc-def012345601
@@ -4427,8 +4834,6 @@ paths:
                     is_self: true
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
   /me/vocabulary/uploads:
@@ -4754,6 +5159,10 @@ components:
       $ref: ./components/content.yaml#/UpdateDraftRequest
     ReviewDecisionRequest:
       $ref: ./components/content.yaml#/ReviewDecisionRequest
+    AdminContentItemList:
+      $ref: ./components/content.yaml#/AdminContentItemList
+    AdminContentItemDetail:
+      $ref: ./components/content.yaml#/AdminContentItemDetail
     CourseSummary:
       $ref: ./components/lesson.yaml#/CourseSummary
     CourseList:
@@ -4882,6 +5291,16 @@ components:
       $ref: ./components/vocabulary.yaml#/SenseInput
     CreateWordRequest:
       $ref: ./components/vocabulary.yaml#/CreateWordRequest
+    AdminWordSummary:
+      $ref: ./components/vocabulary.yaml#/AdminWordSummary
+    AdminWordList:
+      $ref: ./components/vocabulary.yaml#/AdminWordList
+    LearnerWordQueueItem:
+      $ref: ./components/vocabulary.yaml#/LearnerWordQueueItem
+    LearnerWordQueueList:
+      $ref: ./components/vocabulary.yaml#/LearnerWordQueueList
+    UpdateWordSenseRequest:
+      $ref: ./components/vocabulary.yaml#/UpdateWordSenseRequest
   headers:
     X-Request-Id:
       $ref: ./components/headers.yaml#/X-Request-Id

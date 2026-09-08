@@ -587,6 +587,35 @@ type UserFilterParams struct {
 	CreatedBefore *time.Time
 }
 
+// CountUsersAdmin counts every account matching the same filters, ignoring the
+// cursor. It is a second round trip rather than a window function on the search
+// itself because the search fetches limit+1 rows to decide whether a next page
+// exists, and a COUNT(*) OVER () on that query would be the count of the page.
+func (r *Repository) CountUsersAdmin(ctx context.Context, filter UserFilterParams) (int64, error) {
+	var emailPrefix, displayName, status string
+	if filter.EmailPrefix != nil {
+		emailPrefix = *filter.EmailPrefix
+	}
+	if filter.DisplayName != nil {
+		displayName = *filter.DisplayName
+	}
+	if filter.Status != nil {
+		status = *filter.Status
+	}
+
+	count, err := r.queries.CountUsersAdmin(ctx, sqlcuser.CountUsersAdminParams{
+		EmailPrefix:   emailPrefix,
+		DisplayName:   displayName,
+		Status:        status,
+		CreatedAfter:  filter.CreatedAfter,
+		CreatedBefore: filter.CreatedBefore,
+	})
+	if err != nil {
+		return 0, fmt.Errorf("count users admin: %w", err)
+	}
+	return count, nil
+}
+
 // SearchUsersAdmin performs cursor-paginated user searches for admin screens.
 func (r *Repository) SearchUsersAdmin(
 	ctx context.Context,

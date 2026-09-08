@@ -109,6 +109,7 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | `GET` | `/api/v1/admin/users/{id}` | `user.read` | One account in full |
 | `POST` | `/api/v1/admin/users/{id}/suspend` | `user.suspend` | Suspend an account and end its sessions |
 | `POST` | `/api/v1/admin/users/{id}/reinstate` | `user.reinstate` | Return a suspended account to active |
+| `POST` | `/api/v1/admin/users/{id}/delete` | `user.delete` | Soft-delete an account and end its sessions |
 | `POST` | `/api/v1/admin/users/{id}/sessions/revoke` | `user.manage_sessions` | Sign a user out everywhere |
 | `GET` | `/api/v1/admin/flags` | `system.flags` | List every feature flag |
 | `GET` | `/api/v1/admin/ai/usage` | `admin.dashboard` | Read today's AI usage and budget headroom per provider |

@@ -372,6 +372,42 @@ func (q *Queries) SuspendReviewCard(ctx context.Context, arg SuspendReviewCardPa
 	return i, err
 }
 
+const suspendReviewCardsByContentVersion = `-- name: SuspendReviewCardsByContentVersion :many
+UPDATE learn.review_cards SET
+    suspended_at = now(),
+    updated_at = now()
+WHERE content_version_id = ANY($1::uuid[])
+  AND suspended_at IS NULL
+RETURNING user_id
+`
+
+// SuspendReviewCardsByContentVersion suspends a card for EVERY learner holding
+// it, which is what withdrawing shared material requires: skill.word_senses is
+// one row shared across everyone who added the word, so taking it out of the
+// dictionary has to take it out of every queue, not one.
+//
+// It returns the affected user_ids because the due-count cache is keyed per
+// learner and a global write cannot otherwise name whose entry went stale.
+func (q *Queries) SuspendReviewCardsByContentVersion(ctx context.Context, contentVersionIds []uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, suspendReviewCardsByContentVersion, contentVersionIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var user_id uuid.UUID
+		if err := rows.Scan(&user_id); err != nil {
+			return nil, err
+		}
+		items = append(items, user_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateReviewCardSchedule = `-- name: UpdateReviewCardSchedule :one
 UPDATE learn.review_cards SET
     stability = $3,

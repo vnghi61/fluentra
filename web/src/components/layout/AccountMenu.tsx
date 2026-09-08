@@ -16,6 +16,8 @@ export interface AccountMenuProps {
   role: string;
   /** The learner's own name, when the profile has loaded. */
   displayName?: string | undefined;
+  /** The learner's uploaded avatar, when there is one. */
+  avatarUrl?: string | undefined;
   onLogout?: (() => void) | undefined;
 }
 
@@ -32,9 +34,16 @@ export interface AccountMenuProps {
 export default function AccountMenu({
   role,
   displayName,
+  avatarUrl,
   onLogout,
 }: AccountMenuProps): React.JSX.Element {
   const { t } = useTranslation();
+
+  // An uploaded avatar, else the learner's initial, else the generic icon.
+  // The initial is the middle rung on purpose: it is theirs, it is legible at
+  // 44 px, and it distinguishes two accounts on the same browser — which the
+  // person icon never did.
+  const initial = displayName?.trim()?.charAt(0)?.toUpperCase();
 
   return (
     <DropdownMenu>
@@ -48,7 +57,23 @@ export default function AccountMenu({
         aria-label={t("nav.account", "Account")}
         className="flex items-center justify-center h-11 w-11 min-h-[44px] min-w-[44px] rounded-full bg-primary/10 text-primary-accent hover:bg-primary/15 transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface-card"
       >
-        <UserRound className="h-5 w-5" aria-hidden="true" />
+        {avatarUrl !== undefined && avatarUrl !== "" ? (
+          <img
+            src={avatarUrl}
+            alt=""
+            // alt="" and aria-hidden: the trigger already carries the
+            // accessible name above, and a second one here would read the
+            // learner their own name twice on the way into their own menu.
+            aria-hidden="true"
+            className="h-full w-full rounded-full object-cover"
+          />
+        ) : initial !== undefined && initial !== "" ? (
+          <span className="text-sm font-bold" aria-hidden="true">
+            {initial}
+          </span>
+        ) : (
+          <UserRound className="h-5 w-5" aria-hidden="true" />
+        )}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         {/*

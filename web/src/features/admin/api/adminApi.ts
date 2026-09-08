@@ -19,6 +19,24 @@ export type AdminAIUsageResponse =
   components["schemas"]["AdminAIUsageResponse"];
 export type AdminAIUsageItem = components["schemas"]["AdminAIUsageItem"];
 
+export type AdminContentItemList =
+  components["schemas"]["AdminContentItemList"];
+export type AdminContentItemDetail =
+  components["schemas"]["AdminContentItemDetail"];
+export type ContentItem = components["schemas"]["ContentItem"];
+export type ContentVersion = components["schemas"]["ContentVersion"];
+export type AuthoringStatus = components["schemas"]["AuthoringStatus"];
+
+export type AdminWordList = components["schemas"]["AdminWordList"];
+export type AdminWordSummary = components["schemas"]["AdminWordSummary"];
+export type LearnerWordQueueList =
+  components["schemas"]["LearnerWordQueueList"];
+export type LearnerWordQueueItem =
+  components["schemas"]["LearnerWordQueueItem"];
+export type UpdateWordSenseRequest =
+  components["schemas"]["UpdateWordSenseRequest"];
+export type ExampleSentence = components["schemas"]["ExampleSentence"];
+
 /**
  * The parameters `adminSearchUsers` actually takes.
  *
@@ -88,6 +106,20 @@ export const adminApi = {
   },
 
   /** Revoke all active sessions for user */
+  /** Soft-delete an account: 30-day grace period, sessions ended immediately. */
+  async softDeleteUser(
+    id: string,
+    reason: string,
+  ): Promise<AdminUserStatusChanged> {
+    return apiFetch<AdminUserStatusChanged>(
+      `/api/v1/admin/users/${id}/delete`,
+      {
+        method: "POST",
+        body: JSON.stringify({ reason }),
+      },
+    );
+  },
+
   async revokeUserSessions(
     id: string,
     reason: string,
@@ -136,4 +168,146 @@ export const adminApi = {
   async getAIUsage(): Promise<AdminAIUsageResponse> {
     return apiFetch<AdminAIUsageResponse>("/api/v1/admin/ai/usage");
   },
+
+  /** List content items */
+  async listContent(
+    params: SearchContentParams = {},
+  ): Promise<AdminContentItemList> {
+    const sp = new URLSearchParams();
+    if (params.status) sp.set("status", params.status);
+    if (params.kind) sp.set("kind", params.kind);
+    if (params.q) sp.set("q", params.q);
+    if (params.limit !== undefined) sp.set("limit", params.limit.toString());
+    if (params.offset !== undefined) sp.set("offset", params.offset.toString());
+    const qs = sp.toString();
+    return apiFetch<AdminContentItemList>(
+      `/api/v1/admin/content${qs ? `?${qs}` : ""}`,
+    );
+  },
+
+  /** Get single content item detail with all versions */
+  async getContent(id: string): Promise<AdminContentItemDetail> {
+    return apiFetch<AdminContentItemDetail>(`/api/v1/admin/content/${id}`);
+  },
+
+  /** Update draft body and metadata */
+  async updateDraft(
+    id: string,
+    body: unknown,
+    cefrLevel?: string,
+    tags?: string[],
+  ): Promise<ContentVersion> {
+    return apiFetch<ContentVersion>(`/api/v1/admin/content/${id}/draft`, {
+      method: "PUT",
+      body: JSON.stringify({ body, cefr_level: cefrLevel, tags }),
+    });
+  },
+
+  /** Submit draft for editorial review */
+  async submitContent(id: string): Promise<ContentVersion> {
+    return apiFetch<ContentVersion>(`/api/v1/admin/content/${id}/submit`, {
+      method: "POST",
+    });
+  },
+
+  /** Review content: approve or request changes */
+  async reviewContent(
+    id: string,
+    decision: "approved" | "changes_requested",
+    comments?: string,
+  ): Promise<ContentVersion> {
+    return apiFetch<ContentVersion>(`/api/v1/admin/content/${id}/review`, {
+      method: "POST",
+      body: JSON.stringify({ decision, comments }),
+    });
+  },
+
+  /** Publish approved content version */
+  async publishContent(id: string): Promise<ContentVersion> {
+    return apiFetch<ContentVersion>(`/api/v1/admin/content/${id}/publish`, {
+      method: "POST",
+    });
+  },
+
+  /** Archive content item */
+  async archiveContent(id: string): Promise<void> {
+    return apiFetch<void>(`/api/v1/admin/content/${id}/archive`, {
+      method: "POST",
+    });
+  },
+
+  /** List words for vocabulary dictionary administration */
+  async listWords(params: SearchWordsParams = {}): Promise<AdminWordList> {
+    const sp = new URLSearchParams();
+    if (params.q) sp.set("q", params.q);
+    if (params.source) sp.set("source", params.source);
+    if (params.limit !== undefined) sp.set("limit", params.limit.toString());
+    if (params.offset !== undefined) sp.set("offset", params.offset.toString());
+    const qs = sp.toString();
+    return apiFetch<AdminWordList>(
+      `/api/v1/admin/vocabulary/words${qs ? `?${qs}` : ""}`,
+    );
+  },
+
+  /** Withdraw/delete a word */
+  async deleteWord(id: string): Promise<void> {
+    return apiFetch<void>(`/api/v1/admin/vocabulary/words/${id}`, {
+      method: "DELETE",
+    });
+  },
+
+  /** List learner words contribution queue */
+  async listLearnerWordsQueue(
+    params: SearchQueueParams = {},
+  ): Promise<LearnerWordQueueList> {
+    const sp = new URLSearchParams();
+    if (params.status) sp.set("status", params.status);
+    if (params.q) sp.set("q", params.q);
+    if (params.limit !== undefined) sp.set("limit", params.limit.toString());
+    if (params.offset !== undefined) sp.set("offset", params.offset.toString());
+    const qs = sp.toString();
+    return apiFetch<LearnerWordQueueList>(
+      `/api/v1/admin/vocabulary/queue${qs ? `?${qs}` : ""}`,
+    );
+  },
+
+  /** Update word sense (definition, gloss, topic, examples) */
+  async updateWordSense(
+    id: string,
+    data: UpdateWordSenseRequest,
+  ): Promise<unknown> {
+    return apiFetch<unknown>(`/api/v1/admin/vocabulary/senses/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  },
+
+  /** Delete word sense */
+  async deleteWordSense(id: string): Promise<void> {
+    return apiFetch<void>(`/api/v1/admin/vocabulary/senses/${id}`, {
+      method: "DELETE",
+    });
+  },
 };
+
+export interface SearchContentParams {
+  status?: string | undefined;
+  kind?: string | undefined;
+  q?: string | undefined;
+  limit?: number | undefined;
+  offset?: number | undefined;
+}
+
+export interface SearchWordsParams {
+  q?: string | undefined;
+  source?: string | undefined;
+  limit?: number | undefined;
+  offset?: number | undefined;
+}
+
+export interface SearchQueueParams {
+  status?: string | undefined;
+  q?: string | undefined;
+  limit?: number | undefined;
+  offset?: number | undefined;
+}

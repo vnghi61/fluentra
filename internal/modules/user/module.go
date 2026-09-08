@@ -165,6 +165,18 @@ func (a repositoryAdapter) WithTx(tx pgx.Tx) service.Repository {
 	return repositoryAdapter{Repository: a.Repository.WithTx(tx)}
 }
 
+func (a repositoryAdapter) CountUsersAdmin(
+	ctx context.Context, filter contract.UserFilter,
+) (int64, error) {
+	return a.Repository.CountUsersAdmin(ctx, repository.UserFilterParams{
+		EmailPrefix:   filter.EmailPrefix,
+		DisplayName:   filter.DisplayName,
+		Status:        filter.Status,
+		CreatedAfter:  filter.CreatedAfter,
+		CreatedBefore: filter.CreatedBefore,
+	})
+}
+
 func (a repositoryAdapter) SearchUsersAdmin(
 	ctx context.Context,
 	filter contract.UserFilter,

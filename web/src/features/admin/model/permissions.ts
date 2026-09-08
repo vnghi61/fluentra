@@ -20,8 +20,14 @@ export const PERMISSIONS = {
   userSuspend: "user.suspend",
   userReinstate: "user.reinstate",
   userManageSessions: "user.manage_sessions",
+  userDelete: "user.delete",
   systemFlags: "system.flags",
   adminDashboard: "admin.dashboard",
+  contentReadPublished: "content.read.published",
+  contentCreate: "content.create",
+  contentEdit: "content.edit",
+  contentReview: "content.review",
+  contentPublish: "content.publish",
 } as const;
 
 export interface PermissionState {

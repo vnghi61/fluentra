@@ -70,6 +70,8 @@ func TestRoutesMountTheDocumentedPaths(t *testing.T) {
 		"GET /content/{slug}": false,
 	}
 	wantAdmin := map[string]bool{
+		"GET /admin/content":               false,
+		"GET /admin/content/{id}":          false,
 		"POST /admin/content":              false,
 		"PUT /admin/content/{id}/draft":    false,
 		"POST /admin/content/{id}/submit":  false,

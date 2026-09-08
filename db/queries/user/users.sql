@@ -88,3 +88,18 @@ WHERE (@email_prefix::text = '' OR u.email ILIKE @email_prefix || '%')
 ORDER BY u.created_at DESC, u.id DESC
 LIMIT @result_limit;
 
+-- CountUsersAdmin counts every account matching the same filters the search
+-- applies, without the cursor. The cursor is deliberately absent: it narrows the
+-- result to one page, and the whole point of this count is the size of the set
+-- the page is a window onto.
+-- name: CountUsersAdmin :one
+SELECT COUNT(*)::bigint
+FROM core.users u
+JOIN core.profiles p ON p.user_id = u.id
+JOIN core.user_preferences pref ON pref.user_id = u.id
+WHERE (@email_prefix::text = '' OR u.email ILIKE @email_prefix || '%')
+  AND (@display_name::text = '' OR p.display_name ILIKE '%' || @display_name || '%')
+  AND (@status::text = '' OR u.status::text = @status)
+  AND (sqlc.narg('created_after')::timestamptz IS NULL OR u.created_at >= sqlc.narg('created_after')::timestamptz)
+  AND (sqlc.narg('created_before')::timestamptz IS NULL OR u.created_at <= sqlc.narg('created_before')::timestamptz);
+

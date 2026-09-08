@@ -140,6 +140,13 @@ type ClientInterface interface {
 	// Corresponds with GET /admin/audit-logs (the `AuditSearchLogs` operationId).
 	AuditSearchLogs(ctx context.Context, params *AuditSearchLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AdminListContent List and filter content items for authoring.
+	//
+	// Returns a paginated list of content items filtered by authoring status or kind.
+	//
+	// Corresponds with GET /admin/content (the `AdminListContent` operationId).
+	AdminListContent(ctx context.Context, params *AdminListContentParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AdminCreateContentWithBody Create a draft content item.
 	//
 	// Creates a new content item with an initial draft version.
@@ -157,6 +164,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /admin/content (the `AdminCreateContent` operationId).
 	AdminCreateContent(ctx context.Context, body AdminCreateContentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminGetContent Get content item details including all versions.
+	//
+	// Returns a single content item record with its complete version history.
+	//
+	// Corresponds with GET /admin/content/{id} (the `AdminGetContent` operationId).
+	AdminGetContent(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// AdminArchiveContent Archive a content item.
 	//
@@ -360,6 +374,28 @@ type ClientInterface interface {
 	// Corresponds with GET /admin/users/{id} (the `AdminGetUser` operationId).
 	AdminGetUser(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AdminSoftDeleteUserWithBody Soft-delete a user account and revoke active sessions.
+	//
+	// Moves the account to `pending_deletion`, opening the same 30-day grace period the owner's own deletion request opens, and ends every active session so the account cannot be signed into while it runs out.
+	//
+	// This is not a suspension with a different name. A suspension is undone by `adminReinstateUser`; this is undone only by the account's owner cancelling within the grace period, after which the deletion executor erases the account. An administrator deleting their own account is refused with 403 `SELF_ADMIN_ACTION_FORBIDDEN` — the self-service path exists for that. An account already pending deletion is refused with 422.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /admin/users/{id}/delete (the `AdminSoftDeleteUser` operationId).
+	AdminSoftDeleteUserWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminSoftDeleteUser Soft-delete a user account and revoke active sessions.
+	//
+	// Moves the account to `pending_deletion`, opening the same 30-day grace period the owner's own deletion request opens, and ends every active session so the account cannot be signed into while it runs out.
+	//
+	// This is not a suspension with a different name. A suspension is undone by `adminReinstateUser`; this is undone only by the account's owner cancelling within the grace period, after which the deletion executor erases the account. An administrator deleting their own account is refused with 403 `SELF_ADMIN_ACTION_FORBIDDEN` — the self-service path exists for that. An account already pending deletion is refused with 422.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /admin/users/{id}/delete (the `AdminSoftDeleteUser` operationId).
+	AdminSoftDeleteUser(ctx context.Context, id openapi_types.UUID, body AdminSoftDeleteUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AdminReinstateUserWithBody Reinstate suspended user.
 	//
 	// Returns a suspended account to `active`. Sessions are not restored — they were destroyed, not paused — so the learner signs in again.
@@ -451,6 +487,45 @@ type ClientInterface interface {
 	// Corresponds with POST /admin/users/{id}/suspend (the `AdminSuspendUser` operationId).
 	AdminSuspendUser(ctx context.Context, id openapi_types.UUID, body AdminSuspendUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AdminListLearnerWordsQueue List learner uploaded words and model verification decisions.
+	//
+	// Inspection queue of words added by learners, showing model decisions and target decks.
+	//
+	// Corresponds with GET /admin/vocabulary/queue (the `AdminListLearnerWordsQueue` operationId).
+	AdminListLearnerWordsQueue(ctx context.Context, params *AdminListLearnerWordsQueueParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminWithdrawWordSense Withdraw a specific sense from the shared dictionary.
+	//
+	// Removes one sense from the shared dictionary. Every review card pointing at it is suspended first, for every learner holding one, and deck membership and per-learner word state are removed with the sense.
+	//
+	// Corresponds with DELETE /admin/vocabulary/senses/{id} (the `AdminWithdrawWordSense` operationId).
+	AdminWithdrawWordSense(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminUpdateWordSenseWithBody Correct a word sense definition, gloss, topic or examples.
+	//
+	// Updates dictionary sense metadata that the model or author got wrong.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /admin/vocabulary/senses/{id} (the `AdminUpdateWordSense` operationId).
+	AdminUpdateWordSenseWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminUpdateWordSense Correct a word sense definition, gloss, topic or examples.
+	//
+	// Updates dictionary sense metadata that the model or author got wrong.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PATCH /admin/vocabulary/senses/{id} (the `AdminUpdateWordSense` operationId).
+	AdminUpdateWordSense(ctx context.Context, id openapi_types.UUID, body AdminUpdateWordSenseJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminListWords List vocabulary words with source filter.
+	//
+	// Returns vocabulary words, filterable by origin ('upload' for learner uploads, 'seed' for system dictionary).
+	//
+	// Corresponds with GET /admin/vocabulary/words (the `AdminListWords` operationId).
+	AdminListWords(ctx context.Context, params *AdminListWordsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AdminCreateWordWithBody Create a word entry.
 	//
 	// Creates or refreshes a dictionary entry and its senses. Re-importing an existing lemma and part of speech updates it rather than duplicating it.
@@ -468,6 +543,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /admin/vocabulary/words (the `AdminCreateWord` operationId).
 	AdminCreateWord(ctx context.Context, body AdminCreateWordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AdminWithdrawWord Withdraw a word entry from the shared dictionary.
+	//
+	// Removes a word and all of its senses from the shared dictionary. Every review card pointing at the withdrawn material is suspended first, for every learner holding one, and deck membership and per-learner word state are removed with the senses.
+	//
+	// Corresponds with DELETE /admin/vocabulary/words/{id} (the `AdminWithdrawWord` operationId).
+	AdminWithdrawWord(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetAttempt Read attempt state and result.
 	//
@@ -864,7 +946,9 @@ type ClientInterface interface {
 
 	// GetLeaderboard This week's standings for the caller's league.
 	//
-	// A weekly snapshot, not a live ranking, so the standings do not shuffle mid-week. A caller who has not opted in receives `LEADERBOARD_NOT_OPTED_IN` so the screen can offer the opt-in rather than showing an error.
+	// A weekly snapshot, not a live ranking, so the standings do not shuffle mid-week.
+	//
+	// Opt-in decides who *appears* in the standings, not who may read them. Every learner listed chose to be there, and the snapshot carries only a display name, an avatar and a weekly XP total — so a learner who has not joined sees the same board, with `opted_in: false` and no row of their own. It used to be a 403, which asked a learner to publish their name and weekly XP before they could see what they were joining.
 	//
 	// Corresponds with GET /leaderboard (the `GetLeaderboard` operationId).
 	GetLeaderboard(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1439,6 +1523,23 @@ func (c *Client) AuditSearchLogs(ctx context.Context, params *AuditSearchLogsPar
 	return c.Client.Do(req)
 }
 
+// AdminListContent List and filter content items for authoring.
+//
+// Returns a paginated list of content items filtered by authoring status or kind.
+//
+// Corresponds with GET /admin/content (the `AdminListContent` operationId).
+func (c *Client) AdminListContent(ctx context.Context, params *AdminListContentParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminListContentRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // AdminCreateContentWithBody Create a draft content item.
 //
 // Creates a new content item with an initial draft version.
@@ -1467,6 +1568,23 @@ func (c *Client) AdminCreateContentWithBody(ctx context.Context, contentType str
 // Corresponds with POST /admin/content (the `AdminCreateContent` operationId).
 func (c *Client) AdminCreateContent(ctx context.Context, body AdminCreateContentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAdminCreateContentRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminGetContent Get content item details including all versions.
+//
+// Returns a single content item record with its complete version history.
+//
+// Corresponds with GET /admin/content/{id} (the `AdminGetContent` operationId).
+func (c *Client) AdminGetContent(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminGetContentRequest(c.Server, id)
 	if err != nil {
 		return nil, err
 	}
@@ -1919,6 +2037,48 @@ func (c *Client) AdminGetUser(ctx context.Context, id openapi_types.UUID, reqEdi
 	return c.Client.Do(req)
 }
 
+// AdminSoftDeleteUserWithBody Soft-delete a user account and revoke active sessions.
+//
+// Moves the account to `pending_deletion`, opening the same 30-day grace period the owner's own deletion request opens, and ends every active session so the account cannot be signed into while it runs out.
+//
+// This is not a suspension with a different name. A suspension is undone by `adminReinstateUser`; this is undone only by the account's owner cancelling within the grace period, after which the deletion executor erases the account. An administrator deleting their own account is refused with 403 `SELF_ADMIN_ACTION_FORBIDDEN` — the self-service path exists for that. An account already pending deletion is refused with 422.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /admin/users/{id}/delete (the `AdminSoftDeleteUser` operationId).
+func (c *Client) AdminSoftDeleteUserWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminSoftDeleteUserRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminSoftDeleteUser Soft-delete a user account and revoke active sessions.
+//
+// Moves the account to `pending_deletion`, opening the same 30-day grace period the owner's own deletion request opens, and ends every active session so the account cannot be signed into while it runs out.
+//
+// This is not a suspension with a different name. A suspension is undone by `adminReinstateUser`; this is undone only by the account's owner cancelling within the grace period, after which the deletion executor erases the account. An administrator deleting their own account is refused with 403 `SELF_ADMIN_ACTION_FORBIDDEN` — the self-service path exists for that. An account already pending deletion is refused with 422.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /admin/users/{id}/delete (the `AdminSoftDeleteUser` operationId).
+func (c *Client) AdminSoftDeleteUser(ctx context.Context, id openapi_types.UUID, body AdminSoftDeleteUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminSoftDeleteUserRequest(c.Server, id, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // AdminReinstateUserWithBody Reinstate suspended user.
 //
 // Returns a suspended account to `active`. Sessions are not restored — they were destroyed, not paused — so the learner signs in again.
@@ -2100,6 +2260,95 @@ func (c *Client) AdminSuspendUser(ctx context.Context, id openapi_types.UUID, bo
 	return c.Client.Do(req)
 }
 
+// AdminListLearnerWordsQueue List learner uploaded words and model verification decisions.
+//
+// Inspection queue of words added by learners, showing model decisions and target decks.
+//
+// Corresponds with GET /admin/vocabulary/queue (the `AdminListLearnerWordsQueue` operationId).
+func (c *Client) AdminListLearnerWordsQueue(ctx context.Context, params *AdminListLearnerWordsQueueParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminListLearnerWordsQueueRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminWithdrawWordSense Withdraw a specific sense from the shared dictionary.
+//
+// Removes one sense from the shared dictionary. Every review card pointing at it is suspended first, for every learner holding one, and deck membership and per-learner word state are removed with the sense.
+//
+// Corresponds with DELETE /admin/vocabulary/senses/{id} (the `AdminWithdrawWordSense` operationId).
+func (c *Client) AdminWithdrawWordSense(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminWithdrawWordSenseRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminUpdateWordSenseWithBody Correct a word sense definition, gloss, topic or examples.
+//
+// Updates dictionary sense metadata that the model or author got wrong.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /admin/vocabulary/senses/{id} (the `AdminUpdateWordSense` operationId).
+func (c *Client) AdminUpdateWordSenseWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminUpdateWordSenseRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminUpdateWordSense Correct a word sense definition, gloss, topic or examples.
+//
+// Updates dictionary sense metadata that the model or author got wrong.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PATCH /admin/vocabulary/senses/{id} (the `AdminUpdateWordSense` operationId).
+func (c *Client) AdminUpdateWordSense(ctx context.Context, id openapi_types.UUID, body AdminUpdateWordSenseJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminUpdateWordSenseRequest(c.Server, id, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminListWords List vocabulary words with source filter.
+//
+// Returns vocabulary words, filterable by origin ('upload' for learner uploads, 'seed' for system dictionary).
+//
+// Corresponds with GET /admin/vocabulary/words (the `AdminListWords` operationId).
+func (c *Client) AdminListWords(ctx context.Context, params *AdminListWordsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminListWordsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // AdminCreateWordWithBody Create a word entry.
 //
 // Creates or refreshes a dictionary entry and its senses. Re-importing an existing lemma and part of speech updates it rather than duplicating it.
@@ -2128,6 +2377,23 @@ func (c *Client) AdminCreateWordWithBody(ctx context.Context, contentType string
 // Corresponds with POST /admin/vocabulary/words (the `AdminCreateWord` operationId).
 func (c *Client) AdminCreateWord(ctx context.Context, body AdminCreateWordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAdminCreateWordRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminWithdrawWord Withdraw a word entry from the shared dictionary.
+//
+// Removes a word and all of its senses from the shared dictionary. Every review card pointing at the withdrawn material is suspended first, for every learner holding one, and deck membership and per-learner word state are removed with the senses.
+//
+// Corresponds with DELETE /admin/vocabulary/words/{id} (the `AdminWithdrawWord` operationId).
+func (c *Client) AdminWithdrawWord(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminWithdrawWordRequest(c.Server, id)
 	if err != nil {
 		return nil, err
 	}
@@ -2883,7 +3149,9 @@ func (c *Client) SystemHealth(ctx context.Context, reqEditors ...RequestEditorFn
 
 // GetLeaderboard This week's standings for the caller's league.
 //
-// A weekly snapshot, not a live ranking, so the standings do not shuffle mid-week. A caller who has not opted in receives `LEADERBOARD_NOT_OPTED_IN` so the screen can offer the opt-in rather than showing an error.
+// A weekly snapshot, not a live ranking, so the standings do not shuffle mid-week.
+//
+// Opt-in decides who *appears* in the standings, not who may read them. Every learner listed chose to be there, and the snapshot carries only a display name, an avatar and a weekly XP total — so a learner who has not joined sees the same board, with `opted_in: false` and no row of their own. It used to be a 403, which asked a learner to publish their name and weekly XP before they could see what they were joining.
 //
 // Corresponds with GET /leaderboard (the `GetLeaderboard` operationId).
 func (c *Client) GetLeaderboard(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -4194,6 +4462,108 @@ func NewAuditSearchLogsRequest(server string, params *AuditSearchLogsParams) (*h
 	return req, nil
 }
 
+// NewAdminListContentRequest constructs an http.Request for the AdminListContent method
+func NewAdminListContentRequest(server string, params *AdminListContentParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/content")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Status != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "status", *params.Status, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Kind != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "kind", *params.Kind, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Q != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "q", *params.Q, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "offset", *params.Offset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewAdminCreateContentRequest calls the generic AdminCreateContent builder with application/json body
 func NewAdminCreateContentRequest(server string, body AdminCreateContentJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -4230,6 +4600,40 @@ func NewAdminCreateContentRequestWithBody(server string, contentType string, bod
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewAdminGetContentRequest constructs an http.Request for the AdminGetContent method
+func NewAdminGetContentRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/content/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -5071,6 +5475,53 @@ func NewAdminGetUserRequest(server string, id openapi_types.UUID) (*http.Request
 	return req, nil
 }
 
+// NewAdminSoftDeleteUserRequest calls the generic AdminSoftDeleteUser builder with application/json body
+func NewAdminSoftDeleteUserRequest(server string, id openapi_types.UUID, body AdminSoftDeleteUserJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAdminSoftDeleteUserRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewAdminSoftDeleteUserRequestWithBody constructs an http.Request for the AdminSoftDeleteUser method, with any body, and a specified content type
+func NewAdminSoftDeleteUserRequestWithBody(server string, id openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/users/%s/delete", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewAdminReinstateUserRequest calls the generic AdminReinstateUser builder with application/json body
 func NewAdminReinstateUserRequest(server string, id openapi_types.UUID, body AdminReinstateUserJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -5300,6 +5751,267 @@ func NewAdminSuspendUserRequestWithBody(server string, id openapi_types.UUID, co
 	return req, nil
 }
 
+// NewAdminListLearnerWordsQueueRequest constructs an http.Request for the AdminListLearnerWordsQueue method
+func NewAdminListLearnerWordsQueueRequest(server string, params *AdminListLearnerWordsQueueParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/vocabulary/queue")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Status != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "status", *params.Status, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Q != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "q", *params.Q, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "offset", *params.Offset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAdminWithdrawWordSenseRequest constructs an http.Request for the AdminWithdrawWordSense method
+func NewAdminWithdrawWordSenseRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/vocabulary/senses/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAdminUpdateWordSenseRequest calls the generic AdminUpdateWordSense builder with application/json body
+func NewAdminUpdateWordSenseRequest(server string, id openapi_types.UUID, body AdminUpdateWordSenseJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAdminUpdateWordSenseRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewAdminUpdateWordSenseRequestWithBody constructs an http.Request for the AdminUpdateWordSense method, with any body, and a specified content type
+func NewAdminUpdateWordSenseRequestWithBody(server string, id openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/vocabulary/senses/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewAdminListWordsRequest constructs an http.Request for the AdminListWords method
+func NewAdminListWordsRequest(server string, params *AdminListWordsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/vocabulary/words")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Source != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "source", *params.Source, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Q != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "q", *params.Q, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "offset", *params.Offset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewAdminCreateWordRequest calls the generic AdminCreateWord builder with application/json body
 func NewAdminCreateWordRequest(server string, body AdminCreateWordJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -5336,6 +6048,40 @@ func NewAdminCreateWordRequestWithBody(server string, contentType string, body i
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewAdminWithdrawWordRequest constructs an http.Request for the AdminWithdrawWord method
+func NewAdminWithdrawWordRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/vocabulary/words/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -8144,6 +8890,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /admin/audit-logs (the `AuditSearchLogs` operationId).
 	AuditSearchLogsWithResponse(ctx context.Context, params *AuditSearchLogsParams, reqEditors ...RequestEditorFn) (*AuditSearchLogsResponse, error)
 
+	// AdminListContentWithResponse List and filter content items for authoring.
+	//
+	// Returns a paginated list of content items filtered by authoring status or kind.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/content (the `AdminListContent` operationId).
+	AdminListContentWithResponse(ctx context.Context, params *AdminListContentParams, reqEditors ...RequestEditorFn) (*AdminListContentResponse, error)
+
 	// AdminCreateContentWithBodyWithResponse Create a draft content item.
 	//
 	// Creates a new content item with an initial draft version.
@@ -8161,6 +8916,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /admin/content (the `AdminCreateContent` operationId).
 	AdminCreateContentWithResponse(ctx context.Context, body AdminCreateContentJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminCreateContentResponse, error)
+
+	// AdminGetContentWithResponse Get content item details including all versions.
+	//
+	// Returns a single content item record with its complete version history.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/content/{id} (the `AdminGetContent` operationId).
+	AdminGetContentWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*AdminGetContentResponse, error)
 
 	// AdminArchiveContentWithResponse Archive a content item.
 	//
@@ -8384,6 +9148,28 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /admin/users/{id} (the `AdminGetUser` operationId).
 	AdminGetUserWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*AdminGetUserResponse, error)
 
+	// AdminSoftDeleteUserWithBodyWithResponse Soft-delete a user account and revoke active sessions.
+	//
+	// Moves the account to `pending_deletion`, opening the same 30-day grace period the owner's own deletion request opens, and ends every active session so the account cannot be signed into while it runs out.
+	//
+	// This is not a suspension with a different name. A suspension is undone by `adminReinstateUser`; this is undone only by the account's owner cancelling within the grace period, after which the deletion executor erases the account. An administrator deleting their own account is refused with 403 `SELF_ADMIN_ACTION_FORBIDDEN` — the self-service path exists for that. An account already pending deletion is refused with 422.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/users/{id}/delete (the `AdminSoftDeleteUser` operationId).
+	AdminSoftDeleteUserWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminSoftDeleteUserResponse, error)
+
+	// AdminSoftDeleteUserWithResponse Soft-delete a user account and revoke active sessions.
+	//
+	// Moves the account to `pending_deletion`, opening the same 30-day grace period the owner's own deletion request opens, and ends every active session so the account cannot be signed into while it runs out.
+	//
+	// This is not a suspension with a different name. A suspension is undone by `adminReinstateUser`; this is undone only by the account's owner cancelling within the grace period, after which the deletion executor erases the account. An administrator deleting their own account is refused with 403 `SELF_ADMIN_ACTION_FORBIDDEN` — the self-service path exists for that. An account already pending deletion is refused with 422.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/users/{id}/delete (the `AdminSoftDeleteUser` operationId).
+	AdminSoftDeleteUserWithResponse(ctx context.Context, id openapi_types.UUID, body AdminSoftDeleteUserJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminSoftDeleteUserResponse, error)
+
 	// AdminReinstateUserWithBodyWithResponse Reinstate suspended user.
 	//
 	// Returns a suspended account to `active`. Sessions are not restored — they were destroyed, not paused — so the learner signs in again.
@@ -8477,6 +9263,51 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /admin/users/{id}/suspend (the `AdminSuspendUser` operationId).
 	AdminSuspendUserWithResponse(ctx context.Context, id openapi_types.UUID, body AdminSuspendUserJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminSuspendUserResponse, error)
 
+	// AdminListLearnerWordsQueueWithResponse List learner uploaded words and model verification decisions.
+	//
+	// Inspection queue of words added by learners, showing model decisions and target decks.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/vocabulary/queue (the `AdminListLearnerWordsQueue` operationId).
+	AdminListLearnerWordsQueueWithResponse(ctx context.Context, params *AdminListLearnerWordsQueueParams, reqEditors ...RequestEditorFn) (*AdminListLearnerWordsQueueResponse, error)
+
+	// AdminWithdrawWordSenseWithResponse Withdraw a specific sense from the shared dictionary.
+	//
+	// Removes one sense from the shared dictionary. Every review card pointing at it is suspended first, for every learner holding one, and deck membership and per-learner word state are removed with the sense.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /admin/vocabulary/senses/{id} (the `AdminWithdrawWordSense` operationId).
+	AdminWithdrawWordSenseWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*AdminWithdrawWordSenseResponse, error)
+
+	// AdminUpdateWordSenseWithBodyWithResponse Correct a word sense definition, gloss, topic or examples.
+	//
+	// Updates dictionary sense metadata that the model or author got wrong.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /admin/vocabulary/senses/{id} (the `AdminUpdateWordSense` operationId).
+	AdminUpdateWordSenseWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminUpdateWordSenseResponse, error)
+
+	// AdminUpdateWordSenseWithResponse Correct a word sense definition, gloss, topic or examples.
+	//
+	// Updates dictionary sense metadata that the model or author got wrong.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /admin/vocabulary/senses/{id} (the `AdminUpdateWordSense` operationId).
+	AdminUpdateWordSenseWithResponse(ctx context.Context, id openapi_types.UUID, body AdminUpdateWordSenseJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminUpdateWordSenseResponse, error)
+
+	// AdminListWordsWithResponse List vocabulary words with source filter.
+	//
+	// Returns vocabulary words, filterable by origin ('upload' for learner uploads, 'seed' for system dictionary).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/vocabulary/words (the `AdminListWords` operationId).
+	AdminListWordsWithResponse(ctx context.Context, params *AdminListWordsParams, reqEditors ...RequestEditorFn) (*AdminListWordsResponse, error)
+
 	// AdminCreateWordWithBodyWithResponse Create a word entry.
 	//
 	// Creates or refreshes a dictionary entry and its senses. Re-importing an existing lemma and part of speech updates it rather than duplicating it.
@@ -8494,6 +9325,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /admin/vocabulary/words (the `AdminCreateWord` operationId).
 	AdminCreateWordWithResponse(ctx context.Context, body AdminCreateWordJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminCreateWordResponse, error)
+
+	// AdminWithdrawWordWithResponse Withdraw a word entry from the shared dictionary.
+	//
+	// Removes a word and all of its senses from the shared dictionary. Every review card pointing at the withdrawn material is suspended first, for every learner holding one, and deck membership and per-learner word state are removed with the senses.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /admin/vocabulary/words/{id} (the `AdminWithdrawWord` operationId).
+	AdminWithdrawWordWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*AdminWithdrawWordResponse, error)
 
 	// GetAttemptWithResponse Read attempt state and result.
 	//
@@ -8924,7 +9764,9 @@ type ClientWithResponsesInterface interface {
 
 	// GetLeaderboardWithResponse This week's standings for the caller's league.
 	//
-	// A weekly snapshot, not a live ranking, so the standings do not shuffle mid-week. A caller who has not opted in receives `LEADERBOARD_NOT_OPTED_IN` so the screen can offer the opt-in rather than showing an error.
+	// A weekly snapshot, not a live ranking, so the standings do not shuffle mid-week.
+	//
+	// Opt-in decides who *appears* in the standings, not who may read them. Every learner listed chose to be there, and the snapshot carries only a display name, an avatar and a weekly XP total — so a learner who has not joined sees the same board, with `opted_in: false` and no row of their own. It used to be a 403, which asked a learner to publish their name and weekly XP before they could see what they were joining.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -9752,6 +10594,75 @@ func (r AuditSearchLogsResponse) ContentType() string {
 	return ""
 }
 
+// AdminListContentResponse200Headers the declared response headers of an HTTP 200 response for AdminListContent
+type AdminListContentResponse200Headers struct {
+	XRequestId *string
+}
+
+type AdminListContentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AdminContentItemList
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AdminListContentResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AdminListContentResponse) GetJSON200() *AdminContentItemList {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AdminListContentResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminListContentResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r AdminListContentResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminListContentResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminListContentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminListContentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminListContentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // AdminCreateContentResponse201Headers the declared response headers of an HTTP 201 response for AdminCreateContent
 type AdminCreateContentResponse201Headers struct {
 	XRequestId *string
@@ -9822,6 +10733,82 @@ func (r AdminCreateContentResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r AdminCreateContentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AdminGetContentResponse200Headers the declared response headers of an HTTP 200 response for AdminGetContent
+type AdminGetContentResponse200Headers struct {
+	XRequestId *string
+}
+
+type AdminGetContentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AdminContentItemDetail
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AdminGetContentResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AdminGetContentResponse) GetJSON200() *AdminContentItemDetail {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AdminGetContentResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminGetContentResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AdminGetContentResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r AdminGetContentResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminGetContentResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminGetContentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminGetContentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminGetContentResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -11050,6 +12037,82 @@ func (r AdminGetUserResponse) ContentType() string {
 	return ""
 }
 
+// AdminSoftDeleteUserResponse200Headers the declared response headers of an HTTP 200 response for AdminSoftDeleteUser
+type AdminSoftDeleteUserResponse200Headers struct {
+	XRequestId *string
+}
+
+type AdminSoftDeleteUserResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AdminUserStatusChanged
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AdminSoftDeleteUserResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AdminSoftDeleteUserResponse) GetJSON200() *AdminUserStatusChanged {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AdminSoftDeleteUserResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminSoftDeleteUserResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AdminSoftDeleteUserResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AdminSoftDeleteUserResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminSoftDeleteUserResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminSoftDeleteUserResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminSoftDeleteUserResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminSoftDeleteUserResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // AdminReinstateUserResponse200Headers the declared response headers of an HTTP 200 response for AdminReinstateUser
 type AdminReinstateUserResponse200Headers struct {
 	XRequestId *string
@@ -11437,6 +12500,289 @@ func (r AdminSuspendUserResponse) ContentType() string {
 	return ""
 }
 
+// AdminListLearnerWordsQueueResponse200Headers the declared response headers of an HTTP 200 response for AdminListLearnerWordsQueue
+type AdminListLearnerWordsQueueResponse200Headers struct {
+	XRequestId *string
+}
+
+type AdminListLearnerWordsQueueResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *LearnerWordQueueList
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AdminListLearnerWordsQueueResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AdminListLearnerWordsQueueResponse) GetJSON200() *LearnerWordQueueList {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AdminListLearnerWordsQueueResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminListLearnerWordsQueueResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r AdminListLearnerWordsQueueResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminListLearnerWordsQueueResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminListLearnerWordsQueueResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminListLearnerWordsQueueResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminListLearnerWordsQueueResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type AdminWithdrawWordSenseResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AdminWithdrawWordSenseResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminWithdrawWordSenseResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AdminWithdrawWordSenseResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r AdminWithdrawWordSenseResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminWithdrawWordSenseResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminWithdrawWordSenseResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminWithdrawWordSenseResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminWithdrawWordSenseResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AdminUpdateWordSenseResponse200Headers the declared response headers of an HTTP 200 response for AdminUpdateWordSense
+type AdminUpdateWordSenseResponse200Headers struct {
+	XRequestId *string
+}
+
+type AdminUpdateWordSenseResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WordSense
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AdminUpdateWordSenseResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AdminUpdateWordSenseResponse) GetJSON200() *WordSense {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r AdminUpdateWordSenseResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AdminUpdateWordSenseResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminUpdateWordSenseResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AdminUpdateWordSenseResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r AdminUpdateWordSenseResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminUpdateWordSenseResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminUpdateWordSenseResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminUpdateWordSenseResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminUpdateWordSenseResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AdminListWordsResponse200Headers the declared response headers of an HTTP 200 response for AdminListWords
+type AdminListWordsResponse200Headers struct {
+	XRequestId *string
+}
+
+type AdminListWordsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AdminWordList
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AdminListWordsResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AdminListWordsResponse) GetJSON200() *AdminWordList {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AdminListWordsResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminListWordsResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r AdminListWordsResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminListWordsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminListWordsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminListWordsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminListWordsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // AdminCreateWordResponse201Headers the declared response headers of an HTTP 201 response for AdminCreateWord
 type AdminCreateWordResponse201Headers struct {
 	XRequestId *string
@@ -11514,6 +12860,68 @@ func (r AdminCreateWordResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r AdminCreateWordResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type AdminWithdrawWordResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AdminWithdrawWordResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminWithdrawWordResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AdminWithdrawWordResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r AdminWithdrawWordResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminWithdrawWordResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminWithdrawWordResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminWithdrawWordResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminWithdrawWordResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -13553,8 +14961,6 @@ type GetLeaderboardResponse struct {
 	JSON200 *LeaderboardResponse
 	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
 	ApplicationproblemJSON401 *Unauthorized
-	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
-	ApplicationproblemJSON403 *Forbidden
 	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
 	ApplicationproblemJSON500 *InternalServerError
 	// Headers200 the parsed response headers for an HTTP 200 response
@@ -13569,11 +14975,6 @@ func (r GetLeaderboardResponse) GetJSON200() *LeaderboardResponse {
 // GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
 func (r GetLeaderboardResponse) GetApplicationproblemJSON401() *Unauthorized {
 	return r.ApplicationproblemJSON401
-}
-
-// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
-func (r GetLeaderboardResponse) GetApplicationproblemJSON403() *Forbidden {
-	return r.ApplicationproblemJSON403
 }
 
 // GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
@@ -16609,6 +18010,21 @@ func (c *ClientWithResponses) AuditSearchLogsWithResponse(ctx context.Context, p
 	return ParseAuditSearchLogsResponse(rsp)
 }
 
+// AdminListContentWithResponse List and filter content items for authoring.
+//
+// Returns a paginated list of content items filtered by authoring status or kind.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/content (the `AdminListContent` operationId).
+func (c *ClientWithResponses) AdminListContentWithResponse(ctx context.Context, params *AdminListContentParams, reqEditors ...RequestEditorFn) (*AdminListContentResponse, error) {
+	rsp, err := c.AdminListContent(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminListContentResponse(rsp)
+}
+
 // AdminCreateContentWithBodyWithResponse Create a draft content item.
 //
 // Creates a new content item with an initial draft version.
@@ -16637,6 +18053,21 @@ func (c *ClientWithResponses) AdminCreateContentWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParseAdminCreateContentResponse(rsp)
+}
+
+// AdminGetContentWithResponse Get content item details including all versions.
+//
+// Returns a single content item record with its complete version history.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/content/{id} (the `AdminGetContent` operationId).
+func (c *ClientWithResponses) AdminGetContentWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*AdminGetContentResponse, error) {
+	rsp, err := c.AdminGetContent(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminGetContentResponse(rsp)
 }
 
 // AdminArchiveContentWithResponse Archive a content item.
@@ -17005,6 +18436,40 @@ func (c *ClientWithResponses) AdminGetUserWithResponse(ctx context.Context, id o
 	return ParseAdminGetUserResponse(rsp)
 }
 
+// AdminSoftDeleteUserWithBodyWithResponse Soft-delete a user account and revoke active sessions.
+//
+// Moves the account to `pending_deletion`, opening the same 30-day grace period the owner's own deletion request opens, and ends every active session so the account cannot be signed into while it runs out.
+//
+// This is not a suspension with a different name. A suspension is undone by `adminReinstateUser`; this is undone only by the account's owner cancelling within the grace period, after which the deletion executor erases the account. An administrator deleting their own account is refused with 403 `SELF_ADMIN_ACTION_FORBIDDEN` — the self-service path exists for that. An account already pending deletion is refused with 422.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/users/{id}/delete (the `AdminSoftDeleteUser` operationId).
+func (c *ClientWithResponses) AdminSoftDeleteUserWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminSoftDeleteUserResponse, error) {
+	rsp, err := c.AdminSoftDeleteUserWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminSoftDeleteUserResponse(rsp)
+}
+
+// AdminSoftDeleteUserWithResponse Soft-delete a user account and revoke active sessions.
+//
+// Moves the account to `pending_deletion`, opening the same 30-day grace period the owner's own deletion request opens, and ends every active session so the account cannot be signed into while it runs out.
+//
+// This is not a suspension with a different name. A suspension is undone by `adminReinstateUser`; this is undone only by the account's owner cancelling within the grace period, after which the deletion executor erases the account. An administrator deleting their own account is refused with 403 `SELF_ADMIN_ACTION_FORBIDDEN` — the self-service path exists for that. An account already pending deletion is refused with 422.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/users/{id}/delete (the `AdminSoftDeleteUser` operationId).
+func (c *ClientWithResponses) AdminSoftDeleteUserWithResponse(ctx context.Context, id openapi_types.UUID, body AdminSoftDeleteUserJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminSoftDeleteUserResponse, error) {
+	rsp, err := c.AdminSoftDeleteUser(ctx, id, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminSoftDeleteUserResponse(rsp)
+}
+
 // AdminReinstateUserWithBodyWithResponse Reinstate suspended user.
 //
 // Returns a suspended account to `active`. Sessions are not restored — they were destroyed, not paused — so the learner signs in again.
@@ -17152,6 +18617,81 @@ func (c *ClientWithResponses) AdminSuspendUserWithResponse(ctx context.Context, 
 	return ParseAdminSuspendUserResponse(rsp)
 }
 
+// AdminListLearnerWordsQueueWithResponse List learner uploaded words and model verification decisions.
+//
+// Inspection queue of words added by learners, showing model decisions and target decks.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/vocabulary/queue (the `AdminListLearnerWordsQueue` operationId).
+func (c *ClientWithResponses) AdminListLearnerWordsQueueWithResponse(ctx context.Context, params *AdminListLearnerWordsQueueParams, reqEditors ...RequestEditorFn) (*AdminListLearnerWordsQueueResponse, error) {
+	rsp, err := c.AdminListLearnerWordsQueue(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminListLearnerWordsQueueResponse(rsp)
+}
+
+// AdminWithdrawWordSenseWithResponse Withdraw a specific sense from the shared dictionary.
+//
+// Removes one sense from the shared dictionary. Every review card pointing at it is suspended first, for every learner holding one, and deck membership and per-learner word state are removed with the sense.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /admin/vocabulary/senses/{id} (the `AdminWithdrawWordSense` operationId).
+func (c *ClientWithResponses) AdminWithdrawWordSenseWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*AdminWithdrawWordSenseResponse, error) {
+	rsp, err := c.AdminWithdrawWordSense(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminWithdrawWordSenseResponse(rsp)
+}
+
+// AdminUpdateWordSenseWithBodyWithResponse Correct a word sense definition, gloss, topic or examples.
+//
+// Updates dictionary sense metadata that the model or author got wrong.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /admin/vocabulary/senses/{id} (the `AdminUpdateWordSense` operationId).
+func (c *ClientWithResponses) AdminUpdateWordSenseWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AdminUpdateWordSenseResponse, error) {
+	rsp, err := c.AdminUpdateWordSenseWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminUpdateWordSenseResponse(rsp)
+}
+
+// AdminUpdateWordSenseWithResponse Correct a word sense definition, gloss, topic or examples.
+//
+// Updates dictionary sense metadata that the model or author got wrong.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /admin/vocabulary/senses/{id} (the `AdminUpdateWordSense` operationId).
+func (c *ClientWithResponses) AdminUpdateWordSenseWithResponse(ctx context.Context, id openapi_types.UUID, body AdminUpdateWordSenseJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminUpdateWordSenseResponse, error) {
+	rsp, err := c.AdminUpdateWordSense(ctx, id, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminUpdateWordSenseResponse(rsp)
+}
+
+// AdminListWordsWithResponse List vocabulary words with source filter.
+//
+// Returns vocabulary words, filterable by origin ('upload' for learner uploads, 'seed' for system dictionary).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/vocabulary/words (the `AdminListWords` operationId).
+func (c *ClientWithResponses) AdminListWordsWithResponse(ctx context.Context, params *AdminListWordsParams, reqEditors ...RequestEditorFn) (*AdminListWordsResponse, error) {
+	rsp, err := c.AdminListWords(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminListWordsResponse(rsp)
+}
+
 // AdminCreateWordWithBodyWithResponse Create a word entry.
 //
 // Creates or refreshes a dictionary entry and its senses. Re-importing an existing lemma and part of speech updates it rather than duplicating it.
@@ -17180,6 +18720,21 @@ func (c *ClientWithResponses) AdminCreateWordWithResponse(ctx context.Context, b
 		return nil, err
 	}
 	return ParseAdminCreateWordResponse(rsp)
+}
+
+// AdminWithdrawWordWithResponse Withdraw a word entry from the shared dictionary.
+//
+// Removes a word and all of its senses from the shared dictionary. Every review card pointing at the withdrawn material is suspended first, for every learner holding one, and deck membership and per-learner word state are removed with the senses.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /admin/vocabulary/words/{id} (the `AdminWithdrawWord` operationId).
+func (c *ClientWithResponses) AdminWithdrawWordWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*AdminWithdrawWordResponse, error) {
+	rsp, err := c.AdminWithdrawWord(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminWithdrawWordResponse(rsp)
 }
 
 // GetAttemptWithResponse Read attempt state and result.
@@ -17821,7 +19376,9 @@ func (c *ClientWithResponses) SystemHealthWithResponse(ctx context.Context, reqE
 
 // GetLeaderboardWithResponse This week's standings for the caller's league.
 //
-// A weekly snapshot, not a live ranking, so the standings do not shuffle mid-week. A caller who has not opted in receives `LEADERBOARD_NOT_OPTED_IN` so the screen can offer the opt-in rather than showing an error.
+// A weekly snapshot, not a live ranking, so the standings do not shuffle mid-week.
+//
+// Opt-in decides who *appears* in the standings, not who may read them. Every learner listed chose to be there, and the snapshot carries only a display name, an avatar and a weekly XP total — so a learner who has not joined sees the same board, with `opted_in: false` and no row of their own. It used to be a 403, which asked a learner to publish their name and weekly XP before they could see what they were joining.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -18960,6 +20517,66 @@ func ParseAuditSearchLogsResponse(rsp *http.Response) (*AuditSearchLogsResponse,
 	return response, nil
 }
 
+// ParseAdminListContentResponse parses an HTTP response from a AdminListContentWithResponse call
+func ParseAdminListContentResponse(rsp *http.Response) (*AdminListContentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminListContentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AdminContentItemList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AdminListContentResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseAdminCreateContentResponse parses an HTTP response from a AdminCreateContentWithResponse call
 func ParseAdminCreateContentResponse(rsp *http.Response) (*AdminCreateContentResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -19022,6 +20639,73 @@ func ParseAdminCreateContentResponse(rsp *http.Response) (*AdminCreateContentRes
 			headers.XRequestId = &value
 		}
 		response.Headers201 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAdminGetContentResponse parses an HTTP response from a AdminGetContentWithResponse call
+func ParseAdminGetContentResponse(rsp *http.Response) (*AdminGetContentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminGetContentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AdminContentItemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AdminGetContentResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
 	}
 
 	return response, nil
@@ -20099,6 +21783,73 @@ func ParseAdminGetUserResponse(rsp *http.Response) (*AdminGetUserResponse, error
 	return response, nil
 }
 
+// ParseAdminSoftDeleteUserResponse parses an HTTP response from a AdminSoftDeleteUserWithResponse call
+func ParseAdminSoftDeleteUserResponse(rsp *http.Response) (*AdminSoftDeleteUserResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminSoftDeleteUserResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AdminUserStatusChanged
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AdminSoftDeleteUserResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseAdminReinstateUserResponse parses an HTTP response from a AdminReinstateUserWithResponse call
 func ParseAdminReinstateUserResponse(rsp *http.Response) (*AdminReinstateUserResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -20441,6 +22192,250 @@ func ParseAdminSuspendUserResponse(rsp *http.Response) (*AdminSuspendUserRespons
 	return response, nil
 }
 
+// ParseAdminListLearnerWordsQueueResponse parses an HTTP response from a AdminListLearnerWordsQueueWithResponse call
+func ParseAdminListLearnerWordsQueueResponse(rsp *http.Response) (*AdminListLearnerWordsQueueResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminListLearnerWordsQueueResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LearnerWordQueueList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AdminListLearnerWordsQueueResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAdminWithdrawWordSenseResponse parses an HTTP response from a AdminWithdrawWordSenseWithResponse call
+func ParseAdminWithdrawWordSenseResponse(rsp *http.Response) (*AdminWithdrawWordSenseResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminWithdrawWordSenseResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseAdminUpdateWordSenseResponse parses an HTTP response from a AdminUpdateWordSenseWithResponse call
+func ParseAdminUpdateWordSenseResponse(rsp *http.Response) (*AdminUpdateWordSenseResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminUpdateWordSenseResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WordSense
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AdminUpdateWordSenseResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAdminListWordsResponse parses an HTTP response from a AdminListWordsWithResponse call
+func ParseAdminListWordsResponse(rsp *http.Response) (*AdminListWordsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminListWordsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AdminWordList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AdminListWordsResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseAdminCreateWordResponse parses an HTTP response from a AdminCreateWordWithResponse call
 func ParseAdminCreateWordResponse(rsp *http.Response) (*AdminCreateWordResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -20510,6 +22505,56 @@ func ParseAdminCreateWordResponse(rsp *http.Response) (*AdminCreateWordResponse,
 			headers.XRequestId = &value
 		}
 		response.Headers201 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAdminWithdrawWordResponse parses an HTTP response from a AdminWithdrawWordWithResponse call
+func ParseAdminWithdrawWordResponse(rsp *http.Response) (*AdminWithdrawWordResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminWithdrawWordResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
 	}
 
 	return response, nil
@@ -22710,13 +24755,6 @@ func ParseGetLeaderboardResponse(rsp *http.Response) (*GetLeaderboardResponse, e
 			return nil, err
 		}
 		response.ApplicationproblemJSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest Forbidden
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalServerError

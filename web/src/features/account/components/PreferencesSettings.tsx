@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DAILY_GOAL_MINUTES } from "@/lib/locales";
 
 interface PreferencesSettingsProps {
   initialPreferences: UserPreferences;
@@ -175,14 +176,22 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
                   "Daily Study Goal (minutes)",
                 )}
               </Label>
-              <Input
+              {/* A list, not a number box. The box accepted 7 and 113, whose
+                  value over 10 and 120 is nil, and 1130 by a slipped keystroke,
+                  which is a goal that can never be met and a streak that can
+                  never be kept. */}
+              <select
                 id="daily_goal_minutes"
-                type="number"
-                min={5}
-                max={180}
                 {...register("daily_goal_minutes", { valueAsNumber: true })}
                 aria-invalid={!!errors.daily_goal_minutes}
-              />
+                className="flex h-11 min-h-[44px] w-full rounded-lg border border-border-subtle bg-surface-card px-3 text-base text-text focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                {DAILY_GOAL_MINUTES.map((minutes) => (
+                  <option key={minutes} value={minutes}>
+                    {t("account.goalMinutes", { count: minutes })}
+                  </option>
+                ))}
+              </select>
               {errors.daily_goal_minutes && (
                 <p className="text-xs text-danger-accent">
                   {errors.daily_goal_minutes.message}

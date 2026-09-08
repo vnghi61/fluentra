@@ -68,6 +68,10 @@ type LeaderboardEntryResponse struct {
 // LeaderboardResponse is a league's standings.
 type LeaderboardResponse struct {
 	Entries []LeaderboardEntryResponse `json:"entries"`
+	// OptedIn says whether the caller is in these standings. It is not a
+	// permission: the board is returned either way, and this is what lets the
+	// screen offer the join button above a board it is already showing.
+	OptedIn bool `json:"opted_in"`
 }
 
 // SetDailyGoalRequest changes the XP a day must earn to count.
@@ -131,9 +135,9 @@ func mapSummary(summary contract.Summary) SummaryResponse {
 	}
 }
 
-func mapLeaderboard(entries []service.LeaderboardEntry) LeaderboardResponse {
-	rows := make([]LeaderboardEntryResponse, 0, len(entries))
-	for _, entry := range entries {
+func mapLeaderboard(view service.LeaderboardView) LeaderboardResponse {
+	rows := make([]LeaderboardEntryResponse, 0, len(view.Entries))
+	for _, entry := range view.Entries {
 		rows = append(rows, LeaderboardEntryResponse{
 			Rank:        entry.Rank,
 			UserID:      entry.UserID,
@@ -143,5 +147,5 @@ func mapLeaderboard(entries []service.LeaderboardEntry) LeaderboardResponse {
 			IsSelf:      entry.IsSelf,
 		})
 	}
-	return LeaderboardResponse{Entries: rows}
+	return LeaderboardResponse{Entries: rows, OptedIn: view.OptedIn}
 }

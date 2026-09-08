@@ -144,22 +144,27 @@ describe("Gamification Feature Slice (WP14)", () => {
     expect(screen.getByText("gold")).toBeInTheDocument();
   });
 
-  it("LeaderboardWidget offers opt-in when learner has not opted in (403)", async () => {
+  it("LeaderboardWidget shows the standings to a learner who has not joined", async () => {
     const user = userEvent.setup();
     let optInCalled = false;
 
     server.use(
+      // 200 with opted_in: false, not a 403. Reading the board never required
+      // being in it; the endpoint used to say otherwise, which asked a learner
+      // to publish their name and weekly XP to find out what they were joining.
       http.get("/api/v1/leaderboard", () =>
-        HttpResponse.json(
-          {
-            type: "https://fluentra.dev/errors/forbidden",
-            title: "Forbidden",
-            status: 403,
-            code: "LEADERBOARD_NOT_OPTED_IN",
-            detail: "Learner has not opted in to leaderboards.",
-          },
-          { status: 403 },
-        ),
+        HttpResponse.json({
+          opted_in: false,
+          entries: [
+            {
+              rank: 1,
+              user_id: "11111111-1111-1111-1111-111111111111",
+              display_name: "Someone Else",
+              xp: 910,
+              is_self: false,
+            },
+          ],
+        }),
       ),
       http.put("/api/v1/me/leaderboard-opt-in", () => {
         optInCalled = true;
@@ -169,16 +174,41 @@ describe("Gamification Feature Slice (WP14)", () => {
 
     renderWithProviders(<LeaderboardWidget currentLeague="silver" />);
 
-    expect(
-      await screen.findByText(/Compete with learners at your skill level/i),
-    ).toBeInTheDocument();
+    // The board itself, not a pitch where the board should be.
+    expect(await screen.findByText("Someone Else")).toBeInTheDocument();
+
+    // And the offer to join it, alongside rather than instead.
     const joinButton = screen.getByRole("button", {
       name: /Join SILVER League/i,
     });
-    expect(joinButton).toBeInTheDocument();
-
     await user.click(joinButton);
     await waitFor(() => expect(optInCalled).toBe(true));
+  });
+
+  it("LeaderboardWidget does not offer to join a league the learner is in", async () => {
+    server.use(
+      http.get("/api/v1/leaderboard", () =>
+        HttpResponse.json({
+          opted_in: true,
+          entries: [
+            {
+              rank: 1,
+              user_id: "11111111-1111-1111-1111-111111111111",
+              display_name: "Someone Else",
+              xp: 910,
+              is_self: false,
+            },
+          ],
+        }),
+      ),
+    );
+
+    renderWithProviders(<LeaderboardWidget currentLeague="silver" />);
+
+    expect(await screen.findByText("Someone Else")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Join SILVER League/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("BadgesWidget renders unlocked badges and tier styling", () => {

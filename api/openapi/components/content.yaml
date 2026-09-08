@@ -166,3 +166,52 @@ ReviewDecisionRequest:
     comments:
       type: string
       nullable: true
+
+AdminContentItemList:
+  type: object
+  required: [items, total, limit, offset]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/ContentItem'
+    total:
+      type: integer
+    limit:
+      type: integer
+    offset:
+      type: integer
+
+AdminContentItemDetail:
+  type: object
+  required: [id, kind, slug, status, owner_id, created_at, updated_at, versions]
+  properties:
+    id:
+      type: string
+      format: uuid
+    kind:
+      type: string
+      example: vocab_word
+    slug:
+      type: string
+      example: environment-n-1
+    current_version_id:
+      type: string
+      format: uuid
+      nullable: true
+    status:
+      $ref: '#/AuthoringStatus'
+    owner_id:
+      type: string
+      format: uuid
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+    versions:
+      type: array
+      items:
+        $ref: '#/ContentVersion'
+

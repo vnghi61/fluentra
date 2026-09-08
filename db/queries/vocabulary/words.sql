@@ -141,3 +141,80 @@ WHERE s.content_version_id IS NOT NULL
   AND btrim(s.definition) <> ''
 ORDER BY w.frequency_rank NULLS LAST, w.lemma, s.id
 LIMIT $1;
+
+-- name: ListWordsAdmin :many
+SELECT
+    w.id,
+    w.lemma,
+    w.pos,
+    w.cefr_level,
+    w.frequency_rank,
+    w.ipa,
+    w.audio_asset_id,
+    w.created_at,
+    w.updated_at,
+    (SELECT COUNT(*)::bigint FROM skill.word_senses ws WHERE ws.word_id = w.id) AS senses_count,
+    EXISTS (
+        SELECT 1
+        FROM skill.vocab_upload_items ui
+        JOIN skill.word_senses ws ON ws.id = ui.word_sense_id
+        WHERE ws.word_id = w.id
+    ) AS is_uploaded
+FROM skill.words w
+WHERE (sqlc.narg('query')::text IS NULL OR w.lemma ILIKE sqlc.narg('query') || '%')
+  AND (
+      sqlc.narg('source')::text IS NULL
+      OR (sqlc.narg('source')::text = 'upload' AND EXISTS (
+          SELECT 1
+          FROM skill.vocab_upload_items ui
+          JOIN skill.word_senses ws ON ws.id = ui.word_sense_id
+          WHERE ws.word_id = w.id
+      ))
+      OR (sqlc.narg('source')::text = 'seed' AND NOT EXISTS (
+          SELECT 1
+          FROM skill.vocab_upload_items ui
+          JOIN skill.word_senses ws ON ws.id = ui.word_sense_id
+          WHERE ws.word_id = w.id
+      ))
+  )
+ORDER BY w.updated_at DESC, w.lemma ASC
+LIMIT @result_limit OFFSET @result_offset;
+
+-- name: CountWordsAdmin :one
+SELECT COUNT(*)::bigint
+FROM skill.words w
+WHERE (sqlc.narg('query')::text IS NULL OR w.lemma ILIKE sqlc.narg('query') || '%')
+  AND (
+      sqlc.narg('source')::text IS NULL
+      OR (sqlc.narg('source')::text = 'upload' AND EXISTS (
+          SELECT 1
+          FROM skill.vocab_upload_items ui
+          JOIN skill.word_senses ws ON ws.id = ui.word_sense_id
+          WHERE ws.word_id = w.id
+      ))
+      OR (sqlc.narg('source')::text = 'seed' AND NOT EXISTS (
+          SELECT 1
+          FROM skill.vocab_upload_items ui
+          JOIN skill.word_senses ws ON ws.id = ui.word_sense_id
+          WHERE ws.word_id = w.id
+      ))
+  );
+
+-- name: UpdateWordSenseAdmin :one
+UPDATE skill.word_senses
+SET definition    = COALESCE(sqlc.narg('definition'), definition),
+    definition_vi = COALESCE(sqlc.narg('definition_vi'), definition_vi),
+    domain        = COALESCE(sqlc.narg('domain'), domain),
+    examples      = COALESCE(sqlc.narg('examples'), examples),
+    updated_at    = now()
+WHERE id = @id
+RETURNING *;
+
+-- name: DeleteWordSense :exec
+DELETE FROM skill.word_senses
+WHERE id = $1;
+
+-- name: DeleteWord :exec
+DELETE FROM skill.words
+WHERE id = $1;
+

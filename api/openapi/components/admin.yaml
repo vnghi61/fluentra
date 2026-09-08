@@ -34,12 +34,19 @@ AdminUserPage:
   description: >-
     One page of search results. Cursor-paginated rather than offset-paginated
     because the underlying set changes while an administrator pages through it.
-  required: [items]
+  required: [items, total]
   properties:
     items:
       type: array
       items:
         $ref: '#/AdminUserSummary'
+    total:
+      type: integer
+      description: >-
+        How many accounts match the filters, across every page. The page itself
+        cannot say this — `items.length` is the size of one page, and a footer
+        reading "15 learners" while thousands matched is the reason this exists.
+      example: 1284
     next_cursor:
       type: string
       description: >-

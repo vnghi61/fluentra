@@ -41,10 +41,7 @@ export const AdminFeatureFlags: React.FC = () => {
       setError(
         err instanceof Error
           ? err.message
-          : t(
-              "admin.failedToLoadFeatureFlags",
-              "Failed to load feature flags.",
-            ),
+          : t("admin.failedToLoadFeatureFlags"),
       );
     } finally {
       setIsLoading(false);
@@ -70,10 +67,7 @@ export const AdminFeatureFlags: React.FC = () => {
         setError(
           err instanceof Error
             ? err.message
-            : t(
-                "admin.failedToUpdateFeatureFlag",
-                "Failed to update feature flag.",
-              ),
+            : t("admin.failedToUpdateFeatureFlag"),
         );
       } finally {
         setUpdatingKey(null);
@@ -97,10 +91,7 @@ export const AdminFeatureFlags: React.FC = () => {
         setError(
           err instanceof Error
             ? err.message
-            : t(
-                "admin.failedToUpdateRolloutPercentage",
-                "Failed to update rollout percentage.",
-              ),
+            : t("admin.failedToUpdateRolloutPercentage"),
         );
       } finally {
         setUpdatingKey(null);
@@ -125,10 +116,7 @@ export const AdminFeatureFlags: React.FC = () => {
         setError(
           err instanceof Error
             ? err.message
-            : t(
-                "admin.failedToDeleteFeatureFlag",
-                "Failed to delete feature flag.",
-              ),
+            : t("admin.failedToDeleteFeatureFlag"),
         );
       } finally {
         setDeletingKey(null);
@@ -140,7 +128,7 @@ export const AdminFeatureFlags: React.FC = () => {
   const columns = useMemo(
     () => [
       columnHelper.accessor("key", {
-        header: t("admin.flagKeyDescription", "Flag Key & Description"),
+        header: t("admin.flagKeyDescription"),
         cell: (info) => {
           const flag = info.row.original;
           return (
@@ -172,16 +160,14 @@ export const AdminFeatureFlags: React.FC = () => {
                   flag.enabled ? "text-success-accent" : "text-text-muted"
                 }`}
               >
-                {flag.enabled
-                  ? t("admin.enabled", "Enabled")
-                  : t("admin.disabled", "Disabled")}
+                {flag.enabled ? t("admin.enabled") : t("admin.disabled")}
               </span>
             </div>
           );
         },
       }),
       columnHelper.accessor("rollout_percent", {
-        header: t("admin.rollout", "Rollout"),
+        header: t("admin.rollout"),
         cell: (info) => {
           const flag = info.row.original;
           return (
@@ -215,7 +201,7 @@ export const AdminFeatureFlags: React.FC = () => {
         ),
       }),
       columnHelper.accessor("expires_on", {
-        header: t("admin.expiresOn", "Expires On"),
+        header: t("admin.expiresOn"),
         cell: (info) => {
           const expiresDate = new Date(info.getValue());
           const isPast = expiresDate.getTime() < Date.now();
@@ -234,7 +220,7 @@ export const AdminFeatureFlags: React.FC = () => {
       }),
       columnHelper.display({
         id: "actions",
-        header: t("admin.actions", "Actions"),
+        header: t("admin.actions"),
         cell: (info) => {
           const flag = info.row.original;
           return (
@@ -249,9 +235,7 @@ export const AdminFeatureFlags: React.FC = () => {
               className="text-text-muted hover:text-danger-accent hover:bg-danger/10"
             >
               <Trash2 className="h-3.5 w-3.5" />
-              <span className="sr-only">
-                {t("admin.deleteFlag", "Delete flag")}
-              </span>
+              <span className="sr-only">{t("admin.deleteFlag")}</span>
             </Button>
           );
         },
@@ -279,7 +263,7 @@ export const AdminFeatureFlags: React.FC = () => {
         <div className="space-y-1">
           <h3 className="text-base font-semibold text-text flex items-center gap-2">
             <Flag className="h-5 w-5 text-primary-accent" />
-            {t("admin.featureFlagsRollouts", "Feature Flags & Rollouts")}
+            {t("admin.featureFlagsRollouts")}
           </h3>
           <p className="text-xs text-text-muted">
             Control dynamic system feature switches, percentage rollouts, and
@@ -293,7 +277,7 @@ export const AdminFeatureFlags: React.FC = () => {
           size="sm"
         >
           <Plus className="mr-1.5 h-4 w-4" />
-          {t("admin.createFlag", "Create Flag")}
+          {t("admin.createFlag")}
         </Button>
       </div>
 
@@ -314,16 +298,10 @@ export const AdminFeatureFlags: React.FC = () => {
           <div className="flex min-h-[200px] flex-col items-center justify-center p-8 text-center space-y-2">
             <Flag className="h-8 w-8 text-text-muted" />
             <p className="text-sm font-medium text-text-muted">
-              {t(
-                "admin.noFeatureFlagsConfigured",
-                "No feature flags configured",
-              )}
+              {t("admin.noFeatureFlagsConfigured")}
             </p>
             <p className="text-xs text-text-muted">
-              {t(
-                "admin.createAFeatureFlagToControlRollouts",
-                "Create a feature flag to control rollouts.",
-              )}
+              {t("admin.createAFeatureFlagToControlRollouts")}
             </p>
           </div>
         ) : (

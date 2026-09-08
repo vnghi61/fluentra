@@ -32,6 +32,10 @@ type Repository interface {
 	UpdateItemStatus(ctx context.Context, id uuid.UUID, status domain.AuthoringStatus) (domain.Item, error)
 	UpdateItemCurrentVersion(ctx context.Context, id uuid.UUID, currentVersionID *uuid.UUID) (domain.Item, error)
 	ListItemsByOwner(ctx context.Context, ownerID uuid.UUID, limit int32) ([]domain.Item, error)
+	ListContentItemsFiltered(
+		ctx context.Context, status, kind, query *string, limit, offset int32,
+	) ([]domain.Item, error)
+	CountContentItemsFiltered(ctx context.Context, status, kind, query *string) (int64, error)
 	DeleteItem(ctx context.Context, id uuid.UUID) error
 
 	CreateVersion(
@@ -827,6 +831,43 @@ func (s *Service) GetItemByID(ctx context.Context, id uuid.UUID) (domain.Item, e
 // GetDraftVersion returns the working draft version for an item.
 func (s *Service) GetDraftVersion(ctx context.Context, itemID uuid.UUID) (domain.Version, error) {
 	return s.repo.GetDraftVersionByItemID(ctx, itemID)
+}
+
+// ListAdminItems returns a paginated list of content items matching filters and
+// the total count.
+func (s *Service) ListAdminItems(
+	ctx context.Context, status, kind, query *string, limit, offset int,
+) ([]domain.Item, int64, error) {
+	// The module already owns this clamp, and owns the reason for it: the window
+	// arrives from a query string as a platform int and reaches the driver as an
+	// int32, so it has to be narrowed by something that bounds it first. Browse
+	// has used these since it was written. A second clamp here would be a second
+	// set of numbers to keep in step with the OpenAPI schema.
+	items, err := s.repo.ListContentItemsFiltered(
+		ctx, status, kind, query,
+		domain.NormaliseLimit(limit), domain.NormaliseOffset(offset),
+	)
+	if err != nil {
+		return nil, 0, err
+	}
+	count, err := s.repo.CountContentItemsFiltered(ctx, status, kind, query)
+	if err != nil {
+		return nil, 0, err
+	}
+	return items, count, nil
+}
+
+// GetAdminItemDetail returns a content item and all of its versions.
+func (s *Service) GetAdminItemDetail(ctx context.Context, id uuid.UUID) (domain.Item, []domain.Version, error) {
+	item, err := s.repo.GetItemByID(ctx, id)
+	if err != nil {
+		return domain.Item{}, nil, err
+	}
+	versions, err := s.repo.ListVersionsByItemID(ctx, id)
+	if err != nil {
+		return domain.Item{}, nil, err
+	}
+	return item, versions, nil
 }
 
 func toContractVersion(v domain.Version, tags []string) *contract.Version {

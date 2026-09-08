@@ -1,17 +1,19 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Flag, Gauge, Shield, Users } from "lucide-react";
+import { BookA, BookOpen, Flag, Gauge, Shield, Users } from "lucide-react";
 import {
   AdminUserList,
   AdminFeatureFlags,
   AdminAIUsage,
+  AdminContentList,
+  AdminVocabulary,
 } from "@/features/admin";
 import {
   PERMISSIONS,
   usePermissions,
 } from "@/features/admin/model/permissions";
 
-type AdminTab = "users" | "flags" | "ai";
+type AdminTab = "users" | "content" | "vocabulary" | "flags" | "ai";
 
 export function AdminPage(): React.JSX.Element {
   const { t } = useTranslation();
@@ -28,8 +30,28 @@ export function AdminPage(): React.JSX.Element {
       ? [
           {
             key: "users" as AdminTab,
-            label: t("page.learnerManagement", "Learner Management"),
+            label: t("page.learnerManagement"),
             icon: Users,
+          },
+        ]
+      : []),
+    ...(can(PERMISSIONS.contentEdit) ||
+    can(PERMISSIONS.contentReview) ||
+    can(PERMISSIONS.contentPublish)
+      ? [
+          {
+            key: "content" as AdminTab,
+            label: t("page.contentLibrary"),
+            icon: BookOpen,
+          },
+        ]
+      : []),
+    ...(can(PERMISSIONS.contentEdit) || can(PERMISSIONS.contentCreate)
+      ? [
+          {
+            key: "vocabulary" as AdminTab,
+            label: t("page.vocabulary"),
+            icon: BookA,
           },
         ]
       : []),
@@ -37,7 +59,7 @@ export function AdminPage(): React.JSX.Element {
       ? [
           {
             key: "flags" as AdminTab,
-            label: t("page.featureFlags", "Feature Flags"),
+            label: t("page.featureFlags"),
             icon: Flag,
           },
         ]
@@ -49,7 +71,7 @@ export function AdminPage(): React.JSX.Element {
       ? [
           {
             key: "ai" as AdminTab,
-            label: t("page.aiUsage", "AI Usage"),
+            label: t("page.aiUsage"),
             icon: Gauge,
           },
         ]
@@ -69,11 +91,11 @@ export function AdminPage(): React.JSX.Element {
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary-accent border border-primary/20 uppercase tracking-wider">
             <Shield className="h-3 w-3" />
-            {t("page.administration", "Administration")}
+            {t("page.administration")}
           </span>
         </div>
         <h1 className="text-2xl font-bold text-text">
-          {t("page.platformAdministration", "Platform Administration")}
+          {t("page.platformAdministration")}
         </h1>
         <p className="text-sm text-text-muted">
           Manage platform learners, enforce moderation, and configure system
@@ -110,14 +132,13 @@ export function AdminPage(): React.JSX.Element {
           <p className="text-sm text-text-muted">Checking your permissions…</p>
         ) : tabs.length === 0 ? (
           <p className="text-sm text-text-muted">
-            {t(
-              "page.yourAccountHoldsNoAdministrativePermissions",
-              "Your account holds no administrative permissions.",
-            )}
+            {t("page.yourAccountHoldsNoAdministrativePermissions")}
           </p>
         ) : (
           <>
             {visible === "users" && <AdminUserList />}
+            {visible === "content" && <AdminContentList />}
+            {visible === "vocabulary" && <AdminVocabulary />}
             {visible === "flags" && <AdminFeatureFlags />}
             {visible === "ai" && <AdminAIUsage />}
           </>

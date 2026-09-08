@@ -27,6 +27,59 @@ func (q *Queries) CountSearchWords(ctx context.Context, dollar_1 *string) (int64
 	return column_1, err
 }
 
+const countWordsAdmin = `-- name: CountWordsAdmin :one
+SELECT COUNT(*)::bigint
+FROM skill.words w
+WHERE ($1::text IS NULL OR w.lemma ILIKE $1 || '%')
+  AND (
+      $2::text IS NULL
+      OR ($2::text = 'upload' AND EXISTS (
+          SELECT 1
+          FROM skill.vocab_upload_items ui
+          JOIN skill.word_senses ws ON ws.id = ui.word_sense_id
+          WHERE ws.word_id = w.id
+      ))
+      OR ($2::text = 'seed' AND NOT EXISTS (
+          SELECT 1
+          FROM skill.vocab_upload_items ui
+          JOIN skill.word_senses ws ON ws.id = ui.word_sense_id
+          WHERE ws.word_id = w.id
+      ))
+  )
+`
+
+type CountWordsAdminParams struct {
+	Query  *string
+	Source *string
+}
+
+func (q *Queries) CountWordsAdmin(ctx context.Context, arg CountWordsAdminParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countWordsAdmin, arg.Query, arg.Source)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const deleteWord = `-- name: DeleteWord :exec
+DELETE FROM skill.words
+WHERE id = $1
+`
+
+func (q *Queries) DeleteWord(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteWord, id)
+	return err
+}
+
+const deleteWordSense = `-- name: DeleteWordSense :exec
+DELETE FROM skill.word_senses
+WHERE id = $1
+`
+
+func (q *Queries) DeleteWordSense(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteWordSense, id)
+	return err
+}
+
 const getSenseByID = `-- name: GetSenseByID :one
 SELECT s.id, s.word_id, s.content_version_id, s.definition, s.definition_vi, s.register, s.domain, s.examples, s.created_at, s.updated_at, w.lemma, w.pos, w.cefr_level, w.ipa, w.audio_asset_id
 FROM skill.word_senses s
@@ -508,6 +561,103 @@ func (q *Queries) ListSensesForGeneration(ctx context.Context, limit int32) ([]L
 	return items, nil
 }
 
+const listWordsAdmin = `-- name: ListWordsAdmin :many
+SELECT
+    w.id,
+    w.lemma,
+    w.pos,
+    w.cefr_level,
+    w.frequency_rank,
+    w.ipa,
+    w.audio_asset_id,
+    w.created_at,
+    w.updated_at,
+    (SELECT COUNT(*)::bigint FROM skill.word_senses ws WHERE ws.word_id = w.id) AS senses_count,
+    EXISTS (
+        SELECT 1
+        FROM skill.vocab_upload_items ui
+        JOIN skill.word_senses ws ON ws.id = ui.word_sense_id
+        WHERE ws.word_id = w.id
+    ) AS is_uploaded
+FROM skill.words w
+WHERE ($1::text IS NULL OR w.lemma ILIKE $1 || '%')
+  AND (
+      $2::text IS NULL
+      OR ($2::text = 'upload' AND EXISTS (
+          SELECT 1
+          FROM skill.vocab_upload_items ui
+          JOIN skill.word_senses ws ON ws.id = ui.word_sense_id
+          WHERE ws.word_id = w.id
+      ))
+      OR ($2::text = 'seed' AND NOT EXISTS (
+          SELECT 1
+          FROM skill.vocab_upload_items ui
+          JOIN skill.word_senses ws ON ws.id = ui.word_sense_id
+          WHERE ws.word_id = w.id
+      ))
+  )
+ORDER BY w.updated_at DESC, w.lemma ASC
+LIMIT $4 OFFSET $3
+`
+
+type ListWordsAdminParams struct {
+	Query        *string
+	Source       *string
+	ResultOffset int32
+	ResultLimit  int32
+}
+
+type ListWordsAdminRow struct {
+	ID            uuid.UUID
+	Lemma         string
+	Pos           string
+	CefrLevel     string
+	FrequencyRank *int32
+	Ipa           *string
+	AudioAssetID  *uuid.UUID
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	SensesCount   int64
+	IsUploaded    bool
+}
+
+func (q *Queries) ListWordsAdmin(ctx context.Context, arg ListWordsAdminParams) ([]ListWordsAdminRow, error) {
+	rows, err := q.db.Query(ctx, listWordsAdmin,
+		arg.Query,
+		arg.Source,
+		arg.ResultOffset,
+		arg.ResultLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListWordsAdminRow
+	for rows.Next() {
+		var i ListWordsAdminRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Lemma,
+			&i.Pos,
+			&i.CefrLevel,
+			&i.FrequencyRank,
+			&i.Ipa,
+			&i.AudioAssetID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.SensesCount,
+			&i.IsUploaded,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listWordsByLemma = `-- name: ListWordsByLemma :many
 SELECT id, lemma, pos, cefr_level, frequency_rank, ipa, audio_asset_id, created_at, updated_at FROM skill.words
 WHERE lemma = $1
@@ -585,6 +735,49 @@ func (q *Queries) SearchWords(ctx context.Context, arg SearchWordsParams) ([]Ski
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateWordSenseAdmin = `-- name: UpdateWordSenseAdmin :one
+UPDATE skill.word_senses
+SET definition    = COALESCE($1, definition),
+    definition_vi = COALESCE($2, definition_vi),
+    domain        = COALESCE($3, domain),
+    examples      = COALESCE($4, examples),
+    updated_at    = now()
+WHERE id = $5
+RETURNING id, word_id, content_version_id, definition, definition_vi, register, domain, examples, created_at, updated_at
+`
+
+type UpdateWordSenseAdminParams struct {
+	Definition   *string
+	DefinitionVi *string
+	Domain       *string
+	Examples     []byte
+	ID           uuid.UUID
+}
+
+func (q *Queries) UpdateWordSenseAdmin(ctx context.Context, arg UpdateWordSenseAdminParams) (SkillWordSense, error) {
+	row := q.db.QueryRow(ctx, updateWordSenseAdmin,
+		arg.Definition,
+		arg.DefinitionVi,
+		arg.Domain,
+		arg.Examples,
+		arg.ID,
+	)
+	var i SkillWordSense
+	err := row.Scan(
+		&i.ID,
+		&i.WordID,
+		&i.ContentVersionID,
+		&i.Definition,
+		&i.DefinitionVi,
+		&i.Register,
+		&i.Domain,
+		&i.Examples,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const updateWordSenseEnrichment = `-- name: UpdateWordSenseEnrichment :one

@@ -16,7 +16,10 @@ import { AppShell } from "@/components/layout/AppShell";
 import { ServerWakingBanner } from "@/components/layout/ServerWakingBanner";
 import { useWakeStatus } from "@/hooks/useWakeStatus";
 import { usePreferencesSync } from "@/features/account/hooks/usePreferencesSync";
-import { useDisplayName } from "@/features/account/hooks/useDisplayName";
+import {
+  useAvatarUrl,
+  useDisplayName,
+} from "@/features/account/hooks/useDisplayName";
 
 /**
  * Lazy for the same reason AccountMenu is: both are built on Radix, so together
@@ -134,7 +137,9 @@ function RootApp(): React.JSX.Element {
   const { themeChoice, locale, setThemeChoice, setLocaleChoice } =
     usePreferencesSync(status === "authenticated");
   const wake = useWakeStatus();
-  const displayName = useDisplayName(status === "authenticated");
+  const signedIn = status === "authenticated";
+  const displayName = useDisplayName(signedIn);
+  const avatarUrl = useAvatarUrl(signedIn);
 
   const handleLogout = async () => {
     await authApi.logout();
@@ -148,6 +153,7 @@ function RootApp(): React.JSX.Element {
       onLogout={() => void handleLogout()}
       chrome={!isBareRoute(pathname)}
       displayName={displayName}
+      avatarUrl={avatarUrl}
       banner={
         <ServerWakingBanner
           waking={wake === "waking"}

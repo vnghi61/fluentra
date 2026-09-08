@@ -167,3 +167,41 @@ WHERE upload_id = $1 AND status = 'pending' AND attempts < $2
 ORDER BY created_at, id
 LIMIT $3
 FOR UPDATE SKIP LOCKED;
+
+-- name: ListLearnerWordsQueueAdmin :many
+SELECT
+    i.id AS upload_item_id,
+    i.upload_id,
+    i.user_id,
+    i.term,
+    i.provided_meaning,
+    i.status,
+    i.verified_by_model,
+    i.reason,
+    i.attempts,
+    i.verified_at,
+    i.created_at,
+    i.word_sense_id,
+    s.word_id,
+    s.content_version_id,
+    s.definition,
+    s.definition_vi,
+    s.domain AS topic,
+    s.examples,
+    d.id AS deck_id,
+    d.name AS deck_name
+FROM skill.vocab_upload_items i
+JOIN skill.vocab_uploads u ON u.id = i.upload_id
+LEFT JOIN skill.decks d ON d.id = u.deck_id
+LEFT JOIN skill.word_senses s ON s.id = i.word_sense_id
+WHERE (sqlc.narg('status')::text IS NULL OR i.status = sqlc.narg('status'))
+  AND (sqlc.narg('query')::text IS NULL OR i.term ILIKE sqlc.narg('query') || '%')
+ORDER BY i.created_at DESC
+LIMIT @result_limit OFFSET @result_offset;
+
+-- name: CountLearnerWordsQueueAdmin :one
+SELECT COUNT(*)::bigint
+FROM skill.vocab_upload_items i
+WHERE (sqlc.narg('status')::text IS NULL OR i.status = sqlc.narg('status'))
+  AND (sqlc.narg('query')::text IS NULL OR i.term ILIKE sqlc.narg('query') || '%');
+

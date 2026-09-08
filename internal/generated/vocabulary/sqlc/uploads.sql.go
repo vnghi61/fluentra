@@ -215,6 +215,25 @@ func (q *Queries) CompleteFinishedUploads(ctx context.Context) ([]SkillVocabUplo
 	return items, nil
 }
 
+const countLearnerWordsQueueAdmin = `-- name: CountLearnerWordsQueueAdmin :one
+SELECT COUNT(*)::bigint
+FROM skill.vocab_upload_items i
+WHERE ($1::text IS NULL OR i.status = $1)
+  AND ($2::text IS NULL OR i.term ILIKE $2 || '%')
+`
+
+type CountLearnerWordsQueueAdminParams struct {
+	Status *string
+	Query  *string
+}
+
+func (q *Queries) CountLearnerWordsQueueAdmin(ctx context.Context, arg CountLearnerWordsQueueAdminParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countLearnerWordsQueueAdmin, arg.Status, arg.Query)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const countVerifiedItemsForUser = `-- name: CountVerifiedItemsForUser :one
 SELECT COUNT(*)::bigint FROM skill.vocab_upload_items
 WHERE user_id = $1 AND status = 'verified'
@@ -320,6 +339,114 @@ func (q *Queries) InsertUploadItem(ctx context.Context, arg InsertUploadItemPara
 		&i.VerifiedAt,
 	)
 	return i, err
+}
+
+const listLearnerWordsQueueAdmin = `-- name: ListLearnerWordsQueueAdmin :many
+SELECT
+    i.id AS upload_item_id,
+    i.upload_id,
+    i.user_id,
+    i.term,
+    i.provided_meaning,
+    i.status,
+    i.verified_by_model,
+    i.reason,
+    i.attempts,
+    i.verified_at,
+    i.created_at,
+    i.word_sense_id,
+    s.word_id,
+    s.content_version_id,
+    s.definition,
+    s.definition_vi,
+    s.domain AS topic,
+    s.examples,
+    d.id AS deck_id,
+    d.name AS deck_name
+FROM skill.vocab_upload_items i
+JOIN skill.vocab_uploads u ON u.id = i.upload_id
+LEFT JOIN skill.decks d ON d.id = u.deck_id
+LEFT JOIN skill.word_senses s ON s.id = i.word_sense_id
+WHERE ($1::text IS NULL OR i.status = $1)
+  AND ($2::text IS NULL OR i.term ILIKE $2 || '%')
+ORDER BY i.created_at DESC
+LIMIT $4 OFFSET $3
+`
+
+type ListLearnerWordsQueueAdminParams struct {
+	Status       *string
+	Query        *string
+	ResultOffset int32
+	ResultLimit  int32
+}
+
+type ListLearnerWordsQueueAdminRow struct {
+	UploadItemID     uuid.UUID
+	UploadID         uuid.UUID
+	UserID           uuid.UUID
+	Term             string
+	ProvidedMeaning  string
+	Status           string
+	VerifiedByModel  string
+	Reason           string
+	Attempts         int32
+	VerifiedAt       *time.Time
+	CreatedAt        time.Time
+	WordSenseID      *uuid.UUID
+	WordID           *uuid.UUID
+	ContentVersionID *uuid.UUID
+	Definition       *string
+	DefinitionVi     *string
+	Topic            *string
+	Examples         []byte
+	DeckID           *uuid.UUID
+	DeckName         *string
+}
+
+func (q *Queries) ListLearnerWordsQueueAdmin(ctx context.Context, arg ListLearnerWordsQueueAdminParams) ([]ListLearnerWordsQueueAdminRow, error) {
+	rows, err := q.db.Query(ctx, listLearnerWordsQueueAdmin,
+		arg.Status,
+		arg.Query,
+		arg.ResultOffset,
+		arg.ResultLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListLearnerWordsQueueAdminRow
+	for rows.Next() {
+		var i ListLearnerWordsQueueAdminRow
+		if err := rows.Scan(
+			&i.UploadItemID,
+			&i.UploadID,
+			&i.UserID,
+			&i.Term,
+			&i.ProvidedMeaning,
+			&i.Status,
+			&i.VerifiedByModel,
+			&i.Reason,
+			&i.Attempts,
+			&i.VerifiedAt,
+			&i.CreatedAt,
+			&i.WordSenseID,
+			&i.WordID,
+			&i.ContentVersionID,
+			&i.Definition,
+			&i.DefinitionVi,
+			&i.Topic,
+			&i.Examples,
+			&i.DeckID,
+			&i.DeckName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listUploadItems = `-- name: ListUploadItems :many

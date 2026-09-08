@@ -23,3 +23,21 @@ export function useDisplayName(signedIn: boolean): string | undefined {
   });
   return data?.profile.display_name;
 }
+
+/**
+ * The learner's own avatar, from the profile read the shell already makes.
+ *
+ * Same query key as useDisplayName, so this costs no extra request: the account
+ * menu was drawing a generic person icon for everybody while the URL sat one
+ * field away in a response it had already fetched, and an uploaded avatar
+ * appeared nowhere outside the settings screen it was uploaded on.
+ */
+export function useAvatarUrl(signedIn: boolean): string | undefined {
+  const { data } = useQuery({
+    queryKey: ["account", "me"],
+    queryFn: () => accountApi.getMe(),
+    enabled: signedIn,
+    staleTime: 5 * 60 * 1000,
+  });
+  return data?.profile.avatar_url ?? undefined;
+}

@@ -17,7 +17,10 @@ import (
 // PermContentCreate is the permission the authoring endpoint requires. It is a
 // named constant for the same reason lesson's is: the route table test and the
 // handler must be able to refer to the same string.
-const PermContentCreate = "content.create"
+const (
+	PermContentCreate = "content.create"
+	PermContentEdit   = "content.edit"
+)
 
 const (
 	defaultPageLimit = 20
@@ -63,6 +66,18 @@ type VocabularyService interface {
 	ListDeckWords(ctx context.Context, deckID uuid.UUID, limit, offset int32) ([]domain.DeckItem, error)
 	SetWordState(ctx context.Context, userID, wordSenseID uuid.UUID, status domain.WordStatus) error
 	GetWordState(ctx context.Context, userID, wordSenseID uuid.UUID) (domain.UserWordState, error)
+	ListAdminWords(ctx context.Context, query, source *string, limit, offset int) ([]domain.AdminWord, int64, error)
+	WithdrawWord(ctx context.Context, id uuid.UUID) error
+	UpdateWordSenseAdmin(
+		ctx context.Context,
+		id uuid.UUID,
+		definition, definitionVi, domainVal *string,
+		examples []domain.ExampleSentence,
+	) (domain.WordSense, error)
+	WithdrawWordSense(ctx context.Context, id uuid.UUID) error
+	ListLearnerWordsQueueAdmin(
+		ctx context.Context, status, query *string, limit, offset int,
+	) ([]domain.LearnerWordQueueItem, int64, error)
 }
 
 // Handler serves HTTP endpoints for vocabulary.
@@ -102,7 +117,12 @@ func (h *Handler) Routes(router chi.Router) {
 
 // AdminRoutes mounts the staff-facing vocabulary authoring endpoints on the router.
 func (h *Handler) AdminRoutes(router chi.Router) {
+	router.Get("/admin/vocabulary/words", h.adminListWords)
 	router.Post("/admin/vocabulary/words", h.adminCreateWord)
+	router.Delete("/admin/vocabulary/words/{id}", h.adminWithdrawWord)
+	router.Get("/admin/vocabulary/queue", h.adminListLearnerWordsQueue)
+	router.Patch("/admin/vocabulary/senses/{id}", h.adminUpdateWordSense)
+	router.Delete("/admin/vocabulary/senses/{id}", h.adminWithdrawWordSense)
 }
 
 func (h *Handler) lookupWord(w http.ResponseWriter, r *http.Request) {
@@ -417,4 +437,161 @@ func (h *Handler) adminCreateWord(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httpx.WriteJSON(w, r, http.StatusCreated, mapWordDetail(created))
+}
+
+func (h *Handler) adminListWords(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if err := h.guard.Require(ctx, PermContentEdit); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	var queryPtr *string
+	if q := r.URL.Query().Get("q"); q != "" {
+		queryPtr = &q
+	}
+	var sourcePtr *string
+	if s := r.URL.Query().Get("source"); s != "" {
+		sourcePtr = &s
+	}
+
+	limit, offset := paging(r)
+	words, total, err := h.service.ListAdminWords(ctx, queryPtr, sourcePtr, int(limit), int(offset))
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	items := make([]AdminWordDTO, len(words))
+	for i, word := range words {
+		items[i] = mapAdminWordDTO(word)
+	}
+
+	httpx.WriteJSON(w, r, http.StatusOK, AdminWordListResponse{
+		Items:  items,
+		Total:  int(total),
+		Limit:  int(limit),
+		Offset: int(offset),
+	})
+}
+
+func (h *Handler) adminWithdrawWord(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if err := h.guard.Require(ctx, PermContentEdit); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	idStr := chi.URLParam(r, "id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.BadRequest, "INVALID_ID", "Invalid word ID"))
+		return
+	}
+
+	if err := h.service.WithdrawWord(ctx, id); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) adminListLearnerWordsQueue(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if err := h.guard.Require(ctx, PermContentEdit); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	var statusPtr *string
+	if s := r.URL.Query().Get("status"); s != "" {
+		statusPtr = &s
+	}
+	var queryPtr *string
+	if q := r.URL.Query().Get("q"); q != "" {
+		queryPtr = &q
+	}
+
+	limit, offset := paging(r)
+	queueItems, total, err := h.service.ListLearnerWordsQueueAdmin(ctx, statusPtr, queryPtr, int(limit), int(offset))
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	items := make([]LearnerWordQueueItemDTO, len(queueItems))
+	for i, it := range queueItems {
+		items[i] = mapLearnerWordQueueItemDTO(it)
+	}
+
+	httpx.WriteJSON(w, r, http.StatusOK, LearnerWordQueueListResponse{
+		Items:  items,
+		Total:  int(total),
+		Limit:  int(limit),
+		Offset: int(offset),
+	})
+}
+
+func (h *Handler) adminUpdateWordSense(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if err := h.guard.Require(ctx, PermContentEdit); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	idStr := chi.URLParam(r, "id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.BadRequest, "INVALID_ID", "Invalid sense ID"))
+		return
+	}
+
+	var req UpdateWordSenseRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	var domainExamples []domain.ExampleSentence
+	if req.Examples != nil {
+		domainExamples = make([]domain.ExampleSentence, len(*req.Examples))
+		for i, e := range *req.Examples {
+			domainExamples[i] = domain.ExampleSentence{
+				Sentence:   e.Sentence,
+				SentenceVi: e.SentenceVi,
+				AudioURL:   e.AudioURL,
+			}
+		}
+	}
+
+	updated, err := h.service.UpdateWordSenseAdmin(ctx, id, req.Definition, req.DefinitionVi, req.Topic, domainExamples)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	httpx.WriteJSON(w, r, http.StatusOK, mapWordSenseDTO(updated))
+}
+
+func (h *Handler) adminWithdrawWordSense(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if err := h.guard.Require(ctx, PermContentEdit); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	idStr := chi.URLParam(r, "id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.BadRequest, "INVALID_ID", "Invalid sense ID"))
+		return
+	}
+
+	if err := h.service.WithdrawWordSense(ctx, id); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }

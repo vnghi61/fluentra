@@ -130,3 +130,42 @@ type UserWordState struct {
 	FirstSeenAt time.Time  `json:"first_seen_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
 }
+
+// AdminWord models an admin list view item of a word.
+type AdminWord struct {
+	ID            uuid.UUID    `json:"id"`
+	Lemma         string       `json:"lemma"`
+	POS           PartOfSpeech `json:"pos"`
+	CEFRLevel     CEFRLevel    `json:"cefr_level"`
+	FrequencyRank *int         `json:"frequency_rank,omitempty"`
+	IPA           *string      `json:"ipa,omitempty"`
+	AudioAssetID  *uuid.UUID   `json:"audio_asset_id,omitempty"`
+	SensesCount   int          `json:"senses_count"`
+	IsUploaded    bool         `json:"is_uploaded"`
+	CreatedAt     time.Time    `json:"created_at"`
+	UpdatedAt     time.Time    `json:"updated_at"`
+}
+
+// LearnerWordQueueItem models an admin queue view item of learner words.
+type LearnerWordQueueItem struct {
+	ID               uuid.UUID         `json:"id"`
+	UploadID         uuid.UUID         `json:"upload_id"`
+	UserID           uuid.UUID         `json:"user_id"`
+	Term             string            `json:"term"`
+	ProvidedMeaning  *string           `json:"provided_meaning,omitempty"`
+	Status           string            `json:"status"`
+	VerifiedByModel  *string           `json:"verified_by_model,omitempty"`
+	Reason           *string           `json:"reason,omitempty"`
+	Attempts         int               `json:"attempts"`
+	VerifiedAt       *time.Time        `json:"verified_at,omitempty"`
+	CreatedAt        time.Time         `json:"created_at"`
+	WordSenseID      *uuid.UUID        `json:"word_sense_id,omitempty"`
+	WordID           *uuid.UUID        `json:"word_id,omitempty"`
+	ContentVersionID *uuid.UUID        `json:"content_version_id,omitempty"`
+	Definition       *string           `json:"definition,omitempty"`
+	DefinitionVi     *string           `json:"definition_vi,omitempty"`
+	Topic            *string           `json:"topic,omitempty"`
+	Examples         []ExampleSentence `json:"examples"`
+	DeckID           *uuid.UUID        `json:"deck_id,omitempty"`
+	DeckName         *string           `json:"deck_name,omitempty"`
+}

@@ -818,6 +818,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/users/{id}/delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Soft-delete a user account and revoke active sessions.
+         * @description Moves the account to `pending_deletion`, opening the same 30-day grace period the owner's own deletion request opens, and ends every active session so the account cannot be signed into while it runs out.
+         *
+         *     This is not a suspension with a different name. A suspension is undone by `adminReinstateUser`; this is undone only by the account's owner cancelling within the grace period, after which the deletion executor erases the account. An administrator deleting their own account is refused with 403 `SELF_ADMIN_ACTION_FORBIDDEN` — the self-service path exists for that. An account already pending deletion is refused with 422.
+         */
+        post: operations["adminSoftDeleteUser"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/users/{id}/reinstate": {
         parameters: {
             query?: never;
@@ -1214,13 +1236,37 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * List and filter content items for authoring.
+         * @description Returns a paginated list of content items filtered by authoring status or kind.
+         */
+        get: operations["adminListContent"];
         put?: never;
         /**
          * Create a draft content item.
          * @description Creates a new content item with an initial draft version.
          */
         post: operations["adminCreateContent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/content/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get content item details including all versions.
+         * @description Returns a single content item record with its complete version history.
+         */
+        get: operations["adminGetContent"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1786,7 +1832,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * List vocabulary words with source filter.
+         * @description Returns vocabulary words, filterable by origin ('upload' for learner uploads, 'seed' for system dictionary).
+         */
+        get: operations["adminListWords"];
         put?: never;
         /**
          * Create a word entry.
@@ -1797,6 +1847,70 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/admin/vocabulary/words/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Withdraw a word entry from the shared dictionary.
+         * @description Removes a word and all of its senses from the shared dictionary. Every review card pointing at the withdrawn material is suspended first, for every learner holding one, and deck membership and per-learner word state are removed with the senses.
+         */
+        delete: operations["adminWithdrawWord"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/vocabulary/queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List learner uploaded words and model verification decisions.
+         * @description Inspection queue of words added by learners, showing model decisions and target decks.
+         */
+        get: operations["adminListLearnerWordsQueue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/vocabulary/senses/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Withdraw a specific sense from the shared dictionary.
+         * @description Removes one sense from the shared dictionary. Every review card pointing at it is suspended first, for every learner holding one, and deck membership and per-learner word state are removed with the sense.
+         */
+        delete: operations["adminWithdrawWordSense"];
+        options?: never;
+        head?: never;
+        /**
+         * Correct a word sense definition, gloss, topic or examples.
+         * @description Updates dictionary sense metadata that the model or author got wrong.
+         */
+        patch: operations["adminUpdateWordSense"];
         trace?: never;
     };
     "/me/gamification": {
@@ -1908,7 +2022,9 @@ export interface paths {
         };
         /**
          * This week's standings for the caller's league.
-         * @description A weekly snapshot, not a live ranking, so the standings do not shuffle mid-week. A caller who has not opted in receives `LEADERBOARD_NOT_OPTED_IN` so the screen can offer the opt-in rather than showing an error.
+         * @description A weekly snapshot, not a live ranking, so the standings do not shuffle mid-week.
+         *
+         *     Opt-in decides who *appears* in the standings, not who may read them. Every learner listed chose to be there, and the snapshot carries only a display name, an avatar and a weekly XP total — so a learner who has not joined sees the same board, with `opted_in: false` and no row of their own. It used to be a 403, which asked a learner to publish their name and weekly XP before they could see what they were joining.
          */
         get: operations["getLeaderboard"];
         put?: never;
@@ -2867,6 +2983,11 @@ export interface components {
         /** @description One page of search results. Cursor-paginated rather than offset-paginated because the underlying set changes while an administrator pages through it. */
         AdminUserPage: {
             items: components["schemas"]["AdminUserSummary"][];
+            /**
+             * @description How many accounts match the filters, across every page. The page itself cannot say this — `items.length` is the size of one page, and a footer reading "15 learners" while thousands matched is the reason this exists.
+             * @example 1284
+             */
+            total: number;
             /** @description Opaque cursor for the following page. Absent on the last page — its absence, not an empty `items`, is what ends the walk. */
             next_cursor?: string;
         };
@@ -3111,6 +3232,30 @@ export interface components {
             /** @enum {string} */
             decision: "approved" | "changes_requested";
             comments?: string | null;
+        };
+        AdminContentItemList: {
+            items: components["schemas"]["ContentItem"][];
+            total: number;
+            limit: number;
+            offset: number;
+        };
+        AdminContentItemDetail: {
+            /** Format: uuid */
+            id: string;
+            /** @example vocab_word */
+            kind: string;
+            /** @example environment-n-1 */
+            slug: string;
+            /** Format: uuid */
+            current_version_id?: string | null;
+            status: components["schemas"]["AuthoringStatus"];
+            /** Format: uuid */
+            owner_id: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            versions: components["schemas"]["ContentVersion"][];
         };
         CourseSummary: {
             /** Format: uuid */
@@ -3736,6 +3881,11 @@ export interface components {
         };
         LeaderboardResponse: {
             entries: components["schemas"]["LeaderboardEntry"][];
+            /**
+             * @description Whether the caller appears in these standings. Not a permission: the board is returned either way. It is what lets the screen offer the join button above a board it is already showing.
+             * @example false
+             */
+            opted_in: boolean;
         };
         SetDailyGoalRequest: {
             /** @example 50 */
@@ -4022,6 +4172,95 @@ export interface components {
             /** @example /ɑːˈtɪk.jə.leɪt/ */
             ipa?: string;
             senses: components["schemas"]["SenseInput"][];
+        };
+        AdminWordSummary: {
+            /** Format: uuid */
+            id: string;
+            /** @example articulate */
+            lemma: string;
+            /** @example verb */
+            pos: string;
+            /** @example C1 */
+            cefr_level: string;
+            /** @example 4500 */
+            frequency_rank?: number | null;
+            /** @example /ɑːˈtɪk.jə.leɪt/ */
+            ipa?: string | null;
+            /** Format: uuid */
+            audio_asset_id?: string | null;
+            /** @example true */
+            is_uploaded: boolean;
+            /** @example 2 */
+            senses_count: number;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        AdminWordList: {
+            items: components["schemas"]["AdminWordSummary"][];
+            total: number;
+            limit: number;
+            offset: number;
+        };
+        LearnerWordQueueItem: {
+            /** Format: uuid */
+            upload_item_id: string;
+            /** Format: uuid */
+            upload_id: string;
+            /** Format: uuid */
+            user_id: string;
+            /** @example serendipity */
+            term: string;
+            /** @example May mắn bất ngờ */
+            provided_meaning?: string | null;
+            /**
+             * @example verified
+             * @enum {string}
+             */
+            status: "pending" | "verified" | "rejected" | "queued" | "failed";
+            /** @example gpt-4o-mini */
+            verified_by_model?: string | null;
+            /** @example Valid English term matching definition. */
+            reason?: string | null;
+            /** @example 1 */
+            attempts: number;
+            /** Format: date-time */
+            verified_at?: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: uuid */
+            word_sense_id?: string | null;
+            /** Format: uuid */
+            word_id?: string | null;
+            /** Format: uuid */
+            content_version_id?: string | null;
+            /** @example The occurrence of events by chance in a happy way. */
+            definition?: string | null;
+            /** @example Sự tình cờ may mắn. */
+            definition_vi?: string | null;
+            /** @example psychology */
+            topic?: string | null;
+            examples?: components["schemas"]["ExampleSentence"][];
+            /** Format: uuid */
+            deck_id?: string | null;
+            /** @example Advanced Vocabulary */
+            deck_name?: string | null;
+        };
+        LearnerWordQueueList: {
+            items: components["schemas"]["LearnerWordQueueItem"][];
+            total: number;
+            limit: number;
+            offset: number;
+        };
+        UpdateWordSenseRequest: {
+            /** @example The occurrence of events by chance in a happy way. */
+            definition?: string;
+            /** @example Sự tình cờ may mắn. */
+            definition_vi?: string | null;
+            /** @example psychology */
+            topic?: string | null;
+            examples?: components["schemas"]["ExampleSentence"][];
         };
     };
     responses: {
@@ -5665,6 +5904,7 @@ export interface operations {
                      *           "created_at": "2026-08-01T09:15:00Z"
                      *         }
                      *       ],
+                     *       "total": 1284,
                      *       "next_cursor": "MjAyNi0wOC0wMVQwOToxNTowMFo"
                      *     }
                      */
@@ -5747,6 +5987,49 @@ export interface operations {
                      * @example {
                      *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
                      *       "status": "suspended"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["AdminUserStatusChanged"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    adminSoftDeleteUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The account to soft-delete. May not be the caller's own. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "reason": "Account closure requested by the owner over verified support email."
+                 *     }
+                 */
+                "application/json": components["schemas"]["AdminActionRequest"];
+            };
+        };
+        responses: {
+            /** @description The account is pending deletion and its sessions are gone. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "status": "pending_deletion"
                      *     }
                      */
                     "application/json": components["schemas"]["AdminUserStatusChanged"];
@@ -6720,6 +7003,60 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    adminListContent: {
+        parameters: {
+            query?: {
+                /** @description Filter by authoring status. */
+                status?: components["schemas"]["AuthoringStatus"];
+                /** @description Filter by content kind. */
+                kind?: string;
+                /** @description Filter by slug prefix. */
+                q?: string;
+                /** @description Maximum items to return. */
+                limit?: number;
+                /** @description Items to skip before returning. */
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated content items. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def012345601",
+                     *           "kind": "vocab_word",
+                     *           "slug": "environment-n-1",
+                     *           "current_version_id": "0199a1c2-3d4e-7f80-9abc-def012345602",
+                     *           "status": "in_review",
+                     *           "owner_id": "0199a1c2-3d4e-7f80-9abc-def012345603",
+                     *           "created_at": "2026-08-01T09:00:00Z",
+                     *           "updated_at": "2026-08-02T11:30:00Z"
+                     *         }
+                     *       ],
+                     *       "total": 1,
+                     *       "limit": 20,
+                     *       "offset": 0
+                     *     }
+                     */
+                    "application/json": components["schemas"]["AdminContentItemList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
     adminCreateContent: {
         parameters: {
             query?: never;
@@ -6759,6 +7096,62 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    adminGetContent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Content item UUID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Content item with version history. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345601",
+                     *       "kind": "vocab_word",
+                     *       "slug": "environment-n-1",
+                     *       "current_version_id": "0199a1c2-3d4e-7f80-9abc-def012345602",
+                     *       "status": "in_review",
+                     *       "owner_id": "0199a1c2-3d4e-7f80-9abc-def012345603",
+                     *       "created_at": "2026-08-01T09:00:00Z",
+                     *       "updated_at": "2026-08-02T11:30:00Z",
+                     *       "versions": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def012345602",
+                     *           "item_id": "0199a1c2-3d4e-7f80-9abc-def012345601",
+                     *           "version": 2,
+                     *           "kind": "vocab_word",
+                     *           "body": {
+                     *             "word": "environment",
+                     *             "definition": "The natural world, as a whole or in a particular area."
+                     *           },
+                     *           "cefr_level": "B1",
+                     *           "status": "in_review",
+                     *           "created_at": "2026-08-02T11:30:00Z",
+                     *           "updated_at": "2026-08-02T11:30:00Z"
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["AdminContentItemDetail"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
         };
     };
     adminUpdateDraft: {
@@ -7967,6 +8360,58 @@ export interface operations {
             500: components["responses"]["InternalServerError"];
         };
     };
+    adminListWords: {
+        parameters: {
+            query?: {
+                /** @description Origin filter ('upload' or 'seed'). */
+                source?: "upload" | "seed";
+                /** @description Search term query for lemma prefix. */
+                q?: string;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated word list. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def01234567b",
+                     *           "lemma": "meticulous",
+                     *           "pos": "adjective",
+                     *           "cefr_level": "B2",
+                     *           "frequency_rank": 4821,
+                     *           "ipa": "/məˈtɪkjələs/",
+                     *           "is_uploaded": true,
+                     *           "senses_count": 1,
+                     *           "created_at": "2026-08-01T09:00:00Z",
+                     *           "updated_at": "2026-08-01T09:00:00Z"
+                     *         }
+                     *       ],
+                     *       "total": 1,
+                     *       "limit": 20,
+                     *       "offset": 0
+                     *     }
+                     */
+                    "application/json": components["schemas"]["AdminWordList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
     adminCreateWord: {
         parameters: {
             query?: never;
@@ -8018,6 +8463,166 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    adminWithdrawWord: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Word withdrawn from dictionary. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    adminListLearnerWordsQueue: {
+        parameters: {
+            query?: {
+                /** @description Filter by upload item status. */
+                status?: "pending" | "verified" | "rejected" | "queued" | "failed";
+                /** @description Search term query. */
+                q?: string;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated learner-word queue items. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "upload_item_id": "0199a1c2-3d4e-7f80-9abc-def012345610",
+                     *           "upload_id": "0199a1c2-3d4e-7f80-9abc-def012345611",
+                     *           "user_id": "0199a1c2-3d4e-7f80-9abc-def012345612",
+                     *           "term": "meticulous",
+                     *           "provided_meaning": "Tỉ mỉ",
+                     *           "status": "verified",
+                     *           "verified_by_model": "mistral-small-latest",
+                     *           "attempts": 1,
+                     *           "verified_at": "2026-08-01T09:05:00Z",
+                     *           "created_at": "2026-08-01T09:00:00Z",
+                     *           "word_sense_id": "0199a1c2-3d4e-7f80-9abc-def01234567c",
+                     *           "definition": "Showing great attention to detail.",
+                     *           "definition_vi": "Tỉ mỉ, cẩn thận.",
+                     *           "topic": "work",
+                     *           "examples": [
+                     *             {
+                     *               "sentence": "She kept meticulous records of every transaction.",
+                     *               "sentence_vi": "Cô ấy lưu giữ hồ sơ tỉ mỉ về mọi giao dịch."
+                     *             }
+                     *           ],
+                     *           "deck_id": "0199a1c2-3d4e-7f80-9abc-def012345613",
+                     *           "deck_name": "My Words — Work"
+                     *         }
+                     *       ],
+                     *       "total": 1,
+                     *       "limit": 20,
+                     *       "offset": 0
+                     *     }
+                     */
+                    "application/json": components["schemas"]["LearnerWordQueueList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    adminWithdrawWordSense: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sense withdrawn. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    adminUpdateWordSense: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateWordSenseRequest"];
+            };
+        };
+        responses: {
+            /** @description Sense updated. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def01234567c",
+                     *       "word_id": "0199a1c2-3d4e-7f80-9abc-def01234567b",
+                     *       "definition": "Showing great attention to detail.",
+                     *       "definition_vi": "Tỉ mỉ, cẩn thận.",
+                     *       "domain": "work",
+                     *       "examples": [
+                     *         {
+                     *           "sentence": "She kept meticulous records of every transaction.",
+                     *           "sentence_vi": "Cô ấy lưu giữ hồ sơ tỉ mỉ về mọi giao dịch."
+                     *         }
+                     *       ],
+                     *       "created_at": "2026-08-01T09:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["WordSense"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
             500: components["responses"]["InternalServerError"];
         };
     };
@@ -8265,6 +8870,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
+                     *       "opted_in": true,
                      *       "entries": [
                      *         {
                      *           "rank": 1,
@@ -8287,7 +8893,6 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
             500: components["responses"]["InternalServerError"];
         };
     };

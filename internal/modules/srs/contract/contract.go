@@ -53,9 +53,17 @@ type ReviewCardSummary struct {
 	State            string     `json:"state"`
 	SuspendedAt      *time.Time `json:"suspended_at,omitempty"`
 
-	// Content is nil when the version behind the card could not be resolved —
-	// archived, or not yet authored. The client renders that as an explicit
-	// state; it must never be filled in with a placeholder.
+	// Content is nil when the version behind the card could not be resolved: the
+	// row is gone, or the batched read failed. The client renders that as an
+	// explicit state; it must never be filled in with a placeholder.
+	//
+	// Note what this does NOT cover. `content.GetManyVersions` selects by id and
+	// filters on nothing, so an archived version still resolves and still
+	// renders. Withdrawing material therefore cannot work by archiving it —
+	// BR-CONTENT-01 forbids updating a published version at all, and even if it
+	// did not, the card would keep arriving. Use SuspendCardsByContentVersion.
+	// An earlier version of this comment claimed archiving was handled here, and
+	// a work order was written against it.
 	Content *ReviewCardContent `json:"content,omitempty"`
 }
 
@@ -66,9 +74,15 @@ type ReviewCardSummary struct {
 // SetCardsSuspended when a learner declares they already know a piece of content
 // — that is the only supported way to stop scheduling it, because
 // learn.review_cards belongs to srs and to no one else.
+//
+// SuspendCardsByContentVersion is the same act for shared material rather than
+// for one learner's choice: an admin withdrawing a word sense from the
+// dictionary has to take it out of every queue that holds it, because the sense
+// is a single row shared across everyone who added the word.
 type CardWriter interface {
 	UpsertCards(ctx context.Context, userID uuid.UUID, items []learningcontract.ReviewItem) error
 	SetCardsSuspended(ctx context.Context, userID uuid.UUID, contentVersionIDs []uuid.UUID, suspended bool) error
+	SuspendCardsByContentVersion(ctx context.Context, contentVersionIDs []uuid.UUID) (int, error)
 }
 
 // QueueReader provides read-only access to due review cards and pending counts.

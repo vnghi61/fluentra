@@ -2,6 +2,7 @@ package service_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/vocabulary/domain"
 	"github.com/fluentra/fluentra/internal/modules/vocabulary/repository"
 	"github.com/fluentra/fluentra/internal/modules/vocabulary/service"
+	"github.com/fluentra/fluentra/internal/shared/apperr"
 	"github.com/fluentra/fluentra/internal/shared/clock"
 )
 
@@ -401,6 +403,76 @@ func (f *fakeRepo) MarkQueuedUploadItemFailed(
 	return sqlc.SkillVocabUploadItem{ID: id, Status: "failed"}, nil
 }
 
+func (f *fakeRepo) ListWordsAdmin(_ context.Context, _ sqlc.ListWordsAdminParams) ([]sqlc.ListWordsAdminRow, error) {
+	var rows []sqlc.ListWordsAdminRow
+	for _, w := range f.words {
+		rows = append(rows, sqlc.ListWordsAdminRow{
+			ID:            w.ID,
+			Lemma:         w.Lemma,
+			Pos:           w.Pos,
+			CefrLevel:     w.CefrLevel,
+			FrequencyRank: w.FrequencyRank,
+			Ipa:           w.Ipa,
+			AudioAssetID:  w.AudioAssetID,
+			SensesCount:   0,
+			IsUploaded:    false,
+			CreatedAt:     w.CreatedAt,
+			UpdatedAt:     w.UpdatedAt,
+		})
+	}
+	return rows, nil
+}
+
+func (f *fakeRepo) CountWordsAdmin(_ context.Context, _ sqlc.CountWordsAdminParams) (int64, error) {
+	return int64(len(f.words)), nil
+}
+
+func (f *fakeRepo) UpdateWordSenseAdmin(
+	_ context.Context, arg sqlc.UpdateWordSenseAdminParams,
+) (sqlc.SkillWordSense, error) {
+	s, ok := f.senses[arg.ID]
+	if !ok {
+		return sqlc.SkillWordSense{}, pgx.ErrNoRows
+	}
+	if arg.Definition != nil {
+		s.Definition = *arg.Definition
+	}
+	if arg.DefinitionVi != nil {
+		s.DefinitionVi = arg.DefinitionVi
+	}
+	if arg.Domain != nil {
+		s.Domain = arg.Domain
+	}
+	if arg.Examples != nil {
+		s.Examples = arg.Examples
+	}
+	s.UpdatedAt = time.Now().UTC()
+	f.senses[arg.ID] = s
+	return s, nil
+}
+
+func (f *fakeRepo) DeleteWordSense(_ context.Context, id uuid.UUID) error {
+	delete(f.senses, id)
+	return nil
+}
+
+func (f *fakeRepo) DeleteWord(_ context.Context, id uuid.UUID) error {
+	delete(f.words, id)
+	return nil
+}
+
+func (f *fakeRepo) ListLearnerWordsQueueAdmin(
+	_ context.Context, _ sqlc.ListLearnerWordsQueueAdminParams,
+) ([]sqlc.ListLearnerWordsQueueAdminRow, error) {
+	return nil, nil
+}
+
+func (f *fakeRepo) CountLearnerWordsQueueAdmin(
+	_ context.Context, _ sqlc.CountLearnerWordsQueueAdminParams,
+) (int64, error) {
+	return 0, nil
+}
+
 func TestVocabulary_LookupWord_And_Senses(t *testing.T) {
 	repo := newFakeRepo()
 	svc := service.New(service.Deps{
@@ -538,6 +610,16 @@ type spyReviewScheduler struct {
 	// What the upload pipeline scheduled for review.
 	upsertedFor uuid.UUID
 	upserted    []learningcontract.ReviewItem
+
+	// What withdrawal asked srs to suspend across every learner.
+	withdrawnVersionIDs []uuid.UUID
+	withdrawCalls       int
+	withdrawErr         error
+
+	// observe is sampled at the instant srs is called, so a test can assert what
+	// the database still held when the suspension went out.
+	observe           func() bool
+	observedAtSuspend bool
 }
 
 func (s *spyReviewScheduler) SetCardsSuspended(
@@ -548,6 +630,24 @@ func (s *spyReviewScheduler) SetCardsSuspended(
 	s.suspended = suspended
 	s.calls++
 	return nil
+}
+
+func (s *spyReviewScheduler) SuspendCardsByContentVersion(
+	_ context.Context, contentVersionIDs []uuid.UUID,
+) (int, error) {
+	if s.withdrawErr != nil {
+		return 0, s.withdrawErr
+	}
+	// Recorded at the moment srs is called, not afterwards. Asserting only that
+	// the call happened would pass just as well if it happened after the delete,
+	// which is the bug — by then the sense the cards belong to is gone and there
+	// is nothing left to look up.
+	if s.observe != nil {
+		s.observedAtSuspend = s.observe()
+	}
+	s.withdrawnVersionIDs = append(s.withdrawnVersionIDs, contentVersionIDs...)
+	s.withdrawCalls++
+	return len(contentVersionIDs), nil
 }
 
 // TestVocabulary_MarkingAWordKnownStopsItsScheduling is half of the P9.4
@@ -562,7 +662,7 @@ func TestVocabulary_MarkingAWordKnownStopsItsScheduling(t *testing.T) {
 	versionID := uuid.New()
 
 	repo := newFakeRepo()
-	repo.words[wordID] = sqlc.SkillWord{ID: wordID, Lemma: wordMeticulous, Pos: "adjective", CefrLevel: "B2"}
+	repo.words[wordID] = sqlc.SkillWord{ID: wordID, Lemma: wordMeticulous, Pos: posAdjective, CefrLevel: "B2"}
 	repo.senses[senseID] = sqlc.SkillWordSense{
 		ID:               senseID,
 		WordID:           wordID,
@@ -595,7 +695,7 @@ func TestVocabulary_IgnoredWordAlsoStopsScheduling(t *testing.T) {
 	versionID := uuid.New()
 
 	repo := newFakeRepo()
-	repo.words[wordID] = sqlc.SkillWord{ID: wordID, Lemma: "ephemeral", Pos: "adjective", CefrLevel: "C1"}
+	repo.words[wordID] = sqlc.SkillWord{ID: wordID, Lemma: "ephemeral", Pos: posAdjective, CefrLevel: "C1"}
 	repo.senses[senseID] = sqlc.SkillWordSense{ID: senseID, WordID: wordID, ContentVersionID: &versionID}
 
 	spy := &spyReviewScheduler{}
@@ -690,4 +790,94 @@ func (s *spyReviewScheduler) UpsertCards(
 	s.upsertedFor = userID
 	s.upserted = append(s.upserted, items...)
 	return nil
+}
+
+// TestVocabulary_WithdrawingAWordSuspendsEveryLearnersCardFirst is the guard on
+// the order of the two writes, and the order is the whole point.
+//
+// learn.review_cards carries no foreign key to skill.word_senses — different
+// schemas, different owning modules — so deleting the sense first does not touch
+// the cards, and content.content_versions is not touched either. The word leaves
+// the dictionary and keeps arriving in every learner's review queue, for ever.
+// The first version of this endpoint did exactly that.
+func TestVocabulary_WithdrawingAWordSuspendsEveryLearnersCardFirst(t *testing.T) {
+	wordID := uuid.New()
+	senseA, senseB := uuid.New(), uuid.New()
+	versionA, versionB := uuid.New(), uuid.New()
+
+	repo := newFakeRepo()
+	repo.words[wordID] = sqlc.SkillWord{ID: wordID, Lemma: wordMeticulous, Pos: posAdjective, CefrLevel: "B2"}
+	repo.senses[senseA] = sqlc.SkillWordSense{ID: senseA, WordID: wordID, ContentVersionID: &versionA}
+	repo.senses[senseB] = sqlc.SkillWordSense{ID: senseB, WordID: wordID, ContentVersionID: &versionB}
+
+	spy := &spyReviewScheduler{}
+	spy.observe = func() bool {
+		_, stillThere := repo.words[wordID]
+		return stillThere
+	}
+	svc := service.New(service.Deps{Repo: repo, Reviews: spy})
+
+	require.NoError(t, svc.WithdrawWord(context.Background(), wordID))
+
+	require.Equal(t, 1, spy.withdrawCalls, "withdrawal must ask srs to stop scheduling the material")
+	assert.True(t, spy.observedAtSuspend,
+		"the cards must be suspended while the word is still there to find them by")
+	assert.ElementsMatch(t, []uuid.UUID{versionA, versionB}, spy.withdrawnVersionIDs,
+		"every sense of the word carries its own content version and each has cards on it")
+	assert.NotContains(t, repo.words, wordID, "the word must leave the dictionary")
+}
+
+// TestVocabulary_WithdrawalKeepsTheWordWhenSuspensionFails pins the failure
+// direction. If the suspend fails the word stays, hidden from nobody but intact,
+// and the admin can retry. The reverse — deleted and still scheduled — is the one
+// outcome nothing can repair, because the sense the cards belonged to is gone.
+func TestVocabulary_WithdrawalKeepsTheWordWhenSuspensionFails(t *testing.T) {
+	wordID := uuid.New()
+	senseID := uuid.New()
+	versionID := uuid.New()
+
+	repo := newFakeRepo()
+	repo.words[wordID] = sqlc.SkillWord{ID: wordID, Lemma: wordMeticulous, Pos: posAdjective, CefrLevel: "B2"}
+	repo.senses[senseID] = sqlc.SkillWordSense{ID: senseID, WordID: wordID, ContentVersionID: &versionID}
+
+	spy := &spyReviewScheduler{withdrawErr: errors.New("srs unavailable")}
+	svc := service.New(service.Deps{Repo: repo, Reviews: spy})
+
+	require.Error(t, svc.WithdrawWord(context.Background(), wordID))
+	assert.Contains(t, repo.words, wordID, "a failed suspension must not leave the word deleted")
+}
+
+// TestVocabulary_WithdrawingASenseSuspendsItsCards is the same guarantee for one
+// sense rather than a whole word.
+func TestVocabulary_WithdrawingASenseSuspendsItsCards(t *testing.T) {
+	wordID := uuid.New()
+	senseID := uuid.New()
+	versionID := uuid.New()
+
+	repo := newFakeRepo()
+	repo.words[wordID] = sqlc.SkillWord{ID: wordID, Lemma: wordMeticulous, Pos: posAdjective, CefrLevel: "B2"}
+	repo.senses[senseID] = sqlc.SkillWordSense{ID: senseID, WordID: wordID, ContentVersionID: &versionID}
+
+	spy := &spyReviewScheduler{}
+	svc := service.New(service.Deps{Repo: repo, Reviews: spy})
+
+	require.NoError(t, svc.WithdrawWordSense(context.Background(), senseID))
+	assert.Equal(t, []uuid.UUID{versionID}, spy.withdrawnVersionIDs)
+	assert.NotContains(t, repo.senses, senseID)
+}
+
+// TestVocabulary_WithdrawingSomethingThatIsNotThereIs404. `DELETE ... WHERE id =
+// $1` affects no rows and raises nothing, so an endpoint that only deletes always
+// answers 204 and a mistyped id reads as a successful withdrawal.
+func TestVocabulary_WithdrawingSomethingThatIsNotThereIs404(t *testing.T) {
+	svc := service.New(service.Deps{Repo: newFakeRepo(), Reviews: &spyReviewScheduler{}})
+	ctx := context.Background()
+
+	err := svc.WithdrawWord(ctx, uuid.New())
+	require.Error(t, err)
+	assert.True(t, apperr.Is(err, apperr.NotFound), "want a NotFound, got %v", err)
+
+	err = svc.WithdrawWordSense(ctx, uuid.New())
+	require.Error(t, err)
+	assert.True(t, apperr.Is(err, apperr.NotFound), "want a NotFound, got %v", err)
 }

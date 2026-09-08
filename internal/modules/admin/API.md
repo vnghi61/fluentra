@@ -31,6 +31,7 @@ Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR
 | `GET` | `/api/v1/admin/users/{id}` | `user.read` | One account in full |
 | `POST` | `/api/v1/admin/users/{id}/suspend` | `user.suspend` | Suspend an account and end its sessions |
 | `POST` | `/api/v1/admin/users/{id}/reinstate` | `user.reinstate` | Return a suspended account to active |
+| `POST` | `/api/v1/admin/users/{id}/delete` | `user.delete` | Soft-delete an account and end its sessions |
 | `POST` | `/api/v1/admin/users/{id}/sessions/revoke` | `user.manage_sessions` | Sign a user out everywhere |
 | `GET` | `/api/v1/admin/flags` | `system.flags` | List every feature flag |
 | `GET` | `/api/v1/admin/ai/usage` | `admin.dashboard` | Read today's AI usage and budget headroom per provider |
@@ -90,6 +91,17 @@ Return a suspended account to active
 | Success | 200 |
 | Errors | standard set |
 | Notes | Reason required; sessions are not restored |
+
+### `POST /api/v1/admin/users/{id}/delete`
+
+Soft-delete an account and end its sessions
+
+| | |
+|---|---|
+| Permission | `user.delete` |
+| Success | 200 |
+| Errors | standard set |
+| Notes | Reason required; opens the same 30-day grace period the owner's own request opens, and only the owner can cancel it |
 
 ### `POST /api/v1/admin/users/{id}/sessions/revoke`
 

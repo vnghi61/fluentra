@@ -243,6 +243,42 @@ func (s *Service) SetCardsSuspended(
 	return nil
 }
 
+// SuspendCardsByContentVersion suspends the given content for every learner who
+// holds a card on it, and reports how many cards it touched.
+//
+// SetCardsSuspended above is the per-learner path — a learner marking a word
+// known. This is the other case: shared material being withdrawn. A word sense
+// is one row that `materialise` shares across everyone who added the word, so
+// removing it from the dictionary while its cards stay live leaves every one of
+// those learners reviewing a word the dictionary no longer has.
+//
+// The query returns the affected user_ids because the due-count cache is keyed
+// per learner, and a write that spans learners cannot otherwise say whose entry
+// it invalidated.
+func (s *Service) SuspendCardsByContentVersion(
+	ctx context.Context, contentVersionIDs []uuid.UUID,
+) (int, error) {
+	if len(contentVersionIDs) == 0 {
+		return 0, nil
+	}
+
+	userIDs, err := s.repo.SuspendReviewCardsByContentVersion(ctx, contentVersionIDs)
+	if err != nil {
+		return 0, fmt.Errorf("failed to suspend review cards by content version: %w", err)
+	}
+
+	seen := make(map[uuid.UUID]struct{}, len(userIDs))
+	for _, userID := range userIDs {
+		if _, ok := seen[userID]; ok {
+			continue
+		}
+		seen[userID] = struct{}{}
+		s.invalidateDueCountCache(ctx, userID)
+	}
+
+	return len(userIDs), nil
+}
+
 // DueCount returns the count of cards currently due for review for the given user.
 func (s *Service) DueCount(ctx context.Context, userID uuid.UUID) (int, error) {
 	loader := func(ctx context.Context) (int, error) {

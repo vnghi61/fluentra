@@ -15,12 +15,42 @@ import (
 // RequestDeletion initiates account deletion for the caller with a 30-day grace period.
 // It revokes all active sessions immediately by publishing user.deletion_requested.
 func (s *Service) RequestDeletion(ctx context.Context, actorID uuid.UUID) (domain.DeletionRequest, error) {
+	return s.requestDeletionFor(ctx, actorID)
+}
+
+// SoftDeleteUser starts the same deletion an owner would start for themselves,
+// on someone else's behalf. `reason` is not stored here: the admin module owns
+// the justification trail (core.admin_actions and the audit log), and this
+// module owns the account lifecycle. Duplicating it would put the same sentence
+// in two places that can disagree.
+//
+// The grace period is deliberately the one the owner gets. An administrator
+// removing an account is not more certain than the owner was, and the whole
+// point of a soft delete is that the thirty days are recoverable — by the owner,
+// through the cancel path they already have.
+func (s *Service) SoftDeleteUser(ctx context.Context, id, actorID uuid.UUID, _ string) error {
+	if id == actorID {
+		// The self-service path exists and takes no reason. An administrator
+		// deleting their own account through the admin endpoint would skip the
+		// confirmations that path has, and admin.SoftDeleteUser refuses this
+		// before it reaches here; this is the second lock on the same door.
+		return domain.ErrDeletionNotCancellable
+	}
+	_, err := s.requestDeletionFor(ctx, id)
+	return err
+}
+
+// requestDeletionFor is the body both paths share. `subjectID` is whose account
+// is being deleted — the caller's own in RequestDeletion, someone else's in
+// SoftDeleteUser. It was written inline in RequestDeletion using `actorID` for
+// both roles, which is exactly the conflation the admin path had to undo.
+func (s *Service) requestDeletionFor(ctx context.Context, subjectID uuid.UUID) (domain.DeletionRequest, error) {
 	var request domain.DeletionRequest
 
 	err := dbx.InTx(ctx, s.pool, func(_ context.Context, tx pgx.Tx) error {
 		txRepo := s.repo.WithTx(tx)
 
-		user, err := txRepo.GetUser(ctx, actorID)
+		user, err := txRepo.GetUser(ctx, subjectID)
 		if err != nil {
 			return err
 		}
@@ -28,7 +58,7 @@ func (s *Service) RequestDeletion(ctx context.Context, actorID uuid.UUID) (domai
 			return domain.ErrDeletionAlreadyPending
 		}
 
-		if pending, found, err := txRepo.GetPendingDeletionForUser(ctx, actorID); err != nil {
+		if pending, found, err := txRepo.GetPendingDeletionForUser(ctx, subjectID); err != nil {
 			return err
 		} else if found && (pending.Status == domain.DeletionStatusPending ||
 			pending.Status == domain.DeletionStatusProcessing) {
@@ -43,13 +73,13 @@ func (s *Service) RequestDeletion(ctx context.Context, actorID uuid.UUID) (domai
 		now := s.clock.Now().UTC()
 		executeAt := now.Add(domain.DeletionGracePeriod)
 
-		req, err := txRepo.CreateDeletionRequest(ctx, deletionID, actorID, executeAt)
+		req, err := txRepo.CreateDeletionRequest(ctx, deletionID, subjectID, executeAt)
 		if err != nil {
 			return fmt.Errorf("create deletion request: %w", err)
 		}
 		request = req
 
-		if err := txRepo.UpdateUserStatus(ctx, actorID, domain.StatusPendingDeletion); err != nil {
+		if err := txRepo.UpdateUserStatus(ctx, subjectID, domain.StatusPendingDeletion); err != nil {
 			return fmt.Errorf("update user status to pending_deletion: %w", err)
 		}
 
@@ -60,7 +90,7 @@ func (s *Service) RequestDeletion(ctx context.Context, actorID uuid.UUID) (domai
 				contract.Aggregate,
 				contract.EventDeletionRequested,
 				contract.DeletionRequested{
-					UserID:       actorID,
+					UserID:       subjectID,
 					ExecuteAfter: executeAt,
 					OccurredAt:   now,
 				},
