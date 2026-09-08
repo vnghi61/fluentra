@@ -18,14 +18,6 @@ import (
 	"github.com/fluentra/fluentra/internal/shared/dbx"
 )
 
-// Paging bounds for the authoring list. They exist so that a query string cannot
-// choose an int that does not survive the int32 the driver takes.
-const (
-	defaultAdminPageSize = 20
-	maxAdminPageSize     = 100
-	maxAdminOffset       = 100_000
-)
-
 // Repository specifies the persistence interface required by the service.
 type Repository interface {
 	CreateItem(
@@ -846,20 +838,15 @@ func (s *Service) GetDraftVersion(ctx context.Context, itemID uuid.UUID) (domain
 func (s *Service) ListAdminItems(
 	ctx context.Context, status, kind, query *string, limit, offset int,
 ) ([]domain.Item, int64, error) {
-	// Clamped rather than converted. The handler parses these from the query
-	// string, so `?limit=99999999999` reaches here as an int that does not fit an
-	// int32 and wraps to a negative LIMIT.
-	if limit <= 0 || limit > maxAdminPageSize {
-		limit = defaultAdminPageSize
-	}
-	if offset < 0 {
-		offset = 0
-	}
-	if offset > maxAdminOffset {
-		offset = maxAdminOffset
-	}
-
-	items, err := s.repo.ListContentItemsFiltered(ctx, status, kind, query, int32(limit), int32(offset))
+	// The module already owns this clamp, and owns the reason for it: the window
+	// arrives from a query string as a platform int and reaches the driver as an
+	// int32, so it has to be narrowed by something that bounds it first. Browse
+	// has used these since it was written. A second clamp here would be a second
+	// set of numbers to keep in step with the OpenAPI schema.
+	items, err := s.repo.ListContentItemsFiltered(
+		ctx, status, kind, query,
+		domain.NormaliseLimit(limit), domain.NormaliseOffset(offset),
+	)
 	if err != nil {
 		return nil, 0, err
 	}

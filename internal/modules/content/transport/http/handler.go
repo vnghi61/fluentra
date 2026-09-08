@@ -350,6 +350,25 @@ func (h *Handler) archive(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, r, http.StatusOK, toContentItemResponse(item))
 }
 
+// adminPaging reads the page window off the query string. Zero means "not
+// supplied"; domain.NormaliseLimit turns that into the documented default and
+// bounds the rest.
+//
+// ParseInt with a 32-bit size, not Atoi — the same choice vocabulary's `paging`
+// already makes, and for the same reason: Atoi returns a platform int, so
+// `?limit=99999999999` parses cleanly on a 64-bit build and travels two packages
+// before anything notices. Enforcing the width where the string is read means an
+// oversized value is ignored at its source.
+func adminPaging(r *http.Request) (limit, offset int) {
+	if val, err := strconv.ParseInt(r.URL.Query().Get("limit"), 10, 32); err == nil && val > 0 {
+		limit = int(val)
+	}
+	if val, err := strconv.ParseInt(r.URL.Query().Get("offset"), 10, 32); err == nil && val > 0 {
+		offset = int(val)
+	}
+	return limit, offset
+}
+
 func (h *Handler) adminListContent(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	if err := h.guard.Require(ctx, PermContentEdit); err != nil {
@@ -369,18 +388,7 @@ func (h *Handler) adminListContent(w http.ResponseWriter, r *http.Request) {
 	if q := strings.TrimSpace(r.URL.Query().Get("q")); q != "" {
 		queryPtr = &q
 	}
-	limit := 20
-	if l := r.URL.Query().Get("limit"); l != "" {
-		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
-			limit = parsed
-		}
-	}
-	offset := 0
-	if o := r.URL.Query().Get("offset"); o != "" {
-		if parsed, err := strconv.Atoi(o); err == nil && parsed >= 0 {
-			offset = parsed
-		}
-	}
+	limit, offset := adminPaging(r)
 
 	items, total, err := h.service.ListAdminItems(ctx, statusPtr, kindPtr, queryPtr, limit, offset)
 	if err != nil {
