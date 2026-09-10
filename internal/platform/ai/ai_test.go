@@ -20,8 +20,11 @@ import (
 // fieldTerm is the prompt variable every vocabulary task fills in, and
 // termLeisure is the word these tests keep asking about.
 const (
-	fieldTerm   = "Term"
-	termLeisure = "leisure"
+	fieldTerm         = "Term"
+	fieldPartOfSpeech = "PartOfSpeech"
+	fieldExampleCount = "ExampleCount"
+	termLeisure       = "leisure"
+	posNoun           = "noun"
 )
 
 // verifyResult mirrors what the vocab_verify template asks the model for.
@@ -40,8 +43,8 @@ func verifyRequest() ai.Request {
 			fieldTerm:              termLeisure,
 			"ProvidedMeaning":      "thời gian rảnh",
 			"DictionaryDefinition": "Time when one is not working or occupied; free time.",
-			"PartOfSpeech":         "noun",
-			"ExampleCount":         5,
+			fieldPartOfSpeech:      posNoun,
+			fieldExampleCount:      5,
 		},
 	}
 }
@@ -141,6 +144,66 @@ func TestMockProvider_AnswersOffline(t *testing.T) {
 	assert.True(t, out.Valid)
 	assert.Equal(t, "leisure", out.Lemma)
 	assert.Len(t, out.Examples, 5, "the mock must honour the example count the caller asked for")
+}
+
+// TestMockProvider_ClampsTheCountItIsAsked_For.
+//
+// `Vars` is an untyped map, and the count out of it lands in `make(..., n)`.
+// CodeQL flagged the allocation as depending on a user-provided value, and it
+// was right: nothing between the map and the allocation said no. The real
+// caller asks for at most five, so a large number here is either a bug upstream
+// or someone probing — and the mock is what runs wherever a real provider is
+// not configured, production included.
+func TestMockProvider_ClampsTheCountItIsAsked_For(t *testing.T) {
+	t.Parallel()
+
+	registry, err := ai.NewRegistry()
+	require.NoError(t, err)
+	provider := ai.NewMockProvider(registry)
+
+	for _, task := range []struct {
+		name    string
+		request ai.Request
+	}{
+		{
+			name: "enrichment",
+			request: ai.Request{
+				Task: ai.TaskEnrichExamples,
+				Vars: map[string]any{
+					fieldTerm:          termLeisure,
+					fieldPartOfSpeech:  "noun",
+					"Definition":       "free time",
+					"ExistingExamples": "(None)",
+					"Count":            1_000_000_000,
+				},
+			},
+		},
+		{
+			name: "verification",
+			request: ai.Request{
+				Task: ai.TaskVerifyVocabulary,
+				Vars: map[string]any{
+					fieldTerm:         termLeisure,
+					fieldPartOfSpeech: posNoun,
+					fieldExampleCount: 1_000_000_000,
+				},
+			},
+		},
+	} {
+		t.Run(task.name, func(t *testing.T) {
+			t.Parallel()
+
+			response, err := provider.Complete(context.Background(), task.request)
+			require.NoError(t, err)
+
+			var out struct {
+				Examples []json.RawMessage `json:"examples"`
+			}
+			require.NoError(t, json.Unmarshal([]byte(response.Text), &out))
+			assert.LessOrEqual(t, len(out.Examples), 50,
+				"a count from the variables map must not size the allocation")
+		})
+	}
 }
 
 func TestMockProvider_ReportsItselfAsMock(t *testing.T) {
@@ -743,6 +806,6 @@ func TestRouter_EveryProviderGenuinelyOutOfQuotaStillReportsExhausted(t *testing
 func verifyVars() map[string]any {
 	return map[string]any{
 		"Term": "leisure", "ProvidedMeaning": "free time",
-		"DictionaryDefinition": "", "PartOfSpeech": "", "ExampleCount": 1,
+		"DictionaryDefinition": "", fieldPartOfSpeech: "", fieldExampleCount: 1,
 	}
 }
