@@ -616,6 +616,11 @@ type spyReviewScheduler struct {
 	withdrawCalls       int
 	withdrawErr         error
 
+	// What repointing moved between versions.
+	repointedOld uuid.UUID
+	repointedNew uuid.UUID
+	repointCalls int
+
 	// observe is sampled at the instant srs is called, so a test can assert what
 	// the database still held when the suspension went out.
 	observe           func() bool
@@ -648,6 +653,15 @@ func (s *spyReviewScheduler) SuspendCardsByContentVersion(
 	s.withdrawnVersionIDs = append(s.withdrawnVersionIDs, contentVersionIDs...)
 	s.withdrawCalls++
 	return len(contentVersionIDs), nil
+}
+
+func (s *spyReviewScheduler) RepointCards(
+	_ context.Context, oldVersionID, newVersionID uuid.UUID,
+) error {
+	s.repointedOld = oldVersionID
+	s.repointedNew = newVersionID
+	s.repointCalls++
+	return nil
 }
 
 // TestVocabulary_MarkingAWordKnownStopsItsScheduling is half of the P9.4
@@ -711,6 +725,12 @@ func TestVocabulary_IgnoredWordAlsoStopsScheduling(t *testing.T) {
 func (f *fakeRepo) ListSensesForGeneration(
 	_ context.Context, _ int32,
 ) ([]sqlc.ListSensesForGenerationRow, error) {
+	return nil, nil
+}
+
+func (f *fakeRepo) ListSensesNeedingExampleEnrichment(
+	_ context.Context, _ int32,
+) ([]sqlc.ListSensesNeedingExampleEnrichmentRow, error) {
 	return nil, nil
 }
 

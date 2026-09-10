@@ -176,6 +176,10 @@ type applicationConfig struct {
 		Provider4APIKey  string        `koanf:"provider_4_api_key"`
 		Provider4Timeout time.Duration `koanf:"provider_4_timeout"`
 	} `koanf:"ai"`
+	// WORKER_URL maps to `worker.url` under the first-underscore-becomes-a-dot rule.
+	Worker struct {
+		URL string `koanf:"url"`
+	} `koanf:"worker"`
 }
 
 func (cfg applicationConfig) aiProviders() []ai.ProviderConfig {
@@ -380,8 +384,9 @@ func run(ctx context.Context) error {
 		},
 		// A separate typed cache from the permission one. They share the Redis
 		// client but not the value type, and Cache[T] is generic per type.
-		Denylist: cache.NewRedisCache[bool](redisClient),
-		Mailer:   newAPIMailSender(cfg, pool),
+		Denylist:     cache.NewRedisCache[bool](redisClient),
+		Mailer:       newAPIMailSender(cfg, pool),
+		WorkerNudger: newWorkerNudger(cfg.Worker.URL),
 	})
 
 	health := telemetry.NewHealthHandler(cfg.App.Version,
@@ -516,6 +521,7 @@ func configOptions() config.Options {
 			"ai.provider_4_model":            "",
 			"ai.provider_4_api_key":          "",
 			"ai.provider_4_timeout":          defaultAITimeout,
+			"worker.url":                     "",
 		},
 		Required: []config.RequiredKey{
 			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},
@@ -684,4 +690,51 @@ func initAIClient(ctx context.Context, cfg applicationConfig, pool *pgxpool.Pool
 		return nil
 	}
 	return aiClient
+}
+
+type httpWorkerNudger struct {
+	client  *http.Client
+	baseURL string
+}
+
+func newWorkerNudger(baseURL string) *httpWorkerNudger {
+	trimmed := strings.TrimRight(strings.TrimSpace(baseURL), "/")
+	if trimmed == "" {
+		return nil
+	}
+	return &httpWorkerNudger{
+		client:  &http.Client{Timeout: 2 * time.Second},
+		baseURL: trimmed,
+	}
+}
+
+func (n *httpWorkerNudger) Nudge(_ context.Context) {
+	if n == nil || n.baseURL == "" {
+		return
+	}
+	url := n.baseURL + "/ready"
+	// context.Background, not the request's: the nudge has to outlive the
+	// response. Carrying the request context would cancel the ping the moment
+	// the learner's upload returns, which is the one thing it must survive —
+	// the whole point is to start a cold boot the request does not wait for.
+	//nolint:gosec,contextcheck // G118/contextcheck: detached from the request
+	// deliberately, for the reason above. Both linters are asking for the
+	// request context, and the request context is precisely what must not be
+	// used here.
+	go func() {
+		reqCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, url, nil)
+		if err != nil {
+			slog.Debug("worker nudge: failed to create request", "url", url, "error", err)
+			return
+		}
+		resp, err := n.client.Do(req)
+		if err != nil {
+			slog.Debug("worker nudge: ping failed (worker may be sleeping)", "url", url, "error", err)
+			return
+		}
+		_ = resp.Body.Close()
+		slog.Debug("worker nudge: ping succeeded", "url", url, "status", resp.StatusCode)
+	}()
 }

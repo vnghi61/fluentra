@@ -82,6 +82,20 @@ type JobEnqueuer interface {
 	EnqueueVerifyUploadTx(ctx context.Context, tx pgx.Tx, uploadID uuid.UUID) error
 }
 
+// WorkerNudger signals a background worker to wake up when new work has been committed.
+type WorkerNudger interface {
+	Nudge(ctx context.Context)
+}
+
+// Prompt variable names and the content kind a sense publishes under. Named so
+// the verification call and the enrichment call cannot drift to different
+// spellings of the same variable, which the templates would read as absent.
+const (
+	varTerm         = "Term"
+	varPartOfSpeech = "PartOfSpeech"
+	kindVocabQuiz   = "vocabulary_quiz"
+)
+
 // UploadDeps are the collaborators the upload pipeline needs beyond the service.
 type UploadDeps struct {
 	// Dictionary is authoritative on whether a word exists and on its IPA and
@@ -102,6 +116,16 @@ type UploadDeps struct {
 	Beginner dbx.Beginner
 	// Enqueuer schedules the immediate verification job.
 	Enqueuer JobEnqueuer
+	// Versions reads a published content version.
+	//
+	// Enrichment republishes a whole sense body to add sentences to it, and a
+	// field it does not carry forward is a field the new version loses. Rebuilding
+	// the body from the columns to hand dropped the IPA and the pronunciation URL
+	// from every word the sweep touched, silently, because nothing on the write
+	// path knows what the read path renders.
+	Versions ContentVersionReader
+	// Nudger signals the worker process to wake up after an upload is committed.
+	Nudger WorkerNudger
 }
 
 // Uploads runs the learner-upload pipeline.
@@ -120,6 +144,13 @@ type Uploads struct {
 	pool     OutboxTx
 	beginner dbx.Beginner
 	enqueuer JobEnqueuer
+	nudger   WorkerNudger
+	versions ContentVersionReader
+}
+
+// ContentVersionReader is the one read this module needs from content.
+type ContentVersionReader interface {
+	GetVersion(ctx context.Context, id uuid.UUID) (*contentcontract.Version, error)
 }
 
 // NewUploads constructs the pipeline.
@@ -135,6 +166,8 @@ func NewUploads(svc *Service, repo repository.Repository, deps UploadDeps) *Uplo
 		pool:       deps.Pool,
 		beginner:   deps.Beginner,
 		enqueuer:   deps.Enqueuer,
+		nudger:     deps.Nudger,
+		versions:   deps.Versions,
 	}
 }
 
@@ -235,6 +268,10 @@ func (u *Uploads) Submit(ctx context.Context, userID uuid.UUID, rawText string) 
 	})
 	if err != nil {
 		return Upload{}, fmt.Errorf("submit upload: %w", err)
+	}
+
+	if u.nudger != nil {
+		u.nudger.Nudge(ctx)
 	}
 
 	return Upload{
@@ -529,10 +566,10 @@ func (u *Uploads) judge(
 	request := ai.Request{
 		Task: ai.TaskVerifyVocabulary,
 		Vars: map[string]any{
-			"Term":                 item.Term,
+			varTerm:                item.Term,
 			"ProvidedMeaning":      item.ProvidedMeaning,
 			"DictionaryDefinition": entry.Definition,
-			"PartOfSpeech":         entry.PartOfSpeech,
+			varPartOfSpeech:        entry.PartOfSpeech,
 			"ExampleCount":         5,
 		},
 	}
@@ -618,7 +655,7 @@ func (u *Uploads) materialise(
 	}
 	versionID, err := u.content.EnsurePublished(ctx, contentcontract.AuthorSpec{
 		Slug:      "user-vocab-" + slugPart(lemma) + "-" + slugPart(pos),
-		Kind:      "vocabulary_quiz",
+		Kind:      kindVocabQuiz,
 		CEFRLevel: cefr,
 		Body:      body,
 		AuthorID:  u.author,
@@ -1003,10 +1040,10 @@ func (u *Uploads) enrichItem(ctx context.Context, item sqlc.SkillVocabUploadItem
 	request := ai.Request{
 		Task: ai.TaskVerifyVocabulary,
 		Vars: map[string]any{
-			"Term":                 item.Term,
+			varTerm:                item.Term,
 			"ProvidedMeaning":      item.ProvidedMeaning,
 			"DictionaryDefinition": entry.Definition,
-			"PartOfSpeech":         entry.PartOfSpeech,
+			varPartOfSpeech:        entry.PartOfSpeech,
 			"ExampleCount":         5,
 		},
 	}
@@ -1083,7 +1120,7 @@ func (u *Uploads) enrichExistingSense(
 	}
 	versionID, err := u.content.EnsurePublished(ctx, contentcontract.AuthorSpec{
 		Slug:      "user-vocab-" + slugPart(lemma) + "-" + slugPart(pos),
-		Kind:      "vocabulary_quiz",
+		Kind:      kindVocabQuiz,
 		CEFRLevel: cefr,
 		Body:      body,
 		AuthorID:  u.author,
@@ -1105,6 +1142,293 @@ func (u *Uploads) enrichExistingSense(
 	})
 	if err != nil {
 		return fmt.Errorf("update sense enrichment: %w", err)
+	}
+	return nil
+}
+
+// EnrichExamples sweeps word senses that have fewer than 15 example sentences,
+// generates up to 5 additional examples using AI, appends them without duplication,
+// republishes the sense content, and repoints SRS review cards to the new version.
+func (u *Uploads) EnrichExamples(ctx context.Context) error {
+	if u.ai == nil || u.content == nil || u.author == uuid.Nil {
+		slog.DebugContext(ctx, "example enrichment is not configured; skipping")
+		return nil
+	}
+
+	if !u.quotaPermitsEnrichment(ctx) {
+		return nil
+	}
+
+	senses, err := u.repo.ListSensesNeedingExampleEnrichment(ctx, maxEnrichBatch)
+	if err != nil {
+		return fmt.Errorf("list senses needing example enrichment: %w", err)
+	}
+	if len(senses) == 0 {
+		return nil
+	}
+
+	for _, sense := range senses {
+		if !u.quotaPermitsEnrichment(ctx) {
+			slog.WarnContext(ctx, "ai: quota low during example enrichment sweep; yielding to live traffic")
+			break
+		}
+
+		enrichErr := u.enrichSenseExamples(ctx, sense)
+		if enrichErr != nil {
+			if errors.Is(enrichErr, ai.ErrQuotaExhausted) {
+				slog.WarnContext(ctx, "ai: quota exhausted during example enrichment sweep; yielding to live traffic")
+				break
+			}
+			slog.WarnContext(ctx, "could not enrich examples for sense",
+				"sense_id", sense.ID, "lemma", sense.Lemma, "error", enrichErr)
+			continue
+		}
+	}
+
+	return nil
+}
+
+// maxSenseExamples is how many sentences one sense may accumulate, and
+// examplesPerSweep is how many the job asks for in a single pass.
+const (
+	maxSenseExamples = 15
+	examplesPerSweep = 5
+)
+
+// enrichSenseExamples asks for more sentences for one sense and, if any are new,
+// republishes it and moves the review cards onto the new version.
+func (u *Uploads) enrichSenseExamples(
+	ctx context.Context,
+	sense sqlc.ListSensesNeedingExampleEnrichmentRow,
+) error {
+	existing := parseExistingExamples(sense.Examples)
+	if len(existing) >= maxSenseExamples {
+		return nil
+	}
+
+	fresh, err := u.askForMoreExamples(ctx, sense, existing)
+	if err != nil {
+		return err
+	}
+
+	merged, added := mergeNewExamples(existing, fresh)
+	// Nothing new survived the duplicate check. Publishing anyway would mint a
+	// content version identical to the one before it and repoint every card at
+	// it — every hour, for ever, for a word the model cannot extend.
+	if added == 0 {
+		slog.DebugContext(ctx, "no new example sentences for sense; leaving it as it is",
+			"sense_id", sense.ID, "lemma", sense.Lemma, "examples", len(existing))
+		return nil
+	}
+
+	return u.republishSense(ctx, sense, merged)
+}
+
+// askForMoreExamples asks the model for sentences this sense does not have.
+//
+// The existing sentences are sent so the model can avoid them. It will repeat
+// some anyway, which is what mergeNewExamples is for.
+func (u *Uploads) askForMoreExamples(
+	ctx context.Context,
+	sense sqlc.ListSensesNeedingExampleEnrichmentRow,
+	existing []modelExample,
+) ([]modelExample, error) {
+	need := maxSenseExamples - len(existing)
+	if need > examplesPerSweep {
+		need = examplesPerSweep
+	}
+
+	lines := make([]string, 0, len(existing))
+	for i, ex := range existing {
+		lines = append(lines, fmt.Sprintf("%d. %s", i+1, ex.Sentence))
+	}
+	summary := strings.Join(lines, "\n")
+	if summary == "" {
+		summary = "(None)"
+	}
+
+	var resp struct {
+		Examples []modelExample `json:"examples"`
+	}
+	req := ai.Request{
+		Task: ai.TaskEnrichExamples,
+		Vars: map[string]any{
+			varTerm:            sense.Lemma,
+			varPartOfSpeech:    sense.Pos,
+			"Definition":       sense.Definition,
+			"ExistingExamples": summary,
+			"Count":            need,
+		},
+	}
+	if err := ai.CompleteJSON(ctx, u.ai, req, &resp); err != nil {
+		return nil, err
+	}
+	return resp.Examples, nil
+}
+
+// mergeNewExamples appends the sentences that are genuinely new, and says how
+// many. A model told not to repeat itself still repeats itself, so the
+// comparison is on normalised text rather than on trust.
+func mergeNewExamples(existing, fresh []modelExample) ([]modelExample, int) {
+	seen := make(map[string]bool, len(existing))
+	for _, ex := range existing {
+		seen[normaliseSentence(ex.Sentence)] = true
+	}
+
+	merged := existing
+	added := 0
+	for _, ex := range fresh {
+		sentence := strings.TrimSpace(ex.Sentence)
+		if sentence == "" {
+			continue
+		}
+		norm := normaliseSentence(sentence)
+		if norm == "" || seen[norm] {
+			continue
+		}
+		seen[norm] = true
+		merged = append(merged, modelExample{
+			Sentence:   sentence,
+			SentenceVi: strings.TrimSpace(ex.SentenceVi),
+		})
+		added++
+		if len(merged) >= maxSenseExamples {
+			break
+		}
+	}
+	return merged, added
+}
+
+// republishSense writes the enlarged body as a new content version, stores the
+// sentences on the sense, and moves existing review cards onto the new version.
+func (u *Uploads) republishSense(
+	ctx context.Context,
+	sense sqlc.ListSensesNeedingExampleEnrichmentRow,
+	examples []modelExample,
+) error {
+	cefr := normaliseCEFR(sense.CefrLevel)
+	gloss := ""
+	if sense.DefinitionVi != nil {
+		gloss = *sense.DefinitionVi
+	}
+
+	// The body is rebuilt in full, so every field the read path renders has to be
+	// carried here. The IPA comes off the word row and the pronunciation URL off
+	// the version being replaced; rebuilding from the columns alone dropped both,
+	// silently, from every word the sweep touched.
+	entry := repository.DictionaryEntry{}
+	if sense.Ipa != nil {
+		entry.IPA = *sense.Ipa
+	}
+	entry.AudioURL = u.publishedAudioURL(ctx, sense.ContentVersionID)
+
+	body, err := json.Marshal(
+		senseBody(sense.Lemma, sense.Pos, cefr, sense.Definition, gloss, entry, examples),
+	)
+	if err != nil {
+		return fmt.Errorf("marshal sense body: %w", err)
+	}
+
+	versionID, err := u.content.EnsurePublished(ctx, contentcontract.AuthorSpec{
+		Slug:      "user-vocab-" + slugPart(sense.Lemma) + "-" + slugPart(sense.Pos),
+		Kind:      kindVocabQuiz,
+		CEFRLevel: cefr,
+		Body:      body,
+		AuthorID:  u.author,
+	})
+	if err != nil {
+		return fmt.Errorf("publish enriched content: %w", err)
+	}
+
+	examplesJSON, err := json.Marshal(toDomainExamples(examples))
+	if err != nil {
+		return fmt.Errorf("marshal examples: %w", err)
+	}
+
+	if _, err := u.repo.UpdateWordSenseEnrichment(ctx, sqlc.UpdateWordSenseEnrichmentParams{
+		ID:               sense.ID,
+		ContentVersionID: &versionID,
+		Definition:       sense.Definition,
+		Examples:         examplesJSON,
+	}); err != nil {
+		return fmt.Errorf("update sense enrichment: %w", err)
+	}
+
+	// A card that is not moved keeps rendering the old body, so the sentences the
+	// sweep just wrote would never reach the learner they were written for. It is
+	// logged rather than returned: the sentences are stored either way, and
+	// failing the sense here would make the next sweep redo the model call.
+	if sense.ContentVersionID != nil && *sense.ContentVersionID != versionID {
+		if err := u.service.RepointCards(ctx, *sense.ContentVersionID, versionID); err != nil {
+			slog.WarnContext(ctx, "could not repoint srs review cards",
+				"old_version_id", *sense.ContentVersionID,
+				"new_version_id", versionID,
+				"error", err)
+		}
+	}
+
+	return nil
+}
+
+// publishedAudioURL reads `audio_url` off a published sense body.
+//
+// Empty on any failure, and that is deliberate: a missing recording falls back
+// to the browser's own speech synthesis, which every word has. Failing the
+// enrichment because a lookup did not answer would trade a whole sweep for a
+// field nothing depends on.
+func (u *Uploads) publishedAudioURL(ctx context.Context, versionID *uuid.UUID) string {
+	if u.versions == nil || versionID == nil {
+		return ""
+	}
+	version, err := u.versions.GetVersion(ctx, *versionID)
+	if err != nil || version == nil || len(version.Body) == 0 {
+		return ""
+	}
+	var body struct {
+		AudioURL string `json:"audio_url"`
+	}
+	if err := json.Unmarshal(version.Body, &body); err != nil {
+		return ""
+	}
+	return body.AudioURL
+}
+
+func normaliseSentence(s string) string {
+	var b strings.Builder
+	for _, r := range strings.ToLower(s) {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
+}
+
+func parseExistingExamples(raw []byte) []modelExample {
+	if len(raw) == 0 {
+		return nil
+	}
+	var models []modelExample
+	if err := json.Unmarshal(raw, &models); err == nil && len(models) > 0 && models[0].Sentence != "" {
+		return models
+	}
+	var domainEx []domain.ExampleSentence
+	if err := json.Unmarshal(raw, &domainEx); err == nil && len(domainEx) > 0 && domainEx[0].Sentence != "" {
+		res := make([]modelExample, len(domainEx))
+		for i, d := range domainEx {
+			res[i].Sentence = d.Sentence
+			if d.SentenceVi != nil {
+				res[i].SentenceVi = *d.SentenceVi
+			}
+		}
+		return res
+	}
+	var stringsEx []string
+	if err := json.Unmarshal(raw, &stringsEx); err == nil {
+		res := make([]modelExample, len(stringsEx))
+		for i, s := range stringsEx {
+			res[i].Sentence = s
+		}
+		return res
 	}
 	return nil
 }

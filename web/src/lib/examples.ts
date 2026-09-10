@@ -70,3 +70,38 @@ export function readExampleSentences(
   const single = trimmed(source["example_sentence"]);
   return single ? [{ text: single }] : [];
 }
+
+/**
+ * Picks the example sentences one view of a flashcard shows.
+ *
+ * Always shuffled, never only when the sense is full. The enrichment job fills a
+ * word to fifteen over several nights, so gating the shuffle on reaching fifteen
+ * meant a word with five — which is every word for its first week, and every word
+ * the model cannot extend — showed the same five in the same order for ever. That
+ * is the thing this function exists to stop.
+ *
+ * A word with three or fewer keeps all of them; there is nothing to choose, and
+ * shuffling three lines that are always all on screen only makes the card jitter.
+ */
+export function shuffleExamplesForReview(
+  sentences: ExampleSentence[],
+  limit = 3,
+): ExampleSentence[] {
+  if (sentences.length <= limit) return sentences;
+
+  // Fisher-Yates over a copy: the caller's array belongs to the card content and
+  // is read again on the next render.
+  const copy = [...sentences];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const itemI = copy[i];
+    const itemJ = copy[j];
+    // Both indices are in range by construction; the guard is what
+    // `noUncheckedIndexedAccess` wants to see rather than a real branch.
+    if (itemI !== undefined && itemJ !== undefined) {
+      copy[i] = itemJ;
+      copy[j] = itemI;
+    }
+  }
+  return copy.slice(0, limit);
+}

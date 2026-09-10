@@ -71,6 +71,8 @@ func ex(sentence, vietnamese string) seedExample {
 const (
 	skillVocabulary = "vocabulary"
 	skillGrammar    = "grammar"
+	skillReading    = "reading"
+	skillWriting    = "writing"
 
 	kindMultipleChoice = "vocab_multiple_choice"
 	kindGapFill        = "vocab_gap_fill"
@@ -83,6 +85,8 @@ const (
 
 	kindGrammarTenseChoice       = "grammar_tense_choice"
 	kindGrammarSentenceTransform = "grammar_sentence_transform"
+	kindReadingComprehension     = "reading_comprehension"
+	kindWritingPrompt            = "writing_prompt"
 
 	cfgOptions         = "options"
 	cfgOptionID        = "id"
@@ -138,6 +142,15 @@ const (
 	// The matching answer key, on the body and redacted before a learner sees
 	// the activity.
 	bodyKeyCorrectPairs = "correct_pairs"
+
+	// `reading_comprehension` and `writing_prompt` configuration keys
+	cfgPassageTitle = "passage_title"
+	cfgPassage      = "passage"
+	cfgRubric       = "rubric"
+	cfgMinWords     = "min_words"
+	cfgSampleAnswer = "sample_answer"
+
+	bodyKeyExplanation = "explanation"
 )
 
 // option builds one of the {id, text} rows the choice-based kinds render.
@@ -884,6 +897,55 @@ var courseSeedData = seedCourse{
 								bodyKeyPrompt:        "Rewrite the sentence in the passive voice:",
 								bodyKeyCorrectAnswer: "is practiced",
 								bodyKeyAcceptable:    acceptable("is practiced", "is practiced.", "is practised", "is practised."),
+							},
+						},
+						{
+							Position: 5,
+							Kind:     kindReadingComprehension,
+							Config: map[string]any{
+								cfgPassageTitle: "A Passion for Photography",
+								cfgPassage:      "Over the past three years, Liam has turned his hobby into a meaningful weekend routine. Every Saturday morning, he wakes up before sunrise and heads to the local nature reserve with his vintage film camera. While digital photography offers instant results, Liam prefers the patience and focus required when using film. He explains that limiting himself to 36 shots per roll forces him to observe lighting, composition, and small details in nature much more carefully.",
+								bodyKeyPrompt:   "Why does Liam prefer using a vintage film camera over digital photography?",
+								cfgOptions: []map[string]string{
+									option("opt_film_focus", "It demands more patience and forces him to observe details and composition carefully."),
+									option("opt_film_cheaper", "Film cameras are much cheaper to maintain than digital gear."),
+									option("opt_film_faster", "He enjoys taking hundreds of fast shots without thinking."),
+									option("opt_film_reserve", "The local nature reserve bans digital cameras."),
+								},
+								cfgCorrectOptionID: "opt_film_focus",
+							},
+							Body: map[string]any{
+								cfgPassageTitle:      "A Passion for Photography",
+								cfgPassage:           "Over the past three years, Liam has turned his hobby into a meaningful weekend routine. Every Saturday morning, he wakes up before sunrise and heads to the local nature reserve with his vintage film camera. While digital photography offers instant results, Liam prefers the patience and focus required when using film. He explains that limiting himself to 36 shots per roll forces him to observe lighting, composition, and small details in nature much more carefully.",
+								bodyKeyPrompt:        "Why does Liam prefer using a vintage film camera over digital photography?",
+								bodyKeyCorrectAnswer: "opt_film_focus",
+								cfgCorrectOptionID:   "opt_film_focus",
+								bodyKeyAcceptable:    acceptable("opt_film_focus"),
+								bodyKeyExplanation: map[string]string{
+									"text":    "Liam explains that limiting himself to 36 shots per roll forces him to observe lighting, composition, and details with patience.",
+									"text_vi": "Liam giải thích rằng việc giới hạn 36 kiểu mỗi cuộn phim buộc anh phải kiên nhẫn và quan sát ánh sáng, bố cục chi tiết hơn.",
+								},
+							},
+						},
+						{
+							Position: 6,
+							Kind:     kindWritingPrompt,
+							Config: map[string]any{
+								bodyKeyPrompt:   "Describe one of your favorite weekend hobbies and explain why you enjoy it.",
+								cfgRubric:       "Write at least 15 words explaining what you like to do on weekends, how often you do it, and why it brings you joy or relaxation.",
+								cfgMinWords:     15,
+								cfgSampleAnswer: "During weekends, I love cycling around the west lake because the fresh air and open scenery help me relax after a busy work week.",
+							},
+							Body: map[string]any{
+								bodyKeyPrompt:        "Describe one of your favorite weekend hobbies and explain why you enjoy it.",
+								cfgRubric:            "Write at least 15 words explaining what you like to do on weekends, how often you do it, and why it brings you joy or relaxation.",
+								cfgMinWords:          15,
+								bodyKeyCorrectAnswer: "During weekends, I love cycling around the west lake because the fresh air and open scenery help me relax after a busy work week.",
+								cfgSampleAnswer:      "During weekends, I love cycling around the west lake because the fresh air and open scenery help me relax after a busy work week.",
+								bodyKeyExplanation: map[string]string{
+									"text":    "A strong response includes the name of the hobby, frequency or context, and reasons why you enjoy it.",
+									"text_vi": "Câu trả lời tốt nên nêu rõ tên sở thích, tần suất hoặc bối cảnh thực hiện và lý do vì sao bạn yêu thích sở thích đó.",
+								},
 							},
 						},
 					},

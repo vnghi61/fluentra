@@ -279,6 +279,24 @@ func (s *Service) SuspendCardsByContentVersion(
 	return len(userIDs), nil
 }
 
+// RepointCards moves review cards pointing at oldVersionID to newVersionID.
+// Called when a content version is updated/republished with more examples.
+func (s *Service) RepointCards(ctx context.Context, oldVersionID, newVersionID uuid.UUID) error {
+	if oldVersionID == uuid.Nil || newVersionID == uuid.Nil || oldVersionID == newVersionID {
+		return nil
+	}
+	moved, err := s.repo.RepointReviewCards(ctx, oldVersionID, newVersionID)
+	if err != nil {
+		return fmt.Errorf("failed to repoint review cards from %s to %s: %w", oldVersionID, newVersionID, err)
+	}
+	// Logged rather than returned: the caller republished content and has no
+	// decision to make on the count, but a repoint that silently moves nothing is
+	// how "the learner still sees the old sentences" gets diagnosed.
+	slog.DebugContext(ctx, "repointed review cards",
+		"old_version_id", oldVersionID, "new_version_id", newVersionID, "cards", moved)
+	return nil
+}
+
 // DueCount returns the count of cards currently due for review for the given user.
 func (s *Service) DueCount(ctx context.Context, userID uuid.UUID) (int, error) {
 	loader := func(ctx context.Context) (int, error) {

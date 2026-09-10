@@ -220,6 +220,31 @@ func (f *fakeSRSRepo) SuspendReviewCardsByContentVersion(
 	return touched, nil
 }
 
+func (f *fakeSRSRepo) RepointReviewCards(
+	_ context.Context, oldVersionID, newVersionID uuid.UUID,
+) (int64, error) {
+	// Mirrors the NOT EXISTS guard in the query. uq_review_cards_user_content is
+	// UNIQUE (user_id, content_version_id), so a learner already holding a card on
+	// the new version is skipped rather than moved onto a duplicate — a fake that
+	// moved them anyway would agree with itself and disagree with Postgres.
+	held := make(map[uuid.UUID]bool)
+	for _, card := range f.cards {
+		if card.ContentVersionID == newVersionID {
+			held[card.UserID] = true
+		}
+	}
+	var moved int64
+	for id, card := range f.cards {
+		if card.ContentVersionID != oldVersionID || held[card.UserID] {
+			continue
+		}
+		card.ContentVersionID = newVersionID
+		f.cards[id] = card
+		moved++
+	}
+	return moved, nil
+}
+
 func (f *fakeSRSRepo) SetReviewCardsSuspended(
 	_ context.Context, userID uuid.UUID, contentVersionIDs []uuid.UUID, suspended bool,
 ) (int64, error) {

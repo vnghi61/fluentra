@@ -243,10 +243,12 @@ components:
   m_vocabulary_http:       { in: modules/vocabulary/transport/http }
   m_grammar:         { in: modules/grammar }
   m_grammar_service: { in: modules/grammar/service }
-  m_reading:       { in: modules/reading/** }
+  m_reading:         { in: modules/reading }
+  m_reading_service: { in: modules/reading/service }
   m_listening:     { in: modules/listening/** }
   m_speaking:      { in: modules/speaking/** }
-  m_writing:       { in: modules/writing/** }
+  m_writing:         { in: modules/writing }
+  m_writing_service: { in: modules/writing/service }
   m_questionbank:  { in: modules/questionbank/** }
   m_exam:          { in: modules/exam/** }
   # gamification, split by layer for the same reason learning is: the module has
@@ -425,6 +427,8 @@ deps:
   c_srs:           { mayDependOn: [c_learning] }
   c_vocabulary:    { mayDependOn: [c_learning] }
   c_grammar:       { mayDependOn: [c_learning] }
+  c_reading:       { mayDependOn: [c_learning] }
+  c_writing:       { mayDependOn: [c_learning] }
   m_srs_domain:     { mayDependOn: [c_srs] }
   m_srs_repository: { mayDependOn: [m_srs_domain, c_srs, g_srs] }
   m_srs_service:    { mayDependOn: [m_srs_domain, m_srs_repository, c_srs, c_user, c_content, c_learning, g_srs, p_cache, p_job, p_telemetry] }
@@ -450,10 +454,12 @@ deps:
   m_vocabulary:            { mayDependOn: [m_vocabulary_domain, m_vocabulary_repository, m_vocabulary_service, m_vocabulary_job, m_vocabulary_http, c_vocabulary, c_content, c_lesson, c_srs, c_learning, g_vocabulary, p_cache, p_job, p_media, p_ai, p_search, p_telemetry] }
   m_grammar_service: { mayDependOn: [c_grammar, c_content, c_srs, c_learning, p_cache, p_ai, p_telemetry] }
   m_grammar:         { mayDependOn: [m_grammar_service, c_grammar, c_content, c_srs, c_learning, p_cache, p_ai, p_telemetry] }
-  m_reading:      { mayDependOn: [p_cache, p_telemetry, c_content, c_questionbank, c_vocabulary, c_learning] }
+  m_reading_service: { mayDependOn: [c_reading, c_content, c_learning, p_cache, p_telemetry] }
+  m_reading:         { mayDependOn: [m_reading_service, c_reading, c_content, c_learning, p_cache, p_telemetry] }
   m_listening:    { mayDependOn: [p_cache, p_media, p_storage, p_telemetry, c_content, c_questionbank, c_learning] }
   m_speaking:     { mayDependOn: [p_media, p_ai, p_storage, p_job, p_telemetry, c_content, c_learning] }
-  m_writing:      { mayDependOn: [p_ai, p_job, p_telemetry, c_content, c_learning, c_notification] }
+  m_writing_service: { mayDependOn: [c_writing, c_content, c_learning, p_ai, p_telemetry] }
+  m_writing:         { mayDependOn: [m_writing_service, c_writing, c_content, c_learning, p_ai, p_telemetry] }
   m_questionbank: { mayDependOn: [p_ai, p_search, p_telemetry, c_content, c_audit] }
   m_exam:         { mayDependOn: [p_job, p_ai, p_telemetry, c_questionbank, c_writing, c_speaking, c_learning] }
   # c_user is on this list and is not in MODULE_INDEX's original arrow set. It

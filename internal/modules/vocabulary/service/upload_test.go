@@ -14,6 +14,7 @@ import (
 
 	"github.com/fluentra/fluentra/internal/generated/vocabulary/sqlc"
 	contentcontract "github.com/fluentra/fluentra/internal/modules/content/contract"
+	"github.com/fluentra/fluentra/internal/modules/vocabulary/domain"
 	"github.com/fluentra/fluentra/internal/modules/vocabulary/repository"
 	"github.com/fluentra/fluentra/internal/modules/vocabulary/service"
 	"github.com/fluentra/fluentra/internal/platform/ai"
@@ -117,32 +118,49 @@ func (s *stubQuotaAI) HasQuota(_ context.Context, _ ai.Task) (bool, error) {
 type uploadRepo struct {
 	*fakeRepo
 
-	pending        []sqlc.SkillVocabUploadItem
-	verified       map[uuid.UUID]string
-	rejected       map[uuid.UUID]string
-	attempts       map[uuid.UUID]string
-	queued         map[uuid.UUID]string
-	enrichVerified map[uuid.UUID]string
-	enrichRejected map[uuid.UUID]string
-	enrichFailed   map[uuid.UUID]string
-	uploads        map[uuid.UUID]sqlc.SkillVocabUpload
-	uploadItems    map[uuid.UUID][]sqlc.ListUploadItemsRow
+	pending                 []sqlc.SkillVocabUploadItem
+	verified                map[uuid.UUID]string
+	rejected                map[uuid.UUID]string
+	attempts                map[uuid.UUID]string
+	queued                  map[uuid.UUID]string
+	enrichVerified          map[uuid.UUID]string
+	enrichRejected          map[uuid.UUID]string
+	enrichFailed            map[uuid.UUID]string
+	uploads                 map[uuid.UUID]sqlc.SkillVocabUpload
+	uploadItems             map[uuid.UUID][]sqlc.ListUploadItemsRow
+	sensesNeedingEnrichment []sqlc.ListSensesNeedingExampleEnrichmentRow
+	enrichUpdates           []sqlc.UpdateWordSenseEnrichmentParams
 }
 
 func newUploadRepo(items ...sqlc.SkillVocabUploadItem) *uploadRepo {
 	return &uploadRepo{
-		fakeRepo:       newFakeRepo(),
-		pending:        items,
-		verified:       map[uuid.UUID]string{},
-		rejected:       map[uuid.UUID]string{},
-		attempts:       map[uuid.UUID]string{},
-		queued:         map[uuid.UUID]string{},
-		enrichVerified: map[uuid.UUID]string{},
-		enrichRejected: map[uuid.UUID]string{},
-		enrichFailed:   map[uuid.UUID]string{},
-		uploads:        map[uuid.UUID]sqlc.SkillVocabUpload{},
-		uploadItems:    map[uuid.UUID][]sqlc.ListUploadItemsRow{},
+		fakeRepo:                newFakeRepo(),
+		pending:                 items,
+		verified:                map[uuid.UUID]string{},
+		rejected:                map[uuid.UUID]string{},
+		attempts:                map[uuid.UUID]string{},
+		queued:                  map[uuid.UUID]string{},
+		enrichVerified:          map[uuid.UUID]string{},
+		enrichRejected:          map[uuid.UUID]string{},
+		enrichFailed:            map[uuid.UUID]string{},
+		uploads:                 map[uuid.UUID]sqlc.SkillVocabUpload{},
+		uploadItems:             map[uuid.UUID][]sqlc.ListUploadItemsRow{},
+		sensesNeedingEnrichment: []sqlc.ListSensesNeedingExampleEnrichmentRow{},
+		enrichUpdates:           []sqlc.UpdateWordSenseEnrichmentParams{},
 	}
+}
+
+func (r *uploadRepo) ListSensesNeedingExampleEnrichment(
+	_ context.Context, _ int32,
+) ([]sqlc.ListSensesNeedingExampleEnrichmentRow, error) {
+	return r.sensesNeedingEnrichment, nil
+}
+
+func (r *uploadRepo) UpdateWordSenseEnrichment(
+	_ context.Context, arg sqlc.UpdateWordSenseEnrichmentParams,
+) (sqlc.SkillWordSense, error) {
+	r.enrichUpdates = append(r.enrichUpdates, arg)
+	return sqlc.SkillWordSense{ID: arg.ID}, nil
 }
 
 func (r *uploadRepo) GetUpload(ctx context.Context, id, userID uuid.UUID) (sqlc.SkillVocabUpload, error) {
@@ -251,7 +269,7 @@ func item(term, meaning string) sqlc.SkillVocabUploadItem {
 
 func leisureEntry() repository.DictionaryEntry {
 	return repository.DictionaryEntry{
-		Lemma: wordLeisure, IPA: "/ˈliːʒə(ɹ)/", PartOfSpeech: "noun",
+		Lemma: wordLeisure, IPA: "/ˈliːʒə(ɹ)/", PartOfSpeech: posNoun,
 		Definition: "Time when one is not working or occupied; free time.",
 		AudioURL:   "https://example.test/leisure.mp3",
 	}
@@ -260,7 +278,7 @@ func leisureEntry() repository.DictionaryEntry {
 func accepted(t *testing.T) string {
 	t.Helper()
 	payload, err := json.Marshal(map[string]any{
-		keyValid: true, "lemma": wordLeisure, "part_of_speech": "noun",
+		keyValid: true, "lemma": wordLeisure, "part_of_speech": posNoun,
 		"cefr_level": "B1", "definition": "Free time.",
 		"meaning_matches": true,
 		// Objects, not strings: v4 asks for each sentence with its Vietnamese,
@@ -290,6 +308,21 @@ func newPipeline(
 		// pipeline without a transaction source cannot submit. Supplied here so
 		// the fixture is the shape cmd/api actually builds.
 		Beginner: stubPool{},
+	}), author
+}
+
+func newPipelineWithReviews(
+	t *testing.T, repo *uploadRepo, dict *stubDictionary, model ai.Client, reviews *spyReviewScheduler,
+) (*service.Uploads, *stubContentAuthor) {
+	t.Helper()
+	author := &stubContentAuthor{}
+	svc := service.New(service.Deps{Repo: repo, Reviews: reviews})
+	return service.NewUploads(svc, repo, service.UploadDeps{
+		Dictionary: dict,
+		AI:         model,
+		Content:    author,
+		AuthorID:   uuid.New(),
+		Beginner:   stubPool{},
 	}), author
 }
 
@@ -388,6 +421,34 @@ func TestSubmit_EnqueuesVerificationJobInTx(t *testing.T) {
 	assert.Equal(t, res.ID, enqueuer.enqueued[0])
 }
 
+type stubNudger struct {
+	nudged int
+}
+
+func (n *stubNudger) Nudge(context.Context) {
+	n.nudged++
+}
+
+func TestSubmit_NudgesWorkerAfterCommit(t *testing.T) {
+	repo := newUploadRepo()
+	enqueuer := &stubEnqueuer{}
+	nudger := &stubNudger{}
+	pool := stubPool{}
+
+	svc := service.New(service.Deps{Repo: repo})
+	uploads := service.NewUploads(svc, repo, service.UploadDeps{
+		Pool:     pool,
+		Beginner: pool,
+		Enqueuer: enqueuer,
+		Nudger:   nudger,
+	})
+
+	userID := uuid.New()
+	_, err := uploads.Submit(context.Background(), userID, "leisure - free time\nserendipity")
+	require.NoError(t, err)
+	assert.Equal(t, 1, nudger.nudged)
+}
+
 func TestSubmit_RollsBackWhenTheJobCannotBeEnqueued(t *testing.T) {
 	// The transaction exists for this case and no other. Words stored with no
 	// job to collect them wait for the hourly sweep with nothing telling the
@@ -476,7 +537,7 @@ func TestVerifyPending_TheStoredContentCarriesWhatAFlashcardNeeds(t *testing.T) 
 
 	// The review screen returns null unless both are present, and a null there
 	// is the "this card has no content yet" state.
-	assert.Equal(t, "leisure", body["word"])
+	assert.Equal(t, wordLeisure, body["word"])
 	assert.NotEmpty(t, body["definition"])
 	// The dictionary's IPA and its link to a human recording, not a stored file.
 	assert.Equal(t, "/ˈliːʒə(ɹ)/", body["ipa"])
@@ -485,7 +546,7 @@ func TestVerifyPending_TheStoredContentCarriesWhatAFlashcardNeeds(t *testing.T) 
 	assert.Equal(t, "thời gian rảnh", body["definition_vi"])
 	assert.NotEmpty(t, body["example_sentences"])
 	// And the grader can score it.
-	assert.Equal(t, "leisure", body["correct_answer"])
+	assert.Equal(t, wordLeisure, body["correct_answer"])
 }
 
 func TestVerifyPending_RejectsAWordNeitherSourceRecognises(t *testing.T) {
@@ -906,4 +967,188 @@ func TestVerify_ExampleSentencesCarryTheirTranslation(t *testing.T) {
 	assert.Equal(t, "He reads at leisure.", first[keySentence])
 	assert.Equal(t, "Anh ấy đọc lúc rảnh.", first[keySentenceVi],
 		"web/src/lib/examples.ts reads sentence_vi; without it the reveal button stays hidden")
+}
+
+func TestEnrichExamples_ExpandsUpTo15AndRepoints(t *testing.T) {
+	oldVersionID := uuid.New()
+	senseID := uuid.New()
+	existingEx, err := json.Marshal([]domain.ExampleSentence{
+		{Sentence: "Existing sentence one."},
+		{Sentence: "Existing sentence two."},
+		{Sentence: "Existing sentence three."},
+		{Sentence: "Existing sentence four."},
+		{Sentence: "Existing sentence five."},
+	})
+	require.NoError(t, err)
+
+	repo := newUploadRepo()
+	repo.sensesNeedingEnrichment = []sqlc.ListSensesNeedingExampleEnrichmentRow{
+		{
+			ID:               senseID,
+			WordID:           uuid.New(),
+			ContentVersionID: &oldVersionID,
+			Definition:       defLeisure,
+			Examples:         existingEx,
+			Lemma:            wordLeisure,
+			Pos:              posNoun,
+			CefrLevel:        "B1",
+		},
+	}
+
+	modelReply := `{"examples": [
+		{"sentence": "New sentence six.", "sentence_vi": "Câu mới sáu."},
+		{"sentence": "New sentence seven.", "sentence_vi": "Câu mới bảy."},
+		{"sentence": "New sentence eight.", "sentence_vi": "Câu mới tám."},
+		{"sentence": "New sentence nine.", "sentence_vi": "Câu mới chín."},
+		{"sentence": "New sentence ten.", "sentence_vi": "Câu mới mười."}
+	]}`
+
+	spyReviews := &spyReviewScheduler{}
+	dict := &stubDictionary{entries: map[string]repository.DictionaryEntry{
+		wordLeisure: leisureEntry(),
+	}}
+
+	uploads, author := newPipelineWithReviews(t, repo, dict, &stubAI{reply: modelReply}, spyReviews)
+
+	err = uploads.EnrichExamples(context.Background())
+	require.NoError(t, err)
+
+	require.Len(t, repo.enrichUpdates, 1, "must update sense enrichment")
+	update := repo.enrichUpdates[0]
+	assert.Equal(t, senseID, update.ID)
+	assert.NotNil(t, update.ContentVersionID)
+	assert.NotEqual(t, oldVersionID, *update.ContentVersionID, "must have a new content version")
+
+	var updatedEx []domain.ExampleSentence
+	require.NoError(t, json.Unmarshal(update.Examples, &updatedEx))
+	assert.Len(t, updatedEx, 10, "5 existing + 5 new = 10 examples")
+
+	require.Len(t, author.published, 1, "must republish content version")
+	assert.Equal(t, author.id, *update.ContentVersionID)
+
+	assert.Equal(t, 1, spyReviews.repointCalls, "must call srs.RepointCards")
+	assert.Equal(t, oldVersionID, spyReviews.repointedOld)
+	assert.Equal(t, author.id, spyReviews.repointedNew)
+}
+
+func TestEnrichExamples_SkipsDuplicates(t *testing.T) {
+	oldVersionID := uuid.New()
+	senseID := uuid.New()
+	existingEx, err := json.Marshal([]domain.ExampleSentence{
+		{Sentence: "He reads at leisure."},
+	})
+	require.NoError(t, err)
+
+	repo := newUploadRepo()
+	repo.sensesNeedingEnrichment = []sqlc.ListSensesNeedingExampleEnrichmentRow{
+		{
+			ID:               senseID,
+			WordID:           uuid.New(),
+			ContentVersionID: &oldVersionID,
+			Definition:       defLeisure,
+			Examples:         existingEx,
+			Lemma:            wordLeisure,
+			Pos:              posNoun,
+			CefrLevel:        "B1",
+		},
+	}
+
+	// Model returns duplicate of sentence 1, plus 1 distinct sentence.
+	modelReply := `{"examples": [
+		{"sentence": "  he reads at LEISURE.  ", "sentence_vi": "Anh ấy đọc lúc rảnh."},
+		{"sentence": "A unique leisure activity.", "sentence_vi": "Một hoạt động giải trí độc đáo."}
+	]}`
+
+	dict := &stubDictionary{entries: map[string]repository.DictionaryEntry{"leisure": leisureEntry()}}
+	uploads, _ := newPipelineWithReviews(t, repo, dict, &stubAI{reply: modelReply}, &spyReviewScheduler{})
+
+	err = uploads.EnrichExamples(context.Background())
+	require.NoError(t, err)
+
+	require.Len(t, repo.enrichUpdates, 1)
+	var updatedEx []domain.ExampleSentence
+	require.NoError(t, json.Unmarshal(repo.enrichUpdates[0].Examples, &updatedEx))
+	assert.Len(t, updatedEx, 2, "duplicate must be skipped; only 1 new example added")
+}
+
+func TestEnrichExamples_YieldsOnQuotaExhausted(t *testing.T) {
+	oldVersionID := uuid.New()
+	senseID := uuid.New()
+	existingEx, err := json.Marshal([]domain.ExampleSentence{
+		{Sentence: "Sentence 1."},
+	})
+	require.NoError(t, err)
+
+	repo := newUploadRepo()
+	repo.sensesNeedingEnrichment = []sqlc.ListSensesNeedingExampleEnrichmentRow{
+		{
+			ID:               senseID,
+			WordID:           uuid.New(),
+			ContentVersionID: &oldVersionID,
+			Definition:       defLeisure,
+			Examples:         existingEx,
+			Lemma:            wordLeisure,
+			Pos:              posNoun,
+			CefrLevel:        "B1",
+		},
+	}
+
+	dict := &stubDictionary{entries: map[string]repository.DictionaryEntry{"leisure": leisureEntry()}}
+	uploads, _ := newPipelineWithReviews(t, repo, dict, &stubAI{err: ai.ErrQuotaExhausted}, &spyReviewScheduler{})
+
+	err = uploads.EnrichExamples(context.Background())
+	require.NoError(t, err, "must yield cleanly without error when quota exhausted")
+	assert.Empty(t, repo.enrichUpdates, "no updates made when quota exhausted")
+}
+
+// TestEnrichExamples_KeepsThePronunciation.
+//
+// The job republishes the whole sense body to add sentences to it, so every
+// field the flashcard renders has to be carried across. The first version built
+// the body from the columns it happened to have and passed an empty dictionary
+// entry, which dropped `ipa` and `audio_url` from every word the sweep touched —
+// a word gained sentences and silently lost its pronunciation.
+func TestEnrichExamples_KeepsThePronunciation(t *testing.T) {
+	oldVersionID := uuid.New()
+	ipa := "/ˈliːʒə(ɹ)/"
+	existingEx, err := json.Marshal([]domain.ExampleSentence{
+		{Sentence: "Existing sentence one."},
+	})
+	require.NoError(t, err)
+
+	repo := newUploadRepo()
+	repo.sensesNeedingEnrichment = []sqlc.ListSensesNeedingExampleEnrichmentRow{
+		{
+			ID:               uuid.New(),
+			WordID:           uuid.New(),
+			ContentVersionID: &oldVersionID,
+			Definition:       defLeisure,
+			Examples:         existingEx,
+			Lemma:            wordLeisure,
+			Pos:              posNoun,
+			CefrLevel:        "B1",
+			Ipa:              &ipa,
+		},
+	}
+
+	modelReply := `{"examples": [{"sentence": "A brand new sentence.", "sentence_vi": "Câu mới."}]}`
+	dict := &stubDictionary{entries: map[string]repository.DictionaryEntry{
+		wordLeisure: leisureEntry(),
+	}}
+	uploads, author := newPipelineWithReviews(
+		t, repo, dict, &stubAI{reply: modelReply}, &spyReviewScheduler{},
+	)
+
+	require.NoError(t, uploads.EnrichExamples(context.Background()))
+	require.Len(t, author.published, 1, "must republish the sense")
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(author.published[0].Body, &body))
+	assert.Equal(t, ipa, body["ipa"], "the republished body must keep the pronunciation")
+
+	// And the sentences it was republished for are there too, so this cannot
+	// pass by the job having done nothing.
+	sentences, ok := body["example_sentences"].([]any)
+	require.True(t, ok, "body carries example sentences")
+	assert.Len(t, sentences, 2)
 }

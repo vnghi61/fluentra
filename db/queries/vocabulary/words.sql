@@ -218,3 +218,23 @@ WHERE id = $1;
 DELETE FROM skill.words
 WHERE id = $1;
 
+-- ListSensesNeedingExampleEnrichment finds senses with room for more examples.
+--
+-- w.ipa and w.audio_asset_id are selected even though enrichment does not change
+-- them: the job republishes the whole sense body, and a column it does not carry
+-- is a field the new content version does not have. Leaving the IPA out silently
+-- stripped the pronunciation from every word the sweep touched.
+--
+-- `examples IS NULL` is included deliberately. jsonb_typeof(NULL) is NULL, so the
+-- typeof test alone excluded exactly the senses with no examples at all — the
+-- ones that need this most.
+-- name: ListSensesNeedingExampleEnrichment :many
+SELECT s.id, s.word_id, s.content_version_id, s.definition, s.definition_vi, s.examples,
+       w.lemma, w.pos, w.cefr_level, w.ipa, w.audio_asset_id
+FROM skill.word_senses s
+JOIN skill.words w ON w.id = s.word_id
+WHERE s.examples IS NULL
+   OR (jsonb_typeof(s.examples) = 'array' AND jsonb_array_length(s.examples) < 15)
+ORDER BY s.updated_at ASC
+LIMIT $1;
+

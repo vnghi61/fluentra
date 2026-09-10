@@ -51,11 +51,15 @@ const generateInterval = 12 * time.Hour
 // on should feel answered rather than forgotten.
 const verifyUploadsLockID int64 = 1_700_000_271
 const enrichQueuedLockID int64 = 1_700_000_272
+const enrichExamplesLockID int64 = 1_700_000_273
 
 const verifyUploadsInterval = time.Hour
 
 // Guard is the authorization interface required by HTTP handlers.
 type Guard = vocabularyhttp.Guard
+
+// WorkerNudger signals a background worker to wake up when new work has been committed.
+type WorkerNudger = service.WorkerNudger
 
 // Deps defines dependencies supplied by the composition root.
 type Deps struct {
@@ -86,6 +90,9 @@ type Deps struct {
 	// still submit — and simply verifies nothing until a worker with them runs.
 	Dictionary repository.DictionaryLookup
 	AI         ai.Client
+
+	// WorkerNudger signals the worker process to wake up after an upload is committed.
+	WorkerNudger service.WorkerNudger
 }
 
 // Module represents the wired vocabulary module.
@@ -139,6 +146,8 @@ func New(deps Deps) *Module {
 		Pool:       deps.Pool,
 		Beginner:   deps.Pool,
 		Enqueuer:   enqueuer,
+		Nudger:     deps.WorkerNudger,
+		Versions:   deps.Content,
 	})
 
 	var handler *vocabularyhttp.Handler
@@ -199,6 +208,12 @@ func (m *Module) CronJobs() []job.CronJob {
 			Interval: verifyUploadsInterval,
 			Task:     m.uploads.EnrichQueued,
 		},
+		{
+			Name:     "vocabulary.enrich_examples",
+			LockID:   enrichExamplesLockID,
+			Interval: verifyUploadsInterval,
+			Task:     m.uploads.EnrichExamples,
+		},
 	}
 }
 
@@ -208,6 +223,14 @@ func (m *Module) EnrichQueued(ctx context.Context) error {
 		return nil
 	}
 	return m.uploads.EnrichQueued(ctx)
+}
+
+// EnrichExamples sweeps word senses with fewer than 15 examples and tops them up.
+func (m *Module) EnrichExamples(ctx context.Context) error {
+	if m.uploads == nil {
+		return nil
+	}
+	return m.uploads.EnrichExamples(ctx)
 }
 
 // GenerateExercises runs the practice generator once. Exported so cmd/worker can

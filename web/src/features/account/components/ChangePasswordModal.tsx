@@ -106,8 +106,10 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
         <div className="flex items-start gap-2.5 rounded-lg border border-primary/30 bg-primary/10 p-3 text-xs text-primary-accent">
           <ShieldCheck className="h-4 w-4 shrink-0 text-primary-accent mt-0.5" />
           <span>
-            Changing your password will keep this session active while revoking
-            all other signed-in devices.
+            {t(
+              "account.changePasswordNotice",
+              "Changing your password will keep this session active while revoking all other signed-in devices.",
+            )}
           </span>
         </div>
 

@@ -55,9 +55,59 @@ func (p *MockProvider) Complete(_ context.Context, req Request) (Response, error
 	switch req.Task {
 	case TaskVerifyVocabulary:
 		return p.verifyVocabulary(req)
+	case TaskEnrichExamples:
+		return p.enrichExamples(req)
+	case TaskGradeWriting:
+		return p.gradeWriting(req)
 	default:
 		return Response{}, fmt.Errorf("ai: mock provider has no answer for task %q", req.Task)
 	}
+}
+
+func (p *MockProvider) gradeWriting(req Request) (Response, error) {
+	submission := strings.TrimSpace(stringVar(req.Vars, "Submission"))
+	score := 85
+	correct := true
+	feedback := "Good writing response with clear vocabulary."
+	feedbackVi := "Bài viết tốt với vốn từ vựng rõ ràng."
+	if len(strings.Fields(submission)) < 3 {
+		score = 30
+		correct = false
+		feedback = "The submission is too short to evaluate properly."
+		feedbackVi = "Bài viết quá ngắn để đánh giá chi tiết."
+	}
+	payload, err := json.Marshal(map[string]any{
+		"score":       score,
+		"correct":     correct,
+		"feedback":    feedback,
+		"feedback_vi": feedbackVi,
+	})
+	if err != nil {
+		return Response{}, fmt.Errorf("ai: encode mock writing grade: %w", err)
+	}
+	return Response{Text: string(payload), Model: MockModelName}, nil
+}
+
+func (p *MockProvider) enrichExamples(req Request) (Response, error) {
+	term := strings.TrimSpace(stringVar(req.Vars, "Term"))
+	if term == "" {
+		return Response{}, fmt.Errorf("ai: mock enrichment needs a term")
+	}
+	count := intVar(req.Vars, "Count", 5)
+	examples := make([]map[string]string, 0, count)
+	for i := 1; i <= count; i++ {
+		examples = append(examples, map[string]string{
+			"sentence":    fmt.Sprintf("Enriched example %d for %q.", i, term),
+			"sentence_vi": fmt.Sprintf("Ví dụ mở rộng %d cho %q.", i, term),
+		})
+	}
+	payload, err := json.Marshal(map[string]any{
+		"examples": examples,
+	})
+	if err != nil {
+		return Response{}, fmt.Errorf("ai: encode mock answer: %w", err)
+	}
+	return Response{Text: string(payload), Model: MockModelName}, nil
 }
 
 func (p *MockProvider) verifyVocabulary(req Request) (Response, error) {

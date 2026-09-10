@@ -262,6 +262,41 @@ func (q *Queries) ListDueCardsByDeck(ctx context.Context, arg ListDueCardsByDeck
 	return items, nil
 }
 
+const repointReviewCards = `-- name: RepointReviewCards :execrows
+UPDATE learn.review_cards AS rc SET
+    content_version_id = $1,
+    updated_at = now()
+WHERE rc.content_version_id = $2
+  AND NOT EXISTS (
+    SELECT 1 FROM learn.review_cards other
+    WHERE other.user_id = rc.user_id
+      AND other.content_version_id = $1
+  )
+`
+
+type RepointReviewCardsParams struct {
+	NewVersionID uuid.UUID
+	OldVersionID uuid.UUID
+}
+
+// RepointReviewCards moves cards pointing at an older content version to a newly
+// published one, which is how extra example sentences reach a card that was
+// scheduled against the old body.
+//
+// The NOT EXISTS guard is what keeps this from failing outright.
+// uq_review_cards_user_content is UNIQUE (user_id, content_version_id), so a
+// learner who already holds a card on the new version turns this UPDATE into a
+// constraint violation — and one such learner aborts the statement for everyone
+// else in it. Skipping them leaves the card they already have, which is the card
+// pointing at the newer content anyway.
+func (q *Queries) RepointReviewCards(ctx context.Context, arg RepointReviewCardsParams) (int64, error) {
+	result, err := q.db.Exec(ctx, repointReviewCards, arg.NewVersionID, arg.OldVersionID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const resetReviewCard = `-- name: ResetReviewCard :one
 UPDATE learn.review_cards SET
     stability = $3,

@@ -2,7 +2,7 @@
 module: writing
 tier: learning
 group: modules
-status: PLANNED
+status: IMPLEMENTED
 phase: 3
 owner: "@learning-team"
 schema: skill
@@ -10,7 +10,7 @@ tables: [writing_tasks, writing_drafts, writing_submissions, writing_feedback, w
 depends_on: [ai, job, content, learning, notification]
 depended_on_by: [learning, analytics, gamification]
 spec_version: 1.0.0
-last_verified: 2026-08-06
+last_verified: 2026-09-10
 ---
 
 # writing — AGENT.md
@@ -25,7 +25,7 @@ last_verified: 2026-08-06
 | Path | `internal/modules/writing` |
 | Schema | `skill` |
 | Delivery phase | 3 |
-| Status | **PLANNED** |
+| Status | **IMPLEMENTED** |
 | Owner | @learning-team |
 
 ---

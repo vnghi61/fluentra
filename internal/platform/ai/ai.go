@@ -39,6 +39,10 @@ const (
 	TaskVerifyVocabulary Task = "vocab_verify"
 	// TaskExplainAnswer explains why an answer is correct or incorrect with word meaning and Vietnamese.
 	TaskExplainAnswer Task = "explain_answer"
+	// TaskEnrichExamples generates additional example sentences for a known vocabulary sense.
+	TaskEnrichExamples Task = "vocab_enrich_examples"
+	// TaskGradeWriting grades a learner's written response against a prompt and rubric.
+	TaskGradeWriting Task = "writing_grade"
 )
 
 // Request is one unit of work.

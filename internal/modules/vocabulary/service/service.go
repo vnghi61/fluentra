@@ -63,6 +63,8 @@ type ReviewScheduler interface {
 	// serve it: a sense is one row shared across every learner who added the
 	// word, so the withdrawal is not one learner's decision about themselves.
 	SuspendCardsByContentVersion(ctx context.Context, contentVersionIDs []uuid.UUID) (int, error)
+	// RepointCards repoints review cards from an older content version to a newly published one.
+	RepointCards(ctx context.Context, oldVersionID, newVersionID uuid.UUID) error
 }
 
 // OutboxTx is the database transaction interface needed to write outbox events.
@@ -903,4 +905,12 @@ func (s *Service) ListLearnerWordsQueueAdmin(
 	}
 
 	return items, total, nil
+}
+
+// RepointCards asks srs to move review cards from oldVersionID to newVersionID.
+func (s *Service) RepointCards(ctx context.Context, oldVersionID, newVersionID uuid.UUID) error {
+	if s.reviews == nil {
+		return nil
+	}
+	return s.reviews.RepointCards(ctx, oldVersionID, newVersionID)
 }

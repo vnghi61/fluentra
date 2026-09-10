@@ -18,7 +18,7 @@ func (dummyGrader) Grade(_ context.Context, _ learningcontract.GradeRequest) (le
 // TestGraders_CoversAllDeclaredKinds verifies that buildGraders populates every kind
 // returned by buildDeclaredKinds.
 func TestGraders_CoversAllDeclaredKinds(t *testing.T) {
-	graders := buildGraders(dummyGrader{}, dummyGrader{})
+	graders := buildGraders(dummyGrader{}, dummyGrader{}, dummyGrader{}, dummyGrader{})
 	declared := buildDeclaredKinds()
 
 	for _, kind := range declared {
@@ -39,7 +39,7 @@ func TestStartupPanic_WhenDeclaredKindMissingFromGraders(t *testing.T) {
 
 	for _, missingKind := range declared {
 		t.Run("missing_"+missingKind, func(t *testing.T) {
-			graders := buildGraders(dummyGrader{}, dummyGrader{})
+			graders := buildGraders(dummyGrader{}, dummyGrader{}, dummyGrader{}, dummyGrader{})
 			delete(graders, missingKind)
 
 			defer func() {

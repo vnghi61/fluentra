@@ -29,11 +29,15 @@ import (
 	lessonservice "github.com/fluentra/fluentra/internal/modules/lesson/service"
 	"github.com/fluentra/fluentra/internal/modules/rbac"
 	rbaccontract "github.com/fluentra/fluentra/internal/modules/rbac/contract"
+	"github.com/fluentra/fluentra/internal/modules/reading"
+	readingcontract "github.com/fluentra/fluentra/internal/modules/reading/contract"
 	"github.com/fluentra/fluentra/internal/modules/srs"
 	srsservice "github.com/fluentra/fluentra/internal/modules/srs/service"
 	"github.com/fluentra/fluentra/internal/modules/user"
 	"github.com/fluentra/fluentra/internal/modules/vocabulary"
 	vocabularycontract "github.com/fluentra/fluentra/internal/modules/vocabulary/contract"
+	"github.com/fluentra/fluentra/internal/modules/writing"
+	writingcontract "github.com/fluentra/fluentra/internal/modules/writing/contract"
 	"github.com/fluentra/fluentra/internal/platform/ai"
 	"github.com/fluentra/fluentra/internal/platform/cache"
 	"github.com/fluentra/fluentra/internal/platform/job"
@@ -57,6 +61,8 @@ type identity struct {
 	srs        *srs.Module
 	vocabulary *vocabulary.Module
 	grammar    *grammar.Module
+	reading    *reading.Module
+	writing    *writing.Module
 	//nolint:unused // read through Routes and by the dashboard's Reader.
 	gamification *gamification.Module
 
@@ -123,6 +129,9 @@ type identityDeps struct {
 
 	// AI is the provider client for AI tasks (explanations, etc.).
 	AI ai.Client
+
+	// WorkerNudger signals a background worker to wake up after an upload is committed.
+	WorkerNudger vocabulary.WorkerNudger
 }
 
 // newIdentity constructs the modules in dependency order — audit, then rbac,
@@ -230,11 +239,12 @@ func newIdentity(deps identityDeps) *identity {
 	})
 
 	assembled.vocabulary = vocabulary.New(vocabulary.Deps{
-		Pool:     deps.Pool,
-		Guard:    lazyGuard{of: assembled},
-		Content:  assembled.content.Reader(),
-		Reviews:  assembled.srs.CardWriter(),
-		Enqueuer: deps.Enqueuer,
+		Pool:         deps.Pool,
+		Guard:        lazyGuard{of: assembled},
+		Content:      assembled.content.Reader(),
+		Reviews:      assembled.srs.CardWriter(),
+		Enqueuer:     deps.Enqueuer,
+		WorkerNudger: deps.WorkerNudger,
 		// No Dictionary and no AI here on purpose: the API stores an upload and
 		// returns, and the worker verifies it. A dictionary call on the request
 		// path would make submitting three hundred words a request that times
@@ -255,14 +265,28 @@ func newIdentity(deps identityDeps) *identity {
 		Content: assembled.content.Reader(),
 	})
 
+	assembled.reading = reading.New(reading.Deps{
+		Content: assembled.content.Reader(),
+	})
+
+	assembled.writing = writing.New(writing.Deps{
+		Content: assembled.content.Reader(),
+		AI:      deps.AI,
+	})
+
 	assembled.learning = learning.New(learning.Deps{
-		Pool:          deps.Pool,
-		Caches:        newLearningCaches(deps.Redis),
-		Guard:         lazyGuard{of: assembled},
-		Lesson:        assembled.lesson.Reader(),
-		SRSDue:        assembled.srs.QueueReader(),
-		SRSCards:      assembled.srs.CardWriter(),
-		Graders:       buildGraders(assembled.vocabulary.Grader(), assembled.grammar.Grader()),
+		Pool:     deps.Pool,
+		Caches:   newLearningCaches(deps.Redis),
+		Guard:    lazyGuard{of: assembled},
+		Lesson:   assembled.lesson.Reader(),
+		SRSDue:   assembled.srs.QueueReader(),
+		SRSCards: assembled.srs.CardWriter(),
+		Graders: buildGraders(
+			assembled.vocabulary.Grader(),
+			assembled.grammar.Grader(),
+			assembled.reading.Grader(),
+			assembled.writing.Grader(),
+		),
 		Metrics:       deps.Instruments,
 		DeclaredKinds: buildDeclaredKinds(),
 		Env:           deps.Env,
@@ -274,9 +298,15 @@ func newIdentity(deps identityDeps) *identity {
 
 // buildDeclaredKinds returns all activity kinds declared across skill modules.
 func buildDeclaredKinds() []string {
-	kinds := make([]string, 0, len(vocabularycontract.GradedKinds())+len(grammarcontract.GradedKinds()))
+	kinds := make([]string, 0,
+		len(vocabularycontract.GradedKinds())+
+			len(grammarcontract.GradedKinds())+
+			len(readingcontract.GradedKinds())+
+			len(writingcontract.GradedKinds()))
 	kinds = append(kinds, vocabularycontract.GradedKinds()...)
 	kinds = append(kinds, grammarcontract.GradedKinds()...)
+	kinds = append(kinds, readingcontract.GradedKinds()...)
+	kinds = append(kinds, writingcontract.GradedKinds()...)
 	return kinds
 }
 
@@ -284,10 +314,14 @@ func buildDeclaredKinds() []string {
 func buildGraders(
 	vocabGrader learningcontract.ExerciseGrader,
 	grammarGrader learningcontract.ExerciseGrader,
+	readingGrader learningcontract.ExerciseGrader,
+	writingGrader learningcontract.ExerciseGrader,
 ) map[string]learningcontract.ExerciseGrader {
 	return mergeGraders(
 		vocabularyGraders(vocabGrader),
 		grammarGraders(grammarGrader),
+		readingGraders(readingGrader),
+		writingGraders(writingGrader),
 	)
 }
 
@@ -303,6 +337,22 @@ func vocabularyGraders(grader learningcontract.ExerciseGrader) map[string]learni
 func grammarGraders(grader learningcontract.ExerciseGrader) map[string]learningcontract.ExerciseGrader {
 	graders := make(map[string]learningcontract.ExerciseGrader, len(grammarcontract.GradedKinds()))
 	for _, kind := range grammarcontract.GradedKinds() {
+		graders[kind] = grader
+	}
+	return graders
+}
+
+func readingGraders(grader learningcontract.ExerciseGrader) map[string]learningcontract.ExerciseGrader {
+	graders := make(map[string]learningcontract.ExerciseGrader, len(readingcontract.GradedKinds()))
+	for _, kind := range readingcontract.GradedKinds() {
+		graders[kind] = grader
+	}
+	return graders
+}
+
+func writingGraders(grader learningcontract.ExerciseGrader) map[string]learningcontract.ExerciseGrader {
+	graders := make(map[string]learningcontract.ExerciseGrader, len(writingcontract.GradedKinds()))
+	for _, kind := range writingcontract.GradedKinds() {
 		graders[kind] = grader
 	}
 	return graders

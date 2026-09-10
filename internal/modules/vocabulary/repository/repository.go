@@ -37,6 +37,9 @@ type Repository interface {
 	// because it runs in a scheduled job, and an unbounded scan is how a
 	// background job becomes an outage as the dictionary grows.
 	ListSensesForGeneration(ctx context.Context, limit int32) ([]sqlc.ListSensesForGenerationRow, error)
+	ListSensesNeedingExampleEnrichment(
+		ctx context.Context, limit int32,
+	) ([]sqlc.ListSensesNeedingExampleEnrichmentRow, error)
 
 	// Learner uploads.
 	InsertUpload(ctx context.Context, arg sqlc.InsertUploadParams) (sqlc.SkillVocabUpload, error)
@@ -230,6 +233,12 @@ func (r *pgxRepository) ListSensesForGeneration(
 	ctx context.Context, limit int32,
 ) ([]sqlc.ListSensesForGenerationRow, error) {
 	return r.q.ListSensesForGeneration(ctx, limit)
+}
+
+func (r *pgxRepository) ListSensesNeedingExampleEnrichment(
+	ctx context.Context, limit int32,
+) ([]sqlc.ListSensesNeedingExampleEnrichmentRow, error) {
+	return r.q.ListSensesNeedingExampleEnrichment(ctx, limit)
 }
 
 func (r *pgxRepository) InsertUpload(

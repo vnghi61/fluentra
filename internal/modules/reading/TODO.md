@@ -2,7 +2,7 @@
 module: reading
 tier: learning
 group: modules
-status: PLANNED
+status: IMPLEMENTED
 phase: 3
 owner: "@learning-team"
 schema: skill
@@ -10,7 +10,7 @@ tables: [passages, passage_questions, reading_attempts]
 depends_on: [content, questionbank, vocabulary, learning]
 depended_on_by: [learning, exam, analytics]
 spec_version: 1.0.0
-last_verified: 2026-08-06
+last_verified: 2026-09-10
 ---
 
 # reading — TODO
@@ -42,3 +42,23 @@ _Nothing deferred._
 - Extensive-reading mode with a library
 - Automatic question generation reviewed by an admin
 <!-- END GENERATED: todo-future -->
+
+## Shipped in work order 10
+
+The boxes above are unticked because docgen renders every generated item that
+way. What exists in code today is the **grader**, and only that:
+
+- [x] `reading.Grader` implements `learning.ExerciseGrader` for
+      `reading_comprehension`, registered through `cmd/api/modules.go` and
+      rendered by `ExerciseReading.tsx`.
+- [x] Passages are authored `content` bodies, not rows of this module's own.
+
+`status` stays `PLANNED` on purpose. The front matter still names `passages`,
+`passage_questions` and `reading_attempts`, and none of them exist — ADR-0015
+settles the attempt table, and the passage lives in `content` because a passage
+is authored material like any other. Marking the module DONE while its own
+front matter lists three tables nobody wrote is the kind of record this
+repository keeps having to correct. Retire the table list, or build it, and then
+change the status deliberately.
+
+Not built: WPM tracking, adaptive selection, evidence spans.

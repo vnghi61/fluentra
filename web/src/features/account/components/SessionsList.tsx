@@ -15,7 +15,9 @@ interface SessionsListProps {
   onLoggedOut?: (() => void) | undefined;
 }
 
-export const SessionsList: React.FC<SessionsListProps> = ({ onLoggedOut }) => {
+export const SessionsList: React.FC<SessionsListProps> = ({
+  onLoggedOut: _onLoggedOut,
+}) => {
   const { t } = useTranslation();
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -53,12 +55,7 @@ export const SessionsList: React.FC<SessionsListProps> = ({ onLoggedOut }) => {
   }, [t]);
 
   const handleRevoke = async (session: SessionSummary) => {
-    if (
-      session.current &&
-      !confirm(
-        "Revoking your current session will sign you out immediately. Proceed?",
-      )
-    ) {
+    if (session.current) {
       return;
     }
 
@@ -67,11 +64,7 @@ export const SessionsList: React.FC<SessionsListProps> = ({ onLoggedOut }) => {
 
     try {
       await accountApi.revokeSession(session.id);
-      if (session.current) {
-        onLoggedOut?.();
-      } else {
-        setSessions((prev) => prev.filter((s) => s.id !== session.id));
-      }
+      setSessions((prev) => prev.filter((s) => s.id !== session.id));
     } catch (err: unknown) {
       setError(
         err instanceof Error
@@ -91,8 +84,10 @@ export const SessionsList: React.FC<SessionsListProps> = ({ onLoggedOut }) => {
           {t("account.activeSessions", "Active Sessions")}
         </h3>
         <p className="text-xs text-text-muted">
-          Where you are currently signed in. You can revoke any session to sign
-          it out.
+          {t(
+            "account.activeSessionsDesc",
+            "Where you are currently signed in. You can revoke any session to sign it out.",
+          )}
         </p>
       </div>
 
@@ -146,11 +141,11 @@ export const SessionsList: React.FC<SessionsListProps> = ({ onLoggedOut }) => {
                     </div>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-muted mt-0.5">
                       <span>
-                        Signed in:{" "}
+                        {t("account.signedIn", "Signed in")}:{" "}
                         {new Date(session.created_at).toLocaleDateString()}
                       </span>
                       <span>
-                        Last active:{" "}
+                        {t("account.lastActive", "Last active")}:{" "}
                         {new Date(session.last_seen_at).toLocaleTimeString([], {
                           hour: "2-digit",
                           minute: "2-digit",
@@ -160,25 +155,27 @@ export const SessionsList: React.FC<SessionsListProps> = ({ onLoggedOut }) => {
                   </div>
                 </div>
 
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    void handleRevoke(session);
-                  }}
-                  disabled={revokingId === session.id}
-                  className="text-text-muted hover:text-danger-accent hover:bg-danger/10"
-                >
-                  {revokingId === session.id ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <>
-                      <LogOut className="mr-1.5 h-3.5 w-3.5" />
-                      {t("account.revoke", "Revoke")}
-                    </>
-                  )}
-                </Button>
+                {!session.current && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      void handleRevoke(session);
+                    }}
+                    disabled={revokingId === session.id}
+                    className="text-text-muted hover:text-danger-accent hover:bg-danger/10"
+                  >
+                    {revokingId === session.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                        <LogOut className="mr-1.5 h-3.5 w-3.5" />
+                        {t("account.revoke", "Revoke")}
+                      </>
+                    )}
+                  </Button>
+                )}
               </div>
             );
           })}
