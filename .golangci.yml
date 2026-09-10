@@ -37,6 +37,23 @@ linters:
       - path: cmd/seed/content_data\.go
         linters:
           - goconst
+          # A reading passage is a paragraph. Breaking one across concatenated
+          # string literals to satisfy a line-length rule written for code makes
+          # the curriculum harder to read and to edit, which is the opposite of
+          # what the rule is for.
+          - lll
+          # G101 matches identifiers against a credential pattern that includes
+          # `pass`, and `cfgPassage` contains it. Every hit in this file is a
+          # reading passage; there is no secret in authored curriculum.
+          - gosec
+
+      # The skill graders are tested against prose: a passage to comprehend and
+      # a paragraph a learner wrote. Same argument as the seed above, and the
+      # same two rules — the fixtures are the thing under test, not code around it.
+      - path: internal/modules/(reading|writing)/service/grader_test\.go
+        linters:
+          - lll
+          - gosec
 
 formatters:
   enable:

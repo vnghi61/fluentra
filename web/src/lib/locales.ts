@@ -253,6 +253,93 @@ export function countryOptions(locale: string): CountryOption[] {
  * carries the learner's current zone so their own setting is never absent from
  * the list of things they may choose.
  */
+export interface TimezoneInfo {
+  id: string;
+  label: string;
+  offset: string;
+  searchTerms: string;
+}
+
+const TIMEZONE_ALIASES: Record<string, string[]> = {
+  "Asia/Ho_Chi_Minh": ["Hanoi", "Ha Noi", "Saigon", "Vietnam", "Việt Nam"],
+  "Asia/Bangkok": ["Bangkok", "Thailand"],
+  "Asia/Tokyo": ["Tokyo", "Japan"],
+  "Asia/Seoul": ["Seoul", "Korea", "South Korea"],
+  "Asia/Singapore": ["Singapore"],
+  "Asia/Jakarta": ["Jakarta", "Indonesia"],
+  "Asia/Manila": ["Manila", "Philippines"],
+  "Asia/Kolkata": ["Kolkata", "Calcutta", "Delhi", "Mumbai", "India"],
+  "Asia/Dubai": ["Dubai", "UAE", "United Arab Emirates"],
+  "Asia/Shanghai": ["Shanghai", "Beijing", "China"],
+  "Asia/Hong_Kong": ["Hong Kong"],
+  "Asia/Taipei": ["Taipei", "Taiwan"],
+  "Europe/London": ["London", "United Kingdom", "UK", "Britain", "England"],
+  "Europe/Paris": ["Paris", "France"],
+  "Europe/Berlin": ["Berlin", "Germany"],
+  "Europe/Rome": ["Rome", "Italy"],
+  "Europe/Madrid": ["Madrid", "Spain"],
+  "Europe/Moscow": ["Moscow", "Russia"],
+  "America/New_York": ["New York", "NYC", "United States", "USA", "US"],
+  "America/Chicago": ["Chicago", "United States", "USA", "US"],
+  "America/Denver": ["Denver", "United States", "USA", "US"],
+  "America/Los_Angeles": [
+    "Los Angeles",
+    "LA",
+    "San Francisco",
+    "United States",
+    "USA",
+    "US",
+  ],
+  "America/Toronto": ["Toronto", "Canada"],
+  "America/Vancouver": ["Vancouver", "Canada"],
+  "America/Sao_Paulo": ["Sao Paulo", "Brazil"],
+  "Australia/Sydney": ["Sydney", "Australia"],
+  "Australia/Melbourne": ["Melbourne", "Australia"],
+  "Pacific/Auckland": ["Auckland", "New Zealand"],
+  "Africa/Cairo": ["Cairo", "Egypt"],
+  "Africa/Johannesburg": ["Johannesburg", "South Africa"],
+  UTC: ["UTC", "GMT", "Universal"],
+};
+
+export function getTimezoneOffset(timeZone: string): string {
+  try {
+    const now = new Date();
+    const utcDate = new Date(now.toLocaleString("en-US", { timeZone: "UTC" }));
+    const tzDate = new Date(now.toLocaleString("en-US", { timeZone }));
+    const diffMin = Math.round((tzDate.getTime() - utcDate.getTime()) / 60000);
+    const sign = diffMin >= 0 ? "+" : "-";
+    const absMin = Math.abs(diffMin);
+    const hours = Math.floor(absMin / 60);
+    const mins = absMin % 60;
+    return mins === 0
+      ? `UTC${sign}${hours}`
+      : `UTC${sign}${hours}:${mins.toString().padStart(2, "0")}`;
+  } catch {
+    return "UTC";
+  }
+}
+
+export function getTimezoneInfo(zone: string): TimezoneInfo {
+  const normZone = zone === "Asia/Saigon" ? "Asia/Ho_Chi_Minh" : zone;
+  const offset = getTimezoneOffset(normZone);
+  const city = normZone.split("/").pop()?.replace(/_/g, " ") ?? normZone;
+  const aliases = TIMEZONE_ALIASES[normZone] || [];
+  const searchTerms = [
+    normZone.toLowerCase(),
+    city.toLowerCase(),
+    offset.toLowerCase(),
+    offset.replace("UTC", "").toLowerCase(),
+    ...aliases.map((a) => a.toLowerCase()),
+  ].join(" ");
+
+  return {
+    id: normZone,
+    label: `${normZone.replace(/_/g, " ")} (${offset})`,
+    offset,
+    searchTerms,
+  };
+}
+
 export function timezoneOptions(current?: string): string[] {
   let zones: string[] = [];
   try {
@@ -291,8 +378,21 @@ export function timezoneOptions(current?: string): string[] {
     ];
   }
 
-  if (current !== undefined && current !== "" && !zones.includes(current)) {
-    zones = [current, ...zones];
+  // Normalise Asia/Saigon to Asia/Ho_Chi_Minh and ensure Asia/Ho_Chi_Minh is present
+  // and deduplicated.
+  zones = zones.map((z) => (z === "Asia/Saigon" ? "Asia/Ho_Chi_Minh" : z));
+  if (!zones.includes("Asia/Ho_Chi_Minh")) {
+    zones.unshift("Asia/Ho_Chi_Minh");
+  }
+  zones = Array.from(new Set(zones));
+
+  const normCurrent = current === "Asia/Saigon" ? "Asia/Ho_Chi_Minh" : current;
+  if (
+    normCurrent !== undefined &&
+    normCurrent !== "" &&
+    !zones.includes(normCurrent)
+  ) {
+    zones = [normCurrent, ...zones];
   }
   return zones;
 }

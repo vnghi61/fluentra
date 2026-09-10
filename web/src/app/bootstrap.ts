@@ -26,7 +26,11 @@ const REFRESH_PAINT_BUDGET_MS = 2_500;
  * blank one.
  */
 export async function initApp(): Promise<void> {
-  initI18n();
+  // Started, not awaited yet: the locale bundle is a fetch now that only one
+  // language ships per visit, and the host wake-up and the session refresh
+  // below have no reason to queue behind it. It is awaited before this returns,
+  // and this returns before the first render, so nothing paints untranslated.
+  const translations = initI18n();
   initAuthInterceptor();
 
   // Not awaited. The point is to start the host booting now, while i18n and the
@@ -52,6 +56,8 @@ export async function initApp(): Promise<void> {
       useAuthStore.getState().clearAuth();
     }
   });
+
+  await translations;
 
   await Promise.race([
     refreshed,

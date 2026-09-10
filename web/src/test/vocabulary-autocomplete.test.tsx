@@ -27,7 +27,7 @@ function renderAutocomplete(
 
 describe("WordAutocomplete Component (WP13)", () => {
   beforeEach(async () => {
-    initI18n("en");
+    await initI18n("en");
     await i18n.changeLanguage("en");
   });
 

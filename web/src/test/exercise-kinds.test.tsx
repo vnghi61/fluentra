@@ -7,7 +7,9 @@ import {
   ExerciseFeedback,
   ExerciseListenType,
   ExerciseMatch,
+  ExerciseReading,
   ExerciseReorder,
+  ExerciseWriting,
 } from "@/features/learning";
 
 /**
@@ -277,5 +279,150 @@ describe("ExerciseFeedback with Answer Explanation", () => {
 
     expect(screen.queryByText("EN")).not.toBeInTheDocument();
     expect(screen.queryByText("VI")).not.toBeInTheDocument();
+  });
+});
+
+describe("ExerciseReading", () => {
+  const options = [
+    {
+      id: "opt_film_focus",
+      text: "It demands patience and careful observation.",
+    },
+    { id: "opt_film_faster", text: "It is much faster than digital." },
+  ];
+  const props = {
+    passageTitle: "A Passion for Photography",
+    passage:
+      "Liam loves using his vintage film camera. It forces him to slow down.",
+    prompt: "Why does Liam prefer film?",
+    options,
+    isSubmitted: false,
+    onSubmit: noop,
+    onContinue: noop,
+  };
+
+  it("renders the passage title, passage body, prompt and options", () => {
+    render(<ExerciseReading {...props} />);
+
+    expect(screen.getByText("A Passion for Photography")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Liam loves using his vintage film camera/),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Why does Liam prefer film?")).toBeInTheDocument();
+    expect(
+      screen.getByText("It demands patience and careful observation."),
+    ).toBeInTheDocument();
+  });
+
+  it("submits the selected option id", async () => {
+    const onSubmit = vi.fn();
+    render(<ExerciseReading {...props} onSubmit={onSubmit} />);
+
+    await userEvent.click(
+      screen.getByRole("radio", { name: /demands patience/i }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: /check/i }));
+
+    expect(onSubmit).toHaveBeenCalledWith("opt_film_focus");
+  });
+
+  it("renders feedback and explanation when submitted", () => {
+    render(
+      <ExerciseReading
+        {...props}
+        isSubmitted
+        isCorrect
+        correctOptionId="opt_film_focus"
+        feedback="Excellent comprehension!"
+        explanation={{
+          text: "Film forces the photographer to observe lighting and composition.",
+          text_vi: "Phim buộc nhiếp ảnh gia quan sát ánh sáng và bố cục.",
+        }}
+      />,
+    );
+
+    expect(screen.getByText("Excellent comprehension!")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Film forces the photographer to observe lighting and composition.",
+      ),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("ExerciseWriting", () => {
+  const props = {
+    prompt: "Describe your favorite weekend hobby.",
+    rubric: "Write at least 10 words about what you enjoy.",
+    minWords: 10,
+    sampleAnswer:
+      "On weekends I enjoy cycling along the quiet countryside roads.",
+    isSubmitted: false,
+    onSubmit: noop,
+    onContinue: noop,
+  };
+
+  it("renders prompt, rubric, and word count indicator", () => {
+    render(<ExerciseWriting {...props} />);
+
+    expect(
+      screen.getByRole("heading", {
+        name: /Describe your favorite weekend hobby/i,
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Write at least 10 words/)).toBeInTheDocument();
+    expect(screen.getByText(/0 \/ 10 words minimum/)).toBeInTheDocument();
+  });
+
+  it("disables check button when textarea is empty", () => {
+    render(<ExerciseWriting {...props} />);
+    const check = screen.getByRole("button", { name: /check/i });
+    expect(check).toBeDisabled();
+  });
+
+  it("updates word count and submits typed text", async () => {
+    const onSubmit = vi.fn();
+    render(<ExerciseWriting {...props} onSubmit={onSubmit} />);
+
+    const textarea = screen.getByRole("textbox");
+    await userEvent.type(
+      textarea,
+      "I love reading classic novels because they transport me to different eras.",
+    );
+
+    expect(screen.getByText(/12 \/ 10 words minimum/)).toBeInTheDocument();
+
+    const check = screen.getByRole("button", { name: /check/i });
+    expect(check).not.toBeDisabled();
+    await userEvent.click(check);
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      "I love reading classic novels because they transport me to different eras.",
+    );
+  });
+
+  it("renders feedback, score, and explanation when submitted", () => {
+    render(
+      <ExerciseWriting
+        {...props}
+        isSubmitted
+        isCorrect
+        score={85}
+        feedback="Great descriptive language and sentence variety!"
+        explanation={{
+          text: "Clear description with sufficient details and correct grammar.",
+          text_vi: "Mô tả rõ ràng với đầy đủ chi tiết và ngữ pháp chính xác.",
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByText("Great descriptive language and sentence variety!"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Clear description with sufficient details and correct grammar.",
+      ),
+    ).toBeInTheDocument();
   });
 });

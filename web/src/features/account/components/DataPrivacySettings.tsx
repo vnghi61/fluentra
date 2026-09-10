@@ -176,11 +176,16 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
         <div className="space-y-1">
           <h3 className="text-base font-semibold text-text flex items-center gap-2">
             <FileArchive className="h-5 w-5 text-primary-accent" />
-            Export Your Personal Data (GDPR Article 20)
+            {t(
+              "account.exportPersonalData",
+              "Export Your Personal Data (GDPR Article 20)",
+            )}
           </h3>
           <p className="text-xs text-text-muted leading-relaxed max-w-2xl">
-            You have the right to receive a copy of all personal data, study
-            history, and vocabulary progress in a machine-readable ZIP format.
+            {t(
+              "account.exportPersonalDataDesc",
+              "You have the right to receive a copy of all personal data, study history, and vocabulary progress in a machine-readable ZIP format.",
+            )}
           </p>
         </div>
 
@@ -194,7 +199,7 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
             </p>
             <p className="text-xs text-text-muted">
               {exportState
-                ? `Export status: ${exportState.status}`
+                ? `${t("account.exportStatus", "Export status")}: ${exportState.status}`
                 : t(
                     "account.includesAccountDetailsPreferencesStudy",
                     "Includes account details, preferences, study logs, and exercise records",
@@ -231,11 +236,16 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
         <div className="space-y-1">
           <h3 className="text-base font-semibold text-danger-accent flex items-center gap-2">
             <Trash2 className="h-5 w-5" />
-            Delete Account (GDPR Article 17)
+            {t(
+              "account.deleteAccountTitle",
+              "Delete Account (GDPR Article 17)",
+            )}
           </h3>
           <p className="text-xs text-text-muted leading-relaxed max-w-2xl">
-            Permanently erase your account, login credentials, learning stats,
-            and personal data.
+            {t(
+              "account.deleteAccountDesc",
+              "Permanently erase your account, login credentials, learning stats, and personal data.",
+            )}
           </p>
         </div>
 
@@ -258,7 +268,7 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
                 </p>
                 {deletionState?.execute_at && (
                   <p className="text-xs font-semibold text-warning-accent pt-1">
-                    Scheduled execution:{" "}
+                    {t("account.scheduledExecution", "Scheduled execution")}:{" "}
                     {new Date(deletionState.execute_at).toLocaleString()}
                   </p>
                 )}
@@ -303,8 +313,10 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
                 )}
               </p>
               <p className="text-xs text-text-muted">
-                Begins a 30-day grace period during which you can cancel if you
-                change your mind.
+                {t(
+                  "account.initiateAccountErasureDesc",
+                  "Begins a 30-day grace period during which you can cancel if you change your mind.",
+                )}
               </p>
             </div>
 
@@ -337,21 +349,29 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
 
             <div className="space-y-3 text-xs text-text-muted leading-relaxed">
               <p>
-                Requesting deletion will immediately schedule your account and
-                all associated data for permanent erasure across all system
-                modules.
+                {t(
+                  "account.deletionModalNotice",
+                  "Requesting deletion will immediately schedule your account and all associated data for permanent erasure across all system modules.",
+                )}
               </p>
               <ul className="list-disc pl-4 space-y-1 text-text-muted">
                 <li>
-                  A <strong>30-day grace period</strong> begins immediately.
+                  {t(
+                    "account.deletionGracePeriodNotice",
+                    "A 30-day grace period begins immediately.",
+                  )}
                 </li>
                 <li>
-                  All other active sessions and trusted devices will be signed
-                  out.
+                  {t(
+                    "account.deletionSessionsNotice",
+                    "All other active sessions and trusted devices will be signed out.",
+                  )}
                 </li>
                 <li>
-                  You can cancel the deletion and restore your account at any
-                  time before the grace period ends.
+                  {t(
+                    "account.deletionCancelNotice",
+                    "You can cancel the deletion and restore your account at any time before the grace period ends.",
+                  )}
                 </li>
               </ul>
             </div>
@@ -361,9 +381,7 @@ export const DataPrivacySettings: React.FC<DataPrivacySettingsProps> = ({
                 htmlFor="confirm-delete"
                 className="text-xs text-text-muted"
               >
-                {t("account.type", "Type")}
-                <strong className="text-danger-accent">DELETE</strong> to
-                confirm:
+                {t("account.typeDeleteToConfirm", "Type DELETE to confirm:")}
               </Label>
               <Input
                 id="confirm-delete"

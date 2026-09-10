@@ -1,13 +1,17 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Camera,
+  Check,
   CheckCircle2,
+  ChevronDown,
+  Clock,
   Globe,
   Loader2,
   Mail,
+  Search,
   User,
   AlertCircle,
 } from "lucide-react";
@@ -17,7 +21,12 @@ import { AvatarUploadModal } from "./AvatarUploadModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { countryOptions, timezoneOptions } from "@/lib/locales";
+import {
+  countryOptions,
+  timezoneOptions,
+  getTimezoneInfo,
+  type TimezoneInfo,
+} from "@/lib/locales";
 
 interface ProfileSettingsProps {
   initialProfile: UserProfile;
@@ -44,9 +53,13 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
     [i18n.language],
   );
   const timezones = useMemo(
-    () => timezoneOptions(profile.profile.timezone),
+    () => timezoneOptions(profile.profile.timezone).map(getTimezoneInfo),
     [profile.profile.timezone],
   );
+  const [isTzOpen, setIsTzOpen] = useState(false);
+  const [tzSearch, setTzSearch] = useState("");
+  const tzComboboxRef = useRef<HTMLDivElement>(null);
+
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{
@@ -57,6 +70,8 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
   const {
     register,
     handleSubmit,
+    setValue,
+    watch,
     formState: { errors, isDirty },
     reset,
   } = useForm<ProfileFormValues>({
@@ -71,6 +86,42 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
       date_of_birth: profile.profile.date_of_birth || "",
     },
   });
+
+  const selectedTz = watch("timezone");
+  const selectedTzInfo = useMemo<TimezoneInfo>(
+    () =>
+      timezones.find((tz) => tz.id === selectedTz) ??
+      getTimezoneInfo(selectedTz || "UTC"),
+    [timezones, selectedTz],
+  );
+
+  const filteredTimezones = useMemo(() => {
+    const q = tzSearch.trim().toLowerCase();
+    if (!q) return timezones;
+    return timezones.filter((tz) => tz.searchTerms.includes(q));
+  }, [timezones, tzSearch]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        tzComboboxRef.current &&
+        !tzComboboxRef.current.contains(event.target as Node)
+      ) {
+        setIsTzOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsTzOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
 
   const onSubmit = async (values: ProfileFormValues) => {
     setIsSaving(true);
@@ -175,7 +226,10 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
             {profile.profile.display_name}
           </h3>
           <p className="text-xs text-text-muted">
-            Upload a custom avatar. PNG, JPG or WebP up to 5 MB.
+            {t(
+              "account.uploadCustomAvatar",
+              "Upload a custom avatar. PNG, JPG or WebP up to 5 MB.",
+            )}
           </p>
           <Button
             type="button"
@@ -285,24 +339,98 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
             )}
           </div>
 
-          {/* Timezone */}
-          <div className="space-y-2">
-            <Label htmlFor="timezone">{t("account.timezone")}</Label>
-            {/* Every zone here is one this browser can resolve, so a learner
-                cannot store a name that makes their own review schedule land on
-                the wrong local day. */}
-            <select
-              id="timezone"
-              {...register("timezone")}
-              aria-invalid={!!errors.timezone}
-              className={SELECT_CLASS}
-            >
-              {timezones.map((zone) => (
-                <option key={zone} value={zone}>
-                  {zone.replace(/_/g, " ")}
-                </option>
-              ))}
-            </select>
+          {/* Timezone Combobox */}
+          <div className="space-y-2" ref={tzComboboxRef}>
+            <Label htmlFor="timezone" className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-text-muted" />
+              {t("account.timezone")}
+            </Label>
+            <input type="hidden" {...register("timezone")} />
+            <div className="relative">
+              <button
+                id="timezone"
+                type="button"
+                role="combobox"
+                aria-haspopup="listbox"
+                aria-expanded={isTzOpen}
+                aria-controls="timezone-listbox"
+                onClick={() => {
+                  setIsTzOpen((prev) => !prev);
+                  setTzSearch("");
+                }}
+                className={
+                  "flex h-11 min-h-[44px] w-full items-center justify-between rounded-lg border border-border-subtle " +
+                  "bg-surface-card px-3 text-base text-text focus:outline-none " +
+                  "focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
+                }
+              >
+                <span className="truncate">{selectedTzInfo.label}</span>
+                <ChevronDown className="h-4 w-4 text-text-muted shrink-0 ml-2" />
+              </button>
+
+              {isTzOpen && (
+                <div className="absolute z-50 mt-1 max-h-64 w-full overflow-hidden rounded-lg border border-border-subtle bg-surface-card shadow-xl flex flex-col">
+                  <div className="p-2 border-b border-border-subtle bg-surface-card">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+                      <input
+                        type="text"
+                        value={tzSearch}
+                        onChange={(e) => setTzSearch(e.target.value)}
+                        placeholder={t(
+                          "account.searchTimezone",
+                          "Search timezone, city, country, or UTC offset...",
+                        )}
+                        aria-label={t(
+                          "account.searchTimezone",
+                          "Search timezone",
+                        )}
+                        className="w-full pl-9 pr-3 py-2 text-base rounded-md border border-border-subtle bg-surface-muted text-text focus:outline-none focus:ring-2 focus:ring-primary min-h-[44px]"
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+                  <ul
+                    id="timezone-listbox"
+                    role="listbox"
+                    className="overflow-y-auto max-h-48 p-1 divide-y divide-border-subtle/20"
+                  >
+                    {filteredTimezones.length === 0 ? (
+                      <li className="p-3 text-sm text-text-muted text-center">
+                        {t("account.noTimezonesFound", "No timezones found")}
+                      </li>
+                    ) : (
+                      filteredTimezones.map((tz) => (
+                        <li
+                          key={tz.id}
+                          role="option"
+                          aria-selected={tz.id === selectedTz}
+                          onClick={() => {
+                            setValue("timezone", tz.id, {
+                              shouldDirty: true,
+                              shouldValidate: true,
+                            });
+                            setIsTzOpen(false);
+                            setTzSearch("");
+                          }}
+                          className={
+                            "flex items-center justify-between px-3 py-2.5 min-h-[44px] text-base rounded-md cursor-pointer transition-colors hover:bg-surface-muted " +
+                            (tz.id === selectedTz
+                              ? "bg-primary/10 text-primary-accent font-medium"
+                              : "text-text")
+                          }
+                        >
+                          <span className="truncate">{tz.label}</span>
+                          {tz.id === selectedTz && (
+                            <Check className="h-4 w-4 text-primary-accent shrink-0 ml-2" />
+                          )}
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                </div>
+              )}
+            </div>
             {errors.timezone && (
               <p className="text-xs text-danger-accent">
                 {errors.timezone.message}

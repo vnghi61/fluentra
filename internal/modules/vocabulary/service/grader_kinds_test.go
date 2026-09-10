@@ -38,6 +38,8 @@ const (
 
 	wordHabit   = "habit"
 	wordLeisure = "leisure"
+	// The definition the enrichment fixtures give that word.
+	defLeisure  = "free time"
 	wordJourney = "journey"
 
 	achieveSentence = "She worked hard to achieve her dream."

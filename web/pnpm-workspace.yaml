@@ -18,11 +18,19 @@ allowBuilds:
 # are patch-level bumps within the range the parent already asks for, so this
 # raises the floor rather than changing anybody's major:
 #
-#   js-yaml  <4.3.1   quadratic CPU on !!omap  (via openapi-typescript)
+#   js-yaml  <4.3.2   maxTotalMergeKeys does not bound CPU  (via eslint)
 #   nanoid   <3.3.18  custom generators can loop  (via vite -> postcss)
+#
+# Both replacements are bounded below the next major, and that bound is the
+# whole point rather than tidiness. An open `'>=4.3.2'` resolves to whatever is
+# newest, so raising the js-yaml floor pulled in 5.4.1 — a major the parent
+# never asked for — and `@redocly/openapi-core` crashed on require, failing
+# codegen rather than anything that looks like a dependency problem. nanoid was
+# already three majors past the `^3.3.17` postcss declares, and worked only
+# because `nanoid/non-secure` happens to have stayed CommonJS.
 #
 # Remove an entry once the parent ships a release that no longer resolves below
 # the floor; `pnpm audit` is what says whether it is still needed.
 overrides:
-  js-yaml@>=4.0.0 <4.3.1: '>=4.3.1'
-  nanoid@<3.3.18: '>=3.3.18'
+  js-yaml@>=4.0.0 <4.3.2: '>=4.3.2 <5'
+  nanoid@<3.3.18: '>=3.3.18 <4'

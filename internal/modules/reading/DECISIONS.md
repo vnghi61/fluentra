@@ -2,7 +2,7 @@
 module: reading
 tier: learning
 group: modules
-status: PLANNED
+status: IMPLEMENTED
 phase: 3
 owner: "@learning-team"
 schema: skill
@@ -10,7 +10,7 @@ tables: [passages, passage_questions, reading_attempts]
 depends_on: [content, questionbank, vocabulary, learning]
 depended_on_by: [learning, exam, analytics]
 spec_version: 1.0.0
-last_verified: 2026-08-06
+last_verified: 2026-09-10
 ---
 
 # reading — Decisions

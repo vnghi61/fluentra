@@ -265,6 +265,31 @@ func (f *fakeRepo) SuspendReviewCardsByContentVersion(
 	return touched, nil
 }
 
+func (f *fakeRepo) RepointReviewCards(
+	_ context.Context, oldVersionID, newVersionID uuid.UUID,
+) (int64, error) {
+	// Mirrors the NOT EXISTS guard in the query. uq_review_cards_user_content is
+	// UNIQUE (user_id, content_version_id), so a learner already holding a card on
+	// the new version is skipped rather than moved onto a duplicate — a fake that
+	// moved them anyway would agree with itself and disagree with Postgres.
+	held := make(map[uuid.UUID]bool)
+	for _, card := range f.cards {
+		if card.ContentVersionID == newVersionID {
+			held[card.UserID] = true
+		}
+	}
+	var moved int64
+	for id, card := range f.cards {
+		if card.ContentVersionID != oldVersionID || held[card.UserID] {
+			continue
+		}
+		card.ContentVersionID = newVersionID
+		f.cards[id] = card
+		moved++
+	}
+	return moved, nil
+}
+
 func (f *fakeRepo) ResetReviewCard(_ context.Context, arg sqlc.ResetReviewCardParams) (sqlc.LearnReviewCard, error) {
 	card, ok := f.cards[arg.ID]
 	if !ok || card.UserID != arg.UserID {
@@ -894,4 +919,66 @@ func TestSRS_DueCardsSurviveAContentOutage(t *testing.T) {
 	require.NoError(t, err, "a content outage must not fail the review session")
 	require.Len(t, cards, 1)
 	assert.Nil(t, cards[0].Content)
+}
+
+func TestSRS_RepointCards(t *testing.T) {
+	now := time.Date(2026, 8, 25, 10, 0, 0, 0, time.UTC)
+	userID := uuid.New()
+	oldVersionID, newVersionID := uuid.New(), uuid.New()
+
+	repo := newFakeRepo()
+	seedDueCard(t, repo, userID, oldVersionID, now.Add(-time.Hour))
+
+	svc := service.New(service.Deps{Repo: repo, Clock: clock.NewFake(now)})
+
+	err := svc.RepointCards(context.Background(), oldVersionID, newVersionID)
+	require.NoError(t, err)
+
+	for _, card := range repo.cards {
+		assert.Equal(t, newVersionID, card.ContentVersionID)
+	}
+}
+
+// TestSRS_RepointCards_SkipsALearnerWhoAlreadyHoldsTheNewVersion.
+//
+// uq_review_cards_user_content is UNIQUE (user_id, content_version_id). A
+// learner with a card on the old version *and* one on the new turns the repoint
+// into a constraint violation, and one such learner aborts the statement for
+// every other learner in it — the whole word stops receiving new sentences
+// because of one row.
+//
+// This is reachable in the ordinary way: a card is written on whatever version
+// was current when the word was materialised, and materialising the same word
+// for a second learner republishes it. The card they already hold is the one
+// pointing at the newer content, so skipping them loses nothing.
+func TestSRS_RepointCards_SkipsALearnerWhoAlreadyHoldsTheNewVersion(t *testing.T) {
+	now := time.Date(2026, 8, 25, 10, 0, 0, 0, time.UTC)
+	stuck, moving := uuid.New(), uuid.New()
+	oldVersionID, newVersionID := uuid.New(), uuid.New()
+
+	repo := newFakeRepo()
+	// One learner on both versions, one learner only on the old.
+	seedDueCard(t, repo, stuck, oldVersionID, now.Add(-time.Hour))
+	seedDueCard(t, repo, stuck, newVersionID, now.Add(-time.Hour))
+	seedDueCard(t, repo, moving, oldVersionID, now.Add(-time.Hour))
+
+	svc := service.New(service.Deps{Repo: repo, Clock: clock.NewFake(now)})
+
+	require.NoError(t, svc.RepointCards(context.Background(), oldVersionID, newVersionID))
+
+	var stuckOnOld, stuckOnNew, movingOnNew int
+	for _, card := range repo.cards {
+		switch {
+		case card.UserID == stuck && card.ContentVersionID == oldVersionID:
+			stuckOnOld++
+		case card.UserID == stuck && card.ContentVersionID == newVersionID:
+			stuckOnNew++
+		case card.UserID == moving && card.ContentVersionID == newVersionID:
+			movingOnNew++
+		}
+	}
+
+	assert.Equal(t, 1, movingOnNew, "the learner with only an old card must be moved")
+	assert.Equal(t, 1, stuckOnNew, "the learner must keep the one card they had on the new version")
+	assert.Equal(t, 1, stuckOnOld, "and must not be moved onto a duplicate")
 }

@@ -37,6 +37,7 @@ type Repository interface {
 	SuspendReviewCardsByContentVersion(
 		ctx context.Context, contentVersionIDs []uuid.UUID,
 	) ([]uuid.UUID, error)
+	RepointReviewCards(ctx context.Context, oldVersionID, newVersionID uuid.UUID) (int64, error)
 	InsertReviewLog(ctx context.Context, arg sqlc.InsertReviewLogParams) (sqlc.LearnReviewLog, error)
 	ListReviewLogsByCard(
 		ctx context.Context, cardID, userID uuid.UUID, limit int32,
@@ -158,6 +159,15 @@ func (r *pgxRepository) SuspendReviewCardsByContentVersion(
 	ctx context.Context, contentVersionIDs []uuid.UUID,
 ) ([]uuid.UUID, error) {
 	return r.q.SuspendReviewCardsByContentVersion(ctx, contentVersionIDs)
+}
+
+func (r *pgxRepository) RepointReviewCards(
+	ctx context.Context, oldVersionID, newVersionID uuid.UUID,
+) (int64, error) {
+	return r.q.RepointReviewCards(ctx, sqlc.RepointReviewCardsParams{
+		NewVersionID: newVersionID,
+		OldVersionID: oldVersionID,
+	})
 }
 
 func (r *pgxRepository) ResetReviewCard(

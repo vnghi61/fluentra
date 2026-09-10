@@ -2,7 +2,7 @@
 module: writing
 tier: learning
 group: modules
-status: PLANNED
+status: IMPLEMENTED
 phase: 3
 owner: "@learning-team"
 schema: skill
@@ -10,7 +10,7 @@ tables: [writing_tasks, writing_drafts, writing_submissions, writing_feedback, w
 depends_on: [ai, job, content, learning, notification]
 depended_on_by: [learning, analytics, gamification]
 spec_version: 1.0.0
-last_verified: 2026-08-06
+last_verified: 2026-09-10
 ---
 
 # writing — TODO
@@ -46,3 +46,19 @@ _Nothing deferred._
 - Guided revision with tracked improvement
 - Peer review
 <!-- END GENERATED: todo-future -->
+
+## Shipped in work order 10
+
+The boxes above are unticked because docgen renders every generated item that
+way. What exists in code today is the **grader**, and only that:
+
+- [x] `writing.Grader` implements `learning.ExerciseGrader` for
+      `writing_prompt`, registered through `cmd/api/modules.go` and rendered by
+      `ExerciseWriting.tsx`.
+- [x] `writing_grade.v1.md` is the versioned prompt behind it.
+
+`status` stays `PLANNED` on purpose. The front matter names five tables —
+`writing_tasks`, `writing_drafts`, `writing_submissions`, `writing_feedback`,
+`writing_revisions` — and none exist. Autosaved drafts, revision history and
+per-criterion band feedback are the module those tables describe, and none of it
+is built. Retire the list, or build it, and then change the status deliberately.

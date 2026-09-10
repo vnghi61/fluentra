@@ -25,7 +25,9 @@ import {
   ExerciseListenType,
   ExerciseMatch,
   ExerciseMultipleChoice,
+  ExerciseReading,
   ExerciseReorder,
+  ExerciseWriting,
   ActivityUnavailable,
   ExitDialog,
   learningApi,
@@ -98,6 +100,20 @@ interface FlashcardConfig {
   example_sentence?: string;
   example_sentences?: string[];
   audio_url?: string;
+}
+
+interface ReadingConfig {
+  passage_title?: string;
+  passage?: string;
+  prompt?: string;
+  options?: { id: string; text: string }[];
+}
+
+interface WritingConfig {
+  prompt?: string;
+  rubric?: string;
+  min_words?: number;
+  sample_answer?: string;
 }
 
 /**
@@ -427,6 +443,8 @@ export function LessonPage(): React.JSX.Element {
   const matchConfig = rawConfig as MatchConfig;
   const reorderConfig = rawConfig as ReorderConfig;
   const contextConfig = rawConfig as ContextChoiceConfig;
+  const readingConfig = rawConfig as ReadingConfig;
+  const writingConfig = rawConfig as WritingConfig;
 
   // An exercise is renderable only when its config carries the fields it needs.
   // Everything else is ActivityUnavailable — there is no default question,
@@ -472,6 +490,19 @@ export function LessonPage(): React.JSX.Element {
     contextConfig.sentence !== "" &&
     Array.isArray(contextConfig.options) &&
     contextConfig.options.length > 0;
+
+  const canRenderReading =
+    kind === "reading_comprehension" &&
+    typeof readingConfig.passage === "string" &&
+    readingConfig.passage !== "" &&
+    typeof readingConfig.prompt === "string" &&
+    Array.isArray(readingConfig.options) &&
+    readingConfig.options.length > 0;
+
+  const canRenderWriting =
+    kind === "writing_prompt" &&
+    typeof writingConfig.prompt === "string" &&
+    writingConfig.prompt !== "";
 
   const selectedOptId =
     typeof lastSubmittedPayload?.selected_option_id === "string"
@@ -530,7 +561,9 @@ export function LessonPage(): React.JSX.Element {
           !canRenderListenType &&
           !canRenderMatch &&
           !canRenderReorder &&
-          !canRenderContextChoice && (
+          !canRenderContextChoice &&
+          !canRenderReading &&
+          !canRenderWriting && (
             <ActivityUnavailable
               {...(kind !== undefined && { kind })}
               onSkip={handleContinue}
@@ -695,6 +728,52 @@ export function LessonPage(): React.JSX.Element {
             isLoading={isSubmitting || isAttemptPending}
             onSubmit={(selectedOptionId) =>
               void handleSubmit({ selected_option_id: selectedOptionId })
+            }
+            onContinue={handleContinue}
+          />
+        )}
+
+        {canRenderReading && (
+          <ExerciseReading
+            passageTitle={readingConfig.passage_title}
+            passage={readingConfig.passage ?? ""}
+            prompt={readingConfig.prompt ?? ""}
+            options={readingConfig.options ?? []}
+            correctOptionId={
+              submissionResult?.correct
+                ? selectedOptId
+                : (submissionResult?.correct_answer ?? undefined)
+            }
+            feedback={submissionResult?.feedback}
+            explanation={submissionResult?.explanation}
+            isSubmitted={isSubmitted}
+            isCorrect={submissionResult?.correct}
+            isLoading={isSubmitting || isAttemptPending}
+            onSubmit={(selectedOptionId) =>
+              void handleSubmit({ selected_option_id: selectedOptionId })
+            }
+            onContinue={handleContinue}
+          />
+        )}
+
+        {canRenderWriting && (
+          <ExerciseWriting
+            prompt={writingConfig.prompt ?? ""}
+            rubric={writingConfig.rubric}
+            minWords={writingConfig.min_words}
+            sampleAnswer={writingConfig.sample_answer}
+            feedback={submissionResult?.feedback}
+            score={
+              typeof submissionResult?.score === "number"
+                ? submissionResult.score
+                : undefined
+            }
+            explanation={submissionResult?.explanation}
+            isSubmitted={isSubmitted}
+            isCorrect={submissionResult?.correct}
+            isLoading={isSubmitting || isAttemptPending}
+            onSubmit={(answerText) =>
+              void handleSubmit({ text_answer: answerText })
             }
             onContinue={handleContinue}
           />

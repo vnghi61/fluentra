@@ -10,13 +10,16 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import i18n from "@/i18n";
 import { startTelemetry } from "@/lib/telemetry";
 
+import { registerQueryClient } from "@/stores/authStore";
+
 import "./index.css";
 
-const queryClient = new QueryClient({
+export const queryClient = new QueryClient({
   defaultOptions: {
     queries: { staleTime: 5 * 60 * 1000, retry: 1 },
   },
 });
+registerQueryClient(queryClient);
 
 async function bootstrap(): Promise<void> {
   // Boot-time silent refresh before first render, so returning learners never see a login screen

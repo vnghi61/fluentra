@@ -52,7 +52,7 @@ function suggest(lemma: string) {
 
 describe("Adding a word with suggestions", () => {
   beforeEach(async () => {
-    initI18n("en");
+    await initI18n("en");
     await i18n.changeLanguage("en");
   });
 

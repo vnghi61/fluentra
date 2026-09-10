@@ -15,7 +15,7 @@ import type {
   UserProfile,
   UserPreferences,
 } from "@/features/account/api/accountApi";
-import { useAuthStore } from "@/stores/authStore";
+import { useAuthStore, registerQueryClient } from "@/stores/authStore";
 
 const mockProfile: UserProfile = {
   id: "user-123",
@@ -97,6 +97,43 @@ describe("Account Management Settings (P5.2)", () => {
       expect(patchedData).toMatchObject({
         display_name: "Nghi Updated",
       });
+    });
+
+    it("searches timezones by city, country, or UTC offset", async () => {
+      const user = userEvent.setup();
+      render(<ProfileSettings initialProfile={mockProfile} />);
+
+      const tzTrigger = screen.getByRole("combobox", { name: /Timezone/i });
+      await user.click(tzTrigger);
+
+      const searchInput = screen.getByPlaceholderText(/Search timezone/i);
+
+      // Search by city "Hanoi"
+      await user.type(searchInput, "Hanoi");
+      expect(
+        screen.getByRole("option", { name: /Asia\/Ho Chi Minh/i }),
+      ).toBeInTheDocument();
+
+      // Clear and search by country "Vietnam"
+      await user.clear(searchInput);
+      await user.type(searchInput, "Vietnam");
+      expect(
+        screen.getByRole("option", { name: /Asia\/Ho Chi Minh/i }),
+      ).toBeInTheDocument();
+
+      // Clear and search by offset "+7"
+      await user.clear(searchInput);
+      await user.type(searchInput, "+7");
+      expect(
+        screen.getByRole("option", { name: /Asia\/Ho Chi Minh/i }),
+      ).toBeInTheDocument();
+
+      // Select it
+      const option = screen.getByRole("option", {
+        name: /Asia\/Ho Chi Minh/i,
+      });
+      await user.click(option);
+      expect(tzTrigger).toHaveTextContent(/Asia\/Ho Chi Minh/i);
     });
   });
 
@@ -298,6 +335,35 @@ describe("Account Management Settings (P5.2)", () => {
       });
     });
 
+    it("does not offer revoke button on current session", async () => {
+      server.use(
+        http.get("/api/v1/auth/sessions", () => {
+          return HttpResponse.json({
+            sessions: [
+              {
+                id: "session-curr",
+                current: true,
+                device_label: "This Browser",
+                created_at: "2026-08-15T12:00:00Z",
+                last_seen_at: "2026-08-18T09:00:00Z",
+              },
+            ],
+          });
+        }),
+      );
+
+      render(<SessionsList />);
+
+      await waitFor(() => {
+        expect(screen.getByText("This Browser")).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByRole("button", { name: /Revoke/i }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText(/Current Device/i)).toBeInTheDocument();
+    });
+
     it("refuses unlinking Google when LAST_SIGN_IN_METHOD is returned", async () => {
       server.use(
         http.delete("/api/v1/auth/oauth/google", () => {
@@ -494,6 +560,51 @@ describe("Account Management Settings (P5.2)", () => {
           screen.getByText(/Account deletion cancelled/i),
         ).toBeInTheDocument();
       });
+    });
+  });
+
+  describe("Auth store query cache invalidation", () => {
+    function session(userID: string, token: string) {
+      return {
+        access_token: token,
+        token_type: "Bearer" as const,
+        expires_in: 900,
+        user_id: userID,
+        role: "user" as const,
+      };
+    }
+
+    it("clears the cache when a different person signs in", () => {
+      // Store state is module-global and other cases in this file leave a
+      // session behind; start from signed-out so the first transition is real.
+      useAuthStore.getState().clearAuth();
+      const clear = vi.fn();
+      registerQueryClient({ clear });
+
+      useAuthStore.getState().setAuthSession(session("user-123", "token-1"));
+      expect(clear).toHaveBeenCalledTimes(1);
+
+      useAuthStore.getState().clearAuth();
+      expect(clear).toHaveBeenCalledTimes(2);
+
+      useAuthStore.getState().setAuthSession(session("user-456", "token-2"));
+      expect(clear).toHaveBeenCalledTimes(3);
+    });
+
+    it("keeps the cache when only the access token rotates", () => {
+      // authApi.refresh() calls setAuthSession with a fresh token for the same
+      // person, on boot and on every retried 401. Clearing there empties the
+      // cache on a routine event and refetches every screen behind it — the
+      // opposite of what the cache is for.
+      useAuthStore.getState().clearAuth();
+      useAuthStore.getState().setAuthSession(session("user-123", "token-1"));
+      const clear = vi.fn();
+      registerQueryClient({ clear });
+
+      useAuthStore.getState().setAuthSession(session("user-123", "token-2"));
+      useAuthStore.getState().setAuthSession(session("user-123", "token-3"));
+
+      expect(clear).not.toHaveBeenCalled();
     });
   });
 });

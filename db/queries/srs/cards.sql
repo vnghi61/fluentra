@@ -135,3 +135,25 @@ UPDATE learn.review_cards SET
 WHERE content_version_id = ANY(@content_version_ids::uuid[])
   AND suspended_at IS NULL
 RETURNING user_id;
+
+-- RepointReviewCards moves cards pointing at an older content version to a newly
+-- published one, which is how extra example sentences reach a card that was
+-- scheduled against the old body.
+--
+-- The NOT EXISTS guard is what keeps this from failing outright.
+-- uq_review_cards_user_content is UNIQUE (user_id, content_version_id), so a
+-- learner who already holds a card on the new version turns this UPDATE into a
+-- constraint violation — and one such learner aborts the statement for everyone
+-- else in it. Skipping them leaves the card they already have, which is the card
+-- pointing at the newer content anyway.
+-- name: RepointReviewCards :execrows
+UPDATE learn.review_cards AS rc SET
+    content_version_id = @new_version_id,
+    updated_at = now()
+WHERE rc.content_version_id = @old_version_id
+  AND NOT EXISTS (
+    SELECT 1 FROM learn.review_cards other
+    WHERE other.user_id = rc.user_id
+      AND other.content_version_id = @new_version_id
+  );
+

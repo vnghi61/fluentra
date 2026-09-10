@@ -11,7 +11,7 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 
-import i18n, { initI18n } from "@/i18n";
+import i18n, { initI18n, loadLocale } from "@/i18n";
 import { LearnPage } from "@/routes/LearnPage";
 import type { CourseDetail, CourseList } from "@/features/lesson";
 import { server } from "./msw-server";
@@ -105,7 +105,7 @@ describe("LearnPage (P10.2)", () => {
   };
 
   beforeEach(async () => {
-    initI18n("en");
+    await initI18n("en");
     await i18n.changeLanguage("en");
   });
 
@@ -165,6 +165,10 @@ describe("LearnPage (P10.2)", () => {
   });
 
   it("renders correctly in Vietnamese (vi)", async () => {
+    // Only the locale being read is bundled, so the Vietnamese
+    // translations have to be fetched before the switch. `setLocale` does
+    // this in the app; calling `changeLanguage` alone renders raw keys.
+    await loadLocale("vi");
     await i18n.changeLanguage("vi");
 
     server.use(

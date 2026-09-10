@@ -2,7 +2,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 
 import { ExampleSentences } from "@/components/ui/example-sentences";
-import type { ExampleSentence } from "@/lib/examples";
+import { shuffleExamplesForReview, type ExampleSentence } from "@/lib/examples";
 import { PronounceButton } from "@/components/ui/pronounce-button";
 
 export interface FlashcardBackProps {
@@ -33,6 +33,16 @@ export const FlashcardBack: React.FC<FlashcardBackProps> = ({
   const gloss = definitionVi?.trim() ? definitionVi : undefined;
   const lead = prefersVietnamese && gloss ? gloss : definition;
   const second = prefersVietnamese && gloss ? definition : gloss;
+
+  // Shuffled once per card, not once per render: flipping the card back and
+  // forth must not deal a new hand each time. Keyed on the word rather than on
+  // the array, because the page above rebuilds `exampleSentences` on every
+  // render and its identity would reshuffle mid-flip.
+  const displayedExamples = React.useMemo(
+    () => shuffleExamplesForReview(exampleSentences),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [word, exampleSentences.length],
+  );
 
   return (
     <div className="w-full min-h-[300px] p-8 rounded-3xl border-2 border-primary/40 bg-gradient-to-br from-surface-card to-primary/5 transition-all flex flex-col items-center justify-center text-center shadow-lg">
@@ -67,8 +77,8 @@ export const FlashcardBack: React.FC<FlashcardBackProps> = ({
           </p>
         )}
 
-        {/* Every authored example, each one audible on its own. */}
-        <ExampleSentences sentences={exampleSentences} highlight={word} />
+        {/* Three of however many the word has, shuffled per card. */}
+        <ExampleSentences sentences={displayedExamples} highlight={word} />
       </div>
     </div>
   );

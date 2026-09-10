@@ -83,6 +83,7 @@ type CardWriter interface {
 	UpsertCards(ctx context.Context, userID uuid.UUID, items []learningcontract.ReviewItem) error
 	SetCardsSuspended(ctx context.Context, userID uuid.UUID, contentVersionIDs []uuid.UUID, suspended bool) error
 	SuspendCardsByContentVersion(ctx context.Context, contentVersionIDs []uuid.UUID) (int, error)
+	RepointCards(ctx context.Context, oldVersionID, newVersionID uuid.UUID) error
 }
 
 // QueueReader provides read-only access to due review cards and pending counts.
