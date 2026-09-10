@@ -14,7 +14,7 @@ import i18n, { initI18n } from "@/i18n";
  */
 describe("AccountMenu trigger", () => {
   beforeEach(async () => {
-    initI18n("en");
+    await initI18n("en");
     await i18n.changeLanguage("en");
   });
 

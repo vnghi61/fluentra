@@ -134,7 +134,7 @@ describe("LessonPage Runner (P10.3)", () => {
 
   beforeEach(async () => {
     signIn();
-    initI18n("en");
+    await initI18n("en");
     await i18n.changeLanguage("en");
     capturedSubmitHeaders = [];
 
@@ -433,7 +433,7 @@ describe("LessonPage Runner (P10.3)", () => {
 describe("LessonPage progress freshness", () => {
   beforeEach(async () => {
     signIn();
-    initI18n("en");
+    await initI18n("en");
     await i18n.changeLanguage("en");
 
     server.use(

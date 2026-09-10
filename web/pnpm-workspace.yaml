@@ -18,11 +18,11 @@ allowBuilds:
 # are patch-level bumps within the range the parent already asks for, so this
 # raises the floor rather than changing anybody's major:
 #
-#   js-yaml  <4.3.1   quadratic CPU on !!omap  (via openapi-typescript)
+#   js-yaml  <4.3.2   maxTotalMergeKeys does not bound CPU  (via eslint)
 #   nanoid   <3.3.18  custom generators can loop  (via vite -> postcss)
 #
 # Remove an entry once the parent ships a release that no longer resolves below
 # the floor; `pnpm audit` is what says whether it is still needed.
 overrides:
-  js-yaml@>=4.0.0 <4.3.1: '>=4.3.1'
+  js-yaml@>=4.0.0 <4.3.2: '>=4.3.2'
   nanoid@<3.3.18: '>=3.3.18'

@@ -61,7 +61,7 @@ const sampleFlag = {
 
 describe("Admin Shell & Operations", () => {
   beforeEach(async () => {
-    initI18n("en");
+    await initI18n("en");
     await i18n.changeLanguage("en");
 
     // Default mock handlers for admin endpoints

@@ -31,7 +31,7 @@ function renderWithProviders(ui: React.ReactElement) {
 
 describe("Gamification Feature Slice (WP14)", () => {
   beforeEach(async () => {
-    initI18n("en");
+    await initI18n("en");
     await i18n.changeLanguage("en");
   });
 

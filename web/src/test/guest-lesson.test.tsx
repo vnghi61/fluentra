@@ -97,7 +97,7 @@ describe("A guest working through a lesson", () => {
   beforeEach(async () => {
     // The state under test: no session at all.
     useAuthStore.getState().clearAuth();
-    initI18n("en");
+    await initI18n("en");
     await i18n.changeLanguage("en");
 
     attemptCalls = 0;

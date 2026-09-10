@@ -293,6 +293,42 @@ the commit which you left and why, so the next census does not re-raise them.
 `src/test/i18n-keys.test.ts` already fails on a key that is used and missing, in either locale.
 It cannot see a string that never asked for a key, which is what this section is about.
 
+#### What the census cost, and what paid for it
+
+Translating those strings grew `en.json` and `vi.json` by about 290 lines each. Both were
+static imports in `src/i18n/index.ts`, so both landed in the entry chunk, and the entry chunk
+is what `scripts/check-bundle.mjs` measures against a 200 kB gzipped budget. `main` was already
+sitting at 199.5 kB; this work order pushed it to 202.1 kB and the build failed.
+
+Raising the budget was the wrong answer twice over: it would have bought about one work order
+of headroom, and it would have left every visitor downloading two languages to read one.
+
+`initI18n` now fetches only the locale being read — `en` for an English reader, `vi` for a
+Vietnamese one — and `loadLocale` fetches the other if someone switches. The numbers:
+
+| | before | after |
+|---|---|---|
+| Entry chunk, gzipped | 202.1 kB | 180.0 kB |
+| Real first visit, English reader | 202.1 kB | 190.9 kB |
+| Real first visit, Vietnamese reader | 202.1 kB | 192.2 kB |
+
+The middle row is the one that matters. A dynamic import that is awaited before first render
+still costs the visitor its bytes, so a split that only moved the translations out of the
+measured chunk would have passed the check while changing nothing — the budget would have been
+gamed, not met. Loading one language instead of two is what actually made the page smaller, and
+both real numbers are under 200 kB, not only the measured one.
+
+Two things follow that a later change has to respect:
+
+- **`fallbackLng` is English while English may not be loaded.** That is safe only because
+  `i18n-keys.test.ts` asserts the two bundles carry exactly the same keys, so the fallback has
+  nothing left to resolve. Relax that test and this has to load English alongside.
+- **`i18n.changeLanguage` on its own now renders raw keys.** `setLocale` loads first and
+  switches second; nothing else in `web/src` may call `changeLanguage` directly.
+  `i18n-switching.test.ts` holds that, and it lives in its own file because i18next is a
+  process-wide singleton that survives `vi.resetModules()` — in a shared file the test would
+  pass on a bundle some earlier test happened to fetch.
+
 ### 4. WP20 — reading and writing
 
 `internal/modules/reading` and `internal/modules/writing` are documentation and an empty

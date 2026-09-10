@@ -12,7 +12,7 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 
-import i18n, { initI18n } from "@/i18n";
+import i18n, { initI18n, loadLocale } from "@/i18n";
 import { ReviewPage } from "@/routes/ReviewPage";
 import type { ReviewGrade, ReviewSessionResponse } from "@/features/review";
 import { server } from "./msw-server";
@@ -112,7 +112,7 @@ describe("ReviewPage SRS Session (P10.4)", () => {
   }
 
   beforeEach(async () => {
-    initI18n("en");
+    await initI18n("en");
     await i18n.changeLanguage("en");
     capturedGrades = [];
     serveSession(mockSession);
@@ -201,6 +201,10 @@ describe("ReviewPage SRS Session (P10.4)", () => {
   });
 
   it("renders 320px responsive Vietnamese grade buttons cleanly", async () => {
+    // Only the locale being read is bundled, so the Vietnamese
+    // translations have to be fetched before the switch. `setLocale` does
+    // this in the app; calling `changeLanguage` alone renders raw keys.
+    await loadLocale("vi");
     await i18n.changeLanguage("vi");
     const user = userEventDefault.setup();
     await renderReview();

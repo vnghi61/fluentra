@@ -62,7 +62,7 @@ describe("MyWordsPage", () => {
 
   beforeEach(async () => {
     signIn();
-    initI18n("en");
+    await initI18n("en");
     await i18n.changeLanguage("en");
     submitted = [];
 

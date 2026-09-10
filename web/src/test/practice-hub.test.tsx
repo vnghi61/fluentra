@@ -77,9 +77,9 @@ function signIn(): void {
 }
 
 describe("PracticePage hub", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     signIn();
-    initI18n("en");
+    await initI18n("en");
   });
 
   /**
