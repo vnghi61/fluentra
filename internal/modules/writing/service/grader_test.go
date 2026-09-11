@@ -104,3 +104,11 @@ func TestWritingGrader_GradesWithoutAI_Fallback(t *testing.T) {
 	assert.True(t, resValid.Correct)
 	assert.GreaterOrEqual(t, resValid.Score, 60)
 }
+
+func TestWritingGrader_SpendsMoney(t *testing.T) {
+	grader := NewGrader(nil, nil)
+	assert.True(t, grader.SpendsMoney())
+
+	var metered learningcontract.MeteredGrader = grader
+	assert.True(t, metered.SpendsMoney())
+}

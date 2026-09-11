@@ -117,6 +117,14 @@ type ExerciseGrader interface {
 	Grade(ctx context.Context, req GradeRequest) (GradeResult, error)
 }
 
+// MeteredGrader is optionally implemented by an ExerciseGrader that consumes metered,
+// billable resources (such as external AI models).
+//
+// Unauthenticated visitors reaching preview routes are refused before metered grading runs.
+type MeteredGrader interface {
+	SpendsMoney() bool
+}
+
 // ProgressScope represents the aggregation level of learner progress.
 type ProgressScope string
 

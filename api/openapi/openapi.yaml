@@ -3479,6 +3479,8 @@ paths:
                     saved: false
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/AccountRequired'
         '404':
           $ref: '#/components/responses/NotFound'
         '422':
@@ -5325,6 +5327,8 @@ components:
       $ref: ./components/responses.yaml#/BadRequest
     Unauthorized:
       $ref: ./components/responses.yaml#/Unauthorized
+    AccountRequired:
+      $ref: ./components/responses.yaml#/AccountRequired
     Forbidden:
       $ref: ./components/responses.yaml#/Forbidden
     NotFound:

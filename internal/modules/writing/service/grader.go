@@ -228,5 +228,12 @@ func buildResult(
 	}
 }
 
+// SpendsMoney implements learningcontract.MeteredGrader. Writing grading invokes
+// metered AI model calls, so unauthenticated visitors may not run it via preview.
+func (g *Grader) SpendsMoney() bool {
+	return true
+}
+
 var _ contract.Grader = (*Grader)(nil)
 var _ learningcontract.ExerciseGrader = (*Grader)(nil)
+var _ learningcontract.MeteredGrader = (*Grader)(nil)

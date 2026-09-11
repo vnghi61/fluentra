@@ -772,6 +772,7 @@ export function LessonPage(): React.JSX.Element {
             isSubmitted={isSubmitted}
             isCorrect={submissionResult?.correct}
             isLoading={isSubmitting || isAttemptPending}
+            isGuest={!signedIn}
             onSubmit={(answerText) =>
               void handleSubmit({ text_answer: answerText })
             }

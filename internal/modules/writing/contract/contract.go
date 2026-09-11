@@ -19,4 +19,5 @@ func GradedKinds() []string {
 // Grader defines the exercise grading contract implemented by the writing module.
 type Grader interface {
 	learningcontract.ExerciseGrader
+	learningcontract.MeteredGrader
 }

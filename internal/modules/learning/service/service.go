@@ -612,6 +612,10 @@ func (s *Service) GradePreview(
 		return nil, domain.ErrGraderNotRegistered.WithMeta("kind", activity.Kind)
 	}
 
+	if mg, ok := grader.(contract.MeteredGrader); ok && mg.SpendsMoney() {
+		return nil, domain.ErrAccountRequired.WithMeta("kind", activity.Kind)
+	}
+
 	result, err := grader.Grade(ctx, contract.GradeRequest{
 		ActivityID:       activityID,
 		ContentVersionID: activity.ContentVersionID,

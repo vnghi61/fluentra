@@ -10399,6 +10399,8 @@ type GradeActivityPreviewResponse struct {
 	JSON200 *PreviewGradeResult
 	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
 	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *AccountRequired
 	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
 	ApplicationproblemJSON404 *NotFound
 	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
@@ -10417,6 +10419,11 @@ func (r GradeActivityPreviewResponse) GetJSON200() *PreviewGradeResult {
 // GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
 func (r GradeActivityPreviewResponse) GetApplicationproblemJSON400() *BadRequest {
 	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GradeActivityPreviewResponse) GetApplicationproblemJSON401() *AccountRequired {
+	return r.ApplicationproblemJSON401
 }
 
 // GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
@@ -20370,6 +20377,13 @@ func ParseGradeActivityPreviewResponse(rsp *http.Response) (*GradeActivityPrevie
 			return nil, err
 		}
 		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest AccountRequired
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
 		var dest NotFound

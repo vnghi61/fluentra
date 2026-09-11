@@ -4302,6 +4302,25 @@ export interface components {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
+        /** @description Authentication required. The activity requires a signed-in account to grade. */
+        AccountRequired: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "type": "https://fluentra.dev/errors/unauthenticated",
+                 *       "title": "Authentication required",
+                 *       "status": 401,
+                 *       "detail": "An account is required to grade this activity.",
+                 *       "code": "ACCOUNT_REQUIRED",
+                 *       "request_id": "01J8XQ7Z9K3M4N5P6Q7R8S9T0V"
+                 *     }
+                 */
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
         /** @description The authenticated actor lacks permission for this operation. */
         Forbidden: {
             headers: {
@@ -7543,6 +7562,7 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["AccountRequired"];
             404: components["responses"]["NotFound"];
             422: components["responses"]["ValidationFailed"];
             500: components["responses"]["InternalServerError"];

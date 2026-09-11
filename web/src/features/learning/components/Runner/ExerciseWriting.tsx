@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { cn } from "@/lib/utils";
 
+import { GuestNotice } from "../GuestNotice";
 import {
   type AnswerExplanation,
   ExerciseActions,
@@ -24,6 +25,7 @@ export interface ExerciseWritingProps {
   isSubmitted: boolean;
   isCorrect?: boolean | null | undefined;
   isLoading?: boolean;
+  isGuest?: boolean;
   explanation?: AnswerExplanation | null | undefined;
   onSubmit: (answerText: string) => void;
   onContinue: () => void;
@@ -51,6 +53,7 @@ export const ExerciseWriting: React.FC<ExerciseWritingProps> = ({
   isSubmitted,
   isCorrect,
   isLoading = false,
+  isGuest = false,
   explanation,
   onSubmit,
   onContinue,
@@ -88,70 +91,74 @@ export const ExerciseWriting: React.FC<ExerciseWritingProps> = ({
         </div>
       )}
 
-      {/* Writing Textarea */}
-      <div className="space-y-2">
-        <label htmlFor="writing-response" className="sr-only">
-          {prompt}
-        </label>
-        <textarea
-          id="writing-response"
-          value={text}
-          disabled={isSubmitted || isLoading}
-          onChange={(e) => setText(e.target.value)}
-          placeholder={t(
-            "runner.writingPlaceholder",
-            "Write your response here...",
-          )}
-          rows={6}
-          className={cn(
-            "w-full rounded-xl border border-border bg-surface-card p-4 text-base text-text leading-relaxed",
-            "focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-sm resize-y",
-            "min-h-[140px]",
-            isSubmitted && isCorrect && "border-success/50 bg-success/5",
-            isSubmitted &&
-              isCorrect === false &&
-              "border-danger/50 bg-danger/5",
-          )}
-        />
+      {/* Writing Textarea or Guest Notice */}
+      {isGuest ? (
+        <GuestNotice />
+      ) : (
+        <div className="space-y-2">
+          <label htmlFor="writing-response" className="sr-only">
+            {prompt}
+          </label>
+          <textarea
+            id="writing-response"
+            value={text}
+            disabled={isSubmitted || isLoading}
+            onChange={(e) => setText(e.target.value)}
+            placeholder={t(
+              "runner.writingPlaceholder",
+              "Write your response here...",
+            )}
+            rows={6}
+            className={cn(
+              "w-full rounded-xl border border-border bg-surface-card p-4 text-base text-text leading-relaxed",
+              "focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-sm resize-y",
+              "min-h-[140px]",
+              isSubmitted && isCorrect && "border-success/50 bg-success/5",
+              isSubmitted &&
+                isCorrect === false &&
+                "border-danger/50 bg-danger/5",
+            )}
+          />
 
-        {/* Word Counter */}
-        <div className="flex items-center justify-between text-xs text-text-muted px-1">
-          <span>
-            {minWords > 0 ? (
-              <span
-                className={cn(
-                  "font-medium",
-                  meetsMinWords ? "text-success" : "text-text-muted",
-                )}
-              >
+          {/* Word Counter */}
+          <div className="flex items-center justify-between text-xs text-text-muted px-1">
+            <span>
+              {minWords > 0 ? (
+                <span
+                  className={cn(
+                    "font-medium",
+                    meetsMinWords ? "text-success" : "text-text-muted",
+                  )}
+                >
+                  {t(
+                    "runner.wordCountWithMin",
+                    `${words} / ${minWords} words minimum`,
+                    {
+                      count: words,
+                      min: minWords,
+                    },
+                  )}
+                </span>
+              ) : (
+                <span>
+                  {t("runner.wordCount", `${words} words`, { count: words })}
+                </span>
+              )}
+            </span>
+            {minWords > 0 && !meetsMinWords && (
+              <span className="text-warning text-xs">
                 {t(
-                  "runner.wordCountWithMin",
-                  `${words} / ${minWords} words minimum`,
+                  "runner.wordsRemaining",
+                  `${Math.max(0, minWords - words)} more needed`,
                   {
-                    count: words,
-                    min: minWords,
+                    remaining: Math.max(0, minWords - words),
                   },
                 )}
               </span>
-            ) : (
-              <span>
-                {t("runner.wordCount", `${words} words`, { count: words })}
-              </span>
             )}
-          </span>
-          {minWords > 0 && !meetsMinWords && (
-            <span className="text-warning text-xs">
-              {t(
-                "runner.wordsRemaining",
-                `${Math.max(0, minWords - words)} more needed`,
-                {
-                  remaining: Math.max(0, minWords - words),
-                },
-              )}
-            </span>
-          )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Feedback Panel */}
       {isSubmitted && (
@@ -166,7 +173,7 @@ export const ExerciseWriting: React.FC<ExerciseWritingProps> = ({
 
       {/* Action Bar */}
       <ExerciseActions
-        isSubmitted={isSubmitted}
+        isSubmitted={isSubmitted || isGuest}
         canSubmit={canSubmit}
         isLoading={isLoading}
         onSubmit={handleSubmit}

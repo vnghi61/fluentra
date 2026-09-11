@@ -1858,3 +1858,71 @@ func TestGradePreview_AttachesExplanation(t *testing.T) {
 		t.Errorf("unexpected preview explanation: %+v", preview.Explanation)
 	}
 }
+
+type fakeMeteredGrader struct {
+	calls atomic.Int32
+	money bool
+}
+
+func (f *fakeMeteredGrader) Grade(_ context.Context, _ contract.GradeRequest) (contract.GradeResult, error) {
+	f.calls.Add(1)
+	return contract.GradeResult{Score: 80, Correct: true}, nil
+}
+
+func (f *fakeMeteredGrader) SpendsMoney() bool {
+	return f.money
+}
+
+func TestGradePreview_RefusesMeteredGrader(t *testing.T) {
+	repo := newFakeRepo()
+	reader := &fakeLessonReader{
+		calls:     map[string]int{},
+		hierarchy: make(map[uuid.UUID]*lessoncontract.ActivityHierarchy),
+	}
+	graders := domain.NewGraderRegistry()
+	metered := &fakeMeteredGrader{money: true}
+	_ = graders.Register("metered_kind", metered)
+
+	svc := service.New(service.Deps{
+		Repo:    repo,
+		Lesson:  reader,
+		Graders: graders,
+		Events:  &fakeEventWriter{},
+	})
+
+	activityID := uuid.New()
+	reader.hierarchy[activityID] = &lessoncontract.ActivityHierarchy{
+		ActivityID:       activityID,
+		ContentVersionID: uuid.New(),
+		Kind:             "metered_kind",
+	}
+
+	ctx := context.Background()
+	_, err := svc.GradePreview(ctx, activityID, json.RawMessage(`{}`))
+	if err == nil {
+		t.Fatal("expected GradePreview to fail for metered grader, got nil")
+	}
+
+	if !domain.IsAccountRequired(err) {
+		t.Fatalf("expected ErrAccountRequired, got: %v", err)
+	}
+
+	var appErr *apperr.Error
+	if !errors.As(err, &appErr) || appErr.Kind != apperr.Unauthenticated {
+		t.Fatalf("expected Unauthenticated kind (401), got: %v", err)
+	}
+
+	// Counting fake records ZERO calls before the guard.
+	if calls := metered.calls.Load(); calls != 0 {
+		t.Fatalf("expected 0 calls to metered grader, got %d", calls)
+	}
+
+	// If the grader is called directly without the guard, it records a call.
+	_, err = metered.Grade(ctx, contract.GradeRequest{})
+	if err != nil {
+		t.Fatalf("direct grade: %v", err)
+	}
+	if calls := metered.calls.Load(); calls != 1 {
+		t.Fatalf("expected 1 call after direct grade, got %d", calls)
+	}
+}
