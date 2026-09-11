@@ -614,6 +614,18 @@
       "descGuest": "Browsing and building decks is still being built.",
       "label": "Vocabulary",
       "title": "Word lists are not here yet"
+    },
+    "reading": {
+      "desc": "Practice reading comprehension across curated passages from A2 to B2, with questions and speed tracking.",
+      "label": "Reading",
+      "openBtn": "Start reading",
+      "title": "Reading Comprehension"
+    },
+    "writing": {
+      "desc": "Practice structured writing tasks from emails to IELTS essays with automated AI feedback and model answers.",
+      "label": "Writing",
+      "openBtn": "Start writing",
+      "title": "Writing Prompts & Essays"
     }
   },
   "progress": {

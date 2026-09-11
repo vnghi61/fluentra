@@ -163,4 +163,29 @@ describe("PracticePage hub", () => {
     ).toBeInTheDocument();
     expect(screen.queryByText("The week ahead")).not.toBeInTheDocument();
   });
+
+  it("renders reading and writing practice cards with links to their courses", async () => {
+    server.use(
+      http.get("/api/v1/reviews/due-count", () =>
+        HttpResponse.json({ due_count: 0 }),
+      ),
+      http.get("/api/v1/reviews/forecast", () => HttpResponse.json(forecast)),
+    );
+
+    await renderPractice();
+
+    const readingLink = await screen.findByRole("link", {
+      name: /Start reading/i,
+    });
+    expect(readingLink).toHaveAttribute(
+      "href",
+      "/learn?course=reading-practice",
+    );
+
+    const writingLink = screen.getByRole("link", { name: /Start writing/i });
+    expect(writingLink).toHaveAttribute(
+      "href",
+      "/learn?course=writing-practice",
+    );
+  });
 });

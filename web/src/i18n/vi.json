@@ -614,6 +614,18 @@
       "descGuest": "Phần duyệt từ và tạo bộ thẻ đang được xây.",
       "label": "Từ vựng",
       "title": "Danh sách từ chưa có"
+    },
+    "reading": {
+      "desc": "Luyện đọc hiểu qua các bài đọc được tuyển chọn từ A2 đến B2, có câu hỏi và đo tốc độ đọc.",
+      "label": "Đọc hiểu",
+      "openBtn": "Bắt đầu đọc",
+      "title": "Luyện đọc hiểu"
+    },
+    "writing": {
+      "desc": "Luyện các bài viết có cấu trúc từ email đến bài luận IELTS với phản hồi AI và bài mẫu.",
+      "label": "Viết",
+      "openBtn": "Bắt đầu viết",
+      "title": "Luyện viết & Luận"
     }
   },
   "progress": {
