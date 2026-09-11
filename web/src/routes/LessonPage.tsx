@@ -5,6 +5,7 @@ import { AlertCircle, Flag, RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { useAuthStore } from "@/stores/authStore";
+import { usePreferencesStore } from "@/stores/preferencesStore";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -177,7 +178,7 @@ export function LessonPage(): React.JSX.Element {
       const urlParams = new URLSearchParams(window.location.search);
       return (
         urlParams.get("level") ||
-        localStorage.getItem("fluentra.practice_level") ||
+        usePreferencesStore.getState().preferences?.practice_level ||
         "B1"
       );
     }

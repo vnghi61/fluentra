@@ -265,6 +265,7 @@ func TestRepository_QuietHoursSurviveTheTimeConversion(t *testing.T) {
 	repo, ctx := newRepository(t)
 	userID := seedAccount(ctx, t, repo, "quiet@fluentra.test")
 
+	practiceLevel := domain.PracticeLevelB2
 	wanted := domain.Preferences{
 		UserID:               userID,
 		Locale:               "vi",
@@ -276,6 +277,7 @@ func TestRepository_QuietHoursSurviveTheTimeConversion(t *testing.T) {
 			End:   domain.TimeOfDay{Hour: 7, Minute: 5},
 		},
 		AIProcessingOptOut: true,
+		PracticeLevel:      &practiceLevel,
 	}
 	if _, err := repo.ReplacePreferences(ctx, wanted); err != nil {
 		t.Fatalf("ReplacePreferences: %v", err)
@@ -297,6 +299,10 @@ func TestRepository_QuietHoursSurviveTheTimeConversion(t *testing.T) {
 	if len(read.NotificationChannels) != 2 {
 		t.Errorf("channels = %v, want two", read.NotificationChannels)
 	}
+	// The column is core.cefr_level, which is lower case; the API is upper case.
+	if read.PracticeLevel == nil || *read.PracticeLevel != domain.PracticeLevelB2 {
+		t.Errorf("practice level = %v, want B2 after the round trip", read.PracticeLevel)
+	}
 }
 
 func TestRepository_ClearingQuietHoursStoresNoWindow(t *testing.T) {
@@ -317,6 +323,9 @@ func TestRepository_ClearingQuietHoursStoresNoWindow(t *testing.T) {
 	}
 	if read.QuietHours != nil {
 		t.Errorf("quiet hours = %+v, want nil", read.QuietHours)
+	}
+	if read.PracticeLevel != nil {
+		t.Errorf("practice level = %s, want nil: none was chosen", *read.PracticeLevel)
 	}
 }
 

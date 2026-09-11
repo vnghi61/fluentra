@@ -101,7 +101,7 @@ Migrations: `db/migrations/user/` · Queries: `db/queries/user/`
 |---|---|---|
 | `core.users` | Canonical user identity | `email` (citext, UNIQUE), `status`, `email_verified_at`, `created_at`. **The one table other schemas may FK to** (ADR-0004) |
 | `core.profiles` | Descriptive profile data | 1:1 with users; display name, avatar asset ID, country, timezone |
-| `core.user_preferences` | Settings | Locale, theme, daily goal, notification channels, quiet hours, `ai_processing_opt_out` |
+| `core.user_preferences` | Settings | Locale, theme, daily goal, notification channels, quiet hours, `ai_processing_opt_out`, `practice_level` (A2–B2, null until chosen) |
 | `core.learning_profiles` | Self-declared learning context | Declared level, target level, target exam, weekly minutes goal, motivations |
 | `core.user_deletions` | Erasure workflow | `requested_at`, `execute_after`, `cancelled_at`, `completed_at` |
 | `core.user_exports` | Data export jobs and artefacts | `status`, `object_key`, `expires_at` |

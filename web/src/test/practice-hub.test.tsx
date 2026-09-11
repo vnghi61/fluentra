@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { I18nextProvider } from "react-i18next";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -14,6 +14,10 @@ import {
 import i18n, { initI18n } from "@/i18n";
 import { PracticePage } from "@/routes/PracticePage";
 import { useAuthStore } from "@/stores/authStore";
+import {
+  usePreferencesStore,
+  type Preferences,
+} from "@/stores/preferencesStore";
 import { server } from "./msw-server";
 
 async function renderPractice() {
@@ -62,6 +66,18 @@ async function renderPractice() {
   return render(<RouterProvider router={router} />);
 }
 
+/** A learner's stored settings, with no practice level chosen yet. */
+const storedPreferences: Preferences = {
+  locale: "en",
+  theme: "dark",
+  daily_goal_minutes: 30,
+  notification_channels: ["in_app", "email"],
+  quiet_hours: { start: "22:00", end: "07:00" },
+  ai_processing_opt_out: false,
+  practice_level: null,
+  updated_at: "2026-09-12T00:00:00Z",
+};
+
 const forecast = {
   days: [
     { date: "2026-08-28", due_count: 4 },
@@ -89,6 +105,7 @@ function signIn(): void {
 describe("PracticePage hub", () => {
   beforeEach(async () => {
     signIn();
+    usePreferencesStore.getState().clear();
     await initI18n("en");
   });
 
@@ -199,13 +216,16 @@ describe("PracticePage hub", () => {
     );
   });
 
-  it("renders daily practice set card with level selector and start button", async () => {
+  it("starts today's set at the level stored in preferences", async () => {
     server.use(
       http.get("/api/v1/reviews/due-count", () =>
         HttpResponse.json({ due_count: 0 }),
       ),
       http.get("/api/v1/reviews/forecast", () => HttpResponse.json(forecast)),
     );
+    usePreferencesStore
+      .getState()
+      .set({ ...storedPreferences, practice_level: "B2" });
 
     await renderPractice();
 
@@ -221,5 +241,66 @@ describe("PracticePage hub", () => {
       "href",
       expect.stringContaining("/practice/daily"),
     );
+    expect(startDailyLink).toHaveAttribute(
+      "href",
+      expect.stringContaining("level=B2"),
+    );
+    expect(screen.getByRole("button", { name: "Level B2" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  /**
+   * Work order 11 §3.11: the learner picks a level the first time, and the
+   * choice is kept in preferences. The PUT replaces the whole record, so the
+   * body has to carry every other setting back unchanged.
+   */
+  it("asks for a level first, then saves it with every other setting unchanged", async () => {
+    let replaced: unknown = null;
+    server.use(
+      http.get("/api/v1/reviews/due-count", () =>
+        HttpResponse.json({ due_count: 0 }),
+      ),
+      http.get("/api/v1/reviews/forecast", () => HttpResponse.json(forecast)),
+      http.put("/api/v1/me/preferences", async ({ request }) => {
+        replaced = await request.json();
+        return HttpResponse.json({
+          ...storedPreferences,
+          ...(replaced as object),
+        });
+      }),
+    );
+    usePreferencesStore.getState().set(storedPreferences);
+
+    await renderPractice();
+
+    expect(
+      await screen.findByText(/Choose your level to start/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /Start Today's Set/i }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Level A2" }));
+
+    const start = await screen.findByRole("link", {
+      name: /Start Today's Set/i,
+    });
+    expect(start).toHaveAttribute("href", expect.stringContaining("level=A2"));
+    await waitFor(() =>
+      expect(usePreferencesStore.getState().preferences?.practice_level).toBe(
+        "A2",
+      ),
+    );
+    expect(replaced).toEqual({
+      locale: "en",
+      theme: "dark",
+      daily_goal_minutes: 30,
+      notification_channels: ["in_app", "email"],
+      quiet_hours: { start: "22:00", end: "07:00" },
+      ai_processing_opt_out: false,
+      practice_level: "A2",
+    });
   });
 });

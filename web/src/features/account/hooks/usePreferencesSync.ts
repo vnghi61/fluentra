@@ -11,7 +11,7 @@ import {
   usePreferencesStore,
   type Preferences,
 } from "@/stores/preferencesStore";
-import { accountApi } from "../api/accountApi";
+import { accountApi, replacementFor } from "../api/accountApi";
 
 function isThemeChoice(value: string | null | undefined): value is ThemeChoice {
   return value === "light" || value === "dark" || value === "system";
@@ -81,19 +81,10 @@ export function usePreferencesSync(signedIn: boolean): PreferencesSync {
       if (!current) return; // signed out: the local choice is the whole story
       const next = { ...current, ...patch };
       setStored(next);
-      void accountApi
-        .replacePreferences({
-          locale: next.locale,
-          theme: next.theme,
-          daily_goal_minutes: next.daily_goal_minutes,
-          notification_channels: next.notification_channels,
-          quiet_hours: next.quiet_hours ?? null,
-          ai_processing_opt_out: next.ai_processing_opt_out,
-        })
-        .catch(() => {
-          // The learner sees the change either way. Losing the round trip costs
-          // them the setting on their next device, not on this one.
-        });
+      void accountApi.replacePreferences(replacementFor(next)).catch(() => {
+        // The learner sees the change either way. Losing the round trip costs
+        // them the setting on their next device, not on this one.
+      });
     },
     [setStored],
   );

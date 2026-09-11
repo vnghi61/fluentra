@@ -19,15 +19,18 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { accountApi, replacementFor } from "@/features/account/api/accountApi";
 import { useAuthStore } from "@/stores/authStore";
+import { usePreferencesStore } from "@/stores/preferencesStore";
 
 export interface DailyPracticeCardProps {
   className?: string;
   compact?: boolean;
 }
 
-const STORAGE_KEY = "fluentra.practice_level";
-type PracticeLevel = "A2" | "B1" | "B2";
+/** The levels the practice pool holds. */
+const PRACTICE_LEVELS = ["A2", "B1", "B2"] as const;
+type PracticeLevel = (typeof PRACTICE_LEVELS)[number];
 
 export const DailyPracticeCard: React.FC<DailyPracticeCardProps> = ({
   className = "",
@@ -35,25 +38,35 @@ export const DailyPracticeCard: React.FC<DailyPracticeCardProps> = ({
 }) => {
   const { t } = useTranslation();
   const signedIn = useAuthStore((state) => state.status === "authenticated");
+  // The level lives in preferences, so the one chosen on a phone is the one on
+  // a laptop. Null until the learner picks: that is when the card asks.
+  const storedLevel = usePreferencesStore(
+    (state) => state.preferences?.practice_level ?? null,
+  );
+  // A pick made here counts even when saving it fails or preferences never
+  // loaded: a failed write costs the level on the next device, not today's set.
+  const [pickedLevel, setPickedLevel] = useState<PracticeLevel | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveFailed, setSaveFailed] = useState(false);
 
-  const [selectedLevel, setSelectedLevel] = useState<PracticeLevel>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored === "A2" || stored === "B1" || stored === "B2") {
-        return stored;
-      }
-    } catch {
-      // Storage unavailable
-    }
-    return "B1";
-  });
+  const level = pickedLevel ?? storedLevel;
 
-  const handleLevelChange = (level: PracticeLevel) => {
-    setSelectedLevel(level);
+  const chooseLevel = async (next: PracticeLevel) => {
+    if (next === level || saving) return;
+    setPickedLevel(next);
+    setSaveFailed(false);
+    const current = usePreferencesStore.getState().preferences;
+    if (!current) return;
+    setSaving(true);
     try {
-      localStorage.setItem(STORAGE_KEY, level);
+      const updated = await accountApi.replacePreferences(
+        replacementFor(current, { practice_level: next }),
+      );
+      usePreferencesStore.getState().set(updated);
     } catch {
-      // Ignore
+      setSaveFailed(true);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -69,23 +82,30 @@ export const DailyPracticeCard: React.FC<DailyPracticeCardProps> = ({
               {t("practice.daily.badge", "Daily Practice Set")}
             </span>
           </div>
-          <div className="flex items-center gap-1 bg-surface-muted/60 p-0.5 rounded-lg border border-border/50 text-xs">
-            {(["A2", "B1", "B2"] as const).map((lvl) => (
-              <button
-                key={lvl}
-                type="button"
-                onClick={() => handleLevelChange(lvl)}
-                className={`px-2.5 py-1 rounded-md font-semibold transition-all ${
-                  selectedLevel === lvl
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-text-muted hover:text-text hover:bg-surface/50"
-                }`}
-                aria-pressed={selectedLevel === lvl}
-              >
-                {t("practice.daily.levelLabel", "Level {{lvl}}", { lvl })}
-              </button>
-            ))}
-          </div>
+          {signedIn && (
+            <div
+              role="group"
+              aria-label={t("practice.daily.levelGroup", "Practice level")}
+              className="flex items-center gap-1 bg-surface-muted/60 p-0.5 rounded-lg border border-border/50 text-xs"
+            >
+              {PRACTICE_LEVELS.map((lvl) => (
+                <button
+                  key={lvl}
+                  type="button"
+                  onClick={() => void chooseLevel(lvl)}
+                  disabled={saving}
+                  className={`px-2.5 py-1 rounded-md font-semibold transition-all disabled:opacity-60 ${
+                    level === lvl
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-text-muted hover:text-text hover:bg-surface/50"
+                  }`}
+                  aria-pressed={level === lvl}
+                >
+                  {t("practice.daily.levelLabel", "Level {{lvl}}", { lvl })}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <CardTitle className="text-xl font-bold tracking-tight">
@@ -98,6 +118,24 @@ export const DailyPracticeCard: React.FC<DailyPracticeCardProps> = ({
             "9 verified exercises freshly drawn for today: 1 reading passage, 5 grammar questions, and 3 sentence rewrites.",
           )}
         </CardDescription>
+
+        {signedIn && level === null && (
+          <p className="text-sm font-medium text-text">
+            {t(
+              "practice.daily.pickLevel",
+              "Choose your level to start. You can change it any time.",
+            )}
+          </p>
+        )}
+
+        {saveFailed && (
+          <p role="alert" className="text-xs text-danger-accent">
+            {t(
+              "practice.daily.levelSaveFailed",
+              "Your level could not be saved. Today's set still uses it.",
+            )}
+          </p>
+        )}
 
         {!compact && (
           <div className="flex items-center gap-2 pt-2 flex-wrap">
@@ -151,10 +189,19 @@ export const DailyPracticeCard: React.FC<DailyPracticeCardProps> = ({
               </Button>
             </Link>
           </div>
+        ) : level === null ? (
+          <Button
+            disabled
+            className="w-full sm:w-auto ml-auto gap-2 shadow-sm font-semibold"
+          >
+            <Sparkles className="h-4 w-4" aria-hidden="true" />
+            {t("practice.daily.startBtn", "Start Today's Set")}
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Button>
         ) : (
           <Link
             to="/practice/daily"
-            search={{ level: selectedLevel }}
+            search={{ level }}
             className="w-full sm:w-auto ml-auto"
           >
             <Button className="w-full sm:w-auto gap-2 shadow-sm font-semibold">

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -59,10 +60,30 @@ func toDomainPreferences(row sqlcuser.CoreUserPreference) (domain.Preferences, e
 		NotificationChannels: channels,
 		QuietHours:           quietHoursFrom(row),
 		AIProcessingOptOut:   row.AiProcessingOptOut,
+		PracticeLevel:        practiceLevelFrom(row.PracticeLevel),
 		CreatedAt:            row.CreatedAt,
 		UpdatedAt:            row.UpdatedAt,
 	}
 	return preferences, nil
+}
+
+// practiceLevelFrom reads the column, which is core.cefr_level and so lower
+// case, into the upper-case form the API and the practice pool use.
+func practiceLevelFrom(level *sqlcuser.CoreCefrLevel) *domain.PracticeLevel {
+	if level == nil {
+		return nil
+	}
+	practiceLevel := domain.PracticeLevel(strings.ToUpper(string(*level)))
+	return &practiceLevel
+}
+
+// toCefrLevel is the reverse of practiceLevelFrom.
+func toCefrLevel(level *domain.PracticeLevel) *sqlcuser.CoreCefrLevel {
+	if level == nil {
+		return nil
+	}
+	cefr := sqlcuser.CoreCefrLevel(strings.ToLower(string(*level)))
+	return &cefr
 }
 
 // quietHoursFrom rebuilds the window. The two columns are constrained to be

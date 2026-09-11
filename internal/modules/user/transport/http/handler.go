@@ -143,6 +143,7 @@ func (h *Handler) getAvatar(writer http.ResponseWriter, request *http.Request) {
 // The preference and avatar members named in more than one of the lists below.
 const (
 	fieldAIProcessingOptOut = "ai_processing_opt_out"
+	fieldPracticeLevel      = "practice_level"
 	fieldDailyGoalMinutes   = "daily_goal_minutes"
 	fieldLocale             = "locale"
 	fieldChannels           = "notification_channels"
@@ -159,7 +160,7 @@ var updateMeFields = []string{"display_name", "country", "timezone", "date_of_bi
 var (
 	replacePreferencesFields = []string{
 		fieldLocale, fieldTheme, fieldDailyGoalMinutes, fieldChannels, "quiet_hours",
-		fieldAIProcessingOptOut,
+		fieldAIProcessingOptOut, fieldPracticeLevel,
 	}
 	requiredPreferencesFields = []string{
 		fieldLocale, fieldTheme, fieldDailyGoalMinutes, fieldChannels, fieldAIProcessingOptOut,
@@ -346,6 +347,12 @@ func decodePreferences(request *http.Request) (domain.Preferences, error) {
 		AIProcessingOptOut:   payload.AIProcessingOptOut,
 	}
 
+	practiceLevel, err := decodePracticeLevel(fields)
+	if err != nil {
+		return domain.Preferences{}, err
+	}
+	preferences.PracticeLevel = practiceLevel
+
 	quietHours, err := decodeQuietHours(fields)
 	if err != nil {
 		return domain.Preferences{}, err
@@ -374,6 +381,21 @@ func decodeQuietHours(fields body) (*domain.QuietHours, error) {
 		return nil, err
 	}
 	return &domain.QuietHours{Start: start, End: end}, nil
+}
+
+// decodePracticeLevel reads the other nullable member. Absent and null both mean
+// "not chosen", for the reason quiet hours gives: a replacement has no "leave it
+// alone". Whether the value is a level the pool holds is domain.Preferences.Validate's call.
+func decodePracticeLevel(fields body) (*domain.PracticeLevel, error) {
+	if !fields.present(fieldPracticeLevel) {
+		return nil, nil
+	}
+	var level string
+	if err := readInto(fields, fieldPracticeLevel, &level); err != nil {
+		return nil, err
+	}
+	practiceLevel := domain.PracticeLevel(level)
+	return &practiceLevel, nil
 }
 
 func (h *Handler) requestAvatarUploadIntent(writer http.ResponseWriter, request *http.Request) {

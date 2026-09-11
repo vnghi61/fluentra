@@ -23,6 +23,30 @@ export type ExportResponse = components["schemas"]["ExportResponse"];
 export type DeletionResponse = components["schemas"]["DeletionResponse"];
 
 /**
+ * The PUT body that stores `preferences` as they are, with `changes` applied.
+ *
+ * `PUT /me/preferences` replaces the whole record, and an omitted nullable
+ * member is stored as null. Every caller that changes one setting builds its
+ * body here, so none can forget a field: a theme toggle that left out
+ * `practice_level` would clear the learner's level each time it was used.
+ */
+export function replacementFor(
+  preferences: UserPreferences,
+  changes: Partial<ReplacePreferencesRequest> = {},
+): ReplacePreferencesRequest {
+  return {
+    locale: preferences.locale,
+    theme: preferences.theme,
+    daily_goal_minutes: preferences.daily_goal_minutes,
+    notification_channels: preferences.notification_channels,
+    quiet_hours: preferences.quiet_hours ?? null,
+    ai_processing_opt_out: preferences.ai_processing_opt_out,
+    practice_level: preferences.practice_level ?? null,
+    ...changes,
+  };
+}
+
+/**
  * Turns a failed direct-to-storage upload into an error that says why.
  *
  * The store is not our API: it answers with an S3 XML body, not a Problem

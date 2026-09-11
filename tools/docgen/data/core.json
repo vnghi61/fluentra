@@ -399,7 +399,7 @@
     "tables": [
       { "name": "users", "purpose": "Canonical user identity", "notes": "`email` (citext, UNIQUE), `status`, `email_verified_at`, `created_at`. **The one table other schemas may FK to** (ADR-0004)" },
       { "name": "profiles", "purpose": "Descriptive profile data", "notes": "1:1 with users; display name, avatar asset ID, country, timezone" },
-      { "name": "user_preferences", "purpose": "Settings", "notes": "Locale, theme, daily goal, notification channels, quiet hours, `ai_processing_opt_out`" },
+      { "name": "user_preferences", "purpose": "Settings", "notes": "Locale, theme, daily goal, notification channels, quiet hours, `ai_processing_opt_out`, `practice_level` (A2–B2, null until chosen)" },
       { "name": "learning_profiles", "purpose": "Self-declared learning context", "notes": "Declared level, target level, target exam, weekly minutes goal, motivations" },
       { "name": "user_deletions", "purpose": "Erasure workflow", "notes": "`requested_at`, `execute_after`, `cancelled_at`, `completed_at`" },
       { "name": "user_exports", "purpose": "Data export jobs and artefacts", "notes": "`status`, `object_key`, `expires_at`" },

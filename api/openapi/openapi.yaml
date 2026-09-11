@@ -1227,6 +1227,7 @@ paths:
                   start: '22:00'
                   end: '07:00'
                 ai_processing_opt_out: false
+                practice_level: B1
                 updated_at: '2026-08-09T04:21:07Z'
         '401':
           $ref: '#/components/responses/Unauthorized'

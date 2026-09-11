@@ -2729,6 +2729,11 @@ export interface components {
             quiet_hours?: components["schemas"]["QuietHours"] | null;
             /** @description Disables AI grading only. Deterministic exercises keep working, so opting out never costs the learner access to the product. */
             ai_processing_opt_out: boolean;
+            /**
+             * @description The level the daily practice set is drawn at, or null until the learner chooses one. The practice pool holds A2, B1 and B2 only.
+             * @example B1
+             */
+            practice_level?: ("A2" | "B1" | "B2") | null;
             /** Format: date-time */
             updated_at: string;
         };
@@ -2739,7 +2744,7 @@ export interface components {
             /** @example 07:00 */
             end: string;
         };
-        /** @description The complete preference set. This is a PUT: every field is required, and what the caller sends is exactly what is stored. */
+        /** @description The complete preference set. This is a PUT: every field is required, and what the caller sends is exactly what is stored. The two nullable members, quiet_hours and practice_level, may be omitted, and omitted means null — so a client changing one field must send practice_level back unchanged. */
         ReplacePreferencesRequest: {
             /** @example vi */
             locale: string;
@@ -2757,6 +2762,8 @@ export interface components {
             quiet_hours?: components["schemas"]["QuietHours"] | null;
             /** @example false */
             ai_processing_opt_out: boolean;
+            /** @example B1 */
+            practice_level?: ("A2" | "B1" | "B2") | null;
         };
         /** @description Constrained browser upload intent for an avatar image. */
         AvatarUploadIntent: {
@@ -5759,6 +5766,7 @@ export interface operations {
                      *         "end": "07:00"
                      *       },
                      *       "ai_processing_opt_out": false,
+                     *       "practice_level": "B1",
                      *       "updated_at": "2026-08-09T04:21:07Z"
                      *     }
                      */
@@ -5819,6 +5827,7 @@ export interface operations {
                      *         "end": "07:00"
                      *       },
                      *       "ai_processing_opt_out": false,
+                     *       "practice_level": "B1",
                      *       "updated_at": "2026-08-09T04:21:07Z"
                      *     }
                      */

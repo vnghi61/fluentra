@@ -36,7 +36,7 @@ func TestGetPreferences_ReadsTheActorsOwnSettings(t *testing.T) {
 	}
 	for _, field := range []string{
 		"locale", "theme", "daily_goal_minutes", "notification_channels",
-		"quiet_hours", "ai_processing_opt_out", "updated_at",
+		"quiet_hours", "ai_processing_opt_out", "practice_level", "updated_at",
 	} {
 		if _, present := body[field]; !present {
 			t.Errorf("response is missing %q", field)
@@ -106,6 +106,55 @@ func TestPutPreferences_MissingFieldIsRejected(t *testing.T) {
 	}
 	if accounts.seenWanted.Locale != "" {
 		t.Error("the service was called despite the rejected body")
+	}
+}
+
+// TestPutPreferences_PracticeLevel. A level reaches the service as sent and comes
+// back in the response; absent and null both mean "not chosen", which the
+// response states as null because that is what tells the client to ask.
+func TestPutPreferences_PracticeLevel(t *testing.T) {
+	t.Parallel()
+	const fields = `"locale":"vi","theme":"dark","daily_goal_minutes":30,` +
+		`"notification_channels":["in_app"],"ai_processing_opt_out":false`
+
+	cases := map[string]struct {
+		body string
+		want string // empty for not chosen
+	}{
+		"chosen":  {body: `{` + fields + `,"practice_level":"B2"}`, want: "B2"},
+		"omitted": {body: `{` + fields + `}`},
+		"null":    {body: `{` + fields + `,"practice_level":null}`},
+	}
+	for label, testCase := range cases {
+		t.Run(label, func(t *testing.T) {
+			t.Parallel()
+			accounts := &fakeAccounts{}
+			server := newServer(accounts)
+
+			recorder := authenticated(t, server, http.MethodPut, "/api/v1/me/preferences", testCase.body)
+			if recorder.Code != http.StatusOK {
+				t.Fatalf("status = %d, want 200 (body %s)", recorder.Code, recorder.Body)
+			}
+			got := ""
+			if level := accounts.seenWanted.PracticeLevel; level != nil {
+				got = string(*level)
+			}
+			if got != testCase.want {
+				t.Errorf("practice level reached the service as %q, want %q", got, testCase.want)
+			}
+
+			var body map[string]any
+			if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
+				t.Fatalf("decode: %v", err)
+			}
+			value, present := body["practice_level"]
+			if !present {
+				t.Fatal("response is missing practice_level")
+			}
+			if (testCase.want == "" && value != nil) || (testCase.want != "" && value != testCase.want) {
+				t.Errorf("response practice_level = %v, want %q", value, testCase.want)
+			}
+		})
 	}
 }
 
