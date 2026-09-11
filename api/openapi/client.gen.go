@@ -1422,6 +1422,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /vocabulary/words/{sense_id}/state (the `UpdateWordState` operationId).
 	UpdateWordState(ctx context.Context, senseId openapi_types.UUID, body UpdateWordStateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetWritingFeedback Read detailed writing feedback for an attempt.
+	//
+	// Returns IELTS-style criteria scores, located annotations, and bilingual feedback for a graded writing attempt owned by the caller.
+	//
+	// Corresponds with GET /writing/attempts/{id}/feedback (the `GetWritingFeedback` operationId).
+	GetWritingFeedback(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 // StartAttempt Start an activity attempt.
@@ -4206,6 +4213,23 @@ func (c *Client) UpdateWordStateWithBody(ctx context.Context, senseId openapi_ty
 // Corresponds with POST /vocabulary/words/{sense_id}/state (the `UpdateWordState` operationId).
 func (c *Client) UpdateWordState(ctx context.Context, senseId openapi_types.UUID, body UpdateWordStateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateWordStateRequest(c.Server, senseId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetWritingFeedback Read detailed writing feedback for an attempt.
+//
+// Returns IELTS-style criteria scores, located annotations, and bilingual feedback for a graded writing attempt owned by the caller.
+//
+// Corresponds with GET /writing/attempts/{id}/feedback (the `GetWritingFeedback` operationId).
+func (c *Client) GetWritingFeedback(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetWritingFeedbackRequest(c.Server, id)
 	if err != nil {
 		return nil, err
 	}
@@ -8791,6 +8815,40 @@ func NewUpdateWordStateRequestWithBody(server string, senseId openapi_types.UUID
 	return req, nil
 }
 
+// NewGetWritingFeedbackRequest constructs an http.Request for the GetWritingFeedback method
+func NewGetWritingFeedbackRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/writing/attempts/%s/feedback", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -10302,6 +10360,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /vocabulary/words/{sense_id}/state (the `UpdateWordState` operationId).
 	UpdateWordStateWithResponse(ctx context.Context, senseId openapi_types.UUID, body UpdateWordStateJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateWordStateResponse, error)
+
+	// GetWritingFeedbackWithResponse Read detailed writing feedback for an attempt.
+	//
+	// Returns IELTS-style criteria scores, located annotations, and bilingual feedback for a graded writing attempt owned by the caller.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /writing/attempts/{id}/feedback (the `GetWritingFeedback` operationId).
+	GetWritingFeedbackWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetWritingFeedbackResponse, error)
 }
 
 // StartAttemptResponse201Headers the declared response headers of an HTTP 201 response for StartAttempt
@@ -17932,6 +17999,82 @@ func (r UpdateWordStateResponse) ContentType() string {
 	return ""
 }
 
+// GetWritingFeedbackResponse200Headers the declared response headers of an HTTP 200 response for GetWritingFeedback
+type GetWritingFeedbackResponse200Headers struct {
+	XRequestId *string
+}
+
+type GetWritingFeedbackResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WritingFeedback
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetWritingFeedbackResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetWritingFeedbackResponse) GetJSON200() *WritingFeedback {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetWritingFeedbackResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r GetWritingFeedbackResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GetWritingFeedbackResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r GetWritingFeedbackResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetWritingFeedbackResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetWritingFeedbackResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetWritingFeedbackResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetWritingFeedbackResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // StartAttemptWithResponse Start an activity attempt.
 //
 // Verifies unlocking prerequisites and starts a new in-progress attempt for an activity.
@@ -20274,6 +20417,21 @@ func (c *ClientWithResponses) UpdateWordStateWithResponse(ctx context.Context, s
 		return nil, err
 	}
 	return ParseUpdateWordStateResponse(rsp)
+}
+
+// GetWritingFeedbackWithResponse Read detailed writing feedback for an attempt.
+//
+// Returns IELTS-style criteria scores, located annotations, and bilingual feedback for a graded writing attempt owned by the caller.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /writing/attempts/{id}/feedback (the `GetWritingFeedback` operationId).
+func (c *ClientWithResponses) GetWritingFeedbackWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetWritingFeedbackResponse, error) {
+	rsp, err := c.GetWritingFeedback(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetWritingFeedbackResponse(rsp)
 }
 
 // ParseStartAttemptResponse parses an HTTP response from a StartAttemptWithResponse call
@@ -27339,6 +27497,73 @@ func ParseUpdateWordStateResponse(rsp *http.Response) (*UpdateWordStateResponse,
 	switch {
 	case rsp.StatusCode == 200:
 		var headers UpdateWordStateResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGetWritingFeedbackResponse parses an HTTP response from a GetWritingFeedbackWithResponse call
+func ParseGetWritingFeedbackResponse(rsp *http.Response) (*GetWritingFeedbackResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetWritingFeedbackResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WritingFeedback
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetWritingFeedbackResponse200Headers
 		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
 			var value string
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {

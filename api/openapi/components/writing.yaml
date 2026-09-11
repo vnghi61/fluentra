@@ -1,0 +1,79 @@
+WritingCriterion:
+  type: object
+  required: [name, band, comment_en, comment_vi]
+  properties:
+    name:
+      type: string
+      example: task_response
+    band:
+      type: number
+      format: float
+      example: 7.0
+    comment_en:
+      type: string
+      example: Good development of main ideas with relevant examples.
+    comment_vi:
+      type: string
+      example: Phát triển ý chính tốt với các ví dụ phù hợp.
+
+WritingAnnotation:
+  type: object
+  required: [quoted_text, start_offset, end_offset, comment_en, comment_vi]
+  properties:
+    quoted_text:
+      type: string
+      example: rapid advancement
+    start_offset:
+      type: integer
+      example: 16
+    end_offset:
+      type: integer
+      example: 33
+    comment_en:
+      type: string
+      example: Strong adjective-noun collocation.
+    comment_vi:
+      type: string
+      example: Cụm tính từ - danh từ rất tốt.
+
+WritingFeedback:
+  type: object
+  required: [attempt_id, user_id, overall_band, score, criteria, annotations, feedback_en, feedback_vi, prompt_version, created_at]
+  properties:
+    attempt_id:
+      type: string
+      format: uuid
+    user_id:
+      type: string
+      format: uuid
+    overall_band:
+      type: number
+      format: float
+      example: 6.5
+    score:
+      type: integer
+      example: 72
+    criteria:
+      type: array
+      items:
+        $ref: '#/WritingCriterion'
+    annotations:
+      type: array
+      items:
+        $ref: '#/WritingAnnotation'
+    feedback_en:
+      type: string
+      example: Your essay shows a clear understanding of the topic...
+    feedback_vi:
+      type: string
+      example: Bài viết của bạn thể hiện sự hiểu biết rõ ràng về chủ đề...
+    prompt_version:
+      type: string
+      example: writing_grade.v2
+    model:
+      type: string
+      example: gpt-4o-mini
+    created_at:
+      type: string
+      format: date-time
+      example: '2026-09-11T12:00:00Z'

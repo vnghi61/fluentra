@@ -86,6 +86,9 @@ tags:
       and every operation acts on the caller in the access token rather than on
       a user id in the path. Leaderboards are opt-in and expose display names
       only.
+  - name: writing
+    description: >-
+      Writing exercises, IELTS-style criteria evaluation, and essay feedback.
 security:
   - BearerAuth: []
 paths:
@@ -4984,6 +4987,39 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /writing/attempts/{id}/feedback:
+    get:
+      tags: [writing]
+      operationId: getWritingFeedback
+      summary: Read detailed writing feedback for an attempt.
+      description: Returns IELTS-style criteria scores, located annotations, and bilingual feedback for a graded writing attempt owned by the caller.
+      x-permission: self
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Unique identifier of the attempt.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Detailed writing feedback for the attempt.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WritingFeedback'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 components:
   securitySchemes:
     BearerAuth:
@@ -5303,6 +5339,12 @@ components:
       $ref: ./components/vocabulary.yaml#/LearnerWordQueueList
     UpdateWordSenseRequest:
       $ref: ./components/vocabulary.yaml#/UpdateWordSenseRequest
+    WritingCriterion:
+      $ref: ./components/writing.yaml#/WritingCriterion
+    WritingAnnotation:
+      $ref: ./components/writing.yaml#/WritingAnnotation
+    WritingFeedback:
+      $ref: ./components/writing.yaml#/WritingFeedback
   headers:
     X-Request-Id:
       $ref: ./components/headers.yaml#/X-Request-Id

@@ -76,7 +76,8 @@ Other modules may import **only** `internal/modules/writing/contract`.
 <!-- BEGIN GENERATED: contract -->
 | Kind | Name | Purpose |
 |---|---|---|
-| interface | `writing.Grader` | Implements `learning.ExerciseGrader`; always returns `Async: true` |
+| interface | `writing.Grader` | Implements `learning.ExerciseGrader`; returns `Async: true` for valid essays |
+| interface | `writing.FeedbackReader` | `GetWritingFeedback` — read feedback by attempt and user |
 | interface | `writing.Reader` | `SubmissionHistory` — used by `analytics` and `admin` |
 
 ### Events

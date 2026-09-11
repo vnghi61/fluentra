@@ -73,11 +73,27 @@ type writingResponse struct {
 	Answer     string `json:"answer,omitempty"`
 }
 
-type aiGradeOutput struct {
-	Score      int    `json:"score"`
-	Correct    bool   `json:"correct"`
-	Feedback   string `json:"feedback"`
-	FeedbackVi string `json:"feedback_vi,omitempty"`
+// FeedbackRepo stores writing feedback across modules.
+type FeedbackRepo interface {
+	InsertWritingFeedback(ctx context.Context, fb contract.WritingFeedback) error
+}
+
+type aiCriterionOutput struct {
+	Name      string  `json:"name"`
+	Band      float64 `json:"band"`
+	CommentEn string  `json:"comment_en"`
+	CommentVi string  `json:"comment_vi"`
+}
+
+type aiGradeV2Output struct {
+	OverallBand float64             `json:"overall_band"`
+	Score       int                 `json:"score"`
+	Correct     bool                `json:"correct"`
+	Criteria    []aiCriterionOutput `json:"criteria"`
+	Annotations []rawAnnotation     `json:"annotations"`
+	Feedback    string              `json:"feedback,omitempty"`
+	FeedbackEn  string              `json:"feedback_en,omitempty"`
+	FeedbackVi  string              `json:"feedback_vi,omitempty"`
 }
 
 // GraderDeps contains dependencies for constructing a Grader.
@@ -87,6 +103,7 @@ type GraderDeps struct {
 	Counter    AttemptCounter
 	Attempts   AttemptReader
 	Completer  AsyncGradingCompleter
+	Feedback   FeedbackRepo
 	Enqueuer   JobEnqueuer
 	Nudger     WorkerNudger
 	Clock      clock.Clock
@@ -100,6 +117,7 @@ type Grader struct {
 	counter    AttemptCounter
 	attempts   AttemptReader
 	completer  AsyncGradingCompleter
+	feedback   FeedbackRepo
 	enqueuer   JobEnqueuer
 	nudger     WorkerNudger
 	clock      clock.Clock
@@ -126,6 +144,7 @@ func NewGraderWithDeps(deps GraderDeps) *Grader {
 		counter:    deps.Counter,
 		attempts:   deps.Attempts,
 		completer:  deps.Completer,
+		feedback:   deps.Feedback,
 		enqueuer:   deps.Enqueuer,
 		nudger:     deps.Nudger,
 		clock:      timekeeper,
@@ -217,11 +236,24 @@ func (g *Grader) Grade(
 
 	// 4. Otherwise: enqueue the job and return Async: true
 	if g.enqueuer == nil {
-		score, correct, feedback, explanation, evalErr := g.evaluateAI(ctx, submitted, body)
+		out, _, evalErr := g.evaluateAIv2(ctx, submitted, body)
 		if evalErr != nil {
 			return learningcontract.GradeResult{}, evalErr
 		}
-		return buildResult(req.ContentVersionID, score, correct, feedback, body, explanation), nil
+		feedback := out.FeedbackEn
+		if feedback == "" {
+			feedback = out.Feedback
+		}
+		var exp *learningcontract.AnswerExplanation
+		if out.FeedbackVi != "" {
+			exp = &learningcontract.AnswerExplanation{
+				Text:   feedback,
+				TextVi: out.FeedbackVi,
+			}
+		} else if body.Explanation != nil {
+			exp = body.Explanation
+		}
+		return buildResult(req.ContentVersionID, out.Score, out.Correct, feedback, body, exp), nil
 	}
 
 	if err := g.enqueuer.EnqueueGradeSubmission(ctx, req.AttemptID); err != nil {
@@ -263,7 +295,7 @@ func (g *Grader) GradeSubmission(ctx context.Context, attemptID uuid.UUID) error
 	}
 
 	submitted := submittedText(attempt.Response)
-	score, correct, feedback, explanation, evalErr := g.evaluateAI(ctx, submitted, body)
+	out, modelName, evalErr := g.evaluateAIv2(ctx, submitted, body)
 	if evalErr != nil {
 		// A provider that errors leaves the attempt failed: no score, no progress row,
 		// no review card, nothing counted against the limit.
@@ -271,7 +303,52 @@ func (g *Grader) GradeSubmission(ctx context.Context, attemptID uuid.UUID) error
 		return evalErr
 	}
 
-	result := buildResult(attempt.ContentVersionID, score, correct, feedback, body, explanation)
+	feedback := out.FeedbackEn
+	if feedback == "" {
+		feedback = out.Feedback
+	}
+
+	locatedAnnotations := locateAnnotations(submitted, out.Annotations)
+
+	var criteria []contract.WritingCriterion
+	for _, c := range out.Criteria {
+		criteria = append(criteria, contract.WritingCriterion{
+			Name:      c.Name,
+			Band:      c.Band,
+			CommentEn: c.CommentEn,
+			CommentVi: c.CommentVi,
+		})
+	}
+
+	if g.feedback != nil {
+		fb := contract.WritingFeedback{
+			AttemptID:     attemptID,
+			UserID:        attempt.UserID,
+			OverallBand:   out.OverallBand,
+			Score:         out.Score,
+			Criteria:      criteria,
+			Annotations:   locatedAnnotations,
+			FeedbackEn:    feedback,
+			FeedbackVi:    out.FeedbackVi,
+			PromptVersion: "writing_grade.v2",
+			Model:         modelName,
+		}
+		if err := g.feedback.InsertWritingFeedback(ctx, fb); err != nil {
+			return fmt.Errorf("insert writing feedback for attempt %s: %w", attemptID, err)
+		}
+	}
+
+	var explanation *learningcontract.AnswerExplanation
+	if out.FeedbackVi != "" {
+		explanation = &learningcontract.AnswerExplanation{
+			Text:   feedback,
+			TextVi: out.FeedbackVi,
+		}
+	} else if body.Explanation != nil {
+		explanation = body.Explanation
+	}
+
+	result := buildResult(attempt.ContentVersionID, out.Score, out.Correct, feedback, body, explanation)
 	_, compErr := g.completer.CompleteAsyncGrading(ctx, attemptID, result)
 	if compErr != nil {
 		return fmt.Errorf("complete async grading for attempt %s: %w", attemptID, compErr)
@@ -303,16 +380,22 @@ func submittedText(response json.RawMessage) string {
 	return ""
 }
 
-func (g *Grader) evaluateAI(
+func (g *Grader) evaluateAIv2(
 	ctx context.Context,
 	submitted string,
 	body writingPromptBody,
-) (int, bool, string, *learningcontract.AnswerExplanation, error) {
+) (aiGradeV2Output, string, error) {
 	trimmed := strings.TrimSpace(submitted)
 	words := len(strings.Fields(trimmed))
 
 	if words == 0 {
-		return 0, false, "No response provided. Please write an answer to the prompt.", body.Explanation, nil
+		return aiGradeV2Output{
+			OverallBand: 0,
+			Score:       0,
+			Correct:     false,
+			FeedbackEn:  "No response provided. Please write an answer to the prompt.",
+			Feedback:    "No response provided. Please write an answer to the prompt.",
+		}, "", nil
 	}
 
 	if g.ai != nil {
@@ -327,24 +410,27 @@ func (g *Grader) evaluateAI(
 			vars["MinWords"] = body.MinWords
 		}
 
-		var out aiGradeOutput
-		err := ai.CompleteJSON(ctx, g.ai, ai.Request{
+		var out aiGradeV2Output
+		resp, err := ai.CompleteJSONWithResponse(ctx, g.ai, ai.Request{
 			Task: ai.TaskGradeWriting,
 			Vars: vars,
 		}, &out)
-
 		if err != nil {
-			return 0, false, "", nil, fmt.Errorf("ai grade writing: %w", err)
+			return aiGradeV2Output{}, "", fmt.Errorf("ai grade writing: %w", err)
 		}
 
-		exp := body.Explanation
-		if out.FeedbackVi != "" {
-			exp = &learningcontract.AnswerExplanation{
-				Text:   out.Feedback,
-				TextVi: out.FeedbackVi,
-			}
+		if out.FeedbackEn == "" && out.Feedback != "" {
+			out.FeedbackEn = out.Feedback
 		}
-		return out.Score, out.Correct, out.Feedback, exp, nil
+		if out.Feedback == "" && out.FeedbackEn != "" {
+			out.Feedback = out.FeedbackEn
+		}
+
+		if out.OverallBand == 0 && out.Score > 0 {
+			out.OverallBand = float64(out.Score) / 10.0
+		}
+
+		return out, resp.Model, nil
 	}
 
 	// Fallback heuristic when AI is unavailable or offline
@@ -354,10 +440,22 @@ func (g *Grader) evaluateAI(
 			"Your response is %d words, but the prompt asks for at least %d words.",
 			words, body.MinWords,
 		)
-		return score, false, short, body.Explanation, nil
+		return aiGradeV2Output{
+			OverallBand: float64(score) / 10.0,
+			Score:       score,
+			Correct:     false,
+			FeedbackEn:  short,
+			Feedback:    short,
+		}, "", nil
 	}
 
-	return 75, true, "Your writing has been received and reviewed.", body.Explanation, nil
+	return aiGradeV2Output{
+		OverallBand: 6.5,
+		Score:       75,
+		Correct:     true,
+		FeedbackEn:  "Your writing has been received and reviewed.",
+		Feedback:    "Your writing has been received and reviewed.",
+	}, "", nil
 }
 
 func buildResult(

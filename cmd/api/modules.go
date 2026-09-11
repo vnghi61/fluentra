@@ -457,6 +457,7 @@ func (i *identity) Routes(api chi.Router) {
 		i.srs.Routes(authenticated)
 		i.vocabulary.Routes(authenticated)
 		i.gamification.Routes(authenticated)
+		i.writing.Routes(authenticated)
 
 		authenticated.Group(func(admin chi.Router) {
 			admin.Use(i.rbac.AdminOnly())

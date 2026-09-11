@@ -2079,6 +2079,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/writing/attempts/{id}/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read detailed writing feedback for an attempt.
+         * @description Returns IELTS-style criteria scores, located annotations, and bilingual feedback for a graded writing attempt owned by the caller.
+         */
+        get: operations["getWritingFeedback"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -4261,6 +4281,59 @@ export interface components {
             /** @example psychology */
             topic?: string | null;
             examples?: components["schemas"]["ExampleSentence"][];
+        };
+        WritingCriterion: {
+            /** @example task_response */
+            name: string;
+            /**
+             * Format: float
+             * @example 7
+             */
+            band: number;
+            /** @example Good development of main ideas with relevant examples. */
+            comment_en: string;
+            /** @example Phát triển ý chính tốt với các ví dụ phù hợp. */
+            comment_vi: string;
+        };
+        WritingAnnotation: {
+            /** @example rapid advancement */
+            quoted_text: string;
+            /** @example 16 */
+            start_offset: number;
+            /** @example 33 */
+            end_offset: number;
+            /** @example Strong adjective-noun collocation. */
+            comment_en: string;
+            /** @example Cụm tính từ - danh từ rất tốt. */
+            comment_vi: string;
+        };
+        WritingFeedback: {
+            /** Format: uuid */
+            attempt_id: string;
+            /** Format: uuid */
+            user_id: string;
+            /**
+             * Format: float
+             * @example 6.5
+             */
+            overall_band: number;
+            /** @example 72 */
+            score: number;
+            criteria: components["schemas"]["WritingCriterion"][];
+            annotations: components["schemas"]["WritingAnnotation"][];
+            /** @example Your essay shows a clear understanding of the topic... */
+            feedback_en: string;
+            /** @example Bài viết của bạn thể hiện sự hiểu biết rõ ràng về chủ đề... */
+            feedback_vi: string;
+            /** @example writing_grade.v2 */
+            prompt_version: string;
+            /** @example gpt-4o-mini */
+            model?: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-11T12:00:00Z
+             */
+            created_at: string;
         };
     };
     responses: {
@@ -9054,6 +9127,34 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    getWritingFeedback: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Unique identifier of the attempt. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Detailed writing feedback for the attempt. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WritingFeedback"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             500: components["responses"]["InternalServerError"];
         };

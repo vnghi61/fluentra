@@ -102,9 +102,9 @@ func TestRegistry_LoadsGradeWritingTemplate(t *testing.T) {
 	tmpl, err := registry.Get(ai.TaskGradeWriting)
 	require.NoError(t, err)
 
-	assert.Equal(t, 1, tmpl.Version)
+	assert.Equal(t, 2, tmpl.Version)
 	assert.True(t, tmpl.JSONOutput)
-	assert.Equal(t, 1024, tmpl.MaxTokens)
+	assert.Equal(t, 2048, tmpl.MaxTokens)
 	assert.InDelta(t, 0.2, tmpl.Temperature, 0.001)
 }
 

@@ -91,22 +91,28 @@ var ErrDisabled = errors.New("ai: no provider configured")
 // and the outermost JSON value is taken. Anything beyond that is a real failure
 // and is reported as one.
 func CompleteJSON(ctx context.Context, client Client, req Request, out any) error {
+	_, err := CompleteJSONWithResponse(ctx, client, req, out)
+	return err
+}
+
+// CompleteJSONWithResponse runs a task, decodes its reply into `out`, and returns the raw Response.
+func CompleteJSONWithResponse(ctx context.Context, client Client, req Request, out any) (Response, error) {
 	if client == nil {
-		return ErrDisabled
+		return Response{}, ErrDisabled
 	}
 	response, err := client.Complete(ctx, req)
 	if err != nil {
-		return err
+		return Response{}, err
 	}
 
 	payload := extractJSON(response.Text)
 	if payload == "" {
-		return fmt.Errorf("ai: task %s returned no JSON: %.200q", req.Task, response.Text)
+		return response, fmt.Errorf("ai: task %s returned no JSON: %.200q", req.Task, response.Text)
 	}
 	if err := json.Unmarshal([]byte(payload), out); err != nil {
-		return fmt.Errorf("ai: task %s returned invalid JSON: %w", req.Task, err)
+		return response, fmt.Errorf("ai: task %s returned invalid JSON: %w", req.Task, err)
 	}
-	return nil
+	return response, nil
 }
 
 // extractJSON finds the outermost JSON object or array in a model's reply.

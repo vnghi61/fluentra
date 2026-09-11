@@ -429,3 +429,65 @@ func TestWritingGrader_GradeSubmission_ProviderErrorLeavesAttemptFailed(t *testi
 	assert.Contains(t, completer.failed, attemptID)
 	assert.Empty(t, completer.completed)
 }
+
+type mockFeedbackRepo struct {
+	stored []contract.WritingFeedback
+}
+
+func (m *mockFeedbackRepo) InsertWritingFeedback(_ context.Context, fb contract.WritingFeedback) error {
+	m.stored = append(m.stored, fb)
+	return nil
+}
+
+func TestWritingGrader_GradeSubmission_StoresStructuredFeedback(t *testing.T) {
+	registry, err := ai.NewRegistry()
+	require.NoError(t, err)
+	aiClient := ai.NewMockProvider(registry)
+
+	versionID := uuid.New()
+	attemptID := uuid.New()
+	userID := uuid.New()
+
+	reader := &mockContentReader{
+		versions: map[uuid.UUID]*contentcontract.Version{
+			versionID: {ID: versionID, Body: []byte(`{"prompt":"Write about your city","min_words":5}`)},
+		},
+	}
+	attempts := &mockAttemptReader{
+		attempts: map[uuid.UUID]*learningcontract.AttemptDetail{
+			attemptID: {
+				ID:               attemptID,
+				UserID:           userID,
+				ContentVersionID: versionID,
+				Status:           statusGrading,
+				Response:         json.RawMessage(`{"text_answer": "I live in Da Nang and it is a wonderful place to live and work."}`),
+			},
+		},
+	}
+	completer := &mockCompleter{}
+	feedbackRepo := &mockFeedbackRepo{}
+
+	grader := NewGraderWithDeps(GraderDeps{
+		Content:   reader,
+		AI:        aiClient,
+		Attempts:  attempts,
+		Completer: completer,
+		Feedback:  feedbackRepo,
+	})
+
+	err = grader.GradeSubmission(context.Background(), attemptID)
+	require.NoError(t, err)
+	assert.Contains(t, completer.completed, attemptID)
+
+	require.Len(t, feedbackRepo.stored, 1)
+	fb := feedbackRepo.stored[0]
+	assert.Equal(t, attemptID, fb.AttemptID)
+	assert.Equal(t, userID, fb.UserID)
+	assert.Equal(t, 6.5, fb.OverallBand)
+	assert.Equal(t, "writing_grade.v2", fb.PromptVersion)
+	assert.NotEmpty(t, fb.FeedbackEn)
+	assert.NotEmpty(t, fb.FeedbackVi)
+	assert.Len(t, fb.Criteria, 4)
+	assert.Equal(t, "task_response", fb.Criteria[0].Name)
+	assert.Equal(t, 7.0, fb.Criteria[0].Band)
+}

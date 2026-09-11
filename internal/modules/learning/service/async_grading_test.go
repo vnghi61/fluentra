@@ -296,3 +296,62 @@ func TestAsyncGrading_SweepStuckGrading(t *testing.T) {
 
 	assertAttemptStatus(t, repo, startRes.AttemptID, domain.StatusFailed)
 }
+
+func TestAsyncGrading_EssaysNeverCachedInAnswerExplanations(t *testing.T) {
+	ctx := context.Background()
+	svc, repo, reader, _, _ := setupAsyncTestService()
+
+	activityID := uuid.New()
+	contentVersionID := uuid.New()
+	reader.hierarchy[activityID] = &lessoncontract.ActivityHierarchy{
+		ActivityID:       activityID,
+		ContentVersionID: contentVersionID,
+		Kind:             testKindAsyncGrader,
+	}
+
+	userID := uuid.New()
+	startRes, err := svc.StartAttempt(ctx, userID, activityID)
+	if err != nil {
+		t.Fatalf("StartAttempt: %v", err)
+	}
+
+	essayText := "In recent years, artificial intelligence has developed rapidly."
+	rawResp := json.RawMessage(`{"text_answer":"` + essayText + `"}`)
+	submitRes, err := svc.SubmitAttempt(ctx, userID, startRes.AttemptID, uuid.New(), rawResp)
+	if err != nil {
+		t.Fatalf("SubmitAttempt: %v", err)
+	}
+	if !submitRes.Async {
+		t.Fatal("expected async submission")
+	}
+
+	// Complete async grading with feedback
+	updated, err := svc.CompleteAsyncGrading(ctx, startRes.AttemptID, contract.GradeResult{
+		Score:    85,
+		MaxScore: 100,
+		Correct:  true,
+		Feedback: "Good essay.",
+		Explanation: &contract.AnswerExplanation{
+			Text:   "Good essay.",
+			TextVi: "Bài viết tốt.",
+		},
+	})
+	if err != nil {
+		t.Fatalf("CompleteAsyncGrading: %v", err)
+	}
+	if !updated {
+		t.Fatal("expected attempt to be updated")
+	}
+
+	// Critical check: verify that the essay was NEVER cached in answer_explanations table
+	cached, err := repo.GetAnswerExplanation(ctx, contentVersionID, essayText)
+	if err != nil {
+		t.Fatalf("GetAnswerExplanation: %v", err)
+	}
+	if cached != nil {
+		t.Fatalf("expected nil cached explanation for essay submission, but found: %+v", cached)
+	}
+	if len(repo.explanations) != 0 {
+		t.Fatalf("expected repo.explanations to be empty, but has %d entries", len(repo.explanations))
+	}
+}

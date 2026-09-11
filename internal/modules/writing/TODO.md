@@ -47,18 +47,15 @@ _Nothing deferred._
 - Peer review
 <!-- END GENERATED: todo-future -->
 
-## Shipped in work order 10
+## Shipped in work orders 10 & 11
 
 The boxes above are unticked because docgen renders every generated item that
-way. What exists in code today is the **grader**, and only that:
+way. What exists in code today:
 
 - [x] `writing.Grader` implements `learning.ExerciseGrader` for
       `writing_prompt`, registered through `cmd/api/modules.go` and rendered by
       `ExerciseWriting.tsx`.
-- [x] `writing_grade.v1.md` is the versioned prompt behind it.
-
-`status` stays `PLANNED` on purpose. The front matter names five tables —
-`writing_tasks`, `writing_drafts`, `writing_submissions`, `writing_feedback`,
-`writing_revisions` — and none exist. Autosaved drafts, revision history and
-per-criterion band feedback are the module those tables describe, and none of it
-is built. Retire the list, or build it, and then change the status deliberately.
+- [x] `writing_grade.v1.md` and `writing_grade.v2.md` prompts.
+- [x] Background grading via River worker (`writingjob.GradeSubmissionWorker`).
+- [x] `skill.writing_feedback` table storing structured IELTS feedback (criteria, located annotations, band scores).
+- [x] `GET /writing/attempts/{id}/feedback` endpoint for reading learner feedback.

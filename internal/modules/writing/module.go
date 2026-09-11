@@ -3,6 +3,7 @@ package writing
 import (
 	"context"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -11,7 +12,9 @@ import (
 	learningcontract "github.com/fluentra/fluentra/internal/modules/learning/contract"
 	"github.com/fluentra/fluentra/internal/modules/writing/contract"
 	writingjob "github.com/fluentra/fluentra/internal/modules/writing/job"
+	writingrepo "github.com/fluentra/fluentra/internal/modules/writing/repository"
 	"github.com/fluentra/fluentra/internal/modules/writing/service"
+	writinghttp "github.com/fluentra/fluentra/internal/modules/writing/transport/http"
 	"github.com/fluentra/fluentra/internal/platform/ai"
 	"github.com/fluentra/fluentra/internal/platform/job"
 	"github.com/fluentra/fluentra/internal/shared/clock"
@@ -37,7 +40,9 @@ type Deps struct {
 
 // Module represents the wired writing module.
 type Module struct {
-	grader *service.Grader
+	grader  *service.Grader
+	repo    writingrepo.Repository
+	handler *writinghttp.Handler
 }
 
 // New constructs a writing module.
@@ -50,12 +55,16 @@ func New(deps Deps) *Module {
 		}
 	}
 
+	repo := writingrepo.New(deps.Pool)
+	handler := writinghttp.NewHandler(repo)
+
 	grader := service.NewGraderWithDeps(service.GraderDeps{
 		Content:    deps.Content,
 		AI:         deps.AI,
 		Counter:    deps.Counter,
 		Attempts:   deps.Attempts,
 		Completer:  deps.Completer,
+		Feedback:   repo,
 		Enqueuer:   enqueuer,
 		Nudger:     deps.WorkerNudger,
 		Clock:      deps.Clock,
@@ -63,13 +72,27 @@ func New(deps Deps) *Module {
 	})
 
 	return &Module{
-		grader: grader,
+		grader:  grader,
+		repo:    repo,
+		handler: handler,
 	}
 }
 
 // Grader exposes the writing exercise grader.
 func (m *Module) Grader() contract.Grader {
 	return m.grader
+}
+
+// Routes mounts the writing endpoints on the router.
+func (m *Module) Routes(r chi.Router) {
+	if m.handler != nil {
+		m.handler.Routes(r)
+	}
+}
+
+// FeedbackReader exposes the feedback reading contract.
+func (m *Module) FeedbackReader() contract.FeedbackReader {
+	return m.repo
 }
 
 // GradeSubmissionWorker returns the River worker for grading writing submissions.

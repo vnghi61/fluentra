@@ -77,10 +77,39 @@ func (p *MockProvider) gradeWriting(req Request) (Response, error) {
 		feedbackVi = "Bài viết quá ngắn để đánh giá chi tiết."
 	}
 	payload, err := json.Marshal(map[string]any{
-		"score":       score,
-		"correct":     correct,
-		"feedback":    feedback,
-		"feedback_vi": feedbackVi,
+		"overall_band": 6.5,
+		"score":        score,
+		"correct":      correct,
+		"feedback":     feedback,
+		"feedback_en":  feedback,
+		"feedback_vi":  feedbackVi,
+		"criteria": []map[string]any{
+			{
+				"name":       "task_response",
+				"band":       7.0,
+				"comment_en": "Good response to the prompt.",
+				"comment_vi": "Phản hồi tốt yêu cầu đề bài.",
+			},
+			{
+				"name":       "coherence_cohesion",
+				"band":       6.5,
+				"comment_en": "Clear progression of ideas.",
+				"comment_vi": "Ý tứ phát triển rõ ràng.",
+			},
+			{
+				"name":       "lexical_resource",
+				"band":       6.5,
+				"comment_en": "Varied vocabulary used appropriately.",
+				"comment_vi": "Sử dụng từ vựng đa dạng, phù hợp.",
+			},
+			{
+				"name":       "grammatical_range",
+				"band":       6.0,
+				"comment_en": "Good range of grammatical structures.",
+				"comment_vi": "Cấu trúc ngữ pháp tương đối tốt.",
+			},
+		},
+		"annotations": []map[string]any{},
 	})
 	if err != nil {
 		return Response{}, fmt.Errorf("ai: encode mock writing grade: %w", err)
