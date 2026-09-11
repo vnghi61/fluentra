@@ -215,3 +215,37 @@ SET is_correct = EXCLUDED.is_correct,
     updated_at = now()
 RETURNING id, content_version_id, user_answer, is_correct, explanation_en, explanation_vi, created_at, updated_at;
 
+-- name: CountGradedAttemptsSince :one
+SELECT count(*)::integer
+FROM learn.attempts
+WHERE user_id = $1
+  AND grader = $2
+  AND status = 'graded'
+  AND created_at >= $3;
+
+-- name: CompleteGradingAttempt :execrows
+UPDATE learn.attempts
+SET status      = 'graded',
+    score       = $3,
+    grader      = $4,
+    duration_ms = $5,
+    updated_at  = now()
+WHERE id = $1
+  AND created_at = $2
+  AND status = 'grading';
+
+-- name: FailGradingAttempt :execrows
+UPDATE learn.attempts
+SET status     = 'failed',
+    updated_at = now()
+WHERE id = $1
+  AND created_at = $2
+  AND status = 'grading';
+
+-- name: FailStuckGradingAttempts :execrows
+UPDATE learn.attempts
+SET status     = 'failed',
+    updated_at = now()
+WHERE status = 'grading'
+  AND updated_at < $1;
+

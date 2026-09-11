@@ -52,6 +52,15 @@ type UpdateAttemptStatusParams struct {
 	DurationMs int32
 }
 
+// CompleteGradingAttemptParams holds updates to apply when completing grading conditionally.
+type CompleteGradingAttemptParams struct {
+	ID         uuid.UUID
+	CreatedAt  time.Time
+	Score      *int32
+	Grader     *string
+	DurationMs int32
+}
+
 // ProgressDTO models progress state for a scope.
 type ProgressDTO struct {
 	ID          uuid.UUID  `json:"id"`
@@ -209,6 +218,79 @@ func (r *Repository) UpdateAttemptStatus(
 		return nil, mapPgError(err)
 	}
 	return toDomainAttempt(row), nil
+}
+
+// CompleteGradingAttempt conditionally updates an attempt from grading to graded.
+// Returns the count of affected rows (1 on success, 0 if attempt was not in status 'grading').
+func (r *Repository) CompleteGradingAttempt(
+	ctx context.Context, params CompleteGradingAttemptParams,
+) (int64, error) {
+	if r.queries == nil {
+		return 0, domain.ErrAttemptNotFound
+	}
+	rows, err := r.queries.CompleteGradingAttempt(ctx, sqlc.CompleteGradingAttemptParams{
+		ID:         params.ID,
+		CreatedAt:  params.CreatedAt,
+		Score:      params.Score,
+		Grader:     params.Grader,
+		DurationMs: params.DurationMs,
+	})
+	if err != nil {
+		return 0, mapPgError(err)
+	}
+	return rows, nil
+}
+
+// FailGradingAttempt conditionally updates an attempt from grading to failed.
+// Returns the count of affected rows (1 on success, 0 if attempt was not in status 'grading').
+func (r *Repository) FailGradingAttempt(
+	ctx context.Context, id uuid.UUID, createdAt time.Time,
+) (int64, error) {
+	if r.queries == nil {
+		return 0, domain.ErrAttemptNotFound
+	}
+	rows, err := r.queries.FailGradingAttempt(ctx, sqlc.FailGradingAttemptParams{
+		ID:        id,
+		CreatedAt: createdAt,
+	})
+	if err != nil {
+		return 0, mapPgError(err)
+	}
+	return rows, nil
+}
+
+// FailStuckGradingAttempts marks attempts stuck in 'grading' beyond cutoff as failed.
+func (r *Repository) FailStuckGradingAttempts(ctx context.Context, cutoff time.Time) (int64, error) {
+	if r.queries == nil {
+		return 0, nil
+	}
+	rows, err := r.queries.FailStuckGradingAttempts(ctx, cutoff)
+	if err != nil {
+		return 0, mapPgError(err)
+	}
+	return rows, nil
+}
+
+// CountGradedAttemptsSince counts attempts for a user with the given grader since a given time.
+func (r *Repository) CountGradedAttemptsSince(
+	ctx context.Context, userID uuid.UUID, grader string, since time.Time,
+) (int, error) {
+	if r.queries == nil {
+		return 0, nil
+	}
+	var gPtr *string
+	if grader != "" {
+		gPtr = &grader
+	}
+	count, err := r.queries.CountGradedAttemptsSince(ctx, sqlc.CountGradedAttemptsSinceParams{
+		UserID:    userID,
+		Grader:    gPtr,
+		CreatedAt: since,
+	})
+	if err != nil {
+		return 0, mapPgError(err)
+	}
+	return int(count), nil
 }
 
 // GetProgressByUserScope retrieves progress for a specific scope.

@@ -74,6 +74,40 @@ func (q *Queries) ClaimAttemptForGrading(ctx context.Context, arg ClaimAttemptFo
 	return i, err
 }
 
+const completeGradingAttempt = `-- name: CompleteGradingAttempt :execrows
+UPDATE learn.attempts
+SET status      = 'graded',
+    score       = $3,
+    grader      = $4,
+    duration_ms = $5,
+    updated_at  = now()
+WHERE id = $1
+  AND created_at = $2
+  AND status = 'grading'
+`
+
+type CompleteGradingAttemptParams struct {
+	ID         uuid.UUID
+	CreatedAt  time.Time
+	Score      *int32
+	Grader     *string
+	DurationMs int32
+}
+
+func (q *Queries) CompleteGradingAttempt(ctx context.Context, arg CompleteGradingAttemptParams) (int64, error) {
+	result, err := q.db.Exec(ctx, completeGradingAttempt,
+		arg.ID,
+		arg.CreatedAt,
+		arg.Score,
+		arg.Grader,
+		arg.DurationMs,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const completeLearningSession = `-- name: CompleteLearningSession :one
 UPDATE learn.learning_sessions
 SET ended_at = $2,
@@ -111,6 +145,28 @@ func (q *Queries) CompleteLearningSession(ctx context.Context, arg CompleteLearn
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const countGradedAttemptsSince = `-- name: CountGradedAttemptsSince :one
+SELECT count(*)::integer
+FROM learn.attempts
+WHERE user_id = $1
+  AND grader = $2
+  AND status = 'graded'
+  AND created_at >= $3
+`
+
+type CountGradedAttemptsSinceParams struct {
+	UserID    uuid.UUID
+	Grader    *string
+	CreatedAt time.Time
+}
+
+func (q *Queries) CountGradedAttemptsSince(ctx context.Context, arg CountGradedAttemptsSinceParams) (int32, error) {
+	row := q.db.QueryRow(ctx, countGradedAttemptsSince, arg.UserID, arg.Grader, arg.CreatedAt)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
 }
 
 const createAttempt = `-- name: CreateAttempt :one
@@ -313,6 +369,44 @@ func (q *Queries) EnsurePartitions(ctx context.Context, dollar_1 int32) (int32, 
 	var created_count int32
 	err := row.Scan(&created_count)
 	return created_count, err
+}
+
+const failGradingAttempt = `-- name: FailGradingAttempt :execrows
+UPDATE learn.attempts
+SET status     = 'failed',
+    updated_at = now()
+WHERE id = $1
+  AND created_at = $2
+  AND status = 'grading'
+`
+
+type FailGradingAttemptParams struct {
+	ID        uuid.UUID
+	CreatedAt time.Time
+}
+
+func (q *Queries) FailGradingAttempt(ctx context.Context, arg FailGradingAttemptParams) (int64, error) {
+	result, err := q.db.Exec(ctx, failGradingAttempt, arg.ID, arg.CreatedAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const failStuckGradingAttempts = `-- name: FailStuckGradingAttempts :execrows
+UPDATE learn.attempts
+SET status     = 'failed',
+    updated_at = now()
+WHERE status = 'grading'
+  AND updated_at < $1
+`
+
+func (q *Queries) FailStuckGradingAttempts(ctx context.Context, updatedAt time.Time) (int64, error) {
+	result, err := q.db.Exec(ctx, failStuckGradingAttempts, updatedAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const getAnswerExplanation = `-- name: GetAnswerExplanation :one

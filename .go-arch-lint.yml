@@ -249,6 +249,7 @@ components:
   m_speaking:      { in: modules/speaking/** }
   m_writing:         { in: modules/writing }
   m_writing_service: { in: modules/writing/service }
+  m_writing_job:     { in: modules/writing/job }
   m_questionbank:  { in: modules/questionbank/** }
   m_exam:          { in: modules/exam/** }
   # gamification, split by layer for the same reason learning is: the module has
@@ -458,8 +459,9 @@ deps:
   m_reading:         { mayDependOn: [m_reading_service, c_reading, c_content, c_learning, p_cache, p_telemetry] }
   m_listening:    { mayDependOn: [p_cache, p_media, p_storage, p_telemetry, c_content, c_questionbank, c_learning] }
   m_speaking:     { mayDependOn: [p_media, p_ai, p_storage, p_job, p_telemetry, c_content, c_learning] }
-  m_writing_service: { mayDependOn: [c_writing, c_content, c_learning, p_ai, p_telemetry] }
-  m_writing:         { mayDependOn: [m_writing_service, c_writing, c_content, c_learning, p_ai, p_telemetry] }
+  m_writing_service: { mayDependOn: [c_writing, c_content, c_learning, p_ai, p_job, p_telemetry] }
+  m_writing_job:     { mayDependOn: [m_writing_service, c_writing, c_content, c_learning, p_job, p_ai, p_telemetry], anyVendorDeps: true }
+  m_writing:         { mayDependOn: [m_writing_service, m_writing_job, c_writing, c_content, c_learning, p_job, p_ai, p_telemetry] }
   m_questionbank: { mayDependOn: [p_ai, p_search, p_telemetry, c_content, c_audit] }
   m_exam:         { mayDependOn: [p_job, p_ai, p_telemetry, c_questionbank, c_writing, c_speaking, c_learning] }
   # c_user is on this list and is not in MODULE_INDEX's original arrow set. It

@@ -162,3 +162,33 @@ type ProgressReader interface {
 type UnlockChecker interface {
 	IsUnlocked(ctx context.Context, userID uuid.UUID, lessonIDs []uuid.UUID) (map[uuid.UUID]bool, error)
 }
+
+// AsyncGradingCompleter handles asynchronous grading completion and failure.
+//
+// Both methods update the attempt row only WHERE status = 'grading' and report
+// whether they did, preventing races with background sweeps and concurrent workers.
+type AsyncGradingCompleter interface {
+	CompleteAsyncGrading(ctx context.Context, attemptID uuid.UUID, result GradeResult) (bool, error)
+	FailAsyncGrading(ctx context.Context, attemptID uuid.UUID, reason string) (bool, error)
+}
+
+// AttemptCounter reports how many attempts have been graded for a user by a given grader.
+type AttemptCounter interface {
+	CountGradedAttemptsSince(ctx context.Context, userID uuid.UUID, grader string, since time.Time) (int, error)
+}
+
+// AttemptDetail contains attempt data needed by asynchronous graders.
+type AttemptDetail struct {
+	ID               uuid.UUID
+	UserID           uuid.UUID
+	ActivityID       uuid.UUID
+	ContentVersionID uuid.UUID
+	Response         json.RawMessage
+	CreatedAt        time.Time
+	Status           string
+}
+
+// AttemptReader reads an attempt by ID across modules.
+type AttemptReader interface {
+	GetAttemptForGrading(ctx context.Context, attemptID uuid.UUID) (*AttemptDetail, error)
+}

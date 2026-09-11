@@ -35,6 +35,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/user"
 	"github.com/fluentra/fluentra/internal/modules/vocabulary"
 	vocabularyrepo "github.com/fluentra/fluentra/internal/modules/vocabulary/repository"
+	"github.com/fluentra/fluentra/internal/modules/writing"
 	"github.com/fluentra/fluentra/internal/platform/ai"
 	"github.com/fluentra/fluentra/internal/platform/cache"
 	"github.com/fluentra/fluentra/internal/platform/job"
@@ -125,6 +126,8 @@ type workerConfig struct {
 		Provider4Model   string        `koanf:"provider_4_model"`
 		Provider4APIKey  string        `koanf:"provider_4_api_key"`
 		Provider4Timeout time.Duration `koanf:"provider_4_timeout"`
+
+		WritingDailyLimit int `koanf:"writing_daily_limit"`
 	} `koanf:"ai"`
 	OTP struct {
 		HMACKey string `koanf:"hmac_key"`
@@ -236,6 +239,7 @@ func configOptions() config.Options {
 			"ai.provider_4_model":    "",
 			"ai.provider_4_api_key":  "",
 			"ai.provider_4_timeout":  defaultAITimeout,
+			"ai.writing_daily_limit": 10,
 		},
 		Required: []config.RequiredKey{
 			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},
@@ -432,9 +436,12 @@ func run(ctx context.Context) error {
 // exit criterion a number rather than a query someone could write.
 func startLearning(
 	ctx context.Context, pool *pgxpool.Pool, cron *job.CronScheduler,
-	instruments telemetry.Instruments,
-) error {
-	learningModule := learning.New(learning.Deps{Pool: pool})
+	instruments telemetry.Instruments, lessonModule *lesson.Module,
+) (*learning.Module, error) {
+	learningModule := learning.New(learning.Deps{
+		Pool:   pool,
+		Lesson: lessonModule.Reader(),
+	})
 
 	for _, scheduled := range learningModule.CronJobs() {
 		cron.Register(scheduled)
@@ -451,13 +458,13 @@ func startLearning(
 	retention := learningjob.NewRetentionRefresher(pool)
 	cron.Register(retention.CronJob())
 	if _, err := instruments.ObserveRetention(retention.Snapshot); err != nil {
-		return fmt.Errorf("register retention gauge: %w", err)
+		return nil, fmt.Errorf("register retention gauge: %w", err)
 	}
 	if err := retention.Refresh(ctx); err != nil {
 		slog.ErrorContext(ctx, "could not compute retention at start-up; the scheduled job will retry",
 			"error", err)
 	}
-	return nil
+	return learningModule, nil
 }
 
 func startModules(
@@ -501,7 +508,8 @@ func startModules(
 		return err
 	}
 
-	if err := startLearning(ctx, pool, cron, instruments); err != nil {
+	learningModule, err := startLearning(ctx, pool, cron, instruments, lessonModule)
+	if err != nil {
 		return err
 	}
 
@@ -518,7 +526,9 @@ func startModules(
 			"error", err)
 	}
 
-	startPracticeGenerator(ctx, cfg, pool, cron, rbacModule, lessonModule, srsModule, workers)
+	startPracticeGenerator(
+		ctx, cfg, pool, cron, rbacModule, lessonModule, srsModule, workers, learningModule,
+	)
 
 	if err := startGamification(pool, bus, cron); err != nil {
 		return err
@@ -647,7 +657,7 @@ func startRiverWorker(
 
 // registerJobKinds is where a module's job handlers are counted.
 func registerJobKinds(_ *river.Workers) int {
-	return 2
+	return 3
 }
 
 // newStorageStore validates the storage configuration and builds the facade.
@@ -760,6 +770,7 @@ func startPracticeGenerator(
 	lessonModule *lesson.Module,
 	srsModule *srs.Module,
 	workers *river.Workers,
+	learningModule *learning.Module,
 ) {
 	author, err := rbacModule.RoleMembers().FirstHolderOf(ctx, rbaccontract.RoleAdmin)
 	if err != nil {
@@ -797,6 +808,16 @@ func startPracticeGenerator(
 	})
 
 	river.AddWorker(workers, vocabularyModule.VerifyUploadWorker())
+
+	writingModule := writing.New(writing.Deps{
+		Pool:       pool,
+		Content:    contentModule.Reader(),
+		AI:         aiClient,
+		Completer:  learningModule.AsyncGradingCompleter(),
+		Attempts:   learningModule.AttemptReader(),
+		DailyLimit: cfg.AI.WritingDailyLimit,
+	})
+	river.AddWorker(workers, writingModule.GradeSubmissionWorker())
 
 	for _, scheduled := range vocabularyModule.CronJobs() {
 		cron.Register(scheduled)

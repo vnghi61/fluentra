@@ -3,7 +3,9 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -13,6 +15,8 @@ import (
 	learningcontract "github.com/fluentra/fluentra/internal/modules/learning/contract"
 	"github.com/fluentra/fluentra/internal/modules/writing/contract"
 	"github.com/fluentra/fluentra/internal/platform/ai"
+	"github.com/fluentra/fluentra/internal/shared/apperr"
+	"github.com/fluentra/fluentra/internal/shared/clock"
 )
 
 type mockContentReader struct {
@@ -111,4 +115,317 @@ func TestWritingGrader_SpendsMoney(t *testing.T) {
 
 	var metered learningcontract.MeteredGrader = grader
 	assert.True(t, metered.SpendsMoney())
+}
+
+type mockEnqueuer struct {
+	enqueued []uuid.UUID
+	err      error
+}
+
+func (m *mockEnqueuer) EnqueueGradeSubmission(_ context.Context, attemptID uuid.UUID) error {
+	if m.err != nil {
+		return m.err
+	}
+	m.enqueued = append(m.enqueued, attemptID)
+	return nil
+}
+
+type mockNudger struct {
+	nudged int
+}
+
+func (m *mockNudger) Nudge(_ context.Context) {
+	m.nudged++
+}
+
+type mockAttemptCounter struct {
+	count int
+	err   error
+}
+
+func (m *mockAttemptCounter) CountGradedAttemptsSince(
+	_ context.Context, _ uuid.UUID, _ string, _ time.Time,
+) (int, error) {
+	return m.count, m.err
+}
+
+type mockAttemptReader struct {
+	attempts map[uuid.UUID]*learningcontract.AttemptDetail
+	err      error
+}
+
+func (m *mockAttemptReader) GetAttemptForGrading(
+	_ context.Context, id uuid.UUID,
+) (*learningcontract.AttemptDetail, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	return m.attempts[id], nil
+}
+
+type mockCompleter struct {
+	completed map[uuid.UUID]learningcontract.GradeResult
+	failed    map[uuid.UUID]string
+	err       error
+}
+
+func (m *mockCompleter) CompleteAsyncGrading(
+	_ context.Context, id uuid.UUID, res learningcontract.GradeResult,
+) (bool, error) {
+	if m.err != nil {
+		return false, m.err
+	}
+	if m.completed == nil {
+		m.completed = make(map[uuid.UUID]learningcontract.GradeResult)
+	}
+	m.completed[id] = res
+	return true, nil
+}
+
+func (m *mockCompleter) FailAsyncGrading(
+	_ context.Context, id uuid.UUID, reason string,
+) (bool, error) {
+	if m.err != nil {
+		return false, m.err
+	}
+	if m.failed == nil {
+		m.failed = make(map[uuid.UUID]string)
+	}
+	m.failed[id] = reason
+	return true, nil
+}
+
+func TestWritingGrader_EmptySubmissionScoredSynchronously(t *testing.T) {
+	versionID := uuid.New()
+	reader := &mockContentReader{
+		versions: map[uuid.UUID]*contentcontract.Version{
+			versionID: {ID: versionID, Body: []byte(`{"prompt":"Write"}`)},
+		},
+	}
+	enq := &mockEnqueuer{}
+	grader := NewGraderWithDeps(GraderDeps{
+		Content:  reader,
+		Enqueuer: enq,
+	})
+
+	res, err := grader.Grade(context.Background(), learningcontract.GradeRequest{
+		ContentVersionID: versionID,
+		Response:         json.RawMessage(`{"text_answer": "   "}`),
+	})
+	require.NoError(t, err)
+	assert.False(t, res.Async)
+	assert.Equal(t, 0, res.Score)
+	assert.Empty(t, enq.enqueued)
+}
+
+func TestWritingGrader_UnderMinWordsScoredSynchronously(t *testing.T) {
+	versionID := uuid.New()
+	reader := &mockContentReader{
+		versions: map[uuid.UUID]*contentcontract.Version{
+			versionID: {ID: versionID, Body: []byte(`{"prompt":"Write","min_words":20}`)},
+		},
+	}
+	enq := &mockEnqueuer{}
+	grader := NewGraderWithDeps(GraderDeps{
+		Content:  reader,
+		Enqueuer: enq,
+	})
+
+	res, err := grader.Grade(context.Background(), learningcontract.GradeRequest{
+		ContentVersionID: versionID,
+		Response:         json.RawMessage(`{"text_answer": "Only four words here"}`),
+	})
+	require.NoError(t, err)
+	assert.False(t, res.Async)
+	assert.Equal(t, 10, res.Score) // (4 * 50) / 20 = 10
+	assert.Empty(t, enq.enqueued)
+}
+
+func TestWritingGrader_DailyLimitReached(t *testing.T) {
+	versionID := uuid.New()
+	reader := &mockContentReader{
+		versions: map[uuid.UUID]*contentcontract.Version{
+			versionID: {ID: versionID, Body: []byte(`{"prompt":"Write","min_words":5}`)},
+		},
+	}
+	enq := &mockEnqueuer{}
+	counter := &mockAttemptCounter{count: 10}
+	grader := NewGraderWithDeps(GraderDeps{
+		Content:    reader,
+		Enqueuer:   enq,
+		Counter:    counter,
+		DailyLimit: 10,
+		Clock:      clock.NewFake(time.Now()),
+	})
+
+	_, err := grader.Grade(context.Background(), learningcontract.GradeRequest{
+		UserID:           uuid.New(),
+		ContentVersionID: versionID,
+		Response:         json.RawMessage(`{"text_answer": "This is a valid long answer with enough words"}`),
+	})
+	require.Error(t, err)
+	var appErr *apperr.Error
+	require.True(t, errors.As(err, &appErr))
+	assert.Equal(t, 429, appErr.Status())
+	assert.Equal(t, "WRITING_DAILY_LIMIT_REACHED", appErr.Code)
+	assert.Empty(t, enq.enqueued)
+}
+
+func TestWritingGrader_EnqueuesJobAndNudges(t *testing.T) {
+	versionID := uuid.New()
+	attemptID := uuid.New()
+	reader := &mockContentReader{
+		versions: map[uuid.UUID]*contentcontract.Version{
+			versionID: {ID: versionID, Body: []byte(`{"prompt":"Write","min_words":5}`)},
+		},
+	}
+	enq := &mockEnqueuer{}
+	nudger := &mockNudger{}
+	counter := &mockAttemptCounter{count: 2}
+	grader := NewGraderWithDeps(GraderDeps{
+		Content:    reader,
+		Enqueuer:   enq,
+		Nudger:     nudger,
+		Counter:    counter,
+		DailyLimit: 10,
+		Clock:      clock.NewFake(time.Now()),
+	})
+
+	res, err := grader.Grade(context.Background(), learningcontract.GradeRequest{
+		AttemptID:        attemptID,
+		UserID:           uuid.New(),
+		ContentVersionID: versionID,
+		Response:         json.RawMessage(`{"text_answer": "This is a valid long answer with enough words"}`),
+	})
+	require.NoError(t, err)
+	assert.True(t, res.Async)
+	assert.Equal(t, []uuid.UUID{attemptID}, enq.enqueued)
+	assert.Equal(t, 1, nudger.nudged)
+}
+
+func TestWritingGrader_EnqueueFailureReturnsError(t *testing.T) {
+	versionID := uuid.New()
+	attemptID := uuid.New()
+	reader := &mockContentReader{
+		versions: map[uuid.UUID]*contentcontract.Version{
+			versionID: {ID: versionID, Body: []byte(`{"prompt":"Write","min_words":5}`)},
+		},
+	}
+	enqErr := errors.New("db failure")
+	enq := &mockEnqueuer{err: enqErr}
+	grader := NewGraderWithDeps(GraderDeps{
+		Content:  reader,
+		Enqueuer: enq,
+	})
+
+	_, err := grader.Grade(context.Background(), learningcontract.GradeRequest{
+		AttemptID:        attemptID,
+		ContentVersionID: versionID,
+		Response:         json.RawMessage(`{"text_answer": "This is a valid long answer with enough words"}`),
+	})
+	require.ErrorIs(t, err, enqErr)
+}
+
+func TestWritingGrader_GradeSubmission_Success(t *testing.T) {
+	versionID := uuid.New()
+	attemptID := uuid.New()
+	reader := &mockContentReader{
+		versions: map[uuid.UUID]*contentcontract.Version{
+			versionID: {ID: versionID, Body: []byte(`{"prompt":"Write","min_words":5}`)},
+		},
+	}
+	attempts := &mockAttemptReader{
+		attempts: map[uuid.UUID]*learningcontract.AttemptDetail{
+			attemptID: {
+				ID:               attemptID,
+				ContentVersionID: versionID,
+				Status:           statusGrading,
+				Response:         json.RawMessage(`{"text_answer": "This is a valid response with several words"}`),
+			},
+		},
+	}
+	completer := &mockCompleter{}
+	grader := NewGraderWithDeps(GraderDeps{
+		Content:   reader,
+		Attempts:  attempts,
+		Completer: completer,
+	})
+
+	err := grader.GradeSubmission(context.Background(), attemptID)
+	require.NoError(t, err)
+	assert.Contains(t, completer.completed, attemptID)
+	assert.GreaterOrEqual(t, completer.completed[attemptID].Score, 50)
+}
+
+func TestWritingGrader_GradeSubmission_AlreadyFailedChangesNothing(t *testing.T) {
+	versionID := uuid.New()
+	attemptID := uuid.New()
+	reader := &mockContentReader{
+		versions: map[uuid.UUID]*contentcontract.Version{
+			versionID: {ID: versionID, Body: []byte(`{"prompt":"Write","min_words":5}`)},
+		},
+	}
+	attempts := &mockAttemptReader{
+		attempts: map[uuid.UUID]*learningcontract.AttemptDetail{
+			attemptID: {
+				ID:               attemptID,
+				ContentVersionID: versionID,
+				Status:           "failed", // Sweep already failed this attempt
+				Response:         json.RawMessage(`{"text_answer": "Some text"}`),
+			},
+		},
+	}
+	completer := &mockCompleter{}
+	grader := NewGraderWithDeps(GraderDeps{
+		Content:   reader,
+		Attempts:  attempts,
+		Completer: completer,
+	})
+
+	err := grader.GradeSubmission(context.Background(), attemptID)
+	require.NoError(t, err)
+	assert.Empty(t, completer.completed)
+	assert.Empty(t, completer.failed)
+}
+
+type failingAIClient struct{}
+
+func (f *failingAIClient) CompleteJSON(_ context.Context, _ ai.Request, _ any) error {
+	return errors.New("ai provider connection error")
+}
+
+func (f *failingAIClient) Complete(_ context.Context, _ ai.Request) (ai.Response, error) {
+	return ai.Response{}, errors.New("ai provider connection error")
+}
+
+func TestWritingGrader_GradeSubmission_ProviderErrorLeavesAttemptFailed(t *testing.T) {
+	versionID := uuid.New()
+	attemptID := uuid.New()
+	reader := &mockContentReader{
+		versions: map[uuid.UUID]*contentcontract.Version{
+			versionID: {ID: versionID, Body: []byte(`{"prompt":"Write","min_words":5}`)},
+		},
+	}
+	attempts := &mockAttemptReader{
+		attempts: map[uuid.UUID]*learningcontract.AttemptDetail{
+			attemptID: {
+				ID:               attemptID,
+				ContentVersionID: versionID,
+				Status:           statusGrading,
+				Response:         json.RawMessage(`{"text_answer": "This is a valid response with several words"}`),
+			},
+		},
+	}
+	completer := &mockCompleter{}
+	grader := NewGraderWithDeps(GraderDeps{
+		Content:   reader,
+		AI:        &failingAIClient{},
+		Attempts:  attempts,
+		Completer: completer,
+	})
+
+	err := grader.GradeSubmission(context.Background(), attemptID)
+	require.Error(t, err)
+	assert.Contains(t, completer.failed, attemptID)
+	assert.Empty(t, completer.completed)
 }

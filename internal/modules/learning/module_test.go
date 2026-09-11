@@ -36,11 +36,14 @@ func TestModule_New_DefaultGraders(t *testing.T) {
 	}
 
 	cronJobs := mod.CronJobs()
-	if len(cronJobs) != 1 {
-		t.Fatalf("expected 1 cron job, got %d", len(cronJobs))
+	if len(cronJobs) != 2 {
+		t.Fatalf("expected 2 cron jobs, got %d", len(cronJobs))
 	}
 	if cronJobs[0].Name != "learning.rotate_partitions" {
 		t.Errorf("got job name %s, want learning.rotate_partitions", cronJobs[0].Name)
+	}
+	if cronJobs[1].Name != "learning.sweep_stuck_grading" {
+		t.Errorf("got job name %s, want learning.sweep_stuck_grading", cronJobs[1].Name)
 	}
 
 	r := chi.NewRouter()

@@ -157,6 +157,21 @@ func (m *Module) UnlockChecker() contract.UnlockChecker {
 	return m.service
 }
 
+// AttemptReader returns the public AttemptReader contract implementation.
+func (m *Module) AttemptReader() contract.AttemptReader {
+	return m.service
+}
+
+// AsyncGradingCompleter returns the public AsyncGradingCompleter contract implementation.
+func (m *Module) AsyncGradingCompleter() contract.AsyncGradingCompleter {
+	return m.service
+}
+
+// AttemptCounter returns the public AttemptCounter contract implementation.
+func (m *Module) AttemptCounter() contract.AttemptCounter {
+	return m.service
+}
+
 // Routes mounts learner-facing attempt endpoints under the authenticated router.
 func (m *Module) Routes(router chi.Router) {
 	if m.handler != nil {
@@ -164,7 +179,10 @@ func (m *Module) Routes(router chi.Router) {
 	}
 }
 
-// CronJobs returns the scheduled partition maintenance job.
+// Advisory lock id for learning module stuck grading sweep.
+const sweepStuckGradingLockID int64 = 1_700_000_212
+
+// CronJobs returns the scheduled partition maintenance and grading sweep jobs.
 func (m *Module) CronJobs() []job.CronJob {
 	return []job.CronJob{
 		{
@@ -173,7 +191,18 @@ func (m *Module) CronJobs() []job.CronJob {
 			Interval: rotateInterval,
 			Task:     m.RotatePartitions,
 		},
+		{
+			Name:     "learning.sweep_stuck_grading",
+			LockID:   sweepStuckGradingLockID,
+			Interval: 15 * time.Minute,
+			Task:     m.SweepStuckGrading,
+		},
 	}
+}
+
+// SweepStuckGrading fails attempts in status 'grading' that have been stuck beyond 1 hour.
+func (m *Module) SweepStuckGrading(ctx context.Context) error {
+	return m.service.SweepStuckGrading(ctx)
 }
 
 // RotatePartitions creates future partitions for the attempts table.

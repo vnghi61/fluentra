@@ -32,6 +32,7 @@ const (
 	testScopeActivity   = "activity"
 	testSkillReading    = "reading"
 	testSkillGrammar    = "grammar"
+	testKindAsyncGrader = "async_grader"
 )
 
 type fakeLearningRepo struct {
@@ -214,6 +215,98 @@ func (f *fakeLearningRepo) UpdateAttemptStatus(
 	att.DurationMs = &d
 	att.UpdatedAt = time.Now().UTC()
 	return att, nil
+}
+
+func (f *fakeLearningRepo) CompleteGradingAttempt(
+	_ context.Context, params repository.CompleteGradingAttemptParams,
+) (int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.queryCounter.Add(1)
+
+	att, ok := f.attempts[params.ID]
+	if !ok {
+		return 0, domain.ErrAttemptNotFound
+	}
+	if att.Status != domain.StatusGrading {
+		return 0, nil
+	}
+	att.Status = domain.StatusGraded
+	if params.Score != nil {
+		sc := int(*params.Score)
+		att.Score = &sc
+	}
+	if params.Grader != nil {
+		att.Grader = params.Grader
+	}
+	d := int64(params.DurationMs)
+	att.DurationMs = &d
+	att.UpdatedAt = time.Now().UTC()
+	return 1, nil
+}
+
+func (f *fakeLearningRepo) FailGradingAttempt(
+	_ context.Context, id uuid.UUID, _ time.Time,
+) (int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.queryCounter.Add(1)
+
+	att, ok := f.attempts[id]
+	if !ok {
+		return 0, domain.ErrAttemptNotFound
+	}
+	if att.Status != domain.StatusGrading {
+		return 0, nil
+	}
+	att.Status = domain.StatusFailed
+	att.UpdatedAt = time.Now().UTC()
+	return 1, nil
+}
+
+func (f *fakeLearningRepo) FailStuckGradingAttempts(
+	_ context.Context, cutoff time.Time,
+) (int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.queryCounter.Add(1)
+
+	var count int64
+	for _, att := range f.attempts {
+		if att.Status == domain.StatusGrading && att.UpdatedAt.Before(cutoff) {
+			att.Status = domain.StatusFailed
+			att.UpdatedAt = time.Now().UTC()
+			count++
+		}
+	}
+	return count, nil
+}
+
+func (f *fakeLearningRepo) SetAttemptUpdatedAt(id uuid.UUID, t time.Time) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if att, ok := f.attempts[id]; ok {
+		att.UpdatedAt = t
+	}
+}
+
+func (f *fakeLearningRepo) CountGradedAttemptsSince(
+	_ context.Context, userID uuid.UUID, grader string, since time.Time,
+) (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.queryCounter.Add(1)
+
+	var count int
+	for _, att := range f.attempts {
+		if att.UserID == userID &&
+			att.Status == domain.StatusGraded &&
+			att.Grader != nil && *att.Grader == grader &&
+			!att.CreatedAt.Before(since) {
+			count++
+		}
+	}
+	return count, nil
 }
 
 func (f *fakeLearningRepo) GetProgressByUserScope(
@@ -671,7 +764,7 @@ func setupTestService() (*service.Service, *fakeLearningRepo, *fakeLessonReader,
 	}
 	graders := domain.NewGraderRegistry()
 	_ = graders.Register(testKindQuiz, domain.NewFakeGrader())
-	_ = graders.Register("async_grader", domain.NewAsyncFakeGrader())
+	_ = graders.Register(testKindAsyncGrader, domain.NewAsyncFakeGrader())
 
 	clk := clock.NewFake(time.Date(2026, 8, 24, 9, 0, 0, 0, time.UTC))
 	svc := service.New(service.Deps{
@@ -771,7 +864,7 @@ func TestSubmitAttempt_AsyncGrading(t *testing.T) {
 	activityID := uuid.New()
 	reader.hierarchy[activityID] = &lessoncontract.ActivityHierarchy{
 		ActivityID: activityID,
-		Kind:       "async_grader",
+		Kind:       testKindAsyncGrader,
 	}
 
 	userID := uuid.New()

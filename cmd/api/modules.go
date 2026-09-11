@@ -132,6 +132,9 @@ type identityDeps struct {
 
 	// WorkerNudger signals a background worker to wake up after an upload is committed.
 	WorkerNudger vocabulary.WorkerNudger
+
+	// WritingDailyLimit is the maximum number of writing submissions graded per day.
+	WritingDailyLimit int
 }
 
 // newIdentity constructs the modules in dependency order — audit, then rbac,
@@ -270,8 +273,13 @@ func newIdentity(deps identityDeps) *identity {
 	})
 
 	assembled.writing = writing.New(writing.Deps{
-		Content: assembled.content.Reader(),
-		AI:      deps.AI,
+		Pool:         deps.Pool,
+		Enqueuer:     deps.Enqueuer,
+		Content:      assembled.content.Reader(),
+		AI:           deps.AI,
+		Counter:      lazyAttemptCounter{of: assembled},
+		WorkerNudger: deps.WorkerNudger,
+		DailyLimit:   deps.WritingDailyLimit,
 	})
 
 	assembled.learning = learning.New(learning.Deps{
@@ -538,6 +546,19 @@ func (p lazyLessonProgress) CompletedLessonIDs(
 // learning stores it as a string; comparing to a literal in three places is how
 // a typo becomes a lesson that never shows a tick.
 const learningStatusCompleted = "completed"
+
+type lazyAttemptCounter struct{ of *identity }
+
+var _ learningcontract.AttemptCounter = lazyAttemptCounter{}
+
+func (c lazyAttemptCounter) CountGradedAttemptsSince(
+	ctx context.Context, userID uuid.UUID, grader string, since time.Time,
+) (int, error) {
+	if c.of.learning == nil {
+		return 0, nil
+	}
+	return c.of.learning.AttemptCounter().CountGradedAttemptsSince(ctx, userID, grader, since)
+}
 
 // rateLimiterAdapter bridges platform/cache's limiter to the one httpx declares.
 //

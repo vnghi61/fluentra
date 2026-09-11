@@ -45,6 +45,14 @@ type Repository interface {
 	UpdateAttemptStatus(
 		ctx context.Context, params repository.UpdateAttemptStatusParams,
 	) (*domain.Attempt, error)
+	CompleteGradingAttempt(
+		ctx context.Context, params repository.CompleteGradingAttemptParams,
+	) (int64, error)
+	FailGradingAttempt(ctx context.Context, id uuid.UUID, createdAt time.Time) (int64, error)
+	FailStuckGradingAttempts(ctx context.Context, cutoff time.Time) (int64, error)
+	CountGradedAttemptsSince(
+		ctx context.Context, userID uuid.UUID, grader string, since time.Time,
+	) (int, error)
 	GetProgressByUserScope(
 		ctx context.Context, userID uuid.UUID, scope string, scopeID uuid.UUID,
 	) (*repository.ProgressDTO, error)
@@ -882,8 +890,25 @@ func (s *Service) executeRollupTx(
 		return fmt.Errorf("update attempt status: %w", err)
 	}
 
-	// 2. Rollup Activity Progress
-	_, err = repo.UpsertProgress(ctx, repository.UpsertProgressParams{
+	return s.executeRollupSteps(
+		ctx, tx, repo, userID, activity, gradeResult, scoreInt, durationMs, now,
+	)
+}
+
+// executeRollupSteps executes the progress updates, event emissions, and mastery updates
+// shared between synchronous and asynchronous grading rollups.
+func (s *Service) executeRollupSteps(
+	ctx context.Context,
+	tx OutboxTx,
+	repo Repository,
+	userID uuid.UUID,
+	activity *lessoncontract.ActivityHierarchy,
+	gradeResult contract.GradeResult,
+	scoreInt, durationMs int32,
+	now time.Time,
+) error {
+	// 1. Rollup Activity Progress
+	_, err := repo.UpsertProgress(ctx, repository.UpsertProgressParams{
 		UserID:      userID,
 		Scope:       "activity",
 		ScopeID:     activity.ActivityID,
@@ -895,7 +920,7 @@ func (s *Service) executeRollupTx(
 		return fmt.Errorf("upsert activity progress: %w", err)
 	}
 
-	// 3. Emit activity.completed outbox event
+	// 2. Emit activity.completed outbox event
 	if s.events != nil {
 		actEvent := contract.ActivityCompleted{
 			UserID:     userID,
@@ -908,14 +933,10 @@ func (s *Service) executeRollupTx(
 		if _, err := s.events.Write(ctx, tx, contract.Aggregate, contract.EventActivityCompleted, actEvent); err != nil {
 			return fmt.Errorf("write activity.completed event: %w", err)
 		}
-		// The counter sits beside the outbox write, not instead of it: the event
-		// is the record, the metric is what a dashboard can draw. Emitting from
-		// here rather than from a consumer means the funnel counts what happened
-		// even before anything subscribes.
 		s.metrics.RecordFunnelStep(ctx, telemetry.FunnelActivityCompleted)
 	}
 
-	// 4. Update incremental skill mastery if focus is a valid skill (Trap 4)
+	// 3. Update incremental skill mastery if focus is a valid skill (Trap 4)
 	if err := updateSkillMastery(
 		ctx, repo, userID, activity.LessonSkillFocus, gradeResult.Score, gradeResult.MaxScore,
 	); err != nil {
@@ -1924,4 +1945,160 @@ func (s *Service) invalidateLearningCaches(ctx context.Context, userID uuid.UUID
 // and nothing else should be tempted to reuse it as a general normaliser.
 func normaliseAnswerKey(answer string) string {
 	return strings.TrimSpace(strings.ToLower(answer))
+}
+
+// GetAttemptForGrading returns attempt details across modules for asynchronous grading.
+func (s *Service) GetAttemptForGrading(
+	ctx context.Context, attemptID uuid.UUID,
+) (*contract.AttemptDetail, error) {
+	attempt, err := s.repo.GetAttemptByID(ctx, attemptID)
+	if err != nil {
+		return nil, err
+	}
+
+	activity, err := s.resolveActivityHierarchy(ctx, attempt.ActivityID)
+	if err != nil {
+		return nil, fmt.Errorf("resolve activity for attempt %s: %w", attemptID, err)
+	}
+
+	return &contract.AttemptDetail{
+		ID:               attempt.ID,
+		UserID:           attempt.UserID,
+		ActivityID:       attempt.ActivityID,
+		ContentVersionID: activity.ContentVersionID,
+		Response:         attempt.Response,
+		CreatedAt:        attempt.CreatedAt,
+		Status:           string(attempt.Status),
+	}, nil
+}
+
+// CompleteAsyncGrading transitions an attempt from grading to graded and executes rollup.
+// It returns (true, nil) if the attempt was updated, or (false, nil) if the attempt
+// was no longer in status 'grading' (for example, if the stuck grading sweep already failed it).
+func (s *Service) CompleteAsyncGrading(
+	ctx context.Context, attemptID uuid.UUID, gradeResult contract.GradeResult,
+) (bool, error) {
+	attempt, err := s.repo.GetAttemptByID(ctx, attemptID)
+	if err != nil {
+		return false, fmt.Errorf("get attempt %s: %w", attemptID, err)
+	}
+	if !attempt.IsGrading() {
+		return false, nil
+	}
+
+	activity, err := s.resolveActivityHierarchy(ctx, attempt.ActivityID)
+	if err != nil {
+		return false, fmt.Errorf("resolve activity %s: %w", attempt.ActivityID, err)
+	}
+
+	now := s.clock.Now().UTC()
+	durationMs := safeDurationMs(attempt.CreatedAt, now)
+	scoreInt := safeScore(gradeResult.Score)
+	graderName := activity.Kind
+
+	var updated bool
+	if s.pool != nil {
+		txErr := dbx.InTx(ctx, s.pool, func(txCtx context.Context, tx pgx.Tx) error {
+			txRepo := s.repo.WithTx(tx)
+			rows, err := txRepo.CompleteGradingAttempt(txCtx, repository.CompleteGradingAttemptParams{
+				ID:         attempt.ID,
+				CreatedAt:  attempt.CreatedAt,
+				Score:      &scoreInt,
+				Grader:     &graderName,
+				DurationMs: durationMs,
+			})
+			if err != nil {
+				return fmt.Errorf("complete grading attempt: %w", err)
+			}
+			if rows == 0 {
+				return nil
+			}
+			updated = true
+			return s.executeRollupSteps(
+				txCtx, tx, txRepo, attempt.UserID, activity, gradeResult, scoreInt, durationMs, now,
+			)
+		})
+		if txErr != nil {
+			return false, fmt.Errorf("commit async grading transaction: %w", txErr)
+		}
+	} else {
+		rows, err := s.repo.CompleteGradingAttempt(ctx, repository.CompleteGradingAttemptParams{
+			ID:         attempt.ID,
+			CreatedAt:  attempt.CreatedAt,
+			Score:      &scoreInt,
+			Grader:     &graderName,
+			DurationMs: durationMs,
+		})
+		if err != nil {
+			return false, fmt.Errorf("complete grading attempt: %w", err)
+		}
+		if rows == 0 {
+			return false, nil
+		}
+		updated = true
+		if err := s.executeRollupSteps(
+			ctx, noopTx{}, s.repo, attempt.UserID, activity, gradeResult, scoreInt, durationMs, now,
+		); err != nil {
+			return false, fmt.Errorf("roll up async attempt %s: %w", attempt.ID, err)
+		}
+	}
+
+	if !updated {
+		return false, nil
+	}
+
+	if s.srsCards != nil && len(gradeResult.ReviewItems) > 0 {
+		if err := s.srsCards.UpsertCards(ctx, attempt.UserID, gradeResult.ReviewItems); err != nil {
+			slog.WarnContext(ctx, "failed to upsert srs review cards after async grading",
+				"user_id", attempt.UserID, "error", err)
+		}
+	}
+
+	s.invalidateLearningCaches(ctx, attempt.UserID)
+	return true, nil
+}
+
+// FailAsyncGrading transitions an attempt from grading to failed.
+// It returns (true, nil) if the status was updated, or (false, nil) if the attempt
+// was not in status 'grading'.
+func (s *Service) FailAsyncGrading(
+	ctx context.Context, attemptID uuid.UUID, reason string,
+) (bool, error) {
+	attempt, err := s.repo.GetAttemptByID(ctx, attemptID)
+	if err != nil {
+		return false, fmt.Errorf("get attempt %s: %w", attemptID, err)
+	}
+	if !attempt.IsGrading() {
+		return false, nil
+	}
+
+	rows, err := s.repo.FailGradingAttempt(ctx, attempt.ID, attempt.CreatedAt)
+	if err != nil {
+		return false, fmt.Errorf("fail grading attempt %s: %w", attemptID, err)
+	}
+	if rows > 0 {
+		slog.InfoContext(ctx, "failed async grading attempt",
+			"attempt_id", attemptID, "reason", reason)
+	}
+	return rows > 0, nil
+}
+
+// CountGradedAttemptsSince returns the number of graded attempts for a user and grader since a given timestamp.
+func (s *Service) CountGradedAttemptsSince(
+	ctx context.Context, userID uuid.UUID, grader string, since time.Time,
+) (int, error) {
+	return s.repo.CountGradedAttemptsSince(ctx, userID, grader, since)
+}
+
+// SweepStuckGrading fails attempts that have been in status 'grading' for more than an hour.
+func (s *Service) SweepStuckGrading(ctx context.Context) error {
+	cutoff := s.clock.Now().UTC().Add(-1 * time.Hour)
+	rows, err := s.repo.FailStuckGradingAttempts(ctx, cutoff)
+	if err != nil {
+		return fmt.Errorf("sweep stuck grading attempts: %w", err)
+	}
+	if rows > 0 {
+		slog.InfoContext(ctx, "swept stuck grading attempts", "count", rows, "cutoff", cutoff)
+	}
+	return nil
 }
