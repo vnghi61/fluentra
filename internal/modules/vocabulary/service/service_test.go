@@ -248,11 +248,13 @@ func (f *fakeRepo) ListRelationsByWordID(_ context.Context, wordID uuid.UUID) ([
 }
 
 func (f *fakeRepo) UpsertUserWordState(
-	_ context.Context, arg sqlc.UpsertUserWordStateParams) (sqlc.SkillUserWordState, error,
-) {
+	_ context.Context, arg sqlc.UpsertUserWordStateParams,
+) (sqlc.UpsertUserWordStateRow, error) {
 	key := arg.UserID.String() + ":" + arg.WordSenseID.String()
 	st, ok := f.wordStates[key]
+	inserted := false
 	if !ok {
+		inserted = true
 		st = sqlc.SkillUserWordState{
 			ID:          uuid.New(),
 			UserID:      arg.UserID,
@@ -266,7 +268,15 @@ func (f *fakeRepo) UpsertUserWordState(
 		st.UpdatedAt = time.Now().UTC()
 	}
 	f.wordStates[key] = st
-	return st, nil
+	return sqlc.UpsertUserWordStateRow{
+		ID:          st.ID,
+		UserID:      st.UserID,
+		WordSenseID: st.WordSenseID,
+		Status:      st.Status,
+		FirstSeenAt: st.FirstSeenAt,
+		UpdatedAt:   st.UpdatedAt,
+		Inserted:    inserted,
+	}, nil
 }
 
 func (f *fakeRepo) GetUserWordState(_ context.Context, userID, wordSenseID uuid.UUID) (sqlc.SkillUserWordState, error) {
@@ -374,7 +384,7 @@ func (f *fakeRepo) UpdateWordSenseEnrichment(
 }
 
 func (f *fakeRepo) MarkUploadItemQueued(
-	_ context.Context, id uuid.UUID, _ *uuid.UUID, _ string,
+	_ context.Context, id uuid.UUID, _ *uuid.UUID, _ string, _ *string,
 ) (sqlc.SkillVocabUploadItem, error) {
 	return sqlc.SkillVocabUploadItem{ID: id, Status: statusQueued}, nil
 }
@@ -386,13 +396,13 @@ func (f *fakeRepo) ClaimQueuedUploadItems(
 }
 
 func (f *fakeRepo) MarkQueuedUploadItemVerified(
-	_ context.Context, id uuid.UUID, _, _ string,
+	_ context.Context, id uuid.UUID, _, _ string, _, _ *string,
 ) (sqlc.SkillVocabUploadItem, error) {
 	return sqlc.SkillVocabUploadItem{ID: id, Status: statusVerified}, nil
 }
 
 func (f *fakeRepo) MarkQueuedUploadItemRejected(
-	_ context.Context, id uuid.UUID, _ string,
+	_ context.Context, id uuid.UUID, _ string, _, _ *string,
 ) (sqlc.SkillVocabUploadItem, error) {
 	return sqlc.SkillVocabUploadItem{ID: id, Status: "rejected"}, nil
 }
@@ -780,13 +790,13 @@ func (f *fakeRepo) ClaimPendingUploadItemsByUploadID(
 }
 
 func (f *fakeRepo) MarkUploadItemVerified(
-	_ context.Context, _ uuid.UUID, _ *uuid.UUID, _, _ string,
+	_ context.Context, _ uuid.UUID, _ *uuid.UUID, _, _ string, _, _ *string,
 ) (sqlc.SkillVocabUploadItem, error) {
 	return sqlc.SkillVocabUploadItem{}, nil
 }
 
 func (f *fakeRepo) MarkUploadItemRejected(
-	_ context.Context, _ uuid.UUID, _ string,
+	_ context.Context, _ uuid.UUID, _ string, _, _ *string,
 ) (sqlc.SkillVocabUploadItem, error) {
 	return sqlc.SkillVocabUploadItem{}, nil
 }

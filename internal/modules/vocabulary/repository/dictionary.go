@@ -10,6 +10,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/fluentra/fluentra/internal/modules/vocabulary/domain"
 )
 
 // DictionaryEntry is what a free dictionary knows about a word.
@@ -53,6 +55,11 @@ type DictionaryLookup interface {
 	// Lookup returns the entry, or ErrWordNotFound when the dictionary has no
 	// entry for the word. Any other error is a failure to ask, not an answer.
 	Lookup(ctx context.Context, word string) (DictionaryEntry, error)
+}
+
+// CandidateFinder finds spelling candidates for a word.
+type CandidateFinder interface {
+	FindCandidates(ctx context.Context, word string) ([]string, error)
 }
 
 // ErrWordNotFound reports that the dictionary has no entry.
@@ -348,3 +355,80 @@ func mapDictionaryEntry(raw dictionaryAPIEntry) DictionaryEntry {
 }
 
 var _ DictionaryLookup = (*FreeDictionaryAPI)(nil)
+var _ CandidateFinder = (*FreeDictionaryAPI)(nil)
+
+// FindCandidates retrieves near-spelling candidates from Datamuse (?sp=<term> and /sug?s=<term>),
+// filtered by the spelling bound (distance <= 1 if len < 5, <= 2 otherwise).
+func (d *FreeDictionaryAPI) FindCandidates(ctx context.Context, word string) ([]string, error) {
+	term := strings.TrimSpace(strings.ToLower(word))
+	if term == "" {
+		return nil, nil
+	}
+
+	datamuseURL := d.datamuseURL
+	if datamuseURL == "" {
+		datamuseURL = datamuseBaseURL
+	}
+
+	seen := make(map[string]struct{})
+	var candidates []string
+
+	addCandidate := func(cand string) {
+		cand = strings.TrimSpace(strings.ToLower(cand))
+		if cand == "" || cand == term {
+			return
+		}
+		if _, exists := seen[cand]; exists {
+			return
+		}
+		if domain.IsWithinSpellingBound(term, cand) {
+			seen[cand] = struct{}{}
+			candidates = append(candidates, cand)
+		}
+	}
+
+	// 1. Try ?sp=<term>
+	endpoint := datamuseURL + "?sp=" + url.QueryEscape(term)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err == nil {
+		if resp, err := d.client.Do(req); err == nil {
+			defer func() { _ = resp.Body.Close() }()
+			if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+				var items []struct {
+					Word string `json:"word"`
+				}
+				payload, _ := io.ReadAll(io.LimitReader(resp.Body, dictionaryMaxBytes))
+				if err := json.Unmarshal(payload, &items); err == nil {
+					for _, item := range items {
+						addCandidate(item.Word)
+					}
+				}
+			}
+		}
+	}
+
+	// 2. If no near spellings found from ?sp=, try suggestion endpoint /sug?s=<term>
+	if len(candidates) == 0 {
+		sugURL := strings.TrimSuffix(datamuseURL, "/words") + "/sug"
+		sugEndpoint := sugURL + "?s=" + url.QueryEscape(term)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, sugEndpoint, nil)
+		if err == nil {
+			if resp, err := d.client.Do(req); err == nil {
+				defer func() { _ = resp.Body.Close() }()
+				if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+					var items []struct {
+						Word string `json:"word"`
+					}
+					payload, _ := io.ReadAll(io.LimitReader(resp.Body, dictionaryMaxBytes))
+					if err := json.Unmarshal(payload, &items); err == nil {
+						for _, item := range items {
+							addCandidate(item.Word)
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return candidates, nil
+}

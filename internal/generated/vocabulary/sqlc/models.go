@@ -709,6 +709,9 @@ type SkillVocabUploadItem struct {
 	Attempts        int32
 	CreatedAt       time.Time
 	VerifiedAt      *time.Time
+	CorrectedTerm   *string
+	SuggestedTerm   *string
+	NoteCode        *string
 }
 
 type SkillWord struct {

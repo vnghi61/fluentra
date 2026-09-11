@@ -4030,6 +4030,21 @@ export interface components {
             topic?: string;
             /** @description Example sentences illustrating the word in context. */
             examples?: string[];
+            /**
+             * @description The word actually added, when it differs from term.
+             * @example school
+             */
+            corrected_term?: string | null;
+            /**
+             * @description The suggestion, when nothing was added.
+             * @example school
+             */
+            suggested_term?: string | null;
+            /**
+             * @description Machine-readable reason or note code for the item.
+             * @enum {string|null}
+             */
+            note_code?: "spelling_corrected" | "meaning_corrected" | "spelling_suggestion" | "meaning_mismatch" | "already_in_your_words" | "not_a_word" | "proper_noun" | "queued_for_enrichment" | null;
         };
         VocabUploadList: {
             items: components["schemas"]["VocabUpload"][];

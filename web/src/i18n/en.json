@@ -794,7 +794,17 @@
     "title": "My words",
     "verified": "added",
     "words": "words",
-    "wordsFound": "words found"
+    "wordsFound": "words found",
+    "note": {
+      "spelling_corrected": "You typed {{term}} — added {{corrected}}.",
+      "meaning_corrected": "Added {{corrected}}. Your note matched {{corrected}} rather than {{term}}.",
+      "spelling_suggestion": "Did you mean {{suggested}}?",
+      "meaning_mismatch": "Added. Your note did not quite match the usual meaning — the definition here is the dictionary's.",
+      "already_in_your_words": "This word is already in your words.",
+      "not_a_word": "We could not find this as an English word.",
+      "proper_noun": "This is a proper noun, not a general vocabulary word.",
+      "queued_for_enrichment": "Queued for background enrichment. Your flashcard is ready to review."
+    }
   },
   "vocabulary": {
     "addCustomWord": "Add as new custom word",

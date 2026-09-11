@@ -64,6 +64,8 @@ SET status            = 'verified',
     word_sense_id     = $2,
     verified_by_model = $3,
     reason            = $4,
+    corrected_term    = $5,
+    note_code         = $6,
     verified_at       = now(),
     attempts          = attempts + 1
 WHERE id = $1 AND status = 'pending'
@@ -71,10 +73,12 @@ RETURNING *;
 
 -- name: MarkUploadItemRejected :one
 UPDATE skill.vocab_upload_items
-SET status      = 'rejected',
-    reason      = $2,
-    verified_at = now(),
-    attempts    = attempts + 1
+SET status         = 'rejected',
+    reason         = $2,
+    suggested_term = $3,
+    note_code      = $4,
+    verified_at    = now(),
+    attempts       = attempts + 1
 WHERE id = $1 AND status = 'pending'
 RETURNING *;
 
@@ -115,6 +119,7 @@ SET status            = 'queued',
     word_sense_id     = $2,
     verified_by_model = '',
     reason            = $3,
+    note_code         = $4,
     attempts          = attempts + 1
 WHERE id = $1 AND status IN ('pending', 'queued')
 RETURNING *;
@@ -133,16 +138,20 @@ SET status            = 'verified',
     verified_by_model = $2,
     verified_at       = now(),
     reason            = $3,
+    corrected_term    = $4,
+    note_code         = $5,
     attempts          = attempts + 1
 WHERE id = $1 AND status = 'queued'
 RETURNING *;
 
 -- name: MarkQueuedUploadItemRejected :one
 UPDATE skill.vocab_upload_items
-SET status      = 'rejected',
-    reason      = $2,
-    verified_at = now(),
-    attempts    = attempts + 1
+SET status         = 'rejected',
+    reason         = $2,
+    suggested_term = $3,
+    note_code      = $4,
+    verified_at    = now(),
+    attempts       = attempts + 1
 WHERE id = $1 AND status = 'queued'
 RETURNING *;
 
@@ -178,6 +187,9 @@ SELECT
     i.status,
     i.verified_by_model,
     i.reason,
+    i.corrected_term,
+    i.suggested_term,
+    i.note_code,
     i.attempts,
     i.verified_at,
     i.created_at,

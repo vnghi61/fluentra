@@ -794,7 +794,17 @@
     "title": "Từ của tôi",
     "verified": "đã thêm",
     "words": "từ",
-    "wordsFound": "từ được tìm thấy"
+    "wordsFound": "từ được tìm thấy",
+    "note": {
+      "spelling_corrected": "Bạn gõ {{term}} — đã thêm {{corrected}}.",
+      "meaning_corrected": "Đã thêm {{corrected}}. Ghi chú của bạn khớp với {{corrected}} thay vì {{term}}.",
+      "spelling_suggestion": "Có phải bạn định gõ {{suggested}}?",
+      "meaning_mismatch": "Đã thêm. Ghi chú của bạn không khớp lắm với nghĩa thông thường — định nghĩa ở đây là của từ điển.",
+      "already_in_your_words": "Từ này đã có trong danh sách từ của bạn.",
+      "not_a_word": "Chúng tôi không tìm thấy từ tiếng Anh này.",
+      "proper_noun": "Đây là tên riêng, không phải từ vựng chung.",
+      "queued_for_enrichment": "Đã xếp hàng chờ xử lý bổ sung. Thẻ ghi nhớ của bạn đã sẵn sàng để ôn tập."
+    }
   },
   "vocabulary": {
     "addCustomWord": "Thêm như một từ mới",

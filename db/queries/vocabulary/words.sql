@@ -96,7 +96,7 @@ INSERT INTO skill.user_word_state (
 ON CONFLICT (user_id, word_sense_id) DO UPDATE SET
     status = EXCLUDED.status,
     updated_at = now()
-RETURNING *;
+RETURNING *, (xmax = 0) AS inserted;
 
 -- name: GetUserWordState :one
 SELECT * FROM skill.user_word_state

@@ -194,3 +194,50 @@ func TestFreeDictionary_LiveDatamuseFallback(t *testing.T) {
 	assert.NotEmpty(t, entry.Definition)
 	assert.NotEmpty(t, entry.PartOfSpeech)
 }
+
+func TestFreeDictionary_FindCandidates_Fixtures(t *testing.T) {
+	// Test candidate retrieval for schol, recieve, form using recorded fixtures
+	datamuseServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		path := r.URL.Path
+		sp := r.URL.Query().Get("sp")
+		sug := r.URL.Query().Get("s")
+
+		var filename string
+		if path == "/words" && sp != "" {
+			filename = "testdata/datamuse_sp_" + sp + ".json"
+		} else if path == "/sug" && sug != "" {
+			filename = "testdata/datamuse_sug_" + sug + ".json"
+		}
+
+		if filename != "" {
+			if data, err := os.ReadFile(filename); err == nil {
+				_, _ = w.Write(data)
+				return
+			}
+		}
+		_, _ = w.Write([]byte(`[]`))
+	}))
+	defer datamuseServer.Close()
+
+	client := repository.NewFreeDictionaryAPI("http://127.0.0.1:0").
+		WithDatamuseURL(datamuseServer.URL + "/words")
+
+	// 1. schol: sp fixture contains "school" (distance 1 <= 2)
+	cands, err := client.FindCandidates(context.Background(), "schol")
+	require.NoError(t, err)
+	assert.Contains(t, cands, "school")
+
+	// 2. form: sp fixture contains only "form" (same as term, filtered out)
+	// and sug fixture contains no close spellings (formidable, formulate, etc. are distance > 1)
+	cands, err = client.FindCandidates(context.Background(), "form")
+	require.NoError(t, err)
+	assert.Empty(t, cands)
+
+	// 3. recieve: sp fixture contains "relieve", "decieve" (distance 2 and 3; bound for 7 letters is 2, so relieve is distance 2, receive is not in fixture)
+	cands, err = client.FindCandidates(context.Background(), "recieve")
+	require.NoError(t, err)
+	// relieve is distance 2 from recieve (transposition c<->l? No: c->l is substitution, so r-e-c-i-e-v-e vs r-e-l-i-e-v-e: 1 substitution. Distance is 1 <= 2!)
+	assert.Contains(t, cands, "relieve")
+}
+
