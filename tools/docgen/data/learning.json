@@ -703,7 +703,9 @@
       { "name": "word_relations", "purpose": "Families, synonyms, collocations", "notes": "`from_word_id`, `to_word_id`, `relation`" },
       { "name": "decks", "purpose": "Learner or curated collection", "notes": "`owner_id` (null = curated), `slug`, `name`, `is_public`" },
       { "name": "deck_items", "purpose": "Word in a deck", "notes": "Unique on (deck_id, word_sense_id)" },
-      { "name": "user_word_state", "purpose": "Per-learner status", "notes": "`user_id`, `word_sense_id`, `status` (new/learning/known/ignored), `first_seen_at`" }
+      { "name": "user_word_state", "purpose": "Per-learner status", "notes": "`user_id`, `word_sense_id`, `status` (new/learning/known/ignored), `first_seen_at`" },
+      { "name": "vocab_uploads", "purpose": "Batch word uploads", "notes": "`user_id`, `status`, `raw_text`, `item_count`" },
+      { "name": "vocab_upload_items", "purpose": "Parsed items in an upload", "notes": "`upload_id`, `raw_entry`, `parsed_word`, `parsed_notes`, `status`, `reason`, `sense_id`" }
     ],
     "endpoints": [
       { "method": "GET", "path": "/api/v1/vocabulary/words/{lemma}", "permission": "content.read.published", "purpose": "Dictionary lookup with senses, IPA, audio, examples", "success": "200" },
@@ -841,7 +843,6 @@
     "tables": [
       { "name": "writing_tasks", "purpose": "Prompt definitions", "notes": "Content-versioned. `type`, `prompt`, `min_words`, `max_words`, `time_limit_s`, `rubric_id`" },
       { "name": "writing_drafts", "purpose": "Autosaved work in progress", "notes": "`user_id`, `task_id`, `body`, `word_count`, `updated_at`; one active draft per task" },
-      { "name": "writing_submissions", "purpose": "Submitted work", "notes": "`user_id`, `task_id`, `body`, `word_count`, `status`, `overall_band`, `submitted_at`. Immutable body." },
       { "name": "writing_feedback", "purpose": "Grading output", "notes": "`submission_id`, `criterion`, `score`, `comment`, `annotations` jsonb, `prompt_version`, `provider`" },
       { "name": "writing_revisions", "purpose": "Draft history", "notes": "Snapshot every N minutes or M characters; retained 90 days" }
     ],
@@ -1111,8 +1112,7 @@
     "notResponsibilities": ["Question authoring — that is `questionbank`", "Word definitions — that is `vocabulary`", "Passage sourcing and licensing — an editorial concern"],
     "tables": [
       { "name": "passages", "purpose": "Reading text", "notes": "Content-versioned. `body`, `word_count`, `cefr_level`, `flesch_kincaid`, `topic`, `source_attribution`" },
-      { "name": "passage_questions", "purpose": "Questions bound to a passage", "notes": "`passage_id`, `question_id` (from `questionbank`), `position`, `evidence_span`" },
-      { "name": "reading_attempts", "purpose": "One pass through a passage", "notes": "`user_id`, `passage_id`, `wpm`, `comprehension_score`, `time_ms`" }
+      { "name": "passage_questions", "purpose": "Questions bound to a passage", "notes": "`passage_id`, `question_id` (from `questionbank`), `position`, `evidence_span`" }
     ],
     "endpoints": [
       { "method": "GET", "path": "/api/v1/reading/passages/{id}", "permission": "content.read.published", "purpose": "Passage with glossing hints", "success": "200" },
@@ -1290,7 +1290,7 @@
     "group": "modules",
     "schema": "skill",
     "phase": 3,
-    "status": "PLANNED",
+    "status": "IN_PROGRESS",
     "owner": "@learning-team",
     "purpose": "Grammar as a structured, teachable system: a rule taxonomy, error tagging, targeted drills, and AI explanations that always cite a rule from our own taxonomy rather than improvising.",
     "context": "The taxonomy is what keeps AI explanations honest. A model asked to \"explain the error\" will confabulate a plausible rule; a model asked to \"identify which of these rules was violated and explain it\" cannot.",
@@ -1642,7 +1642,7 @@
     "group": "modules",
     "schema": "learn",
     "phase": 3,
-    "status": "PLANNED",
+    "status": "DONE",
     "owner": "@learning-team",
     "hasJobs": true,
     "purpose": "Motivation mechanics: XP, levels, streaks, badges, quests and leaderboards. It reacts to learning events and never drives them.",
@@ -1660,6 +1660,7 @@
     "notResponsibilities": ["Deciding what counts as learning — the source modules do", "Sending reminders — that is `notification`"],
     "tables": [
       { "name": "xp_events", "purpose": "Every XP award", "notes": "Partitioned monthly. `user_id`, `source`, `source_id`, `amount`, `multiplier`, `awarded_at`. Unique on (user_id, source, source_id) for idempotency" },
+      { "name": "xp_activity_high_water", "purpose": "Per-activity XP high water mark", "notes": "`user_id`, `activity_id`, `max_score`, `xp_awarded`" },
       { "name": "streaks", "purpose": "Streak state", "notes": "`user_id`, `current`, `longest`, `last_active_on`, `freezes_available`, `freeze_used_on`" },
       { "name": "badges", "purpose": "Badge catalogue", "notes": "`code`, `name`, `criteria` jsonb, `tier`" },
       { "name": "badges_earned", "purpose": "Awards", "notes": "Unique on (user_id, badge_id)" },

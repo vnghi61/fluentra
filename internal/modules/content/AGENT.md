@@ -25,7 +25,7 @@ last_verified: 2026-08-25
 | Path | `internal/modules/content` |
 | Schema | `content` |
 | Delivery phase | 2 |
-| Status | **PLANNED** |
+| Status | **DONE** |
 | Owner | @learning-team |
 
 ---

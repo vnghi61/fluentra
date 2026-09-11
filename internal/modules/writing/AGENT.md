@@ -2,11 +2,11 @@
 module: writing
 tier: learning
 group: modules
-status: IMPLEMENTED
+status: PLANNED
 phase: 3
 owner: "@learning-team"
 schema: skill
-tables: [writing_tasks, writing_drafts, writing_submissions, writing_feedback, writing_revisions]
+tables: [writing_tasks, writing_drafts, writing_feedback, writing_revisions]
 depends_on: [ai, job, content, learning, notification]
 depended_on_by: [learning, analytics, gamification]
 spec_version: 1.0.0
@@ -25,7 +25,7 @@ last_verified: 2026-09-10
 | Path | `internal/modules/writing` |
 | Schema | `skill` |
 | Delivery phase | 3 |
-| Status | **IMPLEMENTED** |
+| Status | **PLANNED** |
 | Owner | @learning-team |
 
 ---
@@ -98,7 +98,6 @@ Migrations: `db/migrations/writing/` · Queries: `db/queries/writing/`
 |---|---|---|
 | `skill.writing_tasks` | Prompt definitions | Content-versioned. `type`, `prompt`, `min_words`, `max_words`, `time_limit_s`, `rubric_id` |
 | `skill.writing_drafts` | Autosaved work in progress | `user_id`, `task_id`, `body`, `word_count`, `updated_at`; one active draft per task |
-| `skill.writing_submissions` | Submitted work | `user_id`, `task_id`, `body`, `word_count`, `status`, `overall_band`, `submitted_at`. Immutable body. |
 | `skill.writing_feedback` | Grading output | `submission_id`, `criterion`, `score`, `comment`, `annotations` jsonb, `prompt_version`, `provider` |
 | `skill.writing_revisions` | Draft history | Snapshot every N minutes or M characters; retained 90 days |
 

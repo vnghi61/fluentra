@@ -2,11 +2,11 @@
 module: reading
 tier: learning
 group: modules
-status: IMPLEMENTED
+status: PLANNED
 phase: 3
 owner: "@learning-team"
 schema: skill
-tables: [passages, passage_questions, reading_attempts]
+tables: [passages, passage_questions]
 depends_on: [content, questionbank, vocabulary, learning]
 depended_on_by: [learning, exam, analytics]
 spec_version: 1.0.0
@@ -25,7 +25,7 @@ last_verified: 2026-09-10
 | Path | `internal/modules/reading` |
 | Schema | `skill` |
 | Delivery phase | 3 |
-| Status | **IMPLEMENTED** |
+| Status | **PLANNED** |
 | Owner | @learning-team |
 
 ---
@@ -92,7 +92,6 @@ Migrations: `db/migrations/reading/` · Queries: `db/queries/reading/`
 |---|---|---|
 | `skill.passages` | Reading text | Content-versioned. `body`, `word_count`, `cefr_level`, `flesch_kincaid`, `topic`, `source_attribution` |
 | `skill.passage_questions` | Questions bound to a passage | `passage_id`, `question_id` (from `questionbank`), `position`, `evidence_span` |
-| `skill.reading_attempts` | One pass through a passage | `user_id`, `passage_id`, `wpm`, `comprehension_score`, `time_ms` |
 
 <!-- END GENERATED: schema -->
 

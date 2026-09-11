@@ -2,11 +2,11 @@
 module: writing
 tier: learning
 group: modules
-status: IMPLEMENTED
+status: PLANNED
 phase: 3
 owner: "@learning-team"
 schema: skill
-tables: [writing_tasks, writing_drafts, writing_submissions, writing_feedback, writing_revisions]
+tables: [writing_tasks, writing_drafts, writing_feedback, writing_revisions]
 depends_on: [ai, job, content, learning, notification]
 depended_on_by: [learning, analytics, gamification]
 spec_version: 1.0.0

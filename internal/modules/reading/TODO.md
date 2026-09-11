@@ -2,11 +2,11 @@
 module: reading
 tier: learning
 group: modules
-status: IMPLEMENTED
+status: PLANNED
 phase: 3
 owner: "@learning-team"
 schema: skill
-tables: [passages, passage_questions, reading_attempts]
+tables: [passages, passage_questions]
 depends_on: [content, questionbank, vocabulary, learning]
 depended_on_by: [learning, exam, analytics]
 spec_version: 1.0.0
