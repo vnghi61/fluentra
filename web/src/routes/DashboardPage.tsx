@@ -7,6 +7,7 @@ import {
 } from "@/features/gamification";
 import {
   ContinueLearningCard,
+  DailyPracticeCard,
   DashboardError,
   DashboardSkeleton,
   ReviewsDueCard,
@@ -50,6 +51,11 @@ export function DashboardPage(): React.JSX.Element {
           <GamificationSummarySection summary={gamificationData} />
         </section>
       )}
+
+      {/* Today's Practice (Daily Set) */}
+      <section aria-label={t("practice.daily.title", "Today's Practice Set")}>
+        <DailyPracticeCard />
+      </section>
 
       {/* Hero Card: 1. Continue Learning */}
       <section aria-label={t("dashboard.continue.title", "Continue Learning")}>

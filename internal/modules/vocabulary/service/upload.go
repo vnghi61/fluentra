@@ -62,6 +62,7 @@ type verdict struct {
 	Definition     string         `json:"definition"`
 	DefinitionVi   string         `json:"definition_vi"`
 	MeaningMatches bool           `json:"meaning_matches"`
+	IntendedTerm   string         `json:"intended_term"`
 	Examples       []modelExample `json:"examples"`
 }
 
@@ -198,6 +199,9 @@ type UploadItem struct {
 	DefinitionVi    string     `json:"definition_vi,omitempty"`
 	Topic           string     `json:"topic,omitempty"`
 	Examples        []string   `json:"examples,omitempty"`
+	CorrectedTerm   *string    `json:"corrected_term,omitempty"`
+	SuggestedTerm   *string    `json:"suggested_term,omitempty"`
+	NoteCode        *string    `json:"note_code,omitempty"`
 }
 
 // Submit stores a learner's pasted vocabulary within a transaction and enqueues verification.
@@ -365,6 +369,9 @@ func (u *Uploads) Get(ctx context.Context, userID, uploadID uuid.UUID) (Upload, 
 			DefinitionVi:    derefOrEmpty(item.DefinitionVi),
 			Topic:           derefOrEmpty(item.Topic),
 			Examples:        examples,
+			CorrectedTerm:   item.CorrectedTerm,
+			SuggestedTerm:   item.SuggestedTerm,
+			NoteCode:        item.NoteCode,
 		})
 	}
 	return upload, nil
@@ -474,71 +481,343 @@ func (u *Uploads) VerifyUpload(ctx context.Context, uploadID uuid.UUID) error {
 	return nil
 }
 
-// verifyItem checks one word and, when it holds up, turns it into something the
-// learner can review. The bool reports whether it was accepted.
-func (u *Uploads) verifyItem(ctx context.Context, item sqlc.SkillVocabUploadItem) (bool, error) {
-	term := strings.TrimSpace(item.Term)
+// Note codes on an upload item. The learner-facing list renders each through
+// t("uploads.note.<code>"); the English in `reason` is for the admin queue and
+// for rows written before the codes existed.
+const (
+	noteSpellingCorrected  = "spelling_corrected"
+	noteMeaningCorrected   = "meaning_corrected"
+	noteSpellingSuggestion = "spelling_suggestion"
+	noteMeaningMismatch    = "meaning_mismatch"
+	noteAlreadyInWords     = "already_in_your_words"
+	noteNotAWord           = "not_a_word"
+	noteProperNoun         = "proper_noun"
+	noteQueued             = "queued_for_enrichment"
 
-	// The dictionary first, and it is authoritative on existence. A model
-	// asked "is this a word" will confidently invent an entry for a typo.
+	msgAlreadyInWords  = "This word is already in your words."
+	msgMeaningMismatch = "Added. Your note did not quite match the usual meaning — " +
+		"the definition here is the dictionary's."
+	msgQueued = "Queued for background enrichment. Your flashcard is ready to review."
+
+	// modelQueued is what judge reports when every provider is out of quota and
+	// the word has been degraded to a queued flashcard.
+	modelQueued = "queued"
+)
+
+// maxSpellingCandidates bounds how many close spellings one mistyped word may
+// cost. Confirming a candidate is a dictionary lookup and a model call, and a
+// short word has many neighbours within one edit — "form" alone has from, farm,
+// foam, fork, fort, firm, norm and worm. The model's own guess is tried first,
+// so the bound drops the least likely candidates, not the best one.
+const maxSpellingCandidates = 3
+
+// verifyItem checks one word and, when it holds up, turns it into something the
+// learner can review. The bool reports whether it added a sense the learner did
+// not already have, which is what XP is paid on.
+func (u *Uploads) verifyItem(ctx context.Context, item sqlc.SkillVocabUploadItem) (bool, error) {
+	// A phrase keeps the behaviour it had: an edit distance across a phrase
+	// matches unrelated phrases, so there is no spelling correction for one.
+	if strings.Contains(strings.TrimSpace(item.Term), " ") {
+		return u.verifyPhrase(ctx, item)
+	}
+	return u.verifySingleWord(ctx, item)
+}
+
+// accepted is a word verification has decided to add, and what to tell the
+// learner about it.
+type accepted struct {
+	// item as it is materialised: Term is the correction when there was one.
+	item   sqlc.SkillVocabUploadItem
+	entry  repository.DictionaryEntry
+	answer verdict
+	model  string
+	// noteCode and note describe a newly added word; empty means nothing to say.
+	noteCode string
+	note     string
+	// corrected is the word actually added, when it differs from what was typed.
+	corrected *string
+}
+
+// lookupEntry asks the dictionary, treating "not found" as a verdict rather
+// than a failure: the model still gets a say, because the dictionary has no
+// entry for a valid fixed phrase.
+func (u *Uploads) lookupEntry(ctx context.Context, term string) (repository.DictionaryEntry, error) {
 	entry, err := u.dictionary.Lookup(ctx, term)
 	switch {
 	case err == nil:
+		return entry, nil
 	case errors.Is(err, repository.ErrWordNotFound):
-		// Not a transport failure — a verdict. The model still gets a say,
-		// because the dictionary has no entry for a valid fixed phrase.
-		entry = repository.DictionaryEntry{}
+		return repository.DictionaryEntry{}, nil
 	default:
-		return false, fmt.Errorf("dictionary lookup: %w", err)
+		return repository.DictionaryEntry{}, fmt.Errorf("dictionary lookup: %w", err)
+	}
+}
+
+func (u *Uploads) verifyPhrase(ctx context.Context, item sqlc.SkillVocabUploadItem) (bool, error) {
+	term := strings.TrimSpace(item.Term)
+	entry, err := u.lookupEntry(ctx, term)
+	if err != nil {
+		return false, err
 	}
 
 	answer, model, err := u.judge(ctx, item, entry)
 	if err != nil {
 		return false, err
 	}
-
-	if model == "queued" {
-		senseID, err := u.materialise(ctx, item, entry, answer)
-		if err != nil {
-			return false, err
-		}
-		note := "Queued for background enrichment. Your flashcard is ready to review."
-		if _, err := u.repo.MarkUploadItemQueued(ctx, item.ID, &senseID, note); err != nil {
-			return false, fmt.Errorf("mark queued: %w", err)
-		}
-		return false, nil
+	if model == modelQueued {
+		return u.markQueued(ctx, item, entry, answer)
 	}
 
 	answer = refuseProperNouns(answer, entry, term)
-
 	if !answer.Valid {
-		reason := answer.Reason
-		if reason == "" {
-			reason = fmt.Sprintf("We could not find %q as an English word.", term)
-		}
-		if _, err := u.repo.MarkUploadItemRejected(ctx, item.ID, truncateReason(reason)); err != nil {
-			return false, fmt.Errorf("mark rejected: %w", err)
-		}
-		return false, nil
+		return false, u.markInvalid(ctx, item, entry, answer)
 	}
 
-	senseID, err := u.materialise(ctx, item, entry, answer)
-	if err != nil {
-		return false, err
-	}
-
+	word := accepted{item: item, entry: entry, answer: answer, model: model}
 	// A note, not a rejection. The word is real and worth learning; the
 	// learner's own gloss was off, and telling them that is more useful than
 	// refusing the word.
-	note := ""
 	if !answer.MeaningMatches && item.ProvidedMeaning != "" {
-		note = "Added. Your note did not quite match the usual meaning — " +
-			"the definition here is the dictionary's."
+		word.noteCode, word.note = noteMeaningMismatch, msgMeaningMismatch
 	}
-	if _, err := u.repo.MarkUploadItemVerified(ctx, item.ID, &senseID, model, note); err != nil {
+	return u.addWord(ctx, item.ID, word)
+}
+
+// verifySingleWord is the four cases of work order 11 §3.9. The dictionary is
+// asked first and is authoritative on existence — a model asked "is this a word"
+// will confidently invent an entry for a typo — and a correction is only ever a
+// word the dictionary also knows.
+func (u *Uploads) verifySingleWord(ctx context.Context, item sqlc.SkillVocabUploadItem) (bool, error) {
+	entry, err := u.lookupEntry(ctx, strings.TrimSpace(item.Term))
+	if err != nil {
+		return false, err
+	}
+	if entry.Lemma != "" {
+		return u.verifyKnownWord(ctx, item, entry)
+	}
+	if strings.TrimSpace(item.ProvidedMeaning) != "" {
+		return u.verifyUnknownWordWithMeaning(ctx, item)
+	}
+	return false, u.suggestSpelling(ctx, item)
+}
+
+// verifyKnownWord is cases 1 and 2: the dictionary has the word as typed.
+func (u *Uploads) verifyKnownWord(
+	ctx context.Context, item sqlc.SkillVocabUploadItem, entry repository.DictionaryEntry,
+) (bool, error) {
+	term := strings.TrimSpace(item.Term)
+	answer, model, err := u.judge(ctx, item, entry)
+	if err != nil {
+		return false, err
+	}
+	if model == modelQueued {
+		return u.markQueued(ctx, item, entry, answer)
+	}
+
+	answer = refuseProperNouns(answer, entry, term)
+	if !answer.Valid {
+		return false, u.markInvalid(ctx, item, entry, answer)
+	}
+
+	// Case 1: the meaning fits, or the learner gave none.
+	if strings.TrimSpace(item.ProvidedMeaning) == "" || answer.MeaningMatches {
+		return u.addWord(ctx, item.ID, accepted{item: item, entry: entry, answer: answer, model: model})
+	}
+
+	// Case 2: a real word whose meaning does not fit — "form: từ". A close
+	// spelling whose meaning does fit is the word they meant.
+	inserted, found, err := u.addCorrection(ctx, item, answer.IntendedTerm, model, noteMeaningCorrected)
+	if found || err != nil {
+		return inserted, err
+	}
+	return u.addWord(ctx, item.ID, accepted{
+		item: item, entry: entry, answer: answer, model: model,
+		noteCode: noteMeaningMismatch, note: msgMeaningMismatch,
+	})
+}
+
+// verifyUnknownWordWithMeaning is case 3: "schol: trường học".
+func (u *Uploads) verifyUnknownWordWithMeaning(ctx context.Context, item sqlc.SkillVocabUploadItem) (bool, error) {
+	answer, model, err := u.judge(ctx, item, repository.DictionaryEntry{})
+	if err != nil {
+		return false, err
+	}
+	inserted, found, err := u.addCorrection(ctx, item, answer.IntendedTerm, model, noteSpellingCorrected)
+	if found || err != nil {
+		return inserted, err
+	}
+	return false, u.reject(ctx, item.ID, notFoundReason(item.Term), nil, noteNotAWord)
+}
+
+// suggestSpelling is case 4: not a word, and no meaning to choose a correction
+// by. "schol" alone is school or scholar, so nothing is added; the learner is
+// told the likeliest word and adds it themselves.
+func (u *Uploads) suggestSpelling(ctx context.Context, item sqlc.SkillVocabUploadItem) error {
+	term := strings.TrimSpace(item.Term)
+	for _, candidate := range u.getCandidates(ctx, term, "") {
+		candidateEntry, err := u.dictionary.Lookup(ctx, candidate)
+		if err != nil || candidateEntry.Lemma == "" {
+			continue
+		}
+		suggestion := candidate
+		return u.reject(ctx, item.ID, fmt.Sprintf("Did you mean %s?", candidate), &suggestion, noteSpellingSuggestion)
+	}
+	return u.reject(ctx, item.ID, notFoundReason(term), nil, noteNotAWord)
+}
+
+// addCorrection adds the first close spelling that goes through the same
+// verification a correctly typed word does. found reports whether one did.
+func (u *Uploads) addCorrection(
+	ctx context.Context, item sqlc.SkillVocabUploadItem, intended, model, code string,
+) (inserted, found bool, err error) {
+	term := strings.TrimSpace(item.Term)
+	for _, candidate := range u.getCandidates(ctx, term, intended) {
+		candidateEntry, candidateAnswer, ok := u.confirmCandidate(ctx, item, candidate)
+		if !ok {
+			continue
+		}
+		corrected := candidate
+		correctedItem := item
+		correctedItem.Term = candidate
+		inserted, err = u.addWord(ctx, item.ID, accepted{
+			item: correctedItem, entry: candidateEntry, answer: candidateAnswer, model: model,
+			noteCode: code, note: correctionNote(code, term, candidate), corrected: &corrected,
+		})
+		return inserted, true, err
+	}
+	return false, false, nil
+}
+
+func correctionNote(code, typed, corrected string) string {
+	if code == noteMeaningCorrected {
+		return fmt.Sprintf("Added %s. Your note matched %s rather than %s.", corrected, corrected, typed)
+	}
+	return fmt.Sprintf("Added %s.", corrected)
+}
+
+// addWord materialises an accepted word and records the verdict on the item. A
+// sense the learner already had is noted as such and earns nothing.
+func (u *Uploads) addWord(ctx context.Context, itemID uuid.UUID, word accepted) (bool, error) {
+	senseID, inserted, err := u.materialise(ctx, word.item, word.entry, word.answer)
+	if err != nil {
+		return false, err
+	}
+	note, code := word.note, word.noteCode
+	if !inserted {
+		note, code = msgAlreadyInWords, noteAlreadyInWords
+	}
+	if _, err := u.repo.MarkUploadItemVerified(
+		ctx, itemID, &senseID, word.model, note, word.corrected, nilIfEmpty(code),
+	); err != nil {
 		return false, fmt.Errorf("mark verified: %w", err)
 	}
-	return true, nil
+	return inserted, nil
+}
+
+func (u *Uploads) markQueued(
+	ctx context.Context, item sqlc.SkillVocabUploadItem, entry repository.DictionaryEntry, answer verdict,
+) (bool, error) {
+	senseID, _, err := u.materialise(ctx, item, entry, answer)
+	if err != nil {
+		return false, err
+	}
+	code := noteQueued
+	if _, err := u.repo.MarkUploadItemQueued(ctx, item.ID, &senseID, msgQueued, &code); err != nil {
+		return false, fmt.Errorf("mark queued: %w", err)
+	}
+	return false, nil
+}
+
+func (u *Uploads) markInvalid(
+	ctx context.Context, item sqlc.SkillVocabUploadItem, entry repository.DictionaryEntry, answer verdict,
+) error {
+	code := noteNotAWord
+	if isProperNoun(answer.PartOfSpeech) || isProperNoun(entry.PartOfSpeech) {
+		code = noteProperNoun
+	}
+	reason := answer.Reason
+	if reason == "" {
+		reason = notFoundReason(item.Term)
+	}
+	return u.reject(ctx, item.ID, reason, nil, code)
+}
+
+func (u *Uploads) reject(ctx context.Context, itemID uuid.UUID, reason string, suggested *string, code string) error {
+	if _, err := u.repo.MarkUploadItemRejected(ctx, itemID, truncateReason(reason), suggested, &code); err != nil {
+		return fmt.Errorf("mark rejected: %w", err)
+	}
+	return nil
+}
+
+func notFoundReason(term string) string {
+	return fmt.Sprintf("We could not find %q as an English word.", strings.TrimSpace(term))
+}
+
+// getCandidates lists close spellings of term, the model's guess first, bounded
+// by the spelling distance and by maxSpellingCandidates.
+func (u *Uploads) getCandidates(ctx context.Context, term, modelIntendedTerm string) []string {
+	seen := make(map[string]struct{})
+	var candidates []string
+
+	add := func(c string) {
+		candidate := strings.ToLower(strings.TrimSpace(c))
+		if candidate == "" || strings.EqualFold(candidate, term) {
+			return
+		}
+		if _, exists := seen[candidate]; exists {
+			return
+		}
+		if domain.IsWithinSpellingBound(term, candidate) {
+			seen[candidate] = struct{}{}
+			candidates = append(candidates, candidate)
+		}
+	}
+
+	if modelIntendedTerm != "" {
+		add(modelIntendedTerm)
+	}
+
+	if finder, ok := u.dictionary.(repository.CandidateFinder); ok {
+		if found, err := finder.FindCandidates(ctx, term); err == nil {
+			for _, c := range found {
+				add(c)
+			}
+		}
+	}
+
+	if len(candidates) > maxSpellingCandidates {
+		candidates = candidates[:maxSpellingCandidates]
+	}
+	return candidates
+}
+
+// confirmCandidate verifies a candidate exactly as a typed word is verified: the
+// dictionary must know it, and the judge must accept it with the learner's
+// meaning.
+func (u *Uploads) confirmCandidate(
+	ctx context.Context,
+	item sqlc.SkillVocabUploadItem,
+	candidate string,
+) (repository.DictionaryEntry, verdict, bool) {
+	candidateEntry, err := u.dictionary.Lookup(ctx, candidate)
+	if err != nil || candidateEntry.Lemma == "" {
+		return repository.DictionaryEntry{}, verdict{}, false
+	}
+
+	candidateItem := item
+	candidateItem.Term = candidate
+
+	candidateAnswer, _, err := u.judge(ctx, candidateItem, candidateEntry)
+	if err != nil {
+		return repository.DictionaryEntry{}, verdict{}, false
+	}
+
+	candidateAnswer = refuseProperNouns(candidateAnswer, candidateEntry, candidate)
+	if !candidateAnswer.Valid || !candidateAnswer.MeaningMatches {
+		return repository.DictionaryEntry{}, verdict{}, false
+	}
+
+	return candidateEntry, candidateAnswer, true
 }
 
 // judge asks the model the two questions a dictionary cannot answer: whether
@@ -613,13 +892,13 @@ func (u *Uploads) materialise(
 	item sqlc.SkillVocabUploadItem,
 	entry repository.DictionaryEntry,
 	answer verdict,
-) (uuid.UUID, error) {
+) (uuid.UUID, bool, error) {
 	lemma := firstNonEmpty(answer.Lemma, entry.Lemma, strings.ToLower(item.Term))
 	pos := firstNonEmpty(answer.PartOfSpeech, entry.PartOfSpeech)
 	cefr := normaliseCEFR(answer.CEFRLevel)
 	definition := firstNonEmpty(answer.Definition, entry.Definition, item.ProvidedMeaning, item.Term)
 	if definition == "" {
-		return uuid.Nil, fmt.Errorf("no definition for %q", item.Term)
+		return uuid.Nil, false, fmt.Errorf("no definition for %q", item.Term)
 	}
 
 	examples := answer.Examples
@@ -631,71 +910,130 @@ func (u *Uploads) materialise(
 	// are learning the same word, and giving them a copy each would mean two
 	// dictionary entries, two sets of exercises and a review card that points
 	// at whichever happened to be created first.
-	word, err := u.service.CreateWord(ctx, domain.Word{
-		Lemma: lemma, POS: domain.PartOfSpeech(pos),
-		CEFRLevel: domain.CEFRLevel(cefr), IPA: nilIfEmpty(entry.IPA),
-	})
+	word, err := u.sharedWord(ctx, lemma, pos, cefr, entry.IPA)
 	if err != nil {
-		// Almost always the (lemma, pos) unique constraint: somebody has
-		// already uploaded this word. Reuse theirs.
-		existing, lookupErr := u.repo.GetWordByLemmaAndPOS(ctx, lemma, pos)
-		if lookupErr != nil {
-			return uuid.Nil, fmt.Errorf("resolve word %q: %w", lemma, err)
-		}
-		word = domain.Word{ID: existing.ID, Lemma: existing.Lemma}
+		return uuid.Nil, false, err
 	}
 
-	// The sense's own content version, which is what a review card points at.
-	// Without it the card has nothing to render and the learner meets "this
-	// card has no content yet".
-	gloss := firstNonEmpty(item.ProvidedMeaning, answer.DefinitionVi)
-	body, err := json.Marshal(senseBody(lemma, pos, cefr, definition, gloss, entry, examples))
-	if err != nil {
-		return uuid.Nil, err
-	}
-	versionID, err := u.content.EnsurePublished(ctx, contentcontract.AuthorSpec{
-		Slug:      "user-vocab-" + slugPart(lemma) + "-" + slugPart(pos),
-		Kind:      kindVocabQuiz,
-		CEFRLevel: cefr,
-		Body:      body,
-		AuthorID:  u.author,
-	})
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("publish sense content: %w", err)
-	}
+	existingSenses, _ := u.repo.ListSensesByWordID(ctx, word.ID)
+	senseID, versionID := matchingSense(existingSenses, definition, item.ProvidedMeaning)
 
 	topic := normaliseTopic(answer.Topic)
-	var domainTopic *string
-	if topic != "" {
-		domainTopic = &topic
+	if senseID == uuid.Nil {
+		// The sense's own content version, which is what a review card points at.
+		// Without it the card has nothing to render and the learner meets "this
+		// card has no content yet".
+		gloss := firstNonEmpty(item.ProvidedMeaning, answer.DefinitionVi)
+		body, err := json.Marshal(senseBody(lemma, pos, cefr, definition, gloss, entry, examples))
+		if err != nil {
+			return uuid.Nil, false, err
+		}
+		var pubErr error
+		versionID, pubErr = u.content.EnsurePublished(ctx, contentcontract.AuthorSpec{
+			Slug:      "user-vocab-" + slugPart(lemma) + "-" + slugPart(pos),
+			Kind:      kindVocabQuiz,
+			CEFRLevel: cefr,
+			Body:      body,
+			AuthorID:  u.author,
+		})
+		if pubErr != nil {
+			return uuid.Nil, false, fmt.Errorf("publish sense content: %w", pubErr)
+		}
+
+		var domainTopic *string
+		if topic != "" {
+			domainTopic = &topic
+		}
+
+		sense, err := u.service.CreateSense(ctx, domain.WordSense{
+			WordID: word.ID, ContentVersionID: &versionID,
+			Definition: definition,
+			// The learner's own note first, because it is the wording they will
+			// recognise, and it is theirs. The model's gloss is the fallback, and
+			// it is the only Vietnamese a bare word list ever gets -- pasting
+			// "time" with no meaning used to store nothing here at all.
+			DefinitionVi: nilIfEmpty(firstNonEmpty(item.ProvidedMeaning, answer.DefinitionVi)),
+			Domain:       domainTopic,
+			Examples:     toDomainExamples(examples),
+		})
+		if err != nil {
+			return uuid.Nil, false, fmt.Errorf("create sense for %q: %w", lemma, err)
+		}
+		senseID = sense.ID
 	}
 
-	sense, err := u.service.CreateSense(ctx, domain.WordSense{
-		WordID: word.ID, ContentVersionID: &versionID,
-		Definition: definition,
-		// The learner's own note first, because it is the wording they will
-		// recognise, and it is theirs. The model's gloss is the fallback, and
-		// it is the only Vietnamese a bare word list ever gets -- pasting
-		// "time" with no meaning used to store nothing here at all.
-		DefinitionVi: nilIfEmpty(firstNonEmpty(item.ProvidedMeaning, answer.DefinitionVi)),
-		Domain:       domainTopic,
-		Examples:     toDomainExamples(examples),
+	stateRow, err := u.repo.UpsertUserWordState(ctx, sqlc.UpsertUserWordStateParams{
+		UserID:      item.UserID,
+		WordSenseID: senseID,
+		Status:      string(domain.StatusLearning),
 	})
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("create sense for %q: %w", lemma, err)
+	inserted := true
+	if err == nil {
+		inserted = stateRow.Inserted
+	} else {
+		slog.WarnContext(ctx, "could not upsert user word state for uploaded word",
+			"term", item.Term, "error", err)
 	}
 
-	// Their own deck, and their own review card. Both best-effort: the word is
-	// verified either way, and losing a deck link is recoverable where losing
-	// the verification is not.
+	if inserted {
+		u.addToLearner(ctx, item, senseID, versionID, topic)
+	}
+	return senseID, inserted, nil
+}
+
+// sharedWord creates the word, or reuses it when another learner already has.
+func (u *Uploads) sharedWord(ctx context.Context, lemma, pos, cefr, ipa string) (domain.Word, error) {
+	word, err := u.service.CreateWord(ctx, domain.Word{
+		Lemma: lemma, POS: domain.PartOfSpeech(pos),
+		CEFRLevel: domain.CEFRLevel(cefr), IPA: nilIfEmpty(ipa),
+	})
+	if err == nil {
+		return word, nil
+	}
+	// Almost always the (lemma, pos) unique constraint: somebody has
+	// already uploaded this word. Reuse theirs.
+	existing, lookupErr := u.repo.GetWordByLemmaAndPOS(ctx, lemma, pos)
+	if lookupErr != nil {
+		return domain.Word{}, fmt.Errorf("resolve word %q: %w", lemma, err)
+	}
+	return domain.Word{ID: existing.ID, Lemma: existing.Lemma}, nil
+}
+
+// matchingSense finds the sense of a word this upload means: the same English
+// definition, or the same Vietnamese meaning the learner gave.
+func matchingSense(senses []sqlc.SkillWordSense, definition, meaning string) (senseID, versionID uuid.UUID) {
+	for _, s := range senses {
+		sameDefinition := strings.EqualFold(strings.TrimSpace(s.Definition), strings.TrimSpace(definition))
+		sameMeaning := s.DefinitionVi != nil && meaning != "" &&
+			strings.EqualFold(strings.TrimSpace(*s.DefinitionVi), strings.TrimSpace(meaning))
+		if !sameDefinition && !sameMeaning {
+			continue
+		}
+		if s.ContentVersionID != nil {
+			versionID = *s.ContentVersionID
+		}
+		return s.ID, versionID
+	}
+	return uuid.Nil, uuid.Nil
+}
+
+// addToLearner puts a newly learned word in the learner's own deck and schedules
+// its review card. Both best-effort: the word is verified either way, and losing
+// a deck link is recoverable where losing the verification is not.
+func (u *Uploads) addToLearner(
+	ctx context.Context,
+	item sqlc.SkillVocabUploadItem,
+	senseID, versionID uuid.UUID,
+	topic string,
+) {
 	if deckID, err := u.ensureDeck(ctx, item.UserID, item.UploadID, topic); err == nil {
-		if err := u.service.AddWordToDeck(ctx, deckID, sense.ID); err != nil {
+		if err := u.service.AddWordToDeck(ctx, deckID, senseID); err != nil {
 			slog.WarnContext(ctx, "could not add verified word to deck",
 				"term", item.Term, "error", err)
 		}
 	}
 
-	if u.service.reviews != nil {
+	if u.service.reviews != nil && versionID != uuid.Nil {
 		if err := u.service.reviews.UpsertCards(ctx, item.UserID, []learningcontract.ReviewItem{{
 			ContentVersionID: versionID,
 			Skill:            "vocabulary",
@@ -705,7 +1043,6 @@ func (u *Uploads) materialise(
 				"term", item.Term, "error", err)
 		}
 	}
-	return sense.ID, nil
 }
 
 // ensureDeck finds or creates the learner's own deck and links it to the upload.
@@ -1066,7 +1403,10 @@ func (u *Uploads) enrichItem(ctx context.Context, item sqlc.SkillVocabUploadItem
 		if reason == "" {
 			reason = fmt.Sprintf("We could not find %q as an English word.", term)
 		}
-		if _, err := u.repo.MarkQueuedUploadItemRejected(ctx, item.ID, truncateReason(reason)); err != nil {
+		var noteCode *string
+		nc := "not_a_word"
+		noteCode = &nc
+		if _, err := u.repo.MarkQueuedUploadItemRejected(ctx, item.ID, truncateReason(reason), nil, noteCode); err != nil {
 			return false, fmt.Errorf("mark queued item rejected: %w", err)
 		}
 		return false, nil
@@ -1079,10 +1419,13 @@ func (u *Uploads) enrichItem(ctx context.Context, item sqlc.SkillVocabUploadItem
 	}
 
 	note := ""
+	var noteCode *string
 	if !answer.MeaningMatches && item.ProvidedMeaning != "" {
+		nc := "meaning_mismatch"
+		noteCode = &nc
 		note = "Added. Your note did not quite match the usual meaning — the definition here is the dictionary's."
 	}
-	if _, err := u.repo.MarkQueuedUploadItemVerified(ctx, item.ID, "ai", note); err != nil {
+	if _, err := u.repo.MarkQueuedUploadItemVerified(ctx, item.ID, "ai", note, nil, noteCode); err != nil {
 		return false, fmt.Errorf("mark queued item verified: %w", err)
 	}
 	return true, nil

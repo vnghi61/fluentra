@@ -221,6 +221,7 @@ func (r *Repository) ReplacePreferences(ctx context.Context, preferences domain.
 		QuietHoursStart:      toPgTime(quietStart(preferences.QuietHours)),
 		QuietHoursEnd:        toPgTime(quietEnd(preferences.QuietHours)),
 		AiProcessingOptOut:   preferences.AIProcessingOptOut,
+		PracticeLevel:        toCefrLevel(preferences.PracticeLevel),
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

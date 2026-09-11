@@ -2,11 +2,11 @@
 module: writing
 tier: learning
 group: modules
-status: PLANNED
+status: IMPLEMENTED
 phase: 3
 owner: "@learning-team"
 schema: skill
-tables: [writing_tasks, writing_drafts, writing_submissions, writing_feedback, writing_revisions]
+tables: [writing_feedback]
 depends_on: [ai, job, content, learning, notification]
 depended_on_by: [learning, analytics, gamification]
 spec_version: 1.0.0
@@ -34,6 +34,7 @@ Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR
 | `GET` | `/api/v1/writing/submissions/{id}/stream` | `self` | SSE stream of grading progress and partial feedback |
 | `GET` | `/api/v1/writing/submissions` | `self` | History with band progression |
 | `POST` | `/api/v1/writing/submissions/{id}/dispute` | `self` | Flag a grade for human review |
+| `GET` | `/api/v1/writing/attempts/{id}/feedback` | `self` | Read detailed writing feedback for an attempt |
 <!-- END GENERATED: api-summary -->
 
 ## Endpoint detail
@@ -108,6 +109,16 @@ Flag a grade for human review
 |---|---|
 | Permission | `self` |
 | Success | 202 |
+| Errors | standard set |
+
+### `GET /api/v1/writing/attempts/{id}/feedback`
+
+Read detailed writing feedback for an attempt
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
 | Errors | standard set |
 
 <!-- END GENERATED: api-detail -->

@@ -25,9 +25,15 @@ import (
 	authservice "github.com/fluentra/fluentra/internal/modules/auth/service"
 	"github.com/fluentra/fluentra/internal/modules/content"
 	"github.com/fluentra/fluentra/internal/modules/gamification"
+	"github.com/fluentra/fluentra/internal/modules/grammar"
+	grammarcontract "github.com/fluentra/fluentra/internal/modules/grammar/contract"
 	"github.com/fluentra/fluentra/internal/modules/learning"
+	learningcontract "github.com/fluentra/fluentra/internal/modules/learning/contract"
 	learningjob "github.com/fluentra/fluentra/internal/modules/learning/job"
 	"github.com/fluentra/fluentra/internal/modules/lesson"
+	"github.com/fluentra/fluentra/internal/modules/reading"
+	readingcontract "github.com/fluentra/fluentra/internal/modules/reading/contract"
+
 	lessonservice "github.com/fluentra/fluentra/internal/modules/lesson/service"
 	"github.com/fluentra/fluentra/internal/modules/rbac"
 	rbaccontract "github.com/fluentra/fluentra/internal/modules/rbac/contract"
@@ -35,6 +41,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/user"
 	"github.com/fluentra/fluentra/internal/modules/vocabulary"
 	vocabularyrepo "github.com/fluentra/fluentra/internal/modules/vocabulary/repository"
+	"github.com/fluentra/fluentra/internal/modules/writing"
 	"github.com/fluentra/fluentra/internal/platform/ai"
 	"github.com/fluentra/fluentra/internal/platform/cache"
 	"github.com/fluentra/fluentra/internal/platform/job"
@@ -125,6 +132,8 @@ type workerConfig struct {
 		Provider4Model   string        `koanf:"provider_4_model"`
 		Provider4APIKey  string        `koanf:"provider_4_api_key"`
 		Provider4Timeout time.Duration `koanf:"provider_4_timeout"`
+
+		WritingDailyLimit int `koanf:"writing_daily_limit"`
 	} `koanf:"ai"`
 	OTP struct {
 		HMACKey string `koanf:"hmac_key"`
@@ -236,6 +245,7 @@ func configOptions() config.Options {
 			"ai.provider_4_model":    "",
 			"ai.provider_4_api_key":  "",
 			"ai.provider_4_timeout":  defaultAITimeout,
+			"ai.writing_daily_limit": 10,
 		},
 		Required: []config.RequiredKey{
 			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},
@@ -432,9 +442,44 @@ func run(ctx context.Context) error {
 // exit criterion a number rather than a query someone could write.
 func startLearning(
 	ctx context.Context, pool *pgxpool.Pool, cron *job.CronScheduler,
-	instruments telemetry.Instruments,
-) error {
-	learningModule := learning.New(learning.Deps{Pool: pool})
+	instruments telemetry.Instruments, lessonModule *lesson.Module,
+	contentModule *content.Module, aiClient ai.Client,
+	readingModule *reading.Module, grammarModule *grammar.Module,
+	rbacModule *rbac.Module,
+) (*learning.Module, error) {
+	graders := make(map[string]learningcontract.ExerciseGrader)
+	if readingModule != nil {
+		for _, kind := range readingcontract.GradedKinds() {
+			graders[kind] = readingModule.Grader()
+		}
+	}
+	if grammarModule != nil {
+		for _, kind := range grammarcontract.GradedKinds() {
+			graders[kind] = grammarModule.Grader()
+		}
+	}
+
+	// The owner of generated practice content, resolved the way the vocabulary
+	// generator resolves it. On a database with no administrator yet it is zero,
+	// and the pool top-up stands down instead of generating items EnsurePublished
+	// would refuse.
+	generatorAuthor, err := rbacModule.RoleMembers().FirstHolderOf(ctx, rbaccontract.RoleAdmin)
+	if err != nil {
+		slog.WarnContext(ctx, "could not resolve an owner for generated practice content; "+
+			"the practice pool will not grow", "error", err)
+	}
+
+	learningModule := learning.New(learning.Deps{
+		Pool:          pool,
+		Lesson:        lessonModule.Reader(),
+		LessonAuthor:  lessonModule.Author(),
+		Content:       contentModule.Reader(),
+		ContentAuthor: contentModule.Author(),
+		Graders:       graders,
+		AI:            aiClient,
+
+		GeneratorAuthorID: generatorAuthor,
+	})
 
 	for _, scheduled := range learningModule.CronJobs() {
 		cron.Register(scheduled)
@@ -451,13 +496,30 @@ func startLearning(
 	retention := learningjob.NewRetentionRefresher(pool)
 	cron.Register(retention.CronJob())
 	if _, err := instruments.ObserveRetention(retention.Snapshot); err != nil {
-		return fmt.Errorf("register retention gauge: %w", err)
+		return nil, fmt.Errorf("register retention gauge: %w", err)
 	}
 	if err := retention.Refresh(ctx); err != nil {
 		slog.ErrorContext(ctx, "could not compute retention at start-up; the scheduled job will retry",
 			"error", err)
 	}
-	return nil
+	return learningModule, nil
+}
+
+// newWorkerAIClient builds the worker's AI client, or nil when none can be built.
+// A nil client is not a silent pass anywhere it is used: uploads fall back to the
+// dictionary alone, the practice pool does not grow, and writing grading fails the
+// attempt instead of recording a grade nobody gave.
+func newWorkerAIClient(ctx context.Context, cfg workerConfig, pool *pgxpool.Pool) ai.Client {
+	aiClient, err := ai.New(ai.Config{
+		Providers: cfg.aiProviders(),
+		Pool:      pool,
+	})
+	if err != nil {
+		slog.WarnContext(ctx, "no AI client; uploads will be verified against the dictionary alone",
+			"error", err)
+		return nil
+	}
+	return aiClient
 }
 
 func startModules(
@@ -501,7 +563,17 @@ func startModules(
 		return err
 	}
 
-	if err := startLearning(ctx, pool, cron, instruments); err != nil {
+	contentModule := content.NewAuthoring(content.Deps{Pool: pool})
+	readingModule := reading.New(reading.Deps{Content: contentModule.Reader()})
+	grammarModule := grammar.New(grammar.Deps{Content: contentModule.Reader()})
+
+	aiClient := newWorkerAIClient(ctx, cfg, pool)
+
+	learningModule, err := startLearning(
+		ctx, pool, cron, instruments, lessonModule, contentModule, aiClient, readingModule, grammarModule,
+		rbacModule,
+	)
+	if err != nil {
 		return err
 	}
 
@@ -518,7 +590,10 @@ func startModules(
 			"error", err)
 	}
 
-	startPracticeGenerator(ctx, cfg, pool, cron, rbacModule, lessonModule, srsModule, workers)
+	startPracticeGenerator(
+		ctx, cfg, pool, cron, rbacModule, lessonModule, srsModule, workers, learningModule,
+		contentModule, aiClient,
+	)
 
 	if err := startGamification(pool, bus, cron); err != nil {
 		return err
@@ -647,7 +722,7 @@ func startRiverWorker(
 
 // registerJobKinds is where a module's job handlers are counted.
 func registerJobKinds(_ *river.Workers) int {
-	return 2
+	return 3
 }
 
 // newStorageStore validates the storage configuration and builds the facade.
@@ -760,6 +835,9 @@ func startPracticeGenerator(
 	lessonModule *lesson.Module,
 	srsModule *srs.Module,
 	workers *river.Workers,
+	learningModule *learning.Module,
+	contentModule *content.Module,
+	aiClient ai.Client,
 ) {
 	author, err := rbacModule.RoleMembers().FirstHolderOf(ctx, rbaccontract.RoleAdmin)
 	if err != nil {
@@ -768,25 +846,8 @@ func startPracticeGenerator(
 		return
 	}
 
-	// The AI client the upload verification uses. A configuration it cannot
-	// build is logged and dropped rather than fatal: verification degrades to
-	// the dictionary alone, which still answers the question that matters most
-	// — whether the word exists.
-	aiClient, err := ai.New(ai.Config{
-		Providers: cfg.aiProviders(),
-		Pool:      pool,
-	})
-	if err != nil {
-		slog.WarnContext(ctx, "no AI client; uploads will be verified against the dictionary alone",
-			"error", err)
-		aiClient = nil
-	}
-
-	// NewAuthoring, not New: this process mounts no routes and has no guard to
-	// give, and New fails closed without one — correctly, since its admin
-	// authoring routes would otherwise be unprotected.
-	contentModule := content.NewAuthoring(content.Deps{Pool: pool})
 	vocabularyModule := vocabulary.New(vocabulary.Deps{
+
 		Pool:              pool,
 		ContentAuthor:     contentModule.Author(),
 		LessonAuthor:      lessonModule.Author(),
@@ -797,6 +858,16 @@ func startPracticeGenerator(
 	})
 
 	river.AddWorker(workers, vocabularyModule.VerifyUploadWorker())
+
+	writingModule := writing.New(writing.Deps{
+		Pool:       pool,
+		Content:    contentModule.Reader(),
+		AI:         aiClient,
+		Completer:  learningModule.AsyncGradingCompleter(),
+		Attempts:   learningModule.AttemptReader(),
+		DailyLimit: cfg.AI.WritingDailyLimit,
+	})
+	river.AddWorker(workers, writingModule.GradeSubmissionWorker())
 
 	for _, scheduled := range vocabularyModule.CronJobs() {
 		cron.Register(scheduled)

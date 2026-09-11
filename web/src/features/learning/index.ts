@@ -1,6 +1,7 @@
 export * from "./api/keys";
 export * from "./api/learningApi";
 export * from "./components/Dashboard/ContinueLearningCard";
+export * from "./components/Dashboard/DailyPracticeCard";
 export * from "./components/Dashboard/ReviewsDueCard";
 export * from "./components/Dashboard/SkillProgressCard";
 export * from "./components/Dashboard/DashboardSkeleton";
@@ -19,6 +20,7 @@ export * from "./components/Runner/ExerciseWriting";
 export * from "./components/Runner/ActivityUnavailable";
 export * from "./components/GuestNotice";
 export * from "./components/Runner/ExitDialog";
+export * from "./components/Runner/ReportDialog";
 export * from "./components/Runner/SaveProgressPrompt";
 export * from "./components/Runner/CompletionScreen";
 export * from "./components/Progress/OverallStats";

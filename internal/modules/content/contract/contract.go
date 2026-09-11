@@ -48,6 +48,21 @@ type Reader interface {
 	Browse(ctx context.Context, filter BrowseFilter) ([]*Version, int, error)
 }
 
+type tempVersionKey struct{}
+
+// ContextWithTempVersion attaches an in-memory content version to ctx for grading uncommitted candidates.
+func ContextWithTempVersion(ctx context.Context, v *Version) context.Context {
+	return context.WithValue(ctx, tempVersionKey{}, v)
+}
+
+// TempVersionFromContext extracts an in-memory content version from ctx if present and matching id.
+func TempVersionFromContext(ctx context.Context, id uuid.UUID) (*Version, bool) {
+	if v, ok := ctx.Value(tempVersionKey{}).(*Version); ok && v != nil && v.ID == id {
+		return v, true
+	}
+	return nil, false
+}
+
 // AuthorSpec describes one piece of machine-authored content.
 //
 // Addressed by slug, not by id: a generator runs on a schedule and has to be

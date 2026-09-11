@@ -25,7 +25,7 @@ last_verified: 2026-08-07
 | Path | `internal/platform/telemetry` |
 | Schema | `none` |
 | Delivery phase | 1 |
-| Status | **PLANNED** |
+| Status | **IN_PROGRESS** |
 | Owner | @platform-team |
 
 ---

@@ -52,6 +52,7 @@ function isBareRoute(pathname: string): boolean {
   );
 }
 import { authApi } from "@/features/auth";
+import { clearAllWritingDrafts } from "@/features/writing/utils/draftStorage";
 import { ForgotPasswordPage } from "@/pages/ForgotPasswordPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { RegisterPage } from "@/pages/RegisterPage";
@@ -127,6 +128,11 @@ const AdminPage = lazyRouteComponent(
   "AdminPage",
 );
 
+const MyWritingPage = lazyRouteComponent(
+  () => import("@/routes/MyWritingPage"),
+  "MyWritingPage",
+);
+
 function RootApp(): React.JSX.Element {
   const user = useAuthStore((s) => s.user);
   const status = useAuthStore((s) => s.status);
@@ -142,6 +148,7 @@ function RootApp(): React.JSX.Element {
   const avatarUrl = useAvatarUrl(signedIn);
 
   const handleLogout = async () => {
+    clearAllWritingDrafts();
     await authApi.logout();
     void navigate({ to: "/login" });
   };
@@ -243,6 +250,18 @@ export const reviewRoute = createRoute({
   component: ReviewPage,
 });
 
+export const dailyPracticeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/practice/daily",
+  beforeLoad: () => {
+    const { status } = useAuthStore.getState();
+    if (status === "unauthenticated") {
+      throw redirect({ to: "/login" });
+    }
+  },
+  component: LessonPage,
+});
+
 // A learner's own vocabulary. Signed-in only, like the review session: an
 // upload belongs to a person, and a guest has none.
 export const myWordsRoute = createRoute({
@@ -255,6 +274,18 @@ export const myWordsRoute = createRoute({
     }
   },
   component: MyWordsPage,
+});
+
+export const myWritingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/my-writing",
+  beforeLoad: () => {
+    const { status } = useAuthStore.getState();
+    if (status === "unauthenticated") {
+      throw redirect({ to: "/login" });
+    }
+  },
+  component: MyWritingPage,
 });
 
 export const progressRoute = createRoute({
@@ -346,8 +377,10 @@ export const routeTree = rootRoute.addChildren([
   learnRoute,
   lessonRoute,
   practiceRoute,
+  dailyPracticeRoute,
   reviewRoute,
   myWordsRoute,
+  myWritingRoute,
   progressRoute,
   settingsRoute,
   adminRoute,

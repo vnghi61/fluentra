@@ -86,6 +86,9 @@ tags:
       and every operation acts on the caller in the access token rather than on
       a user id in the path. Leaderboards are opt-in and expose display names
       only.
+  - name: writing
+    description: >-
+      Writing exercises, IELTS-style criteria evaluation, and essay feedback.
 security:
   - BearerAuth: []
 paths:
@@ -1224,6 +1227,7 @@ paths:
                   start: '22:00'
                   end: '07:00'
                 ai_processing_opt_out: false
+                practice_level: B1
                 updated_at: '2026-08-09T04:21:07Z'
         '401':
           $ref: '#/components/responses/Unauthorized'
@@ -2860,6 +2864,53 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+  /content/versions/{id}/reports:
+    post:
+      tags: [content]
+      operationId: reportContentVersion
+      summary: Report an issue with a content version.
+      description: Learner reports a problem with an activity or content item.
+      x-permission: self
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateItemReportRequest'
+      responses:
+        '201':
+          description: Report recorded.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ItemReport'
+              example:
+                id: "88888888-8888-8888-8888-888888888888"
+                content_version_id: "77777777-7777-7777-7777-777777777777"
+                user_id: "00000000-0000-0000-0000-000000000001"
+                reason: "typo"
+                note: "Typo in the second paragraph"
+                created_at: "2026-09-11T12:00:00Z"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /admin/content:
     get:
       tags: [content]
@@ -2963,6 +3014,55 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '409':
           $ref: '#/components/responses/Conflict'
+  /admin/content/reports:
+    get:
+      tags: [admin, content]
+      operationId: adminListReportedContent
+      summary: List reported content versions ordered by distinct reporters.
+      description: Ordered by number of distinct reporters descending.
+      x-permission: content.review
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of reported versions.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportedContentList'
+              example:
+                items:
+                  - content_version_id: "77777777-7777-7777-7777-777777777777"
+                    item_id: "66666666-6666-6666-6666-666666666666"
+                    slug: "climate-change-reading-1"
+                    kind: "reading_comprehension"
+                    cefr_level: "B1"
+                    item_status: "published"
+                    report_count: 3
+                    last_reported_at: "2026-09-11T12:00:00Z"
+                total: 1
+                limit: 20
+                offset: 0
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /admin/content/{id}:
     get:
       tags: [content]
@@ -3479,6 +3579,8 @@ paths:
                     saved: false
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/AccountRequired'
         '404':
           $ref: '#/components/responses/NotFound'
         '422':
@@ -3600,6 +3702,40 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+  /practice/daily:
+    get:
+      tags: [learning]
+      operationId: getDailyPractice
+      summary: Get today's practice set for the authenticated learner.
+      description: >-
+        Returns the daily practice set for today in timezone Asia/Ho_Chi_Minh.
+        If not yet generated today, builds it from the practice pool (1 passage,
+        5 grammar items, 3 rewrite items) and records exposures.
+      x-permission: self
+      parameters:
+        - name: level
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [A2, B1, B2]
+      responses:
+        '200':
+          description: Today's practice set.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailyPracticeSet'
+              example:
+                id: "11111111-1111-1111-1111-111111111111"
+                local_date: "2026-09-11"
+                level: "B1"
+                activities: []
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /me/sessions:
     post:
       tags: [learning]
@@ -4982,6 +5118,99 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /writing/attempts/{id}/feedback:
+    get:
+      tags: [writing]
+      operationId: getWritingFeedback
+      summary: Read detailed writing feedback for an attempt.
+      description: Returns IELTS-style criteria scores, located annotations, and bilingual feedback for a graded writing attempt owned by the caller.
+      x-permission: self
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Unique identifier of the attempt.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Detailed writing feedback for the attempt.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WritingFeedback'
+              example:
+                attempt_id: "55555555-5555-5555-5555-555555555555"
+                user_id: "00000000-0000-0000-0000-000000000001"
+                overall_band: 6.5
+                score: 72
+                criteria: []
+                annotations: []
+                feedback_en: "Your essay shows a clear understanding of the topic."
+                feedback_vi: "Bài viết của bạn thể hiện sự hiểu biết rõ ràng về chủ đề."
+                prompt_version: "writing_grade.v2"
+                created_at: "2026-09-11T12:00:00Z"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /writing/submissions:
+    get:
+      tags: [writing]
+      operationId: listWritingSubmissions
+      summary: List the learner's writing submissions.
+      description: Returns a paginated list of writing submissions with status, band scores, and submission dates for the authenticated user.
+      x-permission: self
+      parameters:
+        - name: page
+          in: query
+          required: false
+          description: Page number (1-based).
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: page_size
+          in: query
+          required: false
+          description: Number of items per page.
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Paginated list of writing submissions.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WritingSubmissionList'
+              example:
+                items:
+                  - attempt_id: "55555555-5555-5555-5555-555555555555"
+                    status: "graded"
+                    overall_band: 6.5
+                    score: 72
+                    created_at: "2026-09-11T12:00:00Z"
+                total: 1
+                page: 1
+                page_size: 10
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 components:
   securitySchemes:
     BearerAuth:
@@ -5163,6 +5392,16 @@ components:
       $ref: ./components/content.yaml#/AdminContentItemList
     AdminContentItemDetail:
       $ref: ./components/content.yaml#/AdminContentItemDetail
+    ItemReportReason:
+      $ref: ./components/content.yaml#/ItemReportReason
+    CreateItemReportRequest:
+      $ref: ./components/content.yaml#/CreateItemReportRequest
+    ItemReport:
+      $ref: ./components/content.yaml#/ItemReport
+    ReportedContentVersion:
+      $ref: ./components/content.yaml#/ReportedContentVersion
+    ReportedContentList:
+      $ref: ./components/content.yaml#/ReportedContentList
     CourseSummary:
       $ref: ./components/lesson.yaml#/CourseSummary
     CourseList:
@@ -5203,6 +5442,8 @@ components:
       $ref: ./components/learning.yaml#/SubmitAttemptResult
     PreviewGradeResult:
       $ref: ./components/learning.yaml#/PreviewGradeResult
+    ItemResult:
+      $ref: ./components/learning.yaml#/ItemResult
     AnswerExplanation:
       $ref: ./components/learning.yaml#/AnswerExplanation
     AttemptDetail:
@@ -5213,6 +5454,8 @@ components:
       $ref: ./components/learning.yaml#/LearningSession
     CompleteSessionRequest:
       $ref: ./components/learning.yaml#/CompleteSessionRequest
+    DailyPracticeSet:
+      $ref: ./components/learning.yaml#/DailyPracticeSet
     ReviewGrade:
       $ref: ./components/srs.yaml#/ReviewGrade
     ReviewCard:
@@ -5301,6 +5544,16 @@ components:
       $ref: ./components/vocabulary.yaml#/LearnerWordQueueList
     UpdateWordSenseRequest:
       $ref: ./components/vocabulary.yaml#/UpdateWordSenseRequest
+    WritingCriterion:
+      $ref: ./components/writing.yaml#/WritingCriterion
+    WritingAnnotation:
+      $ref: ./components/writing.yaml#/WritingAnnotation
+    WritingFeedback:
+      $ref: ./components/writing.yaml#/WritingFeedback
+    WritingSubmissionSummary:
+      $ref: ./components/writing.yaml#/WritingSubmissionSummary
+    WritingSubmissionList:
+      $ref: ./components/writing.yaml#/WritingSubmissionList
   headers:
     X-Request-Id:
       $ref: ./components/headers.yaml#/X-Request-Id
@@ -5325,6 +5578,8 @@ components:
       $ref: ./components/responses.yaml#/BadRequest
     Unauthorized:
       $ref: ./components/responses.yaml#/Unauthorized
+    AccountRequired:
+      $ref: ./components/responses.yaml#/AccountRequired
     Forbidden:
       $ref: ./components/responses.yaml#/Forbidden
     NotFound:

@@ -1,6 +1,12 @@
 import React from "react";
 import { Link } from "@tanstack/react-router";
-import { LogOut, Settings, ShieldCheck, UserRound } from "lucide-react";
+import {
+  LogOut,
+  PenTool,
+  Settings,
+  ShieldCheck,
+  UserRound,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -105,6 +111,12 @@ export default function AccountMenu({
           <Link to="/settings">
             <Settings className="h-4 w-4 shrink-0" aria-hidden="true" />
             {t("nav.settings", "Settings")}
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/my-writing">
+            <PenTool className="h-4 w-4 shrink-0" aria-hidden="true" />
+            {t("nav.myWriting", "My Writing")}
           </Link>
         </DropdownMenuItem>
         {role === "admin" && (

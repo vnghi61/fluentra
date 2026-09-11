@@ -37,6 +37,18 @@ const (
 	MaxDailyGoalMinutes = 480
 )
 
+// PracticeLevel is the level a learner's daily practice set is drawn at. The
+// practice pool holds A2, B1 and B2 only, and the check constraint on
+// core.user_preferences refuses the rest.
+type PracticeLevel string
+
+// The complete set of practice levels.
+const (
+	PracticeLevelA2 PracticeLevel = "A2"
+	PracticeLevelB1 PracticeLevel = "B1"
+	PracticeLevelB2 PracticeLevel = "B2"
+)
+
 // DefaultLocale is the fallback language, matching the column default.
 const DefaultLocale = "en"
 
@@ -99,8 +111,11 @@ type Preferences struct {
 	NotificationChannels []Channel
 	QuietHours           *QuietHours
 	AIProcessingOptOut   bool
-	CreatedAt            time.Time
-	UpdatedAt            time.Time
+	// PracticeLevel is nil until the learner picks one: that is the state in
+	// which the daily practice card asks.
+	PracticeLevel *PracticeLevel
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 // Validate enforces every preference invariant. Unlike ProfileChange this is a
@@ -119,10 +134,25 @@ func (p Preferences) Validate() error {
 	if err := validateChannels(p.NotificationChannels); err != nil {
 		return err
 	}
+	if err := validatePracticeLevel(p.PracticeLevel); err != nil {
+		return err
+	}
 	if p.QuietHours != nil {
 		return p.QuietHours.Validate()
 	}
 	return nil
+}
+
+func validatePracticeLevel(level *PracticeLevel) error {
+	if level == nil {
+		return nil
+	}
+	switch *level {
+	case PracticeLevelA2, PracticeLevelB1, PracticeLevelB2:
+		return nil
+	default:
+		return invalid("practice_level", "UNKNOWN", "Practice level must be A2, B1 or B2.")
+	}
 }
 
 func validateLocale(locale string) error {

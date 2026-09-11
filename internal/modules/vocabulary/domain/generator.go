@@ -513,7 +513,7 @@ func seedOf(parts ...string) uint64 {
 }
 
 func slugFor(sense GenSense, kind string) string {
-	return fmt.Sprintf("gen-%s-%s-%s", kind, normaliseID(sense.Lemma), normaliseID(sense.POS))
+	return fmt.Sprintf("gen-%s-%s-%s", normaliseID(kind), normaliseID(sense.Lemma), normaliseID(sense.POS))
 }
 
 // normaliseID reduces a word to something safe in a slug and an option id.

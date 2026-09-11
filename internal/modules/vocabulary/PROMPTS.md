@@ -2,11 +2,11 @@
 module: vocabulary
 tier: learning
 group: modules
-status: PLANNED
+status: DONE
 phase: 2
 owner: "@learning-team"
 schema: skill
-tables: [words, word_senses, word_relations, decks, deck_items, user_word_state]
+tables: [words, word_senses, word_relations, decks, deck_items, user_word_state, vocab_uploads, vocab_upload_items]
 depends_on: [content, srs, media, ai, search]
 depended_on_by: [learning, reading, writing, grammar]
 spec_version: 1.0.0

@@ -58,12 +58,11 @@ func TestRegistry_LoadsTheVersionedTemplate(t *testing.T) {
 	tmpl, err := registry.Get(ai.TaskVerifyVocabulary)
 	require.NoError(t, err)
 
-	// Four, deliberately: v4 refuses a dictionary entry whose only sense is a
-	// proper noun, and asks for each example sentence with its Vietnamese. All
+	// Five, deliberately: v5 adds intended_term for typo correction and meaning mismatch. All
 	// files ship, and the registry serving the newest one is what invalidates
 	// the answers cached under previous versions rather than serving them for
 	// ever. Bumping this number is meant to be a visible act.
-	assert.Equal(t, 4, tmpl.Version)
+	assert.Equal(t, 5, tmpl.Version)
 	assert.True(t, tmpl.JSONOutput, "the task is parsed, not displayed, so the front matter must say so")
 	assert.Equal(t, 2048, tmpl.MaxTokens, "read from the template's front matter, not hard-coded in Go")
 	assert.Zero(t, tmpl.Temperature, "verification must not be creative")
@@ -102,9 +101,9 @@ func TestRegistry_LoadsGradeWritingTemplate(t *testing.T) {
 	tmpl, err := registry.Get(ai.TaskGradeWriting)
 	require.NoError(t, err)
 
-	assert.Equal(t, 1, tmpl.Version)
+	assert.Equal(t, 2, tmpl.Version)
 	assert.True(t, tmpl.JSONOutput)
-	assert.Equal(t, 1024, tmpl.MaxTokens)
+	assert.Equal(t, 2048, tmpl.MaxTokens)
 	assert.InDelta(t, 0.2, tmpl.Temperature, 0.001)
 }
 

@@ -43,6 +43,7 @@ const mockPreferences: UserPreferences = {
     end: "07:00",
   },
   ai_processing_opt_out: false,
+  practice_level: "B1",
   updated_at: "2026-08-10T10:00:00Z",
 };
 
@@ -242,6 +243,9 @@ describe("Account Management Settings (P5.2)", () => {
 
       expect(replacedPreferences).toMatchObject({
         daily_goal_minutes: 45,
+        // Not on this form. A replacement that left it out would clear the
+        // level the daily practice card saved.
+        practice_level: "B1",
       });
     });
   });

@@ -105,6 +105,16 @@ type Repository interface {
 	ListTagsForContentItems(ctx context.Context, itemIDs []uuid.UUID) (map[uuid.UUID][]domain.TaxonomyTag, error)
 	GetTaxonomyByNamespaceCode(ctx context.Context, namespace, code string) (domain.Taxonomy, error)
 
+	InsertItemReport(
+		ctx context.Context,
+		versionID, userID uuid.UUID,
+		reason domain.ReportReason,
+		note *string,
+	) (domain.ItemReport, error)
+	ListItemReportsByVersion(ctx context.Context, versionID uuid.UUID) ([]domain.ItemReport, error)
+	ListReportedContentVersions(ctx context.Context, limit, offset int32) ([]domain.ReportedVersionSummary, error)
+	CountReportedContentVersions(ctx context.Context) (int, error)
+
 	WithTx(tx pgx.Tx) Repository
 }
 
@@ -165,6 +175,9 @@ var _ contract.Reader = (*Service)(nil)
 // GetVersion retrieves a single content version by ID.
 // Note: An archived item's version remains readable by direct ID lookup (archive-mid-session trap).
 func (s *Service) GetVersion(ctx context.Context, id uuid.UUID) (*contract.Version, error) {
+	if v, ok := contract.TempVersionFromContext(ctx, id); ok {
+		return v, nil
+	}
 	v, err := s.repo.GetVersionByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -888,4 +901,61 @@ func toContractVersion(v domain.Version, tags []string) *contract.Version {
 		Status:      string(v.Status),
 		PublishedAt: pubAt,
 	}
+}
+
+// ReportItem records a learner's report on a content version.
+func (s *Service) ReportItem(
+	ctx context.Context,
+	userID, versionID uuid.UUID,
+	reason domain.ReportReason,
+	note *string,
+) (domain.ItemReport, error) {
+	if !domain.IsValidReportReason(string(reason)) {
+		return domain.ItemReport{}, domain.ErrInvalidReportReason
+	}
+	if note != nil && len(*note) > 500 {
+		return domain.ItemReport{}, domain.ErrReportNoteTooLong
+	}
+
+	// Verify the content version exists
+	if _, err := s.repo.GetVersionByID(ctx, versionID); err != nil {
+		if errors.Is(err, domain.ErrVersionNotFound) {
+			return domain.ItemReport{}, domain.ErrVersionNotFound
+		}
+		return domain.ItemReport{}, fmt.Errorf("verify version %s: %w", versionID, err)
+	}
+
+	report, err := s.repo.InsertItemReport(ctx, versionID, userID, reason, note)
+	if err != nil {
+		return domain.ItemReport{}, fmt.Errorf("record report: %w", err)
+	}
+	return report, nil
+}
+
+// ListReportedContent returns versions ordered by distinct reporters count.
+func (s *Service) ListReportedContent(
+	ctx context.Context,
+	limit, offset int,
+) ([]domain.ReportedVersionSummary, int, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	items, err := s.repo.ListReportedContentVersions(ctx, int32(limit), int32(offset))
+	if err != nil {
+		return nil, 0, err
+	}
+
+	total, err := s.repo.CountReportedContentVersions(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return items, total, nil
 }

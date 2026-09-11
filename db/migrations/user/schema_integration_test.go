@@ -415,6 +415,12 @@ func TestCoreSchema_CheckConstraintsRejectInvalidRows(t *testing.T) {
 			constraint: "ck_user_preferences_quiet_hours",
 		},
 		{
+			name:       "practice level the practice pool does not hold",
+			statement:  `INSERT INTO core.user_preferences (user_id, practice_level) VALUES ($1, 'c1')`,
+			args:       []any{userID},
+			constraint: "ck_user_preferences_practice_level",
+		},
+		{
 			name:       "weekly goal below the floor",
 			statement:  `INSERT INTO core.learning_profiles (user_id, weekly_minutes_goal) VALUES ($1, $2)`,
 			args:       []any{userID, 1},

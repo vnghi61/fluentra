@@ -163,9 +163,18 @@ const UploadRow: React.FC<{ upload: VocabUpload }> = ({ upload }) => {
                       )}
                       {/* The reason is written for the learner, so it is shown
                           rather than reduced to a status chip. */}
-                      {item.reason && (
+                      {item.note_code ? (
+                        <p className="text-xs text-text-muted">
+                          {t(`uploads.note.${item.note_code}`, {
+                            term: item.term,
+                            corrected: item.corrected_term ?? "",
+                            suggested: item.suggested_term ?? "",
+                            defaultValue: item.reason ?? "",
+                          })}
+                        </p>
+                      ) : item.reason ? (
                         <p className="text-xs text-text-muted">{item.reason}</p>
-                      )}
+                      ) : null}
                     </div>
                     <span
                       className={cn(

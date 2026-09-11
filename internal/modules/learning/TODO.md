@@ -2,11 +2,11 @@
 module: learning
 tier: learning
 group: modules
-status: PLANNED
+status: DONE
 phase: 2
 owner: "@learning-team"
 schema: learn
-tables: [enrollments, progress, attempts, learning_sessions, placement_results, skill_mastery, answer_explanations]
+tables: [enrollments, progress, attempts, learning_sessions, placement_results, skill_mastery, answer_explanations, item_exposures, daily_sets]
 depends_on: [lesson, content, srs, cache, job]
 depended_on_by: [gamification, analytics, admin, exam, vocabulary, grammar, reading, listening, speaking, writing]
 spec_version: 1.0.0
@@ -55,6 +55,8 @@ Completed work is recorded here instead.
 | P8.4 | 2026-08-24 | Enrolment, unlocking, mastery, sessions and next-activity resolution: `ProgressReader` and the batched `UnlockChecker` implemented and wired into `lesson` through a lazy adapter in `cmd/api` (Trap 1), with `min_score` enforced; `lesson/contract.Reader` grew `ListPrerequisitesForLessons` and `ListUnitsByCourseID`; enrolment restricted to the statuses both the CHECK constraint and the OpenAPI enum allow, with `ALREADY_ENROLLED` and `COURSE_NOT_FOUND` mapped from the constraints (Trap 2); `rollupCourse` rewritten to require every unit complete and to close the enrolment in the same transaction (Trap 3); EWMA skill mastery written inside the grading transaction, skipping an unrecognised `skill_focus` rather than failing the submission (Trap 4); next-activity resolution in three explicit states with reads bounded by units, not lessons (Trap 5); `StartAttempt` now enforces enrolment and unlocking, sessions timed server-side with `learning.session_completed` in the completing transaction (Trap 6); enrol and session endpoints mounted. |
 | P8.5 | 2026-08-24 | Learning dashboard and progress endpoints: `GET /me/dashboard` and `GET /me/progress` implemented and mounted; `lesson/contract.Reader` grew `ListActivitiesByCourseIDs` with single-round-trip batched resolution in `lesson` queries (Trap 1); bounded query budget assertions verifying constant database queries regardless of course size (30 vs 400 lessons fixture) (Trap 2); Redis caching with 2 min TTL for dashboard and 5 min TTL for progress, and post-commit cache invalidation in attempt submission, enrollment, and session completion (Trap 3); `due_reviews_count` explicitly returns 0 with no srs imports (Trap 4); JSON marshaling asserts empty array `[]` (never `null`), omitted `next_activity` for `not_started` and `completed` states, and status mappings (Trap 5); zero-division protection and percentage integer rounding tested (Trap 6). |
 | WP17 | 2026-09-03 | Phase 3 WP17 AI Answer Explanations: Migration `1700000450_answer_explanations.sql` creating `learn.answer_explanations` with unique index `(content_version_id, user_answer)`; bilingual AI prompt `explain_answer.v1.md` generating English and Vietnamese explanations in a single model completion; lazy generation on first encounter with permanent database caching across all learners; graceful quota fallback with zero disruption; OpenAPI schema and client codegen; full frontend exercise runner integration with `ExerciseFeedback` and `LessonPage`. |
+| WO11 §3.0 | 2026-09-11 | Attempt claim recovery on grading error: `SubmitAttempt` releases claim via `UnclaimAttempt` (`status = 'in_progress'`, `idempotency_key = NULL`, `response = '{}'`), leaving attempt resubmittable on grader error. Foreign key `fk_attempts_activity` set to `ON DELETE RESTRICT`. Proved by integration test. |
+| WO11 review | 2026-09-12 | Corrections to §3.3 and §3.11: the claim records `grader`, and the daily writing limit counts `grading` as well as `graded` attempts (`CountAttemptsTowardLimitSince`), so essays still being graded count; the practice pool publishes under the first admin (`Deps.GeneratorAuthorID`) and stands down when there is none, where it had published with no author and could never fill; pool SQL no longer joins `lesson` tables (L2) — slots are read through `lesson/contract.Reader`, and `learn` holds only exposures and daily sets; a first open that loses the race returns the stored set and records no exposure for items never shown; the pool course is left off the dashboard, progress and next activity; `idx_item_exposures_activity` covers the activity foreign key; the level a set is drawn at is chosen once and kept in `core.user_preferences.practice_level` rather than one browser's storage. Each fix has a test that fails without it. |
 
 ## Deferred (deliberately not doing yet)
 

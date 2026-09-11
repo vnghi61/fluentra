@@ -101,6 +101,7 @@ type preferencesResponse struct {
 	NotificationChannels []string           `json:"notification_channels"`
 	QuietHours           *quietHoursPayload `json:"quiet_hours"`
 	AIProcessingOptOut   bool               `json:"ai_processing_opt_out"`
+	PracticeLevel        *string            `json:"practice_level"`
 	UpdatedAt            time.Time          `json:"updated_at"`
 }
 
@@ -122,6 +123,10 @@ func toPreferencesResponse(preferences domain.Preferences) preferencesResponse {
 		NotificationChannels: channels,
 		AIProcessingOptOut:   preferences.AIProcessingOptOut,
 		UpdatedAt:            preferences.UpdatedAt,
+	}
+	if preferences.PracticeLevel != nil {
+		level := string(*preferences.PracticeLevel)
+		response.PracticeLevel = &level
 	}
 	if preferences.QuietHours != nil {
 		response.QuietHours = &quietHoursPayload{

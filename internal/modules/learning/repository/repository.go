@@ -40,6 +40,9 @@ type ClaimAttemptParams struct {
 	CreatedAt      time.Time
 	IdempotencyKey *uuid.UUID
 	Response       json.RawMessage
+	// Grader is the activity kind, recorded at claim time so an attempt still
+	// being graded can be counted by grader.
+	Grader *string
 }
 
 // UpdateAttemptStatusParams holds updates to apply when grading is complete.
@@ -47,6 +50,15 @@ type UpdateAttemptStatusParams struct {
 	ID         uuid.UUID
 	CreatedAt  time.Time
 	Status     string
+	Score      *int32
+	Grader     *string
+	DurationMs int32
+}
+
+// CompleteGradingAttemptParams holds updates to apply when completing grading conditionally.
+type CompleteGradingAttemptParams struct {
+	ID         uuid.UUID
+	CreatedAt  time.Time
 	Score      *int32
 	Grader     *string
 	DurationMs int32
@@ -169,11 +181,23 @@ func (r *Repository) ClaimAttemptForGrading(ctx context.Context, params ClaimAtt
 		CreatedAt:      params.CreatedAt,
 		IdempotencyKey: params.IdempotencyKey,
 		Response:       respBytes,
+		Grader:         params.Grader,
 	})
 	if err != nil {
 		return nil, err // Preserve pgx.ErrNoRows so service can distinguish race condition
 	}
 	return toDomainAttempt(row), nil
+}
+
+// UnclaimAttempt reverts an attempt from grading back to in_progress upon error.
+func (r *Repository) UnclaimAttempt(ctx context.Context, id uuid.UUID, createdAt time.Time) error {
+	if r.queries == nil {
+		return domain.ErrAttemptNotFound
+	}
+	return r.queries.UnclaimAttempt(ctx, sqlc.UnclaimAttemptParams{
+		ID:        id,
+		CreatedAt: createdAt,
+	})
 }
 
 // UpdateAttemptStatus updates the attempt's status, score, grader, and duration upon completion.
@@ -198,6 +222,80 @@ func (r *Repository) UpdateAttemptStatus(
 		return nil, mapPgError(err)
 	}
 	return toDomainAttempt(row), nil
+}
+
+// CompleteGradingAttempt conditionally updates an attempt from grading to graded.
+// Returns the count of affected rows (1 on success, 0 if attempt was not in status 'grading').
+func (r *Repository) CompleteGradingAttempt(
+	ctx context.Context, params CompleteGradingAttemptParams,
+) (int64, error) {
+	if r.queries == nil {
+		return 0, domain.ErrAttemptNotFound
+	}
+	rows, err := r.queries.CompleteGradingAttempt(ctx, sqlc.CompleteGradingAttemptParams{
+		ID:         params.ID,
+		CreatedAt:  params.CreatedAt,
+		Score:      params.Score,
+		Grader:     params.Grader,
+		DurationMs: params.DurationMs,
+	})
+	if err != nil {
+		return 0, mapPgError(err)
+	}
+	return rows, nil
+}
+
+// FailGradingAttempt conditionally updates an attempt from grading to failed.
+// Returns the count of affected rows (1 on success, 0 if attempt was not in status 'grading').
+func (r *Repository) FailGradingAttempt(
+	ctx context.Context, id uuid.UUID, createdAt time.Time,
+) (int64, error) {
+	if r.queries == nil {
+		return 0, domain.ErrAttemptNotFound
+	}
+	rows, err := r.queries.FailGradingAttempt(ctx, sqlc.FailGradingAttemptParams{
+		ID:        id,
+		CreatedAt: createdAt,
+	})
+	if err != nil {
+		return 0, mapPgError(err)
+	}
+	return rows, nil
+}
+
+// FailStuckGradingAttempts marks attempts stuck in 'grading' beyond cutoff as failed.
+func (r *Repository) FailStuckGradingAttempts(ctx context.Context, cutoff time.Time) (int64, error) {
+	if r.queries == nil {
+		return 0, nil
+	}
+	rows, err := r.queries.FailStuckGradingAttempts(ctx, cutoff)
+	if err != nil {
+		return 0, mapPgError(err)
+	}
+	return rows, nil
+}
+
+// CountAttemptsTowardLimitSince counts a user's graded and still-grading attempts
+// for a grader since a given time.
+func (r *Repository) CountAttemptsTowardLimitSince(
+	ctx context.Context, userID uuid.UUID, grader string, since time.Time,
+) (int, error) {
+	if r.queries == nil {
+		return 0, nil
+	}
+	var gPtr *string
+	if grader != "" {
+		gPtr = &grader
+	}
+	count, err := r.queries.CountAttemptsTowardLimitSince(ctx, sqlc.CountAttemptsTowardLimitSinceParams{
+		UserID:    userID,
+		Grader:    gPtr,
+		CreatedAt: since,
+	})
+	if err != nil {
+		return 0, mapPgError(err)
+	}
+	return int(count), nil
 }
 
 // GetProgressByUserScope retrieves progress for a specific scope.
@@ -679,6 +777,104 @@ func (r *Repository) UpsertAnswerExplanation(
 		CreatedAt:        row.CreatedAt,
 		UpdatedAt:        row.UpdatedAt,
 	}, nil
+}
+
+// GetDailySet reads a user's practice set for a specific local date.
+func (r *Repository) GetDailySet(
+	ctx context.Context, userID uuid.UUID, localDate time.Time,
+) (*domain.DailySet, error) {
+	row, err := r.queries.GetDailySet(ctx, sqlc.GetDailySetParams{
+		UserID:    userID,
+		LocalDate: pgtype.Date{Time: localDate, Valid: true},
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, mapPgError(err)
+	}
+	return &domain.DailySet{
+		ID:          row.ID,
+		UserID:      row.UserID,
+		LocalDate:   row.LocalDate.Time,
+		ActivityIDs: row.ActivityIds,
+		CreatedAt:   row.CreatedAt,
+	}, nil
+}
+
+// CreateDailySet stores a newly built daily set. It returns nil, and no error,
+// when another request stored the learner's set for that date first.
+func (r *Repository) CreateDailySet(
+	ctx context.Context, userID uuid.UUID, localDate time.Time, activityIDs []uuid.UUID,
+) (*domain.DailySet, error) {
+	row, err := r.queries.CreateDailySet(ctx, sqlc.CreateDailySetParams{
+		UserID:      userID,
+		LocalDate:   pgtype.Date{Time: localDate, Valid: true},
+		ActivityIds: activityIDs,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, mapPgError(err)
+	}
+	return &domain.DailySet{
+		ID:          row.ID,
+		UserID:      row.UserID,
+		LocalDate:   row.LocalDate.Time,
+		ActivityIDs: row.ActivityIds,
+		CreatedAt:   row.CreatedAt,
+	}, nil
+}
+
+// RecordItemExposure writes an exposure record for a learner.
+func (r *Repository) RecordItemExposure(
+	ctx context.Context, userID uuid.UUID, activityID uuid.UUID,
+) error {
+	return r.queries.RecordItemExposure(ctx, sqlc.RecordItemExposureParams{
+		UserID:     userID,
+		ActivityID: activityID,
+	})
+}
+
+// ListItemExposures returns when the learner was last served each of the given
+// activities. An activity missing from the map has never been served to them.
+func (r *Repository) ListItemExposures(
+	ctx context.Context, userID uuid.UUID, activityIDs []uuid.UUID,
+) (map[uuid.UUID]time.Time, error) {
+	exposures := make(map[uuid.UUID]time.Time, len(activityIDs))
+	if len(activityIDs) == 0 {
+		return exposures, nil
+	}
+	rows, err := r.queries.ListItemExposures(ctx, sqlc.ListItemExposuresParams{
+		UserID:      userID,
+		ActivityIds: activityIDs,
+	})
+	if err != nil {
+		return nil, mapPgError(err)
+	}
+	for _, row := range rows {
+		exposures[row.ActivityID] = row.FirstServedAt
+	}
+	return exposures, nil
+}
+
+// HasActiveLearnerRunningLow reports whether a learner active in the last fourteen
+// days has fewer than threshold of the given activities left unseen.
+func (r *Repository) HasActiveLearnerRunningLow(
+	ctx context.Context, activityIDs []uuid.UUID, threshold int,
+) (bool, error) {
+	if len(activityIDs) == 0 {
+		return false, nil
+	}
+	low, err := r.queries.HasActiveLearnerRunningLow(ctx, sqlc.HasActiveLearnerRunningLowParams{
+		ActivityIds: activityIDs,
+		Threshold:   int32(threshold), //nolint:gosec // a small constant supplied by the service
+	})
+	if err != nil {
+		return false, mapPgError(err)
+	}
+	return low, nil
 }
 
 func mapPgError(err error) error {

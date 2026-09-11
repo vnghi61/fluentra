@@ -548,7 +548,8 @@
     "progress": "Progress",
     "settings": "Settings",
     "signIn": "Sign in",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "myWriting": "My Writing"
   },
   "page": {
     "accountSettings": "Account Settings",
@@ -578,6 +579,25 @@
     "yourAccountHoldsNoAdministrativePermissions": "Your account holds no administrative permissions."
   },
   "practice": {
+    "daily": {
+      "badge": "Daily Practice Set",
+      "title": "Today's Practice Set",
+      "desc": "9 verified exercises freshly drawn for today: 1 reading passage, 5 grammar questions, and 3 sentence rewrites.",
+      "slotReading": "1 Passage",
+      "slotGrammar": "5 Grammar",
+      "slotTransforms": "3 Transforms",
+      "guestNote": "Sign in to save streaks and track exposure history.",
+      "levelLabel": "Level {{lvl}}",
+      "levelGroup": "Practice level",
+      "pickLevel": "Choose your level to start. You can change it any time.",
+      "levelSaveFailed": "Your level could not be saved. Today's set still uses it.",
+      "signInBtn": "Sign in to start",
+      "startBtn": "Start Today's Set",
+      "runnerTitle": "Daily Practice Set ({{level}})",
+      "errorTitle": "Unable to Load Practice Set",
+      "errorDesc": "Could not load today's practice activities.",
+      "backBtn": "Back to Practice"
+    },
     "error": {
       "title": "Unable to load your review queue",
       "desc": "The review schedule could not be reached. Your progress is safe."
@@ -613,6 +633,18 @@
       "descGuest": "Browsing and building decks is still being built.",
       "label": "Vocabulary",
       "title": "Word lists are not here yet"
+    },
+    "reading": {
+      "desc": "Practice reading comprehension across curated passages from A2 to B2, with questions and speed tracking.",
+      "label": "Reading",
+      "openBtn": "Start reading",
+      "title": "Reading Comprehension"
+    },
+    "writing": {
+      "desc": "Practice structured writing tasks from emails to IELTS essays with automated AI feedback and model answers.",
+      "label": "Writing",
+      "openBtn": "Start writing",
+      "title": "Writing Prompts & Essays"
     }
   },
   "progress": {
@@ -727,7 +759,21 @@
     "wordCountWithMin": "{{count}} / {{min}} words minimum",
     "wordsRemaining": "{{remaining}} more needed",
     "writingInstructions": "Instructions & Rubric",
-    "writingPlaceholder": "Write your response here..."
+    "writingPlaceholder": "Write your response here...",
+    "markingTitle": "Marking your essay...",
+    "markingDesc": "Our AI examiner is evaluating your writing against IELTS criteria. This usually takes 15-30 seconds.",
+    "markingTimeoutTitle": "Marking continues in the background",
+    "markingTimeoutDesc": "Grading is taking longer than usual. You can continue your lesson, and your score and detailed feedback will appear in My Writing.",
+    "goToMyWriting": "View My Writing",
+    "markingFailedDesc": "We could not grade your essay. Your answer is preserved. Please retry.",
+    "finishedReading": "I have finished reading",
+    "questionsLabel": "Comprehension Questions",
+    "readingSpeed": "Reading Speed",
+    "questionNum": "Question {{num}}",
+    "true": "True",
+    "false": "False",
+    "notGiven": "Not Given",
+    "finishReadingPrompt": "Read the passage at your normal pace, then proceed to the questions."
   },
   "server": {
     "unreachable": "The server is not responding. Reload the page to try again.",
@@ -767,11 +813,89 @@
     "title": "My words",
     "verified": "added",
     "words": "words",
-    "wordsFound": "words found"
+    "wordsFound": "words found",
+    "note": {
+      "spelling_corrected": "You typed {{term}} — added {{corrected}}.",
+      "meaning_corrected": "Added {{corrected}}. Your note matched {{corrected}} rather than {{term}}.",
+      "spelling_suggestion": "Did you mean {{suggested}}?",
+      "meaning_mismatch": "Added. Your note did not quite match the usual meaning — the definition here is the dictionary's.",
+      "already_in_your_words": "This word is already in your words.",
+      "not_a_word": "We could not find this as an English word.",
+      "proper_noun": "This is a proper noun, not a general vocabulary word.",
+      "queued_for_enrichment": "Queued for background enrichment. Your flashcard is ready to review."
+    }
   },
   "vocabulary": {
     "addCustomWord": "Add as new custom word",
     "notFoundInDict": "\"{{query}}\" is not in the dictionary yet.",
     "searchPlaceholder": "Search dictionary or type a word..."
+  },
+  "writing": {
+    "myWritingTitle": "My Writing",
+    "myWritingDesc": "Review your submitted essays, band scores, and AI examiner feedback.",
+    "feedbackTitle": "Writing Assessment",
+    "overallBand": "Overall Band",
+    "score": "Score",
+    "summary": "Examiner Summary",
+    "criteriaBands": "Criteria Breakdown",
+    "taskResponse": "Task Response",
+    "coherenceCohesion": "Coherence & Cohesion",
+    "lexicalResource": "Lexical Resource",
+    "grammaticalRange": "Grammatical Range & Accuracy",
+    "annotations": "Essay Corrections & Notes",
+    "annotationClickHint": "Click highlighted text for notes",
+    "noAnnotations": "No specific corrections",
+    "modelAnswer": "Model Answer",
+    "statusGraded": "Graded",
+    "statusGrading": "Marking...",
+    "statusFailed": "Failed",
+    "noSubmissions": "No writing submissions yet",
+    "noSubmissionsDesc": "Complete writing exercises in your lessons to receive IELTS band scores and personalized AI feedback.",
+    "viewFeedbackBtn": "View Feedback",
+    "errorLoading": "We could not fetch your writing submissions. Please check your connection.",
+    "feedbackError": "Failed to load feedback",
+    "errorTitle": "Unable to Load Submissions",
+    "retry": "Try again",
+    "showingRange": "Showing {{from}}–{{to}} of {{total}}",
+    "pageOf": "Page {{current}} of {{total}}"
+  },
+  "report": {
+    "reportBtn": "Report issue",
+    "reportSentence": "Report this sentence",
+    "title": "Report an issue",
+    "desc": "Help us improve by telling us what is wrong with this exercise or sentence.",
+    "selectReason": "Reason for report",
+    "reason": {
+      "wrong_answer": "Incorrect answer",
+      "unclear": "Unclear or confusing prompt",
+      "typo": "Typo or spelling mistake",
+      "my_answer_was_right": "My answer should be accepted",
+      "other": "Other issue"
+    },
+    "noteLabel": "Additional details (optional)",
+    "notePlaceholder": "Briefly explain the issue (max 500 characters)...",
+    "charsRemaining": "{{count}} characters remaining",
+    "cancel": "Cancel",
+    "submit": "Submit report",
+    "submitting": "Submitting...",
+    "successTitle": "Report submitted",
+    "successDesc": "Thank you for your feedback. Our team will review this item.",
+    "close": "Close",
+    "errorFailed": "Failed to submit report. Please try again later."
+  },
+  "adminReports": {
+    "tabLabel": "Reported Items",
+    "title": "Reported Content Queue",
+    "desc": "Exercises and content versions reported by learners, sorted by distinct reporters. Review and archive problematic items.",
+    "colItem": "Content Item",
+    "colKind": "Kind",
+    "colLevel": "Level",
+    "colStatus": "Status",
+    "colReporters": "Reporters",
+    "colLastReported": "Last Reported",
+    "colActions": "Actions",
+    "reviewBtn": "Review item",
+    "noReports": "No items have been reported yet.",
+    "reportsCount": "{{count}} learners"
   }
 }

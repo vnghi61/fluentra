@@ -25,7 +25,7 @@ last_verified: 2026-08-07
 | Path | `internal/platform/mailer` |
 | Schema | `comm` |
 | Delivery phase | 1 |
-| Status | **PLANNED** |
+| Status | **READY** |
 | Owner | @platform-team |
 
 ---

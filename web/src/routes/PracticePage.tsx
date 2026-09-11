@@ -1,7 +1,14 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
-import { AlertCircle, BookMarked, Layers, Sparkles } from "lucide-react";
+import {
+  AlertCircle,
+  BookMarked,
+  BookOpen,
+  Layers,
+  PenTool,
+  Sparkles,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -12,7 +19,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { GuestNotice } from "@/features/learning";
+import { DailyPracticeCard, GuestNotice } from "@/features/learning";
 import { useCourse } from "@/features/lesson";
 import { useAuthStore } from "@/stores/authStore";
 import {
@@ -62,6 +69,9 @@ export function PracticePage(): React.JSX.Element {
           )}
         </p>
       </header>
+
+      {/* Daily Practice Set */}
+      <DailyPracticeCard />
 
       {!signedIn ? (
         <>
@@ -202,6 +212,64 @@ export function PracticePage(): React.JSX.Element {
             <Button variant="secondary" className="gap-2">
               <BookMarked className="h-4 w-4" aria-hidden="true" />
               {t("uploads.openLink", "My words")}
+            </Button>
+          </Link>
+        </CardFooter>
+      </Card>
+
+      {/* Reading Comprehension Card */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2 text-text-muted mb-1">
+            <BookOpen className="h-5 w-5" aria-hidden="true" />
+            <span className="text-xs font-semibold uppercase tracking-wider">
+              {t("practice.reading.label", "Reading")}
+            </span>
+          </div>
+          <CardTitle className="text-base font-semibold">
+            {t("practice.reading.title", "Reading Comprehension")}
+          </CardTitle>
+          <CardDescription>
+            {t(
+              "practice.reading.desc",
+              "Practice reading comprehension across curated passages from A2 to B2, with questions and speed tracking.",
+            )}
+          </CardDescription>
+        </CardHeader>
+        <CardFooter className="pt-0">
+          <Link to="/learn" search={{ course: "reading-practice" }}>
+            <Button variant="secondary" className="gap-2">
+              <BookOpen className="h-4 w-4" aria-hidden="true" />
+              {t("practice.reading.openBtn", "Start reading")}
+            </Button>
+          </Link>
+        </CardFooter>
+      </Card>
+
+      {/* Writing Prompts & Essays Card */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2 text-text-muted mb-1">
+            <PenTool className="h-5 w-5" aria-hidden="true" />
+            <span className="text-xs font-semibold uppercase tracking-wider">
+              {t("practice.writing.label", "Writing")}
+            </span>
+          </div>
+          <CardTitle className="text-base font-semibold">
+            {t("practice.writing.title", "Writing Prompts & Essays")}
+          </CardTitle>
+          <CardDescription>
+            {t(
+              "practice.writing.desc",
+              "Practice structured writing tasks from emails to IELTS essays with automated AI feedback and model answers.",
+            )}
+          </CardDescription>
+        </CardHeader>
+        <CardFooter className="pt-0">
+          <Link to="/learn" search={{ course: "writing-practice" }}>
+            <Button variant="secondary" className="gap-2">
+              <PenTool className="h-4 w-4" aria-hidden="true" />
+              {t("practice.writing.openBtn", "Start writing")}
             </Button>
           </Link>
         </CardFooter>

@@ -145,6 +145,15 @@ Preferences:
       description: >-
         Disables AI grading only. Deterministic exercises keep working, so
         opting out never costs the learner access to the product.
+    practice_level:
+      oneOf:
+        - type: string
+          enum: [A2, B1, B2]
+        - type: 'null'
+      description: >-
+        The level the daily practice set is drawn at, or null until the learner
+        chooses one. The practice pool holds A2, B1 and B2 only.
+      example: B1
     updated_at:
       type: string
       format: date-time
@@ -169,7 +178,9 @@ ReplacePreferencesRequest:
   type: object
   description: >-
     The complete preference set. This is a PUT: every field is required, and
-    what the caller sends is exactly what is stored.
+    what the caller sends is exactly what is stored. The two nullable members,
+    quiet_hours and practice_level, may be omitted, and omitted means null — so
+    a client changing one field must send practice_level back unchanged.
   additionalProperties: false
   required:
     - locale
@@ -204,6 +215,12 @@ ReplacePreferencesRequest:
     ai_processing_opt_out:
       type: boolean
       example: false
+    practice_level:
+      oneOf:
+        - type: string
+          enum: [A2, B1, B2]
+        - type: 'null'
+      example: B1
 
 AvatarUploadIntent:
   type: object

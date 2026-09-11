@@ -2,6 +2,7 @@ package repository_test
 
 import (
 	"context"
+	"embed"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -193,4 +194,65 @@ func TestFreeDictionary_LiveDatamuseFallback(t *testing.T) {
 	assert.Equal(t, "work", entry.Lemma)
 	assert.NotEmpty(t, entry.Definition)
 	assert.NotEmpty(t, entry.PartOfSpeech)
+}
+
+func TestFreeDictionary_FindCandidates_Fixtures(t *testing.T) {
+	// Test candidate retrieval for schol, recieve, form using recorded fixtures
+	fixtures := datamuseFixtures(t)
+	datamuseServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		var want string
+		switch sp, sug := r.URL.Query().Get("sp"), r.URL.Query().Get("s"); {
+		case r.URL.Path == "/words" && sp != "":
+			want = "datamuse_sp_" + sp + ".json"
+		case r.URL.Path == "/sug" && sug != "":
+			want = "datamuse_sug_" + sug + ".json"
+		}
+		// The request only chooses among recorded fixtures; it never names a file.
+		for name, body := range fixtures {
+			if name == want {
+				_, _ = w.Write(body)
+				return
+			}
+		}
+		_, _ = w.Write([]byte(`[]`))
+	}))
+	defer datamuseServer.Close()
+
+	client := repository.NewFreeDictionaryAPI("http://127.0.0.1:0").
+		WithDatamuseURL(datamuseServer.URL + "/words")
+
+	// 1. schol: sp fixture contains "school" (distance 1 <= 2)
+	cands, err := client.FindCandidates(context.Background(), "schol")
+	require.NoError(t, err)
+	assert.Contains(t, cands, "school")
+
+	// 2. form: sp fixture contains only "form" (same as term, filtered out)
+	// and sug fixture contains no close spellings (formidable, formulate, etc. are distance > 1)
+	cands, err = client.FindCandidates(context.Background(), "form")
+	require.NoError(t, err)
+	assert.Empty(t, cands)
+
+	// 3. recieve: the sp fixture holds "relieve", one substitution away (c→l) and
+	// inside the bound of 2 for a seven-letter word.
+	cands, err = client.FindCandidates(context.Background(), "recieve")
+	require.NoError(t, err)
+	assert.Contains(t, cands, "relieve")
+}
+
+//go:embed testdata/datamuse_*.json
+var datamuseFixtureFS embed.FS
+
+// datamuseFixtures loads the recorded Datamuse responses, keyed by file name.
+func datamuseFixtures(t *testing.T) map[string][]byte {
+	t.Helper()
+	entries, err := datamuseFixtureFS.ReadDir("testdata")
+	require.NoError(t, err)
+	fixtures := make(map[string][]byte, len(entries))
+	for _, entry := range entries {
+		body, err := datamuseFixtureFS.ReadFile("testdata/" + entry.Name())
+		require.NoError(t, err)
+		fixtures[entry.Name()] = body
+	}
+	return fixtures
 }

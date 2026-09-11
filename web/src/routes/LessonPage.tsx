@@ -1,10 +1,11 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { AlertCircle, RotateCcw } from "lucide-react";
+import { AlertCircle, Flag, RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { useAuthStore } from "@/stores/authStore";
+import { usePreferencesStore } from "@/stores/preferencesStore";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -26,15 +27,24 @@ import {
   ExerciseMatch,
   ExerciseMultipleChoice,
   ExerciseReading,
+  type ItemResult,
+  type ReadingQuestionItem,
   ExerciseReorder,
   ExerciseWriting,
   ActivityUnavailable,
   ExitDialog,
+  ReportDialog,
   learningApi,
   learningKeys,
+  useDailyPracticeSet,
   RunnerHeader,
 } from "@/features/learning";
 import { useLesson } from "@/features/lesson";
+import {
+  clearWritingDraft,
+  type WritingFeedback,
+  writingApi,
+} from "@/features/writing";
 import { readExampleSentences } from "@/lib/examples";
 
 // The activity `config` is a free-form object in the spec, because its shape
@@ -107,6 +117,7 @@ interface ReadingConfig {
   passage?: string;
   prompt?: string;
   options?: { id: string; text: string }[];
+  questions?: ReadingQuestionItem[];
 }
 
 interface WritingConfig {
@@ -126,15 +137,14 @@ interface WritingConfig {
  * exactly on the verdict, which is the only part the runner renders.
  */
 interface Verdict {
-  // `null` as well as `undefined`: the attempt response models these as
-  // nullable, because an attempt handed to an async grader has been accepted
-  // without yet having a verdict.
+  status?: string | null | undefined;
   correct?: boolean | null | undefined;
   feedback?: string | null | undefined;
   correct_answer?: string | null | undefined;
   // Matching is the one kind that can be partly right, and "incorrect" is a
   // poor description of three pairs out of four.
   score?: number | null | undefined;
+  item_results?: ItemResult[] | null | undefined;
   explanation?:
     | {
         text: string;
@@ -155,20 +165,60 @@ export function LessonPage(): React.JSX.Element {
   // A guest works through the same lesson with the same grader; what differs is
   // that nothing they do is written down, and the completion screen says so.
   const signedIn = useAuthStore((state) => state.status === "authenticated");
+  const user = useAuthStore((state) => state.user);
+  const userId = user?.userId;
+
+  const isDaily =
+    lessonId === "daily" ||
+    (typeof window !== "undefined" &&
+      window.location.pathname.includes("/practice/daily"));
+
+  const [practiceLevel] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      return (
+        urlParams.get("level") ||
+        usePreferencesStore.getState().preferences?.practice_level ||
+        "B1"
+      );
+    }
+    return "B1";
+  });
+
+  const {
+    data: dailySet,
+    isLoading: dailyLoading,
+    isError: isDailyError,
+    error: dailyError,
+    refetch: refetchDaily,
+  } = useDailyPracticeSet(practiceLevel, isDaily);
 
   const {
     data: lesson,
     isLoading: lessonLoading,
-    isError,
-    error,
-    refetch,
-  } = useLesson(lessonId);
+    isError: isLessonError,
+    error: lessonError,
+    refetch: refetchLesson,
+  } = useLesson(isDaily ? undefined : lessonId);
+
+  const activities = isDaily
+    ? (dailySet?.activities ?? [])
+    : (lesson?.activities ?? []);
+  const isLoading = isDaily ? dailyLoading : lessonLoading;
+  const isError = isDaily ? isDailyError : isLessonError;
+  const error = isDaily ? dailyError : lessonError;
+  const refetch = isDaily ? refetchDaily : refetchLesson;
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentAttemptId, setCurrentAttemptId] = useState<string | null>(null);
   const [attemptStartFailed, setAttemptStartFailed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isMarking, setIsMarking] = useState(false);
+  const [markingTimedOut, setMarkingTimedOut] = useState(false);
+  const [pollingAttemptId, setPollingAttemptId] = useState<string | null>(null);
+  const [writingFeedback, setWritingFeedback] =
+    useState<WritingFeedback | null>(null);
   const [submissionResult, setSubmissionResult] = useState<Verdict | null>(
     null,
   );
@@ -187,12 +237,11 @@ export function LessonPage(): React.JSX.Element {
   // looking around should not be asked again on the next lesson's last screen.
   const [savePromptDismissed, setSavePromptDismissed] = useState(false);
   const [isExitDialogOpen, setIsExitDialogOpen] = useState(false);
+  const [isReportOpen, setIsReportOpen] = useState(false);
+  const [reportInitialNote, setReportInitialNote] = useState("");
   const [startTime, setStartTime] = useState(() => Date.now());
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
-  // `activities` is required on the lesson response; it is absent here only
-  // before the query resolves, which the loading branch handles.
-  const activities = lesson?.activities ?? [];
   const currentActivity = activities[currentIndex];
 
   /**
@@ -264,7 +313,7 @@ export function LessonPage(): React.JSX.Element {
    *
    * A guest has no progress to invalidate, and no cache entry keyed to them.
    */
-  const invalidateProgress = () => {
+  const invalidateProgress = useCallback(() => {
     if (!signedIn) return;
     // Fire-and-forget: a refetch that fails must not fail the answer, which is
     // already committed on the server.
@@ -273,7 +322,106 @@ export function LessonPage(): React.JSX.Element {
     // Grading schedules review cards, so the due count on the dashboard and the
     // review queue itself are both stale the moment an answer lands.
     void queryClient.invalidateQueries({ queryKey: reviewKeys.all });
-  };
+  }, [signedIn, queryClient]);
+
+  // Adaptive polling on 202 async grading:
+  // every 2s for 30s, then every 5s, stopping on unmount or after 3 minutes (180s)
+  useEffect(() => {
+    if (!pollingAttemptId) return;
+
+    let isMounted = true;
+    let timerId: ReturnType<typeof setTimeout> | null = null;
+    const startTime = Date.now();
+
+    const poll = async () => {
+      const elapsedSec = (Date.now() - startTime) / 1000;
+      if (elapsedSec >= 180) {
+        if (isMounted) {
+          setIsMarking(false);
+          setMarkingTimedOut(true);
+          setIsSubmitted(true);
+          setPollingAttemptId(null);
+        }
+        return;
+      }
+
+      try {
+        const attempt = await learningApi.getAttempt(pollingAttemptId);
+        if (!isMounted) return;
+
+        if (attempt.status === "graded") {
+          setIsMarking(false);
+          setPollingAttemptId(null);
+          setIsSubmitted(true);
+
+          if (userId && currentActivity) {
+            clearWritingDraft(userId, currentActivity.id);
+          }
+          invalidateProgress();
+
+          try {
+            const fb = await writingApi.getFeedback(pollingAttemptId);
+            if (isMounted) {
+              setWritingFeedback(fb);
+              const isPassed = fb.overall_band >= 6.0;
+              setSubmissionResult({
+                status: "graded",
+                correct: isPassed,
+                score: fb.score,
+                feedback: fb.feedback_en,
+              });
+              if (isPassed) {
+                setScoreCount((prev) => prev + 1);
+              }
+            }
+          } catch {
+            if (isMounted) {
+              setSubmissionResult({
+                status: "graded",
+                correct: true,
+                score: attempt.score ?? undefined,
+                feedback: attempt.feedback ?? undefined,
+              });
+            }
+          }
+          return;
+        }
+
+        if (attempt.status === "failed") {
+          if (isMounted) {
+            setIsMarking(false);
+            setPollingAttemptId(null);
+            setSubmissionError(
+              t(
+                "runner.markingFailedDesc",
+                "We could not grade your essay. Your answer is preserved. Please retry.",
+              ),
+            );
+          }
+          return;
+        }
+
+        const nextDelay = elapsedSec < 30 ? 2000 : 5000;
+        timerId = setTimeout(() => {
+          void poll();
+        }, nextDelay);
+      } catch {
+        const nextDelay = elapsedSec < 30 ? 2000 : 5000;
+        timerId = setTimeout(() => {
+          void poll();
+        }, nextDelay);
+      }
+    };
+
+    timerId = setTimeout(() => {
+      void poll();
+    }, 2000);
+
+    return () => {
+      isMounted = false;
+      if (timerId) clearTimeout(timerId);
+    };
+  }, [pollingAttemptId, userId, currentActivity, t, invalidateProgress]);
 
   const handleSubmit = async (responsePayload: Record<string, unknown>) => {
     if (!currentActivity) return;
@@ -306,10 +454,20 @@ export function LessonPage(): React.JSX.Element {
             )
           : await learningApi.gradePreview(currentActivity.id, body);
 
+      if (result.status === "grading" && signedIn && currentAttemptId) {
+        setIsMarking(true);
+        setMarkingTimedOut(false);
+        setPollingAttemptId(currentAttemptId);
+        return;
+      }
+
       setIsSubmitted(true);
       setSubmissionResult(result);
       if (result.correct) {
         setScoreCount((prev) => prev + 1);
+      }
+      if (userId && currentActivity) {
+        clearWritingDraft(userId, currentActivity.id);
       }
       // On every graded answer, not only on the last one: a learner who leaves
       // a lesson half-way has still made progress, and the course screen has to
@@ -342,6 +500,10 @@ export function LessonPage(): React.JSX.Element {
       setSubmissionError(null);
       setLastSubmittedPayload(null);
       setAttemptStartFailed(false);
+      setIsMarking(false);
+      setMarkingTimedOut(false);
+      setPollingAttemptId(null);
+      setWritingFeedback(null);
       // The previous activity's attempt does not belong to the next one, and
       // leaving it here is what made a second flag necessary: two values that
       // had to agree about whether an answer could be sent. Clearing it is both
@@ -358,10 +520,10 @@ export function LessonPage(): React.JSX.Element {
 
   const handleConfirmExit = () => {
     setIsExitDialogOpen(false);
-    void navigate({ to: "/learn" });
+    void navigate({ to: isDaily ? "/practice" : "/learn" });
   };
 
-  if (lessonLoading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="animate-spin rounded-full h-8 w-8 border-4 border-border-subtle border-t-primary" />
@@ -369,7 +531,7 @@ export function LessonPage(): React.JSX.Element {
     );
   }
 
-  if (isError || !lesson) {
+  if (isError || (isDaily ? !dailySet : !lesson)) {
     return (
       <div className="py-12 max-w-lg mx-auto">
         <Card className="border-danger/30 text-center p-6">
@@ -378,19 +540,32 @@ export function LessonPage(): React.JSX.Element {
               <AlertCircle className="h-10 w-10 text-danger-accent" />
             </div>
             <CardTitle>
-              {t("learn.errorTitle", "Unable to Load Lesson")}
+              {isDaily
+                ? t("practice.daily.errorTitle", "Unable to Load Practice Set")
+                : t("learn.errorTitle", "Unable to Load Lesson")}
             </CardTitle>
             <CardDescription>
               {error?.message ||
-                t("learn.errorDesc", "Could not load lesson activities.")}
+                (isDaily
+                  ? t(
+                      "practice.daily.errorDesc",
+                      "Could not load today's practice activities.",
+                    )
+                  : t("learn.errorDesc", "Could not load lesson activities."))}
             </CardDescription>
           </CardHeader>
           <CardFooter className="justify-center gap-3">
             <Button variant="outline" onClick={() => void refetch()}>
               {t("action.retry", "Try again")}
             </Button>
-            <Button onClick={() => void navigate({ to: "/learn" })}>
-              {t("runner.backToCourseBtn", "Back to Syllabus")}
+            <Button
+              onClick={() =>
+                void navigate({ to: isDaily ? "/practice" : "/learn" })
+              }
+            >
+              {isDaily
+                ? t("practice.daily.backBtn", "Back to Practice")
+                : t("runner.backToCourseBtn", "Back to Syllabus")}
             </Button>
           </CardFooter>
         </Card>
@@ -411,7 +586,7 @@ export function LessonPage(): React.JSX.Element {
           score={scoreCount}
           totalActivities={activities.length}
           timeSpentSeconds={elapsedSeconds}
-          {...(lesson.next_lesson_id
+          {...(lesson?.next_lesson_id
             ? { nextLessonId: lesson.next_lesson_id }
             : {})}
           onRetryLesson={() => {
@@ -421,6 +596,10 @@ export function LessonPage(): React.JSX.Element {
             setSubmissionResult(null);
             setSubmissionError(null);
             setLastSubmittedPayload(null);
+            setIsMarking(false);
+            setMarkingTimedOut(false);
+            setPollingAttemptId(null);
+            setWritingFeedback(null);
             // Same reason as handleContinue: the attempt this learner finished
             // the lesson on is not the one activity 1 is about to open.
             setCurrentAttemptId(null);
@@ -495,9 +674,11 @@ export function LessonPage(): React.JSX.Element {
     kind === "reading_comprehension" &&
     typeof readingConfig.passage === "string" &&
     readingConfig.passage !== "" &&
-    typeof readingConfig.prompt === "string" &&
-    Array.isArray(readingConfig.options) &&
-    readingConfig.options.length > 0;
+    ((typeof readingConfig.prompt === "string" &&
+      Array.isArray(readingConfig.options) &&
+      readingConfig.options.length > 0) ||
+      (Array.isArray(readingConfig.questions) &&
+        readingConfig.questions.length > 0));
 
   const canRenderWriting =
     kind === "writing_prompt" &&
@@ -513,7 +694,17 @@ export function LessonPage(): React.JSX.Element {
     <div className="min-h-screen bg-surface flex flex-col justify-between">
       {/* Runner Header */}
       <RunnerHeader
-        lessonTitle={lesson.title}
+        lessonTitle={
+          isDaily
+            ? t(
+                "practice.daily.runnerTitle",
+                "Daily Practice Set ({{level}})",
+                {
+                  level: dailySet?.level || practiceLevel,
+                },
+              )
+            : (lesson?.title ?? "")
+        }
         currentStep={currentIndex + 1}
         totalSteps={activities.length}
         onExit={() => setIsExitDialogOpen(true)}
@@ -638,6 +829,10 @@ export function LessonPage(): React.JSX.Element {
               })
             }
             onContinue={handleContinue}
+            onReportSentence={(sentenceText) => {
+              setReportInitialNote(`Example sentence: ${sentenceText}`);
+              setIsReportOpen(true);
+            }}
           />
         )}
 
@@ -737,8 +932,10 @@ export function LessonPage(): React.JSX.Element {
           <ExerciseReading
             passageTitle={readingConfig.passage_title}
             passage={readingConfig.passage ?? ""}
-            prompt={readingConfig.prompt ?? ""}
-            options={readingConfig.options ?? []}
+            prompt={readingConfig.prompt}
+            options={readingConfig.options}
+            questions={readingConfig.questions}
+            itemResults={submissionResult?.item_results}
             correctOptionId={
               submissionResult?.correct
                 ? selectedOptId
@@ -749,9 +946,21 @@ export function LessonPage(): React.JSX.Element {
             isSubmitted={isSubmitted}
             isCorrect={submissionResult?.correct}
             isLoading={isSubmitting || isAttemptPending}
-            onSubmit={(selectedOptionId) =>
-              void handleSubmit({ selected_option_id: selectedOptionId })
-            }
+            onSubmit={(payload) => {
+              if (typeof payload === "string") {
+                void handleSubmit({ selected_option_id: payload });
+              } else {
+                void handleSubmit({
+                  ...(payload.selectedOptionId
+                    ? { selected_option_id: payload.selectedOptionId }
+                    : {}),
+                  ...(payload.answers ? { answers: payload.answers } : {}),
+                  ...(payload.reading_ms !== undefined
+                    ? { reading_ms: payload.reading_ms }
+                    : {}),
+                });
+              }
+            }}
             onContinue={handleContinue}
           />
         )}
@@ -772,11 +981,36 @@ export function LessonPage(): React.JSX.Element {
             isSubmitted={isSubmitted}
             isCorrect={submissionResult?.correct}
             isLoading={isSubmitting || isAttemptPending}
+            isGuest={!signedIn}
+            isMarking={isMarking}
+            markingTimedOut={markingTimedOut}
+            writingFeedback={writingFeedback}
+            userId={userId}
+            activityId={currentActivity?.id}
+            onNavigateToMyWriting={() => void navigate({ to: "/my-writing" })}
             onSubmit={(answerText) =>
               void handleSubmit({ text_answer: answerText })
             }
             onContinue={handleContinue}
           />
+        )}
+
+        {isSubmitted && signedIn && currentActivity?.content_version_id && (
+          <div className="mt-4 max-w-2xl mx-auto w-full flex justify-start animate-in fade-in duration-200">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setReportInitialNote("");
+                setIsReportOpen(true);
+              }}
+              className="text-xs text-text-muted hover:text-danger gap-1.5 min-h-[44px]"
+              title={t("report.reportBtn", "Report issue")}
+            >
+              <Flag className="h-3.5 w-3.5" aria-hidden="true" />
+              <span>{t("report.reportBtn", "Report issue")}</span>
+            </Button>
+          </div>
         )}
       </main>
 
@@ -785,6 +1019,14 @@ export function LessonPage(): React.JSX.Element {
         isOpen={isExitDialogOpen}
         onCancel={() => setIsExitDialogOpen(false)}
         onConfirm={handleConfirmExit}
+      />
+
+      {/* Report Bad Item / Content Dialog */}
+      <ReportDialog
+        isOpen={isReportOpen}
+        contentVersionId={currentActivity?.content_version_id ?? null}
+        initialNote={reportInitialNote}
+        onClose={() => setIsReportOpen(false)}
       />
     </div>
   );

@@ -157,3 +157,33 @@ type AdminContentItemDetailResponse struct {
 	ContentItemResponse
 	Versions []ContentVersionResponse `json:"versions"`
 }
+
+// ItemReportResponse serializes an item report.
+type ItemReportResponse struct {
+	ID               uuid.UUID `json:"id"`
+	ContentVersionID uuid.UUID `json:"content_version_id"`
+	UserID           uuid.UUID `json:"user_id"`
+	Reason           string    `json:"reason"`
+	Note             *string   `json:"note,omitempty"`
+	CreatedAt        time.Time `json:"created_at"`
+}
+
+// ReportedContentVersionResponse serializes a reported version summary.
+type ReportedContentVersionResponse struct {
+	ContentVersionID uuid.UUID `json:"content_version_id"`
+	ItemID           uuid.UUID `json:"item_id"`
+	Slug             string    `json:"slug"`
+	Kind             string    `json:"kind"`
+	CEFRLevel        string    `json:"cefr_level"`
+	ItemStatus       string    `json:"item_status"`
+	ReportCount      int       `json:"report_count"`
+	LastReportedAt   time.Time `json:"last_reported_at"`
+}
+
+// ReportedContentListResponse is the paginated response for GET /admin/content/reports.
+type ReportedContentListResponse struct {
+	Items  []ReportedContentVersionResponse `json:"items"`
+	Total  int                              `json:"total"`
+	Limit  int                              `json:"limit"`
+	Offset int                              `json:"offset"`
+}

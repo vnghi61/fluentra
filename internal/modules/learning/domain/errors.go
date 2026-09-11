@@ -89,6 +89,12 @@ var (
 	ErrInvalidDuration = apperr.New(
 		apperr.Validation, "INVALID_DURATION", "Session end time cannot be before start time.",
 	)
+
+	// ErrAccountRequired is returned when an unauthenticated visitor attempts to grade an activity
+	// whose grader consumes metered/billable resources.
+	ErrAccountRequired = apperr.New(
+		apperr.Unauthenticated, "ACCOUNT_REQUIRED", "An account is required to grade this activity.",
+	)
 )
 
 // IsAlreadyEnrolled reports whether err represents ErrAlreadyEnrolled.
@@ -119,4 +125,10 @@ func IsCourseNotFound(err error) bool {
 func IsSessionNotFound(err error) bool {
 	var e *apperr.Error
 	return errors.As(err, &e) && e.Code == "SESSION_NOT_FOUND"
+}
+
+// IsAccountRequired reports whether err represents ErrAccountRequired.
+func IsAccountRequired(err error) bool {
+	var e *apperr.Error
+	return errors.As(err, &e) && e.Code == "ACCOUNT_REQUIRED"
 }

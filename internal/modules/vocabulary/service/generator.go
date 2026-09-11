@@ -67,7 +67,7 @@ type LessonAuthor interface {
 	EnsureCourse(ctx context.Context, spec lessoncontract.CourseSpec) (uuid.UUID, error)
 	EnsureUnit(ctx context.Context, spec lessoncontract.UnitSpec) (uuid.UUID, error)
 	EnsureLesson(ctx context.Context, spec lessoncontract.LessonSpec) (uuid.UUID, error)
-	ReplaceActivities(
+	SyncActivities(
 		ctx context.Context, lessonID uuid.UUID, activities []lessoncontract.ActivitySpec,
 	) error
 }
@@ -224,7 +224,7 @@ func (g *Generator) buildLesson(
 	if len(activities) == 0 {
 		return fmt.Errorf("no activity could be authored for lesson %d", index)
 	}
-	return g.lessons.ReplaceActivities(ctx, lessonID, activities)
+	return g.lessons.SyncActivities(ctx, lessonID, activities)
 }
 
 // publishExercise stores an exercise's authored side and returns its version.

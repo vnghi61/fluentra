@@ -1,11 +1,20 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { BookA, BookOpen, Flag, Gauge, Shield, Users } from "lucide-react";
+import {
+  AlertTriangle,
+  BookA,
+  BookOpen,
+  Flag,
+  Gauge,
+  Shield,
+  Users,
+} from "lucide-react";
 import {
   AdminUserList,
   AdminFeatureFlags,
   AdminAIUsage,
   AdminContentList,
+  AdminReportedContentList,
   AdminVocabulary,
 } from "@/features/admin";
 import {
@@ -13,7 +22,7 @@ import {
   usePermissions,
 } from "@/features/admin/model/permissions";
 
-type AdminTab = "users" | "content" | "vocabulary" | "flags" | "ai";
+type AdminTab = "users" | "content" | "reports" | "vocabulary" | "flags" | "ai";
 
 export function AdminPage(): React.JSX.Element {
   const { t } = useTranslation();
@@ -43,6 +52,15 @@ export function AdminPage(): React.JSX.Element {
             key: "content" as AdminTab,
             label: t("page.contentLibrary"),
             icon: BookOpen,
+          },
+        ]
+      : []),
+    ...(can(PERMISSIONS.contentReview) || can(PERMISSIONS.contentEdit)
+      ? [
+          {
+            key: "reports" as AdminTab,
+            label: t("adminReports.tabLabel", "Reported Items"),
+            icon: AlertTriangle,
           },
         ]
       : []),
@@ -138,6 +156,7 @@ export function AdminPage(): React.JSX.Element {
           <>
             {visible === "users" && <AdminUserList />}
             {visible === "content" && <AdminContentList />}
+            {visible === "reports" && <AdminReportedContentList />}
             {visible === "vocabulary" && <AdminVocabulary />}
             {visible === "flags" && <AdminFeatureFlags />}
             {visible === "ai" && <AdminAIUsage />}

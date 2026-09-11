@@ -4,11 +4,11 @@
 INSERT INTO core.user_preferences (id, user_id)
 VALUES ($1, $2)
 RETURNING id, user_id, locale, theme, daily_goal_minutes, notification_channels,
-          quiet_hours_start, quiet_hours_end, ai_processing_opt_out, created_at, updated_at;
+          quiet_hours_start, quiet_hours_end, ai_processing_opt_out, created_at, updated_at, practice_level;
 
 -- name: GetUserPreferences :one
 SELECT id, user_id, locale, theme, daily_goal_minutes, notification_channels,
-       quiet_hours_start, quiet_hours_end, ai_processing_opt_out, created_at, updated_at
+       quiet_hours_start, quiet_hours_end, ai_processing_opt_out, created_at, updated_at, practice_level
 FROM core.user_preferences
 WHERE user_id = $1;
 
@@ -23,7 +23,8 @@ SET locale                = $2,
     quiet_hours_start     = $6,
     quiet_hours_end       = $7,
     ai_processing_opt_out = $8,
+    practice_level        = $9,
     updated_at            = now()
 WHERE user_id = $1
 RETURNING id, user_id, locale, theme, daily_goal_minutes, notification_channels,
-          quiet_hours_start, quiet_hours_end, ai_processing_opt_out, created_at, updated_at;
+          quiet_hours_start, quiet_hours_end, ai_processing_opt_out, created_at, updated_at, practice_level;

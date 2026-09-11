@@ -24,6 +24,19 @@ Unauthorized:
         detail: Provide a valid access token.
         code: UNAUTHENTICATED
         request_id: 01J8XQ7Z9K3M4N5P6Q7R8S9T0V
+AccountRequired:
+  description: Authentication required. The activity requires a signed-in account to grade.
+  content:
+    application/problem+json:
+      schema:
+        $ref: ./errors.yaml#/Problem
+      example:
+        type: https://fluentra.dev/errors/unauthenticated
+        title: Authentication required
+        status: 401
+        detail: An account is required to grade this activity.
+        code: ACCOUNT_REQUIRED
+        request_id: 01J8XQ7Z9K3M4N5P6Q7R8S9T0V
 Forbidden:
   description: The authenticated actor lacks permission for this operation.
   content:
