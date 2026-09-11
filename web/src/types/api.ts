@@ -1229,6 +1229,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/content/versions/{id}/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Report an issue with a content version.
+         * @description Learner reports a problem with an activity or content item.
+         */
+        post: operations["reportContentVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/content": {
         parameters: {
             query?: never;
@@ -1247,6 +1267,26 @@ export interface paths {
          * @description Creates a new content item with an initial draft version.
          */
         post: operations["adminCreateContent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/content/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List reported content versions ordered by distinct reporters.
+         * @description Ordered by number of distinct reporters descending.
+         */
+        get: operations["adminListReportedContent"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3296,6 +3336,48 @@ export interface components {
             /** Format: date-time */
             updated_at: string;
             versions: components["schemas"]["ContentVersion"][];
+        };
+        /**
+         * @description Why the learner is reporting this item.
+         * @enum {string}
+         */
+        ItemReportReason: "wrong_answer" | "unclear" | "typo" | "my_answer_was_right" | "other";
+        CreateItemReportRequest: {
+            reason: components["schemas"]["ItemReportReason"];
+            /** @description Optional comment explaining the problem. */
+            note?: string | null;
+        };
+        ItemReport: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            content_version_id: string;
+            /** Format: uuid */
+            user_id: string;
+            reason: components["schemas"]["ItemReportReason"];
+            note?: string | null;
+            /** Format: date-time */
+            created_at: string;
+        };
+        ReportedContentVersion: {
+            /** Format: uuid */
+            content_version_id: string;
+            /** Format: uuid */
+            item_id: string;
+            slug: string;
+            kind: string;
+            cefr_level: string;
+            item_status: string;
+            /** @description Number of distinct learners who reported this version. */
+            report_count: number;
+            /** Format: date-time */
+            last_reported_at: string;
+        };
+        ReportedContentList: {
+            items: components["schemas"]["ReportedContentVersion"][];
+            total: number;
+            limit: number;
+            offset: number;
         };
         CourseSummary: {
             /** Format: uuid */
@@ -7174,6 +7256,38 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    reportContentVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateItemReportRequest"];
+            };
+        };
+        responses: {
+            /** @description Report recorded. */
+            201: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemReport"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
     adminListContent: {
         parameters: {
             query?: {
@@ -7267,6 +7381,33 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    adminListReportedContent: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of reported versions. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportedContentList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalServerError"];
         };
     };
     adminGetContent: {

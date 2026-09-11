@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { AlertCircle, RotateCcw } from "lucide-react";
+import { AlertCircle, Flag, RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { useAuthStore } from "@/stores/authStore";
@@ -32,6 +32,7 @@ import {
   ExerciseWriting,
   ActivityUnavailable,
   ExitDialog,
+  ReportDialog,
   learningApi,
   learningKeys,
   RunnerHeader,
@@ -202,6 +203,8 @@ export function LessonPage(): React.JSX.Element {
   // looking around should not be asked again on the next lesson's last screen.
   const [savePromptDismissed, setSavePromptDismissed] = useState(false);
   const [isExitDialogOpen, setIsExitDialogOpen] = useState(false);
+  const [isReportOpen, setIsReportOpen] = useState(false);
+  const [reportInitialNote, setReportInitialNote] = useState("");
   const [startTime, setStartTime] = useState(() => Date.now());
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
@@ -766,6 +769,10 @@ export function LessonPage(): React.JSX.Element {
               })
             }
             onContinue={handleContinue}
+            onReportSentence={(sentenceText) => {
+              setReportInitialNote(`Example sentence: ${sentenceText}`);
+              setIsReportOpen(true);
+            }}
           />
         )}
 
@@ -927,6 +934,25 @@ export function LessonPage(): React.JSX.Element {
             onContinue={handleContinue}
           />
         )}
+
+        {isSubmitted && signedIn && currentActivity?.content_version_id && (
+          <div className="mt-4 max-w-2xl mx-auto w-full flex justify-start animate-in fade-in duration-200">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setReportInitialNote("");
+                setIsReportOpen(true);
+              }}
+              className="text-xs text-text-muted hover:text-danger gap-1.5 min-h-[36px]"
+              title={t("report.reportBtn", "Report issue")}
+            >
+              <Flag className="h-3.5 w-3.5" aria-hidden="true" />
+              <span>{t("report.reportBtn", "Report issue")}</span>
+            </Button>
+          </div>
+        )}
       </main>
 
       {/* Exit Confirmation Dialog */}
@@ -934,6 +960,14 @@ export function LessonPage(): React.JSX.Element {
         isOpen={isExitDialogOpen}
         onCancel={() => setIsExitDialogOpen(false)}
         onConfirm={handleConfirmExit}
+      />
+
+      {/* Report Bad Item / Content Dialog */}
+      <ReportDialog
+        isOpen={isReportOpen}
+        contentVersionId={currentActivity?.content_version_id ?? null}
+        initialNote={reportInitialNote}
+        onClose={() => setIsReportOpen(false)}
       />
     </div>
   );

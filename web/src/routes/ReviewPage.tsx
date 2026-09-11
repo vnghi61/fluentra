@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/card";
 import { FlipCard } from "@/components/ui/flip-card";
 import { Progress } from "@/components/ui/progress";
-import { learningKeys } from "@/features/learning";
+import { learningKeys, ReportDialog } from "@/features/learning";
 import {
   CardContentUnavailable,
   EmptyQueue,
@@ -59,6 +59,8 @@ export function ReviewPage(): React.JSX.Element {
   const [isCompleted, setIsCompleted] = useState(false);
   const [gradeFailed, setGradeFailed] = useState(false);
   const [gradeCounts, setGradeCounts] = useState<GradeCounts>(noGrades);
+  const [isReportOpen, setIsReportOpen] = useState(false);
+  const [reportNote, setReportNote] = useState("");
 
   const currentCard = cards[currentIndex];
   const content = currentCard ? flashcardContent(currentCard) : null;
@@ -295,6 +297,10 @@ export function ReviewPage(): React.JSX.Element {
                   {...(content.pos !== undefined && {
                     partOfSpeech: content.pos,
                   })}
+                  onReportSentence={(sentenceText) => {
+                    setReportNote(`Example sentence: ${sentenceText}`);
+                    setIsReportOpen(true);
+                  }}
                 />
               }
             />
@@ -308,6 +314,13 @@ export function ReviewPage(): React.JSX.Element {
           </div>
         )}
       </main>
+
+      <ReportDialog
+        isOpen={isReportOpen}
+        contentVersionId={currentCard?.content_version_id ?? null}
+        initialNote={reportNote}
+        onClose={() => setIsReportOpen(false)}
+      />
     </div>
   );
 }

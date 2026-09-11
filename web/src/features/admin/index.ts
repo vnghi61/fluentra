@@ -8,5 +8,6 @@ export * from "./components/CreateFeatureFlagModal";
 export * from "./components/AdminAIUsage";
 export * from "./components/AdminContentList";
 export * from "./components/AdminContentDetailModal";
+export * from "./components/AdminReportedContentList";
 export * from "./components/AdminVocabulary";
 export * from "./components/AdminEditWordSenseModal";

@@ -839,5 +839,44 @@
     "retry": "Thử lại",
     "showingRange": "Hiện {{from}}–{{to}} trên {{total}}",
     "pageOf": "Trang {{current}} trên {{total}}"
+  },
+  "report": {
+    "reportBtn": "Báo lỗi",
+    "reportSentence": "Báo lỗi câu này",
+    "title": "Báo cáo nội dung có lỗi",
+    "desc": "Giúp chúng tôi cải thiện bằng cách cho biết vấn đề của bài tập hoặc câu này.",
+    "selectReason": "Lý do báo cáo",
+    "reason": {
+      "wrong_answer": "Đáp án sai",
+      "unclear": "Câu hỏi không rõ ràng",
+      "typo": "Lỗi chính tả",
+      "my_answer_was_right": "Đáp án của tôi đúng nhưng bị tính sai",
+      "other": "Lỗi khác"
+    },
+    "noteLabel": "Chi tiết thêm (không bắt buộc)",
+    "notePlaceholder": "Mô tả ngắn gọn vấn đề (tối đa 500 ký tự)...",
+    "charsRemaining": "Còn lại {{count}} ký tự",
+    "cancel": "Hủy",
+    "submit": "Gửi báo cáo",
+    "submitting": "Đang gửi...",
+    "successTitle": "Đã gửi báo cáo",
+    "successDesc": "Cảm ơn đóng góp của bạn. Đội ngũ sẽ xem xét và cập nhật nội dung.",
+    "close": "Đóng",
+    "errorFailed": "Không thể gửi báo cáo. Vui lòng thử lại sau."
+  },
+  "adminReports": {
+    "tabLabel": "Báo cáo nội dung",
+    "title": "Hàng đợi nội dung bị báo cáo",
+    "desc": "Bài tập và nội dung được người học báo cáo, sắp xếp theo số lượng người báo cáo giảm dần. Kiểm tra và lưu trữ nội dung có vấn đề.",
+    "colItem": "Nội dung",
+    "colKind": "Loại",
+    "colLevel": "Trình độ",
+    "colStatus": "Trạng thái",
+    "colReporters": "Người báo cáo",
+    "colLastReported": "Báo cáo lần cuối",
+    "colActions": "Hành động",
+    "reviewBtn": "Xem xét",
+    "noReports": "Chưa có nội dung nào bị báo cáo.",
+    "reportsCount": "{{count}} người học"
   }
 }

@@ -19,6 +19,7 @@ export * from "./components/Runner/ExerciseWriting";
 export * from "./components/Runner/ActivityUnavailable";
 export * from "./components/GuestNotice";
 export * from "./components/Runner/ExitDialog";
+export * from "./components/Runner/ReportDialog";
 export * from "./components/Runner/SaveProgressPrompt";
 export * from "./components/Runner/CompletionScreen";
 export * from "./components/Progress/OverallStats";

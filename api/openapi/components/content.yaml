@@ -215,3 +215,82 @@ AdminContentItemDetail:
       items:
         $ref: '#/ContentVersion'
 
+ItemReportReason:
+  type: string
+  enum: [wrong_answer, unclear, typo, my_answer_was_right, other]
+  description: Why the learner is reporting this item.
+
+CreateItemReportRequest:
+  type: object
+  required: [reason]
+  properties:
+    reason:
+      $ref: '#/ItemReportReason'
+    note:
+      type: string
+      maxLength: 500
+      nullable: true
+      description: Optional comment explaining the problem.
+
+ItemReport:
+  type: object
+  required: [id, content_version_id, user_id, reason, created_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+    content_version_id:
+      type: string
+      format: uuid
+    user_id:
+      type: string
+      format: uuid
+    reason:
+      $ref: '#/ItemReportReason'
+    note:
+      type: string
+      nullable: true
+    created_at:
+      type: string
+      format: date-time
+
+ReportedContentVersion:
+  type: object
+  required: [content_version_id, item_id, slug, kind, cefr_level, item_status, report_count, last_reported_at]
+  properties:
+    content_version_id:
+      type: string
+      format: uuid
+    item_id:
+      type: string
+      format: uuid
+    slug:
+      type: string
+    kind:
+      type: string
+    cefr_level:
+      type: string
+    item_status:
+      type: string
+    report_count:
+      type: integer
+      description: Number of distinct learners who reported this version.
+    last_reported_at:
+      type: string
+      format: date-time
+
+ReportedContentList:
+  type: object
+  required: [items, total, limit, offset]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/ReportedContentVersion'
+    total:
+      type: integer
+    limit:
+      type: integer
+    offset:
+      type: integer
+

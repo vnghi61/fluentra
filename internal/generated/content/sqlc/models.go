@@ -359,6 +359,15 @@ type ContentContentVersion struct {
 	UpdatedAt   time.Time
 }
 
+type ContentItemReport struct {
+	ID               uuid.UUID
+	ContentVersionID uuid.UUID
+	UserID           uuid.UUID
+	Reason           string
+	Note             *string
+	CreatedAt        time.Time
+}
+
 type ContentMediaAsset struct {
 	ID         uuid.UUID
 	ObjectKey  string

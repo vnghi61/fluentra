@@ -2863,6 +2863,45 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+  /content/versions/{id}/reports:
+    post:
+      tags: [content]
+      operationId: reportContentVersion
+      summary: Report an issue with a content version.
+      description: Learner reports a problem with an activity or content item.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateItemReportRequest'
+      responses:
+        '201':
+          description: Report recorded.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ItemReport'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /admin/content:
     get:
       tags: [content]
@@ -2966,6 +3005,42 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '409':
           $ref: '#/components/responses/Conflict'
+  /admin/content/reports:
+    get:
+      tags: [admin, content]
+      operationId: adminListReportedContent
+      summary: List reported content versions ordered by distinct reporters.
+      description: Ordered by number of distinct reporters descending.
+      x-permission: content.review
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of reported versions.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportedContentList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /admin/content/{id}:
     get:
       tags: [content]
@@ -5240,6 +5315,16 @@ components:
       $ref: ./components/content.yaml#/AdminContentItemList
     AdminContentItemDetail:
       $ref: ./components/content.yaml#/AdminContentItemDetail
+    ItemReportReason:
+      $ref: ./components/content.yaml#/ItemReportReason
+    CreateItemReportRequest:
+      $ref: ./components/content.yaml#/CreateItemReportRequest
+    ItemReport:
+      $ref: ./components/content.yaml#/ItemReport
+    ReportedContentVersion:
+      $ref: ./components/content.yaml#/ReportedContentVersion
+    ReportedContentList:
+      $ref: ./components/content.yaml#/ReportedContentList
     CourseSummary:
       $ref: ./components/lesson.yaml#/CourseSummary
     CourseList:

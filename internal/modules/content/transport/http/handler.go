@@ -44,6 +44,8 @@ type ContentService interface {
 		ctx context.Context, status, kind, query *string, limit, offset int,
 	) ([]domain.Item, int64, error)
 	GetAdminItemDetail(ctx context.Context, id uuid.UUID) (domain.Item, []domain.Version, error)
+	ReportItem(ctx context.Context, userID, versionID uuid.UUID, reason domain.ReportReason, note *string) (domain.ItemReport, error)
+	ListReportedContent(ctx context.Context, limit, offset int) ([]domain.ReportedVersionSummary, int, error)
 }
 
 // Handler serves HTTP endpoints for the content module.
@@ -68,11 +70,13 @@ func NewHandler(service ContentService, guard Guard) (*Handler, error) {
 func (h *Handler) Routes(router chi.Router) {
 	router.Get("/content", h.browse)
 	router.Get("/content/{slug}", h.getBySlug)
+	router.Post("/content/versions/{id}/reports", h.reportItem)
 }
 
 // AdminRoutes mounts staff/authoring content endpoints under the admin router.
 func (h *Handler) AdminRoutes(router chi.Router) {
 	router.Get("/admin/content", h.adminListContent)
+	router.Get("/admin/content/reports", h.adminListReports)
 	router.Get("/admin/content/{id}", h.adminGetContent)
 	router.Post("/admin/content", h.createItem)
 	router.Put("/admin/content/{id}/draft", h.updateDraft)
@@ -439,3 +443,99 @@ func (h *Handler) adminGetContent(w http.ResponseWriter, r *http.Request) {
 		Versions:            respVersions,
 	})
 }
+
+// reportItem handles POST /content/versions/{id}/reports
+func (h *Handler) reportItem(w http.ResponseWriter, r *http.Request) {
+	actor, ok := httpx.ActorFrom(r.Context())
+	if !ok || actor.UserID == uuid.Nil {
+		httpx.WriteProblem(w, r, apperr.New(
+			apperr.Unauthenticated, "UNAUTHENTICATED", "Authentication required."))
+		return
+	}
+
+	idStr := chi.URLParam(r, "id")
+	versionID, err := uuid.Parse(idStr)
+	if err != nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Validation, "INVALID_ID", "Invalid content version ID."))
+		return
+	}
+
+	var req struct {
+		Reason string  `json:"reason"`
+		Note   *string `json:"note"`
+	}
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	if !domain.IsValidReportReason(req.Reason) {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Validation, "INVALID_REASON", "Invalid report reason."))
+		return
+	}
+
+	report, err := h.service.ReportItem(r.Context(), actor.UserID, versionID, domain.ReportReason(req.Reason), req.Note)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	httpx.WriteJSON(w, r, http.StatusCreated, ItemReportResponse{
+		ID:               report.ID,
+		ContentVersionID: report.ContentVersionID,
+		UserID:           report.UserID,
+		Reason:           string(report.Reason),
+		Note:             report.Note,
+		CreatedAt:        report.CreatedAt,
+	})
+}
+
+// adminListReports handles GET /admin/content/reports
+func (h *Handler) adminListReports(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if err := h.guard.Require(ctx, PermContentReview); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	limit := 20
+	if raw := r.URL.Query().Get("limit"); raw != "" {
+		if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 {
+			limit = parsed
+		}
+	}
+	offset := 0
+	if raw := r.URL.Query().Get("offset"); raw != "" {
+		if parsed, err := strconv.Atoi(raw); err == nil && parsed >= 0 {
+			offset = parsed
+		}
+	}
+
+	items, total, err := h.service.ListReportedContent(ctx, limit, offset)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	respItems := make([]ReportedContentVersionResponse, len(items))
+	for i, it := range items {
+		respItems[i] = ReportedContentVersionResponse{
+			ContentVersionID: it.ContentVersionID,
+			ItemID:           it.ItemID,
+			Slug:             it.Slug,
+			Kind:             it.Kind,
+			CEFRLevel:        it.CEFRLevel,
+			ItemStatus:       it.ItemStatus,
+			ReportCount:      it.ReportCount,
+			LastReportedAt:   it.LastReportedAt,
+		}
+	}
+
+	httpx.WriteJSON(w, r, http.StatusOK, ReportedContentListResponse{
+		Items:  respItems,
+		Total:  total,
+		Limit:  limit,
+		Offset: offset,
+	})
+}
+

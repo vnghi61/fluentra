@@ -16,6 +16,10 @@ export type SubmitAttemptResult = components["schemas"]["SubmitAttemptResult"];
 export type AttemptDetail = components["schemas"]["AttemptDetail"];
 export type Enrollment = components["schemas"]["Enrollment"];
 export type PreviewGradeResult = components["schemas"]["PreviewGradeResult"];
+export type ItemReportReason = components["schemas"]["ItemReportReason"];
+export type CreateItemReportRequest =
+  components["schemas"]["CreateItemReportRequest"];
+export type ItemReport = components["schemas"]["ItemReport"];
 
 export const learningApi = {
   /** Fetch the learner's current dashboard state */
@@ -105,6 +109,17 @@ export const learningApi = {
   /** Read an attempt detail */
   async getAttempt(attemptId: string): Promise<AttemptDetail> {
     return apiFetch<AttemptDetail>(`/api/v1/attempts/${attemptId}`);
+  },
+
+  /** Report an issue with a content version */
+  async reportContentVersion(
+    versionId: string,
+    req: CreateItemReportRequest,
+  ): Promise<ItemReport> {
+    return apiFetch<ItemReport>(`/api/v1/content/versions/${versionId}/reports`, {
+      method: "POST",
+      body: JSON.stringify(req),
+    });
   },
 };
 

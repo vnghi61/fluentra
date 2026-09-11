@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 
+	"github.com/fluentra/fluentra/internal/modules/content/contract"
 	"github.com/fluentra/fluentra/internal/modules/content/domain"
 	"github.com/fluentra/fluentra/internal/modules/content/service"
 	"github.com/fluentra/fluentra/internal/shared/apperr"
@@ -29,6 +30,7 @@ type fakeRepo struct {
 	mediaAssets map[string]domain.MediaAsset
 	reviews     map[uuid.UUID]domain.Review
 	tags        map[uuid.UUID][]domain.TaxonomyTag
+	reports     []domain.ItemReport
 	queriesRun  int
 
 	// what the last ListContentItemsFiltered call was given. The window is
@@ -502,6 +504,96 @@ func (f *fakeRepo) GetTaxonomyByNamespaceCode(_ context.Context, namespace, code
 	}, nil
 }
 
+func (f *fakeRepo) InsertItemReport(
+	_ context.Context,
+	versionID, userID uuid.UUID,
+	reason domain.ReportReason,
+	note *string,
+) (domain.ItemReport, error) {
+	for i, r := range f.reports {
+		if r.ContentVersionID == versionID && r.UserID == userID {
+			f.reports[i].Reason = reason
+			f.reports[i].Note = note
+			f.reports[i].CreatedAt = time.Now()
+			return f.reports[i], nil
+		}
+	}
+	r := domain.ItemReport{
+		ID:               uuid.New(),
+		ContentVersionID: versionID,
+		UserID:           userID,
+		Reason:           reason,
+		Note:             note,
+		CreatedAt:        time.Now(),
+	}
+	f.reports = append(f.reports, r)
+	return r, nil
+}
+
+func (f *fakeRepo) ListItemReportsByVersion(_ context.Context, versionID uuid.UUID) ([]domain.ItemReport, error) {
+	var list []domain.ItemReport
+	for _, r := range f.reports {
+		if r.ContentVersionID == versionID {
+			list = append(list, r)
+		}
+	}
+	return list, nil
+}
+
+func (f *fakeRepo) ListReportedContentVersions(_ context.Context, limit, offset int32) ([]domain.ReportedVersionSummary, error) {
+	grouped := make(map[uuid.UUID][]domain.ItemReport)
+	for _, r := range f.reports {
+		grouped[r.ContentVersionID] = append(grouped[r.ContentVersionID], r)
+	}
+
+	var summaries []domain.ReportedVersionSummary
+	for vID, rList := range grouped {
+		users := make(map[uuid.UUID]struct{})
+		var latest time.Time
+		for _, r := range rList {
+			users[r.UserID] = struct{}{}
+			if r.CreatedAt.After(latest) {
+				latest = r.CreatedAt
+			}
+		}
+		v := f.versions[vID]
+		item := f.items[v.ItemID]
+		summaries = append(summaries, domain.ReportedVersionSummary{
+			ContentVersionID: vID,
+			ItemID:           v.ItemID,
+			Slug:             item.Slug,
+			Kind:             v.Kind,
+			CEFRLevel:        v.CEFRLevel,
+			ItemStatus:       string(item.Status),
+			ReportCount:      len(users),
+			LastReportedAt:   latest,
+		})
+	}
+	for i := 0; i < len(summaries); i++ {
+		for j := i + 1; j < len(summaries); j++ {
+			if summaries[j].ReportCount > summaries[i].ReportCount {
+				summaries[i], summaries[j] = summaries[j], summaries[i]
+			}
+		}
+	}
+	if int(offset) >= len(summaries) {
+		return nil, nil
+	}
+	end := int(offset + limit)
+	if end > len(summaries) {
+		end = len(summaries)
+	}
+	return summaries[offset:end], nil
+}
+
+func (f *fakeRepo) CountReportedContentVersions(_ context.Context) (int, error) {
+	grouped := make(map[uuid.UUID]struct{})
+	for _, r := range f.reports {
+		grouped[r.ContentVersionID] = struct{}{}
+	}
+	return len(grouped), nil
+}
+
 type fakeEvents struct {
 	events []struct {
 		Aggregate string
@@ -813,3 +905,137 @@ func TestListAdminItems_ClampsThePageWindow(t *testing.T) {
 		})
 	}
 }
+
+func TestReportingBadItem(t *testing.T) {
+	ctx := context.Background()
+	svc, _, _ := setupService()
+
+	authorID := uuid.New()
+	reviewerID := uuid.New()
+	user1 := uuid.New()
+	user2 := uuid.New()
+
+	// 1. Create and publish an item
+	_, ver := publishItem(ctx, t, svc, authorID, reviewerID, "report-test-item")
+
+	// 2. User 1 reports the item
+	note := "The example sentence has a typo"
+	rep1, err := svc.ReportItem(ctx, user1, ver.ID, domain.ReportReasonTypo, &note)
+	if err != nil {
+		t.Fatalf("report 1: %v", err)
+	}
+	if rep1.Reason != domain.ReportReasonTypo {
+		t.Errorf("reason = %v, want %v", rep1.Reason, domain.ReportReasonTypo)
+	}
+	if rep1.Note == nil || *rep1.Note != note {
+		t.Errorf("note = %v, want %v", rep1.Note, note)
+	}
+
+	// 3. User 1 reports again with updated reason (unique constraint updates existing report)
+	noteUpdated := "Actually the answer is also wrong"
+	rep1Updated, err := svc.ReportItem(ctx, user1, ver.ID, domain.ReportReasonWrongAnswer, &noteUpdated)
+	if err != nil {
+		t.Fatalf("report 1 updated: %v", err)
+	}
+	if rep1Updated.Reason != domain.ReportReasonWrongAnswer {
+		t.Errorf("reason = %v, want %v", rep1Updated.Reason, domain.ReportReasonWrongAnswer)
+	}
+
+	// User 1 still counts as ONE distinct reporter
+	summaries, total, err := svc.ListReportedContent(ctx, 10, 0)
+	if err != nil {
+		t.Fatalf("list reported: %v", err)
+	}
+	if total != 1 {
+		t.Errorf("total = %d, want 1", total)
+	}
+	if len(summaries) != 1 || summaries[0].ReportCount != 1 {
+		t.Errorf("report count = %d, want 1", summaries[0].ReportCount)
+	}
+
+	// 4. User 2 reports the same item -> report count becomes 2
+	_, err = svc.ReportItem(ctx, user2, ver.ID, domain.ReportReasonUnclear, nil)
+	if err != nil {
+		t.Fatalf("report 2: %v", err)
+	}
+	summaries, _, _ = svc.ListReportedContent(ctx, 10, 0)
+	if summaries[0].ReportCount != 2 {
+		t.Errorf("report count = %d, want 2", summaries[0].ReportCount)
+	}
+
+	// 5. Invalid reason rejected
+	_, err = svc.ReportItem(ctx, user1, ver.ID, domain.ReportReason("invalid_reason"), nil)
+	if err == nil {
+		t.Errorf("expected error on invalid reason, got nil")
+	}
+
+	// 6. Note > 500 chars rejected
+	tooLong := strings.Repeat("a", 501)
+	_, err = svc.ReportItem(ctx, user1, ver.ID, domain.ReportReasonOther, &tooLong)
+	if err == nil {
+		t.Errorf("expected error on note > 500 chars, got nil")
+	}
+
+	// 7. Non-existent version returns not found
+	_, err = svc.ReportItem(ctx, user1, uuid.New(), domain.ReportReasonOther, nil)
+	if err == nil {
+		t.Errorf("expected not found error on unknown version, got nil")
+	}
+}
+
+func TestArchivingItemPreservesVersionForLessons(t *testing.T) {
+	ctx := context.Background()
+	svc, _, _ := setupService()
+
+	authorID := uuid.New()
+	reviewerID := uuid.New()
+
+	// 1. Create and publish an item
+	item, ver := publishItem(ctx, t, svc, authorID, reviewerID, "lesson-linked-item")
+
+	// 2. An activity in a lesson points to ver.ID
+	lessonActivityVersionID := ver.ID
+
+	// 3. Before archiving, version is readable
+	vBefore, err := svc.GetVersion(ctx, lessonActivityVersionID)
+	if err != nil {
+		t.Fatalf("get version before archive: %v", err)
+	}
+	if string(vBefore.Body) != string(ver.Body) {
+		t.Errorf("body before archive = %s, want %s", string(vBefore.Body), string(ver.Body))
+	}
+
+	// 4. Item is archived by admin (withdrawal)
+	archivedItem, err := svc.Archive(ctx, authorID, item.ID)
+	if err != nil {
+		t.Fatalf("archive item: %v", err)
+	}
+	if archivedItem.Status != domain.StatusArchived {
+		t.Errorf("status = %v, want %v", archivedItem.Status, domain.StatusArchived)
+	}
+
+	// 5. CRITICAL GUARANTEE (§3.10 & DECISIONS.md):
+	// After archiving the item, GetVersion by direct ID STILL succeeds completely!
+	// The version snapshot and payload are never deleted, so lessons, activities,
+	// and past learner attempts remain 100% valid and readable.
+	vAfter, err := svc.GetVersion(ctx, lessonActivityVersionID)
+	if err != nil {
+		t.Fatalf("get version after archive: %v", err)
+	}
+	if vAfter.ID != ver.ID {
+		t.Errorf("version ID = %v, want %v", vAfter.ID, ver.ID)
+	}
+	if string(vAfter.Body) != string(ver.Body) {
+		t.Errorf("body after archive = %s, want %s", string(vAfter.Body), string(ver.Body))
+	}
+
+	// 6. But item is excluded from discovery (Browse)
+	found, total, err := svc.Browse(ctx, contract.BrowseFilter{})
+	if err != nil {
+		t.Fatalf("browse: %v", err)
+	}
+	if total != 0 || len(found) != 0 {
+		t.Errorf("archived item should be excluded from Browse, found %d", len(found))
+	}
+}
+

@@ -839,5 +839,44 @@
     "retry": "Try again",
     "showingRange": "Showing {{from}}–{{to}} of {{total}}",
     "pageOf": "Page {{current}} of {{total}}"
+  },
+  "report": {
+    "reportBtn": "Report issue",
+    "reportSentence": "Report this sentence",
+    "title": "Report an issue",
+    "desc": "Help us improve by telling us what is wrong with this exercise or sentence.",
+    "selectReason": "Reason for report",
+    "reason": {
+      "wrong_answer": "Incorrect answer",
+      "unclear": "Unclear or confusing prompt",
+      "typo": "Typo or spelling mistake",
+      "my_answer_was_right": "My answer should be accepted",
+      "other": "Other issue"
+    },
+    "noteLabel": "Additional details (optional)",
+    "notePlaceholder": "Briefly explain the issue (max 500 characters)...",
+    "charsRemaining": "{{count}} characters remaining",
+    "cancel": "Cancel",
+    "submit": "Submit report",
+    "submitting": "Submitting...",
+    "successTitle": "Report submitted",
+    "successDesc": "Thank you for your feedback. Our team will review this item.",
+    "close": "Close",
+    "errorFailed": "Failed to submit report. Please try again later."
+  },
+  "adminReports": {
+    "tabLabel": "Reported Items",
+    "title": "Reported Content Queue",
+    "desc": "Exercises and content versions reported by learners, sorted by distinct reporters. Review and archive problematic items.",
+    "colItem": "Content Item",
+    "colKind": "Kind",
+    "colLevel": "Level",
+    "colStatus": "Status",
+    "colReporters": "Reporters",
+    "colLastReported": "Last Reported",
+    "colActions": "Actions",
+    "reviewBtn": "Review item",
+    "noReports": "No items have been reported yet.",
+    "reportsCount": "{{count}} learners"
   }
 }

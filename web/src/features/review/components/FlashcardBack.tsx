@@ -13,6 +13,7 @@ export interface FlashcardBackProps {
   exampleSentences?: ExampleSentence[];
   audioUrl?: string | null | undefined;
   partOfSpeech?: string;
+  onReportSentence?: ((sentenceText: string) => void) | undefined;
 }
 
 export const FlashcardBack: React.FC<FlashcardBackProps> = ({
@@ -23,6 +24,7 @@ export const FlashcardBack: React.FC<FlashcardBackProps> = ({
   exampleSentences = [],
   audioUrl,
   partOfSpeech,
+  onReportSentence,
 }) => {
   const { i18n } = useTranslation();
 
@@ -78,7 +80,11 @@ export const FlashcardBack: React.FC<FlashcardBackProps> = ({
         )}
 
         {/* Three of however many the word has, shuffled per card. */}
-        <ExampleSentences sentences={displayedExamples} highlight={word} />
+        <ExampleSentences
+          sentences={displayedExamples}
+          highlight={word}
+          onReportSentence={onReportSentence}
+        />
       </div>
     </div>
   );

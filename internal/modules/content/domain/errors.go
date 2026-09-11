@@ -54,4 +54,11 @@ var (
 
 	// ErrInvalidReviewDecision is returned when review decision is missing or invalid.
 	ErrInvalidReviewDecision = apperr.New(apperr.Validation, "INVALID_REVIEW_DECISION", "Invalid review decision.")
+
+	// ErrInvalidReportReason is returned when the reason for reporting is invalid.
+	ErrInvalidReportReason = apperr.New(apperr.Validation, "INVALID_REPORT_REASON", "Invalid report reason.")
+
+	// ErrReportNoteTooLong is returned when report note exceeds 500 characters.
+	ErrReportNoteTooLong = apperr.New(apperr.Validation, "NOTE_TOO_LONG", "Note cannot exceed 500 characters.")
 )
+
