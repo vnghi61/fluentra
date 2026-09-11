@@ -48,3 +48,24 @@ SELECT
 FROM skill.writing_feedback
 WHERE attempt_id = @attempt_id
   AND user_id    = @user_id;
+
+-- name: ListWritingSubmissionsByUser :many
+SELECT
+    attempt_id,
+    user_id,
+    overall_band,
+    score,
+    feedback_en,
+    feedback_vi,
+    prompt_version,
+    created_at
+FROM skill.writing_feedback
+WHERE user_id = @user_id
+ORDER BY created_at DESC
+LIMIT @query_limit OFFSET @query_offset;
+
+-- name: CountWritingSubmissionsByUser :one
+SELECT count(*)
+FROM skill.writing_feedback
+WHERE user_id = @user_id;
+

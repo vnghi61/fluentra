@@ -2099,6 +2099,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/writing/submissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the learner's writing submissions.
+         * @description Returns a paginated list of writing submissions with status, band scores, and submission dates for the authenticated user.
+         */
+        get: operations["listWritingSubmissions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -4334,6 +4354,40 @@ export interface components {
              * @example 2026-09-11T12:00:00Z
              */
             created_at: string;
+        };
+        WritingSubmissionSummary: {
+            /** Format: uuid */
+            attempt_id: string;
+            /**
+             * @example graded
+             * @enum {string}
+             */
+            status: "grading" | "graded" | "failed";
+            /**
+             * Format: float
+             * @example 6.5
+             */
+            overall_band: number;
+            /** @example 72 */
+            score: number;
+            /** @example Good overall effort. */
+            feedback_en?: string;
+            /** @example Bài viết tổng thể tốt. */
+            feedback_vi?: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-11T12:00:00Z
+             */
+            created_at: string;
+        };
+        WritingSubmissionList: {
+            items: components["schemas"]["WritingSubmissionSummary"][];
+            /** @example 42 */
+            total: number;
+            /** @example 1 */
+            page: number;
+            /** @example 10 */
+            page_size: number;
         };
     };
     responses: {
@@ -9156,6 +9210,34 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    listWritingSubmissions: {
+        parameters: {
+            query?: {
+                /** @description Page number (1-based). */
+                page?: number;
+                /** @description Number of items per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated list of writing submissions. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WritingSubmissionList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
             500: components["responses"]["InternalServerError"];
         };
     };

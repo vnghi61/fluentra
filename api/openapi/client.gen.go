@@ -1429,6 +1429,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /writing/attempts/{id}/feedback (the `GetWritingFeedback` operationId).
 	GetWritingFeedback(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListWritingSubmissions List the learner's writing submissions.
+	//
+	// Returns a paginated list of writing submissions with status, band scores, and submission dates for the authenticated user.
+	//
+	// Corresponds with GET /writing/submissions (the `ListWritingSubmissions` operationId).
+	ListWritingSubmissions(ctx context.Context, params *ListWritingSubmissionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 // StartAttempt Start an activity attempt.
@@ -4230,6 +4237,23 @@ func (c *Client) UpdateWordState(ctx context.Context, senseId openapi_types.UUID
 // Corresponds with GET /writing/attempts/{id}/feedback (the `GetWritingFeedback` operationId).
 func (c *Client) GetWritingFeedback(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetWritingFeedbackRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListWritingSubmissions List the learner's writing submissions.
+//
+// Returns a paginated list of writing submissions with status, band scores, and submission dates for the authenticated user.
+//
+// Corresponds with GET /writing/submissions (the `ListWritingSubmissions` operationId).
+func (c *Client) ListWritingSubmissions(ctx context.Context, params *ListWritingSubmissionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListWritingSubmissionsRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -8849,6 +8873,72 @@ func NewGetWritingFeedbackRequest(server string, id openapi_types.UUID) (*http.R
 	return req, nil
 }
 
+// NewListWritingSubmissionsRequest constructs an http.Request for the ListWritingSubmissions method
+func NewListWritingSubmissionsRequest(server string, params *ListWritingSubmissionsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/writing/submissions")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page", *params.Page, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.PageSize != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page_size", *params.PageSize, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -10369,6 +10459,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /writing/attempts/{id}/feedback (the `GetWritingFeedback` operationId).
 	GetWritingFeedbackWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetWritingFeedbackResponse, error)
+
+	// ListWritingSubmissionsWithResponse List the learner's writing submissions.
+	//
+	// Returns a paginated list of writing submissions with status, band scores, and submission dates for the authenticated user.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /writing/submissions (the `ListWritingSubmissions` operationId).
+	ListWritingSubmissionsWithResponse(ctx context.Context, params *ListWritingSubmissionsParams, reqEditors ...RequestEditorFn) (*ListWritingSubmissionsResponse, error)
 }
 
 // StartAttemptResponse201Headers the declared response headers of an HTTP 201 response for StartAttempt
@@ -18075,6 +18174,68 @@ func (r GetWritingFeedbackResponse) ContentType() string {
 	return ""
 }
 
+// ListWritingSubmissionsResponse200Headers the declared response headers of an HTTP 200 response for ListWritingSubmissions
+type ListWritingSubmissionsResponse200Headers struct {
+	XRequestId *string
+}
+
+type ListWritingSubmissionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WritingSubmissionList
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ListWritingSubmissionsResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListWritingSubmissionsResponse) GetJSON200() *WritingSubmissionList {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ListWritingSubmissionsResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r ListWritingSubmissionsResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ListWritingSubmissionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListWritingSubmissionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListWritingSubmissionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListWritingSubmissionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // StartAttemptWithResponse Start an activity attempt.
 //
 // Verifies unlocking prerequisites and starts a new in-progress attempt for an activity.
@@ -20432,6 +20593,21 @@ func (c *ClientWithResponses) GetWritingFeedbackWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParseGetWritingFeedbackResponse(rsp)
+}
+
+// ListWritingSubmissionsWithResponse List the learner's writing submissions.
+//
+// Returns a paginated list of writing submissions with status, band scores, and submission dates for the authenticated user.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /writing/submissions (the `ListWritingSubmissions` operationId).
+func (c *ClientWithResponses) ListWritingSubmissionsWithResponse(ctx context.Context, params *ListWritingSubmissionsParams, reqEditors ...RequestEditorFn) (*ListWritingSubmissionsResponse, error) {
+	rsp, err := c.ListWritingSubmissions(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListWritingSubmissionsResponse(rsp)
 }
 
 // ParseStartAttemptResponse parses an HTTP response from a StartAttemptWithResponse call
@@ -27564,6 +27740,59 @@ func ParseGetWritingFeedbackResponse(rsp *http.Response) (*GetWritingFeedbackRes
 	switch {
 	case rsp.StatusCode == 200:
 		var headers GetWritingFeedbackResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseListWritingSubmissionsResponse parses an HTTP response from a ListWritingSubmissionsWithResponse call
+func ParseListWritingSubmissionsResponse(rsp *http.Response) (*ListWritingSubmissionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListWritingSubmissionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WritingSubmissionList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ListWritingSubmissionsResponse200Headers
 		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
 			var value string
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {

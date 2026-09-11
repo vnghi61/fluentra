@@ -548,7 +548,8 @@
     "progress": "Progress",
     "settings": "Settings",
     "signIn": "Sign in",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "myWriting": "My Writing"
   },
   "page": {
     "accountSettings": "Account Settings",
@@ -727,7 +728,13 @@
     "wordCountWithMin": "{{count}} / {{min}} words minimum",
     "wordsRemaining": "{{remaining}} more needed",
     "writingInstructions": "Instructions & Rubric",
-    "writingPlaceholder": "Write your response here..."
+    "writingPlaceholder": "Write your response here...",
+    "markingTitle": "Marking your essay...",
+    "markingDesc": "Our AI examiner is evaluating your writing against IELTS criteria. This usually takes 15-30 seconds.",
+    "markingTimeoutTitle": "Marking continues in the background",
+    "markingTimeoutDesc": "Grading is taking longer than usual. You can continue your lesson, and your score and detailed feedback will appear in My Writing.",
+    "goToMyWriting": "View My Writing",
+    "markingFailedDesc": "We could not grade your essay. Your answer is preserved. Please retry."
   },
   "server": {
     "unreachable": "The server is not responding. Reload the page to try again.",
@@ -773,5 +780,34 @@
     "addCustomWord": "Add as new custom word",
     "notFoundInDict": "\"{{query}}\" is not in the dictionary yet.",
     "searchPlaceholder": "Search dictionary or type a word..."
+  },
+  "writing": {
+    "myWritingTitle": "My Writing",
+    "myWritingDesc": "Review your submitted essays, band scores, and AI examiner feedback.",
+    "feedbackTitle": "Writing Assessment",
+    "overallBand": "Overall Band",
+    "score": "Score",
+    "summary": "Examiner Summary",
+    "criteriaBands": "Criteria Breakdown",
+    "taskResponse": "Task Response",
+    "coherenceCohesion": "Coherence & Cohesion",
+    "lexicalResource": "Lexical Resource",
+    "grammaticalRange": "Grammatical Range & Accuracy",
+    "annotations": "Essay Corrections & Notes",
+    "annotationClickHint": "Click highlighted text for notes",
+    "noAnnotations": "No specific corrections",
+    "modelAnswer": "Model Answer",
+    "statusGraded": "Graded",
+    "statusGrading": "Marking...",
+    "statusFailed": "Failed",
+    "noSubmissions": "No writing submissions yet",
+    "noSubmissionsDesc": "Complete writing exercises in your lessons to receive IELTS band scores and personalized AI feedback.",
+    "viewFeedbackBtn": "View Feedback",
+    "errorLoading": "We could not fetch your writing submissions. Please check your connection.",
+    "feedbackError": "Failed to load feedback",
+    "errorTitle": "Unable to Load Submissions",
+    "retry": "Try again",
+    "showingRange": "Showing {{from}}–{{to}} of {{total}}",
+    "pageOf": "Page {{current}} of {{total}}"
   }
 }

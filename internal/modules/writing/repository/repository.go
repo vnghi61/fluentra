@@ -21,6 +21,7 @@ import (
 type Repository interface {
 	InsertWritingFeedback(ctx context.Context, fb contract.WritingFeedback) error
 	GetWritingFeedback(ctx context.Context, attemptID, userID uuid.UUID) (*contract.WritingFeedback, error)
+	ListWritingSubmissions(ctx context.Context, userID uuid.UUID, page, pageSize int) (*contract.WritingSubmissionList, error)
 	WithTx(tx pgx.Tx) Repository
 }
 
@@ -141,3 +142,67 @@ func (r *pgxRepository) GetWritingFeedback(ctx context.Context, attemptID, userI
 		CreatedAt:     row.CreatedAt,
 	}, nil
 }
+
+func (r *pgxRepository) ListWritingSubmissions(ctx context.Context, userID uuid.UUID, page, pageSize int) (*contract.WritingSubmissionList, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 10
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+
+	if r.q == nil {
+		return &contract.WritingSubmissionList{
+			Items:    []contract.WritingSubmissionSummary{},
+			Total:    0,
+			Page:     page,
+			PageSize: pageSize,
+		}, nil
+	}
+
+	offset := int32((page - 1) * pageSize)
+	limit := int32(pageSize)
+
+	rows, err := r.q.ListWritingSubmissionsByUser(ctx, sqlc.ListWritingSubmissionsByUserParams{
+		UserID:      userID,
+		QueryOffset: offset,
+		QueryLimit:  limit,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list writing submissions: %w", err)
+	}
+
+	total, err := r.q.CountWritingSubmissionsByUser(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("count writing submissions: %w", err)
+	}
+
+	items := make([]contract.WritingSubmissionSummary, 0, len(rows))
+	for _, row := range rows {
+		var band float64
+		if row.OverallBand.Valid {
+			f, _ := row.OverallBand.Float64Value()
+			band = f.Float64
+		}
+		items = append(items, contract.WritingSubmissionSummary{
+			AttemptID:   row.AttemptID,
+			Status:      "graded",
+			OverallBand: band,
+			Score:       int(row.Score),
+			FeedbackEn:  row.FeedbackEn,
+			FeedbackVi:  row.FeedbackVi,
+			CreatedAt:   row.CreatedAt,
+		})
+	}
+
+	return &contract.WritingSubmissionList{
+		Items:    items,
+		Total:    total,
+		Page:     page,
+		PageSize: pageSize,
+	}, nil
+}
+

@@ -1,7 +1,14 @@
-import React, { useState } from "react";
-import { PenTool } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { AlertCircle, PenTool, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { Button } from "@/components/ui/button";
+import {
+  getWritingDraft,
+  saveWritingDraft,
+  type WritingFeedback,
+  WritingFeedbackView,
+} from "@/features/writing";
 import { cn } from "@/lib/utils";
 
 import { GuestNotice } from "../GuestNotice";
@@ -24,8 +31,14 @@ export interface ExerciseWritingProps {
   score?: number | null | undefined;
   isSubmitted: boolean;
   isCorrect?: boolean | null | undefined;
-  isLoading?: boolean;
-  isGuest?: boolean;
+  isLoading?: boolean | undefined;
+  isGuest?: boolean | undefined;
+  isMarking?: boolean | undefined;
+  markingTimedOut?: boolean | undefined;
+  writingFeedback?: WritingFeedback | null | undefined;
+  userId?: string | undefined;
+  activityId?: string | undefined;
+  onNavigateToMyWriting?: (() => void) | undefined;
   explanation?: AnswerExplanation | null | undefined;
   onSubmit: (answerText: string) => void;
   onContinue: () => void;
@@ -41,7 +54,7 @@ function countWords(text: string): number {
  * `writing_prompt` — compose open-ended written text evaluated via AI.
  *
  * Provides a rich writing prompt, optional rubric/minimum word guidelines,
- * live word-counter, and interactive grading feedback.
+ * live word-counter, draft autosave in localStorage, marking progress, and interactive grading feedback.
  */
 export const ExerciseWriting: React.FC<ExerciseWritingProps> = ({
   prompt,
@@ -54,19 +67,37 @@ export const ExerciseWriting: React.FC<ExerciseWritingProps> = ({
   isCorrect,
   isLoading = false,
   isGuest = false,
+  isMarking = false,
+  markingTimedOut = false,
+  writingFeedback,
+  userId,
+  activityId,
+  onNavigateToMyWriting,
   explanation,
   onSubmit,
   onContinue,
 }) => {
   const { t } = useTranslation();
-  const [text, setText] = useState("");
+  const [text, setText] = useState(() => {
+    if (userId && activityId) {
+      return getWritingDraft(userId, activityId);
+    }
+    return "";
+  });
+
+  // Autosave draft into localStorage while working
+  useEffect(() => {
+    if (!isSubmitted && userId && activityId) {
+      saveWritingDraft(userId, activityId, text);
+    }
+  }, [text, isSubmitted, userId, activityId]);
 
   const words = countWords(text);
   const meetsMinWords = minWords <= 0 || words >= minWords;
-  const canSubmit = text.trim().length > 0;
+  const canSubmit = text.trim().length > 0 && !isMarking;
 
   const handleSubmit = () => {
-    if (canSubmit && !isLoading) {
+    if (canSubmit && !isLoading && !isMarking) {
       onSubmit(text.trim());
     }
   };
@@ -102,7 +133,7 @@ export const ExerciseWriting: React.FC<ExerciseWritingProps> = ({
           <textarea
             id="writing-response"
             value={text}
-            disabled={isSubmitted || isLoading}
+            disabled={isSubmitted || isLoading || isMarking}
             onChange={(e) => setText(e.target.value)}
             placeholder={t(
               "runner.writingPlaceholder",
@@ -160,8 +191,79 @@ export const ExerciseWriting: React.FC<ExerciseWritingProps> = ({
         </div>
       )}
 
-      {/* Feedback Panel */}
-      {isSubmitted && (
+      {/* Marking Progress UI */}
+      {isMarking && (
+        <div className="rounded-2xl border border-primary/30 bg-primary/5 p-6 text-center space-y-4 shadow-sm animate-in fade-in duration-200">
+          <div className="flex justify-center">
+            <div className="relative flex items-center justify-center">
+              <div className="h-12 w-12 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
+              <Sparkles className="h-5 w-5 text-primary absolute" />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-lg font-bold text-text">
+              {t("runner.markingTitle", "Marking your essay...")}
+            </h3>
+            <p className="text-sm text-text-muted max-w-md mx-auto leading-relaxed">
+              {t(
+                "runner.markingDesc",
+                "Our AI examiner is evaluating your writing against IELTS criteria. This usually takes 15-30 seconds.",
+              )}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Marking Timed Out Notice */}
+      {markingTimedOut && (
+        <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-6 space-y-4 shadow-sm animate-in fade-in duration-200">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-6 w-6 text-amber-500 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <h3 className="text-base font-bold text-text">
+                {t(
+                  "runner.markingTimeoutTitle",
+                  "Marking continues in the background",
+                )}
+              </h3>
+              <p className="text-sm text-text-muted leading-relaxed">
+                {t(
+                  "runner.markingTimeoutDesc",
+                  "Grading is taking longer than usual. You can continue your lesson, and your score and detailed feedback will appear in My Writing.",
+                )}
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
+            {onNavigateToMyWriting && (
+              <Button
+                variant="outline"
+                onClick={onNavigateToMyWriting}
+                className="gap-1.5"
+              >
+                <PenTool className="h-4 w-4" />
+                <span>{t("runner.goToMyWriting", "View My Writing")}</span>
+              </Button>
+            )}
+            <Button onClick={onContinue}>
+              {t("runner.continueBtn", "Continue")}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Detailed Writing Feedback View */}
+      {isSubmitted && !isMarking && !markingTimedOut && writingFeedback && (
+        <WritingFeedbackView
+          feedback={writingFeedback}
+          essayText={text}
+          sampleAnswer={sampleAnswer}
+          onContinue={onContinue}
+        />
+      )}
+
+      {/* Fallback Feedback Panel */}
+      {isSubmitted && !isMarking && !markingTimedOut && !writingFeedback && (
         <ExerciseFeedback
           isCorrect={isCorrect}
           feedback={feedback}
@@ -171,14 +273,16 @@ export const ExerciseWriting: React.FC<ExerciseWritingProps> = ({
         />
       )}
 
-      {/* Action Bar */}
-      <ExerciseActions
-        isSubmitted={isSubmitted || isGuest}
-        canSubmit={canSubmit}
-        isLoading={isLoading}
-        onSubmit={handleSubmit}
-        onContinue={onContinue}
-      />
+      {/* Action Bar (hidden when WritingFeedbackView or markingTimedOut renders its own continue button) */}
+      {!writingFeedback && !markingTimedOut && (
+        <ExerciseActions
+          isSubmitted={isSubmitted || isGuest}
+          canSubmit={canSubmit}
+          isLoading={isLoading || isMarking}
+          onSubmit={handleSubmit}
+          onContinue={onContinue}
+        />
+      )}
     </div>
   );
 };

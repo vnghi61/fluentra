@@ -33,6 +33,27 @@ func (f *fakeFeedbackReader) GetWritingFeedback(_ context.Context, attemptID, us
 	return fb, nil
 }
 
+func (f *fakeFeedbackReader) ListWritingSubmissions(_ context.Context, userID uuid.UUID, page, pageSize int) (*contract.WritingSubmissionList, error) {
+	var items []contract.WritingSubmissionSummary
+	for _, fb := range f.feedback {
+		if fb.UserID == userID {
+			items = append(items, contract.WritingSubmissionSummary{
+				AttemptID:   fb.AttemptID,
+				Status:      "graded",
+				OverallBand: fb.OverallBand,
+				Score:       fb.Score,
+				CreatedAt:   fb.CreatedAt,
+			})
+		}
+	}
+	return &contract.WritingSubmissionList{
+		Items:    items,
+		Total:    int64(len(items)),
+		Page:     page,
+		PageSize: pageSize,
+	}, nil
+}
+
 func withActor(r *http.Request, userID uuid.UUID) *http.Request {
 	actor := httpx.Actor{
 		UserID: userID,
@@ -168,4 +189,58 @@ func TestGetWritingFeedback_UnownedAttempt_ReturnsNotFound(t *testing.T) {
 	router.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusNotFound, rec.Code)
+}
+
+func TestListWritingSubmissions_Success(t *testing.T) {
+	userID := uuid.New()
+	attempt1 := uuid.New()
+	attempt2 := uuid.New()
+
+	reader := &fakeFeedbackReader{
+		feedback: map[string]*contract.WritingFeedback{
+			fmt.Sprintf("%s:%s", attempt1, userID): {
+				AttemptID:   attempt1,
+				UserID:      userID,
+				OverallBand: 7.0,
+				Score:       78,
+				CreatedAt:   time.Now().UTC(),
+			},
+			fmt.Sprintf("%s:%s", attempt2, userID): {
+				AttemptID:   attempt2,
+				UserID:      userID,
+				OverallBand: 6.5,
+				Score:       70,
+				CreatedAt:   time.Now().UTC().Add(-time.Hour),
+			},
+		},
+	}
+
+	router := setupWritingRouter(reader)
+
+	req := httptest.NewRequest(http.MethodGet, "/writing/submissions?page=1&page_size=10", nil)
+	req = withActor(req, userID)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	var actual contract.WritingSubmissionList
+	err := json.NewDecoder(rec.Body).Decode(&actual)
+	require.NoError(t, err)
+	assert.Equal(t, int64(2), actual.Total)
+	assert.Equal(t, 1, actual.Page)
+	assert.Equal(t, 10, actual.PageSize)
+	assert.Len(t, actual.Items, 2)
+}
+
+func TestListWritingSubmissions_Unauthenticated(t *testing.T) {
+	router := setupWritingRouter(&fakeFeedbackReader{})
+
+	req := httptest.NewRequest(http.MethodGet, "/writing/submissions", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
 }

@@ -77,3 +77,51 @@ WritingFeedback:
       type: string
       format: date-time
       example: '2026-09-11T12:00:00Z'
+
+WritingSubmissionSummary:
+  type: object
+  required: [attempt_id, status, overall_band, score, created_at]
+  properties:
+    attempt_id:
+      type: string
+      format: uuid
+    status:
+      type: string
+      enum: [grading, graded, failed]
+      example: graded
+    overall_band:
+      type: number
+      format: float
+      example: 6.5
+    score:
+      type: integer
+      example: 72
+    feedback_en:
+      type: string
+      example: Good overall effort.
+    feedback_vi:
+      type: string
+      example: Bài viết tổng thể tốt.
+    created_at:
+      type: string
+      format: date-time
+      example: '2026-09-11T12:00:00Z'
+
+WritingSubmissionList:
+  type: object
+  required: [items, total, page, page_size]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/WritingSubmissionSummary'
+    total:
+      type: integer
+      example: 42
+    page:
+      type: integer
+      example: 1
+    page_size:
+      type: integer
+      example: 10
+

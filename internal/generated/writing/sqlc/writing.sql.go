@@ -7,10 +7,24 @@ package sqlc
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const countWritingSubmissionsByUser = `-- name: CountWritingSubmissionsByUser :one
+SELECT count(*)
+FROM skill.writing_feedback
+WHERE user_id = $1
+`
+
+func (q *Queries) CountWritingSubmissionsByUser(ctx context.Context, userID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countWritingSubmissionsByUser, userID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
 
 const getWritingFeedbackByAttemptAndUser = `-- name: GetWritingFeedbackByAttemptAndUser :one
 SELECT
@@ -116,4 +130,66 @@ func (q *Queries) InsertWritingFeedback(ctx context.Context, arg InsertWritingFe
 		arg.Model,
 	)
 	return err
+}
+
+const listWritingSubmissionsByUser = `-- name: ListWritingSubmissionsByUser :many
+SELECT
+    attempt_id,
+    user_id,
+    overall_band,
+    score,
+    feedback_en,
+    feedback_vi,
+    prompt_version,
+    created_at
+FROM skill.writing_feedback
+WHERE user_id = $1
+ORDER BY created_at DESC
+LIMIT $3 OFFSET $2
+`
+
+type ListWritingSubmissionsByUserParams struct {
+	UserID      uuid.UUID
+	QueryOffset int32
+	QueryLimit  int32
+}
+
+type ListWritingSubmissionsByUserRow struct {
+	AttemptID     uuid.UUID
+	UserID        uuid.UUID
+	OverallBand   pgtype.Numeric
+	Score         int32
+	FeedbackEn    string
+	FeedbackVi    string
+	PromptVersion string
+	CreatedAt     time.Time
+}
+
+func (q *Queries) ListWritingSubmissionsByUser(ctx context.Context, arg ListWritingSubmissionsByUserParams) ([]ListWritingSubmissionsByUserRow, error) {
+	rows, err := q.db.Query(ctx, listWritingSubmissionsByUser, arg.UserID, arg.QueryOffset, arg.QueryLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListWritingSubmissionsByUserRow
+	for rows.Next() {
+		var i ListWritingSubmissionsByUserRow
+		if err := rows.Scan(
+			&i.AttemptID,
+			&i.UserID,
+			&i.OverallBand,
+			&i.Score,
+			&i.FeedbackEn,
+			&i.FeedbackVi,
+			&i.PromptVersion,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

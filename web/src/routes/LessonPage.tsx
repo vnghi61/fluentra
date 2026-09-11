@@ -35,6 +35,11 @@ import {
   RunnerHeader,
 } from "@/features/learning";
 import { useLesson } from "@/features/lesson";
+import {
+  clearWritingDraft,
+  type WritingFeedback,
+  writingApi,
+} from "@/features/writing";
 import { readExampleSentences } from "@/lib/examples";
 
 // The activity `config` is a free-form object in the spec, because its shape
@@ -126,9 +131,7 @@ interface WritingConfig {
  * exactly on the verdict, which is the only part the runner renders.
  */
 interface Verdict {
-  // `null` as well as `undefined`: the attempt response models these as
-  // nullable, because an attempt handed to an async grader has been accepted
-  // without yet having a verdict.
+  status?: string | null | undefined;
   correct?: boolean | null | undefined;
   feedback?: string | null | undefined;
   correct_answer?: string | null | undefined;
@@ -155,6 +158,8 @@ export function LessonPage(): React.JSX.Element {
   // A guest works through the same lesson with the same grader; what differs is
   // that nothing they do is written down, and the completion screen says so.
   const signedIn = useAuthStore((state) => state.status === "authenticated");
+  const user = useAuthStore((state) => state.user);
+  const userId = user?.userId;
 
   const {
     data: lesson,
@@ -169,6 +174,12 @@ export function LessonPage(): React.JSX.Element {
   const [attemptStartFailed, setAttemptStartFailed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isMarking, setIsMarking] = useState(false);
+  const [markingTimedOut, setMarkingTimedOut] = useState(false);
+  const [pollingAttemptId, setPollingAttemptId] = useState<string | null>(null);
+  const [writingFeedback, setWritingFeedback] = useState<WritingFeedback | null>(
+    null,
+  );
   const [submissionResult, setSubmissionResult] = useState<Verdict | null>(
     null,
   );
@@ -275,6 +286,99 @@ export function LessonPage(): React.JSX.Element {
     void queryClient.invalidateQueries({ queryKey: reviewKeys.all });
   };
 
+  // Adaptive polling on 202 async grading:
+  // every 2s for 30s, then every 5s, stopping on unmount or after 3 minutes (180s)
+  useEffect(() => {
+    if (!pollingAttemptId) return;
+
+    let isMounted = true;
+    let timerId: ReturnType<typeof setTimeout> | null = null;
+    const startTime = Date.now();
+
+    const poll = async () => {
+      const elapsedSec = (Date.now() - startTime) / 1000;
+      if (elapsedSec >= 180) {
+        if (isMounted) {
+          setIsMarking(false);
+          setMarkingTimedOut(true);
+          setIsSubmitted(true);
+          setPollingAttemptId(null);
+        }
+        return;
+      }
+
+      try {
+        const attempt = await learningApi.getAttempt(pollingAttemptId);
+        if (!isMounted) return;
+
+        if (attempt.status === "graded") {
+          setIsMarking(false);
+          setPollingAttemptId(null);
+          setIsSubmitted(true);
+
+          if (userId && currentActivity) {
+            clearWritingDraft(userId, currentActivity.id);
+          }
+          invalidateProgress();
+
+          try {
+            const fb = await writingApi.getFeedback(pollingAttemptId);
+            if (isMounted) {
+              setWritingFeedback(fb);
+              const isPassed = fb.overall_band >= 6.0;
+              setSubmissionResult({
+                status: "graded",
+                correct: isPassed,
+                score: fb.score,
+                feedback: fb.feedback_en,
+              });
+              if (isPassed) {
+                setScoreCount((prev) => prev + 1);
+              }
+            }
+          } catch {
+            if (isMounted) {
+              setSubmissionResult({
+                status: "graded",
+                correct: true,
+                score: attempt.score ?? undefined,
+                feedback: attempt.feedback ?? undefined,
+              });
+            }
+          }
+          return;
+        }
+
+        if (attempt.status === "failed") {
+          if (isMounted) {
+            setIsMarking(false);
+            setPollingAttemptId(null);
+            setSubmissionError(
+              t(
+                "runner.markingFailedDesc",
+                "We could not grade your essay. Your answer is preserved. Please retry.",
+              ),
+            );
+          }
+          return;
+        }
+
+        const nextDelay = elapsedSec < 30 ? 2000 : 5000;
+        timerId = setTimeout(poll, nextDelay);
+      } catch {
+        const nextDelay = elapsedSec < 30 ? 2000 : 5000;
+        timerId = setTimeout(poll, nextDelay);
+      }
+    };
+
+    timerId = setTimeout(poll, 2000);
+
+    return () => {
+      isMounted = false;
+      if (timerId) clearTimeout(timerId);
+    };
+  }, [pollingAttemptId, userId, currentActivity, t]);
+
   const handleSubmit = async (responsePayload: Record<string, unknown>) => {
     if (!currentActivity) return;
 
@@ -306,10 +410,20 @@ export function LessonPage(): React.JSX.Element {
             )
           : await learningApi.gradePreview(currentActivity.id, body);
 
+      if (result.status === "grading" && signedIn && currentAttemptId) {
+        setIsMarking(true);
+        setMarkingTimedOut(false);
+        setPollingAttemptId(currentAttemptId);
+        return;
+      }
+
       setIsSubmitted(true);
       setSubmissionResult(result);
       if (result.correct) {
         setScoreCount((prev) => prev + 1);
+      }
+      if (userId && currentActivity) {
+        clearWritingDraft(userId, currentActivity.id);
       }
       // On every graded answer, not only on the last one: a learner who leaves
       // a lesson half-way has still made progress, and the course screen has to
@@ -342,6 +456,10 @@ export function LessonPage(): React.JSX.Element {
       setSubmissionError(null);
       setLastSubmittedPayload(null);
       setAttemptStartFailed(false);
+      setIsMarking(false);
+      setMarkingTimedOut(false);
+      setPollingAttemptId(null);
+      setWritingFeedback(null);
       // The previous activity's attempt does not belong to the next one, and
       // leaving it here is what made a second flag necessary: two values that
       // had to agree about whether an answer could be sent. Clearing it is both
@@ -421,6 +539,10 @@ export function LessonPage(): React.JSX.Element {
             setSubmissionResult(null);
             setSubmissionError(null);
             setLastSubmittedPayload(null);
+            setIsMarking(false);
+            setMarkingTimedOut(false);
+            setPollingAttemptId(null);
+            setWritingFeedback(null);
             // Same reason as handleContinue: the attempt this learner finished
             // the lesson on is not the one activity 1 is about to open.
             setCurrentAttemptId(null);
@@ -773,6 +895,12 @@ export function LessonPage(): React.JSX.Element {
             isCorrect={submissionResult?.correct}
             isLoading={isSubmitting || isAttemptPending}
             isGuest={!signedIn}
+            isMarking={isMarking}
+            markingTimedOut={markingTimedOut}
+            writingFeedback={writingFeedback}
+            userId={userId}
+            activityId={currentActivity?.id}
+            onNavigateToMyWriting={() => void navigate({ to: "/my-writing" })}
             onSubmit={(answerText) =>
               void handleSubmit({ text_answer: answerText })
             }

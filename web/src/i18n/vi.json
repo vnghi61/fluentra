@@ -548,7 +548,8 @@
     "progress": "Tiến độ",
     "settings": "Cài đặt",
     "signIn": "Đăng nhập",
-    "signOut": "Đăng xuất"
+    "signOut": "Đăng xuất",
+    "myWriting": "Bài viết của tôi"
   },
   "page": {
     "accountSettings": "Cài đặt tài khoản",
@@ -727,7 +728,13 @@
     "wordCountWithMin": "Tối thiểu {{count}} / {{min}} từ",
     "wordsRemaining": "Cần thêm {{remaining}} từ",
     "writingInstructions": "Hướng dẫn & Tiêu chí",
-    "writingPlaceholder": "Nhập câu trả lời của bạn ở đây..."
+    "writingPlaceholder": "Nhập câu trả lời của bạn ở đây...",
+    "markingTitle": "Đang chấm bài viết của bạn...",
+    "markingDesc": "Giám khảo AI đang đánh giá bài viết theo tiêu chí IELTS. Quá trình này thường mất 15-30 giây.",
+    "markingTimeoutTitle": "Bài viết đang được tiếp tục chấm",
+    "markingTimeoutDesc": "Quá trình chấm bài mất nhiều thời gian hơn bình thường. Bạn có thể tiếp tục bài học, kết quả và nhận xét chi tiết sẽ hiển thị trong phần Bài viết của tôi.",
+    "goToMyWriting": "Xem Bài viết của tôi",
+    "markingFailedDesc": "Không thể chấm bài viết của bạn. Bài làm đã được lưu lại. Vui lòng thử lại."
   },
   "server": {
     "unreachable": "Máy chủ không phản hồi. Hãy tải lại trang để thử lại.",
@@ -773,5 +780,34 @@
     "addCustomWord": "Thêm như một từ mới",
     "notFoundInDict": "Từ điển chưa có \"{{query}}\".",
     "searchPlaceholder": "Tra từ điển hoặc gõ một từ..."
+  },
+  "writing": {
+    "myWritingTitle": "Bài viết của tôi",
+    "myWritingDesc": "Xem lại các bài viết đã nộp, điểm band và nhận xét từ giám khảo AI.",
+    "feedbackTitle": "Đánh giá bài viết",
+    "overallBand": "Điểm Band tổng",
+    "score": "Điểm",
+    "summary": "Nhận xét tổng quan của giám khảo",
+    "criteriaBands": "Chi tiết các tiêu chí",
+    "taskResponse": "Khả năng hoàn thành yêu cầu đề bài",
+    "coherenceCohesion": "Tính mạch lạc và liên kết",
+    "lexicalResource": "Vốn từ vựng",
+    "grammaticalRange": "Độ đa dạng và chính xác ngữ pháp",
+    "annotations": "Sửa lỗi & Ghi chú bài viết",
+    "annotationClickHint": "Chạm vào đoạn bôi màu để xem ghi chú",
+    "noAnnotations": "Không có ghi chú cụ thể",
+    "modelAnswer": "Bài viết mẫu tham khảo",
+    "statusGraded": "Đã chấm",
+    "statusGrading": "Đang chấm...",
+    "statusFailed": "Thất bại",
+    "noSubmissions": "Chưa có bài viết nào",
+    "noSubmissionsDesc": "Hoàn thành các bài tập viết trong bài học để nhận điểm IELTS và nhận xét chi tiết từ AI.",
+    "viewFeedbackBtn": "Xem nhận xét",
+    "errorLoading": "Không thể tải danh sách bài viết. Vui lòng kiểm tra kết nối mạng.",
+    "feedbackError": "Không thể tải nhận xét bài viết",
+    "errorTitle": "Không thể tải danh sách bài viết",
+    "retry": "Thử lại",
+    "showingRange": "Hiện {{from}}–{{to}} trên {{total}}",
+    "pageOf": "Trang {{current}} trên {{total}}"
   }
 }
