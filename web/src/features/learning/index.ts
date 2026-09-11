@@ -1,6 +1,7 @@
 export * from "./api/keys";
 export * from "./api/learningApi";
 export * from "./components/Dashboard/ContinueLearningCard";
+export * from "./components/Dashboard/DailyPracticeCard";
 export * from "./components/Dashboard/ReviewsDueCard";
 export * from "./components/Dashboard/SkillProgressCard";
 export * from "./components/Dashboard/DashboardSkeleton";

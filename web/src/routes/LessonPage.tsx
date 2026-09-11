@@ -35,6 +35,7 @@ import {
   ReportDialog,
   learningApi,
   learningKeys,
+  useDailyPracticeSet,
   RunnerHeader,
 } from "@/features/learning";
 import { useLesson } from "@/features/lesson";
@@ -166,13 +167,46 @@ export function LessonPage(): React.JSX.Element {
   const user = useAuthStore((state) => state.user);
   const userId = user?.userId;
 
+  const isDaily =
+    lessonId === "daily" ||
+    (typeof window !== "undefined" &&
+      window.location.pathname.includes("/practice/daily"));
+
+  const [practiceLevel] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      return (
+        urlParams.get("level") ||
+        localStorage.getItem("fluentra.practice_level") ||
+        "B1"
+      );
+    }
+    return "B1";
+  });
+
+  const {
+    data: dailySet,
+    isLoading: dailyLoading,
+    isError: isDailyError,
+    error: dailyError,
+    refetch: refetchDaily,
+  } = useDailyPracticeSet(practiceLevel, isDaily);
+
   const {
     data: lesson,
     isLoading: lessonLoading,
-    isError,
-    error,
-    refetch,
-  } = useLesson(lessonId);
+    isError: isLessonError,
+    error: lessonError,
+    refetch: refetchLesson,
+  } = useLesson(isDaily ? undefined : lessonId);
+
+  const activities = isDaily
+    ? (dailySet?.activities ?? [])
+    : (lesson?.activities ?? []);
+  const isLoading = isDaily ? dailyLoading : lessonLoading;
+  const isError = isDaily ? isDailyError : isLessonError;
+  const error = isDaily ? dailyError : lessonError;
+  const refetch = isDaily ? refetchDaily : refetchLesson;
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentAttemptId, setCurrentAttemptId] = useState<string | null>(null);
@@ -208,9 +242,6 @@ export function LessonPage(): React.JSX.Element {
   const [startTime, setStartTime] = useState(() => Date.now());
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
-  // `activities` is required on the lesson response; it is absent here only
-  // before the query resolves, which the loading branch handles.
-  const activities = lesson?.activities ?? [];
   const currentActivity = activities[currentIndex];
 
   /**
@@ -483,10 +514,10 @@ export function LessonPage(): React.JSX.Element {
 
   const handleConfirmExit = () => {
     setIsExitDialogOpen(false);
-    void navigate({ to: "/learn" });
+    void navigate({ to: isDaily ? "/practice" : "/learn" });
   };
 
-  if (lessonLoading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="animate-spin rounded-full h-8 w-8 border-4 border-border-subtle border-t-primary" />
@@ -494,7 +525,7 @@ export function LessonPage(): React.JSX.Element {
     );
   }
 
-  if (isError || !lesson) {
+  if (isError || (isDaily ? !dailySet : !lesson)) {
     return (
       <div className="py-12 max-w-lg mx-auto">
         <Card className="border-danger/30 text-center p-6">
@@ -503,19 +534,25 @@ export function LessonPage(): React.JSX.Element {
               <AlertCircle className="h-10 w-10 text-danger-accent" />
             </div>
             <CardTitle>
-              {t("learn.errorTitle", "Unable to Load Lesson")}
+              {isDaily
+                ? t("practice.daily.errorTitle", "Unable to Load Practice Set")
+                : t("learn.errorTitle", "Unable to Load Lesson")}
             </CardTitle>
             <CardDescription>
               {error?.message ||
-                t("learn.errorDesc", "Could not load lesson activities.")}
+                (isDaily
+                  ? t("practice.daily.errorDesc", "Could not load today's practice activities.")
+                  : t("learn.errorDesc", "Could not load lesson activities."))}
             </CardDescription>
           </CardHeader>
           <CardFooter className="justify-center gap-3">
             <Button variant="outline" onClick={() => void refetch()}>
               {t("action.retry", "Try again")}
             </Button>
-            <Button onClick={() => void navigate({ to: "/learn" })}>
-              {t("runner.backToCourseBtn", "Back to Syllabus")}
+            <Button onClick={() => void navigate({ to: isDaily ? "/practice" : "/learn" })}>
+              {isDaily
+                ? t("practice.daily.backBtn", "Back to Practice")
+                : t("runner.backToCourseBtn", "Back to Syllabus")}
             </Button>
           </CardFooter>
         </Card>
@@ -536,7 +573,7 @@ export function LessonPage(): React.JSX.Element {
           score={scoreCount}
           totalActivities={activities.length}
           timeSpentSeconds={elapsedSeconds}
-          {...(lesson.next_lesson_id
+          {...(lesson?.next_lesson_id
             ? { nextLessonId: lesson.next_lesson_id }
             : {})}
           onRetryLesson={() => {
@@ -644,7 +681,13 @@ export function LessonPage(): React.JSX.Element {
     <div className="min-h-screen bg-surface flex flex-col justify-between">
       {/* Runner Header */}
       <RunnerHeader
-        lessonTitle={lesson.title}
+        lessonTitle={
+          isDaily
+            ? t("practice.daily.runnerTitle", "Daily Practice Set ({{level}})", {
+                level: dailySet?.level || practiceLevel,
+              })
+            : (lesson?.title ?? "")
+        }
         currentStep={currentIndex + 1}
         totalSteps={activities.length}
         onExit={() => setIsExitDialogOpen(true)}

@@ -175,6 +175,9 @@ var _ contract.Reader = (*Service)(nil)
 // GetVersion retrieves a single content version by ID.
 // Note: An archived item's version remains readable by direct ID lookup (archive-mid-session trap).
 func (s *Service) GetVersion(ctx context.Context, id uuid.UUID) (*contract.Version, error) {
+	if v, ok := contract.TempVersionFromContext(ctx, id); ok {
+		return v, nil
+	}
 	v, err := s.repo.GetVersionByID(ctx, id)
 	if err != nil {
 		return nil, err

@@ -364,3 +364,23 @@ CompleteSessionRequest:
       type: integer
       nullable: true
       example: 3
+
+DailyPracticeSet:
+  type: object
+  required: [id, local_date, level, activities]
+  properties:
+    id:
+      type: string
+      format: uuid
+    local_date:
+      type: string
+      format: date
+      example: '2026-09-11'
+    level:
+      type: string
+      example: 'B1'
+    activities:
+      type: array
+      items:
+        $ref: './lesson.yaml#/LessonActivity'
+

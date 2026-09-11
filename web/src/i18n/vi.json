@@ -579,6 +579,20 @@
     "yourAccountHoldsNoAdministrativePermissions": "Tài khoản của bạn không có quyền quản trị."
   },
   "practice": {
+    "daily": {
+      "badge": "Bộ bài tập hôm nay",
+      "title": "Luyện tập hàng ngày",
+      "desc": "9 bài tập được kiểm định dành riêng cho hôm nay: 1 bài đọc, 5 câu ngữ pháp và 3 câu chuyển đổi.",
+      "slotReading": "1 Bài đọc",
+      "slotGrammar": "5 Ngữ pháp",
+      "slotTransforms": "3 Biến đổi câu",
+      "guestNote": "Đăng nhập để tích lũy chuỗi ngày và lưu tiến độ bài tập.",
+      "startBtn": "Bắt đầu bộ bài tập",
+      "runnerTitle": "Luyện tập hàng ngày ({{level}})",
+      "errorTitle": "Không thể tải bộ bài tập",
+      "errorDesc": "Không thể tải các bài tập hôm nay.",
+      "backBtn": "Quay lại trang luyện tập"
+    },
     "error": {
       "title": "Không tải được hàng đợi ôn tập",
       "desc": "Không kết nối được lịch ôn tập. Tiến độ của bạn vẫn an toàn."

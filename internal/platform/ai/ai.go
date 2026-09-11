@@ -43,6 +43,10 @@ const (
 	TaskEnrichExamples Task = "vocab_enrich_examples"
 	// TaskGradeWriting grades a learner's written response against a prompt and rubric.
 	TaskGradeWriting Task = "writing_grade"
+	// TaskPracticeGenerate writes one practice item with its answer for the practice pool.
+	TaskPracticeGenerate Task = "practice_generate"
+	// TaskPracticeSolve blind-solves a practice item given without answers to verify item quality.
+	TaskPracticeSolve Task = "practice_solve"
 )
 
 // Request is one unit of work.

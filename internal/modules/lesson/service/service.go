@@ -94,6 +94,9 @@ type Repository interface {
 	SyncActivities(
 		ctx context.Context, lessonID uuid.UUID, activities []domain.ActivityInput,
 	) ([]contract.Activity, error)
+	AppendActivity(
+		ctx context.Context, lessonID uuid.UUID, activity domain.ActivityInput,
+	) (*contract.Activity, error)
 	ListPrerequisitesByLessonID(ctx context.Context, lessonID uuid.UUID) ([]PrerequisiteItem, error)
 	ListPrerequisitesForLessons(ctx context.Context, lessonIDs []uuid.UUID) ([]PrerequisiteItem, error)
 	ListAllPrerequisitesInCourse(ctx context.Context, courseID uuid.UUID) ([]domain.PrerequisiteEdge, error)

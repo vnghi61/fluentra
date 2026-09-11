@@ -3680,6 +3680,35 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+  /practice/daily:
+    get:
+      tags: [learning]
+      operationId: getDailyPractice
+      summary: Get today's practice set for the authenticated learner.
+      description: >-
+        Returns the daily practice set for today in timezone Asia/Ho_Chi_Minh.
+        If not yet generated today, builds it from the practice pool (1 passage,
+        5 grammar items, 3 rewrite items) and records exposures.
+      x-permission: self
+      parameters:
+        - name: level
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [A2, B1, B2]
+      responses:
+        '200':
+          description: Today's practice set.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailyPracticeSet'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /me/sessions:
     post:
       tags: [learning]
@@ -5377,6 +5406,8 @@ components:
       $ref: ./components/learning.yaml#/LearningSession
     CompleteSessionRequest:
       $ref: ./components/learning.yaml#/CompleteSessionRequest
+    DailyPracticeSet:
+      $ref: ./components/learning.yaml#/DailyPracticeSet
     ReviewGrade:
       $ref: ./components/srs.yaml#/ReviewGrade
     ReviewCard:

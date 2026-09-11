@@ -11,6 +11,56 @@ import (
 	"github.com/google/uuid"
 )
 
+const appendActivity = `-- name: AppendActivity :one
+INSERT INTO learn.activities (
+    lesson_id,
+    position,
+    kind,
+    content_version_id,
+    config,
+    weight
+) VALUES (
+    $1,
+    (SELECT COALESCE(MAX(position), 0) + 1 FROM learn.activities WHERE lesson_id = $1),
+    $2,
+    $3,
+    $4,
+    $5
+) RETURNING id, lesson_id, position, kind, content_version_id, config, weight, created_at, updated_at, retired_at
+`
+
+type AppendActivityParams struct {
+	LessonID         uuid.UUID
+	Kind             string
+	ContentVersionID uuid.UUID
+	Config           []byte
+	Weight           int32
+}
+
+func (q *Queries) AppendActivity(ctx context.Context, arg AppendActivityParams) (LearnActivity, error) {
+	row := q.db.QueryRow(ctx, appendActivity,
+		arg.LessonID,
+		arg.Kind,
+		arg.ContentVersionID,
+		arg.Config,
+		arg.Weight,
+	)
+	var i LearnActivity
+	err := row.Scan(
+		&i.ID,
+		&i.LessonID,
+		&i.Position,
+		&i.Kind,
+		&i.ContentVersionID,
+		&i.Config,
+		&i.Weight,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.RetiredAt,
+	)
+	return i, err
+}
+
 const createActivity = `-- name: CreateActivity :one
 INSERT INTO learn.activities (
     lesson_id,

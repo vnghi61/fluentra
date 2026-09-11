@@ -250,6 +250,18 @@ export const reviewRoute = createRoute({
   component: ReviewPage,
 });
 
+export const dailyPracticeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/practice/daily",
+  beforeLoad: () => {
+    const { status } = useAuthStore.getState();
+    if (status === "unauthenticated") {
+      throw redirect({ to: "/login" });
+    }
+  },
+  component: LessonPage,
+});
+
 // A learner's own vocabulary. Signed-in only, like the review session: an
 // upload belongs to a person, and a guest has none.
 export const myWordsRoute = createRoute({
@@ -365,6 +377,7 @@ export const routeTree = rootRoute.addChildren([
   learnRoute,
   lessonRoute,
   practiceRoute,
+  dailyPracticeRoute,
   reviewRoute,
   myWordsRoute,
   myWritingRoute,

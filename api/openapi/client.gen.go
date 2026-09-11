@@ -1261,6 +1261,13 @@ type ClientInterface interface {
 	// Corresponds with GET /ping (the `SystemPing` operationId).
 	SystemPing(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetDailyPractice Get today's practice set for the authenticated learner.
+	//
+	// Returns the daily practice set for today in timezone Asia/Ho_Chi_Minh. If not yet generated today, builds it from the practice pool (1 passage, 5 grammar items, 3 rewrite items) and records exposures.
+	//
+	// Corresponds with GET /practice/daily (the `GetDailyPractice` operationId).
+	GetDailyPractice(ctx context.Context, params *GetDailyPracticeParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// SystemReady Check dependency readiness.
 	//
 	// Returns success only when every hard dependency is usable.
@@ -3883,6 +3890,23 @@ func (c *Client) GetVocabUpload(ctx context.Context, id openapi_types.UUID, reqE
 // Corresponds with GET /ping (the `SystemPing` operationId).
 func (c *Client) SystemPing(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSystemPingRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetDailyPractice Get today's practice set for the authenticated learner.
+//
+// Returns the daily practice set for today in timezone Asia/Ho_Chi_Minh. If not yet generated today, builds it from the practice pool (1 passage, 5 grammar items, 3 rewrite items) and records exposures.
+//
+// Corresponds with GET /practice/daily (the `GetDailyPractice` operationId).
+func (c *Client) GetDailyPractice(ctx context.Context, params *GetDailyPracticeParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetDailyPracticeRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -8271,6 +8295,60 @@ func NewSystemPingRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewGetDailyPracticeRequest constructs an http.Request for the GetDailyPractice method
+func NewGetDailyPracticeRequest(server string, params *GetDailyPracticeParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/practice/daily")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Level != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "level", *params.Level, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewSystemReadyRequest constructs an http.Request for the SystemReady method
 func NewSystemReadyRequest(server string) (*http.Request, error) {
 	var err error
@@ -10457,6 +10535,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /ping (the `SystemPing` operationId).
 	SystemPingWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*SystemPingResponse, error)
+
+	// GetDailyPracticeWithResponse Get today's practice set for the authenticated learner.
+	//
+	// Returns the daily practice set for today in timezone Asia/Ho_Chi_Minh. If not yet generated today, builds it from the practice pool (1 passage, 5 grammar items, 3 rewrite items) and records exposures.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /practice/daily (the `GetDailyPractice` operationId).
+	GetDailyPracticeWithResponse(ctx context.Context, params *GetDailyPracticeParams, reqEditors ...RequestEditorFn) (*GetDailyPracticeResponse, error)
 
 	// SystemReadyWithResponse Check dependency readiness.
 	//
@@ -17286,6 +17373,61 @@ func (r SystemPingResponse) ContentType() string {
 	return ""
 }
 
+// GetDailyPracticeResponse200Headers the declared response headers of an HTTP 200 response for GetDailyPractice
+type GetDailyPracticeResponse200Headers struct {
+	XRequestId *string
+}
+
+type GetDailyPracticeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *DailyPracticeSet
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetDailyPracticeResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetDailyPracticeResponse) GetJSON200() *DailyPracticeSet {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetDailyPracticeResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetBody returns the raw response body bytes
+func (r GetDailyPracticeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetDailyPracticeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetDailyPracticeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetDailyPracticeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // SystemReadyResponse200Headers the declared response headers of an HTTP 200 response for SystemReady
 type SystemReadyResponse200Headers struct {
 	XRequestId *string
@@ -20654,6 +20796,21 @@ func (c *ClientWithResponses) SystemPingWithResponse(ctx context.Context, reqEdi
 		return nil, err
 	}
 	return ParseSystemPingResponse(rsp)
+}
+
+// GetDailyPracticeWithResponse Get today's practice set for the authenticated learner.
+//
+// Returns the daily practice set for today in timezone Asia/Ho_Chi_Minh. If not yet generated today, builds it from the practice pool (1 passage, 5 grammar items, 3 rewrite items) and records exposures.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /practice/daily (the `GetDailyPractice` operationId).
+func (c *ClientWithResponses) GetDailyPracticeWithResponse(ctx context.Context, params *GetDailyPracticeParams, reqEditors ...RequestEditorFn) (*GetDailyPracticeResponse, error) {
+	rsp, err := c.GetDailyPractice(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetDailyPracticeResponse(rsp)
 }
 
 // SystemReadyWithResponse Check dependency readiness.
@@ -27218,6 +27375,52 @@ func ParseSystemPingResponse(rsp *http.Response) (*SystemPingResponse, error) {
 	switch {
 	case rsp.StatusCode == 200:
 		var headers SystemPingResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGetDailyPracticeResponse parses an HTTP response from a GetDailyPracticeWithResponse call
+func ParseGetDailyPracticeResponse(rsp *http.Response) (*GetDailyPracticeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetDailyPracticeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DailyPracticeSet
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetDailyPracticeResponse200Headers
 		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
 			var value string
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {

@@ -116,8 +116,45 @@ func (s *Service) SyncActivities(
 	return nil
 }
 
+// AppendActivity implements contract.Author.
+//
+// Unlike SyncActivities, AppendActivity never replaces or retires existing activities.
+// It is used by the practice pool (§3.11) where activities are append-only.
+func (s *Service) AppendActivity(
+	ctx context.Context, lessonID uuid.UUID, activity contract.ActivitySpec,
+) (uuid.UUID, error) {
+	if lessonID == uuid.Nil {
+		return uuid.Nil, authorInvalid("Appending an activity needs a lesson.")
+	}
+	if activity.Kind == "" || activity.ContentVersionID == uuid.Nil {
+		return uuid.Nil, authorInvalid("Every generated activity needs a kind and a content version.")
+	}
+	config := activity.Config
+	if len(config) == 0 {
+		config = json.RawMessage("{}")
+	}
+	weight := activity.Weight
+	if weight <= 0 {
+		weight = 1
+	}
+
+	created, err := s.repo.AppendActivity(ctx, lessonID, domain.ActivityInput{
+		Kind:             activity.Kind,
+		ContentVersionID: activity.ContentVersionID,
+		Config:           config,
+		Weight:           weight,
+	})
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	s.invalidateLessonCaches(ctx, lessonID, uuid.Nil)
+	return created.ID, nil
+}
+
 func authorInvalid(message string) error {
 	return apperr.New(apperr.Validation, "LESSON_AUTHOR_SPEC_INVALID", message)
 }
 
 var _ contract.Author = (*Service)(nil)
+

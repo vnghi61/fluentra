@@ -18,10 +18,12 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	contentcontract "github.com/fluentra/fluentra/internal/modules/content/contract"
 	"github.com/fluentra/fluentra/internal/modules/learning/contract"
 	"github.com/fluentra/fluentra/internal/modules/learning/domain"
 	"github.com/fluentra/fluentra/internal/modules/learning/repository"
 	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
+
 	srscontract "github.com/fluentra/fluentra/internal/modules/srs/contract"
 	"github.com/fluentra/fluentra/internal/platform/ai"
 	"github.com/fluentra/fluentra/internal/platform/cache"
@@ -99,6 +101,37 @@ type Repository interface {
 	UpsertAnswerExplanation(
 		ctx context.Context, explanation repository.AnswerExplanationDTO,
 	) (*repository.AnswerExplanationDTO, error)
+	GetPoolPracticeCourseID(ctx context.Context) (uuid.UUID, error)
+	GetDailySet(
+		ctx context.Context, userID uuid.UUID, localDate time.Time,
+	) (*domain.DailySet, error)
+	CreateDailySet(
+		ctx context.Context, userID uuid.UUID, localDate time.Time, activityIDs []uuid.UUID,
+	) (*domain.DailySet, error)
+	RecordItemExposure(
+		ctx context.Context, userID uuid.UUID, activityID uuid.UUID,
+	) error
+	CountActivePoolActivitiesForSlot(
+		ctx context.Context, levelTitle string, kind string,
+	) (int64, error)
+	ListPoolActivitiesForSlot(
+		ctx context.Context, levelTitle string, kind string,
+	) ([]domain.PoolActivity, error)
+	ListUnseenPoolActivitiesForSlot(
+		ctx context.Context, levelTitle string, kind string, userID uuid.UUID,
+	) ([]domain.PoolActivity, error)
+	ListSeenPoolActivitiesForSlotOldestFirst(
+		ctx context.Context, levelTitle string, kind string, userID uuid.UUID,
+	) ([]domain.PoolActivity, error)
+	HasActiveUserWithFewUnseenItems(
+		ctx context.Context, levelTitle string, kind string,
+	) (bool, error)
+	GetPoolLessonID(
+		ctx context.Context, levelTitle string, lessonTitle string,
+	) (uuid.UUID, error)
+	ListActivitiesByIDs(
+		ctx context.Context, activityIDs []uuid.UUID,
+	) ([]domain.PoolActivity, error)
 	// WithTx returns this repository bound to tx. It returns the interface, not
 	// the concrete struct: returning *repository.Repository dropped every
 	// decorator the service had been given the moment the grading transaction
@@ -164,36 +197,42 @@ type LearningCaches struct {
 
 // Deps holds dependencies for constructing the learning service.
 type Deps struct {
-	Pool     *pgxpool.Pool
-	Repo     Repository
-	Lesson   lessoncontract.Reader
-	SRSDue   srscontract.QueueReader
-	SRSCards srscontract.CardWriter
-	Graders  *domain.GraderRegistry
-	Events   EventWriter
-	Metrics  telemetry.Instruments
-	Clock    clock.Clock
-	NewID    func() (uuid.UUID, error)
-	Caches   LearningCaches
-	Env      string
-	AI       ai.Client
+	Pool          *pgxpool.Pool
+	Repo          Repository
+	Lesson        lessoncontract.Reader
+	LessonAuthor  lessoncontract.Author
+	Content       contentcontract.Reader
+	ContentAuthor contentcontract.Author
+	SRSDue        srscontract.QueueReader
+	SRSCards      srscontract.CardWriter
+	Graders       *domain.GraderRegistry
+	Events        EventWriter
+	Metrics       telemetry.Instruments
+	Clock         clock.Clock
+	NewID         func() (uuid.UUID, error)
+	Caches        LearningCaches
+	Env           string
+	AI            ai.Client
 }
 
 // Service coordinates attempt execution, grading, progress rollups, and event emission.
 type Service struct {
-	pool     *pgxpool.Pool
-	repo     Repository
-	lesson   lessoncontract.Reader
-	srsDue   srscontract.QueueReader
-	srsCards srscontract.CardWriter
-	graders  *domain.GraderRegistry
-	events   EventWriter
-	metrics  telemetry.Instruments
-	clock    clock.Clock
-	newID    func() (uuid.UUID, error)
-	caches   LearningCaches
-	env      string
-	ai       ai.Client
+	pool          *pgxpool.Pool
+	repo          Repository
+	lesson        lessoncontract.Reader
+	lessonAuthor  lessoncontract.Author
+	content       contentcontract.Reader
+	contentAuthor contentcontract.Author
+	srsDue        srscontract.QueueReader
+	srsCards      srscontract.CardWriter
+	graders       *domain.GraderRegistry
+	events        EventWriter
+	metrics       telemetry.Instruments
+	clock         clock.Clock
+	newID         func() (uuid.UUID, error)
+	caches        LearningCaches
+	env           string
+	ai            ai.Client
 }
 
 // New constructs a new Service.
@@ -209,19 +248,22 @@ func New(deps Deps) *Service {
 		}
 	}
 	return &Service{
-		pool:     deps.Pool,
-		repo:     deps.Repo,
-		lesson:   deps.Lesson,
-		srsDue:   deps.SRSDue,
-		srsCards: deps.SRSCards,
-		graders:  deps.Graders,
-		events:   deps.Events,
-		metrics:  deps.Metrics,
-		clock:    clk,
-		newID:    idGen,
-		caches:   deps.Caches,
-		env:      deps.Env,
-		ai:       deps.AI,
+		pool:          deps.Pool,
+		repo:          deps.Repo,
+		lesson:        deps.Lesson,
+		lessonAuthor:  deps.LessonAuthor,
+		content:       deps.Content,
+		contentAuthor: deps.ContentAuthor,
+		srsDue:        deps.SRSDue,
+		srsCards:      deps.SRSCards,
+		graders:       deps.Graders,
+		events:        deps.Events,
+		metrics:       deps.Metrics,
+		clock:         clk,
+		newID:         idGen,
+		caches:        deps.Caches,
+		env:           deps.Env,
+		ai:            deps.AI,
 	}
 }
 

@@ -152,6 +152,8 @@ type Author interface {
 	EnsureLesson(ctx context.Context, spec LessonSpec) (uuid.UUID, error)
 	// SyncActivities synchronises a generated lesson's activity list in place.
 	SyncActivities(ctx context.Context, lessonID uuid.UUID, activities []ActivitySpec) error
+	// AppendActivity appends an activity to a lesson without replacing existing ones.
+	AppendActivity(ctx context.Context, lessonID uuid.UUID, activity ActivitySpec) (uuid.UUID, error)
 }
 
 // Published is emitted when a lesson is published.

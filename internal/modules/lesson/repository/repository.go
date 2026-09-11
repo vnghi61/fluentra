@@ -507,6 +507,33 @@ func (r *Repository) SyncActivities(
 	return result, nil
 }
 
+// AppendActivity adds an activity to the end of a lesson.
+func (r *Repository) AppendActivity(
+	ctx context.Context, lessonID uuid.UUID, activity ActivityInputDTO,
+) (*contract.Activity, error) {
+	cfg := activity.Config
+	if len(cfg) == 0 {
+		cfg = json.RawMessage("{}")
+	}
+	weight := activity.Weight
+	if weight <= 0 {
+		weight = 1
+	}
+	created, err := r.queries.AppendActivity(ctx, sqlc.AppendActivityParams{
+		LessonID:         lessonID,
+		Kind:             activity.Kind,
+		ContentVersionID: activity.ContentVersionID,
+		Config:           []byte(cfg),
+		Weight:           int32(weight), //nolint:gosec // bounded integer
+	})
+	if err != nil {
+		return nil, mapPgError(err)
+	}
+	act := ToContractActivity(created)
+	return &act, nil
+}
+
+
 // ListPrerequisitesByLessonID lists all prerequisites for a specific lesson with prerequisite titles.
 func (r *Repository) ListPrerequisitesByLessonID(ctx context.Context, lessonID uuid.UUID) ([]PrerequisiteItem, error) {
 	rows, err := r.queries.ListPrerequisitesByLessonID(ctx, lessonID)

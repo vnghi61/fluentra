@@ -39,13 +39,23 @@ async function renderPractice() {
     path: "/practice/review",
     component: () => <div>review session</div>,
   });
+  const dailyRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/practice/daily",
+    component: () => <div>daily practice</div>,
+  });
   const learnRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/learn",
     component: () => <div>learn</div>,
   });
   const router = createRouter({
-    routeTree: rootRoute.addChildren([practiceRoute, reviewRoute, learnRoute]),
+    routeTree: rootRoute.addChildren([
+      practiceRoute,
+      reviewRoute,
+      dailyRoute,
+      learnRoute,
+    ]),
     history: createMemoryHistory({ initialEntries: ["/practice"] }),
   });
   await router.load();
@@ -186,6 +196,30 @@ describe("PracticePage hub", () => {
     expect(writingLink).toHaveAttribute(
       "href",
       "/learn?course=writing-practice",
+    );
+  });
+
+  it("renders daily practice set card with level selector and start button", async () => {
+    server.use(
+      http.get("/api/v1/reviews/due-count", () =>
+        HttpResponse.json({ due_count: 0 }),
+      ),
+      http.get("/api/v1/reviews/forecast", () => HttpResponse.json(forecast)),
+    );
+
+    await renderPractice();
+
+    expect(await screen.findByText("Today's Practice Set")).toBeInTheDocument();
+    expect(screen.getByText("1 Passage")).toBeInTheDocument();
+    expect(screen.getByText("5 Grammar")).toBeInTheDocument();
+    expect(screen.getByText("3 Transforms")).toBeInTheDocument();
+
+    const startDailyLink = screen.getByRole("link", {
+      name: /Start Today's Set/i,
+    });
+    expect(startDailyLink).toHaveAttribute(
+      "href",
+      expect.stringContaining("/practice/daily"),
     );
   });
 });

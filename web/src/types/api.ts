@@ -1557,6 +1557,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/practice/daily": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get today's practice set for the authenticated learner.
+         * @description Returns the daily practice set for today in timezone Asia/Ho_Chi_Minh. If not yet generated today, builds it from the practice pool (1 passage, 5 grammar items, 3 rewrite items) and records exposures.
+         */
+        get: operations["getDailyPractice"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/me/sessions": {
         parameters: {
             query?: never;
@@ -3779,6 +3799,18 @@ export interface components {
         CompleteSessionRequest: {
             /** @example 3 */
             activities_completed?: number | null;
+        };
+        DailyPracticeSet: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * Format: date
+             * @example 2026-09-11
+             */
+            local_date: string;
+            /** @example B1 */
+            level: string;
+            activities: components["schemas"]["LessonActivity"][];
         };
         /**
          * @description FSRS recall evaluation grade.
@@ -7978,6 +8010,30 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    getDailyPractice: {
+        parameters: {
+            query?: {
+                level?: "A2" | "B1" | "B2";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Today's practice set. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DailyPracticeSet"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
         };
     };
     startLearningSession: {

@@ -540,6 +540,14 @@ type LearnCourseUnit struct {
 	UpdatedAt   time.Time
 }
 
+type LearnDailySet struct {
+	ID          uuid.UUID
+	UserID      uuid.UUID
+	LocalDate   pgtype.Date
+	ActivityIds []uuid.UUID
+	CreatedAt   time.Time
+}
+
 type LearnEnrollment struct {
 	ID          uuid.UUID
 	UserID      uuid.UUID
@@ -549,6 +557,12 @@ type LearnEnrollment struct {
 	CompletedAt *time.Time
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+}
+
+type LearnItemExposure struct {
+	UserID        uuid.UUID
+	ActivityID    uuid.UUID
+	FirstServedAt time.Time
 }
 
 type LearnLearningSession struct {

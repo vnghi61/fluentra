@@ -19,7 +19,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { GuestNotice } from "@/features/learning";
+import { DailyPracticeCard, GuestNotice } from "@/features/learning";
 import { useCourse } from "@/features/lesson";
 import { useAuthStore } from "@/stores/authStore";
 import {
@@ -69,6 +69,9 @@ export function PracticePage(): React.JSX.Element {
           )}
         </p>
       </header>
+
+      {/* Daily Practice Set */}
+      <DailyPracticeCard />
 
       {!signedIn ? (
         <>

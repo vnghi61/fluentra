@@ -25,9 +25,15 @@ import (
 	authservice "github.com/fluentra/fluentra/internal/modules/auth/service"
 	"github.com/fluentra/fluentra/internal/modules/content"
 	"github.com/fluentra/fluentra/internal/modules/gamification"
+	"github.com/fluentra/fluentra/internal/modules/grammar"
+	grammarcontract "github.com/fluentra/fluentra/internal/modules/grammar/contract"
 	"github.com/fluentra/fluentra/internal/modules/learning"
+	learningcontract "github.com/fluentra/fluentra/internal/modules/learning/contract"
 	learningjob "github.com/fluentra/fluentra/internal/modules/learning/job"
 	"github.com/fluentra/fluentra/internal/modules/lesson"
+	"github.com/fluentra/fluentra/internal/modules/reading"
+	readingcontract "github.com/fluentra/fluentra/internal/modules/reading/contract"
+
 	lessonservice "github.com/fluentra/fluentra/internal/modules/lesson/service"
 	"github.com/fluentra/fluentra/internal/modules/rbac"
 	rbaccontract "github.com/fluentra/fluentra/internal/modules/rbac/contract"
@@ -437,11 +443,31 @@ func run(ctx context.Context) error {
 func startLearning(
 	ctx context.Context, pool *pgxpool.Pool, cron *job.CronScheduler,
 	instruments telemetry.Instruments, lessonModule *lesson.Module,
+	contentModule *content.Module, aiClient ai.Client,
+	readingModule *reading.Module, grammarModule *grammar.Module,
 ) (*learning.Module, error) {
+	graders := make(map[string]learningcontract.ExerciseGrader)
+	if readingModule != nil {
+		for _, kind := range readingcontract.GradedKinds() {
+			graders[kind] = readingModule.Grader()
+		}
+	}
+	if grammarModule != nil {
+		for _, kind := range grammarcontract.GradedKinds() {
+			graders[kind] = grammarModule.Grader()
+		}
+	}
+
 	learningModule := learning.New(learning.Deps{
-		Pool:   pool,
-		Lesson: lessonModule.Reader(),
+		Pool:          pool,
+		Lesson:        lessonModule.Reader(),
+		LessonAuthor:  lessonModule.Author(),
+		Content:       contentModule.Reader(),
+		ContentAuthor: contentModule.Author(),
+		Graders:       graders,
+		AI:            aiClient,
 	})
+
 
 	for _, scheduled := range learningModule.CronJobs() {
 		cron.Register(scheduled)
@@ -508,7 +534,23 @@ func startModules(
 		return err
 	}
 
-	learningModule, err := startLearning(ctx, pool, cron, instruments, lessonModule)
+	contentModule := content.NewAuthoring(content.Deps{Pool: pool})
+	readingModule := reading.New(reading.Deps{Content: contentModule.Reader()})
+	grammarModule := grammar.New(grammar.Deps{Content: contentModule.Reader()})
+
+	aiClient, err := ai.New(ai.Config{
+		Providers: cfg.aiProviders(),
+		Pool:      pool,
+	})
+	if err != nil {
+		slog.WarnContext(ctx, "no AI client; uploads will be verified against the dictionary alone",
+			"error", err)
+		aiClient = nil
+	}
+
+	learningModule, err := startLearning(
+		ctx, pool, cron, instruments, lessonModule, contentModule, aiClient, readingModule, grammarModule,
+	)
 	if err != nil {
 		return err
 	}
@@ -528,7 +570,9 @@ func startModules(
 
 	startPracticeGenerator(
 		ctx, cfg, pool, cron, rbacModule, lessonModule, srsModule, workers, learningModule,
+		contentModule, aiClient,
 	)
+
 
 	if err := startGamification(pool, bus, cron); err != nil {
 		return err
@@ -771,6 +815,8 @@ func startPracticeGenerator(
 	srsModule *srs.Module,
 	workers *river.Workers,
 	learningModule *learning.Module,
+	contentModule *content.Module,
+	aiClient ai.Client,
 ) {
 	author, err := rbacModule.RoleMembers().FirstHolderOf(ctx, rbaccontract.RoleAdmin)
 	if err != nil {
@@ -779,25 +825,8 @@ func startPracticeGenerator(
 		return
 	}
 
-	// The AI client the upload verification uses. A configuration it cannot
-	// build is logged and dropped rather than fatal: verification degrades to
-	// the dictionary alone, which still answers the question that matters most
-	// — whether the word exists.
-	aiClient, err := ai.New(ai.Config{
-		Providers: cfg.aiProviders(),
-		Pool:      pool,
-	})
-	if err != nil {
-		slog.WarnContext(ctx, "no AI client; uploads will be verified against the dictionary alone",
-			"error", err)
-		aiClient = nil
-	}
-
-	// NewAuthoring, not New: this process mounts no routes and has no guard to
-	// give, and New fails closed without one — correctly, since its admin
-	// authoring routes would otherwise be unprotected.
-	contentModule := content.NewAuthoring(content.Deps{Pool: pool})
 	vocabularyModule := vocabulary.New(vocabulary.Deps{
+
 		Pool:              pool,
 		ContentAuthor:     contentModule.Author(),
 		LessonAuthor:      lessonModule.Author(),

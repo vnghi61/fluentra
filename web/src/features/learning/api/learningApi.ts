@@ -20,6 +20,7 @@ export type ItemReportReason = components["schemas"]["ItemReportReason"];
 export type CreateItemReportRequest =
   components["schemas"]["CreateItemReportRequest"];
 export type ItemReport = components["schemas"]["ItemReport"];
+export type DailyPracticeSet = components["schemas"]["DailyPracticeSet"];
 
 export const learningApi = {
   /** Fetch the learner's current dashboard state */
@@ -121,6 +122,12 @@ export const learningApi = {
       body: JSON.stringify(req),
     });
   },
+
+  /** Fetch the caller's daily practice set for today */
+  async getDailyPracticeSet(level?: string): Promise<DailyPracticeSet> {
+    const query = level ? `?level=${encodeURIComponent(level)}` : "";
+    return apiFetch<DailyPracticeSet>(`/api/v1/practice/daily${query}`);
+  },
 };
 
 /** React Query hook for the learner dashboard */
@@ -136,5 +143,15 @@ export function useProgress() {
   return useQuery({
     queryKey: learningKeys.progress(),
     queryFn: () => learningApi.getProgress(),
+  });
+}
+
+/** React Query hook for daily practice set */
+export function useDailyPracticeSet(level?: string, enabled = true) {
+  return useQuery({
+    queryKey: learningKeys.dailySet(level),
+    queryFn: () => learningApi.getDailyPracticeSet(level),
+    enabled,
+    staleTime: 5 * 60 * 1000,
   });
 }

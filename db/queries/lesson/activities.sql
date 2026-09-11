@@ -37,6 +37,24 @@ INSERT INTO learn.activities (
     $1, $2, $3, $4, $5, $6
 ) RETURNING *;
 
+-- name: AppendActivity :one
+INSERT INTO learn.activities (
+    lesson_id,
+    position,
+    kind,
+    content_version_id,
+    config,
+    weight
+) VALUES (
+    $1,
+    (SELECT COALESCE(MAX(position), 0) + 1 FROM learn.activities WHERE lesson_id = $1),
+    $2,
+    $3,
+    $4,
+    $5
+) RETURNING *;
+
+
 -- name: ListLessonIDsByContentVersionID :many
 SELECT DISTINCT lesson_id
 FROM learn.activities

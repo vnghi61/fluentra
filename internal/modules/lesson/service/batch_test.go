@@ -287,6 +287,23 @@ func (f *fakeLessonRepo) SyncActivities(
 	return acts, nil
 }
 
+func (f *fakeLessonRepo) AppendActivity(
+	_ context.Context, lessonID uuid.UUID, a domain.ActivityInput,
+) (*contract.Activity, error) {
+	f.queryCounter.Add(1)
+	act := contract.Activity{
+		ID:               uuid.New(),
+		LessonID:         lessonID,
+		Position:         len(f.activities) + 1,
+		Kind:             a.Kind,
+		ContentVersionID: a.ContentVersionID,
+		Config:           a.Config,
+		Weight:           a.Weight,
+	}
+	f.activities = append(f.activities, act)
+	return &act, nil
+}
+
 func (f *fakeLessonRepo) ListPrerequisitesByLessonID(
 	_ context.Context, _ uuid.UUID,
 ) ([]service.PrerequisiteItem, error) {

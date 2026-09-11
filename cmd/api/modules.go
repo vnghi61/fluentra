@@ -283,11 +283,15 @@ func newIdentity(deps identityDeps) *identity {
 	})
 
 	assembled.learning = learning.New(learning.Deps{
-		Pool:     deps.Pool,
-		Caches:   newLearningCaches(deps.Redis),
-		Guard:    lazyGuard{of: assembled},
-		Lesson:   assembled.lesson.Reader(),
-		SRSDue:   assembled.srs.QueueReader(),
+		Pool:          deps.Pool,
+		Caches:        newLearningCaches(deps.Redis),
+		Guard:         lazyGuard{of: assembled},
+		Lesson:        assembled.lesson.Reader(),
+		LessonAuthor:  assembled.lesson.Author(),
+		Content:       assembled.content.Reader(),
+		ContentAuthor: assembled.content.Author(),
+		SRSDue:        assembled.srs.QueueReader(),
+
 		SRSCards: assembled.srs.CardWriter(),
 		Graders: buildGraders(
 			assembled.vocabulary.Grader(),

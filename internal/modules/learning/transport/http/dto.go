@@ -293,3 +293,46 @@ func toProgressResponse(p *domain.ProgressData) ProgressResponse {
 		Skills:  skills,
 	}
 }
+
+// DailyPracticeActivityResponse models one activity inside a daily practice set.
+type DailyPracticeActivityResponse struct {
+	ID               uuid.UUID              `json:"id"`
+	LessonID         uuid.UUID              `json:"lesson_id"`
+	Position         int                    `json:"position"`
+	Kind             string                 `json:"kind"`
+	ContentVersionID uuid.UUID              `json:"content_version_id"`
+	Config           map[string]interface{} `json:"config,omitempty"`
+	Content          map[string]interface{} `json:"content,omitempty"`
+	Weight           int                    `json:"weight"`
+}
+
+// DailyPracticeResponse models the GET /practice/daily response.
+type DailyPracticeResponse struct {
+	ID         uuid.UUID                       `json:"id"`
+	LocalDate  string                          `json:"local_date"`
+	Level      string                          `json:"level"`
+	Activities []DailyPracticeActivityResponse `json:"activities"`
+}
+
+func toDailyPracticeResponse(dto *domain.DailySetDTO) DailyPracticeResponse {
+	activities := make([]DailyPracticeActivityResponse, len(dto.Activities))
+	for i, act := range dto.Activities {
+		activities[i] = DailyPracticeActivityResponse{
+			ID:               act.ID,
+			LessonID:         act.LessonID,
+			Position:         act.Position,
+			Kind:             act.Kind,
+			ContentVersionID: act.ContentVersionID,
+			Config:           act.Config,
+			Content:          act.Content,
+			Weight:           act.Weight,
+		}
+	}
+	return DailyPracticeResponse{
+		ID:         dto.ID,
+		LocalDate:  dto.LocalDate.Format("2006-01-02"),
+		Level:      dto.Level,
+		Activities: activities,
+	}
+}
+
