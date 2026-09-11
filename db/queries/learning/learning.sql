@@ -116,6 +116,7 @@ UPDATE learn.attempts
 SET status          = 'grading',
     idempotency_key = $3,
     response        = $4,
+    grader          = $5,
     updated_at      = now()
 WHERE id = $1
   AND created_at = $2
@@ -128,6 +129,7 @@ UPDATE learn.attempts
 SET status          = 'in_progress',
     idempotency_key = NULL,
     response        = '{}'::jsonb,
+    grader          = NULL,
     updated_at      = now()
 WHERE id = $1
   AND created_at = $2
@@ -215,12 +217,17 @@ SET is_correct = EXCLUDED.is_correct,
     updated_at = now()
 RETURNING id, content_version_id, user_answer, is_correct, explanation_en, explanation_vi, created_at, updated_at;
 
--- name: CountGradedAttemptsSince :one
+-- name: CountAttemptsTowardLimitSince :one
+-- Graded and still-grading attempts both count. An essay being marked has already
+-- been handed to the model the limit exists to bound, and counting only graded
+-- ones let a learner submit fifty in the seconds before the first came back.
+-- Failed attempts do not count: quota is charged on success (writing/DECISIONS.md).
+-- The claim records the grader, which is what makes an in-flight attempt visible.
 SELECT count(*)::integer
 FROM learn.attempts
 WHERE user_id = $1
   AND grader = $2
-  AND status = 'graded'
+  AND status IN ('grading', 'graded')
   AND created_at >= $3;
 
 -- name: CompleteGradingAttempt :execrows

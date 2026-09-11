@@ -39,12 +39,14 @@ func seedContentAndCurriculum(ctx context.Context, pool *pgxpool.Pool, adminID u
 	if err := seedCourseData(ctx, pool, adminID, readingCourseSeedData); err != nil {
 		return fmt.Errorf("seed reading course data: %w", err)
 	}
-	_, _ = fmt.Fprintf(out, "  ✓ Course: %s (6 lessons, %d units)\n", readingCourseSeedData.Title, len(readingCourseSeedData.Units))
+	_, _ = fmt.Fprintf(out, "  ✓ Course: %s (6 lessons, %d units)\n",
+		readingCourseSeedData.Title, len(readingCourseSeedData.Units))
 
 	if err := seedCourseData(ctx, pool, adminID, writingCourseSeedData); err != nil {
 		return fmt.Errorf("seed writing course data: %w", err)
 	}
-	_, _ = fmt.Fprintf(out, "  ✓ Course: %s (6 lessons, %d units)\n", writingCourseSeedData.Title, len(writingCourseSeedData.Units))
+	_, _ = fmt.Fprintf(out, "  ✓ Course: %s (6 lessons, %d units)\n",
+		writingCourseSeedData.Title, len(writingCourseSeedData.Units))
 
 	// 2. Seed 200 Word Senses and Public Deck
 	count, err := seedVocabularyWords(ctx, pool, adminID, wordSenseSeedData)
@@ -151,10 +153,16 @@ func seedCourseData(ctx context.Context, pool *pgxpool.Pool, adminID uuid.UUID, 
 					return fmt.Errorf("marshal act config: %w", err)
 				}
 
+				// The predicate is not decoration. uq_activities_lesson_position is a
+				// partial index — WHERE retired_at IS NULL, so a retired activity can
+				// keep its row and its attempts while a new one takes the position —
+				// and Postgres matches ON CONFLICT to a partial index only when the
+				// statement repeats its predicate. Without it the seed fails with
+				// "no unique or exclusion constraint matching the ON CONFLICT".
 				const upsertActivity = `
 					INSERT INTO learn.activities (lesson_id, position, kind, content_version_id, config, weight, updated_at)
 					VALUES ($1, $2, $3, $4, $5, 1, now())
-					ON CONFLICT (lesson_id, position) DO UPDATE
+					ON CONFLICT (lesson_id, position) WHERE retired_at IS NULL DO UPDATE
 					SET kind = EXCLUDED.kind,
 					    content_version_id = EXCLUDED.content_version_id,
 					    config = EXCLUDED.config,

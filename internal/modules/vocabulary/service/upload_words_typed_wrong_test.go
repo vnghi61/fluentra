@@ -15,6 +15,20 @@ import (
 	"github.com/fluentra/fluentra/internal/platform/ai"
 )
 
+// The words these cases type and the words they meant.
+const (
+	wordSchol       = "schol"
+	wordSchool      = "school"
+	wordForm        = "form"
+	wordFrom        = "from"
+	wordCat         = "cat"
+	wordDog         = "dog"
+	wordBanana      = "banana"
+	phraseLookAftr  = "look aftr"
+	phraseLookAfter = "look after"
+	meaningSchool   = "trường học"
+)
+
 type routingAI struct {
 	responses map[string]string // keyed by Term
 }
@@ -71,28 +85,31 @@ func TestUploads_WordsTypedWrong(t *testing.T) {
 			ID:              uuid.New(),
 			UploadID:        uploadID,
 			UserID:          userID,
-			Term:            "schol",
-			ProvidedMeaning: "trường học",
-			Status:          "pending",
+			Term:            wordSchol,
+			ProvidedMeaning: meaningSchool,
+			Status:          statusPending,
 		}
 
 		repo := newUploadRepo(uploadItem)
 		dict := &stubDictionary{
 			entries: map[string]repository.DictionaryEntry{
-				"school": {
-					Lemma:        "school",
-					PartOfSpeech: "noun",
+				wordSchool: {
+					Lemma:        wordSchool,
+					PartOfSpeech: posNoun,
 					Definition:   "An institution for educating children.",
 				},
 			},
 			candidates: map[string][]string{
-				"schol": {"school"},
+				wordSchol: {wordSchool},
 			},
 		}
 
 		modelReplies := map[string]string{
-			"schol":  `{"valid": false, "reason": "misspelling", "intended_term": "school"}`,
-			"school": `{"valid": true, "lemma": "school", "part_of_speech": "noun", "cefr_level": "A1", "meaning_matches": true, "definition": "An institution for educating children.", "definition_vi": "trường học", "examples": [{"sentence": "I go to school.", "sentence_vi": "Tôi đi học."}]}`,
+			wordSchol: `{"valid": false, "reason": "misspelling", "intended_term": "school"}`,
+			wordSchool: `{"valid": true, "lemma": "school", "part_of_speech": "noun", "cefr_level": "A1",
+				"meaning_matches": true, "definition": "An institution for educating children.",
+				"definition_vi": "trường học", "examples": [{"sentence": "I go to school.",
+				"sentence_vi": "Tôi đi học."}]}`,
 		}
 
 		events := &spyEvents{}
@@ -103,7 +120,7 @@ func TestUploads_WordsTypedWrong(t *testing.T) {
 
 		// Verified as school
 		assert.Equal(t, "ai", repo.verified[uploadItem.ID])
-		assert.Equal(t, "school", repo.correctedTerms[uploadItem.ID])
+		assert.Equal(t, wordSchool, repo.correctedTerms[uploadItem.ID])
 		assert.Equal(t, "spelling_corrected", repo.noteCodes[uploadItem.ID])
 
 		// Exactly one XP awarded
@@ -118,7 +135,7 @@ func TestUploads_WordsTypedWrong(t *testing.T) {
 		words, err := repo.ListDeckWords(context.Background(), decks[0].ID, 10, 0)
 		require.NoError(t, err)
 		assert.Len(t, words, 1)
-		assert.Equal(t, "school", words[0].Lemma)
+		assert.Equal(t, wordSchool, words[0].Lemma)
 	})
 
 	// -------------------------------------------------------------------------
@@ -130,22 +147,24 @@ func TestUploads_WordsTypedWrong(t *testing.T) {
 			ID:              uuid.New(),
 			UploadID:        uuid.New(),
 			UserID:          userID,
-			Term:            "form",
+			Term:            wordForm,
 			ProvidedMeaning: "từ",
-			Status:          "pending",
+			Status:          statusPending,
 		}
 
 		repo := newUploadRepo(uploadItem)
 		dict := &stubDictionary{
 			entries: map[string]repository.DictionaryEntry{
-				"form": {Lemma: "form", PartOfSpeech: "noun", Definition: "The visible shape of something."},
-				"from": {Lemma: "from", PartOfSpeech: "preposition", Definition: "Indicating origin or source."},
+				wordForm: {Lemma: wordForm, PartOfSpeech: posNoun, Definition: "The visible shape of something."},
+				wordFrom: {Lemma: wordFrom, PartOfSpeech: "preposition", Definition: "Indicating origin or source."},
 			},
 		}
 
 		modelReplies := map[string]string{
-			"form": `{"valid": true, "lemma": "form", "meaning_matches": false, "intended_term": "from"}`,
-			"from": `{"valid": true, "lemma": "from", "part_of_speech": "preposition", "cefr_level": "A1", "meaning_matches": true, "definition": "Indicating origin or source.", "definition_vi": "từ", "examples": [{"sentence": "Where are you from?", "sentence_vi": "Bạn đến từ đâu?"}]}`,
+			wordForm: `{"valid": true, "lemma": "form", "meaning_matches": false, "intended_term": "from"}`,
+			wordFrom: `{"valid": true, "lemma": "from", "part_of_speech": "preposition", "cefr_level": "A1",
+				"meaning_matches": true, "definition": "Indicating origin or source.", "definition_vi": "từ",
+				"examples": [{"sentence": "Where are you from?", "sentence_vi": "Bạn đến từ đâu?"}]}`,
 		}
 
 		events := &spyEvents{}
@@ -156,7 +175,7 @@ func TestUploads_WordsTypedWrong(t *testing.T) {
 
 		// Verified as from, meaning_corrected
 		assert.Equal(t, "ai", repo.verified[uploadItem.ID])
-		assert.Equal(t, "from", repo.correctedTerms[uploadItem.ID])
+		assert.Equal(t, wordFrom, repo.correctedTerms[uploadItem.ID])
 		assert.Equal(t, "meaning_corrected", repo.noteCodes[uploadItem.ID])
 	})
 
@@ -169,18 +188,18 @@ func TestUploads_WordsTypedWrong(t *testing.T) {
 			ID:              uuid.New(),
 			UploadID:        uuid.New(),
 			UserID:          userID,
-			Term:            "schol",
+			Term:            wordSchol,
 			ProvidedMeaning: "",
-			Status:          "pending",
+			Status:          statusPending,
 		}
 
 		repo := newUploadRepo(uploadItem)
 		dict := &stubDictionary{
 			entries: map[string]repository.DictionaryEntry{
-				"school": {Lemma: "school", PartOfSpeech: "noun", Definition: "A school."},
+				wordSchool: {Lemma: wordSchool, PartOfSpeech: posNoun, Definition: "A school."},
 			},
 			candidates: map[string][]string{
-				"schol": {"school"},
+				wordSchol: {wordSchool},
 			},
 		}
 
@@ -191,7 +210,7 @@ func TestUploads_WordsTypedWrong(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.NotEmpty(t, repo.rejected[uploadItem.ID])
-		assert.Equal(t, "school", repo.suggestedTerms[uploadItem.ID])
+		assert.Equal(t, wordSchool, repo.suggestedTerms[uploadItem.ID])
 		assert.Equal(t, "spelling_suggestion", repo.noteCodes[uploadItem.ID])
 		assert.Empty(t, repo.verified)
 		assert.Empty(t, events.verified)
@@ -206,22 +225,24 @@ func TestUploads_WordsTypedWrong(t *testing.T) {
 			ID:              uuid.New(),
 			UploadID:        uuid.New(),
 			UserID:          userID,
-			Term:            "cat",
+			Term:            wordCat,
 			ProvidedMeaning: "con chó",
-			Status:          "pending",
+			Status:          statusPending,
 		}
 
 		repo := newUploadRepo(uploadItem)
 		dict := &stubDictionary{
 			entries: map[string]repository.DictionaryEntry{
-				"cat": {Lemma: "cat", PartOfSpeech: "noun", Definition: "A small domesticated carnivorous mammal."},
-				"dog": {Lemma: "dog", PartOfSpeech: "noun", Definition: "A domesticated carnivorous mammal."},
+				wordCat: {Lemma: wordCat, PartOfSpeech: posNoun, Definition: "A small domesticated carnivorous mammal."},
+				wordDog: {Lemma: wordDog, PartOfSpeech: posNoun, Definition: "A domesticated carnivorous mammal."},
 			},
 		}
 
 		// Model suggests dog because meaning is con chó, but dog is distance 3 from cat (outside bound)
 		modelReplies := map[string]string{
-			"cat": `{"valid": true, "lemma": "cat", "part_of_speech": "noun", "cefr_level": "A1", "meaning_matches": false, "intended_term": "dog", "definition": "A feline.", "definition_vi": "con mèo", "examples": [{"sentence": "The cat slept.", "sentence_vi": "Con mèo đang ngủ."}]}`,
+			wordCat: `{"valid": true, "lemma": "cat", "part_of_speech": "noun", "cefr_level": "A1",
+				"meaning_matches": false, "intended_term": "dog", "definition": "A feline.", "definition_vi": "con mèo",
+				"examples": [{"sentence": "The cat slept.", "sentence_vi": "Con mèo đang ngủ."}]}`,
 		}
 
 		events := &spyEvents{}
@@ -245,33 +266,35 @@ func TestUploads_WordsTypedWrong(t *testing.T) {
 			ID:              uuid.New(),
 			UploadID:        uploadID,
 			UserID:          userID,
-			Term:            "schol",
-			ProvidedMeaning: "trường học",
-			Status:          "pending",
+			Term:            wordSchol,
+			ProvidedMeaning: meaningSchool,
+			Status:          statusPending,
 		}
 		item2 := sqlc.SkillVocabUploadItem{
 			ID:              uuid.New(),
 			UploadID:        uploadID,
 			UserID:          userID,
-			Term:            "school",
-			ProvidedMeaning: "trường học",
-			Status:          "pending",
+			Term:            wordSchool,
+			ProvidedMeaning: meaningSchool,
+			Status:          statusPending,
 		}
 
 		repo := newUploadRepo(item1, item2)
 		dict := &stubDictionary{
 			entries: map[string]repository.DictionaryEntry{
-				"school": {Lemma: "school", PartOfSpeech: "noun", Definition: "An educational institution."},
+				wordSchool: {Lemma: wordSchool, PartOfSpeech: posNoun, Definition: "An educational institution."},
 			},
 			candidates: map[string][]string{
-				"schol": {"school"},
+				wordSchol: {wordSchool},
 			},
 		}
 
-		schoolReply := `{"valid": true, "lemma": "school", "part_of_speech": "noun", "cefr_level": "A1", "meaning_matches": true, "definition": "An educational institution.", "definition_vi": "trường học", "examples": [{"sentence": "Go to school.", "sentence_vi": "Đi học."}]}`
+		schoolReply := `{"valid": true, "lemma": "school", "part_of_speech": "noun", "cefr_level": "A1",
+			"meaning_matches": true, "definition": "An educational institution.", "definition_vi": "trường học",
+			"examples": [{"sentence": "Go to school.", "sentence_vi": "Đi học."}]}`
 		modelReplies := map[string]string{
-			"schol":  `{"valid": false, "intended_term": "school"}`,
-			"school": schoolReply,
+			wordSchol:  `{"valid": false, "intended_term": "school"}`,
+			wordSchool: schoolReply,
 		}
 
 		events := &spyEvents{}
@@ -286,7 +309,7 @@ func TestUploads_WordsTypedWrong(t *testing.T) {
 
 		// Item 1 is spelling_corrected
 		assert.Equal(t, "spelling_corrected", repo.noteCodes[item1.ID])
-		assert.Equal(t, "school", repo.correctedTerms[item1.ID])
+		assert.Equal(t, wordSchool, repo.correctedTerms[item1.ID])
 
 		// Item 2 is already_in_your_words
 		assert.Equal(t, "already_in_your_words", repo.noteCodes[item2.ID])
@@ -313,9 +336,9 @@ func TestUploads_WordsTypedWrong(t *testing.T) {
 			ID:              uuid.New(),
 			UploadID:        uuid.New(),
 			UserID:          userID,
-			Term:            "schol",
-			ProvidedMeaning: "trường học",
-			Status:          "pending",
+			Term:            wordSchol,
+			ProvidedMeaning: meaningSchool,
+			Status:          statusPending,
 		}
 
 		repo := newUploadRepo(uploadItem)
@@ -324,7 +347,7 @@ func TestUploads_WordsTypedWrong(t *testing.T) {
 		}
 
 		modelReplies := map[string]string{
-			"schol": `{"valid": false, "intended_term": "school"}`, // dictionary doesn't have school
+			wordSchol: `{"valid": false, "intended_term": "school"}`, // dictionary doesn't have school
 		}
 
 		events := &spyEvents{}
@@ -348,22 +371,24 @@ func TestUploads_WordsTypedWrong(t *testing.T) {
 			ID:              uuid.New(),
 			UploadID:        uuid.New(),
 			UserID:          userID,
-			Term:            "banana",
+			Term:            wordBanana,
 			ProvidedMeaning: "quả táo",
-			Status:          "pending",
+			Status:          statusPending,
 		}
 
 		repo := newUploadRepo(uploadItem)
 		dict := &stubDictionary{
 			entries: map[string]repository.DictionaryEntry{
-				"banana": {Lemma: "banana", PartOfSpeech: "noun", Definition: "A long curved fruit."},
-				"apple":  {Lemma: "apple", PartOfSpeech: "noun", Definition: "A round fruit."},
+				wordBanana: {Lemma: wordBanana, PartOfSpeech: posNoun, Definition: "A long curved fruit."},
+				wordApple:  {Lemma: wordApple, PartOfSpeech: posNoun, Definition: defRoundFruit},
 			},
 		}
 
 		// Model suggests apple for banana because meaning is quả táo. But distance > 2
 		modelReplies := map[string]string{
-			"banana": `{"valid": true, "lemma": "banana", "part_of_speech": "noun", "meaning_matches": false, "intended_term": "apple", "definition": "A long curved fruit.", "definition_vi": "quả chuối", "examples": [{"sentence": "Monkeys like bananas.", "sentence_vi": "Khỉ thích chuối."}]}`,
+			wordBanana: `{"valid": true, "lemma": "banana", "part_of_speech": "noun", "meaning_matches": false,
+				"intended_term": "apple", "definition": "A long curved fruit.", "definition_vi": "quả chuối",
+				"examples": [{"sentence": "Monkeys like bananas.", "sentence_vi": "Khỉ thích chuối."}]}`,
 		}
 
 		events := &spyEvents{}
@@ -387,24 +412,24 @@ func TestUploads_WordsTypedWrong(t *testing.T) {
 			ID:              uuid.New(),
 			UploadID:        uuid.New(),
 			UserID:          userID,
-			Term:            "look aftr",
+			Term:            phraseLookAftr,
 			ProvidedMeaning: "chăm sóc",
-			Status:          "pending",
+			Status:          statusPending,
 		}
 
 		repo := newUploadRepo(uploadItem)
 		dict := &stubDictionary{
 			entries: map[string]repository.DictionaryEntry{
-				"look after": {Lemma: "look after", PartOfSpeech: "verb", Definition: "To take care of."},
+				phraseLookAfter: {Lemma: phraseLookAfter, PartOfSpeech: "verb", Definition: "To take care of."},
 			},
 			candidates: map[string][]string{
-				"look aftr": {"look after"},
+				phraseLookAftr: {phraseLookAfter},
 			},
 		}
 
 		// Model is asked for phrase; phrase does not run spelling correction
 		modelReplies := map[string]string{
-			"look aftr": `{"valid": false, "reason": "We could not find look aftr as an English phrase."}`,
+			phraseLookAftr: `{"valid": false, "reason": "We could not find look aftr as an English phrase."}`,
 		}
 
 		events := &spyEvents{}

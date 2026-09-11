@@ -59,6 +59,11 @@ way. What exists in code today:
 - [x] Background grading via River worker (`writingjob.GradeSubmissionWorker`).
 - [x] `skill.writing_feedback` table storing structured IELTS feedback (criteria, located annotations, band scores).
 - [x] `GET /writing/attempts/{id}/feedback` endpoint for reading learner feedback.
+- [x] Grading guarantees, corrected in review on 2026-09-12. There is no synchronous path: without
+      a queue the grader refuses with `WRITING_QUEUE_UNAVAILABLE` (BR-WRITING-01). No AI provider
+      is an error, never a default band. Model output is checked against the rubric — score 0–100,
+      bands 0–9, exactly four criteria — before it is stored. A provider error fails the attempt
+      only on River's last attempt, so a retry can still grade it.
 
 ### Schema rationalisation (tables retired)
 

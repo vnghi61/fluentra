@@ -1,3 +1,4 @@
+// Package service implements the business logic and graders for the reading module.
 package service
 
 import (
@@ -278,7 +279,8 @@ func matchQuestion(submitted string, q readingQuestion) bool {
 	if q.Answer != "" && (normSubmitted == normalise(q.Answer) || sentence(submitted) == sentence(q.Answer)) {
 		return true
 	}
-	if q.CorrectAnswer != "" && (normSubmitted == normalise(q.CorrectAnswer) || sentence(submitted) == sentence(q.CorrectAnswer)) {
+	if q.CorrectAnswer != "" &&
+		(normSubmitted == normalise(q.CorrectAnswer) || sentence(submitted) == sentence(q.CorrectAnswer)) {
 		return true
 	}
 	for _, alt := range q.Acceptable {

@@ -16,8 +16,11 @@ import (
 )
 
 const (
-	optHadFinished = "opt_had_finished"
-	keyTextAnswer  = "text_answer"
+	optHadFinished   = "opt_had_finished"
+	keyTextAnswer    = "text_answer"
+	keyPrompt        = "prompt"
+	keyCorrectAnswer = "correct_answer"
+	keyAcceptable    = "acceptable"
 )
 
 type fakeContentReader struct {
@@ -37,10 +40,10 @@ func TestGradedKinds_IncludesBothGrammarKinds(t *testing.T) {
 func TestGrammarGrader_TenseChoice(t *testing.T) {
 	versionID := uuid.New()
 	body := map[string]any{
-		"prompt":            "Choose the correct verb tense:",
+		keyPrompt:           "Choose the correct verb tense:",
 		"correct_option_id": optHadFinished,
-		"correct_answer":    optHadFinished,
-		"acceptable":        []string{"had finished", optHadFinished},
+		keyCorrectAnswer:    optHadFinished,
+		keyAcceptable:       []string{"had finished", optHadFinished},
 	}
 	bodyBytes, _ := json.Marshal(body)
 
@@ -85,9 +88,9 @@ func TestGrammarGrader_TenseChoice(t *testing.T) {
 func TestGrammarGrader_SentenceTransform(t *testing.T) {
 	versionID := uuid.New()
 	body := map[string]any{
-		"prompt":         "Rewrite the sentence using present perfect continuous:",
-		"correct_answer": "I have been living here for five years.",
-		"acceptable":     []string{"I've been living here for five years."},
+		keyPrompt:        "Rewrite the sentence using present perfect continuous:",
+		keyCorrectAnswer: "I have been living here for five years.",
+		keyAcceptable:    []string{"I've been living here for five years."},
 	}
 	bodyBytes, _ := json.Marshal(body)
 
@@ -139,9 +142,9 @@ func TestGrammarGrader_WritingPracticeWithAnswer(t *testing.T) {
 	// §3.8: Rewrite using "although" with multiple valid acceptable answers
 	versionID := uuid.New()
 	body := map[string]any{
-		"prompt":         "Combine the sentences using 'although': It was raining. We went for a walk.",
-		"correct_answer": "Although it was raining, we went for a walk.",
-		"acceptable": []string{
+		keyPrompt:        "Combine the sentences using 'although': It was raining. We went for a walk.",
+		keyCorrectAnswer: "Although it was raining, we went for a walk.",
+		keyAcceptable: []string{
 			"Although it was raining we went for a walk.",
 			"We went for a walk although it was raining.",
 			"We went for a walk, although it was raining.",
@@ -175,9 +178,9 @@ func TestGrammarGrader_WritingPracticeWithAnswer(t *testing.T) {
 	// Error correction item
 	errVersionID := uuid.New()
 	errBody := map[string]any{
-		"prompt":         "Correct the one error in the sentence: She don't like drinking cold coffee.",
-		"correct_answer": "She doesn't like drinking cold coffee.",
-		"acceptable": []string{
+		keyPrompt:        "Correct the one error in the sentence: She don't like drinking cold coffee.",
+		keyCorrectAnswer: "She doesn't like drinking cold coffee.",
+		keyAcceptable: []string{
 			"She does not like drinking cold coffee.",
 			"She doesn't like drinking cold coffee",
 			"She does not like drinking cold coffee",

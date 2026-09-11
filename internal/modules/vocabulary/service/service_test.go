@@ -21,6 +21,7 @@ import (
 )
 
 const (
+	statusPending  = "pending"
 	statusQueued   = "queued"
 	statusVerified = "verified"
 )

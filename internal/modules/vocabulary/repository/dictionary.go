@@ -370,65 +370,66 @@ func (d *FreeDictionaryAPI) FindCandidates(ctx context.Context, word string) ([]
 		datamuseURL = datamuseBaseURL
 	}
 
-	seen := make(map[string]struct{})
-	var candidates []string
+	// 1. Near spellings, ?sp=<term>.
+	candidates := withinSpellingBound(term, d.datamuseWords(ctx, datamuseURL+"?sp="+url.QueryEscape(term)))
 
-	addCandidate := func(cand string) {
-		cand = strings.TrimSpace(strings.ToLower(cand))
-		if cand == "" || cand == term {
-			return
-		}
-		if _, exists := seen[cand]; exists {
-			return
-		}
-		if domain.IsWithinSpellingBound(term, cand) {
-			seen[cand] = struct{}{}
-			candidates = append(candidates, cand)
-		}
-	}
-
-	// 1. Try ?sp=<term>
-	endpoint := datamuseURL + "?sp=" + url.QueryEscape(term)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
-	if err == nil {
-		if resp, err := d.client.Do(req); err == nil {
-			defer func() { _ = resp.Body.Close() }()
-			if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-				var items []struct {
-					Word string `json:"word"`
-				}
-				payload, _ := io.ReadAll(io.LimitReader(resp.Body, dictionaryMaxBytes))
-				if err := json.Unmarshal(payload, &items); err == nil {
-					for _, item := range items {
-						addCandidate(item.Word)
-					}
-				}
-			}
-		}
-	}
-
-	// 2. If no near spellings found from ?sp=, try suggestion endpoint /sug?s=<term>
+	// 2. Only when none of those fit, the suggestion endpoint /sug?s=<term>.
 	if len(candidates) == 0 {
 		sugURL := strings.TrimSuffix(datamuseURL, "/words") + "/sug"
-		sugEndpoint := sugURL + "?s=" + url.QueryEscape(term)
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, sugEndpoint, nil)
-		if err == nil {
-			if resp, err := d.client.Do(req); err == nil {
-				defer func() { _ = resp.Body.Close() }()
-				if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-					var items []struct {
-						Word string `json:"word"`
-					}
-					payload, _ := io.ReadAll(io.LimitReader(resp.Body, dictionaryMaxBytes))
-					if err := json.Unmarshal(payload, &items); err == nil {
-						for _, item := range items {
-							addCandidate(item.Word)
-						}
-					}
-				}
-			}
-		}
+		candidates = withinSpellingBound(term, d.datamuseWords(ctx, sugURL+"?s="+url.QueryEscape(term)))
 	}
 
 	return candidates, nil
+}
+
+// datamuseWords fetches one Datamuse word list. Candidates are a best effort: a
+// failed or malformed response yields no words rather than an error, and the
+// upload then keeps the word as typed.
+func (d *FreeDictionaryAPI) datamuseWords(ctx context.Context, endpoint string) []string {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil
+	}
+	resp, err := d.client.Do(req)
+	if err != nil {
+		return nil
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil
+	}
+
+	var items []struct {
+		Word string `json:"word"`
+	}
+	payload, err := io.ReadAll(io.LimitReader(resp.Body, dictionaryMaxBytes))
+	if err != nil || json.Unmarshal(payload, &items) != nil {
+		return nil
+	}
+	words := make([]string, 0, len(items))
+	for _, item := range items {
+		words = append(words, item.Word)
+	}
+	return words
+}
+
+// withinSpellingBound keeps the words within the spelling bound of term, once
+// each, in the order Datamuse ranked them.
+func withinSpellingBound(term string, words []string) []string {
+	seen := make(map[string]struct{}, len(words))
+	var candidates []string
+	for _, word := range words {
+		word = strings.TrimSpace(strings.ToLower(word))
+		if word == "" || word == term {
+			continue
+		}
+		if _, dup := seen[word]; dup {
+			continue
+		}
+		if domain.IsWithinSpellingBound(term, word) {
+			seen[word] = struct{}{}
+			candidates = append(candidates, word)
+		}
+	}
+	return candidates
 }

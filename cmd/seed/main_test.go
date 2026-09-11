@@ -181,18 +181,7 @@ func assertActivityIsGradable(t *testing.T, lessonTitle string, act seedActivity
 
 	if act.Kind == kindReadingComprehension {
 		if qs, ok := act.Body["questions"].([]map[string]any); ok && len(qs) > 0 {
-			for idx, q := range qs {
-				qAnswer, _ := q["answer"].(string)
-				if qAnswer == "" {
-					qAnswer, _ = q["correct_answer"].(string)
-				}
-				if qAnswer == "" {
-					qAnswer, _ = q["correct_option_id"].(string)
-				}
-				if qAnswer == "" {
-					t.Errorf("%s activity %d question %d declares no answer", lessonTitle, act.Position, idx)
-				}
-			}
+			assertQuestionsDeclareAnswers(t, lessonTitle, act, qs)
 			return
 		}
 	}
@@ -218,9 +207,34 @@ func assertActivityIsGradable(t *testing.T, lessonTitle string, act seedActivity
 		return
 	}
 
-	// The runner submits `selected_option_id`, so the authored answer has to be
-	// an option id — not the word the option displays. A body naming the word
-	// grades every learner wrong while looking entirely reasonable.
+	assertAnswerIsAnOption(t, lessonTitle, act, answer)
+}
+
+// assertQuestionsDeclareAnswers checks a question set: every question carries its
+// own key, as answer, correct_answer or correct_option_id.
+func assertQuestionsDeclareAnswers(t *testing.T, lessonTitle string, act seedActivity, qs []map[string]any) {
+	t.Helper()
+	for idx, q := range qs {
+		qAnswer, _ := q["answer"].(string)
+		if qAnswer == "" {
+			qAnswer, _ = q["correct_answer"].(string)
+		}
+		if qAnswer == "" {
+			qAnswer, _ = q["correct_option_id"].(string)
+		}
+		if qAnswer == "" {
+			t.Errorf("%s activity %d question %d declares no answer", lessonTitle, act.Position, idx)
+		}
+	}
+}
+
+// assertAnswerIsAnOption checks a multiple-choice key against the options shown.
+//
+// The runner submits `selected_option_id`, so the authored answer has to be
+// an option id — not the word the option displays. A body naming the word
+// grades every learner wrong while looking entirely reasonable.
+func assertAnswerIsAnOption(t *testing.T, lessonTitle string, act seedActivity, answer string) {
+	t.Helper()
 	options, ok := act.Config[cfgOptions].([]map[string]string)
 	if !ok || len(options) == 0 {
 		t.Errorf("%s activity %d is multiple choice with no options", lessonTitle, act.Position)
@@ -365,21 +379,28 @@ func TestReadingCourseSeedData_Integrity(t *testing.T) {
 				t.Errorf("lesson %s has no activities", lesson.Title)
 			}
 			for _, act := range lesson.Activities {
-				assertActivityIsGradable(t, lesson.Title, act)
-				passage, _ := act.Config[cfgPassage].(string)
-				if passage == "" {
-					t.Errorf("lesson %s activity %d missing passage", lesson.Title, act.Position)
-				}
-				qs, ok := act.Config["questions"].([]map[string]any)
-				if !ok || len(qs) < 4 || len(qs) > 6 {
-					t.Errorf("lesson %s activity %d has %d questions, want between 4 and 6", lesson.Title, act.Position, len(qs))
-				}
+				assertReadingActivity(t, lesson.Title, act)
 			}
 		}
 	}
 
 	if totalLessons != 6 {
 		t.Errorf("seeded %d reading lessons, want the 6 §3.7 asks for", totalLessons)
+	}
+}
+
+// assertReadingActivity checks what a reading activity needs beyond a gradable
+// key: a passage, and four to six questions about it.
+func assertReadingActivity(t *testing.T, lessonTitle string, act seedActivity) {
+	t.Helper()
+	assertActivityIsGradable(t, lessonTitle, act)
+	passage, _ := act.Config[cfgPassage].(string)
+	if passage == "" {
+		t.Errorf("lesson %s activity %d missing passage", lessonTitle, act.Position)
+	}
+	qs, ok := act.Config["questions"].([]map[string]any)
+	if !ok || len(qs) < 4 || len(qs) > 6 {
+		t.Errorf("lesson %s activity %d has %d questions, want between 4 and 6", lessonTitle, act.Position, len(qs))
 	}
 }
 

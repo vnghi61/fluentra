@@ -54,6 +54,9 @@ type Deps struct {
 	Caches        service.LearningCaches
 	Env           string
 	AI            ai.Client
+	// GeneratorAuthorID owns generated practice content. The worker resolves it;
+	// the API has no top-up to run and leaves it zero.
+	GeneratorAuthorID uuid.UUID
 }
 
 // Module represents the learning module, assembled.
@@ -126,6 +129,8 @@ func New(deps Deps) *Module {
 		Caches:        deps.Caches,
 		Env:           deps.Env,
 		AI:            deps.AI,
+
+		GeneratorAuthorID: deps.GeneratorAuthorID,
 	})
 
 	var handler *learninghttp.Handler

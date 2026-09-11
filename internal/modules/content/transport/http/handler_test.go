@@ -21,7 +21,11 @@ import (
 	"github.com/fluentra/fluentra/internal/shared/httpx"
 )
 
-const testKindVocabWord = "vocab_word"
+const (
+	testKindVocabWord = "vocab_word"
+	roleAdmin         = "admin"
+	statusPublished   = "published"
+)
 
 type mockContentService struct {
 	getPublishedSlugFn func(ctx context.Context, slug string) (*contract.Version, error)
@@ -208,7 +212,7 @@ func TestBrowseHandler(t *testing.T) {
 					Kind:        testKindVocabWord,
 					Body:        json.RawMessage(`{"word":"hello"}`),
 					CEFRLevel:   "A1",
-					Status:      "published",
+					Status:      statusPublished,
 					Tags:        []string{"greetings"},
 					PublishedAt: &pubAt,
 				},
@@ -249,7 +253,7 @@ func TestGetBySlugHandler(t *testing.T) {
 					Kind:      testKindVocabWord,
 					Body:      json.RawMessage(`{"word":"hello"}`),
 					CEFRLevel: "A1",
-					Status:    "published",
+					Status:    statusPublished,
 				}, nil
 			}
 			return nil, domain.ErrContentNotPublished
@@ -310,7 +314,7 @@ func TestAdminCreateItemHandler(t *testing.T) {
 	body, _ := json.Marshal(payload)
 
 	req := httptest.NewRequest(http.MethodPost, "/admin/content", bytes.NewReader(body))
-	req = req.WithContext(httpx.WithActor(req.Context(), httpx.Actor{UserID: actorID, Role: "admin"}))
+	req = req.WithContext(httpx.WithActor(req.Context(), httpx.Actor{UserID: actorID, Role: roleAdmin}))
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -359,7 +363,8 @@ func TestReportItemHandler(t *testing.T) {
 	}
 	body, _ := json.Marshal(payload)
 
-	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/content/versions/%s/reports", versionID), bytes.NewReader(body))
+	target := fmt.Sprintf("/content/versions/%s/reports", versionID)
+	req := httptest.NewRequest(http.MethodPost, target, bytes.NewReader(body))
 	req = req.WithContext(httpx.WithActor(req.Context(), httpx.Actor{UserID: userID, Role: "learner"}))
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -381,7 +386,7 @@ func TestAdminListReportsHandler(t *testing.T) {
 
 	svc := &mockContentService{
 		listReportedContentFn: func(
-			_ context.Context, limit, offset int,
+			_ context.Context, _, _ int,
 		) ([]domain.ReportedVersionSummary, int, error) {
 			return []domain.ReportedVersionSummary{
 				{
@@ -390,7 +395,7 @@ func TestAdminListReportsHandler(t *testing.T) {
 					Slug:             "reported-word",
 					Kind:             "vocab_word",
 					CEFRLevel:        "B1",
-					ItemStatus:       "published",
+					ItemStatus:       statusPublished,
 					ReportCount:      5,
 					LastReportedAt:   time.Now(),
 				},
@@ -401,7 +406,7 @@ func TestAdminListReportsHandler(t *testing.T) {
 	router := setupTestRouter(svc, &mockGuard{})
 
 	req := httptest.NewRequest(http.MethodGet, "/admin/content/reports?page=1&per_page=20", nil)
-	req = req.WithContext(httpx.WithActor(req.Context(), httpx.Actor{UserID: adminID, Role: "admin"}))
+	req = req.WithContext(httpx.WithActor(req.Context(), httpx.Actor{UserID: adminID, Role: roleAdmin}))
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 

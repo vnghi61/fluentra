@@ -41,7 +41,7 @@ type Deps struct {
 // Module represents the wired writing module.
 type Module struct {
 	grader  *service.Grader
-	repo    writingrepo.Repository
+	reader  *service.FeedbackReader
 	handler *writinghttp.Handler
 }
 
@@ -56,7 +56,12 @@ func New(deps Deps) *Module {
 	}
 
 	repo := writingrepo.New(deps.Pool)
-	handler := writinghttp.NewHandler(repo)
+	// Transport reads through the service layer, as learning's and content's do.
+	// go-arch-lint's deep scan follows the injected value, not the interface it
+	// is typed as, so what the handler is given has to live in a component
+	// transport may depend on — a repository, or an adapter in this package, is not.
+	reader := service.NewFeedbackReader(service.FeedbackReaderDeps{Queries: repo})
+	handler := writinghttp.NewHandler(reader)
 
 	grader := service.NewGraderWithDeps(service.GraderDeps{
 		Content:    deps.Content,
@@ -73,7 +78,7 @@ func New(deps Deps) *Module {
 
 	return &Module{
 		grader:  grader,
-		repo:    repo,
+		reader:  reader,
 		handler: handler,
 	}
 }
@@ -92,7 +97,7 @@ func (m *Module) Routes(r chi.Router) {
 
 // FeedbackReader exposes the feedback reading contract.
 func (m *Module) FeedbackReader() contract.FeedbackReader {
-	return m.repo
+	return m.reader
 }
 
 // GradeSubmissionWorker returns the River worker for grading writing submissions.

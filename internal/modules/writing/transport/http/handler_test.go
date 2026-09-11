@@ -24,7 +24,9 @@ type fakeFeedbackReader struct {
 	feedback map[string]*contract.WritingFeedback
 }
 
-func (f *fakeFeedbackReader) GetWritingFeedback(_ context.Context, attemptID, userID uuid.UUID) (*contract.WritingFeedback, error) {
+func (f *fakeFeedbackReader) GetWritingFeedback(
+	_ context.Context, attemptID, userID uuid.UUID,
+) (*contract.WritingFeedback, error) {
 	key := fmt.Sprintf("%s:%s", attemptID, userID)
 	fb, ok := f.feedback[key]
 	if !ok {
@@ -33,7 +35,9 @@ func (f *fakeFeedbackReader) GetWritingFeedback(_ context.Context, attemptID, us
 	return fb, nil
 }
 
-func (f *fakeFeedbackReader) ListWritingSubmissions(_ context.Context, userID uuid.UUID, page, pageSize int) (*contract.WritingSubmissionList, error) {
+func (f *fakeFeedbackReader) ListWritingSubmissions(
+	_ context.Context, userID uuid.UUID, page, pageSize int,
+) (*contract.WritingSubmissionList, error) {
 	var items []contract.WritingSubmissionSummary
 	for _, fb := range f.feedback {
 		if fb.UserID == userID {

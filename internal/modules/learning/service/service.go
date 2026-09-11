@@ -11,6 +11,7 @@ import (
 	"math"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -52,7 +53,7 @@ type Repository interface {
 	) (int64, error)
 	FailGradingAttempt(ctx context.Context, id uuid.UUID, createdAt time.Time) (int64, error)
 	FailStuckGradingAttempts(ctx context.Context, cutoff time.Time) (int64, error)
-	CountGradedAttemptsSince(
+	CountAttemptsTowardLimitSince(
 		ctx context.Context, userID uuid.UUID, grader string, since time.Time,
 	) (int, error)
 	GetProgressByUserScope(
@@ -101,37 +102,22 @@ type Repository interface {
 	UpsertAnswerExplanation(
 		ctx context.Context, explanation repository.AnswerExplanationDTO,
 	) (*repository.AnswerExplanationDTO, error)
-	GetPoolPracticeCourseID(ctx context.Context) (uuid.UUID, error)
 	GetDailySet(
 		ctx context.Context, userID uuid.UUID, localDate time.Time,
 	) (*domain.DailySet, error)
+	// CreateDailySet returns nil when another request stored the day's set first.
 	CreateDailySet(
 		ctx context.Context, userID uuid.UUID, localDate time.Time, activityIDs []uuid.UUID,
 	) (*domain.DailySet, error)
 	RecordItemExposure(
 		ctx context.Context, userID uuid.UUID, activityID uuid.UUID,
 	) error
-	CountActivePoolActivitiesForSlot(
-		ctx context.Context, levelTitle string, kind string,
-	) (int64, error)
-	ListPoolActivitiesForSlot(
-		ctx context.Context, levelTitle string, kind string,
-	) ([]domain.PoolActivity, error)
-	ListUnseenPoolActivitiesForSlot(
-		ctx context.Context, levelTitle string, kind string, userID uuid.UUID,
-	) ([]domain.PoolActivity, error)
-	ListSeenPoolActivitiesForSlotOldestFirst(
-		ctx context.Context, levelTitle string, kind string, userID uuid.UUID,
-	) ([]domain.PoolActivity, error)
-	HasActiveUserWithFewUnseenItems(
-		ctx context.Context, levelTitle string, kind string,
+	ListItemExposures(
+		ctx context.Context, userID uuid.UUID, activityIDs []uuid.UUID,
+	) (map[uuid.UUID]time.Time, error)
+	HasActiveLearnerRunningLow(
+		ctx context.Context, activityIDs []uuid.UUID, threshold int,
 	) (bool, error)
-	GetPoolLessonID(
-		ctx context.Context, levelTitle string, lessonTitle string,
-	) (uuid.UUID, error)
-	ListActivitiesByIDs(
-		ctx context.Context, activityIDs []uuid.UUID,
-	) ([]domain.PoolActivity, error)
 	// WithTx returns this repository bound to tx. It returns the interface, not
 	// the concrete struct: returning *repository.Repository dropped every
 	// decorator the service had been given the moment the grading transaction
@@ -213,6 +199,10 @@ type Deps struct {
 	Caches        LearningCaches
 	Env           string
 	AI            ai.Client
+	// GeneratorAuthorID owns the content the practice pool generates.
+	// content_items.owner_id is required, and without an owner the top-up stands
+	// down rather than generate items EnsurePublished would refuse.
+	GeneratorAuthorID uuid.UUID
 }
 
 // Service coordinates attempt execution, grading, progress rollups, and event emission.
@@ -233,6 +223,12 @@ type Service struct {
 	caches        LearningCaches
 	env           string
 	ai            ai.Client
+
+	generatorAuthor uuid.UUID
+	// poolMu guards poolLayout, the practice pool's course and slot lessons,
+	// resolved once per process.
+	poolMu     sync.Mutex
+	poolLayout *practicePoolLayout
 }
 
 // New constructs a new Service.
@@ -264,6 +260,8 @@ func New(deps Deps) *Service {
 		caches:        deps.Caches,
 		env:           deps.Env,
 		ai:            deps.AI,
+
+		generatorAuthor: deps.GeneratorAuthorID,
 	}
 }
 
@@ -348,9 +346,27 @@ func (s *Service) SubmitAttempt(
 		return earlyResult, earlyErr
 	}
 
+	// The activity is resolved before the claim, so the claim can record which
+	// grader the attempt is for. Counting by grader — the writing daily limit —
+	// then sees an attempt that is still being graded, not only the ones already
+	// finished. Resolving is a read, so a failure here has nothing to undo.
+	var activity *lessoncontract.ActivityHierarchy
+	activity, err = s.resolveActivityHierarchy(ctx, attempt.ActivityID)
+	if err != nil {
+		return nil, err
+	}
+
+	grader, ok := s.graders.Get(activity.Kind)
+	if !ok || grader == nil {
+		// The kind goes in the response. A 422 that does not say which kind is
+		// unsupported sends the reader back to the database to find out.
+		err = domain.ErrGraderNotRegistered.WithMeta("kind", activity.Kind)
+		return nil, err
+	}
+
 	var claimed bool
 	var current *domain.Attempt
-	claimed, current, err = s.claimAttempt(ctx, attempt, idempotencyKey, response)
+	claimed, current, err = s.claimAttempt(ctx, attempt, idempotencyKey, response, activity.Kind)
 	if err != nil {
 		return nil, err
 	}
@@ -370,18 +386,6 @@ func (s *Service) SubmitAttempt(
 			_ = s.repo.UnclaimAttempt(ctx, attempt.ID, attempt.CreatedAt)
 		}
 	}()
-
-	var activity *lessoncontract.ActivityHierarchy
-	activity, err = s.resolveActivityHierarchy(ctx, attempt.ActivityID)
-	if err != nil {
-		return nil, err
-	}
-
-	grader, ok := s.graders.Get(activity.Kind)
-	if !ok || grader == nil {
-		err = domain.ErrGraderNotRegistered.WithMeta("kind", activity.Kind)
-		return nil, err
-	}
 
 	var gradeResult contract.GradeResult
 	gradeResult, err = grader.Grade(ctx, contract.GradeRequest{
@@ -483,12 +487,14 @@ func (s *Service) awaitSettledAttempt(
 // the caller ignored the refusal.
 func (s *Service) claimAttempt(
 	ctx context.Context, attempt *domain.Attempt, idempotencyKey uuid.UUID, response json.RawMessage,
+	graderName string,
 ) (claimed bool, current *domain.Attempt, err error) {
 	if _, claimErr := s.repo.ClaimAttemptForGrading(ctx, repository.ClaimAttemptParams{
 		ID:             attempt.ID,
 		CreatedAt:      attempt.CreatedAt,
 		IdempotencyKey: &idempotencyKey,
 		Response:       response,
+		Grader:         &graderName,
 	}); claimErr == nil {
 		return true, attempt, nil
 	}
@@ -1503,6 +1509,7 @@ func (s *Service) activeEnrollment(
 	if err != nil {
 		return nil, "", fmt.Errorf("list enrollments: %w", err)
 	}
+	enrollments = s.withoutPoolCourse(ctx, enrollments)
 	if len(enrollments) == 0 {
 		return nil, domain.StateNotStarted, nil
 	}
@@ -1811,6 +1818,7 @@ func (s *Service) loadProgress(ctx context.Context, userID uuid.UUID) (*domain.P
 	if err != nil {
 		return nil, fmt.Errorf("list enrollments: %w", err)
 	}
+	enrollments = s.withoutPoolCourse(ctx, enrollments)
 
 	masteries, err := s.repo.ListSkillMasteryByUser(ctx, userID)
 	if err != nil {
@@ -2133,11 +2141,12 @@ func (s *Service) FailAsyncGrading(
 	return rows > 0, nil
 }
 
-// CountGradedAttemptsSince returns the number of graded attempts for a user and grader since a given timestamp.
-func (s *Service) CountGradedAttemptsSince(
+// CountAttemptsTowardLimitSince counts a user's graded and still-grading attempts
+// for a grader since a given time — what a per-learner daily limit is charged on.
+func (s *Service) CountAttemptsTowardLimitSince(
 	ctx context.Context, userID uuid.UUID, grader string, since time.Time,
 ) (int, error) {
-	return s.repo.CountGradedAttemptsSince(ctx, userID, grader, since)
+	return s.repo.CountAttemptsTowardLimitSince(ctx, userID, grader, since)
 }
 
 // SweepStuckGrading fails attempts that have been in status 'grading' for more than an hour.

@@ -165,6 +165,7 @@ func (f *fakeLearningRepo) ClaimAttemptForGrading(
 	att.Status = domain.StatusGrading
 	att.IdempotencyKey = &keyStr
 	att.Response = params.Response
+	att.Grader = params.Grader
 	att.UpdatedAt = time.Now().UTC()
 	return cloneAttempt(att), nil
 }
@@ -183,6 +184,7 @@ func (f *fakeLearningRepo) UnclaimAttempt(
 	if att.Status == domain.StatusGrading {
 		att.Status = domain.StatusInProgress
 		att.IdempotencyKey = nil
+		att.Grader = nil
 		att.Response = nil
 		att.UpdatedAt = time.Now().UTC()
 	}
@@ -290,7 +292,7 @@ func (f *fakeLearningRepo) SetAttemptUpdatedAt(id uuid.UUID, t time.Time) {
 	}
 }
 
-func (f *fakeLearningRepo) CountGradedAttemptsSince(
+func (f *fakeLearningRepo) CountAttemptsTowardLimitSince(
 	_ context.Context, userID uuid.UUID, grader string, since time.Time,
 ) (int, error) {
 	f.mu.Lock()
@@ -300,7 +302,7 @@ func (f *fakeLearningRepo) CountGradedAttemptsSince(
 	var count int
 	for _, att := range f.attempts {
 		if att.UserID == userID &&
-			att.Status == domain.StatusGraded &&
+			(att.Status == domain.StatusGraded || att.Status == domain.StatusGrading) &&
 			att.Grader != nil && *att.Grader == grader &&
 			!att.CreatedAt.Before(since) {
 			count++
@@ -614,15 +616,13 @@ func (f *fakeLearningRepo) WithTx(_ pgx.Tx) service.Repository {
 	return f
 }
 
-func (f *fakeLearningRepo) GetPoolPracticeCourseID(_ context.Context) (uuid.UUID, error) {
-	return uuid.Nil, nil
-}
-
 func (f *fakeLearningRepo) GetDailySet(_ context.Context, _ uuid.UUID, _ time.Time) (*domain.DailySet, error) {
 	return nil, nil
 }
 
-func (f *fakeLearningRepo) CreateDailySet(_ context.Context, userID uuid.UUID, localDate time.Time, activityIDs []uuid.UUID) (*domain.DailySet, error) {
+func (f *fakeLearningRepo) CreateDailySet(
+	_ context.Context, userID uuid.UUID, localDate time.Time, activityIDs []uuid.UUID,
+) (*domain.DailySet, error) {
 	return &domain.DailySet{
 		ID:          uuid.New(),
 		UserID:      userID,
@@ -636,32 +636,14 @@ func (f *fakeLearningRepo) RecordItemExposure(_ context.Context, _ uuid.UUID, _ 
 	return nil
 }
 
-func (f *fakeLearningRepo) CountActivePoolActivitiesForSlot(_ context.Context, _, _ string) (int64, error) {
-	return 0, nil
+func (f *fakeLearningRepo) ListItemExposures(
+	_ context.Context, _ uuid.UUID, _ []uuid.UUID,
+) (map[uuid.UUID]time.Time, error) {
+	return map[uuid.UUID]time.Time{}, nil
 }
 
-func (f *fakeLearningRepo) ListPoolActivitiesForSlot(_ context.Context, _, _ string) ([]domain.PoolActivity, error) {
-	return nil, nil
-}
-
-func (f *fakeLearningRepo) ListUnseenPoolActivitiesForSlot(_ context.Context, _, _ string, _ uuid.UUID) ([]domain.PoolActivity, error) {
-	return nil, nil
-}
-
-func (f *fakeLearningRepo) ListSeenPoolActivitiesForSlotOldestFirst(_ context.Context, _, _ string, _ uuid.UUID) ([]domain.PoolActivity, error) {
-	return nil, nil
-}
-
-func (f *fakeLearningRepo) HasActiveUserWithFewUnseenItems(_ context.Context, _, _ string) (bool, error) {
+func (f *fakeLearningRepo) HasActiveLearnerRunningLow(_ context.Context, _ []uuid.UUID, _ int) (bool, error) {
 	return false, nil
-}
-
-func (f *fakeLearningRepo) GetPoolLessonID(_ context.Context, _, _ string) (uuid.UUID, error) {
-	return uuid.New(), nil
-}
-
-func (f *fakeLearningRepo) ListActivitiesByIDs(_ context.Context, _ []uuid.UUID) ([]domain.PoolActivity, error) {
-	return nil, nil
 }
 
 type fakeLessonReader struct {

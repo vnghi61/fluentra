@@ -51,6 +51,7 @@ const (
 	wordBook       = "book"
 	wordApple      = "apple"
 	defWrittenWork = "A written work."
+	defRoundFruit  = "A round fruit."
 )
 
 // ---------------------------------------------------------------- fakes
@@ -313,7 +314,7 @@ func (r *uploadRepo) MarkQueuedUploadItemFailed(
 func item(term, meaning string) sqlc.SkillVocabUploadItem {
 	return sqlc.SkillVocabUploadItem{
 		ID: uuid.New(), UploadID: uuid.New(), UserID: uuid.New(),
-		Term: term, ProvidedMeaning: meaning, Status: "pending",
+		Term: term, ProvidedMeaning: meaning, Status: statusPending,
 	}
 }
 
@@ -436,7 +437,7 @@ func (r *uploadRepo) InsertUpload(
 		UserID:    arg.UserID,
 		RawText:   arg.RawText,
 		ItemCount: arg.ItemCount,
-		Status:    "pending",
+		Status:    statusPending,
 	}, nil
 }
 
@@ -894,11 +895,11 @@ func TestVerify_ModelTopicCreatesTopicDeck(t *testing.T) {
 	entry := item(wordApple, "")
 	repo := newUploadRepo(entry)
 	dict := &stubDictionary{entries: map[string]repository.DictionaryEntry{
-		wordApple: {Lemma: wordApple, PartOfSpeech: posNoun, Definition: "A round fruit."},
+		wordApple: {Lemma: wordApple, PartOfSpeech: posNoun, Definition: defRoundFruit},
 	}}
 	reply := map[string]any{
 		keyValid: true, keyLemma: wordApple, keyPartOfSpeech: posNoun, keyCEFRLevel: "A1",
-		keyDefinition: "A round fruit.", keyDefinitionVi: "quả táo",
+		keyDefinition: defRoundFruit, keyDefinitionVi: "quả táo",
 		"topic": "food", keyMeaningMatches: true,
 		keyExamples: []map[string]string{
 			{keySentence: "She ate an apple.", keySentenceVi: "Cô ấy đã ăn một quả táo."},

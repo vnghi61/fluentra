@@ -71,6 +71,18 @@ _Nothing deferred._
   content version was the first answer and BR-CONTENT-01 forbids it — a published
   `content_versions` row cannot be updated at all.
 
+## Done in work order 11
+
+- [x] **Words typed wrong (§3.9).** A mistyped single word is corrected to a dictionary word
+      within the spelling bound — one edit under five letters, two from five — and only when the
+      dictionary has it and the model confirms the learner's meaning. The learner sees why:
+      `spelling_corrected`, `meaning_corrected`, `spelling_suggestion` (no meaning given, nothing
+      added) or `meaning_mismatch`. Phrases are not corrected.
+- [x] **Candidates are bounded (review, 2026-09-12).** Each candidate costs a dictionary lookup
+      and a model call, and a short word has many neighbours, so at most three are tried — the
+      model's own `intended_term` first. The corrections migration is `1700000492`; it was
+      numbered `1700000490`, which another directory already used, and goose refused to run.
+
 The Phase 2 boxes above are unticked because docgen renders every generated item that way —
 words, senses, decks, dictionary lookup and the four graders all shipped in Phase 2. Read the
 code for status, not the box (`phase-3-next-steps.md` §4).

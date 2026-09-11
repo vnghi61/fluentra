@@ -1,7 +1,6 @@
 package domain
 
 import (
-	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,17 +13,6 @@ type DailySet struct {
 	LocalDate   time.Time   `json:"local_date"`
 	ActivityIDs []uuid.UUID `json:"activity_ids"`
 	CreatedAt   time.Time   `json:"created_at"`
-}
-
-// PoolActivity represents an activity in the practice pool.
-type PoolActivity struct {
-	ID               uuid.UUID       `json:"id"`
-	LessonID         uuid.UUID       `json:"lesson_id"`
-	Position         int             `json:"position"`
-	Kind             string          `json:"kind"`
-	ContentVersionID uuid.UUID       `json:"content_version_id"`
-	Config           json.RawMessage `json:"config"`
-	Weight           int             `json:"weight"`
 }
 
 // DailySetActivityDTO models an activity within a daily practice set with redacted content.

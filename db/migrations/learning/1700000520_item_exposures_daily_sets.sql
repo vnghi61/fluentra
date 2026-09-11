@@ -17,6 +17,11 @@ CREATE TABLE IF NOT EXISTS learn.item_exposures (
 CREATE INDEX IF NOT EXISTS idx_item_exposures_user_served
     ON learn.item_exposures (user_id, first_served_at ASC);
 
+-- The primary key leads with user_id, so it does not cover the activity foreign
+-- key. Without this, retiring or deleting an activity scans every exposure row.
+CREATE INDEX IF NOT EXISTS idx_item_exposures_activity
+    ON learn.item_exposures (activity_id);
+
 -- --------------------------------------------------------------- daily_sets
 -- Caches each learner's daily practice set for a given local date in Asia/Ho_Chi_Minh.
 -- Built on first open; a set nobody opens costs nothing (§3.11).

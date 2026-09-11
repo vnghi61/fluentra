@@ -8,11 +8,13 @@ import (
 	"fmt"
 	"log/slog"
 	"math/big"
+	"sort"
 	"strings"
 	"time"
 	"unicode"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	contentcontract "github.com/fluentra/fluentra/internal/modules/content/contract"
 	learningcontract "github.com/fluentra/fluentra/internal/modules/learning/contract"
@@ -21,328 +23,393 @@ import (
 	"github.com/fluentra/fluentra/internal/platform/ai"
 	"github.com/fluentra/fluentra/internal/shared/apperr"
 	"github.com/fluentra/fluentra/internal/shared/dbx"
-	"github.com/jackc/pgx/v5"
 )
+
+// The practice pool — work order 11 §3.11. The model adds a few items at a time
+// to slots, one kind at one level, and each learner's daily set is drawn from the
+// items that learner has not seen.
+//
+// The pool's course, units, lessons and activities belong to `lesson` and are
+// reached only through its contract. This file used to join learn.activities,
+// learn.lessons, learn.course_units and learn.courses from learning's own SQL —
+// rule L2, which no linter can see because it is SQL. Learning's queries now touch
+// only what learning owns here: item_exposures and daily_sets.
 
 const (
-	PracticePoolCourseSlug  = "pool-practice"
-	PracticePoolCourseTitle = "Practice Pool"
-	PracticePoolDescription = "Auto-generated practice exercises pool"
+	// PracticePoolCourseSlug identifies the pool's course. The slug is what makes
+	// resolving the pool's structure converge rather than create a second copy.
+	PracticePoolCourseSlug = "pool-practice"
 
-	TargetActiveItemsPerSlot = 50
-	MaxActiveItemsPerSlot    = 200
-	MaxItemsToAddPerRun      = 5
-	MaxRetriesPerItem        = 2 // Up to 3 attempts total (initial + 2 retries)
+	practicePoolCourseTitle = "Practice Pool"
+	practicePoolDescription = "Auto-generated practice exercises pool"
 
-	HoChiMinhTimeZone = "Asia/Ho_Chi_Minh"
+	targetActiveItemsPerSlot = 50
+	maxActiveItemsPerSlot    = 200
+	maxItemsToAddPerRun      = 5
+	// maxRetriesPerItem counts regenerations after the first attempt: three in all.
+	maxRetriesPerItem = 2
+	// runningLowThreshold is how few unseen items make a slot grow past its target.
+	runningLowThreshold = 10
+
+	hoChiMinhTimeZone    = "Asia/Ho_Chi_Minh"
+	defaultPracticeLevel = "B1"
+
+	kindReadingComprehension     = "reading_comprehension"
+	kindGrammarTenseChoice       = "grammar_tense_choice"
+	kindGrammarSentenceTransform = "grammar_sentence_transform"
 )
 
-var (
-	PracticeLevels = []string{"A2", "B1", "B2"}
-	PracticeKinds  = []string{
-		"reading_comprehension",
-		"grammar_tense_choice",
-		"grammar_sentence_transform",
-	}
-)
+var practiceLevels = []string{"A2", "B1", "B2"}
 
-type practiceSlot struct {
-	Level       string
-	Kind        string
-	LessonTitle string
+// practiceLesson is a slot's lesson inside each level's unit.
+type practiceLesson struct {
+	position   int
+	kind       string
+	title      string
+	skillFocus string
 }
 
-func practiceSlots() []practiceSlot {
-	return []practiceSlot{
-		{Level: "A2", Kind: "reading_comprehension", LessonTitle: "Reading Comprehension"},
-		{Level: "A2", Kind: "grammar_tense_choice", LessonTitle: "Grammar Tense Choice"},
-		{Level: "A2", Kind: "grammar_sentence_transform", LessonTitle: "Grammar Sentence Transform"},
-		{Level: "B1", Kind: "reading_comprehension", LessonTitle: "Reading Comprehension"},
-		{Level: "B1", Kind: "grammar_tense_choice", LessonTitle: "Grammar Tense Choice"},
-		{Level: "B1", Kind: "grammar_sentence_transform", LessonTitle: "Grammar Sentence Transform"},
-		{Level: "B2", Kind: "reading_comprehension", LessonTitle: "Reading Comprehension"},
-		{Level: "B2", Kind: "grammar_tense_choice", LessonTitle: "Grammar Tense Choice"},
-		{Level: "B2", Kind: "grammar_sentence_transform", LessonTitle: "Grammar Sentence Transform"},
-	}
+var practiceLessons = []practiceLesson{
+	{position: 1, kind: kindReadingComprehension, title: "Reading Comprehension", skillFocus: "reading"},
+	{position: 2, kind: kindGrammarTenseChoice, title: "Grammar Tense Choice", skillFocus: "grammar"},
+	{position: 3, kind: kindGrammarSentenceTransform, title: "Grammar Sentence Transform", skillFocus: "grammar"},
 }
 
-// EnsurePracticePoolStructure ensures the course, units (A2, B1, B2), and lessons exist.
+// dailySetComposition is what one day's set draws from each slot at a level.
+var dailySetComposition = []struct {
+	kind  string
+	count int
+}{
+	{kind: kindReadingComprehension, count: 1},
+	{kind: kindGrammarTenseChoice, count: 5},
+	{kind: kindGrammarSentenceTransform, count: 3},
+}
+
+type slotKey struct{ level, kind string }
+
+// practicePoolLayout is the pool's course and the lesson behind each slot.
+type practicePoolLayout struct {
+	courseID uuid.UUID
+	lessons  map[slotKey]uuid.UUID
+}
+
+// EnsurePracticePoolStructure makes sure the pool's course, a unit per level and a
+// lesson per kind exist, and remembers their ids for the life of the process.
 func (s *Service) EnsurePracticePoolStructure(ctx context.Context) error {
-	if s.lessonAuthor == nil {
-		return errors.New("lesson author dependency is required for practice pool structure")
-	}
+	_, err := s.practicePool(ctx)
+	return err
+}
 
+func (s *Service) practicePool(ctx context.Context) (*practicePoolLayout, error) {
+	s.poolMu.Lock()
+	defer s.poolMu.Unlock()
+	if s.poolLayout != nil {
+		return s.poolLayout, nil
+	}
+	if s.lessonAuthor == nil {
+		return nil, errors.New("lesson author dependency is required for the practice pool")
+	}
+	layout, err := s.buildPracticePool(ctx)
+	if err != nil {
+		return nil, err
+	}
+	s.poolLayout = layout
+	return layout, nil
+}
+
+func (s *Service) buildPracticePool(ctx context.Context) (*practicePoolLayout, error) {
 	courseID, err := s.lessonAuthor.EnsureCourse(ctx, lessoncontract.CourseSpec{
 		Slug:           PracticePoolCourseSlug,
-		Title:          PracticePoolCourseTitle,
-		Description:    PracticePoolDescription,
+		Title:          practicePoolCourseTitle,
+		Description:    practicePoolDescription,
 		CEFRFrom:       "A2",
 		CEFRTo:         "B2",
 		EstimatedHours: 100,
 	})
 	if err != nil {
-		return fmt.Errorf("ensure practice pool course: %w", err)
+		return nil, fmt.Errorf("ensure practice pool course: %w", err)
 	}
 
-	units := []struct {
-		Position    int
-		Title       string
-		Description string
-	}{
-		{Position: 1, Title: "A2", Description: "A2 practice pool"},
-		{Position: 2, Title: "B1", Description: "B1 practice pool"},
-		{Position: 3, Title: "B2", Description: "B2 practice pool"},
-	}
-
-	lessons := []struct {
-		Position   int
-		Title      string
-		SkillFocus string
-	}{
-		{Position: 1, Title: "Reading Comprehension", SkillFocus: "reading"},
-		{Position: 2, Title: "Grammar Tense Choice", SkillFocus: "grammar"},
-		{Position: 3, Title: "Grammar Sentence Transform", SkillFocus: "grammar"},
-	}
-
-	for _, u := range units {
+	layout := &practicePoolLayout{courseID: courseID, lessons: make(map[slotKey]uuid.UUID)}
+	for index, level := range practiceLevels {
 		unitID, err := s.lessonAuthor.EnsureUnit(ctx, lessoncontract.UnitSpec{
 			CourseID:    courseID,
-			Position:    u.Position,
-			Title:       u.Title,
-			Description: u.Description,
+			Position:    index + 1,
+			Title:       level,
+			Description: level + " practice pool",
 		})
 		if err != nil {
-			return fmt.Errorf("ensure practice pool unit %s: %w", u.Title, err)
+			return nil, fmt.Errorf("ensure practice pool unit %s: %w", level, err)
 		}
-
-		for _, l := range lessons {
-			_, err := s.lessonAuthor.EnsureLesson(ctx, lessoncontract.LessonSpec{
+		for _, lesson := range practiceLessons {
+			lessonID, err := s.lessonAuthor.EnsureLesson(ctx, lessoncontract.LessonSpec{
 				UnitID:           unitID,
-				Position:         l.Position,
-				Title:            l.Title,
-				SkillFocus:       l.SkillFocus,
+				Position:         lesson.position,
+				Title:            lesson.title,
+				SkillFocus:       lesson.skillFocus,
 				EstimatedMinutes: 10,
 			})
 			if err != nil {
-				return fmt.Errorf("ensure practice pool lesson %s in unit %s: %w", l.Title, u.Title, err)
+				return nil, fmt.Errorf("ensure practice pool lesson %s in %s: %w", lesson.title, level, err)
 			}
+			layout.lessons[slotKey{level: level, kind: lesson.kind}] = lessonID
 		}
 	}
-
-	return nil
+	return layout, nil
 }
 
-// TopUpPracticePool checks every slot and generates up to 5 verified items if needed.
+// slotActivities lists a slot's active items through lesson's contract.
+func (s *Service) slotActivities(
+	ctx context.Context, layout *practicePoolLayout, level, kind string,
+) ([]lessoncontract.Activity, error) {
+	lessonID, ok := layout.lessons[slotKey{level: level, kind: kind}]
+	if !ok {
+		return nil, fmt.Errorf("no practice pool lesson for %s %s", level, kind)
+	}
+	if s.lesson == nil {
+		return nil, errors.New("lesson reader dependency is required for the practice pool")
+	}
+	lesson, err := s.lesson.GetLesson(ctx, lessonID)
+	if err != nil {
+		return nil, fmt.Errorf("load practice pool lesson %s: %w", lessonID, err)
+	}
+	if lesson == nil {
+		return nil, nil
+	}
+	return lesson.Activities, nil
+}
+
+// --------------------------------------------------------------------------
+// Top-up
+// --------------------------------------------------------------------------
+
+// TopUpPracticePool adds verified items to every slot that needs them.
 func (s *Service) TopUpPracticePool(ctx context.Context) error {
 	if s.ai == nil {
-		slog.WarnContext(ctx, "practice pool top-up skipped: AI client is nil")
+		slog.WarnContext(ctx, "practice pool top-up skipped: no AI client")
 		return nil
 	}
 	if s.contentAuthor == nil || s.lessonAuthor == nil {
 		return errors.New("content author and lesson author dependencies are required for practice pool top-up")
 	}
+	// content_items.owner_id is required, and EnsurePublished refuses uuid.Nil. The
+	// top-up used to publish with no owner, so every item that passed all six checks
+	// was refused at the last step and the pool never held a single item.
+	if s.generatorAuthor == uuid.Nil {
+		slog.WarnContext(ctx, "practice pool top-up skipped: no owner for generated content")
+		return nil
+	}
 
-	if err := s.EnsurePracticePoolStructure(ctx); err != nil {
+	layout, err := s.practicePool(ctx)
+	if err != nil {
 		return fmt.Errorf("ensure pool structure: %w", err)
 	}
-
-	for _, slot := range practiceSlots() {
-		count, err := s.repo.CountActivePoolActivitiesForSlot(ctx, slot.Level, slot.Kind)
-		if err != nil {
-			slog.ErrorContext(ctx, "failed to count active pool activities", "level", slot.Level, "kind", slot.Kind, "error", err)
-			continue
+	for _, level := range practiceLevels {
+		for _, lesson := range practiceLessons {
+			s.topUpSlot(ctx, layout, level, lesson.kind)
 		}
-
-		toAdd := 0
-		if count < TargetActiveItemsPerSlot {
-			toAdd = MaxItemsToAddPerRun
-			if remaining := int(TargetActiveItemsPerSlot - count); remaining < toAdd {
-				toAdd = remaining
-			}
-		} else if count < MaxActiveItemsPerSlot {
-			hasActiveLearner, err := s.repo.HasActiveUserWithFewUnseenItems(ctx, slot.Level, slot.Kind)
-			if err != nil {
-				slog.ErrorContext(ctx, "failed to check active learners for slot", "level", slot.Level, "kind", slot.Kind, "error", err)
-				continue
-			}
-			if hasActiveLearner {
-				toAdd = MaxItemsToAddPerRun
-				if remaining := int(MaxActiveItemsPerSlot - count); remaining < toAdd {
-					toAdd = remaining
-				}
-			}
-		}
-
-		if toAdd <= 0 {
-			continue
-		}
-
-		lessonID, err := s.repo.GetPoolLessonID(ctx, slot.Level, slot.LessonTitle)
-		if err != nil {
-			slog.ErrorContext(ctx, "failed to find pool lesson ID", "level", slot.Level, "lessonTitle", slot.LessonTitle, "error", err)
-			continue
-		}
-
-		addedCount := 0
-		for i := 0; i < toAdd; i++ {
-			added, err := s.generateAndVerifyItem(ctx, slot.Level, slot.Kind, lessonID)
-			if err != nil {
-				slog.WarnContext(ctx, "item generation failed", "level", slot.Level, "kind", slot.Kind, "error", err)
-				continue
-			}
-			if added {
-				addedCount++
-			}
-		}
-
-		slog.InfoContext(ctx, "practice pool slot top-up complete", "level", slot.Level, "kind", slot.Kind, "added", addedCount)
 	}
-
 	return nil
 }
 
-// generateAndVerifyItem attempts generation with up to 2 retries (3 total attempts).
-func (s *Service) generateAndVerifyItem(ctx context.Context, level, kind string, lessonID uuid.UUID) (bool, error) {
-	var lastErr error
-
-	for attempt := 0; attempt <= MaxRetriesPerItem; attempt++ {
-		success, err := s.tryGenerateAndVerify(ctx, level, kind, lessonID)
-		if success {
-			return true, nil
-		}
-		lastErr = err
-		slog.WarnContext(ctx, "practice pool item verification attempt failed",
-			"level", level, "kind", kind, "attempt", attempt+1, "reason", err)
+func (s *Service) topUpSlot(ctx context.Context, layout *practicePoolLayout, level, kind string) {
+	activities, err := s.slotActivities(ctx, layout, level, kind)
+	if err != nil {
+		slog.ErrorContext(ctx, "could not list practice pool slot", "level", level, "kind", kind, "error", err)
+		return
+	}
+	toAdd, err := s.itemsToAdd(ctx, activities)
+	if err != nil {
+		slog.ErrorContext(ctx, "could not size practice pool top-up", "level", level, "kind", kind, "error", err)
+		return
 	}
 
-	return false, lastErr
+	lessonID := layout.lessons[slotKey{level: level, kind: kind}]
+	added := 0
+	for i := 0; i < toAdd; i++ {
+		body, err := s.generateAndVerifyItem(ctx, level, kind, lessonID, activities)
+		if err != nil {
+			slog.WarnContext(ctx, "practice pool item not added", "level", level, "kind", kind, "error", err)
+			continue
+		}
+		// Later candidates in this run are checked for duplicates against it too.
+		activities = append(activities, lessoncontract.Activity{Kind: kind, Config: body})
+		added++
+	}
+	if toAdd > 0 {
+		slog.InfoContext(ctx, "practice pool slot topped up", "level", level, "kind", kind, "added", added)
+	}
 }
 
-func (s *Service) tryGenerateAndVerify(ctx context.Context, level, kind string, lessonID uuid.UUID) (bool, error) {
-	// Call AI to generate practice item
-	rawResponse, err := s.ai.Complete(ctx, ai.Request{
+// itemsToAdd is §3.11's rule: fill to the target five at a time, then grow only
+// while an active learner is running low, and never past the ceiling.
+func (s *Service) itemsToAdd(ctx context.Context, activities []lessoncontract.Activity) (int, error) {
+	count := len(activities)
+	switch {
+	case count < targetActiveItemsPerSlot:
+		return min(maxItemsToAddPerRun, targetActiveItemsPerSlot-count), nil
+	case count >= maxActiveItemsPerSlot:
+		return 0, nil
+	}
+	low, err := s.repo.HasActiveLearnerRunningLow(ctx, idsOf(activities), runningLowThreshold)
+	if err != nil {
+		return 0, err
+	}
+	if !low {
+		return 0, nil
+	}
+	return min(maxItemsToAddPerRun, maxActiveItemsPerSlot-count), nil
+}
+
+// generateAndVerifyItem tries a candidate up to three times and returns the body
+// of the one it published.
+func (s *Service) generateAndVerifyItem(
+	ctx context.Context, level, kind string, lessonID uuid.UUID, existing []lessoncontract.Activity,
+) (json.RawMessage, error) {
+	var lastErr error
+	for attempt := 0; attempt <= maxRetriesPerItem; attempt++ {
+		body, err := s.tryGenerateAndVerify(ctx, level, kind, lessonID, existing)
+		if err == nil {
+			return body, nil
+		}
+		lastErr = err
+		slog.WarnContext(ctx, "practice pool candidate rejected",
+			"level", level, "kind", kind, "attempt", attempt+1, "reason", err)
+	}
+	return nil, lastErr
+}
+
+func (s *Service) tryGenerateAndVerify(
+	ctx context.Context, level, kind string, lessonID uuid.UUID, existing []lessoncontract.Activity,
+) (json.RawMessage, error) {
+	response, err := s.ai.Complete(ctx, ai.Request{
 		Task: ai.TaskPracticeGenerate,
-		Vars: map[string]any{
-			"Kind":      kind,
-			"CEFRLevel": level,
-		},
+		Vars: map[string]any{"Kind": kind, "CEFRLevel": level},
 	})
 	if err != nil {
-		return false, fmt.Errorf("ai generate call failed: %w", err)
+		return nil, fmt.Errorf("ai generate call failed: %w", err)
+	}
+	body := json.RawMessage(strings.TrimSpace(response.Text))
+
+	if err := s.checkCandidate(ctx, level, kind, body, existing); err != nil {
+		return nil, err
+	}
+	if err := s.publishCandidate(ctx, level, kind, lessonID, body); err != nil {
+		return nil, err
+	}
+	return body, nil
+}
+
+// checkCandidate runs §3.11's six checks, in order.
+func (s *Service) checkCandidate(
+	ctx context.Context, level, kind string, body json.RawMessage, existing []lessoncontract.Activity,
+) error {
+	if err := validateParse(kind, body); err != nil {
+		return fmt.Errorf("check 1 (parse) failed: %w", err)
 	}
 
-	rawJSON := []byte(strings.TrimSpace(rawResponse.Text))
-
-	// CHECK 1: Parse into grader's own body type
-	if err := validateParse(kind, rawJSON); err != nil {
-		return false, fmt.Errorf("check 1 (parse) failed: %w", err)
-	}
-
-	// CHECK 2: Score full marks through real grader
 	grader, ok := s.graders.Get(kind)
 	if !ok || grader == nil {
-		return false, fmt.Errorf("grader not registered for kind: %s", kind)
+		return fmt.Errorf("grader not registered for kind: %s", kind)
 	}
-
-	tempVersionID := uuid.New()
-	tempVer := &contentcontract.Version{
-		ID:        tempVersionID,
-		Kind:      kind,
-		Body:      rawJSON,
-		CEFRLevel: level,
-		Status:    "published",
-	}
-	tempCtx := contentcontract.ContextWithTempVersion(ctx, tempVer)
-
-	ownAnswerPayload, err := buildOwnAnswerPayload(kind, rawJSON)
-	if err != nil {
-		return false, fmt.Errorf("build own answer payload: %w", err)
-	}
-
-	gradeRes, err := grader.Grade(tempCtx, learningcontract.GradeRequest{
-		ContentVersionID: tempVersionID,
-		Response:         ownAnswerPayload,
+	versionID := uuid.New()
+	gradeCtx := contentcontract.ContextWithTempVersion(ctx, &contentcontract.Version{
+		ID: versionID, Kind: kind, Body: body, CEFRLevel: level, Status: "published",
 	})
-	if err != nil || gradeRes.Score < 100 || !gradeRes.Correct {
-		return false, fmt.Errorf("check 2 (own answer scores full marks) failed: score=%d correct=%v err=%v",
-			gradeRes.Score, gradeRes.Correct, err)
+
+	ownAnswer, err := buildOwnAnswerPayload(kind, body)
+	if err != nil {
+		return fmt.Errorf("build own answer payload: %w", err)
+	}
+	if err := gradesFullMarks(gradeCtx, grader, versionID, ownAnswer); err != nil {
+		return fmt.Errorf("check 2 (own answer scores full marks) failed: %w", err)
 	}
 
-	// CHECK 3: Structure
-	if err := validateStructure(kind, rawJSON); err != nil {
-		return false, fmt.Errorf("check 3 (structure) failed: %w", err)
+	if err := validateStructure(kind, body); err != nil {
+		return fmt.Errorf("check 3 (structure) failed: %w", err)
 	}
 
-	// CHECK 4: Blind solve
-	redactedJSON := contentcontract.RedactForLearner(rawJSON)
-	solveResponse, err := s.ai.Complete(ctx, ai.Request{
+	redacted := contentcontract.RedactForLearner(body)
+	if err := s.blindSolve(gradeCtx, grader, versionID, kind, redacted); err != nil {
+		return fmt.Errorf("check 4 (blind solve) failed: %w", err)
+	}
+
+	if isDuplicate(kind, body, existing) {
+		return errors.New("check 5 (deduplication) failed: item matches an item already in the slot")
+	}
+
+	if err := verifyRedaction(redacted); err != nil {
+		return fmt.Errorf("check 6 (redaction verification) failed: %w", err)
+	}
+	return nil
+}
+
+// blindSolve asks the model to answer the redacted item and grades that answer.
+// Disagreement with the item's own key is what catches a wrong key.
+func (s *Service) blindSolve(
+	ctx context.Context, grader learningcontract.ExerciseGrader, versionID uuid.UUID, kind string,
+	redacted json.RawMessage,
+) error {
+	response, err := s.ai.Complete(ctx, ai.Request{
 		Task: ai.TaskPracticeSolve,
-		Vars: map[string]any{
-			"Kind":         kind,
-			"RedactedBody": string(redactedJSON),
-		},
+		Vars: map[string]any{"Kind": kind, "RedactedBody": string(redacted)},
 	})
 	if err != nil {
-		return false, fmt.Errorf("ai blind solve call failed: %w", err)
+		return fmt.Errorf("ai blind solve call failed: %w", err)
 	}
-
-	solvePayload, err := parseBlindSolvePayload(kind, []byte(strings.TrimSpace(solveResponse.Text)))
-
+	payload, err := parseBlindSolvePayload(kind, []byte(strings.TrimSpace(response.Text)))
 	if err != nil {
-		return false, fmt.Errorf("check 4 (blind solve response parse) failed: %w", err)
+		return fmt.Errorf("parse blind solve response: %w", err)
 	}
+	return gradesFullMarks(ctx, grader, versionID, payload)
+}
 
-	solveGradeRes, err := grader.Grade(tempCtx, learningcontract.GradeRequest{
-		ContentVersionID: tempVersionID,
-		Response:         solvePayload,
+func gradesFullMarks(
+	ctx context.Context, grader learningcontract.ExerciseGrader, versionID uuid.UUID, response json.RawMessage,
+) error {
+	result, err := grader.Grade(ctx, learningcontract.GradeRequest{
+		ContentVersionID: versionID,
+		Response:         response,
 	})
-	if err != nil || solveGradeRes.Score < 100 || !solveGradeRes.Correct {
-		return false, fmt.Errorf("check 4 (blind solve agreement) failed: score=%d correct=%v err=%v",
-			solveGradeRes.Score, solveGradeRes.Correct, err)
-	}
-
-	// CHECK 5: Deduplication against existing items in the slot
-	existingItems, err := s.repo.ListPoolActivitiesForSlot(ctx, level, kind)
 	if err != nil {
-		return false, fmt.Errorf("list existing slot items: %w", err)
+		return err
 	}
-	if isDuplicate(kind, rawJSON, existingItems) {
-		return false, errors.New("check 5 (deduplication) failed: item matches existing item in slot")
+	if result.Score < 100 || !result.Correct {
+		return fmt.Errorf("score=%d correct=%v", result.Score, result.Correct)
 	}
+	return nil
+}
 
-	// CHECK 6: Redaction verification (learner-facing body contains no answers)
-	if err := verifyRedaction(redactedJSON); err != nil {
-		return false, fmt.Errorf("check 6 (redaction verification) failed: %w", err)
-	}
-
-	// All 6 checks passed -> publish item and append activity
-	slug := fmt.Sprintf("pool-%s-%s-%s", strings.ToLower(level), strings.ToLower(kind), uuid.New().String()[:8])
-	publishedVersionID, err := s.contentAuthor.EnsurePublished(ctx, contentcontract.AuthorSpec{
+// publishCandidate publishes an item that passed every check and appends it to its
+// slot's lesson. Appending, never replacing: see work order 11 §3.0.
+func (s *Service) publishCandidate(
+	ctx context.Context, level, kind string, lessonID uuid.UUID, body json.RawMessage,
+) error {
+	slug := fmt.Sprintf("pool-%s-%s-%s", strings.ToLower(level), kind, uuid.New().String()[:8])
+	versionID, err := s.contentAuthor.EnsurePublished(ctx, contentcontract.AuthorSpec{
 		Slug:      slug,
 		Kind:      kind,
 		CEFRLevel: level,
-		Body:      rawJSON,
-		AuthorID:  uuid.Nil,
+		Body:      body,
+		AuthorID:  s.generatorAuthor,
 	})
 	if err != nil {
-		return false, fmt.Errorf("publish verified content: %w", err)
+		return fmt.Errorf("publish verified content: %w", err)
 	}
 
-	_, err = s.lessonAuthor.AppendActivity(ctx, lessonID, lessoncontract.ActivitySpec{
+	if _, err := s.lessonAuthor.AppendActivity(ctx, lessonID, lessoncontract.ActivitySpec{
 		Kind:             kind,
-		ContentVersionID: publishedVersionID,
-		Config:           rawJSON,
+		ContentVersionID: versionID,
+		Config:           body,
 		Weight:           1,
-	})
-	if err != nil {
-		return false, fmt.Errorf("append activity to pool lesson: %w", err)
+	}); err != nil {
+		return fmt.Errorf("append activity to pool lesson: %w", err)
 	}
-
-	return true, nil
+	return nil
 }
 
 // --------------------------------------------------------------------------
-// Validation helpers for the 6 checks
+// Candidate bodies and the checks over them
 // --------------------------------------------------------------------------
 
 type candExplanation struct {
@@ -400,47 +467,15 @@ type grammarSentenceTransformCand struct {
 
 func validateParse(kind string, raw []byte) error {
 	switch kind {
-	case "reading_comprehension":
-		var body readingComprehensionCand
-		if err := json.Unmarshal(raw, &body); err != nil {
-			return err
-		}
-		if strings.TrimSpace(body.Passage) == "" {
-			return errors.New("passage is empty")
-		}
-		if len(body.Questions) < 4 || len(body.Questions) > 6 {
-			return fmt.Errorf("expected 4-6 questions, got %d", len(body.Questions))
-		}
-		for i, q := range body.Questions {
-			if strings.TrimSpace(q.Prompt) == "" {
-				return fmt.Errorf("question %d prompt is empty", i)
-			}
-			if len(q.Options) != 4 {
-				return fmt.Errorf("question %d expected 4 options, got %d", i, len(q.Options))
-			}
-			if strings.TrimSpace(q.CorrectOptionID) == "" {
-				return fmt.Errorf("question %d correct_option_id is empty", i)
-			}
-		}
-		return nil
-
-	case "grammar_tense_choice":
+	case kindReadingComprehension:
+		return parseReading(raw)
+	case kindGrammarTenseChoice:
 		var body grammarTenseChoiceCand
 		if err := json.Unmarshal(raw, &body); err != nil {
 			return err
 		}
-		if strings.TrimSpace(body.Prompt) == "" {
-			return errors.New("prompt is empty")
-		}
-		if len(body.Options) != 4 {
-			return fmt.Errorf("expected 4 options, got %d", len(body.Options))
-		}
-		if strings.TrimSpace(body.CorrectOptionID) == "" {
-			return errors.New("correct_option_id is empty")
-		}
-		return nil
-
-	case "grammar_sentence_transform":
+		return parseChoice(body.Prompt, body.Options, body.CorrectOptionID)
+	case kindGrammarSentenceTransform:
 		var body grammarSentenceTransformCand
 		if err := json.Unmarshal(raw, &body); err != nil {
 			return err
@@ -452,15 +487,46 @@ func validateParse(kind string, raw []byte) error {
 			return errors.New("correct_answer is empty")
 		}
 		return nil
-
 	default:
 		return fmt.Errorf("unsupported kind: %s", kind)
 	}
 }
 
+func parseReading(raw []byte) error {
+	var body readingComprehensionCand
+	if err := json.Unmarshal(raw, &body); err != nil {
+		return err
+	}
+	if strings.TrimSpace(body.Passage) == "" {
+		return errors.New("passage is empty")
+	}
+	if len(body.Questions) < 4 || len(body.Questions) > 6 {
+		return fmt.Errorf("expected 4-6 questions, got %d", len(body.Questions))
+	}
+	for i, q := range body.Questions {
+		if err := parseChoice(q.Prompt, q.Options, q.CorrectOptionID); err != nil {
+			return fmt.Errorf("question %d: %w", i, err)
+		}
+	}
+	return nil
+}
+
+func parseChoice(prompt string, options []candOption, correctOptionID string) error {
+	if strings.TrimSpace(prompt) == "" {
+		return errors.New("prompt is empty")
+	}
+	if len(options) != 4 {
+		return fmt.Errorf("expected 4 options, got %d", len(options))
+	}
+	if strings.TrimSpace(correctOptionID) == "" {
+		return errors.New("correct_option_id is empty")
+	}
+	return nil
+}
+
 func buildOwnAnswerPayload(kind string, raw []byte) (json.RawMessage, error) {
 	switch kind {
-	case "reading_comprehension":
+	case kindReadingComprehension:
 		var body readingComprehensionCand
 		if err := json.Unmarshal(raw, &body); err != nil {
 			return nil, err
@@ -470,21 +536,18 @@ func buildOwnAnswerPayload(kind string, raw []byte) (json.RawMessage, error) {
 			answers[q.ID] = q.CorrectOptionID
 		}
 		return json.Marshal(map[string]any{"answers": answers})
-
-	case "grammar_tense_choice":
+	case kindGrammarTenseChoice:
 		var body grammarTenseChoiceCand
 		if err := json.Unmarshal(raw, &body); err != nil {
 			return nil, err
 		}
 		return json.Marshal(map[string]any{"selected_option_id": body.CorrectOptionID})
-
-	case "grammar_sentence_transform":
+	case kindGrammarSentenceTransform:
 		var body grammarSentenceTransformCand
 		if err := json.Unmarshal(raw, &body); err != nil {
 			return nil, err
 		}
 		return json.Marshal(map[string]any{"answer": body.CorrectAnswer})
-
 	default:
 		return nil, fmt.Errorf("unsupported kind: %s", kind)
 	}
@@ -492,83 +555,75 @@ func buildOwnAnswerPayload(kind string, raw []byte) (json.RawMessage, error) {
 
 func validateStructure(kind string, raw []byte) error {
 	switch kind {
-	case "reading_comprehension":
+	case kindReadingComprehension:
 		var body readingComprehensionCand
 		if err := json.Unmarshal(raw, &body); err != nil {
 			return err
 		}
 		for i, q := range body.Questions {
-			if q.Explanation == nil || q.Explanation.Vi() == "" {
+			if q.Explanation.Vi() == "" {
 				return fmt.Errorf("question %d explanation_vi is empty", i)
 			}
-			foundCorrect := false
-			seenOptions := make(map[string]bool)
-			for _, opt := range q.Options {
-				if opt.ID == q.CorrectOptionID {
-					foundCorrect = true
-				}
-				norm := normaliseText(opt.Text)
-				if seenOptions[norm] {
-					return fmt.Errorf("question %d has duplicate option: %q", i, opt.Text)
-				}
-				seenOptions[norm] = true
-			}
-			if !foundCorrect {
-				return fmt.Errorf("question %d correct_option_id %q not found in options", i, q.CorrectOptionID)
+			if err := checkOptions(q.Options, q.CorrectOptionID); err != nil {
+				return fmt.Errorf("question %d: %w", i, err)
 			}
 		}
 		return nil
-
-	case "grammar_tense_choice":
+	case kindGrammarTenseChoice:
 		var body grammarTenseChoiceCand
 		if err := json.Unmarshal(raw, &body); err != nil {
 			return err
 		}
-		if body.Explanation == nil || body.Explanation.Vi() == "" {
+		if body.Explanation.Vi() == "" {
 			return errors.New("explanation_vi is empty")
 		}
-		foundCorrect := false
-		seenOptions := make(map[string]bool)
-		for _, opt := range body.Options {
-			if opt.ID == body.CorrectOptionID {
-				foundCorrect = true
-			}
-			norm := normaliseText(opt.Text)
-			if seenOptions[norm] {
-				return fmt.Errorf("duplicate option: %q", opt.Text)
-			}
-			seenOptions[norm] = true
-		}
-		if !foundCorrect {
-			return fmt.Errorf("correct_option_id %q not found in options", body.CorrectOptionID)
-		}
-		return nil
-
-	case "grammar_sentence_transform":
-		var body grammarSentenceTransformCand
-		if err := json.Unmarshal(raw, &body); err != nil {
-			return err
-		}
-		if body.Explanation == nil || body.Explanation.Vi() == "" {
-			return errors.New("explanation_vi is empty")
-		}
-
-		// A transform answer must not appear verbatim in prompt
-		normPrompt := normaliseText(body.Prompt)
-		normAnswer := normaliseText(body.CorrectAnswer)
-		if strings.Contains(normPrompt, normAnswer) {
-			return errors.New("correct_answer appears verbatim in prompt")
-		}
-		return nil
-
+		return checkOptions(body.Options, body.CorrectOptionID)
+	case kindGrammarSentenceTransform:
+		return structureSentenceTransform(raw)
 	default:
 		return fmt.Errorf("unsupported kind: %s", kind)
 	}
 }
 
+func structureSentenceTransform(raw []byte) error {
+	var body grammarSentenceTransformCand
+	if err := json.Unmarshal(raw, &body); err != nil {
+		return err
+	}
+	if body.Explanation.Vi() == "" {
+		return errors.New("explanation_vi is empty")
+	}
+	// A transform answer must not appear verbatim in its own prompt.
+	if strings.Contains(normaliseText(body.Prompt), normaliseText(body.CorrectAnswer)) {
+		return errors.New("correct_answer appears verbatim in prompt")
+	}
+	return nil
+}
+
+// checkOptions requires the correct option to be one of the options, and the
+// options to be distinct once normalised.
+func checkOptions(options []candOption, correctOptionID string) error {
+	foundCorrect := false
+	seen := make(map[string]bool, len(options))
+	for _, opt := range options {
+		if opt.ID == correctOptionID {
+			foundCorrect = true
+		}
+		norm := normaliseText(opt.Text)
+		if seen[norm] {
+			return fmt.Errorf("duplicate option: %q", opt.Text)
+		}
+		seen[norm] = true
+	}
+	if !foundCorrect {
+		return fmt.Errorf("correct_option_id %q not found in options", correctOptionID)
+	}
+	return nil
+}
+
 func parseBlindSolvePayload(kind string, raw []byte) (json.RawMessage, error) {
 	switch kind {
-	case "reading_comprehension":
+	case kindReadingComprehension:
 		var resp struct {
 			Answers map[string]string `json:"answers"`
 		}
@@ -579,8 +634,7 @@ func parseBlindSolvePayload(kind string, raw []byte) (json.RawMessage, error) {
 			return nil, errors.New("empty blind solve answers")
 		}
 		return json.Marshal(map[string]any{"answers": resp.Answers})
-
-	case "grammar_tense_choice":
+	case kindGrammarTenseChoice:
 		var resp struct {
 			SelectedOptionID string `json:"selected_option_id"`
 			Answer           string `json:"answer"`
@@ -588,16 +642,15 @@ func parseBlindSolvePayload(kind string, raw []byte) (json.RawMessage, error) {
 		if err := json.Unmarshal(raw, &resp); err != nil {
 			return nil, err
 		}
-		ans := resp.SelectedOptionID
-		if ans == "" {
-			ans = resp.Answer
+		answer := resp.SelectedOptionID
+		if answer == "" {
+			answer = resp.Answer
 		}
-		if ans == "" {
+		if answer == "" {
 			return nil, errors.New("empty blind solve option ID")
 		}
-		return json.Marshal(map[string]any{"selected_option_id": ans})
-
-	case "grammar_sentence_transform":
+		return json.Marshal(map[string]any{"selected_option_id": answer})
+	case kindGrammarSentenceTransform:
 		var resp struct {
 			Answer string `json:"answer"`
 		}
@@ -608,21 +661,18 @@ func parseBlindSolvePayload(kind string, raw []byte) (json.RawMessage, error) {
 			return nil, errors.New("empty blind solve sentence transform answer")
 		}
 		return json.Marshal(map[string]any{"answer": resp.Answer})
-
 	default:
 		return nil, fmt.Errorf("unsupported kind: %s", kind)
 	}
 }
 
-func isDuplicate(kind string, newJSON []byte, existing []domain.PoolActivity) bool {
-	normTarget := extractComparisonText(kind, newJSON)
-	if normTarget == "" {
+func isDuplicate(kind string, body []byte, existing []lessoncontract.Activity) bool {
+	target := extractComparisonText(kind, body)
+	if target == "" {
 		return false
 	}
-
-	for _, item := range existing {
-		normExisting := extractComparisonText(kind, item.Config)
-		if normExisting == normTarget {
+	for _, activity := range existing {
+		if extractComparisonText(kind, activity.Config) == target {
 			return true
 		}
 	}
@@ -633,36 +683,27 @@ func extractComparisonText(kind string, raw []byte) string {
 	if len(raw) == 0 {
 		return ""
 	}
-	switch kind {
-	case "reading_comprehension":
+	if kind == kindReadingComprehension {
 		var body struct {
 			Passage string `json:"passage"`
 		}
 		_ = json.Unmarshal(raw, &body)
 		return normaliseText(body.Passage)
-
-	default:
-		var body struct {
-			Prompt string `json:"prompt"`
-		}
-		_ = json.Unmarshal(raw, &body)
-		return normaliseText(body.Prompt)
 	}
+	var body struct {
+		Prompt string `json:"prompt"`
+	}
+	_ = json.Unmarshal(raw, &body)
+	return normaliseText(body.Prompt)
 }
 
 func verifyRedaction(redacted []byte) error {
-	redactedStr := string(redacted)
-	forbiddenKeys := []string{
-		`"correct_option_id"`,
-		`"correct_answer"`,
-		`"acceptable"`,
-		`"answers"`,
-		`"answer"`,
-		`"solution"`,
-	}
-	for _, k := range forbiddenKeys {
-		if strings.Contains(redactedStr, k) {
-			return fmt.Errorf("redacted JSON contains forbidden key: %s", k)
+	serialized := string(redacted)
+	for _, key := range []string{
+		`"correct_option_id"`, `"correct_answer"`, `"acceptable"`, `"answers"`, `"answer"`, `"solution"`,
+	} {
+		if strings.Contains(serialized, key) {
+			return fmt.Errorf("redacted JSON contains forbidden key: %s", key)
 		}
 	}
 	return nil
@@ -676,198 +717,182 @@ func normaliseText(s string) string {
 }
 
 // --------------------------------------------------------------------------
-// Daily Practice Set Generation and Fetching
+// The daily set
 // --------------------------------------------------------------------------
 
-// GetDailySet builds or retrieves the daily practice set for the caller for today in Asia/Ho_Chi_Minh.
-func (s *Service) GetDailySet(ctx context.Context, userID uuid.UUID, levelOverride string) (*domain.DailySetDTO, error) {
-	loc, err := time.LoadLocation(HoChiMinhTimeZone)
+// GetDailySet builds or retrieves the caller's practice set for today in
+// Asia/Ho_Chi_Minh.
+func (s *Service) GetDailySet(
+	ctx context.Context, userID uuid.UUID, levelOverride string,
+) (*domain.DailySetDTO, error) {
+	if s.lesson == nil {
+		return nil, errors.New("lesson reader dependency is required for the daily set")
+	}
+	localDate := learnerLocalDate(s.clock.Now())
+	level := practiceLevel(levelOverride)
+
+	layout, err := s.practicePool(ctx)
 	if err != nil {
-		loc = time.FixedZone(HoChiMinhTimeZone, 7*3600)
+		return nil, fmt.Errorf("resolve practice pool: %w", err)
 	}
+	s.ensurePoolEnrollment(ctx, userID, layout.courseID)
 
-	now := s.clock.Now().In(loc)
-	localDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
-
-	level := "B1"
-	if levelOverride == "A2" || levelOverride == "B1" || levelOverride == "B2" {
-		level = levelOverride
-	}
-
-	// Ensure learner is enrolled in pool-practice so attempts can be recorded
-	if poolCourseID, pErr := s.repo.GetPoolPracticeCourseID(ctx); pErr == nil && poolCourseID != uuid.Nil {
-		if existing, _ := s.repo.GetEnrollmentByUserCourse(ctx, userID, poolCourseID); existing == nil {
-			_, _ = s.repo.CreateEnrollment(ctx, userID, poolCourseID, domain.StatusEnrollmentActive, s.clock.Now().UTC())
-		}
-	}
-
-	// 1. Check if daily set already exists
-	existingSet, err := s.repo.GetDailySet(ctx, userID, localDate)
+	existing, err := s.repo.GetDailySet(ctx, userID, localDate)
 	if err != nil {
 		return nil, fmt.Errorf("check existing daily set: %w", err)
 	}
-
-	if existingSet != nil {
-		return s.assembleDailySetDTO(ctx, existingSet.ID, localDate, level, existingSet.ActivityIDs)
+	if existing != nil {
+		return s.assembleDailySetDTO(ctx, existing.ID, localDate, level, existing.ActivityIDs)
 	}
 
-	// 2. Build a new set: 1 passage, 5 grammar tense, 3 grammar sentence transform
-	neededByKind := map[string]int{
-		"reading_comprehension":      1,
-		"grammar_tense_choice":       5,
-		"grammar_sentence_transform": 3,
+	chosen, err := s.drawDailySet(ctx, userID, level, layout)
+	if err != nil {
+		return nil, err
 	}
-
-	var chosenActivityIDs []uuid.UUID
-
-	for _, kind := range []string{"reading_comprehension", "grammar_tense_choice", "grammar_sentence_transform"} {
-		needed := neededByKind[kind]
-		unseen, err := s.repo.ListUnseenPoolActivitiesForSlot(ctx, level, kind, userID)
-		if err != nil {
-			return nil, fmt.Errorf("list unseen items for slot %s/%s: %w", level, kind, err)
-		}
-
-		shuffledUnseen := shuffleActivities(unseen)
-		if len(shuffledUnseen) >= needed {
-			for i := 0; i < needed; i++ {
-				chosenActivityIDs = append(chosenActivityIDs, shuffledUnseen[i].ID)
-			}
-		} else {
-			// Take all unseen
-			for _, act := range shuffledUnseen {
-				chosenActivityIDs = append(chosenActivityIDs, act.ID)
-			}
-			shortfall := needed - len(shuffledUnseen)
-			slog.InfoContext(ctx, "daily practice set slot drew from oldest exposures",
-				"user_id", userID, "level", level, "kind", kind, "shortfall", shortfall)
-
-			seen, err := s.repo.ListSeenPoolActivitiesForSlotOldestFirst(ctx, level, kind, userID)
-			if err != nil {
-				return nil, fmt.Errorf("list seen items for slot %s/%s: %w", level, kind, err)
-			}
-
-			for i := 0; i < shortfall && i < len(seen); i++ {
-				chosenActivityIDs = append(chosenActivityIDs, seen[i].ID)
-			}
-		}
-	}
-
-	// If the practice pool has fewer than 9 items total (e.g. fresh installation or test),
-	// we still record what we have rather than hard failing.
-	if len(chosenActivityIDs) == 0 {
+	if len(chosen) == 0 {
 		return nil, apperr.New(apperr.NotFound, "PRACTICE_POOL_EMPTY", "Practice pool contains no activities.")
 	}
 
-	// 3. Persist daily set and exposures in transaction
-	var createdID uuid.UUID
-	if s.pool == nil {
-		created, err := s.repo.CreateDailySet(ctx, userID, localDate, chosenActivityIDs)
+	stored, err := s.saveDailySet(ctx, userID, localDate, chosen)
+	if err != nil {
+		return nil, err
+	}
+	return s.assembleDailySetDTO(ctx, stored.ID, localDate, level, stored.ActivityIDs)
+}
+
+func (s *Service) drawDailySet(
+	ctx context.Context, userID uuid.UUID, level string, layout *practicePoolLayout,
+) ([]uuid.UUID, error) {
+	var chosen []uuid.UUID
+	for _, part := range dailySetComposition {
+		activities, err := s.slotActivities(ctx, layout, level, part.kind)
 		if err != nil {
-			raceSet, rErr := s.repo.GetDailySet(ctx, userID, localDate)
-			if rErr == nil && raceSet != nil {
-				return s.assembleDailySetDTO(ctx, raceSet.ID, localDate, level, raceSet.ActivityIDs)
-			}
 			return nil, err
 		}
-		createdID = created.ID
-		for _, actID := range chosenActivityIDs {
-			if err := s.repo.RecordItemExposure(ctx, userID, actID); err != nil {
-				return nil, fmt.Errorf("record exposure for %s: %w", actID, err)
-			}
-		}
-	} else {
-		err = dbx.InTx(ctx, s.pool, func(txCtx context.Context, tx pgx.Tx) error {
-			txRepo := s.repo.WithTx(tx)
-
-			created, err := txRepo.CreateDailySet(txCtx, userID, localDate, chosenActivityIDs)
-			if err != nil {
-				// Idempotence: if concurrent request won the race, return nil to fallback to reading
-				return err
-			}
-			createdID = created.ID
-
-			for _, actID := range chosenActivityIDs {
-				if err := txRepo.RecordItemExposure(txCtx, userID, actID); err != nil {
-					return fmt.Errorf("record exposure for %s: %w", actID, err)
-				}
-			}
-			return nil
-		})
-
+		picked, err := s.drawFromSlot(ctx, userID, activities, part.count)
 		if err != nil {
-			// Race fallback: re-read set
-			raceSet, rErr := s.repo.GetDailySet(ctx, userID, localDate)
-			if rErr == nil && raceSet != nil {
-				return s.assembleDailySetDTO(ctx, raceSet.ID, localDate, level, raceSet.ActivityIDs)
-			}
-			return nil, fmt.Errorf("save daily set: %w", err)
+			return nil, fmt.Errorf("draw from %s %s: %w", level, part.kind, err)
+		}
+		chosen = append(chosen, picked...)
+	}
+	return chosen, nil
+}
+
+// drawFromSlot picks at random among items the learner has not seen, then fills
+// from the ones they were served longest ago. A set is never short while the slot
+// has anything in it.
+func (s *Service) drawFromSlot(
+	ctx context.Context, userID uuid.UUID, activities []lessoncontract.Activity, needed int,
+) ([]uuid.UUID, error) {
+	if len(activities) == 0 || needed <= 0 {
+		return nil, nil
+	}
+	ids := idsOf(activities)
+	exposures, err := s.repo.ListItemExposures(ctx, userID, ids)
+	if err != nil {
+		return nil, fmt.Errorf("list item exposures: %w", err)
+	}
+
+	var unseen, seen []uuid.UUID
+	for _, id := range ids {
+		if _, served := exposures[id]; served {
+			seen = append(seen, id)
+		} else {
+			unseen = append(unseen, id)
 		}
 	}
 
-	return s.assembleDailySetDTO(ctx, createdID, localDate, level, chosenActivityIDs)
+	picked := firstN(shuffledIDs(unseen), needed)
+	if shortfall := needed - len(picked); shortfall > 0 && len(seen) > 0 {
+		sort.Slice(seen, func(i, j int) bool { return exposures[seen[i]].Before(exposures[seen[j]]) })
+		repeated := firstN(seen, shortfall)
+		picked = append(picked, repeated...)
+		slog.InfoContext(ctx, "daily practice set repeated items the learner had seen",
+			"user_id", userID, "repeated", len(repeated))
+	}
+	return picked, nil
+}
+
+// saveDailySet stores a set and its exposures in one transaction.
+//
+// When another request stored the learner's set for the day first, that set is
+// returned and nothing from this request's draw is recorded. The insert used to
+// be ON CONFLICT DO UPDATE, which never failed: the losing request carried on,
+// marked its own randomly drawn items as seen — items the learner was never shown
+// — and answered with a set different from the one stored.
+func (s *Service) saveDailySet(
+	ctx context.Context, userID uuid.UUID, localDate time.Time, chosen []uuid.UUID,
+) (*domain.DailySet, error) {
+	write := func(ctx context.Context, repo Repository) (*domain.DailySet, error) {
+		created, err := repo.CreateDailySet(ctx, userID, localDate, chosen)
+		if err != nil || created == nil {
+			return created, err
+		}
+		for _, id := range created.ActivityIDs {
+			if err := repo.RecordItemExposure(ctx, userID, id); err != nil {
+				return nil, fmt.Errorf("record exposure for %s: %w", id, err)
+			}
+		}
+		return created, nil
+	}
+
+	var stored *domain.DailySet
+	if s.pool == nil {
+		created, err := write(ctx, s.repo)
+		if err != nil {
+			return nil, fmt.Errorf("save daily set: %w", err)
+		}
+		stored = created
+	} else if err := dbx.InTx(ctx, s.pool, func(txCtx context.Context, tx pgx.Tx) error {
+		created, err := write(txCtx, s.repo.WithTx(tx))
+		stored = created
+		return err
+	}); err != nil {
+		return nil, fmt.Errorf("save daily set: %w", err)
+	}
+	if stored != nil {
+		return stored, nil
+	}
+
+	winner, err := s.repo.GetDailySet(ctx, userID, localDate)
+	if err != nil {
+		return nil, fmt.Errorf("read the day's set after a concurrent save: %w", err)
+	}
+	if winner == nil {
+		return nil, errors.New("daily set missing after a concurrent save")
+	}
+	return winner, nil
 }
 
 func (s *Service) assembleDailySetDTO(
 	ctx context.Context, setID uuid.UUID, localDate time.Time, level string, activityIDs []uuid.UUID,
 ) (*domain.DailySetDTO, error) {
-	activities, err := s.repo.ListActivitiesByIDs(ctx, activityIDs)
-	if err != nil {
-		return nil, fmt.Errorf("list activities by ids: %w", err)
-	}
-
-	// Index activities by ID to preserve the daily set's ordering
-	actMap := make(map[uuid.UUID]domain.PoolActivity, len(activities))
-	var versionIDs []uuid.UUID
-	for _, act := range activities {
-		actMap[act.ID] = act
-		if act.ContentVersionID != uuid.Nil {
-			versionIDs = append(versionIDs, act.ContentVersionID)
-		}
-	}
-
-	// Batch resolve content versions
-	versions := make(map[uuid.UUID]*contentcontract.Version)
-	if s.content != nil && len(versionIDs) > 0 {
-		var vErr error
-		versions, vErr = s.content.GetManyVersions(ctx, versionIDs)
-		if vErr != nil {
-			slog.WarnContext(ctx, "failed to batch load content versions for daily set", "error", vErr)
-		}
-	}
-
-	actDTOs := make([]domain.DailySetActivityDTO, 0, len(activityIDs))
-	for pos, actID := range activityIDs {
-		act, ok := actMap[actID]
-		if !ok {
+	resolved := make([]*lessoncontract.ActivityHierarchy, 0, len(activityIDs))
+	versionIDs := make([]uuid.UUID, 0, len(activityIDs))
+	for _, id := range activityIDs {
+		activity, err := s.lesson.ResolveActivity(ctx, id)
+		if err != nil || activity == nil {
+			// An item that can no longer be resolved is left out rather than
+			// failing the whole day's set.
+			slog.WarnContext(ctx, "daily set activity could not be resolved", "activity_id", id, "error", err)
 			continue
 		}
+		resolved = append(resolved, activity)
+		versionIDs = append(versionIDs, activity.ContentVersionID)
+	}
 
-		redactedConfigRaw := contentcontract.RedactForLearner(act.Config)
-		var configMap map[string]interface{}
-		if len(redactedConfigRaw) > 0 {
-			_ = json.Unmarshal(redactedConfigRaw, &configMap)
-		}
-
-		var contentMap map[string]interface{}
-		if ver, exists := versions[act.ContentVersionID]; exists && ver != nil {
-			redactedVer := contentcontract.RedactVersionForLearner(ver)
-			if redactedVer != nil {
-				marshaled, mErr := json.Marshal(redactedVer)
-				if mErr == nil {
-					_ = json.Unmarshal(marshaled, &contentMap)
-				}
-			}
-		}
-
-		actDTOs = append(actDTOs, domain.DailySetActivityDTO{
-			ID:               act.ID,
-			LessonID:         act.LessonID,
-			Position:         pos + 1,
-			Kind:             act.Kind,
-			ContentVersionID: act.ContentVersionID,
-			Config:           configMap,
-			Content:          contentMap,
-			Weight:           act.Weight,
+	versions := s.loadVersions(ctx, versionIDs)
+	dtos := make([]domain.DailySetActivityDTO, 0, len(resolved))
+	for position, activity := range resolved {
+		dtos = append(dtos, domain.DailySetActivityDTO{
+			ID:               activity.ActivityID,
+			LessonID:         activity.LessonID,
+			Position:         position + 1,
+			Kind:             activity.Kind,
+			ContentVersionID: activity.ContentVersionID,
+			Config:           redactedMap(activity.Config),
+			Content:          redactedVersionMap(versions[activity.ContentVersionID]),
+			Weight:           activity.Weight,
 		})
 	}
 
@@ -875,20 +900,137 @@ func (s *Service) assembleDailySetDTO(
 		ID:         setID,
 		LocalDate:  localDate,
 		Level:      level,
-		Activities: actDTOs,
+		Activities: dtos,
 	}, nil
 }
 
-func shuffleActivities(src []domain.PoolActivity) []domain.PoolActivity {
-	dest := make([]domain.PoolActivity, len(src))
-	copy(dest, src)
+func (s *Service) loadVersions(ctx context.Context, ids []uuid.UUID) map[uuid.UUID]*contentcontract.Version {
+	if s.content == nil || len(ids) == 0 {
+		return map[uuid.UUID]*contentcontract.Version{}
+	}
+	versions, err := s.content.GetManyVersions(ctx, ids)
+	if err != nil {
+		slog.WarnContext(ctx, "failed to batch load content versions for daily set", "error", err)
+		return map[uuid.UUID]*contentcontract.Version{}
+	}
+	return versions
+}
+
+// ensurePoolEnrollment enrols the learner in the pool's course, which StartAttempt
+// requires before it will record an attempt. The pool is not a course the learner
+// chose, so withoutPoolCourse keeps it off the dashboard and the progress page.
+func (s *Service) ensurePoolEnrollment(ctx context.Context, userID, courseID uuid.UUID) {
+	existing, err := s.repo.GetEnrollmentByUserCourse(ctx, userID, courseID)
+	if err != nil || existing != nil {
+		return
+	}
+	if _, err := s.repo.CreateEnrollment(
+		ctx, userID, courseID, domain.StatusEnrollmentActive, s.clock.Now().UTC(),
+	); err != nil {
+		slog.WarnContext(ctx, "could not enrol learner in the practice pool", "user_id", userID, "error", err)
+	}
+}
+
+// withoutPoolCourse drops the practice pool's enrolment. The dashboard continues
+// the newest active enrolment, so without this, opening today's practice turned
+// "continue learning" into a machine-made drill and put "Practice Pool" among the
+// learner's courses.
+func (s *Service) withoutPoolCourse(ctx context.Context, enrollments []domain.Enrollment) []domain.Enrollment {
+	if s.lessonAuthor == nil {
+		return enrollments
+	}
+	layout, err := s.practicePool(ctx)
+	if err != nil {
+		return enrollments
+	}
+	kept := make([]domain.Enrollment, 0, len(enrollments))
+	for _, enrollment := range enrollments {
+		if enrollment.CourseID != layout.courseID {
+			kept = append(kept, enrollment)
+		}
+	}
+	return kept
+}
+
+// --------------------------------------------------------------------------
+// Small helpers
+// --------------------------------------------------------------------------
+
+func learnerLocalDate(now time.Time) time.Time {
+	loc, err := time.LoadLocation(hoChiMinhTimeZone)
+	if err != nil {
+		loc = time.FixedZone(hoChiMinhTimeZone, 7*3600)
+	}
+	local := now.In(loc)
+	return time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, time.UTC)
+}
+
+func practiceLevel(requested string) string {
+	for _, level := range practiceLevels {
+		if requested == level {
+			return level
+		}
+	}
+	return defaultPracticeLevel
+}
+
+func idsOf(activities []lessoncontract.Activity) []uuid.UUID {
+	ids := make([]uuid.UUID, 0, len(activities))
+	for _, activity := range activities {
+		if activity.ID != uuid.Nil {
+			ids = append(ids, activity.ID)
+		}
+	}
+	return ids
+}
+
+func firstN(ids []uuid.UUID, n int) []uuid.UUID {
+	if len(ids) > n {
+		return ids[:n]
+	}
+	return ids
+}
+
+func shuffledIDs(src []uuid.UUID) []uuid.UUID {
+	dest := append([]uuid.UUID(nil), src...)
 	for i := len(dest) - 1; i > 0; i-- {
-		nBig, err := rand.Int(rand.Reader, big.NewInt(int64(i+1)))
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(i+1)))
 		if err != nil {
 			continue
 		}
-		j := int(nBig.Int64())
+		j := int(n.Int64())
 		dest[i], dest[j] = dest[j], dest[i]
 	}
 	return dest
+}
+
+func redactedMap(raw json.RawMessage) map[string]any {
+	redacted := contentcontract.RedactForLearner(raw)
+	if len(redacted) == 0 {
+		return nil
+	}
+	var out map[string]any
+	if err := json.Unmarshal(redacted, &out); err != nil {
+		return nil
+	}
+	return out
+}
+
+func redactedVersionMap(version *contentcontract.Version) map[string]any {
+	if version == nil {
+		return nil
+	}
+	redacted := contentcontract.RedactVersionForLearner(version)
+	if redacted == nil {
+		return nil
+	}
+	encoded, err := json.Marshal(redacted)
+	if err != nil {
+		return nil
+	}
+	var out map[string]any
+	if err := json.Unmarshal(encoded, &out); err != nil {
+		return nil
+	}
+	return out
 }

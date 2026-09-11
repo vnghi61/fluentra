@@ -8,24 +8,32 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/vocabulary/domain"
 )
 
+const (
+	wordSame   = "same"
+	wordSchol  = "schol"
+	wordSchool = "school"
+	wordCat    = "cat"
+	wordBanana = "banana"
+)
+
 func TestOSADistance(t *testing.T) {
 	tests := []struct {
 		a, b     string
 		expected int
 	}{
-		{"same", "same", 0},
-		{"Same", "same", 0},
+		{wordSame, wordSame, 0},
+		{"Same", wordSame, 0},
 		// Transposition of adjacent characters: 1
 		{"form", "from", 1},
 		{"recieve", "receive", 1},
 		// Insertion: 1
-		{"schol", "school", 1},
+		{wordSchol, wordSchool, 1},
 		// Deletion: 1
-		{"school", "schol", 1},
+		{wordSchool, wordSchol, 1},
 		// Substitution: 1
-		{"cat", "bat", 1},
+		{wordCat, "bat", 1},
 		// Multi-edit
-		{"cat", "dog", 3},
+		{wordCat, "dog", 3},
 		{"", "abc", 3},
 		{"abc", "", 3},
 	}
@@ -45,18 +53,18 @@ func TestIsWithinSpellingBound(t *testing.T) {
 	}{
 		// < 5 letters: bound is 1
 		{"form", "from", true},    // len 4, dist 1 <= 1
-		{"cat", "bat", true},      // len 3, dist 1 <= 1
-		{"cat", "dog", false},     // len 3, dist 3 > 1
+		{wordCat, "bat", true},    // len 3, dist 1 <= 1
+		{wordCat, "dog", false},   // len 3, dist 3 > 1
 		{"look", "lookk", true},   // len 4, dist 1 <= 1
 		{"look", "loookk", false}, // len 4, dist 2 > 1
 
 		// >= 5 letters: bound is 2
-		{"schol", "school", true},    // len 5, dist 1 <= 2
-		{"recieve", "receive", true}, // len 7, dist 1 <= 2
-		{"banana", "banan", true},    // len 6, dist 1 <= 2
-		{"banana", "bannaa", true},   // len 6, dist 2 <= 2
-		{"banana", "apple", false},   // len 6, dist 5 > 2
-		{"school", "different", false},
+		{wordSchol, wordSchool, true}, // len 5, dist 1 <= 2
+		{"recieve", "receive", true},  // len 7, dist 1 <= 2
+		{wordBanana, "banan", true},   // len 6, dist 1 <= 2
+		{wordBanana, "bannaa", true},  // len 6, dist 2 <= 2
+		{wordBanana, "apple", false},  // len 6, dist 5 > 2
+		{wordSchool, "different", false},
 	}
 
 	for _, tt := range tests {

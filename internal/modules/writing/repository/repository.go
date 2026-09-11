@@ -21,9 +21,14 @@ import (
 type Repository interface {
 	InsertWritingFeedback(ctx context.Context, fb contract.WritingFeedback) error
 	GetWritingFeedback(ctx context.Context, attemptID, userID uuid.UUID) (*contract.WritingFeedback, error)
-	ListWritingSubmissions(ctx context.Context, userID uuid.UUID, page, pageSize int) (*contract.WritingSubmissionList, error)
+	ListWritingSubmissions(
+		ctx context.Context, userID uuid.UUID, page, pageSize int,
+	) (*contract.WritingSubmissionList, error)
 	WithTx(tx pgx.Tx) Repository
 }
+
+// maxSubmissionPage bounds a requested page so (page-1)*100 stays inside int32.
+const maxSubmissionPage = 1_000_000
 
 type pgxRepository struct {
 	q *sqlc.Queries
@@ -73,10 +78,11 @@ func (r *pgxRepository) InsertWritingFeedback(ctx context.Context, fb contract.W
 	}
 
 	return r.q.InsertWritingFeedback(ctx, sqlc.InsertWritingFeedbackParams{
-		AttemptID:     fb.AttemptID,
-		UserID:        fb.UserID,
-		OverallBand:   overallBand,
-		Score:         int32(fb.Score),
+		AttemptID:   fb.AttemptID,
+		UserID:      fb.UserID,
+		OverallBand: overallBand,
+		// The grader rejects model output outside 0–100 before it reaches here.
+		Score:         int32(fb.Score), //nolint:gosec // bounded to 0–100 by the grader
 		Criteria:      criteriaJSON,
 		Annotations:   annotationsJSON,
 		FeedbackEn:    fb.FeedbackEn,
@@ -86,7 +92,9 @@ func (r *pgxRepository) InsertWritingFeedback(ctx context.Context, fb contract.W
 	})
 }
 
-func (r *pgxRepository) GetWritingFeedback(ctx context.Context, attemptID, userID uuid.UUID) (*contract.WritingFeedback, error) {
+func (r *pgxRepository) GetWritingFeedback(
+	ctx context.Context, attemptID, userID uuid.UUID,
+) (*contract.WritingFeedback, error) {
 	if r.q == nil {
 		return nil, apperr.New(apperr.NotFound, "FEEDBACK_NOT_FOUND", "writing feedback not found")
 	}
@@ -143,9 +151,16 @@ func (r *pgxRepository) GetWritingFeedback(ctx context.Context, attemptID, userI
 	}, nil
 }
 
-func (r *pgxRepository) ListWritingSubmissions(ctx context.Context, userID uuid.UUID, page, pageSize int) (*contract.WritingSubmissionList, error) {
+func (r *pgxRepository) ListWritingSubmissions(
+	ctx context.Context, userID uuid.UUID, page, pageSize int,
+) (*contract.WritingSubmissionList, error) {
 	if page < 1 {
 		page = 1
+	}
+	// A page number arrives from a query string. Capping it keeps the offset
+	// arithmetic below inside int32 whatever a caller sends.
+	if page > maxSubmissionPage {
+		page = maxSubmissionPage
 	}
 	if pageSize < 1 {
 		pageSize = 10
@@ -163,8 +178,8 @@ func (r *pgxRepository) ListWritingSubmissions(ctx context.Context, userID uuid.
 		}, nil
 	}
 
-	offset := int32((page - 1) * pageSize)
-	limit := int32(pageSize)
+	offset := int32((page - 1) * pageSize) //nolint:gosec // page ≤ maxSubmissionPage, pageSize ≤ 100
+	limit := int32(pageSize)               //nolint:gosec // pageSize is clamped to 1–100 above
 
 	rows, err := r.q.ListWritingSubmissionsByUser(ctx, sqlc.ListWritingSubmissionsByUserParams{
 		UserID:      userID,

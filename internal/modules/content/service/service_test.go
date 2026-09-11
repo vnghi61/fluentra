@@ -540,7 +540,9 @@ func (f *fakeRepo) ListItemReportsByVersion(_ context.Context, versionID uuid.UU
 	return list, nil
 }
 
-func (f *fakeRepo) ListReportedContentVersions(_ context.Context, limit, offset int32) ([]domain.ReportedVersionSummary, error) {
+func (f *fakeRepo) ListReportedContentVersions(
+	_ context.Context, limit, offset int32,
+) ([]domain.ReportedVersionSummary, error) {
 	grouped := make(map[uuid.UUID][]domain.ItemReport)
 	for _, r := range f.reports {
 		grouped[r.ContentVersionID] = append(grouped[r.ContentVersionID], r)
@@ -962,9 +964,19 @@ func TestReportingBadItem(t *testing.T) {
 	if summaries[0].ReportCount != 2 {
 		t.Errorf("report count = %d, want 2", summaries[0].ReportCount)
 	}
+}
+
+// TestReportItem_RejectsWhatCannotBeActedOn. A report the reviewer cannot act
+// on — an unknown reason, a note past the limit, a version that does not exist —
+// is refused rather than stored.
+func TestReportItem_RejectsWhatCannotBeActedOn(t *testing.T) {
+	ctx := context.Background()
+	svc, _, _ := setupService()
+	user1 := uuid.New()
+	_, ver := publishItem(ctx, t, svc, uuid.New(), uuid.New(), "report-reject-item")
 
 	// 5. Invalid reason rejected
-	_, err = svc.ReportItem(ctx, user1, ver.ID, domain.ReportReason("invalid_reason"), nil)
+	_, err := svc.ReportItem(ctx, user1, ver.ID, domain.ReportReason("invalid_reason"), nil)
 	if err == nil {
 		t.Errorf("expected error on invalid reason, got nil")
 	}

@@ -1,7 +1,9 @@
--- name: GetPoolPracticeCourseID :one
-SELECT id
-FROM learn.courses
-WHERE slug = 'pool-practice';
+-- Daily practice sets and item exposures: work order 11 §3.11.
+--
+-- Only the two tables learning owns here are read. The pool's course, units,
+-- lessons and activities belong to `lesson` and are reached through its contract
+-- (rule L2): the service resolves which activities make up a slot and passes their
+-- ids to these queries.
 
 -- name: GetDailySet :one
 SELECT id, user_id, local_date, activity_ids, created_at
@@ -9,15 +11,20 @@ FROM learn.daily_sets
 WHERE user_id = $1 AND local_date = $2;
 
 -- name: CreateDailySet :one
+-- DO NOTHING, not DO UPDATE. A request that loses the race for a learner's first
+-- open of the day gets no row back, and so knows not to record exposures for the
+-- items it drew: they were never shown.
 INSERT INTO learn.daily_sets (
     user_id, local_date, activity_ids
 ) VALUES (
     $1, $2, $3
-) ON CONFLICT (user_id, local_date) DO UPDATE
-SET activity_ids = learn.daily_sets.activity_ids
+) ON CONFLICT (user_id, local_date) DO NOTHING
 RETURNING id, user_id, local_date, activity_ids, created_at;
 
 -- name: RecordItemExposure :exec
+-- first_served_at moves forward when an item is served again, so "the items a
+-- learner saw longest ago" means longest since they last saw them, and a repeated
+-- item goes to the back of the queue instead of coming round every day.
 INSERT INTO learn.item_exposures (
     user_id, activity_id, first_served_at
 ) VALUES (
@@ -25,97 +32,26 @@ INSERT INTO learn.item_exposures (
 ) ON CONFLICT (user_id, activity_id) DO UPDATE
 SET first_served_at = now();
 
--- name: CountActivePoolActivitiesForSlot :one
-SELECT count(*)::bigint AS active_count
-FROM learn.activities a
-JOIN learn.lessons l ON l.id = a.lesson_id
-JOIN learn.course_units u ON u.id = l.unit_id
-JOIN learn.courses c ON c.id = u.course_id
-WHERE c.slug = 'pool-practice'
-  AND u.title = $1
-  AND a.kind = $2
-  AND a.retired_at IS NULL;
+-- name: ListItemExposures :many
+SELECT activity_id, first_served_at
+FROM learn.item_exposures
+WHERE user_id = @user_id
+  AND activity_id = ANY(@activity_ids::uuid[]);
 
--- name: ListPoolActivitiesForSlot :many
-SELECT a.id, a.lesson_id, a.position, a.kind, a.content_version_id, a.config, a.weight
-FROM learn.activities a
-JOIN learn.lessons l ON l.id = a.lesson_id
-JOIN learn.course_units u ON u.id = l.unit_id
-JOIN learn.courses c ON c.id = u.course_id
-WHERE c.slug = 'pool-practice'
-  AND u.title = $1
-  AND a.kind = $2
-  AND a.retired_at IS NULL
-ORDER BY a.position ASC;
-
--- name: ListUnseenPoolActivitiesForSlot :many
-SELECT a.id, a.lesson_id, a.position, a.kind, a.content_version_id, a.config, a.weight
-FROM learn.activities a
-JOIN learn.lessons l ON l.id = a.lesson_id
-JOIN learn.course_units u ON u.id = l.unit_id
-JOIN learn.courses c ON c.id = u.course_id
-LEFT JOIN learn.item_exposures e ON e.activity_id = a.id AND e.user_id = $3
-WHERE c.slug = 'pool-practice'
-  AND u.title = $1
-  AND a.kind = $2
-  AND a.retired_at IS NULL
-  AND e.activity_id IS NULL
-ORDER BY random();
-
--- name: ListSeenPoolActivitiesForSlotOldestFirst :many
-SELECT a.id, a.lesson_id, a.position, a.kind, a.content_version_id, a.config, a.weight, e.first_served_at
-FROM learn.activities a
-JOIN learn.lessons l ON l.id = a.lesson_id
-JOIN learn.course_units u ON u.id = l.unit_id
-JOIN learn.courses c ON c.id = u.course_id
-JOIN learn.item_exposures e ON e.activity_id = a.id AND e.user_id = $3
-WHERE c.slug = 'pool-practice'
-  AND u.title = $1
-  AND a.kind = $2
-  AND a.retired_at IS NULL
-ORDER BY e.first_served_at ASC;
-
--- name: HasActiveUserWithFewUnseenItems :one
-WITH active_users AS (
-    SELECT DISTINCT user_id
-    FROM learn.attempts
-    WHERE created_at >= now() - interval '14 days'
-),
-slot_activities AS (
-    SELECT a.id
-    FROM learn.activities a
-    JOIN learn.lessons l ON l.id = a.lesson_id
-    JOIN learn.course_units u ON u.id = l.unit_id
-    JOIN learn.courses c ON c.id = u.course_id
-    WHERE c.slug = 'pool-practice'
-      AND u.title = $1
-      AND a.kind = $2
-      AND a.retired_at IS NULL
-),
-unseen_counts AS (
-    SELECT u.user_id,
-           (SELECT count(*) FROM slot_activities sa
-            WHERE NOT EXISTS (
-                SELECT 1 FROM learn.item_exposures e
-                WHERE e.user_id = u.user_id AND e.activity_id = sa.id
-            )) AS unseen_count
-    FROM active_users u
-)
+-- name: HasActiveLearnerRunningLow :one
+-- True when a learner active in the last fourteen days has fewer than @threshold
+-- of the given activities left unseen.
 SELECT EXISTS (
-    SELECT 1 FROM unseen_counts WHERE unseen_count < 10
-) AS has_few_unseen;
-
--- name: GetPoolLessonID :one
-SELECT l.id
-FROM learn.lessons l
-JOIN learn.course_units u ON u.id = l.unit_id
-JOIN learn.courses c ON c.id = u.course_id
-WHERE c.slug = 'pool-practice'
-  AND u.title = $1
-  AND l.title = $2
-LIMIT 1;
-
--- name: ListActivitiesByIDs :many
-SELECT id, lesson_id, position, kind, content_version_id, config, weight
-FROM learn.activities
-WHERE id = ANY(@activity_ids::uuid[]);
+    SELECT 1
+    FROM (
+        SELECT DISTINCT user_id
+        FROM learn.attempts
+        WHERE created_at >= now() - interval '14 days'
+    ) active
+    WHERE cardinality(@activity_ids::uuid[]) - (
+        SELECT count(*)
+        FROM learn.item_exposures e
+        WHERE e.user_id = active.user_id
+          AND e.activity_id = ANY(@activity_ids::uuid[])
+    ) < @threshold::int
+) AS running_low;

@@ -130,6 +130,14 @@ func TestAsyncGrading_SubmitAndComplete(t *testing.T) {
 		t.Errorf("unexpected attempt detail: %+v", detail)
 	}
 
+	// An essay still being graded counts toward the daily limit. The claim records
+	// the grader, so the count sees the attempt before the job has run; counting
+	// only graded attempts let a burst of submissions through the limit.
+	inFlight, err := svc.CountAttemptsTowardLimitSince(ctx, userID, testKindAsyncGrader, clk.Now().Add(-1*time.Hour))
+	if err != nil || inFlight != 1 {
+		t.Fatalf("CountAttemptsTowardLimitSince while grading: got %d, want 1, err=%v", inFlight, err)
+	}
+
 	// 2. CompleteAsyncGrading moves attempt to graded and emits activity.completed event
 	ok, err := svc.CompleteAsyncGrading(ctx, startRes.AttemptID, contract.GradeResult{
 		Score:    85,
@@ -142,10 +150,10 @@ func TestAsyncGrading_SubmitAndComplete(t *testing.T) {
 	assertAttemptGraded(t, repo, startRes.AttemptID, 85)
 	assertActivityCompletedEventEmitted(t, events)
 
-	// Verify CountGradedAttemptsSince returns 1
-	count, err := svc.CountGradedAttemptsSince(ctx, userID, testKindAsyncGrader, clk.Now().Add(-1*time.Hour))
+	// Verify CountAttemptsTowardLimitSince returns 1
+	count, err := svc.CountAttemptsTowardLimitSince(ctx, userID, testKindAsyncGrader, clk.Now().Add(-1*time.Hour))
 	if err != nil || count != 1 {
-		t.Errorf("CountGradedAttemptsSince: got %d, want 1, err=%v", count, err)
+		t.Errorf("CountAttemptsTowardLimitSince: got %d, want 1, err=%v", count, err)
 	}
 }
 
@@ -189,7 +197,7 @@ func TestAsyncGrading_ProviderErrorLeavesFailed(t *testing.T) {
 		}
 	}
 
-	count, err := svc.CountGradedAttemptsSince(ctx, userID, testKindAsyncGrader, clk.Now().Add(-1*time.Hour))
+	count, err := svc.CountAttemptsTowardLimitSince(ctx, userID, testKindAsyncGrader, clk.Now().Add(-1*time.Hour))
 	if err != nil || count != 0 {
 		t.Errorf("expected 0 counted graded attempts, got %d (err=%v)", count, err)
 	}

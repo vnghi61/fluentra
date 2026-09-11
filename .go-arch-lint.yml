@@ -466,7 +466,7 @@ deps:
   m_writing_repository: { mayDependOn: [c_writing, g_writing] }
   m_writing_service:    { mayDependOn: [c_writing, c_content, c_learning, p_ai, p_job, p_telemetry] }
   m_writing_job:        { mayDependOn: [m_writing_service, c_writing, c_content, c_learning, p_job, p_ai, p_telemetry], anyVendorDeps: true }
-  m_writing_http:       { mayDependOn: [c_writing] }
+  m_writing_http:       { mayDependOn: [m_writing_service, c_writing] }
   m_writing:            { mayDependOn: [m_writing_repository, m_writing_service, m_writing_job, m_writing_http, c_writing, c_content, c_learning, p_job, p_ai, p_telemetry] }
   m_questionbank: { mayDependOn: [p_ai, p_search, p_telemetry, c_content, c_audit] }
   m_exam:         { mayDependOn: [p_job, p_ai, p_telemetry, c_questionbank, c_writing, c_speaking, c_learning] }

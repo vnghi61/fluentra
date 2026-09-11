@@ -40,6 +40,9 @@ type ClaimAttemptParams struct {
 	CreatedAt      time.Time
 	IdempotencyKey *uuid.UUID
 	Response       json.RawMessage
+	// Grader is the activity kind, recorded at claim time so an attempt still
+	// being graded can be counted by grader.
+	Grader *string
 }
 
 // UpdateAttemptStatusParams holds updates to apply when grading is complete.
@@ -178,6 +181,7 @@ func (r *Repository) ClaimAttemptForGrading(ctx context.Context, params ClaimAtt
 		CreatedAt:      params.CreatedAt,
 		IdempotencyKey: params.IdempotencyKey,
 		Response:       respBytes,
+		Grader:         params.Grader,
 	})
 	if err != nil {
 		return nil, err // Preserve pgx.ErrNoRows so service can distinguish race condition
@@ -271,8 +275,9 @@ func (r *Repository) FailStuckGradingAttempts(ctx context.Context, cutoff time.T
 	return rows, nil
 }
 
-// CountGradedAttemptsSince counts attempts for a user with the given grader since a given time.
-func (r *Repository) CountGradedAttemptsSince(
+// CountAttemptsTowardLimitSince counts a user's graded and still-grading attempts
+// for a grader since a given time.
+func (r *Repository) CountAttemptsTowardLimitSince(
 	ctx context.Context, userID uuid.UUID, grader string, since time.Time,
 ) (int, error) {
 	if r.queries == nil {
@@ -282,7 +287,7 @@ func (r *Repository) CountGradedAttemptsSince(
 	if grader != "" {
 		gPtr = &grader
 	}
-	count, err := r.queries.CountGradedAttemptsSince(ctx, sqlc.CountGradedAttemptsSinceParams{
+	count, err := r.queries.CountAttemptsTowardLimitSince(ctx, sqlc.CountAttemptsTowardLimitSinceParams{
 		UserID:    userID,
 		Grader:    gPtr,
 		CreatedAt: since,
@@ -774,28 +779,13 @@ func (r *Repository) UpsertAnswerExplanation(
 	}, nil
 }
 
-// GetPoolPracticeCourseID reads the ID of the pool-practice course.
-func (r *Repository) GetPoolPracticeCourseID(ctx context.Context) (uuid.UUID, error) {
-	id, err := r.queries.GetPoolPracticeCourseID(ctx)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return uuid.Nil, nil
-		}
-		return uuid.Nil, mapPgError(err)
-	}
-	return id, nil
-}
-
 // GetDailySet reads a user's practice set for a specific local date.
 func (r *Repository) GetDailySet(
 	ctx context.Context, userID uuid.UUID, localDate time.Time,
 ) (*domain.DailySet, error) {
 	row, err := r.queries.GetDailySet(ctx, sqlc.GetDailySetParams{
-		UserID: userID,
-		LocalDate: pgtype.Date{
-			Time:  localDate,
-			Valid: true,
-		},
+		UserID:    userID,
+		LocalDate: pgtype.Date{Time: localDate, Valid: true},
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -812,19 +802,20 @@ func (r *Repository) GetDailySet(
 	}, nil
 }
 
-// CreateDailySet stores a newly built daily set, or returns existing if race occurred.
+// CreateDailySet stores a newly built daily set. It returns nil, and no error,
+// when another request stored the learner's set for that date first.
 func (r *Repository) CreateDailySet(
 	ctx context.Context, userID uuid.UUID, localDate time.Time, activityIDs []uuid.UUID,
 ) (*domain.DailySet, error) {
 	row, err := r.queries.CreateDailySet(ctx, sqlc.CreateDailySetParams{
-		UserID: userID,
-		LocalDate: pgtype.Date{
-			Time:  localDate,
-			Valid: true,
-		},
+		UserID:      userID,
+		LocalDate:   pgtype.Date{Time: localDate, Valid: true},
 		ActivityIds: activityIDs,
 	})
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
 		return nil, mapPgError(err)
 	}
 	return &domain.DailySet{
@@ -846,152 +837,44 @@ func (r *Repository) RecordItemExposure(
 	})
 }
 
-// CountActivePoolActivitiesForSlot counts active items in a practice pool slot.
-func (r *Repository) CountActivePoolActivitiesForSlot(
-	ctx context.Context, levelTitle string, kind string,
-) (int64, error) {
-	count, err := r.queries.CountActivePoolActivitiesForSlot(ctx, sqlc.CountActivePoolActivitiesForSlotParams{
-		Title: levelTitle,
-		Kind:  kind,
-	})
-	if err != nil {
-		return 0, mapPgError(err)
+// ListItemExposures returns when the learner was last served each of the given
+// activities. An activity missing from the map has never been served to them.
+func (r *Repository) ListItemExposures(
+	ctx context.Context, userID uuid.UUID, activityIDs []uuid.UUID,
+) (map[uuid.UUID]time.Time, error) {
+	exposures := make(map[uuid.UUID]time.Time, len(activityIDs))
+	if len(activityIDs) == 0 {
+		return exposures, nil
 	}
-	return count, nil
-}
-
-// ListPoolActivitiesForSlot lists all active activities for a practice pool slot.
-func (r *Repository) ListPoolActivitiesForSlot(
-	ctx context.Context, levelTitle string, kind string,
-) ([]domain.PoolActivity, error) {
-	rows, err := r.queries.ListPoolActivitiesForSlot(ctx, sqlc.ListPoolActivitiesForSlotParams{
-		Title: levelTitle,
-		Kind:  kind,
+	rows, err := r.queries.ListItemExposures(ctx, sqlc.ListItemExposuresParams{
+		UserID:      userID,
+		ActivityIds: activityIDs,
 	})
 	if err != nil {
 		return nil, mapPgError(err)
 	}
-	activities := make([]domain.PoolActivity, len(rows))
-	for i, row := range rows {
-		activities[i] = domain.PoolActivity{
-			ID:               row.ID,
-			LessonID:         row.LessonID,
-			Position:         int(row.Position),
-			Kind:             row.Kind,
-			ContentVersionID: row.ContentVersionID,
-			Config:           row.Config,
-			Weight:           int(row.Weight),
-		}
+	for _, row := range rows {
+		exposures[row.ActivityID] = row.FirstServedAt
 	}
-	return activities, nil
+	return exposures, nil
 }
 
-// ListUnseenPoolActivitiesForSlot lists pool activities in a slot unseen by the learner.
-func (r *Repository) ListUnseenPoolActivitiesForSlot(
-	ctx context.Context, levelTitle string, kind string, userID uuid.UUID,
-) ([]domain.PoolActivity, error) {
-	rows, err := r.queries.ListUnseenPoolActivitiesForSlot(ctx, sqlc.ListUnseenPoolActivitiesForSlotParams{
-		Title:  levelTitle,
-		Kind:   kind,
-		UserID: userID,
-	})
-	if err != nil {
-		return nil, mapPgError(err)
-	}
-	activities := make([]domain.PoolActivity, len(rows))
-	for i, row := range rows {
-		activities[i] = domain.PoolActivity{
-			ID:               row.ID,
-			LessonID:         row.LessonID,
-			Position:         int(row.Position),
-			Kind:             row.Kind,
-			ContentVersionID: row.ContentVersionID,
-			Config:           row.Config,
-			Weight:           int(row.Weight),
-		}
-	}
-	return activities, nil
-}
-
-// ListSeenPoolActivitiesForSlotOldestFirst lists pool activities in a slot seen by the learner, oldest exposure first.
-func (r *Repository) ListSeenPoolActivitiesForSlotOldestFirst(
-	ctx context.Context, levelTitle string, kind string, userID uuid.UUID,
-) ([]domain.PoolActivity, error) {
-	rows, err := r.queries.ListSeenPoolActivitiesForSlotOldestFirst(ctx, sqlc.ListSeenPoolActivitiesForSlotOldestFirstParams{
-		Title:  levelTitle,
-		Kind:   kind,
-		UserID: userID,
-	})
-	if err != nil {
-		return nil, mapPgError(err)
-	}
-	activities := make([]domain.PoolActivity, len(rows))
-	for i, row := range rows {
-		activities[i] = domain.PoolActivity{
-			ID:               row.ID,
-			LessonID:         row.LessonID,
-			Position:         int(row.Position),
-			Kind:             row.Kind,
-			ContentVersionID: row.ContentVersionID,
-			Config:           row.Config,
-			Weight:           int(row.Weight),
-		}
-	}
-	return activities, nil
-}
-
-// HasActiveUserWithFewUnseenItems checks if any user active in last 14 days has < 10 unseen items in the slot.
-func (r *Repository) HasActiveUserWithFewUnseenItems(
-	ctx context.Context, levelTitle string, kind string,
+// HasActiveLearnerRunningLow reports whether a learner active in the last fourteen
+// days has fewer than threshold of the given activities left unseen.
+func (r *Repository) HasActiveLearnerRunningLow(
+	ctx context.Context, activityIDs []uuid.UUID, threshold int,
 ) (bool, error) {
-	has, err := r.queries.HasActiveUserWithFewUnseenItems(ctx, sqlc.HasActiveUserWithFewUnseenItemsParams{
-		Title: levelTitle,
-		Kind:  kind,
+	if len(activityIDs) == 0 {
+		return false, nil
+	}
+	low, err := r.queries.HasActiveLearnerRunningLow(ctx, sqlc.HasActiveLearnerRunningLowParams{
+		ActivityIds: activityIDs,
+		Threshold:   int32(threshold), //nolint:gosec // a small constant supplied by the service
 	})
 	if err != nil {
 		return false, mapPgError(err)
 	}
-	return has, nil
-}
-
-// GetPoolLessonID gets the lesson ID for a pool slot by level and lesson title.
-func (r *Repository) GetPoolLessonID(
-	ctx context.Context, levelTitle string, lessonTitle string,
-) (uuid.UUID, error) {
-	id, err := r.queries.GetPoolLessonID(ctx, sqlc.GetPoolLessonIDParams{
-		Title:   levelTitle,
-		Title_2: lessonTitle,
-	})
-	if err != nil {
-		return uuid.Nil, mapPgError(err)
-	}
-	return id, nil
-}
-
-// ListActivitiesByIDs retrieves activities by a slice of IDs.
-func (r *Repository) ListActivitiesByIDs(
-	ctx context.Context, activityIDs []uuid.UUID,
-) ([]domain.PoolActivity, error) {
-	if len(activityIDs) == 0 {
-		return []domain.PoolActivity{}, nil
-	}
-	rows, err := r.queries.ListActivitiesByIDs(ctx, activityIDs)
-	if err != nil {
-		return nil, mapPgError(err)
-	}
-	activities := make([]domain.PoolActivity, len(rows))
-	for i, row := range rows {
-		activities[i] = domain.PoolActivity{
-			ID:               row.ID,
-			LessonID:         row.LessonID,
-			Position:         int(row.Position),
-			Kind:             row.Kind,
-			ContentVersionID: row.ContentVersionID,
-			Config:           row.Config,
-			Weight:           int(row.Weight),
-		}
-	}
-	return activities, nil
+	return low, nil
 }
 
 func mapPgError(err error) error {

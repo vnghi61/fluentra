@@ -4,7 +4,9 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -23,9 +25,9 @@ type ContentReader interface {
 	GetVersion(ctx context.Context, id uuid.UUID) (*contentcontract.Version, error)
 }
 
-// AttemptCounter counts daily graded attempts for a user.
+// AttemptCounter counts the attempts a daily limit is charged on.
 type AttemptCounter interface {
-	CountGradedAttemptsSince(ctx context.Context, userID uuid.UUID, grader string, since time.Time) (int, error)
+	CountAttemptsTowardLimitSince(ctx context.Context, userID uuid.UUID, grader string, since time.Time) (int, error)
 }
 
 // AttemptReader loads attempt details across modules.
@@ -219,11 +221,10 @@ func (g *Grader) Grade(
 
 	// 3. Over daily limit -> 429 WRITING_DAILY_LIMIT_REACHED; attempt stays resubmittable
 	if g.counter != nil && g.dailyLimit > 0 {
-		now := g.clock.Now().UTC()
-		startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
-		count, err := g.counter.CountGradedAttemptsSince(ctx, req.UserID, "writing_prompt", startOfDay)
+		startOfDay := startOfLearnerDay(g.clock.Now())
+		count, err := g.counter.CountAttemptsTowardLimitSince(ctx, req.UserID, contract.KindWritingPrompt, startOfDay)
 		if err != nil {
-			return learningcontract.GradeResult{}, fmt.Errorf("count daily graded attempts: %w", err)
+			return learningcontract.GradeResult{}, fmt.Errorf("count today's writing attempts: %w", err)
 		}
 		if count >= g.dailyLimit {
 			return learningcontract.GradeResult{}, apperr.New(
@@ -234,26 +235,16 @@ func (g *Grader) Grade(
 		}
 	}
 
-	// 4. Otherwise: enqueue the job and return Async: true
+	// 4. Otherwise the essay goes to the worker. There is no synchronous path:
+	// grading here would hold the request open for as long as the model takes,
+	// which writing/DECISIONS.md rules out, so a grader wired without a queue
+	// refuses rather than quietly grading inside the request.
 	if g.enqueuer == nil {
-		out, _, evalErr := g.evaluateAIv2(ctx, submitted, body)
-		if evalErr != nil {
-			return learningcontract.GradeResult{}, evalErr
-		}
-		feedback := out.FeedbackEn
-		if feedback == "" {
-			feedback = out.Feedback
-		}
-		var exp *learningcontract.AnswerExplanation
-		if out.FeedbackVi != "" {
-			exp = &learningcontract.AnswerExplanation{
-				Text:   feedback,
-				TextVi: out.FeedbackVi,
-			}
-		} else if body.Explanation != nil {
-			exp = body.Explanation
-		}
-		return buildResult(req.ContentVersionID, out.Score, out.Correct, feedback, body, exp), nil
+		return learningcontract.GradeResult{}, apperr.New(
+			apperr.Internal,
+			"WRITING_QUEUE_UNAVAILABLE",
+			"writing grading queue is not configured",
+		)
 	}
 
 	if err := g.enqueuer.EnqueueGradeSubmission(ctx, req.AttemptID); err != nil {
@@ -269,8 +260,13 @@ func (g *Grader) Grade(
 	}, nil
 }
 
-// GradeSubmission processes an enqueued writing submission in the background worker.
-func (g *Grader) GradeSubmission(ctx context.Context, attemptID uuid.UUID) error {
+// GradeSubmission grades one queued essay in the worker.
+//
+// finalAttempt is true when River will not run the job again, and only then is a
+// failure recorded on the attempt. Failing it on the first error made every retry
+// a no-op — the next run found the attempt no longer grading and returned — so a
+// single transient provider error was permanent.
+func (g *Grader) GradeSubmission(ctx context.Context, attemptID uuid.UUID, finalAttempt bool) error {
 	if g.attempts == nil {
 		return fmt.Errorf("attempt reader is required for async grading")
 	}
@@ -290,16 +286,16 @@ func (g *Grader) GradeSubmission(ctx context.Context, attemptID uuid.UUID) error
 
 	body, err := g.loadBody(ctx, attempt.ContentVersionID)
 	if err != nil {
-		_, _ = g.completer.FailAsyncGrading(ctx, attemptID, err.Error())
+		g.failIfFinal(ctx, attemptID, finalAttempt, err)
 		return fmt.Errorf("load writing body for attempt %s: %w", attemptID, err)
 	}
 
 	submitted := submittedText(attempt.Response)
 	out, modelName, evalErr := g.evaluateAIv2(ctx, submitted, body)
 	if evalErr != nil {
-		// A provider that errors leaves the attempt failed: no score, no progress row,
-		// no review card, nothing counted against the limit.
-		_, _ = g.completer.FailAsyncGrading(ctx, attemptID, evalErr.Error())
+		// No score, no progress row, no review card, nothing counted against the
+		// limit — and not until the last retry has had its chance.
+		g.failIfFinal(ctx, attemptID, finalAttempt, evalErr)
 		return evalErr
 	}
 
@@ -349,12 +345,34 @@ func (g *Grader) GradeSubmission(ctx context.Context, attemptID uuid.UUID) error
 	}
 
 	result := buildResult(attempt.ContentVersionID, out.Score, out.Correct, feedback, body, explanation)
-	_, compErr := g.completer.CompleteAsyncGrading(ctx, attemptID, result)
-	if compErr != nil {
+	if _, compErr := g.completer.CompleteAsyncGrading(ctx, attemptID, result); compErr != nil {
 		return fmt.Errorf("complete async grading for attempt %s: %w", attemptID, compErr)
 	}
 
 	return nil
+}
+
+// failIfFinal records a failed grading when no retry is left to recover it.
+func (g *Grader) failIfFinal(ctx context.Context, attemptID uuid.UUID, finalAttempt bool, cause error) {
+	if !finalAttempt {
+		return
+	}
+	if _, err := g.completer.FailAsyncGrading(ctx, attemptID, cause.Error()); err != nil {
+		slog.WarnContext(ctx, "could not mark writing attempt failed",
+			"attempt_id", attemptID, "cause", cause, "error", err)
+	}
+}
+
+// startOfLearnerDay is midnight in Vietnam, the day the product is written
+// around. A UTC day would reset the daily limit at seven in the morning, local
+// time, and disagree with the daily practice set about what "today" is.
+func startOfLearnerDay(now time.Time) time.Time {
+	loc, err := time.LoadLocation("Asia/Ho_Chi_Minh")
+	if err != nil {
+		loc = time.FixedZone("Asia/Ho_Chi_Minh", 7*3600)
+	}
+	local := now.In(loc)
+	return time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, loc)
 }
 
 func submittedText(response json.RawMessage) string {
@@ -380,82 +398,82 @@ func submittedText(response json.RawMessage) string {
 	return ""
 }
 
+// errNoAIProvider is returned when no model is configured. It is a failure, not
+// a grade: an essay nobody marked is not a pass. The worker sets its AI client to
+// nil when the provider cannot be built, and this used to answer that with 75
+// and "Your writing has been received and reviewed".
+var errNoAIProvider = errors.New("no AI provider is configured to grade writing")
+
 func (g *Grader) evaluateAIv2(
 	ctx context.Context,
 	submitted string,
 	body writingPromptBody,
 ) (aiGradeV2Output, string, error) {
-	trimmed := strings.TrimSpace(submitted)
-	words := len(strings.Fields(trimmed))
-
-	if words == 0 {
-		return aiGradeV2Output{
-			OverallBand: 0,
-			Score:       0,
-			Correct:     false,
-			FeedbackEn:  "No response provided. Please write an answer to the prompt.",
-			Feedback:    "No response provided. Please write an answer to the prompt.",
-		}, "", nil
+	if g.ai == nil {
+		return aiGradeV2Output{}, "", errNoAIProvider
 	}
 
-	if g.ai != nil {
-		vars := map[string]any{
-			"Prompt":     body.Prompt,
-			"Submission": trimmed,
-		}
-		if body.Rubric != "" {
-			vars["Rubric"] = body.Rubric
-		}
-		if body.MinWords > 0 {
-			vars["MinWords"] = body.MinWords
-		}
-
-		var out aiGradeV2Output
-		resp, err := ai.CompleteJSONWithResponse(ctx, g.ai, ai.Request{
-			Task: ai.TaskGradeWriting,
-			Vars: vars,
-		}, &out)
-		if err != nil {
-			return aiGradeV2Output{}, "", fmt.Errorf("ai grade writing: %w", err)
-		}
-
-		if out.FeedbackEn == "" && out.Feedback != "" {
-			out.FeedbackEn = out.Feedback
-		}
-		if out.Feedback == "" && out.FeedbackEn != "" {
-			out.Feedback = out.FeedbackEn
-		}
-
-		if out.OverallBand == 0 && out.Score > 0 {
-			out.OverallBand = float64(out.Score) / 10.0
-		}
-
-		return out, resp.Model, nil
+	vars := map[string]any{
+		"Prompt":     body.Prompt,
+		"Submission": strings.TrimSpace(submitted),
+	}
+	if body.Rubric != "" {
+		vars["Rubric"] = body.Rubric
+	}
+	if body.MinWords > 0 {
+		vars["MinWords"] = body.MinWords
 	}
 
-	// Fallback heuristic when AI is unavailable or offline
-	if body.MinWords > 0 && words < body.MinWords {
-		score := (words * 50) / body.MinWords
-		short := fmt.Sprintf(
-			"Your response is %d words, but the prompt asks for at least %d words.",
-			words, body.MinWords,
-		)
-		return aiGradeV2Output{
-			OverallBand: float64(score) / 10.0,
-			Score:       score,
-			Correct:     false,
-			FeedbackEn:  short,
-			Feedback:    short,
-		}, "", nil
+	var out aiGradeV2Output
+	resp, err := ai.CompleteJSONWithResponse(ctx, g.ai, ai.Request{
+		Task: ai.TaskGradeWriting,
+		Vars: vars,
+	}, &out)
+	if err != nil {
+		return aiGradeV2Output{}, "", fmt.Errorf("ai grade writing: %w", err)
 	}
 
-	return aiGradeV2Output{
-		OverallBand: 6.5,
-		Score:       75,
-		Correct:     true,
-		FeedbackEn:  "Your writing has been received and reviewed.",
-		Feedback:    "Your writing has been received and reviewed.",
-	}, "", nil
+	if out.FeedbackEn == "" {
+		out.FeedbackEn = out.Feedback
+	}
+	if out.Feedback == "" {
+		out.Feedback = out.FeedbackEn
+	}
+	if err := validateGradeOutput(out); err != nil {
+		return aiGradeV2Output{}, "", fmt.Errorf("ai grade writing: %w", err)
+	}
+	return out, resp.Model, nil
+}
+
+// The bounds a grade must fall within before anything is stored.
+const (
+	maxBand        = 9.0
+	rubricCriteria = 4
+)
+
+// validateGradeOutput rejects model output the rubric cannot mean. A score of 120
+// fails the attempts table's CHECK after the feedback row has been written; a band
+// of 9.5 does not exist; a report missing a criterion cannot be shown. Rejected
+// output is a failed grading, and the job's retries ask again.
+func validateGradeOutput(out aiGradeV2Output) error {
+	if out.Score < 0 || out.Score > maxWritingScore {
+		return fmt.Errorf("score %d is outside 0–%d", out.Score, maxWritingScore)
+	}
+	if out.OverallBand < 0 || out.OverallBand > maxBand {
+		return fmt.Errorf("overall band %.1f is outside 0–9", out.OverallBand)
+	}
+	if len(out.Criteria) != rubricCriteria {
+		return fmt.Errorf("expected %d criteria, got %d", rubricCriteria, len(out.Criteria))
+	}
+	for _, c := range out.Criteria {
+		if c.Band < 0 || c.Band > maxBand {
+			return fmt.Errorf("criterion %q band %.1f is outside 0–9", c.Name, c.Band)
+		}
+	}
+	if strings.TrimSpace(out.FeedbackEn) == "" {
+		return errors.New("feedback is empty")
+	}
+	return nil
 }
 
 func buildResult(

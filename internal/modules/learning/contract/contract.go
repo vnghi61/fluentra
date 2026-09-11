@@ -180,9 +180,10 @@ type AsyncGradingCompleter interface {
 	FailAsyncGrading(ctx context.Context, attemptID uuid.UUID, reason string) (bool, error)
 }
 
-// AttemptCounter reports how many attempts have been graded for a user by a given grader.
+// AttemptCounter reports how many of a user's attempts for a grader count toward a
+// daily limit: graded ones and ones still being graded, but not failed ones.
 type AttemptCounter interface {
-	CountGradedAttemptsSince(ctx context.Context, userID uuid.UUID, grader string, since time.Time) (int, error)
+	CountAttemptsTowardLimitSince(ctx context.Context, userID uuid.UUID, grader string, since time.Time) (int, error)
 }
 
 // AttemptDetail contains attempt data needed by asynchronous graders.

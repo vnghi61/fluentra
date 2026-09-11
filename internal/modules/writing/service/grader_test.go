@@ -32,11 +32,12 @@ func TestGradedKinds_IncludesWritingPrompt(t *testing.T) {
 	assert.Contains(t, kinds, contract.KindWritingPrompt)
 }
 
-func TestWritingGrader_GradesWithAI(t *testing.T) {
+// TestWritingGrader_WithoutAQueueRefusesToGradeInTheRequest. A grader with no
+// queue used to call the model inside POST /attempts/{id}/submit — the synchronous
+// grading writing/DECISIONS.md rules out. It refuses instead.
+func TestWritingGrader_WithoutAQueueRefusesToGradeInTheRequest(t *testing.T) {
 	registry, err := ai.NewRegistry()
 	require.NoError(t, err)
-
-	aiClient := ai.NewMockProvider(registry)
 
 	versionID := uuid.New()
 	body, err := json.Marshal(writingPromptBody{
@@ -47,66 +48,56 @@ func TestWritingGrader_GradesWithAI(t *testing.T) {
 
 	reader := &mockContentReader{
 		versions: map[uuid.UUID]*contentcontract.Version{
-			versionID: {
-				ID:   versionID,
-				Body: body,
-			},
+			versionID: {ID: versionID, Body: body},
 		},
 	}
+	grader := NewGrader(reader, ai.NewMockProvider(registry))
 
-	grader := NewGrader(reader, aiClient)
-
-	// Valid submission
-	res, err := grader.Grade(context.Background(), learningcontract.GradeRequest{
+	_, err = grader.Grade(context.Background(), learningcontract.GradeRequest{
 		ContentVersionID: versionID,
-		Response:         json.RawMessage(`{"text_answer": "I love visiting Da Nang because the beaches are beautiful and peaceful."}`),
+		Response:         json.RawMessage(`{"text_answer": "I love visiting Da Nang because the beaches are beautiful."}`),
 	})
-	require.NoError(t, err)
-	assert.True(t, res.Correct)
-	assert.GreaterOrEqual(t, res.Score, 60)
-	assert.NotEmpty(t, res.Feedback)
-	assert.Len(t, res.ReviewItems, 1)
-	assert.Equal(t, "good", res.ReviewItems[0].InitialGrade)
-	assert.Equal(t, "writing", res.ReviewItems[0].Skill)
+	require.Error(t, err)
+	var appErr *apperr.Error
+	require.True(t, errors.As(err, &appErr))
+	assert.Equal(t, "WRITING_QUEUE_UNAVAILABLE", appErr.Code)
 }
 
-func TestWritingGrader_GradesWithoutAI_Fallback(t *testing.T) {
-	versionID := uuid.New()
-	body, err := json.Marshal(writingPromptBody{
-		Prompt:   "Write about your daily routine.",
-		MinWords: 10,
-	})
-	require.NoError(t, err)
-
-	reader := &mockContentReader{
-		versions: map[uuid.UUID]*contentcontract.Version{
-			versionID: {
-				ID:   versionID,
-				Body: body,
+// TestWritingGrader_GradeSubmission_NoProviderIsNeverAPass. This test used to
+// assert the opposite — that with no AI client a long enough essay scored at
+// least 60 and was marked correct — which is the fault work order 11 was written
+// to remove: an essay nobody marked recorded as a pass.
+func TestWritingGrader_GradeSubmission_NoProviderIsNeverAPass(t *testing.T) {
+	for _, final := range []bool{false, true} {
+		versionID := uuid.New()
+		attemptID := uuid.New()
+		reader := &mockContentReader{
+			versions: map[uuid.UUID]*contentcontract.Version{
+				versionID: {ID: versionID, Body: []byte(`{"prompt":"Write about your daily routine.","min_words":5}`)},
 			},
-		},
+		}
+		attempts := &mockAttemptReader{
+			attempts: map[uuid.UUID]*learningcontract.AttemptDetail{
+				attemptID: {
+					ID:               attemptID,
+					ContentVersionID: versionID,
+					Status:           statusGrading,
+					Response:         json.RawMessage(`{"text_answer": "Every morning I wake up at six and make coffee."}`),
+				},
+			},
+		}
+		completer := &mockCompleter{}
+		grader := NewGraderWithDeps(GraderDeps{Content: reader, Attempts: attempts, Completer: completer})
+
+		err := grader.GradeSubmission(context.Background(), attemptID, final)
+		require.ErrorIs(t, err, errNoAIProvider)
+		assert.Empty(t, completer.completed, "no grade may be recorded without a model")
+		if final {
+			assert.Contains(t, completer.failed, attemptID)
+		} else {
+			assert.Empty(t, completer.failed, "a retry is still to come")
+		}
 	}
-
-	// No AI provider (nil client)
-	grader := NewGrader(reader, nil)
-
-	// Submission too short
-	resShort, err := grader.Grade(context.Background(), learningcontract.GradeRequest{
-		ContentVersionID: versionID,
-		Response:         json.RawMessage(`{"text_answer": "I wake up early."}`),
-	})
-	require.NoError(t, err)
-	assert.False(t, resShort.Correct)
-	assert.Less(t, resShort.Score, 60)
-
-	// Sufficient length submission
-	resValid, err := grader.Grade(context.Background(), learningcontract.GradeRequest{
-		ContentVersionID: versionID,
-		Response:         json.RawMessage(`{"text_answer": "Every morning I wake up at six and make a fresh cup of coffee before starting work."}`),
-	})
-	require.NoError(t, err)
-	assert.True(t, resValid.Correct)
-	assert.GreaterOrEqual(t, resValid.Score, 60)
 }
 
 func TestWritingGrader_SpendsMoney(t *testing.T) {
@@ -143,7 +134,7 @@ type mockAttemptCounter struct {
 	err   error
 }
 
-func (m *mockAttemptCounter) CountGradedAttemptsSince(
+func (m *mockAttemptCounter) CountAttemptsTowardLimitSince(
 	_ context.Context, _ uuid.UUID, _ string, _ time.Time,
 ) (int, error) {
 	return m.count, m.err
@@ -345,13 +336,16 @@ func TestWritingGrader_GradeSubmission_Success(t *testing.T) {
 		},
 	}
 	completer := &mockCompleter{}
+	registry, err := ai.NewRegistry()
+	require.NoError(t, err)
 	grader := NewGraderWithDeps(GraderDeps{
 		Content:   reader,
+		AI:        ai.NewMockProvider(registry),
 		Attempts:  attempts,
 		Completer: completer,
 	})
 
-	err := grader.GradeSubmission(context.Background(), attemptID)
+	err = grader.GradeSubmission(context.Background(), attemptID, false)
 	require.NoError(t, err)
 	assert.Contains(t, completer.completed, attemptID)
 	assert.GreaterOrEqual(t, completer.completed[attemptID].Score, 50)
@@ -382,7 +376,7 @@ func TestWritingGrader_GradeSubmission_AlreadyFailedChangesNothing(t *testing.T)
 		Completer: completer,
 	})
 
-	err := grader.GradeSubmission(context.Background(), attemptID)
+	err := grader.GradeSubmission(context.Background(), attemptID, true)
 	require.NoError(t, err)
 	assert.Empty(t, completer.completed)
 	assert.Empty(t, completer.failed)
@@ -424,10 +418,62 @@ func TestWritingGrader_GradeSubmission_ProviderErrorLeavesAttemptFailed(t *testi
 		Completer: completer,
 	})
 
-	err := grader.GradeSubmission(context.Background(), attemptID)
+	// Not the last attempt: the error goes back to River and the attempt stays
+	// grading, so the retry has something to grade.
+	err := grader.GradeSubmission(context.Background(), attemptID, false)
+	require.Error(t, err)
+	assert.Empty(t, completer.failed)
+	assert.Empty(t, completer.completed)
+
+	// The last attempt: now it is failed.
+	err = grader.GradeSubmission(context.Background(), attemptID, true)
 	require.Error(t, err)
 	assert.Contains(t, completer.failed, attemptID)
 	assert.Empty(t, completer.completed)
+}
+
+type cannedAIClient struct{ text string }
+
+func (c cannedAIClient) Complete(_ context.Context, _ ai.Request) (ai.Response, error) {
+	return ai.Response{Text: c.text, Model: "canned"}, nil
+}
+
+// TestWritingGrader_GradeSubmission_RejectsGradesTheRubricCannotMean. Output
+// outside the rubric is not stored: a score of 120 would break the attempts
+// table's CHECK after the feedback row was written.
+func TestWritingGrader_GradeSubmission_RejectsGradesTheRubricCannotMean(t *testing.T) {
+	versionID := uuid.New()
+	attemptID := uuid.New()
+	reader := &mockContentReader{
+		versions: map[uuid.UUID]*contentcontract.Version{
+			versionID: {ID: versionID, Body: []byte(`{"prompt":"Write","min_words":5}`)},
+		},
+	}
+	attempts := &mockAttemptReader{
+		attempts: map[uuid.UUID]*learningcontract.AttemptDetail{
+			attemptID: {
+				ID:               attemptID,
+				ContentVersionID: versionID,
+				Status:           statusGrading,
+				Response:         json.RawMessage(`{"text_answer": "This is a valid response with several words"}`),
+			},
+		},
+	}
+	completer := &mockCompleter{}
+	feedbackRepo := &mockFeedbackRepo{}
+	grader := NewGraderWithDeps(GraderDeps{
+		Content:   reader,
+		AI:        cannedAIClient{text: `{"overall_band": 9.5, "score": 120, "correct": true, "criteria": [], "feedback_en": "Great"}`},
+		Attempts:  attempts,
+		Completer: completer,
+		Feedback:  feedbackRepo,
+	})
+
+	err := grader.GradeSubmission(context.Background(), attemptID, true)
+	require.Error(t, err)
+	assert.Empty(t, feedbackRepo.stored)
+	assert.Empty(t, completer.completed)
+	assert.Contains(t, completer.failed, attemptID)
 }
 
 type mockFeedbackRepo struct {
@@ -475,7 +521,7 @@ func TestWritingGrader_GradeSubmission_StoresStructuredFeedback(t *testing.T) {
 		Feedback:  feedbackRepo,
 	})
 
-	err = grader.GradeSubmission(context.Background(), attemptID)
+	err = grader.GradeSubmission(context.Background(), attemptID, false)
 	require.NoError(t, err)
 	assert.Contains(t, completer.completed, attemptID)
 

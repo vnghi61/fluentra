@@ -3,6 +3,7 @@ package service_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	contentcontract "github.com/fluentra/fluentra/internal/modules/content/contract"
 	learningcontract "github.com/fluentra/fluentra/internal/modules/learning/contract"
@@ -18,211 +20,310 @@ import (
 	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
 	"github.com/fluentra/fluentra/internal/platform/ai"
 	"github.com/fluentra/fluentra/internal/shared/clock"
-	"github.com/jackc/pgx/v5"
 )
 
-// poolMockRepo implements the practice pool methods for in-memory unit testing.
-type poolMockRepo struct {
-	*fakeLearningRepo
-	mu               sync.Mutex
-	dailySets        map[string]*domain.DailySet
-	exposures        map[string]time.Time             // key: userID:activityID -> first_served_at
-	poolActivities   map[string][]domain.PoolActivity // key: level:kind
-	poolLessonIDs    map[string]uuid.UUID             // key: level:title
-	hasActiveLearner map[string]bool
-	activitiesByID   map[uuid.UUID]domain.PoolActivity
+const (
+	poolLevel          = "B1"
+	poolKindReading    = "reading_comprehension"
+	poolKindTense      = "grammar_tense_choice"
+	poolKindTransform  = "grammar_sentence_transform"
+	poolTitleReading   = "Reading Comprehension"
+	poolTitleTense     = "Grammar Tense Choice"
+	poolTitleTransform = "Grammar Sentence Transform"
+)
+
+var poolSlots = []struct{ kind, title string }{
+	{kind: poolKindReading, title: poolTitleReading},
+	{kind: poolKindTense, title: poolTitleTense},
+	{kind: poolKindTransform, title: poolTitleTransform},
 }
 
-func newPoolMockRepo() *poolMockRepo {
-	return &poolMockRepo{
+// --------------------------------------------------------------------------
+// fakePoolRepo: learning's own tables — daily_sets and item_exposures
+// --------------------------------------------------------------------------
+
+type fakePoolRepo struct {
+	*fakeLearningRepo
+
+	poolMu    sync.Mutex
+	sets      map[string]*domain.DailySet
+	exposures map[string]time.Time
+	tick      time.Time
+	// raceWinner, when set, is a set another request stores just before this
+	// request's insert, which then gets no row back.
+	raceWinner []uuid.UUID
+	// runningLow marks activities whose slot has an active learner running low.
+	runningLow map[uuid.UUID]bool
+}
+
+func newFakePoolRepo() *fakePoolRepo {
+	return &fakePoolRepo{
 		fakeLearningRepo: newFakeRepo(),
-		dailySets:        make(map[string]*domain.DailySet),
-		exposures:        make(map[string]time.Time),
-		poolActivities:   make(map[string][]domain.PoolActivity),
-		poolLessonIDs:    make(map[string]uuid.UUID),
-		hasActiveLearner: make(map[string]bool),
-		activitiesByID:   make(map[uuid.UUID]domain.PoolActivity),
+		sets:             map[string]*domain.DailySet{},
+		exposures:        map[string]time.Time{},
+		tick:             time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC),
+		runningLow:       map[uuid.UUID]bool{},
 	}
 }
 
-func (r *poolMockRepo) WithTx(_ pgx.Tx) service.Repository {
+func dailySetKey(userID uuid.UUID, localDate time.Time) string {
+	return userID.String() + "/" + localDate.Format("2006-01-02")
+}
+
+func exposureKey(userID, activityID uuid.UUID) string {
+	return userID.String() + "/" + activityID.String()
+}
+
+func (r *fakePoolRepo) WithTx(_ pgx.Tx) service.Repository {
 	return r
 }
 
-func (r *poolMockRepo) GetPoolPracticeCourseID(_ context.Context) (uuid.UUID, error) {
-	return uuid.Nil, nil
+func (r *fakePoolRepo) GetDailySet(_ context.Context, userID uuid.UUID, localDate time.Time) (*domain.DailySet, error) {
+	r.poolMu.Lock()
+	defer r.poolMu.Unlock()
+	return r.sets[dailySetKey(userID, localDate)], nil
 }
 
-func (r *poolMockRepo) GetDailySet(_ context.Context, userID uuid.UUID, localDate time.Time) (*domain.DailySet, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	key := fmt.Sprintf("%s:%s", userID, localDate.Format("2006-01-02"))
-	if set, ok := r.dailySets[key]; ok {
-		return set, nil
+// CreateDailySet mirrors ON CONFLICT DO NOTHING: nil when a set already exists.
+func (r *fakePoolRepo) CreateDailySet(
+	_ context.Context, userID uuid.UUID, localDate time.Time, activityIDs []uuid.UUID,
+) (*domain.DailySet, error) {
+	r.poolMu.Lock()
+	defer r.poolMu.Unlock()
+	key := dailySetKey(userID, localDate)
+	if r.raceWinner != nil {
+		r.sets[key] = &domain.DailySet{ID: uuid.New(), UserID: userID, LocalDate: localDate, ActivityIDs: r.raceWinner}
+		r.raceWinner = nil
+		return nil, nil
 	}
-	return nil, nil
-}
-
-func (r *poolMockRepo) CreateDailySet(_ context.Context, userID uuid.UUID, localDate time.Time, activityIDs []uuid.UUID) (*domain.DailySet, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	key := fmt.Sprintf("%s:%s", userID, localDate.Format("2006-01-02"))
-	set := &domain.DailySet{
-		ID:          uuid.New(),
-		UserID:      userID,
-		LocalDate:   localDate,
-		ActivityIDs: activityIDs,
-		CreatedAt:   time.Now().UTC(),
+	if _, exists := r.sets[key]; exists {
+		return nil, nil
 	}
-	r.dailySets[key] = set
+	set := &domain.DailySet{ID: uuid.New(), UserID: userID, LocalDate: localDate, ActivityIDs: activityIDs}
+	r.sets[key] = set
 	return set, nil
 }
 
-func (r *poolMockRepo) RecordItemExposure(_ context.Context, userID uuid.UUID, activityID uuid.UUID) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	key := fmt.Sprintf("%s:%s", userID, activityID)
-	if _, ok := r.exposures[key]; !ok {
-		r.exposures[key] = time.Now().UTC()
-	}
+func (r *fakePoolRepo) RecordItemExposure(_ context.Context, userID, activityID uuid.UUID) error {
+	r.poolMu.Lock()
+	defer r.poolMu.Unlock()
+	r.tick = r.tick.Add(time.Minute)
+	r.exposures[exposureKey(userID, activityID)] = r.tick
 	return nil
 }
 
-func (r *poolMockRepo) CountActivePoolActivitiesForSlot(_ context.Context, levelTitle string, kind string) (int64, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	key := fmt.Sprintf("%s:%s", levelTitle, kind)
-	return int64(len(r.poolActivities[key])), nil
-}
-
-func (r *poolMockRepo) ListPoolActivitiesForSlot(_ context.Context, levelTitle string, kind string) ([]domain.PoolActivity, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	key := fmt.Sprintf("%s:%s", levelTitle, kind)
-	items := r.poolActivities[key]
-	cp := make([]domain.PoolActivity, len(items))
-	copy(cp, items)
-	return cp, nil
-}
-
-func (r *poolMockRepo) ListUnseenPoolActivitiesForSlot(_ context.Context, levelTitle string, kind string, userID uuid.UUID) ([]domain.PoolActivity, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	key := fmt.Sprintf("%s:%s", levelTitle, kind)
-	all := r.poolActivities[key]
-	var unseen []domain.PoolActivity
-	for _, act := range all {
-		expKey := fmt.Sprintf("%s:%s", userID, act.ID)
-		if _, exposed := r.exposures[expKey]; !exposed {
-			unseen = append(unseen, act)
+func (r *fakePoolRepo) ListItemExposures(
+	_ context.Context, userID uuid.UUID, activityIDs []uuid.UUID,
+) (map[uuid.UUID]time.Time, error) {
+	r.poolMu.Lock()
+	defer r.poolMu.Unlock()
+	out := map[uuid.UUID]time.Time{}
+	for _, id := range activityIDs {
+		if served, ok := r.exposures[exposureKey(userID, id)]; ok {
+			out[id] = served
 		}
 	}
-	return unseen, nil
+	return out, nil
 }
 
-func (r *poolMockRepo) ListSeenPoolActivitiesForSlotOldestFirst(_ context.Context, levelTitle string, kind string, userID uuid.UUID) ([]domain.PoolActivity, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	key := fmt.Sprintf("%s:%s", levelTitle, kind)
-	all := r.poolActivities[key]
-	var seen []domain.PoolActivity
-	for _, act := range all {
-		expKey := fmt.Sprintf("%s:%s", userID, act.ID)
-		if _, exposed := r.exposures[expKey]; exposed {
-			seen = append(seen, act)
+func (r *fakePoolRepo) HasActiveLearnerRunningLow(_ context.Context, activityIDs []uuid.UUID, _ int) (bool, error) {
+	r.poolMu.Lock()
+	defer r.poolMu.Unlock()
+	for _, id := range activityIDs {
+		if r.runningLow[id] {
+			return true, nil
 		}
 	}
-	return seen, nil
+	return false, nil
 }
 
-func (r *poolMockRepo) HasActiveUserWithFewUnseenItems(_ context.Context, levelTitle string, kind string) (bool, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	key := fmt.Sprintf("%s:%s", levelTitle, kind)
-	return r.hasActiveLearner[key], nil
+func (r *fakePoolRepo) exposureCount() int {
+	r.poolMu.Lock()
+	defer r.poolMu.Unlock()
+	return len(r.exposures)
 }
 
-func (r *poolMockRepo) GetPoolLessonID(_ context.Context, levelTitle string, lessonTitle string) (uuid.UUID, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	key := fmt.Sprintf("%s:%s", levelTitle, lessonTitle)
-	if id, ok := r.poolLessonIDs[key]; ok {
-		return id, nil
+// --------------------------------------------------------------------------
+// fakePoolLessons: lesson's contract, both Reader and Author
+// --------------------------------------------------------------------------
+
+type fakePoolLessons struct {
+	mu         sync.Mutex
+	ids        map[string]uuid.UUID
+	unitTitles map[uuid.UUID]string
+	slotLesson map[string]uuid.UUID
+	activities map[uuid.UUID][]lessoncontract.Activity
+	byID       map[uuid.UUID]lessoncontract.Activity
+	appended   []lessoncontract.ActivitySpec
+}
+
+func newFakePoolLessons() *fakePoolLessons {
+	return &fakePoolLessons{
+		ids:        map[string]uuid.UUID{},
+		unitTitles: map[uuid.UUID]string{},
+		slotLesson: map[string]uuid.UUID{},
+		activities: map[uuid.UUID][]lessoncontract.Activity{},
+		byID:       map[uuid.UUID]lessoncontract.Activity{},
+	}
+}
+
+var (
+	_ lessoncontract.Reader = (*fakePoolLessons)(nil)
+	_ lessoncontract.Author = (*fakePoolLessons)(nil)
+)
+
+func (l *fakePoolLessons) stableID(key string) uuid.UUID {
+	if id, ok := l.ids[key]; ok {
+		return id
 	}
 	id := uuid.New()
-	r.poolLessonIDs[key] = id
+	l.ids[key] = id
+	return id
+}
+
+func (l *fakePoolLessons) EnsureCourse(_ context.Context, spec lessoncontract.CourseSpec) (uuid.UUID, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.stableID("course/" + spec.Slug), nil
+}
+
+func (l *fakePoolLessons) EnsureUnit(_ context.Context, spec lessoncontract.UnitSpec) (uuid.UUID, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	id := l.stableID(fmt.Sprintf("unit/%s/%d", spec.CourseID, spec.Position))
+	l.unitTitles[id] = spec.Title
 	return id, nil
 }
 
-func (r *poolMockRepo) ListActivitiesByIDs(_ context.Context, activityIDs []uuid.UUID) ([]domain.PoolActivity, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	var result []domain.PoolActivity
-	for _, id := range activityIDs {
-		if act, ok := r.activitiesByID[id]; ok {
-			result = append(result, act)
-		}
+func (l *fakePoolLessons) EnsureLesson(_ context.Context, spec lessoncontract.LessonSpec) (uuid.UUID, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	id := l.stableID(fmt.Sprintf("lesson/%s/%d", spec.UnitID, spec.Position))
+	l.slotLesson[l.unitTitles[spec.UnitID]+"/"+spec.Title] = id
+	return id, nil
+}
+
+func (l *fakePoolLessons) SyncActivities(_ context.Context, _ uuid.UUID, _ []lessoncontract.ActivitySpec) error {
+	return nil
+}
+
+func (l *fakePoolLessons) AppendActivity(
+	_ context.Context, lessonID uuid.UUID, spec lessoncontract.ActivitySpec,
+) (uuid.UUID, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.appended = append(l.appended, spec)
+	return l.addLocked(lessonID, spec), nil
+}
+
+func (l *fakePoolLessons) addLocked(lessonID uuid.UUID, spec lessoncontract.ActivitySpec) uuid.UUID {
+	activity := lessoncontract.Activity{
+		ID:               uuid.New(),
+		LessonID:         lessonID,
+		Position:         len(l.activities[lessonID]) + 1,
+		Kind:             spec.Kind,
+		ContentVersionID: spec.ContentVersionID,
+		Config:           spec.Config,
+		Weight:           1,
 	}
-	return result, nil
+	l.activities[lessonID] = append(l.activities[lessonID], activity)
+	l.byID[activity.ID] = activity
+	return activity.ID
 }
 
-func (r *poolMockRepo) addPoolActivity(level, kind string, act domain.PoolActivity) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	key := fmt.Sprintf("%s:%s", level, kind)
-	r.poolActivities[key] = append(r.poolActivities[key], act)
-	r.activitiesByID[act.ID] = act
+// seed adds an item to a slot without counting it as one the top-up generated.
+func (l *fakePoolLessons) seed(
+	t *testing.T, level, title, kind string, versionID uuid.UUID, body json.RawMessage,
+) uuid.UUID {
+	t.Helper()
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	lessonID, ok := l.slotLesson[level+"/"+title]
+	if !ok {
+		t.Fatalf("no pool lesson for %s/%s; resolve the pool structure first", level, title)
+	}
+	return l.addLocked(lessonID, lessoncontract.ActivitySpec{Kind: kind, ContentVersionID: versionID, Config: body})
 }
 
-// fakeContentAuthor tracks published items.
+func (l *fakePoolLessons) appendedCount() int {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return len(l.appended)
+}
+
+func (l *fakePoolLessons) GetLesson(_ context.Context, id uuid.UUID) (*lessoncontract.Lesson, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return &lessoncontract.Lesson{ID: id, Activities: append([]lessoncontract.Activity(nil), l.activities[id]...)}, nil
+}
+
+func (l *fakePoolLessons) ResolveActivity(_ context.Context, id uuid.UUID) (*lessoncontract.ActivityHierarchy, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	activity, ok := l.byID[id]
+	if !ok {
+		return nil, fmt.Errorf("activity %s not found", id)
+	}
+	return &lessoncontract.ActivityHierarchy{
+		ActivityID:       activity.ID,
+		LessonID:         activity.LessonID,
+		Kind:             activity.Kind,
+		ContentVersionID: activity.ContentVersionID,
+		Config:           activity.Config,
+		Weight:           activity.Weight,
+	}, nil
+}
+
+func (l *fakePoolLessons) ListLessons(context.Context, uuid.UUID) ([]*lessoncontract.Lesson, error) {
+	return nil, nil
+}
+
+func (l *fakePoolLessons) ListUnitsByCourseID(context.Context, uuid.UUID) ([]*lessoncontract.Unit, error) {
+	return nil, nil
+}
+
+func (l *fakePoolLessons) ListPrerequisitesForLessons(
+	context.Context, []uuid.UUID,
+) ([]lessoncontract.PrerequisiteItem, error) {
+	return nil, nil
+}
+
+func (l *fakePoolLessons) ListActivitiesByCourseIDs(context.Context, []uuid.UUID) (map[uuid.UUID][]uuid.UUID, error) {
+	return map[uuid.UUID][]uuid.UUID{}, nil
+}
+
+func (l *fakePoolLessons) NextLesson(context.Context, uuid.UUID, *uuid.UUID) (*lessoncontract.Lesson, error) {
+	return nil, nil
+}
+
+// --------------------------------------------------------------------------
+// Content, graders and the model
+// --------------------------------------------------------------------------
+
+// fakeContentAuthor refuses an item with no owner, as content's EnsurePublished
+// does. The fake this replaced accepted one, which is how a pool that could never
+// publish a single item passed its tests.
 type fakeContentAuthor struct {
-	published map[string]uuid.UUID
-}
-
-func newFakeContentAuthor() *fakeContentAuthor {
-	return &fakeContentAuthor{published: make(map[string]uuid.UUID)}
+	mu    sync.Mutex
+	specs []contentcontract.AuthorSpec
 }
 
 func (f *fakeContentAuthor) EnsurePublished(_ context.Context, spec contentcontract.AuthorSpec) (uuid.UUID, error) {
-	if id, ok := f.published[spec.Slug]; ok {
-		return id, nil
+	if spec.AuthorID == uuid.Nil {
+		return uuid.Nil, errors.New("authored content needs an author")
 	}
-	id := uuid.New()
-	f.published[spec.Slug] = id
-	return id, nil
-}
-
-// fakeLessonAuthor tracks courses, units, lessons and activities.
-type fakeLessonAuthor struct {
-	appendedActivities []lessoncontract.ActivitySpec
-}
-
-func newFakeLessonAuthor() *fakeLessonAuthor {
-	return &fakeLessonAuthor{}
-}
-
-func (f *fakeLessonAuthor) EnsureCourse(_ context.Context, _ lessoncontract.CourseSpec) (uuid.UUID, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.specs = append(f.specs, spec)
 	return uuid.New(), nil
 }
 
-func (f *fakeLessonAuthor) EnsureUnit(_ context.Context, _ lessoncontract.UnitSpec) (uuid.UUID, error) {
-	return uuid.New(), nil
+func (f *fakeContentAuthor) published() []contentcontract.AuthorSpec {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]contentcontract.AuthorSpec(nil), f.specs...)
 }
 
-func (f *fakeLessonAuthor) EnsureLesson(_ context.Context, _ lessoncontract.LessonSpec) (uuid.UUID, error) {
-	return uuid.New(), nil
-}
-
-func (f *fakeLessonAuthor) SyncActivities(_ context.Context, _ uuid.UUID, _ []lessoncontract.ActivitySpec) error {
-	return nil
-}
-
-func (f *fakeLessonAuthor) AppendActivity(_ context.Context, _ uuid.UUID, act lessoncontract.ActivitySpec) (uuid.UUID, error) {
-	f.appendedActivities = append(f.appendedActivities, act)
-	return uuid.New(), nil
-}
-
-// fakeContentReader tracks versions.
 type fakeContentReader struct {
 	versions map[uuid.UUID]*contentcontract.Version
 }
@@ -235,13 +336,12 @@ func (f *fakeContentReader) GetVersion(ctx context.Context, id uuid.UUID) (*cont
 	if v, ok := contentcontract.TempVersionFromContext(ctx, id); ok {
 		return v, nil
 	}
-	if v, ok := f.versions[id]; ok {
-		return v, nil
-	}
-	return nil, nil
+	return f.versions[id], nil
 }
 
-func (f *fakeContentReader) GetManyVersions(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]*contentcontract.Version, error) {
+func (f *fakeContentReader) GetManyVersions(
+	_ context.Context, ids []uuid.UUID,
+) (map[uuid.UUID]*contentcontract.Version, error) {
 	res := make(map[uuid.UUID]*contentcontract.Version)
 	for _, id := range ids {
 		if v, ok := f.versions[id]; ok {
@@ -251,286 +351,279 @@ func (f *fakeContentReader) GetManyVersions(ctx context.Context, ids []uuid.UUID
 	return res, nil
 }
 
-func (f *fakeContentReader) Browse(_ context.Context, _ contentcontract.BrowseFilter) ([]*contentcontract.Version, int, error) {
+func (f *fakeContentReader) Browse(
+	_ context.Context, _ contentcontract.BrowseFilter,
+) ([]*contentcontract.Version, int, error) {
 	return nil, 0, nil
 }
 
-// fakeGrader is a flexible test grader for practice kinds.
+// solveOptionA is a blind solve that picks option A, the key keyGrader is built with.
+const solveOptionA = `{"selected_option_id": "A"}`
+
+// testPracticeGrader passes or fails every response.
 type testPracticeGrader struct {
 	shouldPass bool
 }
 
-func (g *testPracticeGrader) Grade(_ context.Context, req learningcontract.GradeRequest) (learningcontract.GradeResult, error) {
+func (g *testPracticeGrader) Grade(
+	_ context.Context, _ learningcontract.GradeRequest,
+) (learningcontract.GradeResult, error) {
 	if g.shouldPass {
-		return learningcontract.GradeResult{
-			Score:   100,
-			Correct: true,
-		}, nil
+		return learningcontract.GradeResult{Score: 100, Correct: true}, nil
 	}
-	return learningcontract.GradeResult{
-		Score:   0,
-		Correct: false,
-	}, nil
+	return learningcontract.GradeResult{}, nil
 }
 
-// fakeAIClient handles TaskPracticeGenerate and TaskPracticeSolve.
-type mockAIClient struct {
-	generateOutput string
-	generateErr    error
-	solveOutput    string
-	solveErr       error
+// keyGrader passes a response that selects its option and fails any other, so a
+// blind solve can disagree with an item's own key.
+type keyGrader struct {
+	option string
 }
 
-func (m *mockAIClient) Complete(_ context.Context, req ai.Request) (ai.Response, error) {
-	if req.Task == ai.TaskPracticeGenerate {
-		if m.generateErr != nil {
-			return ai.Response{}, m.generateErr
-		}
-		return ai.Response{Text: m.generateOutput}, nil
+func (g keyGrader) Grade(_ context.Context, req learningcontract.GradeRequest) (learningcontract.GradeResult, error) {
+	var response struct {
+		SelectedOptionID string `json:"selected_option_id"`
 	}
-	if req.Task == ai.TaskPracticeSolve {
-		if m.solveErr != nil {
-			return ai.Response{}, m.solveErr
-		}
-		return ai.Response{Text: m.solveOutput}, nil
+	_ = json.Unmarshal(req.Response, &response)
+	if response.SelectedOptionID == g.option {
+		return learningcontract.GradeResult{Score: 100, Correct: true}, nil
 	}
-	return ai.Response{}, nil
+	return learningcontract.GradeResult{}, nil
+}
+
+// cannedPracticeAI answers practice_generate with a different prompt on each call,
+// so candidates are not rejected as duplicates of each other, and practice_solve
+// with a fixed answer.
+type cannedPracticeAI struct {
+	mu        sync.Mutex
+	generated int
+	solve     string
+}
+
+func (c *cannedPracticeAI) Complete(_ context.Context, req ai.Request) (ai.Response, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	switch req.Task {
+	case ai.TaskPracticeGenerate:
+		c.generated++
+		return ai.Response{Text: tenseChoiceItem(c.generated)}, nil
+	case ai.TaskPracticeSolve:
+		return ai.Response{Text: c.solve}, nil
+	default:
+		return ai.Response{}, nil
+	}
+}
+
+func (c *cannedPracticeAI) generatedCount() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.generated
+}
+
+func tenseChoiceItem(n int) string {
+	return fmt.Sprintf(`{
+		"prompt": "Item %d: she ___ home early yesterday.",
+		"options": [
+			{"id": "A", "text": "came"},
+			{"id": "B", "text": "come"},
+			{"id": "C", "text": "comes"},
+			{"id": "D", "text": "coming"}
+		],
+		"correct_option_id": "A",
+		"explanation": {"explanation_en": "Past simple.", "explanation_vi": "Quá khứ đơn."}
+	}`, n)
 }
 
 // --------------------------------------------------------------------------
-// Unit Tests
+// Fixture
+// --------------------------------------------------------------------------
+
+type poolFixture struct {
+	svc     *service.Service
+	repo    *fakePoolRepo
+	lessons *fakePoolLessons
+	content *fakeContentReader
+	authors *fakeContentAuthor
+}
+
+func newPoolFixture(
+	t *testing.T, clk clock.Clock, author uuid.UUID, graders *domain.GraderRegistry, aiClient ai.Client,
+) poolFixture {
+	t.Helper()
+	f := poolFixture{
+		repo:    newFakePoolRepo(),
+		lessons: newFakePoolLessons(),
+		content: newFakeContentReader(),
+		authors: &fakeContentAuthor{},
+	}
+	f.svc = service.New(service.Deps{
+		Repo:              f.repo,
+		Lesson:            f.lessons,
+		LessonAuthor:      f.lessons,
+		Content:           f.content,
+		ContentAuthor:     f.authors,
+		Graders:           graders,
+		AI:                aiClient,
+		Clock:             clk,
+		GeneratorAuthorID: author,
+	})
+	if err := f.svc.EnsurePracticePoolStructure(context.Background()); err != nil {
+		t.Fatalf("resolve practice pool: %v", err)
+	}
+	return f
+}
+
+// seed fills slots at a level with prompt-only items and returns their ids by kind.
+func (f poolFixture) seed(t *testing.T, level string, counts map[string]int) map[string][]uuid.UUID {
+	t.Helper()
+	seeded := map[string][]uuid.UUID{}
+	for _, slot := range poolSlots {
+		for i := 0; i < counts[slot.kind]; i++ {
+			versionID := uuid.New()
+			body := json.RawMessage(fmt.Sprintf(`{"prompt": "%s %s %d"}`, level, slot.kind, i))
+			f.content.versions[versionID] = &contentcontract.Version{ID: versionID, Kind: slot.kind, Body: body}
+			seeded[slot.kind] = append(seeded[slot.kind], f.lessons.seed(t, level, slot.title, slot.kind, versionID, body))
+		}
+	}
+	return seeded
+}
+
+func passingGraders() *domain.GraderRegistry {
+	graders := domain.NewGraderRegistry()
+	for _, slot := range poolSlots {
+		_ = graders.Register(slot.kind, &testPracticeGrader{shouldPass: true})
+	}
+	return graders
+}
+
+func dailySetIDs(t *testing.T, svc *service.Service, userID uuid.UUID) []uuid.UUID {
+	t.Helper()
+	set, err := svc.GetDailySet(context.Background(), userID, poolLevel)
+	if err != nil {
+		t.Fatalf("GetDailySet: %v", err)
+	}
+	ids := make([]uuid.UUID, 0, len(set.Activities))
+	for _, activity := range set.Activities {
+		ids = append(ids, activity.ID)
+	}
+	return ids
+}
+
+func testClock() *clock.Fake {
+	return clock.NewFake(time.Date(2026, 9, 11, 8, 0, 0, 0, time.UTC))
+}
+
+// --------------------------------------------------------------------------
+// The daily set
 // --------------------------------------------------------------------------
 
 func TestGetDailySet_SecondSetSharesNothingWithFirstWhileUnseenRemain(t *testing.T) {
 	t.Parallel()
-
-	repo := newPoolMockRepo()
-	contentReader := newFakeContentReader()
-	contentAuth := newFakeContentAuthor()
-	lessonAuth := newFakeLessonAuthor()
-
-	testClock := clock.NewFake(time.Date(2026, 9, 11, 8, 0, 0, 0, time.UTC))
-
-	svc := service.New(service.Deps{
-		Repo:          repo,
-		Content:       contentReader,
-		ContentAuthor: contentAuth,
-		LessonAuthor:  lessonAuth,
-		Clock:         testClock,
-	})
-
-	level := "B1"
-
-	// Seed pool with 2 passages, 10 tense choice, 6 sentence transform items
-	for i := 1; i <= 2; i++ {
-		verID := uuid.New()
-		body := json.RawMessage(fmt.Sprintf(`{"passage": "Passage %d", "questions": []}`, i))
-		contentReader.versions[verID] = &contentcontract.Version{ID: verID, Kind: "reading_comprehension", Body: body}
-		repo.addPoolActivity(level, "reading_comprehension", domain.PoolActivity{
-			ID:               uuid.New(),
-			Kind:             "reading_comprehension",
-			ContentVersionID: verID,
-			Config:           body,
-		})
-	}
-	for i := 1; i <= 10; i++ {
-		verID := uuid.New()
-		body := json.RawMessage(fmt.Sprintf(`{"prompt": "Tense %d"}`, i))
-		contentReader.versions[verID] = &contentcontract.Version{ID: verID, Kind: "grammar_tense_choice", Body: body}
-		repo.addPoolActivity(level, "grammar_tense_choice", domain.PoolActivity{
-			ID:               uuid.New(),
-			Kind:             "grammar_tense_choice",
-			ContentVersionID: verID,
-			Config:           body,
-		})
-	}
-	for i := 1; i <= 6; i++ {
-		verID := uuid.New()
-		body := json.RawMessage(fmt.Sprintf(`{"prompt": "Transform %d"}`, i))
-		contentReader.versions[verID] = &contentcontract.Version{ID: verID, Kind: "grammar_sentence_transform", Body: body}
-		repo.addPoolActivity(level, "grammar_sentence_transform", domain.PoolActivity{
-			ID:               uuid.New(),
-			Kind:             "grammar_sentence_transform",
-			ContentVersionID: verID,
-			Config:           body,
-		})
-	}
-
+	clk := testClock()
+	f := newPoolFixture(t, clk, uuid.New(), nil, nil)
+	f.seed(t, poolLevel, map[string]int{poolKindReading: 2, poolKindTense: 10, poolKindTransform: 6})
 	userID := uuid.New()
 
-	// Day 1: Build first set (1 reading + 5 tense + 3 transform = 9 activities)
-	set1, err := svc.GetDailySet(context.Background(), userID, level)
-	if err != nil {
-		t.Fatalf("unexpected error getting day 1 daily set: %v", err)
-	}
-	if len(set1.Activities) != 9 {
-		t.Fatalf("expected 9 activities in day 1 set, got %d", len(set1.Activities))
-	}
+	day1 := dailySetIDs(t, f.svc, userID)
+	clk.Advance(24 * time.Hour)
+	day2 := dailySetIDs(t, f.svc, userID)
 
-	set1IDs := make(map[uuid.UUID]bool)
-	for _, act := range set1.Activities {
-		set1IDs[act.ID] = true
+	if len(day1) != 9 || len(day2) != 9 {
+		t.Fatalf("expected two sets of 9, got %d and %d", len(day1), len(day2))
 	}
-
-	// Advance clock by 24 hours to Day 2
-	testClock.Advance(24 * time.Hour)
-
-	// Day 2: Build second set
-	set2, err := svc.GetDailySet(context.Background(), userID, level)
-	if err != nil {
-		t.Fatalf("unexpected error getting day 2 daily set: %v", err)
+	first := map[uuid.UUID]bool{}
+	for _, id := range day1 {
+		first[id] = true
 	}
-	if len(set2.Activities) != 9 {
-		t.Fatalf("expected 9 activities in day 2 set, got %d", len(set2.Activities))
-	}
-
-	// Assert: No overlap between Day 1 and Day 2 while unseen items remain
-	for _, act := range set2.Activities {
-		if set1IDs[act.ID] {
-			t.Errorf("expected zero overlap between day 1 and day 2, but activity %s appeared in both", act.ID)
+	for _, id := range day2 {
+		if first[id] {
+			t.Errorf("activity %s appeared on both days while unseen items remained", id)
 		}
 	}
 }
 
-func TestGetDailySet_SeenEverythingGetsDrawnFromOldestExposures(t *testing.T) {
+func TestGetDailySet_SeenEverythingDrawsTheUnseenFirstThenTheOldest(t *testing.T) {
 	t.Parallel()
-
-	repo := newPoolMockRepo()
-	contentReader := newFakeContentReader()
-	testClock := clock.NewFake(time.Date(2026, 9, 11, 8, 0, 0, 0, time.UTC))
-
-	svc := service.New(service.Deps{
-		Repo:          repo,
-		Content:       contentReader,
-		ContentAuthor: newFakeContentAuthor(),
-		LessonAuthor:  newFakeLessonAuthor(),
-		Clock:         testClock,
-	})
-
-	level := "B1"
-
-	// Pool has exactly 1 passage, 5 tense choice, 3 transform (9 items total)
-	for i := 1; i <= 1; i++ {
-		verID := uuid.New()
-		body := json.RawMessage(`{"passage": "Only Passage"}`)
-		contentReader.versions[verID] = &contentcontract.Version{ID: verID, Kind: "reading_comprehension", Body: body}
-		repo.addPoolActivity(level, "reading_comprehension", domain.PoolActivity{
-			ID:               uuid.New(),
-			Kind:             "reading_comprehension",
-			ContentVersionID: verID,
-			Config:           body,
-		})
-	}
-	for i := 1; i <= 5; i++ {
-		verID := uuid.New()
-		body := json.RawMessage(fmt.Sprintf(`{"prompt": "Tense %d"}`, i))
-		contentReader.versions[verID] = &contentcontract.Version{ID: verID, Kind: "grammar_tense_choice", Body: body}
-		repo.addPoolActivity(level, "grammar_tense_choice", domain.PoolActivity{
-			ID:               uuid.New(),
-			Kind:             "grammar_tense_choice",
-			ContentVersionID: verID,
-			Config:           body,
-		})
-	}
-	for i := 1; i <= 3; i++ {
-		verID := uuid.New()
-		body := json.RawMessage(fmt.Sprintf(`{"prompt": "Transform %d"}`, i))
-		contentReader.versions[verID] = &contentcontract.Version{ID: verID, Kind: "grammar_sentence_transform", Body: body}
-		repo.addPoolActivity(level, "grammar_sentence_transform", domain.PoolActivity{
-			ID:               uuid.New(),
-			Kind:             "grammar_sentence_transform",
-			ContentVersionID: verID,
-			Config:           body,
-		})
-	}
-
+	clk := testClock()
+	f := newPoolFixture(t, clk, uuid.New(), nil, nil)
+	seeded := f.seed(t, poolLevel, map[string]int{poolKindReading: 1, poolKindTense: 6, poolKindTransform: 3})
 	userID := uuid.New()
 
-	// Day 1: User sees all 9 items
-	set1, err := svc.GetDailySet(context.Background(), userID, level)
-	if err != nil {
-		t.Fatalf("day 1 get daily set: %v", err)
+	day1 := dailySetIDs(t, f.svc, userID)
+	shown := map[uuid.UUID]bool{}
+	for _, id := range day1 {
+		shown[id] = true
 	}
-	if len(set1.Activities) != 9 {
-		t.Fatalf("expected 9 activities, got %d", len(set1.Activities))
+	var unseenTense uuid.UUID
+	for _, id := range seeded[poolKindTense] {
+		if !shown[id] {
+			unseenTense = id
+		}
 	}
 
-	// Advance clock to Day 2
-	testClock.Advance(24 * time.Hour)
+	clk.Advance(24 * time.Hour)
+	day2 := dailySetIDs(t, f.svc, userID)
 
-	// Day 2: User has seen all 9 items; set must still be full (drawn from oldest exposures)
-	set2, err := svc.GetDailySet(context.Background(), userID, level)
-	if err != nil {
-		t.Fatalf("day 2 get daily set: %v", err)
+	if len(day2) != 9 {
+		t.Fatalf("expected a full set of 9 drawn partly from seen items, got %d", len(day2))
 	}
-	if len(set2.Activities) != 9 {
-		t.Fatalf("expected 9 activities drawn from oldest exposures, got %d", len(set2.Activities))
+	found := false
+	for _, id := range day2 {
+		if id == unseenTense {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("the one tense item the learner had not seen was not drawn before the seen ones")
 	}
 }
 
-func TestGetDailySet_SameDayReturnsCachedSet(t *testing.T) {
+func TestGetDailySet_SameDayReturnsTheStoredSet(t *testing.T) {
 	t.Parallel()
-
-	repo := newPoolMockRepo()
-	contentReader := newFakeContentReader()
-	testClock := clock.NewFake(time.Date(2026, 9, 11, 8, 0, 0, 0, time.UTC))
-
-	svc := service.New(service.Deps{
-		Repo:          repo,
-		Content:       contentReader,
-		ContentAuthor: newFakeContentAuthor(),
-		LessonAuthor:  newFakeLessonAuthor(),
-		Clock:         testClock,
-	})
-
-	level := "B1"
-	verID := uuid.New()
-	body := json.RawMessage(`{"prompt": "Item 1"}`)
-	contentReader.versions[verID] = &contentcontract.Version{ID: verID, Kind: "reading_comprehension", Body: body}
-	repo.addPoolActivity(level, "reading_comprehension", domain.PoolActivity{
-		ID:               uuid.New(),
-		Kind:             "reading_comprehension",
-		ContentVersionID: verID,
-		Config:           body,
-	})
-
+	clk := testClock()
+	f := newPoolFixture(t, clk, uuid.New(), nil, nil)
+	f.seed(t, poolLevel, map[string]int{poolKindReading: 2, poolKindTense: 10, poolKindTransform: 6})
 	userID := uuid.New()
 
-	set1, err := svc.GetDailySet(context.Background(), userID, level)
-	if err != nil {
-		t.Fatalf("get daily set 1: %v", err)
-	}
+	first := dailySetIDs(t, f.svc, userID)
+	clk.Advance(2 * time.Hour)
+	second := dailySetIDs(t, f.svc, userID)
 
-	// Call again within same local date
-	testClock.Advance(2 * time.Hour)
-	set2, err := svc.GetDailySet(context.Background(), userID, level)
-	if err != nil {
-		t.Fatalf("get daily set 2: %v", err)
+	if strings.Join(idStrings(first), ",") != strings.Join(idStrings(second), ",") {
+		t.Errorf("expected the same set twice in one day")
 	}
+}
 
-	if set1.ID != set2.ID {
-		t.Errorf("expected same daily set ID on same day, got %s and %s", set1.ID, set2.ID)
+// TestGetDailySet_LosingTheRaceReturnsTheStoredSetAndRecordsNothing. Two requests
+// on a learner's first open of the day: the one that stores second must answer
+// with the stored set and record no exposures, because the items it drew for
+// itself were never shown to anyone.
+func TestGetDailySet_LosingTheRaceReturnsTheStoredSetAndRecordsNothing(t *testing.T) {
+	t.Parallel()
+	f := newPoolFixture(t, testClock(), uuid.New(), nil, nil)
+	seeded := f.seed(t, poolLevel, map[string]int{poolKindReading: 2, poolKindTense: 10, poolKindTransform: 6})
+
+	winner := []uuid.UUID{seeded[poolKindReading][1]}
+	winner = append(winner, seeded[poolKindTense][5:]...)
+	winner = append(winner, seeded[poolKindTransform][3:]...)
+	f.repo.raceWinner = winner
+
+	got := dailySetIDs(t, f.svc, uuid.New())
+
+	if strings.Join(idStrings(got), ",") != strings.Join(idStrings(winner), ",") {
+		t.Errorf("expected the stored set\n got: %v\nwant: %v", got, winner)
+	}
+	if n := f.repo.exposureCount(); n != 0 {
+		t.Errorf("the losing request recorded %d exposures for items it never showed", n)
 	}
 }
 
 func TestDailySet_RedactionCarriesNoAnswers(t *testing.T) {
 	t.Parallel()
+	f := newPoolFixture(t, testClock(), uuid.New(), nil, nil)
 
-	repo := newPoolMockRepo()
-	contentReader := newFakeContentReader()
-	testClock := clock.NewFake(time.Date(2026, 9, 11, 8, 0, 0, 0, time.UTC))
-
-	svc := service.New(service.Deps{
-		Repo:          repo,
-		Content:       contentReader,
-		ContentAuthor: newFakeContentAuthor(),
-		LessonAuthor:  newFakeLessonAuthor(),
-		Clock:         testClock,
-	})
-
-	level := "B1"
-	verID := uuid.New()
-	unredactedBody := json.RawMessage(`{
+	versionID := uuid.New()
+	body := json.RawMessage(`{
 		"prompt": "Choose the best answer",
 		"correct_option_id": "opt_secret",
 		"correct_answer": "secret_text",
@@ -538,179 +631,169 @@ func TestDailySet_RedactionCarriesNoAnswers(t *testing.T) {
 		"explanation": {"text": "en expl", "text_vi": "vi expl"},
 		"options": [{"id": "opt_1", "text": "Option A"}]
 	}`)
-	contentReader.versions[verID] = &contentcontract.Version{
-		ID:        verID,
-		Kind:      "grammar_tense_choice",
-		Body:      unredactedBody,
-		Status:    "published",
-		CEFRLevel: level,
+	f.content.versions[versionID] = &contentcontract.Version{
+		ID: versionID, Kind: poolKindTense, Body: body, Status: "published", CEFRLevel: poolLevel,
 	}
+	f.lessons.seed(t, poolLevel, poolTitleTense, poolKindTense, versionID, body)
 
-	repo.addPoolActivity(level, "grammar_tense_choice", domain.PoolActivity{
-		ID:               uuid.New(),
-		Kind:             "grammar_tense_choice",
-		ContentVersionID: verID,
-		Config:           unredactedBody,
-	})
-
-	userID := uuid.New()
-	dailySet, err := svc.GetDailySet(context.Background(), userID, level)
+	set, err := f.svc.GetDailySet(context.Background(), uuid.New(), poolLevel)
 	if err != nil {
-		t.Fatalf("get daily set: %v", err)
+		t.Fatalf("GetDailySet: %v", err)
 	}
-
-	setJSON, err := json.Marshal(dailySet)
+	serialized, err := json.Marshal(set)
 	if err != nil {
 		t.Fatalf("marshal daily set: %v", err)
 	}
-
-	serialized := string(setJSON)
-	for _, forbidden := range []string{"opt_secret", "secret_text", "secret_alt"} {
-		if strings.Contains(serialized, forbidden) {
-			t.Errorf("daily set serialized payload leaked forbidden answer: %q in %s", forbidden, serialized)
+	for _, secret := range []string{"opt_secret", "secret_text", "secret_alt"} {
+		if strings.Contains(string(serialized), secret) {
+			t.Errorf("daily set leaked %q", secret)
 		}
 	}
 }
 
+// TestPoolCourseIsLeftOffProgressAndNextActivity. Opening today's practice enrols
+// the learner in the pool's course. The dashboard continues the newest enrolment,
+// so without the filter the pool became "continue learning" and a course in the
+// learner's progress.
+func TestPoolCourseIsLeftOffProgressAndNextActivity(t *testing.T) {
+	t.Parallel()
+	f := newPoolFixture(t, testClock(), uuid.New(), nil, nil)
+	f.seed(t, poolLevel, map[string]int{poolKindReading: 1, poolKindTense: 5, poolKindTransform: 3})
+	userID := uuid.New()
+	_ = dailySetIDs(t, f.svc, userID)
+
+	progress, err := f.svc.Progress(context.Background(), userID)
+	if err != nil {
+		t.Fatalf("Progress: %v", err)
+	}
+	if len(progress.Courses) != 0 {
+		t.Errorf("expected no courses in progress, got %d (the practice pool)", len(progress.Courses))
+	}
+
+	next, err := f.svc.NextActivity(context.Background(), userID)
+	if err != nil {
+		t.Fatalf("NextActivity: %v", err)
+	}
+	if next.State != domain.StateNotStarted {
+		t.Errorf("expected not_started for a learner enrolled only in the pool, got %s", next.State)
+	}
+}
+
+// --------------------------------------------------------------------------
+// Top-up
+// --------------------------------------------------------------------------
+
+// TestTopUpPracticePool_BlindSolveDisagreementRejectsCandidate grades by answer
+// key, so the item's own answer passes check 2 and only the blind solve can stop
+// it. The control run, with a blind solve that agrees, proves the check is what
+// did.
 func TestTopUpPracticePool_BlindSolveDisagreementRejectsCandidate(t *testing.T) {
 	t.Parallel()
+	for _, tc := range []struct {
+		solve     string
+		wantAdded bool
+	}{
+		{solve: `{"selected_option_id": "B"}`, wantAdded: false},
+		{solve: solveOptionA, wantAdded: true},
+	} {
+		graders := domain.NewGraderRegistry()
+		_ = graders.Register(poolKindTense, keyGrader{option: "A"})
+		f := newPoolFixture(t, testClock(), uuid.New(), graders, &cannedPracticeAI{solve: tc.solve})
 
-	repo := newPoolMockRepo()
-	contentReader := newFakeContentReader()
-	contentAuthor := newFakeContentAuthor()
-	lessonAuthor := newFakeLessonAuthor()
-
-	graders := domain.NewGraderRegistry()
-	_ = graders.Register("grammar_tense_choice", &testPracticeGrader{shouldPass: false}) // Grader rejects blind solve
-
-	aiMock := &mockAIClient{
-		generateOutput: `{
-			"prompt": "She ___ to school every day.",
-			"options": [
-				{"id": "A", "text": "goes"},
-				{"id": "B", "text": "go"},
-				{"id": "C", "text": "going"},
-				{"id": "D", "text": "gone"}
-			],
-			"correct_option_id": "A",
-			"explanation": {
-				"explanation_en": "Present simple third person singular.",
-				"explanation_vi": "Thì hiện tại đơn ngôi thứ 3 số ít."
-			}
-		}`,
-		solveOutput: `{"selected_option_id": "B"}`, // Disagreeing answer
-	}
-
-	svc := service.New(service.Deps{
-		Repo:          repo,
-		Content:       contentReader,
-		ContentAuthor: contentAuthor,
-		LessonAuthor:  lessonAuthor,
-		Graders:       graders,
-		AI:            aiMock,
-	})
-
-	err := svc.TopUpPracticePool(context.Background())
-	if err != nil {
-		t.Fatalf("unexpected top-up error: %v", err)
-	}
-
-	// Disagreeing item must NOT be appended to lesson or published
-	if len(lessonAuthor.appendedActivities) > 0 {
-		t.Errorf("expected 0 activities appended due to blind solve failure, got %d", len(lessonAuthor.appendedActivities))
+		if err := f.svc.TopUpPracticePool(context.Background()); err != nil {
+			t.Fatalf("TopUpPracticePool: %v", err)
+		}
+		if added := f.lessons.appendedCount() > 0; added != tc.wantAdded {
+			t.Errorf("blind solve %s: added=%v, want %v", tc.solve, added, tc.wantAdded)
+		}
 	}
 }
 
 func TestTopUpPracticePool_ThrottlingLimits(t *testing.T) {
 	t.Parallel()
+	f := newPoolFixture(t, testClock(), uuid.New(), passingGraders(), &cannedPracticeAI{solve: solveOptionA})
 
-	repo := newPoolMockRepo()
-	contentReader := newFakeContentReader()
-	contentAuthor := newFakeContentAuthor()
-	lessonAuthor := newFakeLessonAuthor()
-
-	graders := domain.NewGraderRegistry()
-	_ = graders.Register("grammar_tense_choice", &testPracticeGrader{shouldPass: true})
-	_ = graders.Register("reading_comprehension", &testPracticeGrader{shouldPass: true})
-	_ = graders.Register("grammar_sentence_transform", &testPracticeGrader{shouldPass: true})
-
-	aiMock := &mockAIClient{
-		generateOutput: `{
-			"prompt": "She ___ home early yesterday.",
-			"options": [
-				{"id": "A", "text": "came"},
-				{"id": "B", "text": "come"},
-				{"id": "C", "text": "comes"},
-				{"id": "D", "text": "coming"}
-			],
-			"correct_option_id": "A",
-			"explanation": {
-				"explanation_en": "Past simple.",
-				"explanation_vi": "Quá khứ đơn."
-			}
-		}`,
-		solveOutput: `{"selected_option_id": "A"}`,
-	}
-
-	svc := service.New(service.Deps{
-		Repo:          repo,
-		Content:       contentReader,
-		ContentAuthor: contentAuthor,
-		LessonAuthor:  lessonAuthor,
-		Graders:       graders,
-		AI:            aiMock,
-	})
-
-	// Baseline: initialize all 9 slots to 50 items with no active learner running low
-	levels := []string{"A2", "B1", "B2"}
-	kinds := []string{"reading_comprehension", "grammar_tense_choice", "grammar_sentence_transform"}
-	for _, l := range levels {
-		for _, k := range kinds {
-			for i := 0; i < 50; i++ {
-				repo.addPoolActivity(l, k, domain.PoolActivity{
-					ID:   uuid.New(),
-					Kind: k,
-				})
-			}
-			repo.hasActiveLearner[fmt.Sprintf("%s:%s", l, k)] = false
+	var a2Tense []uuid.UUID
+	for _, level := range []string{"A2", "B1", "B2"} {
+		seeded := f.seed(t, level, map[string]int{poolKindReading: 50, poolKindTense: 50, poolKindTransform: 50})
+		if level == "A2" {
+			a2Tense = seeded[poolKindTense]
 		}
 	}
 
-	// Case 1: All slots at 50 and NO active learner with < 10 unseen -> toAdd is 0
-	initialCount := len(lessonAuthor.appendedActivities)
-	if err := svc.TopUpPracticePool(context.Background()); err != nil {
-		t.Fatalf("top up practice pool: %v", err)
+	// Every slot at its target and nobody running low: nothing to add.
+	if err := f.svc.TopUpPracticePool(context.Background()); err != nil {
+		t.Fatalf("TopUpPracticePool: %v", err)
 	}
-	if len(lessonAuthor.appendedActivities) != initialCount {
-		t.Errorf("expected 0 items added when slots at 50 have no active learners running low, got %d", len(lessonAuthor.appendedActivities)-initialCount)
-	}
-
-	// Case 2: One slot has an active learner running low (< 10 unseen) -> adds 5 items
-	targetLevel := "A2"
-	targetKind := "grammar_tense_choice"
-	repo.hasActiveLearner[fmt.Sprintf("%s:%s", targetLevel, targetKind)] = true
-
-	if err := svc.TopUpPracticePool(context.Background()); err != nil {
-		t.Fatalf("top up practice pool: %v", err)
-	}
-	if len(lessonAuthor.appendedActivities) != initialCount+5 {
-		t.Errorf("expected 5 items added when slot has learner running low, got %d", len(lessonAuthor.appendedActivities)-initialCount)
+	if n := f.lessons.appendedCount(); n != 0 {
+		t.Errorf("expected nothing added at target with nobody running low, got %d", n)
 	}
 
-	// Case 3: Slot reaches 200 items (cap) -> never adds anything even if learner is running low
-	for i := len(repo.poolActivities[fmt.Sprintf("%s:%s", targetLevel, targetKind)]); i < 200; i++ {
-		repo.addPoolActivity(targetLevel, targetKind, domain.PoolActivity{
-			ID:   uuid.New(),
-			Kind: targetKind,
-		})
+	// A learner running low in one slot: that slot grows by five.
+	f.repo.runningLow[a2Tense[0]] = true
+	if err := f.svc.TopUpPracticePool(context.Background()); err != nil {
+		t.Fatalf("TopUpPracticePool: %v", err)
 	}
-	repo.hasActiveLearner[fmt.Sprintf("%s:%s", targetLevel, targetKind)] = true
-	capCount := len(lessonAuthor.appendedActivities)
+	if n := f.lessons.appendedCount(); n != 5 {
+		t.Errorf("expected 5 added to the slot running low, got %d", n)
+	}
 
-	if err := svc.TopUpPracticePool(context.Background()); err != nil {
-		t.Fatalf("top up practice pool: %v", err)
+	// At the ceiling nothing more is added, whoever is running low.
+	f.seed(t, "A2", map[string]int{poolKindTense: 200 - 55})
+	if err := f.svc.TopUpPracticePool(context.Background()); err != nil {
+		t.Fatalf("TopUpPracticePool: %v", err)
 	}
-	if len(lessonAuthor.appendedActivities) != capCount {
-		t.Errorf("expected 0 items added when slot is at 200 cap, got %d", len(lessonAuthor.appendedActivities)-capCount)
+	if n := f.lessons.appendedCount(); n != 5 {
+		t.Errorf("expected nothing more added at the ceiling of 200, got %d in total", n)
 	}
+}
+
+func TestTopUpPracticePool_PublishesUnderTheGeneratorAuthor(t *testing.T) {
+	t.Parallel()
+	author := uuid.New()
+	f := newPoolFixture(t, testClock(), author, passingGraders(), &cannedPracticeAI{solve: solveOptionA})
+	for _, level := range []string{"A2", "B1", "B2"} {
+		counts := map[string]int{poolKindReading: 50, poolKindTense: 50, poolKindTransform: 50}
+		if level == poolLevel {
+			counts[poolKindTense] = 49
+		}
+		f.seed(t, level, counts)
+	}
+
+	if err := f.svc.TopUpPracticePool(context.Background()); err != nil {
+		t.Fatalf("TopUpPracticePool: %v", err)
+	}
+
+	published := f.authors.published()
+	if len(published) != 1 || f.lessons.appendedCount() != 1 {
+		t.Fatalf("expected one item published and appended, got %d published, %d appended",
+			len(published), f.lessons.appendedCount())
+	}
+	if published[0].AuthorID != author {
+		t.Errorf("published under %s, want the generator author %s", published[0].AuthorID, author)
+	}
+}
+
+func TestTopUpPracticePool_WithoutAnOwnerStandsDown(t *testing.T) {
+	t.Parallel()
+	aiClient := &cannedPracticeAI{solve: solveOptionA}
+	f := newPoolFixture(t, testClock(), uuid.Nil, passingGraders(), aiClient)
+
+	if err := f.svc.TopUpPracticePool(context.Background()); err != nil {
+		t.Fatalf("TopUpPracticePool: %v", err)
+	}
+	if n := aiClient.generatedCount(); n != 0 {
+		t.Errorf("expected no model calls without an owner for the content, got %d", n)
+	}
+	if n := f.lessons.appendedCount(); n != 0 {
+		t.Errorf("expected nothing appended without an owner, got %d", n)
+	}
+}
+
+func idStrings(ids []uuid.UUID) []string {
+	out := make([]string, len(ids))
+	for i, id := range ids {
+		out[i] = id.String()
+	}
+	return out
 }

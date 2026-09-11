@@ -556,13 +556,13 @@ type lazyAttemptCounter struct{ of *identity }
 
 var _ learningcontract.AttemptCounter = lazyAttemptCounter{}
 
-func (c lazyAttemptCounter) CountGradedAttemptsSince(
+func (c lazyAttemptCounter) CountAttemptsTowardLimitSince(
 	ctx context.Context, userID uuid.UUID, grader string, since time.Time,
 ) (int, error) {
 	if c.of.learning == nil {
 		return 0, nil
 	}
-	return c.of.learning.AttemptCounter().CountGradedAttemptsSince(ctx, userID, grader, since)
+	return c.of.learning.AttemptCounter().CountAttemptsTowardLimitSince(ctx, userID, grader, since)
 }
 
 // rateLimiterAdapter bridges platform/cache's limiter to the one httpx declares.

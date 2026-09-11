@@ -9,6 +9,8 @@ import (
 // ReportReason represents why an item is reported.
 type ReportReason string
 
+// The reasons a learner can give. They mirror the CHECK on
+// content.item_reports.reason, and the two change together.
 const (
 	ReportReasonWrongAnswer      ReportReason = "wrong_answer"
 	ReportReasonUnclear          ReportReason = "unclear"

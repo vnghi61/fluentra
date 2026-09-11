@@ -44,7 +44,9 @@ type ContentService interface {
 		ctx context.Context, status, kind, query *string, limit, offset int,
 	) ([]domain.Item, int64, error)
 	GetAdminItemDetail(ctx context.Context, id uuid.UUID) (domain.Item, []domain.Version, error)
-	ReportItem(ctx context.Context, userID, versionID uuid.UUID, reason domain.ReportReason, note *string) (domain.ItemReport, error)
+	ReportItem(
+		ctx context.Context, userID, versionID uuid.UUID, reason domain.ReportReason, note *string,
+	) (domain.ItemReport, error)
 	ListReportedContent(ctx context.Context, limit, offset int) ([]domain.ReportedVersionSummary, int, error)
 }
 

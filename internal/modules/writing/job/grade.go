@@ -26,7 +26,9 @@ func (GradeSubmissionArgs) InsertOpts() river.InsertOpts {
 
 // SubmissionGrader defines the grading operation needed by GradeSubmissionWorker.
 type SubmissionGrader interface {
-	GradeSubmission(ctx context.Context, attemptID uuid.UUID) error
+	// GradeSubmission grades one essay. finalAttempt is true when River will not
+	// run the job again, and only then may a failure be recorded on the attempt.
+	GradeSubmission(ctx context.Context, attemptID uuid.UUID, finalAttempt bool) error
 }
 
 // GradeSubmissionWorker processes writing exercise submissions via River.
@@ -45,5 +47,8 @@ func (w *GradeSubmissionWorker) Work(ctx context.Context, job *river.Job[GradeSu
 	if w.grader == nil {
 		return nil
 	}
-	return w.grader.GradeSubmission(ctx, job.Args.AttemptID)
+	// River always supplies the row. A job built without one — in a test — is
+	// treated as its last attempt, which is the conservative reading.
+	finalAttempt := job.JobRow == nil || job.Attempt >= job.MaxAttempts
+	return w.grader.GradeSubmission(ctx, job.Args.AttemptID, finalAttempt)
 }

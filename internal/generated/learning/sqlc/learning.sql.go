@@ -18,6 +18,7 @@ UPDATE learn.attempts
 SET status          = 'grading',
     idempotency_key = $3,
     response        = $4,
+    grader          = $5,
     updated_at      = now()
 WHERE id = $1
   AND created_at = $2
@@ -31,6 +32,7 @@ type ClaimAttemptForGradingParams struct {
 	CreatedAt      time.Time
 	IdempotencyKey *uuid.UUID
 	Response       []byte
+	Grader         *string
 }
 
 // ClaimAttemptForGrading is what makes submission idempotent, and it is the
@@ -55,6 +57,7 @@ func (q *Queries) ClaimAttemptForGrading(ctx context.Context, arg ClaimAttemptFo
 		arg.CreatedAt,
 		arg.IdempotencyKey,
 		arg.Response,
+		arg.Grader,
 	)
 	var i LearnAttempt
 	err := row.Scan(
@@ -147,23 +150,28 @@ func (q *Queries) CompleteLearningSession(ctx context.Context, arg CompleteLearn
 	return i, err
 }
 
-const countGradedAttemptsSince = `-- name: CountGradedAttemptsSince :one
+const countAttemptsTowardLimitSince = `-- name: CountAttemptsTowardLimitSince :one
 SELECT count(*)::integer
 FROM learn.attempts
 WHERE user_id = $1
   AND grader = $2
-  AND status = 'graded'
+  AND status IN ('grading', 'graded')
   AND created_at >= $3
 `
 
-type CountGradedAttemptsSinceParams struct {
+type CountAttemptsTowardLimitSinceParams struct {
 	UserID    uuid.UUID
 	Grader    *string
 	CreatedAt time.Time
 }
 
-func (q *Queries) CountGradedAttemptsSince(ctx context.Context, arg CountGradedAttemptsSinceParams) (int32, error) {
-	row := q.db.QueryRow(ctx, countGradedAttemptsSince, arg.UserID, arg.Grader, arg.CreatedAt)
+// Graded and still-grading attempts both count. An essay being marked has already
+// been handed to the model the limit exists to bound, and counting only graded
+// ones let a learner submit fifty in the seconds before the first came back.
+// Failed attempts do not count: quota is charged on success (writing/DECISIONS.md).
+// The claim records the grader, which is what makes an in-flight attempt visible.
+func (q *Queries) CountAttemptsTowardLimitSince(ctx context.Context, arg CountAttemptsTowardLimitSinceParams) (int32, error) {
+	row := q.db.QueryRow(ctx, countAttemptsTowardLimitSince, arg.UserID, arg.Grader, arg.CreatedAt)
 	var column_1 int32
 	err := row.Scan(&column_1)
 	return column_1, err
@@ -850,6 +858,7 @@ UPDATE learn.attempts
 SET status          = 'in_progress',
     idempotency_key = NULL,
     response        = '{}'::jsonb,
+    grader          = NULL,
     updated_at      = now()
 WHERE id = $1
   AND created_at = $2

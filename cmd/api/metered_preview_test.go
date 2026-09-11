@@ -96,7 +96,12 @@ func TestGradePreview_WritingPrompt_RefusesAndMakesZeroAICalls(t *testing.T) {
 			},
 		},
 	}
-	writingGrader := writingservice.NewGrader(content, aiClient)
+	enqueuer := &previewEnqueuer{}
+	writingGrader := writingservice.NewGraderWithDeps(writingservice.GraderDeps{
+		Content:  content,
+		AI:       aiClient,
+		Enqueuer: enqueuer,
+	})
 
 	activityID := uuid.New()
 	lessonReader := &mockLessonReader{
@@ -146,12 +151,28 @@ func TestGradePreview_WritingPrompt_RefusesAndMakesZeroAICalls(t *testing.T) {
 	// Counting fake AI client records ZERO calls!
 	assert.Equal(t, int32(0), aiClient.calls.Load())
 
-	// 2. If grader is called directly without the guard, call count becomes 1
+	assert.Equal(t, int32(0), enqueuer.calls.Load(), "a refused preview must not queue a grading job")
+
+	// 2. Called directly, past the guard, the grader spends: it queues a grading
+	// job for the worker. It still makes no model call inside the request — that
+	// is the synchronous grading writing/DECISIONS.md rules out — so what the
+	// guard prevents is the job, and the job is what this proves would run.
 	res, err := writingGrader.Grade(context.Background(), learningcontract.GradeRequest{
 		ContentVersionID: versionID,
 		Response:         json.RawMessage(`{"text_answer":"I dream of building wonderful software systems."}`),
 	})
 	require.NoError(t, err)
-	assert.True(t, res.Correct)
-	assert.Equal(t, int32(1), aiClient.calls.Load())
+	assert.True(t, res.Async)
+	assert.Equal(t, int32(1), enqueuer.calls.Load())
+	assert.Equal(t, int32(0), aiClient.calls.Load())
+}
+
+// previewEnqueuer counts grading jobs a writing grader queues.
+type previewEnqueuer struct {
+	calls atomic.Int32
+}
+
+func (e *previewEnqueuer) EnqueueGradeSubmission(_ context.Context, _ uuid.UUID) error {
+	e.calls.Add(1)
+	return nil
 }

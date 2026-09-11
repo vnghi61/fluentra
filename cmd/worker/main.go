@@ -445,6 +445,7 @@ func startLearning(
 	instruments telemetry.Instruments, lessonModule *lesson.Module,
 	contentModule *content.Module, aiClient ai.Client,
 	readingModule *reading.Module, grammarModule *grammar.Module,
+	rbacModule *rbac.Module,
 ) (*learning.Module, error) {
 	graders := make(map[string]learningcontract.ExerciseGrader)
 	if readingModule != nil {
@@ -458,6 +459,16 @@ func startLearning(
 		}
 	}
 
+	// The owner of generated practice content, resolved the way the vocabulary
+	// generator resolves it. On a database with no administrator yet it is zero,
+	// and the pool top-up stands down instead of generating items EnsurePublished
+	// would refuse.
+	generatorAuthor, err := rbacModule.RoleMembers().FirstHolderOf(ctx, rbaccontract.RoleAdmin)
+	if err != nil {
+		slog.WarnContext(ctx, "could not resolve an owner for generated practice content; "+
+			"the practice pool will not grow", "error", err)
+	}
+
 	learningModule := learning.New(learning.Deps{
 		Pool:          pool,
 		Lesson:        lessonModule.Reader(),
@@ -466,6 +477,8 @@ func startLearning(
 		ContentAuthor: contentModule.Author(),
 		Graders:       graders,
 		AI:            aiClient,
+
+		GeneratorAuthorID: generatorAuthor,
 	})
 
 	for _, scheduled := range learningModule.CronJobs() {
@@ -490,6 +503,23 @@ func startLearning(
 			"error", err)
 	}
 	return learningModule, nil
+}
+
+// newWorkerAIClient builds the worker's AI client, or nil when none can be built.
+// A nil client is not a silent pass anywhere it is used: uploads fall back to the
+// dictionary alone, the practice pool does not grow, and writing grading fails the
+// attempt instead of recording a grade nobody gave.
+func newWorkerAIClient(ctx context.Context, cfg workerConfig, pool *pgxpool.Pool) ai.Client {
+	aiClient, err := ai.New(ai.Config{
+		Providers: cfg.aiProviders(),
+		Pool:      pool,
+	})
+	if err != nil {
+		slog.WarnContext(ctx, "no AI client; uploads will be verified against the dictionary alone",
+			"error", err)
+		return nil
+	}
+	return aiClient
 }
 
 func startModules(
@@ -537,18 +567,11 @@ func startModules(
 	readingModule := reading.New(reading.Deps{Content: contentModule.Reader()})
 	grammarModule := grammar.New(grammar.Deps{Content: contentModule.Reader()})
 
-	aiClient, err := ai.New(ai.Config{
-		Providers: cfg.aiProviders(),
-		Pool:      pool,
-	})
-	if err != nil {
-		slog.WarnContext(ctx, "no AI client; uploads will be verified against the dictionary alone",
-			"error", err)
-		aiClient = nil
-	}
+	aiClient := newWorkerAIClient(ctx, cfg, pool)
 
 	learningModule, err := startLearning(
 		ctx, pool, cron, instruments, lessonModule, contentModule, aiClient, readingModule, grammarModule,
+		rbacModule,
 	)
 	if err != nil {
 		return err

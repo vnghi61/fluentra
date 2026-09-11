@@ -13,37 +13,12 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const countActivePoolActivitiesForSlot = `-- name: CountActivePoolActivitiesForSlot :one
-SELECT count(*)::bigint AS active_count
-FROM learn.activities a
-JOIN learn.lessons l ON l.id = a.lesson_id
-JOIN learn.course_units u ON u.id = l.unit_id
-JOIN learn.courses c ON c.id = u.course_id
-WHERE c.slug = 'pool-practice'
-  AND u.title = $1
-  AND a.kind = $2
-  AND a.retired_at IS NULL
-`
-
-type CountActivePoolActivitiesForSlotParams struct {
-	Title string
-	Kind  string
-}
-
-func (q *Queries) CountActivePoolActivitiesForSlot(ctx context.Context, arg CountActivePoolActivitiesForSlotParams) (int64, error) {
-	row := q.db.QueryRow(ctx, countActivePoolActivitiesForSlot, arg.Title, arg.Kind)
-	var active_count int64
-	err := row.Scan(&active_count)
-	return active_count, err
-}
-
 const createDailySet = `-- name: CreateDailySet :one
 INSERT INTO learn.daily_sets (
     user_id, local_date, activity_ids
 ) VALUES (
     $1, $2, $3
-) ON CONFLICT (user_id, local_date) DO UPDATE
-SET activity_ids = learn.daily_sets.activity_ids
+) ON CONFLICT (user_id, local_date) DO NOTHING
 RETURNING id, user_id, local_date, activity_ids, created_at
 `
 
@@ -53,6 +28,9 @@ type CreateDailySetParams struct {
 	ActivityIds []uuid.UUID
 }
 
+// DO NOTHING, not DO UPDATE. A request that loses the race for a learner's first
+// open of the day gets no row back, and so knows not to record exposures for the
+// items it drew: they were never shown.
 func (q *Queries) CreateDailySet(ctx context.Context, arg CreateDailySetParams) (LearnDailySet, error) {
 	row := q.db.QueryRow(ctx, createDailySet, arg.UserID, arg.LocalDate, arg.ActivityIds)
 	var i LearnDailySet
@@ -67,6 +45,7 @@ func (q *Queries) CreateDailySet(ctx context.Context, arg CreateDailySetParams) 
 }
 
 const getDailySet = `-- name: GetDailySet :one
+
 SELECT id, user_id, local_date, activity_ids, created_at
 FROM learn.daily_sets
 WHERE user_id = $1 AND local_date = $2
@@ -77,6 +56,12 @@ type GetDailySetParams struct {
 	LocalDate pgtype.Date
 }
 
+// Daily practice sets and item exposures: work order 11 §3.11.
+//
+// Only the two tables learning owns here are read. The pool's course, units,
+// lessons and activities belong to `lesson` and are reached through its contract
+// (rule L2): the service resolves which activities make up a slot and passes their
+// ids to these queries.
 func (q *Queries) GetDailySet(ctx context.Context, arg GetDailySetParams) (LearnDailySet, error) {
 	row := q.db.QueryRow(ctx, getDailySet, arg.UserID, arg.LocalDate)
 	var i LearnDailySet
@@ -90,294 +75,64 @@ func (q *Queries) GetDailySet(ctx context.Context, arg GetDailySetParams) (Learn
 	return i, err
 }
 
-const getPoolLessonID = `-- name: GetPoolLessonID :one
-SELECT l.id
-FROM learn.lessons l
-JOIN learn.course_units u ON u.id = l.unit_id
-JOIN learn.courses c ON c.id = u.course_id
-WHERE c.slug = 'pool-practice'
-  AND u.title = $1
-  AND l.title = $2
-LIMIT 1
-`
-
-type GetPoolLessonIDParams struct {
-	Title   string
-	Title_2 string
-}
-
-func (q *Queries) GetPoolLessonID(ctx context.Context, arg GetPoolLessonIDParams) (uuid.UUID, error) {
-	row := q.db.QueryRow(ctx, getPoolLessonID, arg.Title, arg.Title_2)
-	var id uuid.UUID
-	err := row.Scan(&id)
-	return id, err
-}
-
-const getPoolPracticeCourseID = `-- name: GetPoolPracticeCourseID :one
-SELECT id
-FROM learn.courses
-WHERE slug = 'pool-practice'
-`
-
-func (q *Queries) GetPoolPracticeCourseID(ctx context.Context) (uuid.UUID, error) {
-	row := q.db.QueryRow(ctx, getPoolPracticeCourseID)
-	var id uuid.UUID
-	err := row.Scan(&id)
-	return id, err
-}
-
-const hasActiveUserWithFewUnseenItems = `-- name: HasActiveUserWithFewUnseenItems :one
-WITH active_users AS (
-    SELECT DISTINCT user_id
-    FROM learn.attempts
-    WHERE created_at >= now() - interval '14 days'
-),
-slot_activities AS (
-    SELECT a.id
-    FROM learn.activities a
-    JOIN learn.lessons l ON l.id = a.lesson_id
-    JOIN learn.course_units u ON u.id = l.unit_id
-    JOIN learn.courses c ON c.id = u.course_id
-    WHERE c.slug = 'pool-practice'
-      AND u.title = $1
-      AND a.kind = $2
-      AND a.retired_at IS NULL
-),
-unseen_counts AS (
-    SELECT u.user_id,
-           (SELECT count(*) FROM slot_activities sa
-            WHERE NOT EXISTS (
-                SELECT 1 FROM learn.item_exposures e
-                WHERE e.user_id = u.user_id AND e.activity_id = sa.id
-            )) AS unseen_count
-    FROM active_users u
-)
+const hasActiveLearnerRunningLow = `-- name: HasActiveLearnerRunningLow :one
 SELECT EXISTS (
-    SELECT 1 FROM unseen_counts WHERE unseen_count < 10
-) AS has_few_unseen
+    SELECT 1
+    FROM (
+        SELECT DISTINCT user_id
+        FROM learn.attempts
+        WHERE created_at >= now() - interval '14 days'
+    ) active
+    WHERE cardinality($1::uuid[]) - (
+        SELECT count(*)
+        FROM learn.item_exposures e
+        WHERE e.user_id = active.user_id
+          AND e.activity_id = ANY($1::uuid[])
+    ) < $2::int
+) AS running_low
 `
 
-type HasActiveUserWithFewUnseenItemsParams struct {
-	Title string
-	Kind  string
+type HasActiveLearnerRunningLowParams struct {
+	ActivityIds []uuid.UUID
+	Threshold   int32
 }
 
-func (q *Queries) HasActiveUserWithFewUnseenItems(ctx context.Context, arg HasActiveUserWithFewUnseenItemsParams) (bool, error) {
-	row := q.db.QueryRow(ctx, hasActiveUserWithFewUnseenItems, arg.Title, arg.Kind)
-	var has_few_unseen bool
-	err := row.Scan(&has_few_unseen)
-	return has_few_unseen, err
+// True when a learner active in the last fourteen days has fewer than @threshold
+// of the given activities left unseen.
+func (q *Queries) HasActiveLearnerRunningLow(ctx context.Context, arg HasActiveLearnerRunningLowParams) (bool, error) {
+	row := q.db.QueryRow(ctx, hasActiveLearnerRunningLow, arg.ActivityIds, arg.Threshold)
+	var running_low bool
+	err := row.Scan(&running_low)
+	return running_low, err
 }
 
-const listActivitiesByIDs = `-- name: ListActivitiesByIDs :many
-SELECT id, lesson_id, position, kind, content_version_id, config, weight
-FROM learn.activities
-WHERE id = ANY($1::uuid[])
+const listItemExposures = `-- name: ListItemExposures :many
+SELECT activity_id, first_served_at
+FROM learn.item_exposures
+WHERE user_id = $1
+  AND activity_id = ANY($2::uuid[])
 `
 
-type ListActivitiesByIDsRow struct {
-	ID               uuid.UUID
-	LessonID         uuid.UUID
-	Position         int32
-	Kind             string
-	ContentVersionID uuid.UUID
-	Config           []byte
-	Weight           int32
+type ListItemExposuresParams struct {
+	UserID      uuid.UUID
+	ActivityIds []uuid.UUID
 }
 
-func (q *Queries) ListActivitiesByIDs(ctx context.Context, activityIds []uuid.UUID) ([]ListActivitiesByIDsRow, error) {
-	rows, err := q.db.Query(ctx, listActivitiesByIDs, activityIds)
+type ListItemExposuresRow struct {
+	ActivityID    uuid.UUID
+	FirstServedAt time.Time
+}
+
+func (q *Queries) ListItemExposures(ctx context.Context, arg ListItemExposuresParams) ([]ListItemExposuresRow, error) {
+	rows, err := q.db.Query(ctx, listItemExposures, arg.UserID, arg.ActivityIds)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListActivitiesByIDsRow
+	var items []ListItemExposuresRow
 	for rows.Next() {
-		var i ListActivitiesByIDsRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.LessonID,
-			&i.Position,
-			&i.Kind,
-			&i.ContentVersionID,
-			&i.Config,
-			&i.Weight,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listPoolActivitiesForSlot = `-- name: ListPoolActivitiesForSlot :many
-SELECT a.id, a.lesson_id, a.position, a.kind, a.content_version_id, a.config, a.weight
-FROM learn.activities a
-JOIN learn.lessons l ON l.id = a.lesson_id
-JOIN learn.course_units u ON u.id = l.unit_id
-JOIN learn.courses c ON c.id = u.course_id
-WHERE c.slug = 'pool-practice'
-  AND u.title = $1
-  AND a.kind = $2
-  AND a.retired_at IS NULL
-ORDER BY a.position ASC
-`
-
-type ListPoolActivitiesForSlotParams struct {
-	Title string
-	Kind  string
-}
-
-type ListPoolActivitiesForSlotRow struct {
-	ID               uuid.UUID
-	LessonID         uuid.UUID
-	Position         int32
-	Kind             string
-	ContentVersionID uuid.UUID
-	Config           []byte
-	Weight           int32
-}
-
-func (q *Queries) ListPoolActivitiesForSlot(ctx context.Context, arg ListPoolActivitiesForSlotParams) ([]ListPoolActivitiesForSlotRow, error) {
-	rows, err := q.db.Query(ctx, listPoolActivitiesForSlot, arg.Title, arg.Kind)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListPoolActivitiesForSlotRow
-	for rows.Next() {
-		var i ListPoolActivitiesForSlotRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.LessonID,
-			&i.Position,
-			&i.Kind,
-			&i.ContentVersionID,
-			&i.Config,
-			&i.Weight,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listSeenPoolActivitiesForSlotOldestFirst = `-- name: ListSeenPoolActivitiesForSlotOldestFirst :many
-SELECT a.id, a.lesson_id, a.position, a.kind, a.content_version_id, a.config, a.weight, e.first_served_at
-FROM learn.activities a
-JOIN learn.lessons l ON l.id = a.lesson_id
-JOIN learn.course_units u ON u.id = l.unit_id
-JOIN learn.courses c ON c.id = u.course_id
-JOIN learn.item_exposures e ON e.activity_id = a.id AND e.user_id = $3
-WHERE c.slug = 'pool-practice'
-  AND u.title = $1
-  AND a.kind = $2
-  AND a.retired_at IS NULL
-ORDER BY e.first_served_at ASC
-`
-
-type ListSeenPoolActivitiesForSlotOldestFirstParams struct {
-	Title  string
-	Kind   string
-	UserID uuid.UUID
-}
-
-type ListSeenPoolActivitiesForSlotOldestFirstRow struct {
-	ID               uuid.UUID
-	LessonID         uuid.UUID
-	Position         int32
-	Kind             string
-	ContentVersionID uuid.UUID
-	Config           []byte
-	Weight           int32
-	FirstServedAt    time.Time
-}
-
-func (q *Queries) ListSeenPoolActivitiesForSlotOldestFirst(ctx context.Context, arg ListSeenPoolActivitiesForSlotOldestFirstParams) ([]ListSeenPoolActivitiesForSlotOldestFirstRow, error) {
-	rows, err := q.db.Query(ctx, listSeenPoolActivitiesForSlotOldestFirst, arg.Title, arg.Kind, arg.UserID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListSeenPoolActivitiesForSlotOldestFirstRow
-	for rows.Next() {
-		var i ListSeenPoolActivitiesForSlotOldestFirstRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.LessonID,
-			&i.Position,
-			&i.Kind,
-			&i.ContentVersionID,
-			&i.Config,
-			&i.Weight,
-			&i.FirstServedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listUnseenPoolActivitiesForSlot = `-- name: ListUnseenPoolActivitiesForSlot :many
-SELECT a.id, a.lesson_id, a.position, a.kind, a.content_version_id, a.config, a.weight
-FROM learn.activities a
-JOIN learn.lessons l ON l.id = a.lesson_id
-JOIN learn.course_units u ON u.id = l.unit_id
-JOIN learn.courses c ON c.id = u.course_id
-LEFT JOIN learn.item_exposures e ON e.activity_id = a.id AND e.user_id = $3
-WHERE c.slug = 'pool-practice'
-  AND u.title = $1
-  AND a.kind = $2
-  AND a.retired_at IS NULL
-  AND e.activity_id IS NULL
-ORDER BY random()
-`
-
-type ListUnseenPoolActivitiesForSlotParams struct {
-	Title  string
-	Kind   string
-	UserID uuid.UUID
-}
-
-type ListUnseenPoolActivitiesForSlotRow struct {
-	ID               uuid.UUID
-	LessonID         uuid.UUID
-	Position         int32
-	Kind             string
-	ContentVersionID uuid.UUID
-	Config           []byte
-	Weight           int32
-}
-
-func (q *Queries) ListUnseenPoolActivitiesForSlot(ctx context.Context, arg ListUnseenPoolActivitiesForSlotParams) ([]ListUnseenPoolActivitiesForSlotRow, error) {
-	rows, err := q.db.Query(ctx, listUnseenPoolActivitiesForSlot, arg.Title, arg.Kind, arg.UserID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListUnseenPoolActivitiesForSlotRow
-	for rows.Next() {
-		var i ListUnseenPoolActivitiesForSlotRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.LessonID,
-			&i.Position,
-			&i.Kind,
-			&i.ContentVersionID,
-			&i.Config,
-			&i.Weight,
-		); err != nil {
+		var i ListItemExposuresRow
+		if err := rows.Scan(&i.ActivityID, &i.FirstServedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -402,6 +157,9 @@ type RecordItemExposureParams struct {
 	ActivityID uuid.UUID
 }
 
+// first_served_at moves forward when an item is served again, so "the items a
+// learner saw longest ago" means longest since they last saw them, and a repeated
+// item goes to the back of the queue instead of coming round every day.
 func (q *Queries) RecordItemExposure(ctx context.Context, arg RecordItemExposureParams) error {
 	_, err := q.db.Exec(ctx, recordItemExposure, arg.UserID, arg.ActivityID)
 	return err
