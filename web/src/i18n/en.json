@@ -734,7 +734,15 @@
     "markingTimeoutTitle": "Marking continues in the background",
     "markingTimeoutDesc": "Grading is taking longer than usual. You can continue your lesson, and your score and detailed feedback will appear in My Writing.",
     "goToMyWriting": "View My Writing",
-    "markingFailedDesc": "We could not grade your essay. Your answer is preserved. Please retry."
+    "markingFailedDesc": "We could not grade your essay. Your answer is preserved. Please retry.",
+    "finishedReading": "I have finished reading",
+    "questionsLabel": "Comprehension Questions",
+    "readingSpeed": "Reading Speed",
+    "questionNum": "Question {{num}}",
+    "true": "True",
+    "false": "False",
+    "notGiven": "Not Given",
+    "finishReadingPrompt": "Read the passage at your normal pace, then proceed to the questions."
   },
   "server": {
     "unreachable": "The server is not responding. Reload the page to try again.",

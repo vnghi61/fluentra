@@ -138,6 +138,7 @@ type SubmitAttemptResultDTO struct {
 	CorrectAnswer *string                     `json:"correct_answer,omitempty"`
 	Async         bool                        `json:"async"`
 	Explanation   *contract.AnswerExplanation `json:"explanation,omitempty"`
+	ItemResults   []contract.ItemResult       `json:"item_results,omitempty"`
 }
 
 // AttemptDetailDTO models the complete attempt view returned by GET /attempts/{id}.
@@ -562,6 +563,9 @@ func (s *Service) completeSynchronousGrading(
 		answer := gradeResult.CorrectAnswer
 		result.CorrectAnswer = &answer
 	}
+	if len(gradeResult.ItemResults) > 0 {
+		result.ItemResults = gradeResult.ItemResults
+	}
 	if gradeResult.Explanation != nil {
 		result.Explanation = gradeResult.Explanation
 	} else {
@@ -588,6 +592,7 @@ type PreviewGradeResultDTO struct {
 	Feedback      string                      `json:"feedback"`
 	CorrectAnswer *string                     `json:"correct_answer,omitempty"`
 	Explanation   *contract.AnswerExplanation `json:"explanation,omitempty"`
+	ItemResults   []contract.ItemResult       `json:"item_results,omitempty"`
 }
 
 // GradePreview grades a response and records nothing.
@@ -649,6 +654,9 @@ func (s *Service) GradePreview(
 	if result.CorrectAnswer != "" {
 		answer := result.CorrectAnswer
 		preview.CorrectAnswer = &answer
+	}
+	if len(result.ItemResults) > 0 {
+		preview.ItemResults = result.ItemResults
 	}
 	if result.Explanation != nil {
 		preview.Explanation = result.Explanation

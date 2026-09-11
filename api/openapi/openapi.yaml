@@ -5280,6 +5280,8 @@ components:
       $ref: ./components/learning.yaml#/SubmitAttemptResult
     PreviewGradeResult:
       $ref: ./components/learning.yaml#/PreviewGradeResult
+    ItemResult:
+      $ref: ./components/learning.yaml#/ItemResult
     AnswerExplanation:
       $ref: ./components/learning.yaml#/AnswerExplanation
     AttemptDetail:

@@ -105,3 +105,91 @@ func TestGetLessonDetail_CarriesNoAnswer(t *testing.T) {
 		}
 	}
 }
+
+func TestGetLessonDetail_ReadingQuestionsArray_CarriesNoAnswer(t *testing.T) {
+	t.Parallel()
+
+	lessonID, unitID, versionID := uuid.New(), uuid.New(), uuid.New()
+
+	versionBody := json.RawMessage(`{
+		"passage_title": "The Mariana Trench",
+		"passage": "The Mariana Trench is the deepest oceanic trench on Earth.",
+		"questions": [
+			{
+				"id": "q1",
+				"type": "multiple_choice",
+				"prompt": "What is the Mariana Trench?",
+				"options": [{"id":"opt_ocean","text":"Deepest oceanic trench"}],
+				"answer": "opt_ocean",
+				"correct_option_id": "opt_ocean",
+				"correct_answer": "oceanic trench"
+			},
+			{
+				"id": "q2",
+				"type": "gap_fill",
+				"prompt": "It is the deepest ___ trench.",
+				"answer": "oceanic",
+				"acceptable": ["oceanic"]
+			}
+		]
+	}`)
+
+	activities := []contract.Activity{{
+		ID:               uuid.New(),
+		LessonID:         lessonID,
+		Position:         1,
+		Kind:             "reading_comprehension",
+		ContentVersionID: versionID,
+		Config:           versionBody,
+		Weight:           1,
+	}}
+
+	repo := &fakeLessonRepo{
+		lesson: &contract.Lesson{
+			ID: lessonID, UnitID: unitID, Position: 1,
+			Title: "Ocean Exploration", Status: statusPublished, Activities: activities,
+		},
+		activities: activities,
+	}
+	contentReader := &countingContentReader{
+		versions: map[uuid.UUID]*contentcontract.Version{
+			versionID: {ID: versionID, Kind: "reading_comprehension", Status: statusPublished, Body: versionBody},
+		},
+	}
+
+	svc := service.New(service.Deps{Repo: repo, Content: contentReader})
+
+	detail, err := svc.GetLessonDetail(context.Background(), lessonID, uuid.Nil)
+	if err != nil {
+		t.Fatalf("GetLessonDetail: %v", err)
+	}
+
+	encoded, err := json.Marshal(detail)
+	if err != nil {
+		t.Fatalf("marshal detail: %v", err)
+	}
+	response := string(encoded)
+
+	for _, forbidden := range []string{
+		`"correct_option_id"`,
+		`"correct_answer"`,
+		`"answer"`,
+		`"acceptable"`,
+	} {
+		if strings.Contains(response, forbidden) {
+			t.Errorf("the learner-facing lesson carries forbidden %s:\n%s", forbidden, response)
+		}
+	}
+
+	// Required question fields must survive
+	for _, required := range []string{
+		"The Mariana Trench",
+		"What is the Mariana Trench?",
+		"opt_ocean",
+	} {
+		if !strings.Contains(response, required) {
+			t.Errorf("the learner-facing lesson lost required %s:\n%s", required, response)
+		}
+	}
+}
+

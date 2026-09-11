@@ -26,6 +26,8 @@ import {
   ExerciseMatch,
   ExerciseMultipleChoice,
   ExerciseReading,
+  type ItemResult,
+  type ReadingQuestionItem,
   ExerciseReorder,
   ExerciseWriting,
   ActivityUnavailable,
@@ -112,6 +114,7 @@ interface ReadingConfig {
   passage?: string;
   prompt?: string;
   options?: { id: string; text: string }[];
+  questions?: ReadingQuestionItem[];
 }
 
 interface WritingConfig {
@@ -138,6 +141,7 @@ interface Verdict {
   // Matching is the one kind that can be partly right, and "incorrect" is a
   // poor description of three pairs out of four.
   score?: number | null | undefined;
+  item_results?: ItemResult[] | null | undefined;
   explanation?:
     | {
         text: string;
@@ -617,9 +621,11 @@ export function LessonPage(): React.JSX.Element {
     kind === "reading_comprehension" &&
     typeof readingConfig.passage === "string" &&
     readingConfig.passage !== "" &&
-    typeof readingConfig.prompt === "string" &&
-    Array.isArray(readingConfig.options) &&
-    readingConfig.options.length > 0;
+    ((typeof readingConfig.prompt === "string" &&
+      Array.isArray(readingConfig.options) &&
+      readingConfig.options.length > 0) ||
+      (Array.isArray(readingConfig.questions) &&
+        readingConfig.questions.length > 0));
 
   const canRenderWriting =
     kind === "writing_prompt" &&
@@ -859,8 +865,10 @@ export function LessonPage(): React.JSX.Element {
           <ExerciseReading
             passageTitle={readingConfig.passage_title}
             passage={readingConfig.passage ?? ""}
-            prompt={readingConfig.prompt ?? ""}
-            options={readingConfig.options ?? []}
+            prompt={readingConfig.prompt}
+            options={readingConfig.options}
+            questions={readingConfig.questions}
+            itemResults={submissionResult?.item_results}
             correctOptionId={
               submissionResult?.correct
                 ? selectedOptId
@@ -871,9 +879,21 @@ export function LessonPage(): React.JSX.Element {
             isSubmitted={isSubmitted}
             isCorrect={submissionResult?.correct}
             isLoading={isSubmitting || isAttemptPending}
-            onSubmit={(selectedOptionId) =>
-              void handleSubmit({ selected_option_id: selectedOptionId })
-            }
+            onSubmit={(payload) => {
+              if (typeof payload === "string") {
+                void handleSubmit({ selected_option_id: payload });
+              } else {
+                void handleSubmit({
+                  ...(payload.selectedOptionId
+                    ? { selected_option_id: payload.selectedOptionId }
+                    : {}),
+                  ...(payload.answers ? { answers: payload.answers } : {}),
+                  ...(payload.reading_ms !== undefined
+                    ? { reading_ms: payload.reading_ms }
+                    : {}),
+                });
+              }
+            }}
             onContinue={handleContinue}
           />
         )}

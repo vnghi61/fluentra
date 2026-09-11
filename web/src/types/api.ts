@@ -3592,6 +3592,7 @@ export interface components {
             /** @example Correct! Well done. */
             feedback?: string | null;
             explanation?: components["schemas"]["AnswerExplanation"];
+            item_results?: components["schemas"]["ItemResult"][];
         };
         /** @description The outcome of grading that recorded nothing. There is no attempt id and no status, because nothing was created and nothing moved. */
         PreviewGradeResult: {
@@ -3614,6 +3615,15 @@ export interface components {
              */
             saved: boolean;
             explanation?: components["schemas"]["AnswerExplanation"];
+            item_results?: components["schemas"]["ItemResult"][];
+        };
+        ItemResult: {
+            /** @example q1 */
+            id: string;
+            /** @example true */
+            correct: boolean;
+            /** @example opt_b */
+            correct_answer?: string | null;
         };
         AnswerExplanation: {
             /**

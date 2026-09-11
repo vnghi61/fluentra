@@ -104,6 +104,14 @@ type GradeResult struct {
 	Async         bool               `json:"async"`
 	ReviewItems   []ReviewItem       `json:"review_items,omitempty"`
 	Explanation   *AnswerExplanation `json:"explanation,omitempty"`
+	ItemResults   []ItemResult       `json:"item_results,omitempty"`
+}
+
+// ItemResult models the grading outcome of a single question within a multi-question activity.
+type ItemResult struct {
+	ID            string  `json:"id"`
+	Correct       bool    `json:"correct"`
+	CorrectAnswer *string `json:"correct_answer,omitempty"`
 }
 
 // AnswerExplanation models an explanation in English and Vietnamese for an exercise answer.

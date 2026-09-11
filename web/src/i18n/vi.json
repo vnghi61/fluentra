@@ -734,7 +734,15 @@
     "markingTimeoutTitle": "Bài viết đang được tiếp tục chấm",
     "markingTimeoutDesc": "Quá trình chấm bài mất nhiều thời gian hơn bình thường. Bạn có thể tiếp tục bài học, kết quả và nhận xét chi tiết sẽ hiển thị trong phần Bài viết của tôi.",
     "goToMyWriting": "Xem Bài viết của tôi",
-    "markingFailedDesc": "Không thể chấm bài viết của bạn. Bài làm đã được lưu lại. Vui lòng thử lại."
+    "markingFailedDesc": "Không thể chấm bài viết của bạn. Bài làm đã được lưu lại. Vui lòng thử lại.",
+    "finishedReading": "Tôi đã đọc xong",
+    "questionsLabel": "Câu hỏi đọc hiểu",
+    "readingSpeed": "Tốc độ đọc",
+    "questionNum": "Câu {{num}}",
+    "true": "Đúng (True)",
+    "false": "Sai (False)",
+    "notGiven": "Không đề cập (Not Given)",
+    "finishReadingPrompt": "Đọc bài viết theo tốc độ bình thường của bạn, sau đó tiếp tục trả lời câu hỏi."
   },
   "server": {
     "unreachable": "Máy chủ không phản hồi. Hãy tải lại trang để thử lại.",

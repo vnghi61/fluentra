@@ -201,6 +201,10 @@ PreviewGradeResult:
       example: false
     explanation:
       $ref: '#/AnswerExplanation'
+    item_results:
+      type: array
+      items:
+        $ref: '#/ItemResult'
 
 SubmitAttemptResult:
   type: object
@@ -240,6 +244,25 @@ SubmitAttemptResult:
       example: Correct! Well done.
     explanation:
       $ref: '#/AnswerExplanation'
+    item_results:
+      type: array
+      items:
+        $ref: '#/ItemResult'
+
+ItemResult:
+  type: object
+  required: [id, correct]
+  properties:
+    id:
+      type: string
+      example: q1
+    correct:
+      type: boolean
+      example: true
+    correct_answer:
+      type: string
+      nullable: true
+      example: opt_b
 
 AnswerExplanation:
   type: object
