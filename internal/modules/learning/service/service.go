@@ -41,6 +41,7 @@ type Repository interface {
 	CreateAttempt(ctx context.Context, params repository.CreateAttemptParams) (*domain.Attempt, error)
 	GetAttemptByID(ctx context.Context, id uuid.UUID) (*domain.Attempt, error)
 	ClaimAttemptForGrading(ctx context.Context, params repository.ClaimAttemptParams) (*domain.Attempt, error)
+	UnclaimAttempt(ctx context.Context, id uuid.UUID, createdAt time.Time) error
 	UpdateAttemptStatus(
 		ctx context.Context, params repository.UpdateAttemptStatusParams,
 	) (*domain.Attempt, error)
@@ -279,21 +280,26 @@ func (s *Service) StartAttempt(ctx context.Context, userID, activityID uuid.UUID
 // grader dispatch, synchronous scoring, transactional progress rollup, and outbox event publishing.
 func (s *Service) SubmitAttempt(
 	ctx context.Context, userID, attemptID, idempotencyKey uuid.UUID, response json.RawMessage,
-) (*SubmitAttemptResultDTO, error) {
-	attempt, err := s.repo.GetAttemptByID(ctx, attemptID)
+) (result *SubmitAttemptResultDTO, err error) {
+	var attempt *domain.Attempt
+	attempt, err = s.repo.GetAttemptByID(ctx, attemptID)
 	if err != nil {
 		return nil, err
 	}
 
 	if attempt.UserID != userID {
-		return nil, domain.ErrUnauthorizedAttemptAccess
+		err = domain.ErrUnauthorizedAttemptAccess
+		return nil, err
 	}
 
-	if earlyResult, err := s.checkEarlySubmissionState(ctx, attempt, idempotencyKey); err != nil || earlyResult != nil {
-		return earlyResult, err
+	earlyResult, earlyErr := s.checkEarlySubmissionState(ctx, attempt, idempotencyKey)
+	if earlyErr != nil || earlyResult != nil {
+		return earlyResult, earlyErr
 	}
 
-	claimed, current, err := s.claimAttempt(ctx, attempt, idempotencyKey, response)
+	var claimed bool
+	var current *domain.Attempt
+	claimed, current, err = s.claimAttempt(ctx, attempt, idempotencyKey, response)
 	if err != nil {
 		return nil, err
 	}
@@ -302,24 +308,32 @@ func (s *Service) SubmitAttempt(
 		// commit, return what it stored, and do not grade it again.
 		settled, waitErr := s.awaitSettledAttempt(ctx, current)
 		if waitErr != nil {
-			return nil, waitErr
+			err = waitErr
+			return nil, err
 		}
 		return s.buildStoredSubmissionResult(settled), nil
 	}
 
-	activity, err := s.resolveActivityHierarchy(ctx, attempt.ActivityID)
+	defer func() {
+		if err != nil {
+			_ = s.repo.UnclaimAttempt(ctx, attempt.ID, attempt.CreatedAt)
+		}
+	}()
+
+	var activity *lessoncontract.ActivityHierarchy
+	activity, err = s.resolveActivityHierarchy(ctx, attempt.ActivityID)
 	if err != nil {
 		return nil, err
 	}
 
 	grader, ok := s.graders.Get(activity.Kind)
 	if !ok || grader == nil {
-		// The kind goes in the response. A 422 that does not say which kind is
-		// unsupported sends the reader back to the database to find out.
-		return nil, domain.ErrGraderNotRegistered.WithMeta("kind", activity.Kind)
+		err = domain.ErrGraderNotRegistered.WithMeta("kind", activity.Kind)
+		return nil, err
 	}
 
-	gradeResult, err := grader.Grade(ctx, contract.GradeRequest{
+	var gradeResult contract.GradeResult
+	gradeResult, err = grader.Grade(ctx, contract.GradeRequest{
 		AttemptID:        attempt.ID,
 		ActivityID:       attempt.ActivityID,
 		ContentVersionID: activity.ContentVersionID,
@@ -327,7 +341,8 @@ func (s *Service) SubmitAttempt(
 		Response:         response,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("grading attempt %s: %w", attempt.ID, err)
+		err = fmt.Errorf("grading attempt %s: %w", attempt.ID, err)
+		return nil, err
 	}
 
 	if gradeResult.Async {

@@ -641,3 +641,62 @@ func (r failingRollupRepo) UpsertProgress(
 	}
 	return r.Repository.UpsertProgress(ctx, params)
 }
+
+type failingGrader struct {
+	err error
+}
+
+func (g *failingGrader) Grade(
+	_ context.Context, _ contract.GradeRequest,
+) (contract.GradeResult, error) {
+	return contract.GradeResult{}, g.err
+}
+
+func TestSubmitAttempt_GraderErrorUnclaimsAttempt_Integration(t *testing.T) {
+	f := newAttemptFixture(t)
+	ctx := context.Background()
+
+	errGrader := errors.New("simulated grader failure")
+	failingRegistry := domain.NewGraderRegistry()
+	if err := failingRegistry.Register("multiple_choice", &failingGrader{err: errGrader}); err != nil {
+		t.Fatalf("register failing grader: %v", err)
+	}
+	failingSvc := service.New(service.Deps{
+		Pool:    attemptPool,
+		Repo:    repositoryAdapter{Repository: repository.New(attemptPool)},
+		Graders: failingRegistry,
+		Clock:   clock.Real{},
+		Events:  outboxAdapter{Writer: outbox.NewWriter()},
+		Lesson:  f.reader,
+	})
+
+	started, err := f.svc.StartAttempt(ctx, f.userID, f.activity)
+	if err != nil {
+		t.Fatalf("StartAttempt: %v", err)
+	}
+
+	_, submitErr := failingSvc.SubmitAttempt(
+		ctx, f.userID, started.AttemptID, uuid.New(), json.RawMessage(`{"choice":"a"}`),
+	)
+	if submitErr == nil {
+		t.Fatal("expected grader error, got nil")
+	}
+
+	var status string
+	if err := attemptPool.QueryRow(ctx,
+		`SELECT status FROM learn.attempts WHERE id = $1`, started.AttemptID,
+	).Scan(&status); err != nil {
+		t.Fatalf("read attempt back: %v", err)
+	}
+
+	if status != domain.StatusInProgress {
+		t.Fatalf("attempt left in status %q after grader error, want %q (resubmittable)", status, domain.StatusInProgress)
+	}
+
+	// It must be resubmittable: submit again through normal service
+	if _, err := f.svc.SubmitAttempt(
+		ctx, f.userID, started.AttemptID, uuid.New(), json.RawMessage(`{"choice":"a"}`),
+	); err != nil {
+		t.Fatalf("resubmission after grader error failed: %v", err)
+	}
+}

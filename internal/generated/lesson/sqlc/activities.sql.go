@@ -21,7 +21,7 @@ INSERT INTO learn.activities (
     weight
 ) VALUES (
     $1, $2, $3, $4, $5, $6
-) RETURNING id, lesson_id, position, kind, content_version_id, config, weight, created_at, updated_at
+) RETURNING id, lesson_id, position, kind, content_version_id, config, weight, created_at, updated_at, retired_at
 `
 
 type CreateActivityParams struct {
@@ -53,24 +53,15 @@ func (q *Queries) CreateActivity(ctx context.Context, arg CreateActivityParams) 
 		&i.Weight,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.RetiredAt,
 	)
 	return i, err
 }
 
-const deleteActivitiesByLessonID = `-- name: DeleteActivitiesByLessonID :exec
-DELETE FROM learn.activities
-WHERE lesson_id = $1
-`
-
-func (q *Queries) DeleteActivitiesByLessonID(ctx context.Context, lessonID uuid.UUID) error {
-	_, err := q.db.Exec(ctx, deleteActivitiesByLessonID, lessonID)
-	return err
-}
-
 const listActivitiesByLessonID = `-- name: ListActivitiesByLessonID :many
-SELECT id, lesson_id, position, kind, content_version_id, config, weight, created_at, updated_at
+SELECT id, lesson_id, position, kind, content_version_id, config, weight, created_at, updated_at, retired_at
 FROM learn.activities
-WHERE lesson_id = $1
+WHERE lesson_id = $1 AND retired_at IS NULL
 ORDER BY position ASC
 `
 
@@ -93,6 +84,7 @@ func (q *Queries) ListActivitiesByLessonID(ctx context.Context, lessonID uuid.UU
 			&i.Weight,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.RetiredAt,
 		); err != nil {
 			return nil, err
 		}
@@ -105,9 +97,9 @@ func (q *Queries) ListActivitiesByLessonID(ctx context.Context, lessonID uuid.UU
 }
 
 const listActivitiesByLessonIDs = `-- name: ListActivitiesByLessonIDs :many
-SELECT id, lesson_id, position, kind, content_version_id, config, weight, created_at, updated_at
+SELECT id, lesson_id, position, kind, content_version_id, config, weight, created_at, updated_at, retired_at
 FROM learn.activities
-WHERE lesson_id = ANY($1::uuid[])
+WHERE lesson_id = ANY($1::uuid[]) AND retired_at IS NULL
 ORDER BY lesson_id, position ASC
 `
 
@@ -130,6 +122,7 @@ func (q *Queries) ListActivitiesByLessonIDs(ctx context.Context, dollar_1 []uuid
 			&i.Weight,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.RetiredAt,
 		); err != nil {
 			return nil, err
 		}
@@ -146,7 +139,7 @@ SELECT u.course_id, a.id AS activity_id
 FROM learn.activities a
 JOIN learn.lessons l ON l.id = a.lesson_id
 JOIN learn.course_units u ON u.id = l.unit_id
-WHERE u.course_id = ANY($1::uuid[])
+WHERE u.course_id = ANY($1::uuid[]) AND a.retired_at IS NULL
 ORDER BY u.course_id, u.position ASC, l.position ASC, a.position ASC
 `
 
@@ -243,6 +236,58 @@ func (q *Queries) ResolveActivityHierarchy(ctx context.Context, id uuid.UUID) (R
 		&i.UnitID,
 		&i.LessonSkillFocus,
 		&i.CourseID,
+	)
+	return i, err
+}
+
+const retireActivity = `-- name: RetireActivity :exec
+UPDATE learn.activities
+SET retired_at = now(),
+    updated_at = now()
+WHERE id = $1
+`
+
+func (q *Queries) RetireActivity(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, retireActivity, id)
+	return err
+}
+
+const updateActivityInPlace = `-- name: UpdateActivityInPlace :one
+UPDATE learn.activities
+SET content_version_id = $2,
+    config = $3,
+    weight = $4,
+    updated_at = now()
+WHERE id = $1
+RETURNING id, lesson_id, position, kind, content_version_id, config, weight, created_at, updated_at, retired_at
+`
+
+type UpdateActivityInPlaceParams struct {
+	ID               uuid.UUID
+	ContentVersionID uuid.UUID
+	Config           []byte
+	Weight           int32
+}
+
+func (q *Queries) UpdateActivityInPlace(ctx context.Context, arg UpdateActivityInPlaceParams) (LearnActivity, error) {
+	row := q.db.QueryRow(ctx, updateActivityInPlace,
+		arg.ID,
+		arg.ContentVersionID,
+		arg.Config,
+		arg.Weight,
+	)
+	var i LearnActivity
+	err := row.Scan(
+		&i.ID,
+		&i.LessonID,
+		&i.Position,
+		&i.Kind,
+		&i.ContentVersionID,
+		&i.Config,
+		&i.Weight,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.RetiredAt,
 	)
 	return i, err
 }

@@ -123,6 +123,17 @@ WHERE id = $1
 RETURNING id, created_at, updated_at, user_id, activity_id, idempotency_key,
           response, score, max_score, grader, duration_ms, status;
 
+-- name: UnclaimAttempt :exec
+UPDATE learn.attempts
+SET status          = 'in_progress',
+    idempotency_key = NULL,
+    response        = '{}'::jsonb,
+    updated_at      = now()
+WHERE id = $1
+  AND created_at = $2
+  AND status = 'grading';
+
+
 -- name: UpdateAttemptStatus :one
 UPDATE learn.attempts
 SET status = $3,

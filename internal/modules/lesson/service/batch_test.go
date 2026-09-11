@@ -267,7 +267,7 @@ func (f *fakeLessonRepo) ListActivitiesByLessonIDs(_ context.Context, _ []uuid.U
 	return f.activities, nil
 }
 
-func (f *fakeLessonRepo) ReplaceActivities(
+func (f *fakeLessonRepo) SyncActivities(
 	_ context.Context, lessonID uuid.UUID, activities []domain.ActivityInput,
 ) ([]contract.Activity, error) {
 	f.queryCounter.Add(1)

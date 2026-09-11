@@ -91,7 +91,7 @@ type Repository interface {
 	ListActivitiesByLessonID(ctx context.Context, lessonID uuid.UUID) ([]contract.Activity, error)
 	ListActivitiesByLessonIDs(ctx context.Context, lessonIDs []uuid.UUID) ([]contract.Activity, error)
 	ListLessonIDsByContentVersionID(ctx context.Context, versionID uuid.UUID) ([]uuid.UUID, error)
-	ReplaceActivities(
+	SyncActivities(
 		ctx context.Context, lessonID uuid.UUID, activities []domain.ActivityInput,
 	) ([]contract.Activity, error)
 	ListPrerequisitesByLessonID(ctx context.Context, lessonID uuid.UUID) ([]PrerequisiteItem, error)
@@ -789,7 +789,7 @@ func (s *Service) UpdateActivities(
 
 	var result []contract.Activity
 	err := s.execTx(ctx, func(ctx context.Context, txRepo Repository, _ OutboxTx) error {
-		replaced, err := txRepo.ReplaceActivities(ctx, lessonID, activities)
+		replaced, err := txRepo.SyncActivities(ctx, lessonID, activities)
 		if err != nil {
 			return err
 		}

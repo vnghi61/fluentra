@@ -150,8 +150,8 @@ type Author interface {
 	EnsureCourse(ctx context.Context, spec CourseSpec) (uuid.UUID, error)
 	EnsureUnit(ctx context.Context, spec UnitSpec) (uuid.UUID, error)
 	EnsureLesson(ctx context.Context, spec LessonSpec) (uuid.UUID, error)
-	// ReplaceActivities swaps a generated lesson's whole activity list.
-	ReplaceActivities(ctx context.Context, lessonID uuid.UUID, activities []ActivitySpec) error
+	// SyncActivities synchronises a generated lesson's activity list in place.
+	SyncActivities(ctx context.Context, lessonID uuid.UUID, activities []ActivitySpec) error
 }
 
 // Published is emitted when a lesson is published.

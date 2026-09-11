@@ -176,6 +176,17 @@ func (r *Repository) ClaimAttemptForGrading(ctx context.Context, params ClaimAtt
 	return toDomainAttempt(row), nil
 }
 
+// UnclaimAttempt reverts an attempt from grading back to in_progress upon error.
+func (r *Repository) UnclaimAttempt(ctx context.Context, id uuid.UUID, createdAt time.Time) error {
+	if r.queries == nil {
+		return domain.ErrAttemptNotFound
+	}
+	return r.queries.UnclaimAttempt(ctx, sqlc.UnclaimAttemptParams{
+		ID:        id,
+		CreatedAt: createdAt,
+	})
+}
+
 // UpdateAttemptStatus updates the attempt's status, score, grader, and duration upon completion.
 func (r *Repository) UpdateAttemptStatus(
 	ctx context.Context, params UpdateAttemptStatusParams,

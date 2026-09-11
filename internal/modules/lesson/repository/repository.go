@@ -434,33 +434,74 @@ func (r *Repository) ListActivitiesByLessonIDs(
 	return ToContractActivities(rows), nil
 }
 
-// ReplaceActivities replaces the activity list for a lesson.
-func (r *Repository) ReplaceActivities(
+// SyncActivities updates activities for a lesson in place by position while kind still matches,
+// appends new activities, and retires activities that are no longer present or changed kind.
+func (r *Repository) SyncActivities(
 	ctx context.Context, lessonID uuid.UUID, activities []ActivityInputDTO,
 ) ([]contract.Activity, error) {
-	if err := r.queries.DeleteActivitiesByLessonID(ctx, lessonID); err != nil {
+	existing, err := r.queries.ListActivitiesByLessonID(ctx, lessonID)
+	if err != nil {
 		return nil, mapPgError(err)
 	}
 
+	existingByPos := make(map[int32]sqlc.LearnActivity, len(existing))
+	for _, act := range existing {
+		existingByPos[act.Position] = act
+	}
+
+	incomingPositions := make(map[int32]bool, len(activities))
 	result := make([]contract.Activity, 0, len(activities))
+
 	for _, act := range activities {
+		pos := int32(act.Position) //nolint:gosec // bounded integer
+		incomingPositions[pos] = true
+
 		cfg := act.Config
 		if len(cfg) == 0 {
 			cfg = json.RawMessage("{}")
 		}
 
-		created, err := r.queries.CreateActivity(ctx, sqlc.CreateActivityParams{
-			LessonID:         lessonID,
-			Position:         int32(act.Position), //nolint:gosec // bounded integer
-			Kind:             act.Kind,
-			ContentVersionID: act.ContentVersionID,
-			Config:           []byte(cfg),
-			Weight:           int32(act.Weight), //nolint:gosec // bounded integer
-		})
-		if err != nil {
-			return nil, mapPgError(err)
+		if cur, ok := existingByPos[pos]; ok && cur.Kind == act.Kind {
+			// Update in place by position — same row, same id
+			updated, err := r.queries.UpdateActivityInPlace(ctx, sqlc.UpdateActivityInPlaceParams{
+				ID:               cur.ID,
+				ContentVersionID: act.ContentVersionID,
+				Config:           []byte(cfg),
+				Weight:           int32(act.Weight), //nolint:gosec // bounded integer
+			})
+			if err != nil {
+				return nil, mapPgError(err)
+			}
+			result = append(result, ToContractActivity(updated))
+		} else {
+			if ok {
+				// Kind changed at this position: retire the existing activity first
+				if err := r.queries.RetireActivity(ctx, cur.ID); err != nil {
+					return nil, mapPgError(err)
+				}
+			}
+			created, err := r.queries.CreateActivity(ctx, sqlc.CreateActivityParams{
+				LessonID:         lessonID,
+				Position:         pos,
+				Kind:             act.Kind,
+				ContentVersionID: act.ContentVersionID,
+				Config:           []byte(cfg),
+				Weight:           int32(act.Weight), //nolint:gosec // bounded integer
+			})
+			if err != nil {
+				return nil, mapPgError(err)
+			}
+			result = append(result, ToContractActivity(created))
 		}
-		result = append(result, ToContractActivity(created))
+	}
+
+	// Retire any active activities that are no longer in incoming positions
+	for pos, cur := range existingByPos {
+		if !incomingPositions[pos] {
+			if err := r.queries.RetireActivity(ctx, cur.ID); err != nil {
+				return nil, mapPgError(err)
+			}
+		}
 	}
 
 	return result, nil

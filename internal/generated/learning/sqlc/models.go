@@ -478,6 +478,7 @@ type LearnActivity struct {
 	Weight           int32
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
+	RetiredAt        *time.Time
 }
 
 type LearnAnswerExplanation struct {

@@ -751,6 +751,27 @@ func (q *Queries) ListSkillMasteryByUser(ctx context.Context, userID uuid.UUID) 
 	return items, nil
 }
 
+const unclaimAttempt = `-- name: UnclaimAttempt :exec
+UPDATE learn.attempts
+SET status          = 'in_progress',
+    idempotency_key = NULL,
+    response        = '{}'::jsonb,
+    updated_at      = now()
+WHERE id = $1
+  AND created_at = $2
+  AND status = 'grading'
+`
+
+type UnclaimAttemptParams struct {
+	ID        uuid.UUID
+	CreatedAt time.Time
+}
+
+func (q *Queries) UnclaimAttempt(ctx context.Context, arg UnclaimAttemptParams) error {
+	_, err := q.db.Exec(ctx, unclaimAttempt, arg.ID, arg.CreatedAt)
+	return err
+}
+
 const updateAttemptStatus = `-- name: UpdateAttemptStatus :one
 UPDATE learn.attempts
 SET status = $3,

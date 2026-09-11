@@ -168,6 +168,26 @@ func (f *fakeLearningRepo) ClaimAttemptForGrading(
 	return cloneAttempt(att), nil
 }
 
+func (f *fakeLearningRepo) UnclaimAttempt(
+	_ context.Context, id uuid.UUID, _ time.Time,
+) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.queryCounter.Add(1)
+
+	att, ok := f.attempts[id]
+	if !ok {
+		return domain.ErrAttemptNotFound
+	}
+	if att.Status == domain.StatusGrading {
+		att.Status = domain.StatusInProgress
+		att.IdempotencyKey = nil
+		att.Response = nil
+		att.UpdatedAt = time.Now().UTC()
+	}
+	return nil
+}
+
 func (f *fakeLearningRepo) UpdateAttemptStatus(
 	_ context.Context, params repository.UpdateAttemptStatusParams,
 ) (*domain.Attempt, error) {
