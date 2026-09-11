@@ -153,7 +153,9 @@ export function MyWritingPage(): React.JSX.Element {
             <div className="flex justify-center mb-2">
               <AlertCircle className="h-8 w-8 text-danger-accent" />
             </div>
-            <CardTitle>{t("writing.errorTitle", "Unable to Load Submissions")}</CardTitle>
+            <CardTitle>
+              {t("writing.errorTitle", "Unable to Load Submissions")}
+            </CardTitle>
             <CardDescription>
               {error?.message ||
                 t(
@@ -251,11 +253,10 @@ export function MyWritingPage(): React.JSX.Element {
                   </div>
 
                   <Button
-                    size="sm"
                     variant={sub.status === "graded" ? "primary" : "outline"}
                     disabled={sub.status === "grading"}
                     onClick={() => setSelectedAttemptId(sub.attempt_id)}
-                    className="shrink-0 gap-1.5 min-h-[38px]"
+                    className="shrink-0 gap-1.5 min-h-[44px]"
                   >
                     <Eye className="h-3.5 w-3.5" />
                     <span>{t("writing.viewFeedbackBtn", "View Feedback")}</span>
@@ -277,11 +278,10 @@ export function MyWritingPage(): React.JSX.Element {
             </div>
             <div className="flex items-center gap-2">
               <Button
-                size="sm"
                 variant="outline"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="gap-1 min-h-[36px]"
+                className="gap-1 min-h-[44px]"
               >
                 <ChevronLeft className="h-4 w-4" />
                 <span>{t("common.previous", "Previous")}</span>
@@ -294,11 +294,10 @@ export function MyWritingPage(): React.JSX.Element {
                 })}
               </span>
               <Button
-                size="sm"
                 variant="outline"
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="gap-1 min-h-[36px]"
+                className="gap-1 min-h-[44px]"
               >
                 <span>{t("common.next", "Next")}</span>
                 <ChevronRight className="h-4 w-4" />
@@ -329,10 +328,9 @@ export function MyWritingPage(): React.JSX.Element {
                 </h2>
               </div>
               <Button
-                size="sm"
                 variant="ghost"
                 onClick={() => setSelectedAttemptId(null)}
-                className="h-8 w-8 p-0 rounded-full text-text-muted hover:text-text"
+                className="h-11 w-11 min-h-[44px] min-w-[44px] p-0 rounded-full text-text-muted hover:text-text"
                 aria-label={t("common.close", "Close")}
               >
                 <X className="h-4 w-4" />

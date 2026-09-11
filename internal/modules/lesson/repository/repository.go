@@ -533,7 +533,6 @@ func (r *Repository) AppendActivity(
 	return &act, nil
 }
 
-
 // ListPrerequisitesByLessonID lists all prerequisites for a specific lesson with prerequisite titles.
 func (r *Repository) ListPrerequisitesByLessonID(ctx context.Context, lessonID uuid.UUID) ([]PrerequisiteItem, error) {
 	rows, err := r.queries.ListPrerequisitesByLessonID(ctx, lessonID)

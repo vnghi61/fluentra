@@ -6,7 +6,7 @@ status: DONE
 phase: 2
 owner: "@learning-team"
 schema: learn
-tables: [enrollments, progress, attempts, learning_sessions, placement_results, skill_mastery, answer_explanations]
+tables: [enrollments, progress, attempts, learning_sessions, placement_results, skill_mastery, answer_explanations, item_exposures, daily_sets]
 depends_on: [lesson, content, srs, cache, job]
 depended_on_by: [gamification, analytics, admin, exam, vocabulary, grammar, reading, listening, speaking, writing]
 spec_version: 1.0.0
@@ -34,6 +34,7 @@ Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR
 | `POST` | `/api/v1/attempts/{id}/submit` | `self` | Submit a response for grading |
 | `GET` | `/api/v1/attempts/{id}` | `self` | Attempt state and result |
 | `POST` | `/api/v1/activities/{id}/grade` | `public` | Grade a response without recording anything |
+| `GET` | `/api/v1/practice/daily` | `self` | Fetch today's practice set |
 | `POST` | `/api/v1/me/sessions` | `self` | Start a study session |
 | `POST` | `/api/v1/me/sessions/{id}/complete` | `self` | End a session |
 <!-- END GENERATED: api-summary -->
@@ -112,6 +113,16 @@ Grade a response without recording anything
 | Success | 200 |
 | Errors | `VALIDATION_FAILED`, `GRADER_NOT_REGISTERED` |
 | Notes | Public (ADR-0025). No attempt, no progress, no review card, no event; `saved` is always false. A signed-in learner uses the attempt flow instead. |
+
+### `GET /api/v1/practice/daily`
+
+Fetch today's practice set
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
 
 ### `POST /api/v1/me/sessions`
 

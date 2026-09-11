@@ -2,11 +2,11 @@
 module: writing
 tier: learning
 group: modules
-status: PLANNED
+status: IMPLEMENTED
 phase: 3
 owner: "@learning-team"
 schema: skill
-tables: [writing_tasks, writing_drafts, writing_feedback, writing_revisions]
+tables: [writing_feedback]
 depends_on: [ai, job, content, learning, notification]
 depended_on_by: [learning, analytics, gamification]
 spec_version: 1.0.0
@@ -23,7 +23,7 @@ contract belongs in a repository-level ADR instead — see [`/DECISIONS.md`](../
 <!-- BEGIN GENERATED: decisions -->
 | Question | Decision | Rationale |
 |---|---|---|
-| Synchronous or asynchronous grading? | Asynchronous with streaming | 10–30 seconds is far outside an acceptable request budget, and a provider outage must not surface as a failed submission |
+| Synchronous or asynchronous grading? | Asynchronous with polling | 10–30 seconds is outside an acceptable request budget; adaptive polling on attempt status replaces SSE streaming with simpler reconnect and delivery semantics |
 | Charge quota on submit or on success? | On success | A learner should never lose a credit to our infrastructure failure |
 | Allow editing a submission? | No — resubmit instead | Band progression only means something if each submission is a fixed artefact |
 <!-- END GENERATED: decisions -->

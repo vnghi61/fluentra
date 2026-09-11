@@ -276,4 +276,3 @@ func TestReadingGrader_ReadingSpeedWPM(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotContains(t, resTooLong.Feedback, "Reading speed:")
 }
-

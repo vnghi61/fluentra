@@ -205,4 +205,3 @@ func (r *pgxRepository) ListWritingSubmissions(ctx context.Context, userID uuid.
 		PageSize: pageSize,
 	}, nil
 }
-

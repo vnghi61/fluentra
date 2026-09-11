@@ -117,10 +117,13 @@ export const learningApi = {
     versionId: string,
     req: CreateItemReportRequest,
   ): Promise<ItemReport> {
-    return apiFetch<ItemReport>(`/api/v1/content/versions/${versionId}/reports`, {
-      method: "POST",
-      body: JSON.stringify(req),
-    });
+    return apiFetch<ItemReport>(
+      `/api/v1/content/versions/${versionId}/reports`,
+      {
+        method: "POST",
+        body: JSON.stringify(req),
+      },
+    );
   },
 
   /** Fetch the caller's daily practice set for today */

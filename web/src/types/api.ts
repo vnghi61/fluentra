@@ -7310,6 +7310,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "id": "88888888-8888-8888-8888-888888888888",
+                     *       "content_version_id": "77777777-7777-7777-7777-777777777777",
+                     *       "user_id": "00000000-0000-0000-0000-000000000001",
+                     *       "reason": "typo",
+                     *       "note": "Typo in the second paragraph",
+                     *       "created_at": "2026-09-11T12:00:00Z"
+                     *     }
+                     */
                     "application/json": components["schemas"]["ItemReport"];
                 };
             };
@@ -7434,6 +7444,25 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "content_version_id": "77777777-7777-7777-7777-777777777777",
+                     *           "item_id": "66666666-6666-6666-6666-666666666666",
+                     *           "slug": "climate-change-reading-1",
+                     *           "kind": "reading_comprehension",
+                     *           "cefr_level": "B1",
+                     *           "item_status": "published",
+                     *           "report_count": 3,
+                     *           "last_reported_at": "2026-09-11T12:00:00Z"
+                     *         }
+                     *       ],
+                     *       "total": 1,
+                     *       "limit": 20,
+                     *       "offset": 0
+                     *     }
+                     */
                     "application/json": components["schemas"]["ReportedContentList"];
                 };
             };
@@ -8030,6 +8059,14 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "id": "11111111-1111-1111-1111-111111111111",
+                     *       "local_date": "2026-09-11",
+                     *       "level": "B1",
+                     *       "activities": []
+                     *     }
+                     */
                     "application/json": components["schemas"]["DailyPracticeSet"];
                 };
             };
@@ -9426,6 +9463,20 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "attempt_id": "55555555-5555-5555-5555-555555555555",
+                     *       "user_id": "00000000-0000-0000-0000-000000000001",
+                     *       "overall_band": 6.5,
+                     *       "score": 72,
+                     *       "criteria": [],
+                     *       "annotations": [],
+                     *       "feedback_en": "Your essay shows a clear understanding of the topic.",
+                     *       "feedback_vi": "Bài viết của bạn thể hiện sự hiểu biết rõ ràng về chủ đề.",
+                     *       "prompt_version": "writing_grade.v2",
+                     *       "created_at": "2026-09-11T12:00:00Z"
+                     *     }
+                     */
                     "application/json": components["schemas"]["WritingFeedback"];
                 };
             };
@@ -9456,6 +9507,22 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "attempt_id": "55555555-5555-5555-5555-555555555555",
+                     *           "status": "graded",
+                     *           "overall_band": 6.5,
+                     *           "score": 72,
+                     *           "created_at": "2026-09-11T12:00:00Z"
+                     *         }
+                     *       ],
+                     *       "total": 1,
+                     *       "page": 1,
+                     *       "page_size": 10
+                     *     }
+                     */
                     "application/json": components["schemas"]["WritingSubmissionList"];
                 };
             };

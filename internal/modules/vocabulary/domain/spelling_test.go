@@ -48,14 +48,14 @@ func TestIsWithinSpellingBound(t *testing.T) {
 		{"cat", "bat", true},      // len 3, dist 1 <= 1
 		{"cat", "dog", false},     // len 3, dist 3 > 1
 		{"look", "lookk", true},   // len 4, dist 1 <= 1
-		{"look", "loookk", false},  // len 4, dist 2 > 1
+		{"look", "loookk", false}, // len 4, dist 2 > 1
 
 		// >= 5 letters: bound is 2
-		{"schol", "school", true},     // len 5, dist 1 <= 2
-		{"recieve", "receive", true},  // len 7, dist 1 <= 2
-		{"banana", "banan", true},     // len 6, dist 1 <= 2
-		{"banana", "bannaa", true},    // len 6, dist 2 <= 2
-		{"banana", "apple", false},    // len 6, dist 5 > 2
+		{"schol", "school", true},    // len 5, dist 1 <= 2
+		{"recieve", "receive", true}, // len 7, dist 1 <= 2
+		{"banana", "banan", true},    // len 6, dist 1 <= 2
+		{"banana", "bannaa", true},   // len 6, dist 2 <= 2
+		{"banana", "apple", false},   // len 6, dist 5 > 2
 		{"school", "different", false},
 	}
 

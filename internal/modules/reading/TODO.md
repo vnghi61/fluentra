@@ -2,15 +2,15 @@
 module: reading
 tier: learning
 group: modules
-status: PLANNED
+status: IMPLEMENTED
 phase: 3
 owner: "@learning-team"
 schema: skill
-tables: [passages, passage_questions]
+tables: []
 depends_on: [content, questionbank, vocabulary, learning]
 depended_on_by: [learning, exam, analytics]
 spec_version: 1.0.0
-last_verified: 2026-09-10
+last_verified: 2026-09-11
 ---
 
 # reading — TODO
@@ -43,22 +43,20 @@ _Nothing deferred._
 - Automatic question generation reviewed by an admin
 <!-- END GENERATED: todo-future -->
 
-## Shipped in work order 10
+## Shipped in work orders 10 & 11
 
 The boxes above are unticked because docgen renders every generated item that
-way. What exists in code today is the **grader**, and only that:
+way. What exists in code today:
 
 - [x] `reading.Grader` implements `learning.ExerciseGrader` for
       `reading_comprehension`, registered through `cmd/api/modules.go` and
       rendered by `ExerciseReading.tsx`.
-- [x] Passages are authored `content` bodies, not rows of this module's own.
+- [x] Passages and question sets are authored and generated as self-contained `content.versions` bodies.
+- [x] Practice pool generation and daily practice set integration (§3.11).
 
-`status` stays `PLANNED` on purpose. The front matter still names `passages`,
-`passage_questions` and `reading_attempts`, and none of them exist — ADR-0015
-settles the attempt table, and the passage lives in `content` because a passage
-is authored material like any other. Marking the module DONE while its own
-front matter lists three tables nobody wrote is the kind of record this
-repository keeps having to correct. Retire the table list, or build it, and then
-change the status deliberately.
+### Schema rationalisation (tables retired)
 
-Not built: WPM tracking, adaptive selection, evidence spans.
+- `passages` and `passage_questions`: retired because reading passages and question sets are stored directly in `content.versions` (kind `reading_comprehension`), eliminating separate passage tables.
+- `reading_attempts`: retired per ADR-0015; all attempt lifecycles are centralized in `learn.attempts`.
+
+The module `reading` owns 0 database tables (`tables: []`).

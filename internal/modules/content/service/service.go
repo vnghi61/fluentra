@@ -959,4 +959,3 @@ func (s *Service) ListReportedContent(
 
 	return items, total, nil
 }
-

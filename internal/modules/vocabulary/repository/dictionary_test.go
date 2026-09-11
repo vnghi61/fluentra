@@ -240,4 +240,3 @@ func TestFreeDictionary_FindCandidates_Fixtures(t *testing.T) {
 	// relieve is distance 2 from recieve (transposition c<->l? No: c->l is substitution, so r-e-c-i-e-v-e vs r-e-l-i-e-v-e: 1 substitution. Distance is 1 <= 2!)
 	assert.Contains(t, cands, "relieve")
 }
-

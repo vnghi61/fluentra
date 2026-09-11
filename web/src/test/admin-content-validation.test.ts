@@ -10,7 +10,9 @@ describe("AdminContentDetailModal validateContentBody", () => {
       });
       const result = validateContentBody("reading_comprehension", body);
       expect(result.valid).toBe(false);
-      expect(result.error).toContain("Reading comprehension exercises require a non-empty 'passage'");
+      expect(result.error).toContain(
+        "Reading comprehension exercises require a non-empty 'passage'",
+      );
     });
 
     it("rejects when questions is empty array", () => {
@@ -66,7 +68,9 @@ describe("AdminContentDetailModal validateContentBody", () => {
       });
       const result = validateContentBody("reading_comprehension", body);
       expect(result.valid).toBe(false);
-      expect(result.error).toContain("Reading comprehension requires 'correct_answer'");
+      expect(result.error).toContain(
+        "Reading comprehension requires 'correct_answer'",
+      );
     });
   });
 
@@ -77,7 +81,9 @@ describe("AdminContentDetailModal validateContentBody", () => {
       });
       const result = validateContentBody("writing_prompt", body);
       expect(result.valid).toBe(false);
-      expect(result.error).toContain("Writing prompt exercises require a non-empty 'prompt'");
+      expect(result.error).toContain(
+        "Writing prompt exercises require a non-empty 'prompt'",
+      );
     });
 
     it("rejects when min_words is missing or <= 0", () => {
@@ -87,14 +93,17 @@ describe("AdminContentDetailModal validateContentBody", () => {
       });
       const result = validateContentBody("writing_prompt", body);
       expect(result.valid).toBe(false);
-      expect(result.error).toContain("Writing prompt exercises require 'min_words' to be greater than zero");
+      expect(result.error).toContain(
+        "Writing prompt exercises require 'min_words' to be greater than zero",
+      );
     });
 
     it("accepts valid writing prompt body", () => {
       const body = JSON.stringify({
         prompt: "Write an opinion essay on remote working.",
         min_words: 120,
-        sample_answer: "In my opinion, remote working offers significant flexibility...",
+        sample_answer:
+          "In my opinion, remote working offers significant flexibility...",
       });
       const result = validateContentBody("writing_prompt", body);
       expect(result.valid).toBe(true);

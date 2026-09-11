@@ -24,7 +24,7 @@ contract belongs in a repository-level ADR instead — see [`/DECISIONS.md`](../
 | Question | Decision | Rationale |
 |---|---|---|
 | Classical statistics or IRT? | Classical for now | IRT needs far more data per item and a calibration process we cannot staff yet; the interface leaves room to upgrade |
-| Allow AI-generated items to auto-publish? | Never | A wrong item teaches a wrong answer to every learner who sees it, and the failure is silent — review is cheap by comparison |
+| Allow AI-generated items to auto-publish? | Only for generated practice pool | By the owner's decision on 2026-09-11, generated practice pool items auto-publish with 6-stage verification (including blind solve model agreement) and the learner report queue as compensating controls; exam and authored curriculum items still require human review |
 <!-- END GENERATED: decisions -->
 
 ## Related repository ADRs

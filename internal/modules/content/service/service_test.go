@@ -1038,4 +1038,3 @@ func TestArchivingItemPreservesVersionForLessons(t *testing.T) {
 		t.Errorf("archived item should be excluded from Browse, found %d", len(found))
 	}
 }
-

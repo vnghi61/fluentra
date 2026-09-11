@@ -100,4 +100,3 @@ func (h *Handler) listWritingSubmissions(w http.ResponseWriter, r *http.Request)
 
 	httpx.WriteJSON(w, r, http.StatusOK, list)
 }
-

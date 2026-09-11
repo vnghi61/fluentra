@@ -459,7 +459,8 @@ describe("ExerciseWriting", () => {
 
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     expect(screen.getByRole("note")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /continue/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /continue/i }),
+    ).toBeInTheDocument();
   });
 });
-

@@ -2,15 +2,15 @@
 module: writing
 tier: learning
 group: modules
-status: PLANNED
+status: IMPLEMENTED
 phase: 3
 owner: "@learning-team"
 schema: skill
-tables: [writing_tasks, writing_drafts, writing_feedback, writing_revisions]
+tables: [writing_feedback]
 depends_on: [ai, job, content, learning, notification]
 depended_on_by: [learning, analytics, gamification]
 spec_version: 1.0.0
-last_verified: 2026-09-10
+last_verified: 2026-09-11
 ---
 
 # writing — TODO
@@ -59,3 +59,11 @@ way. What exists in code today:
 - [x] Background grading via River worker (`writingjob.GradeSubmissionWorker`).
 - [x] `skill.writing_feedback` table storing structured IELTS feedback (criteria, located annotations, band scores).
 - [x] `GET /writing/attempts/{id}/feedback` endpoint for reading learner feedback.
+
+### Schema rationalisation (tables retired)
+
+- `writing_tasks`: prompts and rubrics are authored directly into `content.versions` (kind `writing_prompt`), eliminating a duplicate tasks table.
+- `writing_drafts`: drafts are saved client-side in localStorage (`fluentra.writing_draft.<activityId>`), eliminating ephemeral database writes.
+- `writing_revisions`: draft revisions are handled locally; server-side snapshot history is deferred until high-stakes exam tracking is built.
+
+The only table `writing` owns is `writing_feedback`.

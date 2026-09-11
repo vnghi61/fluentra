@@ -538,4 +538,3 @@ func (h *Handler) adminListReports(w http.ResponseWriter, r *http.Request) {
 		Offset: offset,
 	})
 }
-

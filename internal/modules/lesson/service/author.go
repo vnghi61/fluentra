@@ -157,4 +157,3 @@ func authorInvalid(message string) error {
 }
 
 var _ contract.Author = (*Service)(nil)
-

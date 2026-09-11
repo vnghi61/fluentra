@@ -2,11 +2,11 @@
 module: reading
 tier: learning
 group: modules
-status: PLANNED
+status: IMPLEMENTED
 phase: 3
 owner: "@learning-team"
 schema: skill
-tables: [passages, passage_questions]
+tables: []
 depends_on: [content, questionbank, vocabulary, learning]
 depended_on_by: [learning, exam, analytics]
 spec_version: 1.0.0
@@ -25,7 +25,7 @@ last_verified: 2026-09-10
 | Path | `internal/modules/reading` |
 | Schema | `skill` |
 | Delivery phase | 3 |
-| Status | **PLANNED** |
+| Status | **IMPLEMENTED** |
 | Owner | @learning-team |
 
 ---
@@ -88,10 +88,7 @@ Other modules may import **only** `internal/modules/reading/contract`.
 All tables live in the `skill` schema and are owned exclusively by this module (rule DB1).
 Migrations: `db/migrations/reading/` · Queries: `db/queries/reading/`
 
-| Table | Purpose | Key columns / notes |
-|---|---|---|
-| `skill.passages` | Reading text | Content-versioned. `body`, `word_count`, `cefr_level`, `flesch_kincaid`, `topic`, `source_attribution` |
-| `skill.passage_questions` | Questions bound to a passage | `passage_id`, `question_id` (from `questionbank`), `position`, `evidence_span` |
+_None yet._
 
 <!-- END GENERATED: schema -->
 

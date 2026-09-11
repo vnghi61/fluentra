@@ -6,7 +6,7 @@ status: DONE
 phase: 2
 owner: "@learning-team"
 schema: content
-tables: [content_items, content_versions, media_assets, taxonomies, content_tags, content_reviews]
+tables: [content_items, content_versions, media_assets, taxonomies, content_tags, content_reviews, item_reports]
 depends_on: [storage, search, audit, ai, media]
 depended_on_by: [lesson, learning, vocabulary, grammar, reading, listening, speaking, writing, questionbank]
 spec_version: 1.0.0
@@ -104,6 +104,7 @@ Migrations: `db/migrations/content/` · Queries: `db/queries/content/`
 | `content.taxonomies` | Controlled vocabularies | `namespace` (topic/skill/exam), `code`, `label`, `parent_id` |
 | `content.content_tags` | Item ↔ taxonomy mapping | Composite PK; indexed for filtered browsing |
 | `content.content_reviews` | Review workflow record | `version_id`, `reviewer_id`, `decision`, `comments` |
+| `content.item_reports` | Learner issue reports on content versions | `content_version_id`, `user_id`, `reason`, `note`. Unique on (content_version_id, user_id). |
 
 **Indexes of note**
 
@@ -122,6 +123,7 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 |---|---|---|---|
 | `GET` | `/api/v1/content/{slug}` | `content.read.published` | Fetch a published content version |
 | `GET` | `/api/v1/content` | `content.read.published` | Browse published content with taxonomy filters |
+| `POST` | `/api/v1/content/versions/{id}/reports` | `self` | Report an issue with a content version |
 | `POST` | `/api/v1/admin/content` | `content.create` | Create a draft item |
 | `PUT` | `/api/v1/admin/content/{id}/draft` | `content.edit` | Update the working draft |
 | `POST` | `/api/v1/admin/content/{id}/submit` | `content.edit` | Submit for review |

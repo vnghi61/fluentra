@@ -21,17 +21,16 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-
 // poolMockRepo implements the practice pool methods for in-memory unit testing.
 type poolMockRepo struct {
 	*fakeLearningRepo
-	mu                sync.Mutex
-	dailySets         map[string]*domain.DailySet
-	exposures         map[string]time.Time // key: userID:activityID -> first_served_at
-	poolActivities    map[string][]domain.PoolActivity // key: level:kind
-	poolLessonIDs     map[string]uuid.UUID // key: level:title
-	hasActiveLearner  map[string]bool
-	activitiesByID    map[uuid.UUID]domain.PoolActivity
+	mu               sync.Mutex
+	dailySets        map[string]*domain.DailySet
+	exposures        map[string]time.Time             // key: userID:activityID -> first_served_at
+	poolActivities   map[string][]domain.PoolActivity // key: level:kind
+	poolLessonIDs    map[string]uuid.UUID             // key: level:title
+	hasActiveLearner map[string]bool
+	activitiesByID   map[uuid.UUID]domain.PoolActivity
 }
 
 func newPoolMockRepo() *poolMockRepo {
@@ -49,7 +48,6 @@ func newPoolMockRepo() *poolMockRepo {
 func (r *poolMockRepo) WithTx(_ pgx.Tx) service.Repository {
 	return r
 }
-
 
 func (r *poolMockRepo) GetPoolPracticeCourseID(_ context.Context) (uuid.UUID, error) {
 	return uuid.Nil, nil
@@ -274,7 +272,6 @@ func (g *testPracticeGrader) Grade(_ context.Context, req learningcontract.Grade
 		Correct: false,
 	}, nil
 }
-
 
 // fakeAIClient handles TaskPracticeGenerate and TaskPracticeSolve.
 type mockAIClient struct {

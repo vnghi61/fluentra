@@ -119,8 +119,9 @@ export function validateContentBody(
             "Reading comprehension with 'questions' must include at least one question.",
         };
       }
-      for (let i = 0; i < record.questions.length; i++) {
-        const q = record.questions[i];
+      const questionsList = record.questions as unknown[];
+      for (let i = 0; i < questionsList.length; i++) {
+        const q = questionsList[i];
         if (typeof q !== "object" || q === null) {
           return {
             valid: false,

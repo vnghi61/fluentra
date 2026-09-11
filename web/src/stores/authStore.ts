@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type { components } from "@/types/api";
-import { clearAllWritingDrafts } from "@/features/writing/utils/draftStorage";
+import { clearAllWritingDrafts } from "@/lib/draftStorage";
 
 export type AuthSession = components["schemas"]["AuthSession"];
 

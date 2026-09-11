@@ -181,4 +181,3 @@ func TestRedactForLearner_ReadingQuestionsArray(t *testing.T) {
 		t.Errorf("passage/prompt did not survive: %s", redacted)
 	}
 }
-

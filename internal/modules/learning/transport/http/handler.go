@@ -89,7 +89,6 @@ func (h *Handler) getDailyPractice(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, r, http.StatusOK, toDailyPracticeResponse(dailySet))
 }
 
-
 func (h *Handler) enroll(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	actor, ok := httpx.ActorFrom(ctx)

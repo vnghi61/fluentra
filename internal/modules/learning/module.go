@@ -56,7 +56,6 @@ type Deps struct {
 	AI            ai.Client
 }
 
-
 // Module represents the learning module, assembled.
 type Module struct {
 	pool    *pgxpool.Pool
@@ -221,7 +220,6 @@ func (m *Module) CronJobs() []job.CronJob {
 func (m *Module) TopUpPracticePool(ctx context.Context) error {
 	return m.service.TopUpPracticePool(ctx)
 }
-
 
 // SweepStuckGrading fails attempts in status 'grading' that have been stuck beyond 1 hour.
 func (m *Module) SweepStuckGrading(ctx context.Context) error {

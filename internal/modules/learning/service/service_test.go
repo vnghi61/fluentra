@@ -664,7 +664,6 @@ func (f *fakeLearningRepo) ListActivitiesByIDs(_ context.Context, _ []uuid.UUID)
 	return nil, nil
 }
 
-
 type fakeLessonReader struct {
 	// calls counts reads per method, so a test can assert what resolving one
 	// answer costs rather than only what it returns. The dashboard is opened on

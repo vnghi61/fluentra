@@ -139,7 +139,10 @@ export const ExampleSentences: React.FC<ExampleSentencesProps> = ({
                 <button
                   type="button"
                   onClick={contain(() => onReportSentence(sentence.text))}
-                  aria-label={t("report.reportSentence", "Report this sentence")}
+                  aria-label={t(
+                    "report.reportSentence",
+                    "Report this sentence",
+                  )}
                   title={t("report.reportSentence", "Report this sentence")}
                   className="rounded-md p-1.5 text-text-muted hover:text-danger hover:bg-surface-muted transition-colors"
                 >

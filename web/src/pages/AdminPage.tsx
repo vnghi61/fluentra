@@ -1,6 +1,14 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, BookA, BookOpen, Flag, Gauge, Shield, Users } from "lucide-react";
+import {
+  AlertTriangle,
+  BookA,
+  BookOpen,
+  Flag,
+  Gauge,
+  Shield,
+  Users,
+} from "lucide-react";
 import {
   AdminUserList,
   AdminFeatureFlags,

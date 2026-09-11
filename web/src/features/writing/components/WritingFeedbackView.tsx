@@ -31,7 +31,8 @@ export interface WritingFeedbackViewProps {
 }
 
 function getBandColor(band: number): string {
-  if (band >= 7.0) return "text-emerald-500 bg-emerald-500/10 border-emerald-500/30";
+  if (band >= 7.0)
+    return "text-emerald-500 bg-emerald-500/10 border-emerald-500/30";
   if (band >= 6.0) return "text-primary bg-primary/10 border-primary/30";
   if (band >= 5.0) return "text-amber-500 bg-amber-500/10 border-amber-500/30";
   return "text-rose-500 bg-rose-500/10 border-rose-500/30";
@@ -160,9 +161,7 @@ export const WritingFeedbackView: React.FC<WritingFeedbackViewProps> = ({
       }
 
       const isSelected = selectedAnnotationIdx === ann.originalIdx;
-      const comment = isVi
-        ? ann.comment_vi || ann.comment_en
-        : ann.comment_en;
+      const comment = isVi ? ann.comment_vi || ann.comment_en : ann.comment_en;
 
       parts.push(
         <button
@@ -270,7 +269,10 @@ export const WritingFeedbackView: React.FC<WritingFeedbackViewProps> = ({
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between gap-2">
                       <CardTitle className="text-sm font-semibold text-text">
-                        {t(getCriterionTitleKey(c.name), getCriterionFallback(c.name))}
+                        {t(
+                          getCriterionTitleKey(c.name),
+                          getCriterionFallback(c.name),
+                        )}
                       </CardTitle>
                       <Badge
                         variant="outline"
@@ -298,11 +300,16 @@ export const WritingFeedbackView: React.FC<WritingFeedbackViewProps> = ({
           <div className="flex items-center justify-between">
             <CardTitle className="text-base font-semibold text-text flex items-center gap-2">
               <MessageSquare className="h-4 w-4 text-primary" />
-              <span>{t("writing.annotations", "Essay Corrections & Notes")}</span>
+              <span>
+                {t("writing.annotations", "Essay Corrections & Notes")}
+              </span>
             </CardTitle>
             {annotations.length > 0 && (
               <span className="text-xs text-text-muted">
-                {t("writing.annotationClickHint", "Click highlighted text for notes")}
+                {t(
+                  "writing.annotationClickHint",
+                  "Click highlighted text for notes",
+                )}
               </span>
             )}
           </div>
@@ -325,10 +332,10 @@ export const WritingFeedbackView: React.FC<WritingFeedbackViewProps> = ({
                   &ldquo;{selectedAnnotation.quoted_text}&rdquo;
                 </span>
                 <Button
-                  size="sm"
                   variant="ghost"
-                  className="h-6 text-xs px-2 text-text-muted hover:text-text"
+                  className="h-11 w-11 min-h-[44px] min-w-[44px] p-0 text-xs text-text-muted hover:text-text"
                   onClick={() => setSelectedAnnotationIdx(null)}
+                  aria-label="Close annotation details"
                 >
                   ✕
                 </Button>

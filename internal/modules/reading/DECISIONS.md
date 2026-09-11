@@ -2,11 +2,11 @@
 module: reading
 tier: learning
 group: modules
-status: PLANNED
+status: IMPLEMENTED
 phase: 3
 owner: "@learning-team"
 schema: skill
-tables: [passages, passage_questions]
+tables: []
 depends_on: [content, questionbank, vocabulary, learning]
 depended_on_by: [learning, exam, analytics]
 spec_version: 1.0.0
@@ -23,7 +23,7 @@ contract belongs in a repository-level ADR instead — see [`/DECISIONS.md`](../
 <!-- BEGIN GENERATED: decisions -->
 | Question | Decision | Rationale |
 |---|---|---|
-| Where do reading questions live? | In `questionbank`, referenced here | The same item is reusable in an exam; duplicating it would let the two copies diverge and break item statistics |
+| Where do reading questions live? | In content version bodies | Passage and questions are bundled directly into self-contained `content.versions` rows, avoiding separate tables; revisit when `exam` is built |
 | Measure reading speed how? | First render to reading-complete | Including question time would conflate reading with reasoning and make the metric useless for progress |
 <!-- END GENERATED: decisions -->
 

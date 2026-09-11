@@ -63,7 +63,6 @@ func TempVersionFromContext(ctx context.Context, id uuid.UUID) (*Version, bool) 
 	return nil, false
 }
 
-
 // AuthorSpec describes one piece of machine-authored content.
 //
 // Addressed by slug, not by id: a generator runs on a schedule and has to be

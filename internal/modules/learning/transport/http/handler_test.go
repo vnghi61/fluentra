@@ -104,7 +104,6 @@ func (f *fakeLearningService) GetDailySet(_ context.Context, _ uuid.UUID, _ stri
 	return nil, nil
 }
 
-
 const (
 	testStateInProgress = "in_progress"
 	testStateCompleted  = "completed"

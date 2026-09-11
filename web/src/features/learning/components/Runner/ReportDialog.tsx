@@ -67,7 +67,10 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
       setIsSubmitted(true);
     } catch {
       setError(
-        t("report.errorFailed", "Failed to submit report. Please try again later."),
+        t(
+          "report.errorFailed",
+          "Failed to submit report. Please try again later.",
+        ),
       );
     } finally {
       setIsSubmitting(false);
@@ -110,17 +113,27 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
               </CardDescription>
             </div>
             <div className="pt-2">
-              <Button onClick={handleClose} className="min-w-[120px] font-semibold">
+              <Button
+                onClick={handleClose}
+                className="min-w-[120px] font-semibold"
+              >
                 {t("report.close", "Close")}
               </Button>
             </div>
           </div>
         ) : (
-          <form onSubmit={handleSubmit}>
+          <form
+            onSubmit={(e) => {
+              void handleSubmit(e);
+            }}
+          >
             <CardHeader className="space-y-1.5 pb-3">
               <div className="flex items-center gap-2 text-warning-accent">
                 <Flag className="h-5 w-5 shrink-0" aria-hidden="true" />
-                <CardTitle id="report-dialog-title" className="text-lg font-bold">
+                <CardTitle
+                  id="report-dialog-title"
+                  className="text-lg font-bold"
+                >
                   {t("report.title", "Report an issue")}
                 </CardTitle>
               </div>
@@ -151,7 +164,7 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
                   {REPORT_REASONS.map((r) => (
                     <label
                       key={r}
-                      className={`flex items-center gap-3 p-2.5 rounded-xl border transition-colors cursor-pointer text-sm font-medium ${
+                      className={`flex items-center gap-3 p-2.5 rounded-xl border min-h-[44px] transition-colors cursor-pointer text-sm font-medium ${
                         reason === r
                           ? "border-primary bg-primary/5 text-primary-accent"
                           : "border-border/60 hover:bg-surface-muted text-text"
@@ -163,8 +176,20 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
                         value={r}
                         checked={reason === r}
                         onChange={() => setReason(r)}
-                        className="h-4 w-4 text-primary focus:ring-primary border-border"
+                        className="sr-only"
                       />
+                      <span
+                        className={`h-4 w-4 rounded-full border flex items-center justify-center shrink-0 ${
+                          reason === r
+                            ? "border-primary bg-primary"
+                            : "border-border"
+                        }`}
+                        aria-hidden="true"
+                      >
+                        {reason === r && (
+                          <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                        )}
+                      </span>
                       <span>{t(`report.reason.${r}`)}</span>
                     </label>
                   ))}
@@ -192,7 +217,7 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
                     "report.notePlaceholder",
                     "Briefly explain the issue (max 500 characters)...",
                   )}
-                  className="w-full min-h-[80px] rounded-xl border border-border bg-surface-muted/40 p-3 text-sm text-text placeholder:text-text-muted/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                  className="w-full min-h-[80px] rounded-xl border border-border bg-surface-muted/40 p-3 text-base text-text placeholder:text-text-muted/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-none"
                 />
               </div>
             </div>

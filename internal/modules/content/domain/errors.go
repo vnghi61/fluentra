@@ -61,4 +61,3 @@ var (
 	// ErrReportNoteTooLong is returned when report note exceeds 500 characters.
 	ErrReportNoteTooLong = apperr.New(apperr.Validation, "NOTE_TOO_LONG", "Note cannot exceed 500 characters.")
 )
-

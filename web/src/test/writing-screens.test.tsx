@@ -323,9 +323,7 @@ describe("Writing Screens & Drafts (§3.5)", () => {
       }
 
       await waitFor(() => {
-        expect(
-          screen.queryByRole("dialog"),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
       });
     });
   });

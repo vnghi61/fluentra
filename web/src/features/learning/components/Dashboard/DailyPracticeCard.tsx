@@ -82,7 +82,7 @@ export const DailyPracticeCard: React.FC<DailyPracticeCardProps> = ({
                 }`}
                 aria-pressed={selectedLevel === lvl}
               >
-                {lvl}
+                {t("practice.daily.levelLabel", "Level {{lvl}}", { lvl })}
               </button>
             ))}
           </div>
@@ -101,16 +101,34 @@ export const DailyPracticeCard: React.FC<DailyPracticeCardProps> = ({
 
         {!compact && (
           <div className="flex items-center gap-2 pt-2 flex-wrap">
-            <Badge variant="outline" className="gap-1.5 py-1 px-2.5 text-xs bg-surface/60">
-              <BookOpen className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+            <Badge
+              variant="outline"
+              className="gap-1.5 py-1 px-2.5 text-xs bg-surface/60"
+            >
+              <BookOpen
+                className="h-3.5 w-3.5 text-primary"
+                aria-hidden="true"
+              />
               <span>{t("practice.daily.slotReading", "1 Passage")}</span>
             </Badge>
-            <Badge variant="outline" className="gap-1.5 py-1 px-2.5 text-xs bg-surface/60">
-              <Layers className="h-3.5 w-3.5 text-secondary-accent" aria-hidden="true" />
+            <Badge
+              variant="outline"
+              className="gap-1.5 py-1 px-2.5 text-xs bg-surface/60"
+            >
+              <Layers
+                className="h-3.5 w-3.5 text-secondary-accent"
+                aria-hidden="true"
+              />
               <span>{t("practice.daily.slotGrammar", "5 Grammar")}</span>
             </Badge>
-            <Badge variant="outline" className="gap-1.5 py-1 px-2.5 text-xs bg-surface/60">
-              <Zap className="h-3.5 w-3.5 text-warning-accent" aria-hidden="true" />
+            <Badge
+              variant="outline"
+              className="gap-1.5 py-1 px-2.5 text-xs bg-surface/60"
+            >
+              <Zap
+                className="h-3.5 w-3.5 text-warning-accent"
+                aria-hidden="true"
+              />
               <span>{t("practice.daily.slotTransforms", "3 Transforms")}</span>
             </Badge>
           </div>
@@ -121,12 +139,15 @@ export const DailyPracticeCard: React.FC<DailyPracticeCardProps> = ({
         {!signedIn ? (
           <div className="w-full flex items-center justify-between gap-3 flex-wrap">
             <span className="text-xs text-text-muted">
-              {t("practice.daily.guestNote", "Sign in to save streaks and track exposure history.")}
+              {t(
+                "practice.daily.guestNote",
+                "Sign in to save streaks and track exposure history.",
+              )}
             </span>
             <Link to="/login" className="w-full sm:w-auto">
               <Button variant="secondary" className="w-full sm:w-auto gap-2">
                 <Sparkles className="h-4 w-4" aria-hidden="true" />
-                {t("action.signIn", "Sign in to start")}
+                {t("practice.daily.signInBtn", "Sign in to start")}
               </Button>
             </Link>
           </div>

@@ -28,8 +28,7 @@ export type ContentVersion = components["schemas"]["ContentVersion"];
 export type AuthoringStatus = components["schemas"]["AuthoringStatus"];
 export type ReportedContentVersion =
   components["schemas"]["ReportedContentVersion"];
-export type ReportedContentList =
-  components["schemas"]["ReportedContentList"];
+export type ReportedContentList = components["schemas"]["ReportedContentList"];
 
 export type AdminWordList = components["schemas"]["AdminWordList"];
 export type AdminWordSummary = components["schemas"]["AdminWordSummary"];

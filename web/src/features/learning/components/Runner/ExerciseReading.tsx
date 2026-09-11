@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowRight, BookOpen, Check, Clock, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -17,7 +17,7 @@ import type { OptionItem } from "./ExerciseMultipleChoice";
 
 export interface ReadingQuestionItem {
   id: string;
-  type: "multiple_choice" | "true_false_not_given" | "gap_fill" | string;
+  type: "multiple_choice" | "true_false_not_given" | "gap_fill" | (string & {});
   prompt: string;
   options?: OptionItem[] | undefined;
 }
@@ -92,8 +92,14 @@ export const ExerciseReading: React.FC<ExerciseReadingProps> = ({
   const [answers, setAnswers] = useState<Record<string, string>>({});
 
   // Timing: reading_ms measured from mount to "I have finished reading"
-  const startTimeRef = useRef<number>(Date.now());
+  const startTimeRef = useRef<number | null>(null);
   const [readingMs, setReadingMs] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (startTimeRef.current === null) {
+      startTimeRef.current = Date.now();
+    }
+  }, []);
 
   // Two-phase flow state: starts in reading mode unless already submitted
   const [hasFinishedReading, setHasFinishedReading] = useState<boolean>(
@@ -102,18 +108,19 @@ export const ExerciseReading: React.FC<ExerciseReadingProps> = ({
 
   const wordCount = passage.trim() ? passage.trim().split(/\s+/).length : 0;
 
-  const handleFinishReading = () => {
-    const elapsed = Date.now() - startTimeRef.current;
+  const handleFinishReading = useCallback(() => {
+    const start = startTimeRef.current ?? Date.now();
+    const elapsed = Date.now() - start;
     setReadingMs(elapsed);
     setHasFinishedReading(true);
-  };
+  }, []);
 
   const handleAnswerChange = (qId: string, value: string) => {
     if (isSubmitted || isLoading) return;
     setAnswers((prev) => ({ ...prev, [qId]: value }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = useCallback(() => {
     if (isLoading) return;
     if (isMultiQuestion) {
       onSubmit({
@@ -130,7 +137,7 @@ export const ExerciseReading: React.FC<ExerciseReadingProps> = ({
         onSubmit(selectedId);
       }
     }
-  };
+  }, [isLoading, isMultiQuestion, onSubmit, answers, readingMs, selectedId]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -176,6 +183,8 @@ export const ExerciseReading: React.FC<ExerciseReadingProps> = ({
     isLoading,
     hasFinishedReading,
     isMultiQuestion,
+    handleFinishReading,
+    handleSubmit,
     onContinue,
   ]);
 
@@ -228,7 +237,9 @@ export const ExerciseReading: React.FC<ExerciseReadingProps> = ({
             onClick={handleFinishReading}
             className="gap-2 min-h-[44px] px-6 text-base font-semibold shadow-sm"
           >
-            <span>{t("runner.finishedReading", "I have finished reading")}</span>
+            <span>
+              {t("runner.finishedReading", "I have finished reading")}
+            </span>
             <ArrowRight className="h-4 w-4" />
           </Button>
         </div>
@@ -257,7 +268,9 @@ export const ExerciseReading: React.FC<ExerciseReadingProps> = ({
                   key={q.id}
                   className={cn(
                     "rounded-xl border p-4 md:p-5 transition-all bg-surface-card",
-                    hasItemVerdict && isItemCorrect && "border-success/60 bg-success/5",
+                    hasItemVerdict &&
+                      isItemCorrect &&
+                      "border-success/60 bg-success/5",
                     hasItemVerdict &&
                       !isItemCorrect &&
                       "border-danger/60 bg-danger/5",
@@ -269,7 +282,9 @@ export const ExerciseReading: React.FC<ExerciseReadingProps> = ({
                       <span className="text-xs font-semibold text-primary uppercase tracking-wider">
                         {t("runner.questionNum", { num: qIndex + 1 })}
                       </span>
-                      <p className="text-base font-medium text-text">{q.prompt}</p>
+                      <p className="text-base font-medium text-text">
+                        {q.prompt}
+                      </p>
                     </div>
                     {hasItemVerdict && (
                       <div className="shrink-0 mt-1">
@@ -298,7 +313,8 @@ export const ExerciseReading: React.FC<ExerciseReadingProps> = ({
                       {q.options.map((opt, optIndex) => {
                         const isSelected = answers[q.id] === opt.id;
                         const isCorrectAnswer =
-                          hasItemVerdict && itemResult?.correct_answer === opt.id;
+                          hasItemVerdict &&
+                          itemResult?.correct_answer === opt.id;
 
                         let optClass =
                           "border-border bg-surface hover:border-primary/50 text-text";
@@ -435,16 +451,18 @@ export const ExerciseReading: React.FC<ExerciseReadingProps> = ({
                   )}
 
                   {/* Revealed Correct Answer on Failure */}
-                  {hasItemVerdict && !isItemCorrect && itemResult?.correct_answer && (
-                    <div className="mt-3 text-xs text-text-muted flex items-center gap-1.5 bg-surface/60 p-2 rounded-md border border-border/40">
-                      <span className="font-semibold text-text">
-                        {t("runner.correctAnswerLabel", "Correct answer")}:
-                      </span>
-                      <span className="font-mono text-success font-bold">
-                        {itemResult.correct_answer}
-                      </span>
-                    </div>
-                  )}
+                  {hasItemVerdict &&
+                    !isItemCorrect &&
+                    itemResult?.correct_answer && (
+                      <div className="mt-3 text-xs text-text-muted flex items-center gap-1.5 bg-surface/60 p-2 rounded-md border border-border/40">
+                        <span className="font-semibold text-text">
+                          {t("runner.correctAnswerLabel", "Correct answer")}:
+                        </span>
+                        <span className="font-mono text-success font-bold">
+                          {itemResult.correct_answer}
+                        </span>
+                      </div>
+                    )}
                 </div>
               );
             })}

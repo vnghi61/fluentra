@@ -468,7 +468,6 @@ func startLearning(
 		AI:            aiClient,
 	})
 
-
 	for _, scheduled := range learningModule.CronJobs() {
 		cron.Register(scheduled)
 	}
@@ -572,7 +571,6 @@ func startModules(
 		ctx, cfg, pool, cron, rbacModule, lessonModule, srsModule, workers, learningModule,
 		contentModule, aiClient,
 	)
-
 
 	if err := startGamification(pool, bus, cron); err != nil {
 		return err

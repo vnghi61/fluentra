@@ -587,6 +587,8 @@
       "slotGrammar": "5 Ngữ pháp",
       "slotTransforms": "3 Biến đổi câu",
       "guestNote": "Đăng nhập để tích lũy chuỗi ngày và lưu tiến độ bài tập.",
+      "levelLabel": "Cấp độ {{lvl}}",
+      "signInBtn": "Đăng nhập để bắt đầu",
       "startBtn": "Bắt đầu bộ bài tập",
       "runnerTitle": "Luyện tập hàng ngày ({{level}})",
       "errorTitle": "Không thể tải bộ bài tập",

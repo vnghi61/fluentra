@@ -2,11 +2,11 @@
 module: writing
 tier: learning
 group: modules
-status: PLANNED
+status: IMPLEMENTED
 phase: 3
 owner: "@learning-team"
 schema: skill
-tables: [writing_tasks, writing_drafts, writing_feedback, writing_revisions]
+tables: [writing_feedback]
 depends_on: [ai, job, content, learning, notification]
 depended_on_by: [learning, analytics, gamification]
 spec_version: 1.0.0
@@ -25,7 +25,7 @@ last_verified: 2026-09-10
 | Path | `internal/modules/writing` |
 | Schema | `skill` |
 | Delivery phase | 3 |
-| Status | **PLANNED** |
+| Status | **IMPLEMENTED** |
 | Owner | @learning-team |
 
 ---
@@ -76,8 +76,7 @@ Other modules may import **only** `internal/modules/writing/contract`.
 <!-- BEGIN GENERATED: contract -->
 | Kind | Name | Purpose |
 |---|---|---|
-| interface | `writing.Grader` | Implements `learning.ExerciseGrader`; returns `Async: true` for valid essays |
-| interface | `writing.FeedbackReader` | `GetWritingFeedback` — read feedback by attempt and user |
+| interface | `writing.Grader` | Implements `learning.ExerciseGrader`; always returns `Async: true` |
 | interface | `writing.Reader` | `SubmissionHistory` — used by `analytics` and `admin` |
 
 ### Events
@@ -97,10 +96,7 @@ Migrations: `db/migrations/writing/` · Queries: `db/queries/writing/`
 
 | Table | Purpose | Key columns / notes |
 |---|---|---|
-| `skill.writing_tasks` | Prompt definitions | Content-versioned. `type`, `prompt`, `min_words`, `max_words`, `time_limit_s`, `rubric_id` |
-| `skill.writing_drafts` | Autosaved work in progress | `user_id`, `task_id`, `body`, `word_count`, `updated_at`; one active draft per task |
 | `skill.writing_feedback` | Grading output | `submission_id`, `criterion`, `score`, `comment`, `annotations` jsonb, `prompt_version`, `provider` |
-| `skill.writing_revisions` | Draft history | Snapshot every N minutes or M characters; retained 90 days |
 
 <!-- END GENERATED: schema -->
 
@@ -119,6 +115,7 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | `GET` | `/api/v1/writing/submissions/{id}/stream` | `self` | SSE stream of grading progress and partial feedback |
 | `GET` | `/api/v1/writing/submissions` | `self` | History with band progression |
 | `POST` | `/api/v1/writing/submissions/{id}/dispute` | `self` | Flag a grade for human review |
+| `GET` | `/api/v1/writing/attempts/{id}/feedback` | `self` | Read detailed writing feedback for an attempt |
 <!-- END GENERATED: endpoints -->
 
 ## 7. Folder map

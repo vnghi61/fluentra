@@ -646,4 +646,3 @@ func (r *Repository) CountReportedContentVersions(ctx context.Context) (int, err
 	}
 	return int(total), nil
 }
-

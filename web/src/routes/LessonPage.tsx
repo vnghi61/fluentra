@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { AlertCircle, Flag, RotateCcw } from "lucide-react";
@@ -216,9 +216,8 @@ export function LessonPage(): React.JSX.Element {
   const [isMarking, setIsMarking] = useState(false);
   const [markingTimedOut, setMarkingTimedOut] = useState(false);
   const [pollingAttemptId, setPollingAttemptId] = useState<string | null>(null);
-  const [writingFeedback, setWritingFeedback] = useState<WritingFeedback | null>(
-    null,
-  );
+  const [writingFeedback, setWritingFeedback] =
+    useState<WritingFeedback | null>(null);
   const [submissionResult, setSubmissionResult] = useState<Verdict | null>(
     null,
   );
@@ -313,7 +312,7 @@ export function LessonPage(): React.JSX.Element {
    *
    * A guest has no progress to invalidate, and no cache entry keyed to them.
    */
-  const invalidateProgress = () => {
+  const invalidateProgress = useCallback(() => {
     if (!signedIn) return;
     // Fire-and-forget: a refetch that fails must not fail the answer, which is
     // already committed on the server.
@@ -322,7 +321,7 @@ export function LessonPage(): React.JSX.Element {
     // Grading schedules review cards, so the due count on the dashboard and the
     // review queue itself are both stale the moment an answer lands.
     void queryClient.invalidateQueries({ queryKey: reviewKeys.all });
-  };
+  }, [signedIn, queryClient]);
 
   // Adaptive polling on 202 async grading:
   // every 2s for 30s, then every 5s, stopping on unmount or after 3 minutes (180s)
@@ -402,20 +401,26 @@ export function LessonPage(): React.JSX.Element {
         }
 
         const nextDelay = elapsedSec < 30 ? 2000 : 5000;
-        timerId = setTimeout(poll, nextDelay);
+        timerId = setTimeout(() => {
+          void poll();
+        }, nextDelay);
       } catch {
         const nextDelay = elapsedSec < 30 ? 2000 : 5000;
-        timerId = setTimeout(poll, nextDelay);
+        timerId = setTimeout(() => {
+          void poll();
+        }, nextDelay);
       }
     };
 
-    timerId = setTimeout(poll, 2000);
+    timerId = setTimeout(() => {
+      void poll();
+    }, 2000);
 
     return () => {
       isMounted = false;
       if (timerId) clearTimeout(timerId);
     };
-  }, [pollingAttemptId, userId, currentActivity, t]);
+  }, [pollingAttemptId, userId, currentActivity, t, invalidateProgress]);
 
   const handleSubmit = async (responsePayload: Record<string, unknown>) => {
     if (!currentActivity) return;
@@ -541,7 +546,10 @@ export function LessonPage(): React.JSX.Element {
             <CardDescription>
               {error?.message ||
                 (isDaily
-                  ? t("practice.daily.errorDesc", "Could not load today's practice activities.")
+                  ? t(
+                      "practice.daily.errorDesc",
+                      "Could not load today's practice activities.",
+                    )
                   : t("learn.errorDesc", "Could not load lesson activities."))}
             </CardDescription>
           </CardHeader>
@@ -549,7 +557,11 @@ export function LessonPage(): React.JSX.Element {
             <Button variant="outline" onClick={() => void refetch()}>
               {t("action.retry", "Try again")}
             </Button>
-            <Button onClick={() => void navigate({ to: isDaily ? "/practice" : "/learn" })}>
+            <Button
+              onClick={() =>
+                void navigate({ to: isDaily ? "/practice" : "/learn" })
+              }
+            >
               {isDaily
                 ? t("practice.daily.backBtn", "Back to Practice")
                 : t("runner.backToCourseBtn", "Back to Syllabus")}
@@ -683,9 +695,13 @@ export function LessonPage(): React.JSX.Element {
       <RunnerHeader
         lessonTitle={
           isDaily
-            ? t("practice.daily.runnerTitle", "Daily Practice Set ({{level}})", {
-                level: dailySet?.level || practiceLevel,
-              })
+            ? t(
+                "practice.daily.runnerTitle",
+                "Daily Practice Set ({{level}})",
+                {
+                  level: dailySet?.level || practiceLevel,
+                },
+              )
             : (lesson?.title ?? "")
         }
         currentStep={currentIndex + 1}
@@ -983,12 +999,11 @@ export function LessonPage(): React.JSX.Element {
             <Button
               type="button"
               variant="ghost"
-              size="sm"
               onClick={() => {
                 setReportInitialNote("");
                 setIsReportOpen(true);
               }}
-              className="text-xs text-text-muted hover:text-danger gap-1.5 min-h-[36px]"
+              className="text-xs text-text-muted hover:text-danger gap-1.5 min-h-[44px]"
               title={t("report.reportBtn", "Report issue")}
             >
               <Flag className="h-3.5 w-3.5" aria-hidden="true" />

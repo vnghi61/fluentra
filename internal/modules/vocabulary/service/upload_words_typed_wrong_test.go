@@ -91,7 +91,7 @@ func TestUploads_WordsTypedWrong(t *testing.T) {
 		}
 
 		modelReplies := map[string]string{
-			"schol": `{"valid": false, "reason": "misspelling", "intended_term": "school"}`,
+			"schol":  `{"valid": false, "reason": "misspelling", "intended_term": "school"}`,
 			"school": `{"valid": true, "lemma": "school", "part_of_speech": "noun", "cefr_level": "A1", "meaning_matches": true, "definition": "An institution for educating children.", "definition_vi": "trường học", "examples": [{"sentence": "I go to school.", "sentence_vi": "Tôi đi học."}]}`,
 		}
 

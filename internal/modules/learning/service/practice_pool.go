@@ -24,10 +24,8 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-
-
 const (
-	PracticePoolCourseSlug = "pool-practice"
+	PracticePoolCourseSlug  = "pool-practice"
 	PracticePoolCourseTitle = "Practice Pool"
 	PracticePoolDescription = "Auto-generated practice exercises pool"
 
@@ -399,7 +397,6 @@ type grammarSentenceTransformCand struct {
 	Acceptable    []string         `json:"acceptable,omitempty"`
 	Explanation   *candExplanation `json:"explanation,omitempty"`
 }
-
 
 func validateParse(kind string, raw []byte) error {
 	switch kind {

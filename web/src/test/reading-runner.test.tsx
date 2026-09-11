@@ -82,7 +82,9 @@ describe("ExerciseReading Two-Phase Runner", () => {
       screen.getByText("The author started photography in college."),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Film photography requires significant _____ to master."),
+      screen.getByText(
+        "Film photography requires significant _____ to master.",
+      ),
     ).toBeInTheDocument();
 
     // Answering questions

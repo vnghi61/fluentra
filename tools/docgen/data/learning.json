@@ -32,7 +32,8 @@
       { "name": "media_assets", "purpose": "Reference to an object in storage", "notes": "`object_key`, `kind`, `duration_ms`, `checksum`, `status`" },
       { "name": "taxonomies", "purpose": "Controlled vocabularies", "notes": "`namespace` (topic/skill/exam), `code`, `label`, `parent_id`" },
       { "name": "content_tags", "purpose": "Item ↔ taxonomy mapping", "notes": "Composite PK; indexed for filtered browsing" },
-      { "name": "content_reviews", "purpose": "Review workflow record", "notes": "`version_id`, `reviewer_id`, `decision`, `comments`" }
+      { "name": "content_reviews", "purpose": "Review workflow record", "notes": "`version_id`, `reviewer_id`, `decision`, `comments`" },
+      { "name": "item_reports", "purpose": "Learner issue reports on content versions", "notes": "`content_version_id`, `user_id`, `reason`, `note`. Unique on (content_version_id, user_id)." }
     ],
     "indexes": [
       "`idx_content_versions_item_version` — unique on (item_id, version)",
@@ -42,6 +43,7 @@
     "endpoints": [
       { "method": "GET", "path": "/api/v1/content/{slug}", "permission": "content.read.published", "purpose": "Fetch a published content version", "success": "200", "errors": ["CONTENT_NOT_PUBLISHED"] },
       { "method": "GET", "path": "/api/v1/content", "permission": "content.read.published", "purpose": "Browse published content with taxonomy filters", "success": "200" },
+      { "method": "POST", "path": "/api/v1/content/versions/{id}/reports", "permission": "self", "purpose": "Report an issue with a content version", "success": "201", "errors": ["VALIDATION_FAILED"] },
       { "method": "POST", "path": "/api/v1/admin/content", "permission": "content.create", "purpose": "Create a draft item", "success": "201" },
       { "method": "PUT", "path": "/api/v1/admin/content/{id}/draft", "permission": "content.edit", "purpose": "Update the working draft", "success": "200", "errors": ["INVALID_STATE_TRANSITION"] },
       { "method": "POST", "path": "/api/v1/admin/content/{id}/submit", "permission": "content.edit", "purpose": "Submit for review", "success": "200" },
@@ -315,7 +317,9 @@
       { "name": "learning_sessions", "purpose": "A study session", "notes": "`user_id`, `started_at`, `ended_at`, `activities_completed`, `minutes`" },
       { "name": "placement_results", "purpose": "Placement outcome", "notes": "`user_id`, `estimated_level`, `per_skill` jsonb, `taken_at`" },
       { "name": "skill_mastery", "purpose": "Per-skill mastery estimate", "notes": "`user_id`, `skill`, `level`, `confidence`, `updated_at`" },
-      { "name": "answer_explanations", "purpose": "Cached AI answer explanations", "notes": "`content_version_id`, `user_answer` unique, `text`, `text_vi`, `is_correct`" }
+      { "name": "answer_explanations", "purpose": "Cached AI answer explanations", "notes": "`content_version_id`, `user_answer` unique, `text`, `text_vi`, `is_correct`" },
+      { "name": "item_exposures", "purpose": "Learner item exposure log", "notes": "`user_id`, `activity_id`, `first_served_at`. Primary key (user_id, activity_id)." },
+      { "name": "daily_sets", "purpose": "Daily practice set cache", "notes": "`user_id`, `local_date`, `activity_ids`. Unique on (user_id, local_date)." }
     ],
     "indexes": [
       "`uq_progress_user_scope` — the read path for every dashboard",
@@ -331,6 +335,7 @@
       { "method": "POST", "path": "/api/v1/attempts/{id}/submit", "permission": "self", "purpose": "Submit a response for grading", "success": "200", "errors": ["ATTEMPT_EXPIRED", "VALIDATION_FAILED"], "notes": "Requires an `Idempotency-Key`. Returns 202 when the grader is asynchronous." },
       { "method": "GET", "path": "/api/v1/attempts/{id}", "permission": "self", "purpose": "Attempt state and result", "success": "200" },
       { "method": "POST", "path": "/api/v1/activities/{id}/grade", "permission": "public", "purpose": "Grade a response without recording anything", "success": "200", "errors": ["VALIDATION_FAILED", "GRADER_NOT_REGISTERED"], "notes": "Public (ADR-0025). No attempt, no progress, no review card, no event; `saved` is always false. A signed-in learner uses the attempt flow instead." },
+      { "method": "GET", "path": "/api/v1/practice/daily", "permission": "self", "purpose": "Fetch today's practice set", "success": "200" },
       { "method": "POST", "path": "/api/v1/me/sessions", "permission": "self", "purpose": "Start a study session", "success": "201" },
       { "method": "POST", "path": "/api/v1/me/sessions/{id}/complete", "permission": "self", "purpose": "End a session", "success": "200", "errors": ["SESSION_NOT_FOUND", "INVALID_ACTIVITY_COUNT"] }
     ],
@@ -788,7 +793,7 @@
     ],
     "decisions": [
       { "question": "Lemma-level or sense-level learning?", "choice": "Sense-level", "why": "Conflating senses teaches the wrong thing and makes scheduling meaningless for polysemous words, which are precisely the difficult ones" },
-      { "question": "Generate example sentences at request time?", "choice": "No — generate at authoring time and review them", "why": "Latency, cost, and above all correctness: an unreviewed example can teach a wrong collocation to thousands of learners" },
+      { "question": "Generate example sentences at request time?", "choice": "No — publish without manual review", "why": "Example sentences are generated at upload time and published without review, by the owner's decision on 2026-09-11, with the learner report button as the compensating control" },
       { "question": "What does a grader do when the activity content carries no answer key?", "choice": "Return an error", "why": "The alternative that shipped first was to mark the learner correct. That inflates progress and schedules a review card for a word they may not know, silently and for everyone the broken content reaches. Unreadable content is a deployment fault and should look like one" },
       { "question": "Where does a sense audio URL come from?", "choice": "Nowhere yet — `audio_url` is null", "why": "content.media_assets stores an object key, not a link, and turning one into something a browser can play needs a presigned URL reached through c_content. content.Reader exposes no media lookup, so the honest answer is null. The first version formatted `/api/v1/content/assets/{id}`, a path in no OpenAPI document, which would 404 in every flashcard" },
       { "question": "Withdrawal of a shared word from the dictionary?", "choice": "Suspend every card on it, then delete the sense", "why": "Archiving the content version was the first answer and the schema forbids it: BR-CONTENT-01 raises on any UPDATE to a published content_versions row, and nothing filters archived versions out of GetManyVersions anyway, so the card would keep rendering. Suspending is the other option the work order named and it needs no migration. Order matters: learn.review_cards carries no foreign key to skill.word_senses — different schemas, different owners — so deleting first leaves every learner holding a live card on a word the dictionary no longer has, and failing after the suspend leaves the word merely hidden, which an admin can retry" }
@@ -825,7 +830,7 @@
     "group": "modules",
     "schema": "skill",
     "phase": 3,
-    "status": "PLANNED",
+    "status": "IMPLEMENTED",
     "owner": "@learning-team",
     "hasJobs": true,
     "purpose": "Writing tasks, drafts, submissions and AI rubric grading. The most expensive feature in the product per use, and the one learners value most.",
@@ -841,10 +846,7 @@
     ],
     "notResponsibilities": ["Calling a model directly — it asks `platform/ai` by task name", "The rubric's pedagogy — that lives in `docs/knowledge/cefr.md` and the prompt", "Awarding XP — that is `gamification`"],
     "tables": [
-      { "name": "writing_tasks", "purpose": "Prompt definitions", "notes": "Content-versioned. `type`, `prompt`, `min_words`, `max_words`, `time_limit_s`, `rubric_id`" },
-      { "name": "writing_drafts", "purpose": "Autosaved work in progress", "notes": "`user_id`, `task_id`, `body`, `word_count`, `updated_at`; one active draft per task" },
-      { "name": "writing_feedback", "purpose": "Grading output", "notes": "`submission_id`, `criterion`, `score`, `comment`, `annotations` jsonb, `prompt_version`, `provider`" },
-      { "name": "writing_revisions", "purpose": "Draft history", "notes": "Snapshot every N minutes or M characters; retained 90 days" }
+      { "name": "writing_feedback", "purpose": "Grading output", "notes": "`submission_id`, `criterion`, `score`, `comment`, `annotations` jsonb, `prompt_version`, `provider`" }
     ],
     "endpoints": [
       { "method": "GET", "path": "/api/v1/writing/tasks", "permission": "content.read.published", "purpose": "Available tasks by level and type", "success": "200" },
@@ -853,7 +855,8 @@
       { "method": "GET", "path": "/api/v1/writing/submissions/{id}", "permission": "self", "purpose": "Submission with feedback when ready", "success": "200" },
       { "method": "GET", "path": "/api/v1/writing/submissions/{id}/stream", "permission": "self", "purpose": "SSE stream of grading progress and partial feedback", "success": "200" },
       { "method": "GET", "path": "/api/v1/writing/submissions", "permission": "self", "purpose": "History with band progression", "success": "200" },
-      { "method": "POST", "path": "/api/v1/writing/submissions/{id}/dispute", "permission": "self", "purpose": "Flag a grade for human review", "success": "202" }
+      { "method": "POST", "path": "/api/v1/writing/submissions/{id}/dispute", "permission": "self", "purpose": "Flag a grade for human review", "success": "202" },
+      { "method": "GET", "path": "/api/v1/writing/attempts/{id}/feedback", "permission": "self", "purpose": "Read detailed writing feedback for an attempt", "success": "200" }
     ],
     "contract": [
       { "kind": "interface", "name": "writing.Grader", "purpose": "Implements `learning.ExerciseGrader`; always returns `Async: true`" },
@@ -936,7 +939,7 @@
       "Disputes preserve the original feedback"
     ],
     "decisions": [
-      { "question": "Synchronous or asynchronous grading?", "choice": "Asynchronous with streaming", "why": "10–30 seconds is far outside an acceptable request budget, and a provider outage must not surface as a failed submission" },
+      { "question": "Synchronous or asynchronous grading?", "choice": "Asynchronous with polling", "why": "10–30 seconds is outside an acceptable request budget; adaptive polling on attempt status replaces SSE streaming with simpler reconnect and delivery semantics" },
       { "question": "Charge quota on submit or on success?", "choice": "On success", "why": "A learner should never lose a credit to our infrastructure failure" },
       { "question": "Allow editing a submission?", "choice": "No — resubmit instead", "why": "Band progression only means something if each submission is a fixed artefact" }
     ],
@@ -1098,7 +1101,7 @@
     "group": "modules",
     "schema": "skill",
     "phase": 3,
-    "status": "PLANNED",
+    "status": "IMPLEMENTED",
     "owner": "@learning-team",
     "purpose": "Reading passages and comprehension: passage rendering, question sets, span-based answers, reading speed measurement, inline glossing, and difficulty estimation.",
     "responsibilities": [
@@ -1110,10 +1113,7 @@
       "Reading graders: multiple choice, true/false/not-given, matching, gap-fill, span"
     ],
     "notResponsibilities": ["Question authoring — that is `questionbank`", "Word definitions — that is `vocabulary`", "Passage sourcing and licensing — an editorial concern"],
-    "tables": [
-      { "name": "passages", "purpose": "Reading text", "notes": "Content-versioned. `body`, `word_count`, `cefr_level`, `flesch_kincaid`, `topic`, `source_attribution`" },
-      { "name": "passage_questions", "purpose": "Questions bound to a passage", "notes": "`passage_id`, `question_id` (from `questionbank`), `position`, `evidence_span`" }
-    ],
+    "tables": [],
     "endpoints": [
       { "method": "GET", "path": "/api/v1/reading/passages/{id}", "permission": "content.read.published", "purpose": "Passage with glossing hints", "success": "200" },
       { "method": "POST", "path": "/api/v1/reading/attempts", "permission": "self", "purpose": "Start a timed reading attempt", "success": "201" },
@@ -1163,7 +1163,7 @@
       "Glossing lookups recorded and surfaced as suggestions"
     ],
     "decisions": [
-      { "question": "Where do reading questions live?", "choice": "In `questionbank`, referenced here", "why": "The same item is reusable in an exam; duplicating it would let the two copies diverge and break item statistics" },
+      { "question": "Where do reading questions live?", "choice": "In content version bodies", "why": "Passage and questions are bundled directly into self-contained `content.versions` rows, avoiding separate tables; revisit when `exam` is built" },
       { "question": "Measure reading speed how?", "choice": "First render to reading-complete", "why": "Including question time would conflate reading with reasoning and make the metric useless for progress" }
     ],
     "todo": [
@@ -1481,7 +1481,7 @@
     ],
     "decisions": [
       { "question": "Classical statistics or IRT?", "choice": "Classical for now", "why": "IRT needs far more data per item and a calibration process we cannot staff yet; the interface leaves room to upgrade" },
-      { "question": "Allow AI-generated items to auto-publish?", "choice": "Never", "why": "A wrong item teaches a wrong answer to every learner who sees it, and the failure is silent — review is cheap by comparison" }
+      { "question": "Allow AI-generated items to auto-publish?", "choice": "Only for generated practice pool", "why": "By the owner's decision on 2026-09-11, generated practice pool items auto-publish with 6-stage verification (including blind solve model agreement) and the learner report queue as compensating controls; exam and authored curriculum items still require human review" }
     ],
     "todo": [
       { "title": "Phase 4", "items": [

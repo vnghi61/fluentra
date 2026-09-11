@@ -7,7 +7,9 @@ import { writingKeys } from "./keys";
 export const writingApi = {
   /** Fetch detailed feedback for a specific writing attempt */
   async getFeedback(attemptId: string): Promise<WritingFeedback> {
-    return apiFetch<WritingFeedback>(`/api/v1/writing/attempts/${attemptId}/feedback`);
+    return apiFetch<WritingFeedback>(
+      `/api/v1/writing/attempts/${attemptId}/feedback`,
+    );
   },
 
   /** List user's writing submissions with pagination */

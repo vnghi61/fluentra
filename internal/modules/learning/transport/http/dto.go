@@ -335,4 +335,3 @@ func toDailyPracticeResponse(dto *domain.DailySetDTO) DailyPracticeResponse {
 		Activities: activities,
 	}
 }
-

@@ -46,4 +46,3 @@ type DailySetDTO struct {
 	Level      string                `json:"level"`
 	Activities []DailySetActivityDTO `json:"activities"`
 }
-

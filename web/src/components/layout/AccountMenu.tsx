@@ -1,6 +1,12 @@
 import React from "react";
 import { Link } from "@tanstack/react-router";
-import { LogOut, PenTool, Settings, ShieldCheck, UserRound } from "lucide-react";
+import {
+  LogOut,
+  PenTool,
+  Settings,
+  ShieldCheck,
+  UserRound,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import {

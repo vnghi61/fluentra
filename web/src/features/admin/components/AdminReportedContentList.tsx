@@ -78,7 +78,9 @@ export const AdminReportedContentList: React.FC = () => {
           disabled={isFetching}
           className="gap-2 shrink-0 self-start sm:self-auto"
         >
-          <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+          <RefreshCw
+            className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`}
+          />
           {t("admin.refresh", "Refresh")}
         </Button>
       </div>
@@ -190,12 +192,13 @@ export const AdminReportedContentList: React.FC = () => {
                     </td>
                     <td className="px-5 py-3.5 text-right">
                       <Button
-                        size="sm"
                         variant="outline"
                         onClick={() => setSelectedItemId(row.item_id)}
-                        className="gap-1.5 font-medium min-h-[36px]"
+                        className="gap-1.5 font-medium min-h-[44px]"
                       >
-                        <span>{t("adminReports.reviewBtn", "Review item")}</span>
+                        <span>
+                          {t("adminReports.reviewBtn", "Review item")}
+                        </span>
                         <ExternalLink className="h-3.5 w-3.5" />
                       </Button>
                     </td>
@@ -216,20 +219,20 @@ export const AdminReportedContentList: React.FC = () => {
               </span>
               <div className="flex items-center gap-2">
                 <Button
-                  size="sm"
                   variant="outline"
                   disabled={offset === 0 || isFetching}
                   onClick={() => setOffset((prev) => Math.max(0, prev - limit))}
-                  className="h-8 px-2"
+                  className="h-11 w-11 min-h-[44px] min-w-[44px] p-0"
+                  aria-label={t("common.previous", "Previous")}
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <Button
-                  size="sm"
                   variant="outline"
                   disabled={offset + limit >= total || isFetching}
                   onClick={() => setOffset((prev) => prev + limit)}
-                  className="h-8 px-2"
+                  className="h-11 w-11 min-h-[44px] min-w-[44px] p-0"
+                  aria-label={t("common.next", "Next")}
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
