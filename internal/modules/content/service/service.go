@@ -937,17 +937,9 @@ func (s *Service) ListReportedContent(
 	ctx context.Context,
 	limit, offset int,
 ) ([]domain.ReportedVersionSummary, int, error) {
-	if limit <= 0 {
-		limit = 20
-	}
-	if limit > 100 {
-		limit = 100
-	}
-	if offset < 0 {
-		offset = 0
-	}
-
-	items, err := s.repo.ListReportedContentVersions(ctx, int32(limit), int32(offset))
+	// Both arrive from strconv.Atoi over a query string. The domain helpers clamp
+	// before narrowing, so an offset past int32 saturates instead of wrapping.
+	items, err := s.repo.ListReportedContentVersions(ctx, domain.NormaliseLimit(limit), domain.NormaliseOffset(offset))
 	if err != nil {
 		return nil, 0, err
 	}

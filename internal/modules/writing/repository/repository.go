@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
 
 	"github.com/google/uuid"
@@ -178,8 +179,8 @@ func (r *pgxRepository) ListWritingSubmissions(
 		}, nil
 	}
 
-	offset := int32((page - 1) * pageSize) //nolint:gosec // page ≤ maxSubmissionPage, pageSize ≤ 100
-	limit := int32(pageSize)               //nolint:gosec // pageSize is clamped to 1–100 above
+	offset := clampInt32((page - 1) * pageSize)
+	limit := clampInt32(pageSize)
 
 	rows, err := r.q.ListWritingSubmissionsByUser(ctx, sqlc.ListWritingSubmissionsByUserParams{
 		UserID:      userID,
@@ -219,4 +220,18 @@ func (r *pgxRepository) ListWritingSubmissions(
 		Page:     page,
 		PageSize: pageSize,
 	}, nil
+}
+
+// clampInt32 narrows a paging value to the query's int32 parameters without
+// wrapping. page and pageSize come from strconv.Atoi over a query string; they
+// are clamped above, and this makes the narrowing safe on its own terms.
+func clampInt32(v int) int32 {
+	switch {
+	case v < 0:
+		return 0
+	case v > math.MaxInt32:
+		return math.MaxInt32
+	default:
+		return int32(v)
+	}
 }

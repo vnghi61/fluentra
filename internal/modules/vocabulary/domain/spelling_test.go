@@ -1,6 +1,7 @@
 package domain_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -72,4 +73,13 @@ func TestIsWithinSpellingBound(t *testing.T) {
 			assert.Equal(t, tt.expected, domain.IsWithinSpellingBound(tt.term, tt.candidate))
 		})
 	}
+}
+
+// TestOSADistance_DoesNotAlignLongTerms. Two long pastes would allocate a matrix
+// the size of their product; past the cap the distance is the longer length,
+// which no spelling bound accepts.
+func TestOSADistance_DoesNotAlignLongTerms(t *testing.T) {
+	long := strings.Repeat("a", 10_000)
+	assert.Equal(t, 10_001, domain.OSADistance(long, long+"b"))
+	assert.False(t, domain.IsWithinSpellingBound(long, long+"b"))
 }

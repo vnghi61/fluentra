@@ -39,6 +39,10 @@ type fakeRepo struct {
 	lastAdminLimit  int32
 	lastAdminOffset int32
 
+	// what the last ListReportedContentVersions call was given.
+	lastReportLimit  int32
+	lastReportOffset int32
+
 	// what the last BrowsePublishedVersions call was given, so a test can
 	// assert the clamp reaches the query rather than stopping at the service.
 	lastLimit  int32
@@ -543,6 +547,7 @@ func (f *fakeRepo) ListItemReportsByVersion(_ context.Context, versionID uuid.UU
 func (f *fakeRepo) ListReportedContentVersions(
 	_ context.Context, limit, offset int32,
 ) ([]domain.ReportedVersionSummary, error) {
+	f.lastReportLimit, f.lastReportOffset = limit, offset
 	grouped := make(map[uuid.UUID][]domain.ItemReport)
 	for _, r := range f.reports {
 		grouped[r.ContentVersionID] = append(grouped[r.ContentVersionID], r)
@@ -1048,5 +1053,21 @@ func TestArchivingItemPreservesVersionForLessons(t *testing.T) {
 	}
 	if total != 0 || len(found) != 0 {
 		t.Errorf("archived item should be excluded from Browse, found %d", len(found))
+	}
+}
+
+// TestListReportedContent_ClampsThePageWindow. The window arrives from a query
+// string, and a value past int32 has to reach the driver saturated, not wrapped
+// into a negative OFFSET.
+func TestListReportedContent_ClampsThePageWindow(t *testing.T) {
+	repo := newFakeRepo()
+	svc := service.New(service.Deps{Repo: repo})
+
+	if _, _, err := svc.ListReportedContent(context.Background(), 1<<31, 1<<31); err != nil {
+		t.Fatalf("ListReportedContent: %v", err)
+	}
+	if repo.lastReportLimit != domain.MaxLimit || repo.lastReportOffset != math.MaxInt32 {
+		t.Errorf("window = (%d, %d), want (%d, %d)",
+			repo.lastReportLimit, repo.lastReportOffset, domain.MaxLimit, math.MaxInt32)
 	}
 }
