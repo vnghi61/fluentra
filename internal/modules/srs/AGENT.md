@@ -25,7 +25,7 @@ last_verified: 2026-08-25
 | Path | `internal/modules/srs` |
 | Schema | `learn` |
 | Delivery phase | 2 |
-| Status | **ACTIVE** |
+| Status | **DONE** |
 | Owner | @learning-team |
 
 ---

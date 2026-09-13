@@ -10,6 +10,7 @@ import (
 // Codes and fixtures shared across this package's tests.
 const (
 	codeRequired         = "REQUIRED"
+	codeUnknown          = "UNKNOWN"
 	codeInvalidCharacter = "INVALID_CHARACTER"
 	codeNotIANA          = "NOT_IANA"
 	nameNghi             = "Nghi"

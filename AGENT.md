@@ -247,23 +247,28 @@ healthy.
 
 ### When a port is already taken
 
-Another project's container is often already on 5432 or 6379. That is not a reason to
-change ports or to remove anything.
+Another project's container is often already on 5432, 6379 or 9000. That is not a reason
+to change ports, to remove anything, or to start a second Postgres or Redis on other ports
+beside it.
 
-**Stop it, do the work, start it again.** `docker stop <name>` and `docker start <name>`
+**Stop it, then run ours.** This holds for a test run as much as for `make dev`: stop the
+other project's containers on the conflicting ports, bring this stack up with
+`make dev-infra`, and point the tests at it. `docker stop <name>` and `docker start <name>`
 preserve the container and its volumes — data survives.
 
 ```
 docker ps --format "{{.Names}} {{.Ports}}"   # find what holds the port
-docker stop <name>                             # borrow it
+docker stop <name>                             # stop it — never remove it
+make dev-infra                                 # this stack, on the freed ports
 ...                                            # your work
-docker start <name>                            # give it back — do not skip this
+docker start <name>                            # give it back when you are done
 ```
 
-**Never** `docker rm` a container you did not create, and never `docker volume rm`
-anything to free a port. And note `docker compose down` acts on the whole project: it has
-stopped unrelated containers that happened to carry matching labels. Prefer naming the
-services you started — `docker compose ... stop postgres redis minio`.
+**Only ever stop.** Never `docker rm` a container you did not create, never
+`docker volume rm` anything to free a port, and never `docker compose down` another
+project: `down` removes its containers and networks instead of stopping them. It also acts
+on the whole project, and has stopped unrelated containers that happened to carry matching
+labels. To stop services through compose, name them — `docker compose ... stop postgres redis minio`.
 
 ### Testing against the real stack
 

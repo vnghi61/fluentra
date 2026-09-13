@@ -7,7 +7,7 @@ phase: 3
 owner: "@learning-team"
 schema: learn
 tables: [xp_events, xp_activity_high_water, streaks, badges, badges_earned, quests, user_quests, leaderboard_snapshots]
-depends_on: [learning, srs, user, cache, job, notification]
+depends_on: [learning, srs, cache, job, notification]
 depended_on_by: [notification, analytics, admin]
 spec_version: 1.0.0
 last_verified: 2026-08-29
@@ -25,7 +25,7 @@ last_verified: 2026-08-29
 | Path | `internal/modules/gamification` |
 | Schema | `learn` |
 | Delivery phase | 3 |
-| Status | **ACTIVE** |
+| Status | **DONE** |
 | Owner | @learning-team |
 
 ---
@@ -103,6 +103,7 @@ Migrations: `db/migrations/gamification/` · Queries: `db/queries/gamification/`
 | Table | Purpose | Key columns / notes |
 |---|---|---|
 | `learn.xp_events` | Every XP award | Partitioned monthly. `user_id`, `source`, `source_id`, `amount`, `multiplier`, `awarded_at`. Unique on (user_id, source, source_id) for idempotency |
+| `learn.xp_activity_high_water` | Per-activity XP high water mark | `user_id`, `activity_id`, `max_score`, `xp_awarded` |
 | `learn.streaks` | Streak state | `user_id`, `current`, `longest`, `last_active_on`, `freezes_available`, `freeze_used_on` |
 | `learn.badges` | Badge catalogue | `code`, `name`, `criteria` jsonb, `tier` |
 | `learn.badges_earned` | Awards | Unique on (user_id, badge_id) |

@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/fluentra/fluentra/internal/generated/learning/sqlc"
+	contentcontract "github.com/fluentra/fluentra/internal/modules/content/contract"
 	"github.com/fluentra/fluentra/internal/modules/learning/contract"
 	"github.com/fluentra/fluentra/internal/modules/learning/domain"
 	"github.com/fluentra/fluentra/internal/modules/learning/repository"
@@ -42,6 +43,9 @@ type Deps struct {
 	Clock         clock.Clock
 	Guard         Guard
 	Lesson        lessoncontract.Reader
+	LessonAuthor  lessoncontract.Author
+	Content       contentcontract.Reader
+	ContentAuthor contentcontract.Author
 	SRSDue        srscontract.QueueReader
 	SRSCards      srscontract.CardWriter
 	Graders       map[string]contract.ExerciseGrader
@@ -50,6 +54,9 @@ type Deps struct {
 	Caches        service.LearningCaches
 	Env           string
 	AI            ai.Client
+	// GeneratorAuthorID owns generated practice content. The worker resolves it;
+	// the API has no top-up to run and leaves it zero.
+	GeneratorAuthorID uuid.UUID
 }
 
 // Module represents the learning module, assembled.
@@ -107,18 +114,23 @@ func New(deps Deps) *Module {
 	events := outboxWriter{Writer: outbox.NewWriter()}
 
 	svc := service.New(service.Deps{
-		Pool:     deps.Pool,
-		Repo:     repo,
-		Lesson:   deps.Lesson,
-		SRSDue:   deps.SRSDue,
-		SRSCards: deps.SRSCards,
-		Graders:  registry,
-		Events:   events,
-		Metrics:  deps.Metrics,
-		Clock:    timekeeper,
-		Caches:   deps.Caches,
-		Env:      deps.Env,
-		AI:       deps.AI,
+		Pool:          deps.Pool,
+		Repo:          repo,
+		Lesson:        deps.Lesson,
+		LessonAuthor:  deps.LessonAuthor,
+		Content:       deps.Content,
+		ContentAuthor: deps.ContentAuthor,
+		SRSDue:        deps.SRSDue,
+		SRSCards:      deps.SRSCards,
+		Graders:       registry,
+		Events:        events,
+		Metrics:       deps.Metrics,
+		Clock:         timekeeper,
+		Caches:        deps.Caches,
+		Env:           deps.Env,
+		AI:            deps.AI,
+
+		GeneratorAuthorID: deps.GeneratorAuthorID,
 	})
 
 	var handler *learninghttp.Handler
@@ -157,6 +169,21 @@ func (m *Module) UnlockChecker() contract.UnlockChecker {
 	return m.service
 }
 
+// AttemptReader returns the public AttemptReader contract implementation.
+func (m *Module) AttemptReader() contract.AttemptReader {
+	return m.service
+}
+
+// AsyncGradingCompleter returns the public AsyncGradingCompleter contract implementation.
+func (m *Module) AsyncGradingCompleter() contract.AsyncGradingCompleter {
+	return m.service
+}
+
+// AttemptCounter returns the public AttemptCounter contract implementation.
+func (m *Module) AttemptCounter() contract.AttemptCounter {
+	return m.service
+}
+
 // Routes mounts learner-facing attempt endpoints under the authenticated router.
 func (m *Module) Routes(router chi.Router) {
 	if m.handler != nil {
@@ -164,7 +191,13 @@ func (m *Module) Routes(router chi.Router) {
 	}
 }
 
-// CronJobs returns the scheduled partition maintenance job.
+// Advisory lock id for practice pool top-up job.
+const topUpPracticePoolLockID int64 = 1_700_000_211
+
+// Advisory lock id for learning module stuck grading sweep.
+const sweepStuckGradingLockID int64 = 1_700_000_212
+
+// CronJobs returns the scheduled partition maintenance, grading sweep, and practice pool jobs.
 func (m *Module) CronJobs() []job.CronJob {
 	return []job.CronJob{
 		{
@@ -173,7 +206,29 @@ func (m *Module) CronJobs() []job.CronJob {
 			Interval: rotateInterval,
 			Task:     m.RotatePartitions,
 		},
+		{
+			Name:     "learning.sweep_stuck_grading",
+			LockID:   sweepStuckGradingLockID,
+			Interval: 15 * time.Minute,
+			Task:     m.SweepStuckGrading,
+		},
+		{
+			Name:     "learning.top_up_practice_pool",
+			LockID:   topUpPracticePoolLockID,
+			Interval: 1 * time.Hour,
+			Task:     m.TopUpPracticePool,
+		},
 	}
+}
+
+// TopUpPracticePool generates and adds verified exercises to the practice pool.
+func (m *Module) TopUpPracticePool(ctx context.Context) error {
+	return m.service.TopUpPracticePool(ctx)
+}
+
+// SweepStuckGrading fails attempts in status 'grading' that have been stuck beyond 1 hour.
+func (m *Module) SweepStuckGrading(ctx context.Context) error {
+	return m.service.SweepStuckGrading(ctx)
 }
 
 // RotatePartitions creates future partitions for the attempts table.

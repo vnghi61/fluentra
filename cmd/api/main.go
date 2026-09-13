@@ -175,6 +175,8 @@ type applicationConfig struct {
 		Provider4Model   string        `koanf:"provider_4_model"`
 		Provider4APIKey  string        `koanf:"provider_4_api_key"`
 		Provider4Timeout time.Duration `koanf:"provider_4_timeout"`
+
+		WritingDailyLimit int `koanf:"writing_daily_limit"`
 	} `koanf:"ai"`
 	// WORKER_URL maps to `worker.url` under the first-underscore-becomes-a-dot rule.
 	Worker struct {
@@ -384,9 +386,10 @@ func run(ctx context.Context) error {
 		},
 		// A separate typed cache from the permission one. They share the Redis
 		// client but not the value type, and Cache[T] is generic per type.
-		Denylist:     cache.NewRedisCache[bool](redisClient),
-		Mailer:       newAPIMailSender(cfg, pool),
-		WorkerNudger: newWorkerNudger(cfg.Worker.URL),
+		Denylist:          cache.NewRedisCache[bool](redisClient),
+		Mailer:            newAPIMailSender(cfg, pool),
+		WorkerNudger:      newWorkerNudger(cfg.Worker.URL),
+		WritingDailyLimit: cfg.AI.WritingDailyLimit,
 	})
 
 	health := telemetry.NewHealthHandler(cfg.App.Version,
@@ -521,6 +524,7 @@ func configOptions() config.Options {
 			"ai.provider_4_model":            "",
 			"ai.provider_4_api_key":          "",
 			"ai.provider_4_timeout":          defaultAITimeout,
+			"ai.writing_daily_limit":         10,
 			"worker.url":                     "",
 		},
 		Required: []config.RequiredKey{

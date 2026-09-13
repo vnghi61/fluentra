@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -20,7 +21,11 @@ import (
 	"github.com/fluentra/fluentra/internal/shared/httpx"
 )
 
-const testKindVocabWord = "vocab_word"
+const (
+	testKindVocabWord = "vocab_word"
+	roleAdmin         = "admin"
+	statusPublished   = "published"
+)
 
 type mockContentService struct {
 	getPublishedSlugFn func(ctx context.Context, slug string) (*contract.Version, error)
@@ -49,6 +54,12 @@ type mockContentService struct {
 	getAdminItemDetailFn func(
 		ctx context.Context, id uuid.UUID,
 	) (domain.Item, []domain.Version, error)
+	reportItemFn func(
+		ctx context.Context, userID, versionID uuid.UUID, reason domain.ReportReason, note *string,
+	) (domain.ItemReport, error)
+	listReportedContentFn func(
+		ctx context.Context, limit, offset int,
+	) ([]domain.ReportedVersionSummary, int, error)
 }
 
 func (m *mockContentService) GetPublishedVersionBySlug(ctx context.Context, slug string) (*contract.Version, error) {
@@ -131,6 +142,31 @@ func (m *mockContentService) ListAdminItems(
 	return []domain.Item{}, 0, nil
 }
 
+func (m *mockContentService) ReportItem(
+	ctx context.Context, userID, versionID uuid.UUID, reason domain.ReportReason, note *string,
+) (domain.ItemReport, error) {
+	if m.reportItemFn != nil {
+		return m.reportItemFn(ctx, userID, versionID, reason, note)
+	}
+	return domain.ItemReport{
+		ID:               uuid.New(),
+		ContentVersionID: versionID,
+		UserID:           userID,
+		Reason:           reason,
+		Note:             note,
+		CreatedAt:        time.Now(),
+	}, nil
+}
+
+func (m *mockContentService) ListReportedContent(
+	ctx context.Context, limit, offset int,
+) ([]domain.ReportedVersionSummary, int, error) {
+	if m.listReportedContentFn != nil {
+		return m.listReportedContentFn(ctx, limit, offset)
+	}
+	return []domain.ReportedVersionSummary{}, 0, nil
+}
+
 func (m *mockContentService) GetAdminItemDetail(
 	ctx context.Context, id uuid.UUID,
 ) (domain.Item, []domain.Version, error) {
@@ -176,7 +212,7 @@ func TestBrowseHandler(t *testing.T) {
 					Kind:        testKindVocabWord,
 					Body:        json.RawMessage(`{"word":"hello"}`),
 					CEFRLevel:   "A1",
-					Status:      "published",
+					Status:      statusPublished,
 					Tags:        []string{"greetings"},
 					PublishedAt: &pubAt,
 				},
@@ -217,7 +253,7 @@ func TestGetBySlugHandler(t *testing.T) {
 					Kind:      testKindVocabWord,
 					Body:      json.RawMessage(`{"word":"hello"}`),
 					CEFRLevel: "A1",
-					Status:    "published",
+					Status:    statusPublished,
 				}, nil
 			}
 			return nil, domain.ErrContentNotPublished
@@ -278,11 +314,112 @@ func TestAdminCreateItemHandler(t *testing.T) {
 	body, _ := json.Marshal(payload)
 
 	req := httptest.NewRequest(http.MethodPost, "/admin/content", bytes.NewReader(body))
-	req = req.WithContext(httpx.WithActor(req.Context(), httpx.Actor{UserID: actorID, Role: "admin"}))
+	req = req.WithContext(httpx.WithActor(req.Context(), httpx.Actor{UserID: actorID, Role: roleAdmin}))
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("expected 201 Created, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestReportItemHandler(t *testing.T) {
+	t.Parallel()
+
+	userID := uuid.New()
+	versionID := uuid.New()
+	reportedCalled := false
+
+	svc := &mockContentService{
+		reportItemFn: func(
+			_ context.Context, uID, vID uuid.UUID, reason domain.ReportReason, note *string,
+		) (domain.ItemReport, error) {
+			reportedCalled = true
+			if uID != userID {
+				t.Errorf("uID = %v, want %v", uID, userID)
+			}
+			if vID != versionID {
+				t.Errorf("vID = %v, want %v", vID, versionID)
+			}
+			if reason != domain.ReportReasonTypo {
+				t.Errorf("reason = %v, want typo", reason)
+			}
+			return domain.ItemReport{
+				ID:               uuid.New(),
+				ContentVersionID: vID,
+				UserID:           uID,
+				Reason:           reason,
+				Note:             note,
+				CreatedAt:        time.Now(),
+			}, nil
+		},
+	}
+
+	router := setupTestRouter(svc, &mockGuard{})
+
+	payload := map[string]any{
+		"reason": "typo",
+		"note":   "Small spelling issue",
+	}
+	body, _ := json.Marshal(payload)
+
+	target := fmt.Sprintf("/content/versions/%s/reports", versionID)
+	req := httptest.NewRequest(http.MethodPost, target, bytes.NewReader(body))
+	req = req.WithContext(httpx.WithActor(req.Context(), httpx.Actor{UserID: userID, Role: "learner"}))
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected 201 Created, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if !reportedCalled {
+		t.Errorf("expected reportItemFn to be called")
+	}
+}
+
+func TestAdminListReportsHandler(t *testing.T) {
+	t.Parallel()
+
+	adminID := uuid.New()
+	versionID := uuid.New()
+	itemID := uuid.New()
+
+	svc := &mockContentService{
+		listReportedContentFn: func(
+			_ context.Context, _, _ int,
+		) ([]domain.ReportedVersionSummary, int, error) {
+			return []domain.ReportedVersionSummary{
+				{
+					ContentVersionID: versionID,
+					ItemID:           itemID,
+					Slug:             "reported-word",
+					Kind:             "vocab_word",
+					CEFRLevel:        "B1",
+					ItemStatus:       statusPublished,
+					ReportCount:      5,
+					LastReportedAt:   time.Now(),
+				},
+			}, 1, nil
+		},
+	}
+
+	router := setupTestRouter(svc, &mockGuard{})
+
+	req := httptest.NewRequest(http.MethodGet, "/admin/content/reports?page=1&per_page=20", nil)
+	req = req.WithContext(httpx.WithActor(req.Context(), httpx.Actor{UserID: adminID, Role: roleAdmin}))
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var res map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &res); err != nil {
+		t.Fatalf("json unmarshal: %v", err)
+	}
+	items, ok := res["items"].([]any)
+	if !ok || len(items) != 1 {
+		t.Fatalf("expected 1 item in items, got %v", res)
 	}
 }

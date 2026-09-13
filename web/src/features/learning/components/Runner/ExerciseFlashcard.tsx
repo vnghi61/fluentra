@@ -34,6 +34,7 @@ export interface ExerciseFlashcardProps {
    */
   onSubmit: (knewIt: boolean) => void;
   onContinue: () => void;
+  onReportSentence?: ((sentenceText: string) => void) | undefined;
 }
 
 export const ExerciseFlashcard: React.FC<ExerciseFlashcardProps> = ({
@@ -49,6 +50,7 @@ export const ExerciseFlashcard: React.FC<ExerciseFlashcardProps> = ({
   isCorrect,
   onSubmit,
   onContinue,
+  onReportSentence,
 }) => {
   const { t, i18n } = useTranslation();
 
@@ -148,6 +150,7 @@ export const ExerciseFlashcard: React.FC<ExerciseFlashcardProps> = ({
                 sentences={exampleSentences}
                 highlight={targetWord}
                 className="max-w-md"
+                onReportSentence={onReportSentence}
               />
             </div>
           </div>

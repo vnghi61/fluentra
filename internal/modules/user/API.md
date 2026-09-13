@@ -6,7 +6,7 @@ status: PLANNED
 phase: 1
 owner: "@backend-team"
 schema: core
-tables: [users, profiles, user_preferences, learning_profiles, user_deletions, user_exports]
+tables: [users, profiles, user_preferences, learning_profiles, user_deletions, user_exports, avatar_assets]
 depends_on: [storage, mailer, audit]
 depended_on_by: [auth, admin, learning, notification, subscription, gamification]
 spec_version: 1.0.0

@@ -1,6 +1,13 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  RouterProvider,
+} from "@tanstack/react-router";
 
 import {
   ExerciseContextChoice,
@@ -423,6 +430,37 @@ describe("ExerciseWriting", () => {
       screen.getByText(
         "Clear description with sufficient details and correct grammar.",
       ),
+    ).toBeInTheDocument();
+  });
+
+  it("renders GuestNotice instead of textarea and shows continue when isGuest is true", async () => {
+    const rootRoute = createRootRoute();
+    const testRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: "/",
+      component: () => <ExerciseWriting {...props} isGuest />,
+    });
+    const loginRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: "/login",
+      component: () => <div>login</div>,
+    });
+    const registerRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: "/register",
+      component: () => <div>register</div>,
+    });
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([testRoute, loginRoute, registerRoute]),
+      history: createMemoryHistory({ initialEntries: ["/"] }),
+    });
+    await router.load();
+    render(<RouterProvider router={router} />);
+
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    expect(screen.getByRole("note")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /continue/i }),
     ).toBeInTheDocument();
   });
 });

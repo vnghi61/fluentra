@@ -2,7 +2,7 @@
 module: srs
 tier: learning
 group: modules
-status: ACTIVE
+status: DONE
 phase: 2
 owner: "@learning-team"
 schema: learn

@@ -25,6 +25,10 @@ type Template struct {
 	Temperature float64
 	// JSONOutput marks a task whose reply is parsed rather than shown.
 	JSONOutput bool
+	// Cache is false for a task whose same inputs must still produce a new reply,
+	// such as writing a fresh practice item. The response cache is keyed on the
+	// inputs, so caching that task hands back the same item for a day.
+	Cache bool
 }
 
 // Registry holds the runtime prompt templates, newest version of each.
@@ -122,6 +126,7 @@ func parseTemplate(name string, raw []byte) (Template, error) {
 		}
 	}
 	out.JSONOutput = front["output"] == "json"
+	out.Cache = front["cache"] != "false"
 	return out, nil
 }
 

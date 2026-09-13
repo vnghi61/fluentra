@@ -2,11 +2,11 @@
 module: learning
 tier: learning
 group: modules
-status: PLANNED
+status: DONE
 phase: 2
 owner: "@learning-team"
 schema: learn
-tables: [enrollments, progress, attempts, learning_sessions, placement_results, skill_mastery]
+tables: [enrollments, progress, attempts, learning_sessions, placement_results, skill_mastery, answer_explanations, item_exposures, daily_sets]
 depends_on: [lesson, content, srs, cache, job]
 depended_on_by: [gamification, analytics, admin, exam, vocabulary, grammar, reading, listening, speaking, writing]
 spec_version: 1.0.0

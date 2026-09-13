@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/fluentra/fluentra/internal/modules/learning/domain"
 	"github.com/fluentra/fluentra/internal/modules/learning/service"
 )
 
@@ -130,5 +131,30 @@ func TestGradePreview_RejectsAMalformedActivityID(t *testing.T) {
 
 	if rec.Code != http.StatusBadRequest && rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status = %d, want a 4xx for a malformed id", rec.Code)
+	}
+}
+
+func TestGradePreview_Returns401WhenAccountRequired(t *testing.T) {
+	t.Parallel()
+
+	svc := &fakeLearningService{
+		previewErr: domain.ErrAccountRequired.WithMeta("kind", "writing_prompt"),
+	}
+	router, err := setupTestRouter(svc)
+	if err != nil {
+		t.Fatalf("setup router: %v", err)
+	}
+
+	rec := postGrade(t, router, uuid.New(), false)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
+	}
+
+	var got map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if got["code"] != "ACCOUNT_REQUIRED" {
+		t.Errorf("code = %v, want ACCOUNT_REQUIRED", got["code"])
 	}
 }

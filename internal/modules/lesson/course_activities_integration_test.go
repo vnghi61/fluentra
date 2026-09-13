@@ -76,7 +76,7 @@ func seedCourseWithActivities(t *testing.T, lessons, perLesson int) (uuid.UUID, 
 				Weight:           1,
 			})
 		}
-		created, aErr := repo.ReplaceActivities(ctx, lsn.ID, inputs)
+		created, aErr := repo.SyncActivities(ctx, lsn.ID, inputs)
 		if aErr != nil {
 			t.Fatalf("create activities for lesson %d: %v", l, aErr)
 		}

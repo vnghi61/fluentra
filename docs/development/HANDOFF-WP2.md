@@ -155,7 +155,7 @@ Docker Desktop must be running.
 docker network create fluentra-p14
 docker run -d --name fluentra-p14-pg --network fluentra-p14 -e POSTGRES_PASSWORD=postgres -e POSTGRES_USER=postgres -e POSTGRES_DB=fluentra_test postgres:17-alpine
 docker run -d --name fluentra-p14-redis --network fluentra-p14 redis:7.4-alpine
-docker run -d --name fluentra-p14-minio --network fluentra-p14 -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin minio/minio:latest server /data
+docker run -d --name fluentra-p14-minio --network fluentra-p14 -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin quay.io/minio/minio:latest server /data
 ```
 
 ```bash

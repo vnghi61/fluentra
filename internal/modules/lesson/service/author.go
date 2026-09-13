@@ -66,21 +66,21 @@ func (s *Service) EnsureLesson(ctx context.Context, spec contract.LessonSpec) (u
 	return lesson.ID, nil
 }
 
-// ReplaceActivities implements contract.Author.
+// SyncActivities implements contract.Author.
 //
-// Wholesale, not item by item. A generated lesson is a rendering of its source
-// data: if a word gained a fifth example and its gap-fill moved position, the
-// lesson should look like the new rendering and not like the two interleaved.
+// In place, not destructive. A generated lesson's activities are updated in place
+// by position while the kind matches, and appended when new. Activities whose source
+// has gone are retired, preserving any learner attempts referencing them.
 //
 // The lesson's cached detail is dropped afterwards for the same reason
 // UpdateActivities drops it — the cache holds the activity list, and leaving it
 // means a learner opens the lesson and gets the exercises that were there an
 // hour ago.
-func (s *Service) ReplaceActivities(
+func (s *Service) SyncActivities(
 	ctx context.Context, lessonID uuid.UUID, activities []contract.ActivitySpec,
 ) error {
 	if lessonID == uuid.Nil {
-		return authorInvalid("Replacing activities needs a lesson.")
+		return authorInvalid("Syncing activities needs a lesson.")
 	}
 
 	inputs := make([]domain.ActivityInput, 0, len(activities))
@@ -105,7 +105,7 @@ func (s *Service) ReplaceActivities(
 		})
 	}
 
-	if _, err := s.repo.ReplaceActivities(ctx, lessonID, inputs); err != nil {
+	if _, err := s.repo.SyncActivities(ctx, lessonID, inputs); err != nil {
 		return err
 	}
 	// courseID is not resolved here: the tree cache is keyed on the course slug
@@ -114,6 +114,42 @@ func (s *Service) ReplaceActivities(
 	// exercises, and invalidateLessonCaches drops it with a nil course.
 	s.invalidateLessonCaches(ctx, lessonID, uuid.Nil)
 	return nil
+}
+
+// AppendActivity implements contract.Author.
+//
+// Unlike SyncActivities, AppendActivity never replaces or retires existing activities.
+// It is used by the practice pool (§3.11) where activities are append-only.
+func (s *Service) AppendActivity(
+	ctx context.Context, lessonID uuid.UUID, activity contract.ActivitySpec,
+) (uuid.UUID, error) {
+	if lessonID == uuid.Nil {
+		return uuid.Nil, authorInvalid("Appending an activity needs a lesson.")
+	}
+	if activity.Kind == "" || activity.ContentVersionID == uuid.Nil {
+		return uuid.Nil, authorInvalid("Every generated activity needs a kind and a content version.")
+	}
+	config := activity.Config
+	if len(config) == 0 {
+		config = json.RawMessage("{}")
+	}
+	weight := activity.Weight
+	if weight <= 0 {
+		weight = 1
+	}
+
+	created, err := s.repo.AppendActivity(ctx, lessonID, domain.ActivityInput{
+		Kind:             activity.Kind,
+		ContentVersionID: activity.ContentVersionID,
+		Config:           config,
+		Weight:           weight,
+	})
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	s.invalidateLessonCaches(ctx, lessonID, uuid.Nil)
+	return created.ID, nil
 }
 
 func authorInvalid(message string) error {

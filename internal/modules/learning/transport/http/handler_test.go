@@ -100,6 +100,10 @@ func (f *fakeLearningService) GradePreview(
 	return f.previewDTO, f.previewErr
 }
 
+func (f *fakeLearningService) GetDailySet(_ context.Context, _ uuid.UUID, _ string) (*domain.DailySetDTO, error) {
+	return nil, nil
+}
+
 const (
 	testStateInProgress = "in_progress"
 	testStateCompleted  = "completed"

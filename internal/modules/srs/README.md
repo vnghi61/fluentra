@@ -2,12 +2,12 @@
 module: srs
 tier: learning
 group: modules
-status: PLANNED
+status: DONE
 phase: 2
 owner: "@learning-team"
 schema: learn
 tables: [review_cards, review_logs, srs_params, review_daily_stats]
-depends_on: [cache, job, content]
+depends_on: [cache, job, content, user]
 depended_on_by: [learning, vocabulary, grammar, gamification, notification, analytics]
 spec_version: 1.0.0
 last_verified: 2026-08-06

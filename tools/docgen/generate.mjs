@@ -66,19 +66,35 @@ const generated = (id, body) =>
   `<!-- BEGIN GENERATED: ${id} -->\n${body}\n<!-- END GENERATED: ${id} -->`;
 
 /** Merge newly generated blocks into an existing file, preserving hand-written prose. */
-function merge(existingPath, rendered) {
+function merge(existingPath, rendered, m) {
   if (!existsSync(existingPath)) return rendered;
   let current = readFileSync(existingPath, "utf8");
+
+  const curFmMatch = /^---\n([\s\S]*?)\n---\n/.exec(current);
+  const renFmMatch = /^---\n([\s\S]*?)\n---\n/.exec(rendered);
+  if (curFmMatch && renFmMatch) {
+    let renFm = renFmMatch[1];
+    const curLastVerified = curFmMatch[1].match(/last_verified:\s*(.+)/);
+    if (curLastVerified) {
+      renFm = renFm.replace(/last_verified:\s*.+/, `last_verified: ${curLastVerified[1].trim()}`);
+    }
+    current = current.replace(/^---\n[\s\S]*?\n---\n/, `---\n${renFm}\n---\n`);
+  }
+
+  if (m && m.status) {
+    current = current.replace(/\|\s*Status\s*\|\s*\*\*[^*]+\*\*\s*\|/, `| Status | **${m.status}** |`);
+  }
+
   const re = /<!-- BEGIN GENERATED: ([\w.-]+) -->[\s\S]*?<!-- END GENERATED: \1 -->/g;
   const fresh = new Map();
-  let m;
-  while ((m = re.exec(rendered)) !== null) fresh.set(m[1], m[0]);
+  let match;
+  while ((match = re.exec(rendered)) !== null) fresh.set(match[1], match[0]);
   let touched = false;
   const out = current.replace(re, (whole, id) => {
     if (fresh.has(id)) { touched = true; return fresh.get(id); }
     return whole;
   });
-  return touched ? out : rendered;
+  return touched ? out : current;
 }
 
 /**
@@ -92,10 +108,10 @@ function tidy(markdown) {
 }
 
 let changed = 0;
-function emit(relPath, content) {
+function emit(relPath, content, m) {
   const abs = join(ROOT, relPath);
   mkdirSync(dirname(abs), { recursive: true });
-  const final = tidy(merge(abs, content));
+  const final = tidy(merge(abs, content, m));
   const prev = existsSync(abs) ? readFileSync(abs, "utf8") : null;
   if (prev === final) return;
   changed++;
@@ -553,15 +569,15 @@ two drift apart.
 
 for (const m of modules) {
   const dir = modPath(m);
-  emit(`${dir}/AGENT.md`, agentMd(m));
-  emit(`${dir}/README.md`, readmeMd(m));
-  emit(`${dir}/API.md`, apiMd(m));
-  emit(`${dir}/FLOW.md`, flowMd(m));
-  emit(`${dir}/TESTING.md`, testingMd(m));
-  emit(`${dir}/DECISIONS.md`, decisionsMd(m));
-  emit(`${dir}/PROMPTS.md`, promptsMd(m));
-  emit(`${dir}/TODO.md`, todoMd(m));
-  emit(`${dir}/README_AI.md`, readmeAiMd(m));
+  emit(`${dir}/AGENT.md`, agentMd(m), m);
+  emit(`${dir}/README.md`, readmeMd(m), m);
+  emit(`${dir}/API.md`, apiMd(m), m);
+  emit(`${dir}/FLOW.md`, flowMd(m), m);
+  emit(`${dir}/TESTING.md`, testingMd(m), m);
+  emit(`${dir}/DECISIONS.md`, decisionsMd(m), m);
+  emit(`${dir}/PROMPTS.md`, promptsMd(m), m);
+  emit(`${dir}/TODO.md`, todoMd(m), m);
+  emit(`${dir}/README_AI.md`, readmeAiMd(m), m);
 }
 
 // generated index of modules, for docs/modules/

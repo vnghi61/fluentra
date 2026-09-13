@@ -51,14 +51,16 @@ const (
 	wordBook       = "book"
 	wordApple      = "apple"
 	defWrittenWork = "A written work."
+	defRoundFruit  = "A round fruit."
 )
 
 // ---------------------------------------------------------------- fakes
 
 type stubDictionary struct {
-	entries map[string]repository.DictionaryEntry
-	err     error
-	calls   int
+	entries    map[string]repository.DictionaryEntry
+	candidates map[string][]string
+	err        error
+	calls      int
 }
 
 func (s *stubDictionary) Lookup(
@@ -73,6 +75,17 @@ func (s *stubDictionary) Lookup(
 		return repository.DictionaryEntry{}, repository.ErrWordNotFound
 	}
 	return entry, nil
+}
+
+func (s *stubDictionary) FindCandidates(
+	_ context.Context, word string,
+) ([]string, error) {
+	if s.candidates != nil {
+		if c, ok := s.candidates[word]; ok {
+			return c, nil
+		}
+	}
+	return nil, nil
 }
 
 // stubAI answers with whatever verdict the test wants.
@@ -123,6 +136,9 @@ type uploadRepo struct {
 	rejected                map[uuid.UUID]string
 	attempts                map[uuid.UUID]string
 	queued                  map[uuid.UUID]string
+	correctedTerms          map[uuid.UUID]string
+	suggestedTerms          map[uuid.UUID]string
+	noteCodes               map[uuid.UUID]string
 	enrichVerified          map[uuid.UUID]string
 	enrichRejected          map[uuid.UUID]string
 	enrichFailed            map[uuid.UUID]string
@@ -140,6 +156,9 @@ func newUploadRepo(items ...sqlc.SkillVocabUploadItem) *uploadRepo {
 		rejected:                map[uuid.UUID]string{},
 		attempts:                map[uuid.UUID]string{},
 		queued:                  map[uuid.UUID]string{},
+		correctedTerms:          map[uuid.UUID]string{},
+		suggestedTerms:          map[uuid.UUID]string{},
+		noteCodes:               map[uuid.UUID]string{},
 		enrichVerified:          map[uuid.UUID]string{},
 		enrichRejected:          map[uuid.UUID]string{},
 		enrichFailed:            map[uuid.UUID]string{},
@@ -205,15 +224,29 @@ func (r *uploadRepo) ClaimPendingUploadItemsByUploadID(
 
 func (r *uploadRepo) MarkUploadItemVerified(
 	_ context.Context, id uuid.UUID, _ *uuid.UUID, model, _ string,
+	correctedTerm, noteCode *string,
 ) (sqlc.SkillVocabUploadItem, error) {
 	r.verified[id] = model
+	if correctedTerm != nil {
+		r.correctedTerms[id] = *correctedTerm
+	}
+	if noteCode != nil {
+		r.noteCodes[id] = *noteCode
+	}
 	return sqlc.SkillVocabUploadItem{ID: id}, nil
 }
 
 func (r *uploadRepo) MarkUploadItemRejected(
 	_ context.Context, id uuid.UUID, reason string,
+	suggestedTerm, noteCode *string,
 ) (sqlc.SkillVocabUploadItem, error) {
 	r.rejected[id] = reason
+	if suggestedTerm != nil {
+		r.suggestedTerms[id] = *suggestedTerm
+	}
+	if noteCode != nil {
+		r.noteCodes[id] = *noteCode
+	}
 	return sqlc.SkillVocabUploadItem{ID: id}, nil
 }
 
@@ -226,8 +259,12 @@ func (r *uploadRepo) RecordUploadItemAttempt(
 
 func (r *uploadRepo) MarkUploadItemQueued(
 	_ context.Context, id uuid.UUID, _ *uuid.UUID, reason string,
+	noteCode *string,
 ) (sqlc.SkillVocabUploadItem, error) {
 	r.queued[id] = reason
+	if noteCode != nil {
+		r.noteCodes[id] = *noteCode
+	}
 	return sqlc.SkillVocabUploadItem{ID: id, Status: statusQueued}, nil
 }
 
@@ -239,15 +276,29 @@ func (r *uploadRepo) ClaimQueuedUploadItems(
 
 func (r *uploadRepo) MarkQueuedUploadItemVerified(
 	_ context.Context, id uuid.UUID, model, _ string,
+	correctedTerm, noteCode *string,
 ) (sqlc.SkillVocabUploadItem, error) {
 	r.enrichVerified[id] = model
+	if correctedTerm != nil {
+		r.correctedTerms[id] = *correctedTerm
+	}
+	if noteCode != nil {
+		r.noteCodes[id] = *noteCode
+	}
 	return sqlc.SkillVocabUploadItem{ID: id, Status: statusVerified}, nil
 }
 
 func (r *uploadRepo) MarkQueuedUploadItemRejected(
 	_ context.Context, id uuid.UUID, reason string,
+	suggestedTerm, noteCode *string,
 ) (sqlc.SkillVocabUploadItem, error) {
 	r.enrichRejected[id] = reason
+	if suggestedTerm != nil {
+		r.suggestedTerms[id] = *suggestedTerm
+	}
+	if noteCode != nil {
+		r.noteCodes[id] = *noteCode
+	}
 	return sqlc.SkillVocabUploadItem{ID: id, Status: "rejected"}, nil
 }
 
@@ -263,7 +314,7 @@ func (r *uploadRepo) MarkQueuedUploadItemFailed(
 func item(term, meaning string) sqlc.SkillVocabUploadItem {
 	return sqlc.SkillVocabUploadItem{
 		ID: uuid.New(), UploadID: uuid.New(), UserID: uuid.New(),
-		Term: term, ProvidedMeaning: meaning, Status: "pending",
+		Term: term, ProvidedMeaning: meaning, Status: statusPending,
 	}
 }
 
@@ -386,7 +437,7 @@ func (r *uploadRepo) InsertUpload(
 		UserID:    arg.UserID,
 		RawText:   arg.RawText,
 		ItemCount: arg.ItemCount,
-		Status:    "pending",
+		Status:    statusPending,
 	}, nil
 }
 
@@ -844,11 +895,11 @@ func TestVerify_ModelTopicCreatesTopicDeck(t *testing.T) {
 	entry := item(wordApple, "")
 	repo := newUploadRepo(entry)
 	dict := &stubDictionary{entries: map[string]repository.DictionaryEntry{
-		wordApple: {Lemma: wordApple, PartOfSpeech: posNoun, Definition: "A round fruit."},
+		wordApple: {Lemma: wordApple, PartOfSpeech: posNoun, Definition: defRoundFruit},
 	}}
 	reply := map[string]any{
 		keyValid: true, keyLemma: wordApple, keyPartOfSpeech: posNoun, keyCEFRLevel: "A1",
-		keyDefinition: "A round fruit.", keyDefinitionVi: "quả táo",
+		keyDefinition: defRoundFruit, keyDefinitionVi: "quả táo",
 		"topic": "food", keyMeaningMatches: true,
 		keyExamples: []map[string]string{
 			{keySentence: "She ate an apple.", keySentenceVi: "Cô ấy đã ăn một quả táo."},

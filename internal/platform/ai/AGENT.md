@@ -69,7 +69,7 @@ package under `docs/` is outside every component it can declare.
 | Path | `internal/platform/ai` |
 | Schema | `ai` |
 | Delivery phase | 3 |
-| Status | **PLANNED** |
+| Status | **IN_PROGRESS** |
 | Owner | @ai-team |
 
 ---

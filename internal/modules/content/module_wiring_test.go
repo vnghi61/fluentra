@@ -66,8 +66,9 @@ func TestRoutesMountTheDocumentedPaths(t *testing.T) {
 	mod.AdminRoutes(admin)
 
 	wantLearner := map[string]bool{
-		"GET /content":        false,
-		"GET /content/{slug}": false,
+		"GET /content":                        false,
+		"GET /content/{slug}":                 false,
+		"POST /content/versions/{id}/reports": false,
 	}
 	wantAdmin := map[string]bool{
 		"GET /admin/content":               false,
@@ -78,6 +79,7 @@ func TestRoutesMountTheDocumentedPaths(t *testing.T) {
 		"POST /admin/content/{id}/review":  false,
 		"POST /admin/content/{id}/publish": false,
 		"POST /admin/content/{id}/archive": false,
+		"GET /admin/content/reports":       false,
 	}
 
 	collect := func(router chi.Router, into map[string]bool, label string) {

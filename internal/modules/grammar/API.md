@@ -2,7 +2,7 @@
 module: grammar
 tier: learning
 group: modules
-status: PLANNED
+status: IN_PROGRESS
 phase: 3
 owner: "@learning-team"
 schema: skill

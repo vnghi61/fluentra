@@ -38,7 +38,7 @@ func adminRequest(method, target string, body any, actorID uuid.UUID) *http.Requ
 
 	req := httptest.NewRequest(method, target, reader)
 	if actorID != uuid.Nil {
-		req = req.WithContext(httpx.WithActor(req.Context(), httpx.Actor{UserID: actorID, Role: "admin"}))
+		req = req.WithContext(httpx.WithActor(req.Context(), httpx.Actor{UserID: actorID, Role: roleAdmin}))
 	}
 	return req
 }

@@ -2,11 +2,11 @@
 module: content
 tier: learning
 group: modules
-status: PLANNED
+status: DONE
 phase: 2
 owner: "@learning-team"
 schema: content
-tables: [content_items, content_versions, media_assets, taxonomies, content_tags, content_reviews]
+tables: [content_items, content_versions, media_assets, taxonomies, content_tags, content_reviews, item_reports]
 depends_on: [storage, search, audit, ai, media]
 depended_on_by: [lesson, learning, vocabulary, grammar, reading, listening, speaking, writing, questionbank]
 spec_version: 1.0.0

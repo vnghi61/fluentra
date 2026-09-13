@@ -6,7 +6,7 @@ status: DONE
 phase: 2
 owner: "@learning-team"
 schema: learn
-tables: [enrollments, progress, attempts, learning_sessions, placement_results, skill_mastery, answer_explanations]
+tables: [enrollments, progress, attempts, learning_sessions, placement_results, skill_mastery, answer_explanations, item_exposures, daily_sets]
 depends_on: [lesson, content, srs, cache, job]
 depended_on_by: [gamification, analytics, admin, exam, vocabulary, grammar, reading, listening, speaking, writing]
 spec_version: 1.0.0
@@ -25,7 +25,7 @@ last_verified: 2026-08-25
 | Path | `internal/modules/learning` |
 | Schema | `learn` |
 | Delivery phase | 2 |
-| Status | **PLANNED** |
+| Status | **DONE** |
 | Owner | @learning-team |
 
 ---
@@ -112,6 +112,8 @@ Migrations: `db/migrations/learning/` · Queries: `db/queries/learning/`
 | `learn.placement_results` | Placement outcome | `user_id`, `estimated_level`, `per_skill` jsonb, `taken_at` |
 | `learn.skill_mastery` | Per-skill mastery estimate | `user_id`, `skill`, `level`, `confidence`, `updated_at` |
 | `learn.answer_explanations` | Cached AI answer explanations | `content_version_id`, `user_answer` unique, `text`, `text_vi`, `is_correct` |
+| `learn.item_exposures` | Learner item exposure log | `user_id`, `activity_id`, `first_served_at`. Primary key (user_id, activity_id). |
+| `learn.daily_sets` | Daily practice set cache | `user_id`, `local_date`, `activity_ids`. Unique on (user_id, local_date). |
 
 **Indexes of note**
 
@@ -136,6 +138,7 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | `POST` | `/api/v1/attempts/{id}/submit` | `self` | Submit a response for grading |
 | `GET` | `/api/v1/attempts/{id}` | `self` | Attempt state and result |
 | `POST` | `/api/v1/activities/{id}/grade` | `public` | Grade a response without recording anything |
+| `GET` | `/api/v1/practice/daily` | `self` | Fetch today's practice set |
 | `POST` | `/api/v1/me/sessions` | `self` | Start a study session |
 | `POST` | `/api/v1/me/sessions/{id}/complete` | `self` | End a session |
 <!-- END GENERATED: endpoints -->

@@ -116,12 +116,25 @@ UPDATE learn.attempts
 SET status          = 'grading',
     idempotency_key = $3,
     response        = $4,
+    grader          = $5,
     updated_at      = now()
 WHERE id = $1
   AND created_at = $2
   AND status = 'in_progress'
 RETURNING id, created_at, updated_at, user_id, activity_id, idempotency_key,
           response, score, max_score, grader, duration_ms, status;
+
+-- name: UnclaimAttempt :exec
+UPDATE learn.attempts
+SET status          = 'in_progress',
+    idempotency_key = NULL,
+    response        = '{}'::jsonb,
+    grader          = NULL,
+    updated_at      = now()
+WHERE id = $1
+  AND created_at = $2
+  AND status = 'grading';
+
 
 -- name: UpdateAttemptStatus :one
 UPDATE learn.attempts
@@ -203,4 +216,43 @@ SET is_correct = EXCLUDED.is_correct,
     explanation_vi = EXCLUDED.explanation_vi,
     updated_at = now()
 RETURNING id, content_version_id, user_answer, is_correct, explanation_en, explanation_vi, created_at, updated_at;
+
+-- name: CountAttemptsTowardLimitSince :one
+-- Graded and still-grading attempts both count. An essay being marked has already
+-- been handed to the model the limit exists to bound, and counting only graded
+-- ones let a learner submit fifty in the seconds before the first came back.
+-- Failed attempts do not count: quota is charged on success (writing/DECISIONS.md).
+-- The claim records the grader, which is what makes an in-flight attempt visible.
+SELECT count(*)::integer
+FROM learn.attempts
+WHERE user_id = $1
+  AND grader = $2
+  AND status IN ('grading', 'graded')
+  AND created_at >= $3;
+
+-- name: CompleteGradingAttempt :execrows
+UPDATE learn.attempts
+SET status      = 'graded',
+    score       = $3,
+    grader      = $4,
+    duration_ms = $5,
+    updated_at  = now()
+WHERE id = $1
+  AND created_at = $2
+  AND status = 'grading';
+
+-- name: FailGradingAttempt :execrows
+UPDATE learn.attempts
+SET status     = 'failed',
+    updated_at = now()
+WHERE id = $1
+  AND created_at = $2
+  AND status = 'grading';
+
+-- name: FailStuckGradingAttempts :execrows
+UPDATE learn.attempts
+SET status     = 'failed',
+    updated_at = now()
+WHERE status = 'grading'
+  AND updated_at < $1;
 

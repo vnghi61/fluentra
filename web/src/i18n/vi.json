@@ -548,7 +548,8 @@
     "progress": "Tiến độ",
     "settings": "Cài đặt",
     "signIn": "Đăng nhập",
-    "signOut": "Đăng xuất"
+    "signOut": "Đăng xuất",
+    "myWriting": "Bài viết của tôi"
   },
   "page": {
     "accountSettings": "Cài đặt tài khoản",
@@ -578,6 +579,25 @@
     "yourAccountHoldsNoAdministrativePermissions": "Tài khoản của bạn không có quyền quản trị."
   },
   "practice": {
+    "daily": {
+      "badge": "Bộ bài tập hôm nay",
+      "title": "Luyện tập hàng ngày",
+      "desc": "9 bài tập được kiểm định dành riêng cho hôm nay: 1 bài đọc, 5 câu ngữ pháp và 3 câu chuyển đổi.",
+      "slotReading": "1 Bài đọc",
+      "slotGrammar": "5 Ngữ pháp",
+      "slotTransforms": "3 Biến đổi câu",
+      "guestNote": "Đăng nhập để tích lũy chuỗi ngày và lưu tiến độ bài tập.",
+      "levelLabel": "Cấp độ {{lvl}}",
+      "levelGroup": "Cấp độ luyện tập",
+      "pickLevel": "Chọn cấp độ để bắt đầu. Bạn có thể đổi bất cứ lúc nào.",
+      "levelSaveFailed": "Chưa lưu được cấp độ. Bộ bài hôm nay vẫn dùng cấp độ này.",
+      "signInBtn": "Đăng nhập để bắt đầu",
+      "startBtn": "Bắt đầu bộ bài tập",
+      "runnerTitle": "Luyện tập hàng ngày ({{level}})",
+      "errorTitle": "Không thể tải bộ bài tập",
+      "errorDesc": "Không thể tải các bài tập hôm nay.",
+      "backBtn": "Quay lại trang luyện tập"
+    },
     "error": {
       "title": "Không tải được hàng đợi ôn tập",
       "desc": "Không kết nối được lịch ôn tập. Tiến độ của bạn vẫn an toàn."
@@ -613,6 +633,18 @@
       "descGuest": "Phần duyệt từ và tạo bộ thẻ đang được xây.",
       "label": "Từ vựng",
       "title": "Danh sách từ chưa có"
+    },
+    "reading": {
+      "desc": "Luyện đọc hiểu qua các bài đọc được tuyển chọn từ A2 đến B2, có câu hỏi và đo tốc độ đọc.",
+      "label": "Đọc hiểu",
+      "openBtn": "Bắt đầu đọc",
+      "title": "Luyện đọc hiểu"
+    },
+    "writing": {
+      "desc": "Luyện các bài viết có cấu trúc từ email đến bài luận IELTS với phản hồi AI và bài mẫu.",
+      "label": "Viết",
+      "openBtn": "Bắt đầu viết",
+      "title": "Luyện viết & Luận"
     }
   },
   "progress": {
@@ -727,7 +759,21 @@
     "wordCountWithMin": "Tối thiểu {{count}} / {{min}} từ",
     "wordsRemaining": "Cần thêm {{remaining}} từ",
     "writingInstructions": "Hướng dẫn & Tiêu chí",
-    "writingPlaceholder": "Nhập câu trả lời của bạn ở đây..."
+    "writingPlaceholder": "Nhập câu trả lời của bạn ở đây...",
+    "markingTitle": "Đang chấm bài viết của bạn...",
+    "markingDesc": "Giám khảo AI đang đánh giá bài viết theo tiêu chí IELTS. Quá trình này thường mất 15-30 giây.",
+    "markingTimeoutTitle": "Bài viết đang được tiếp tục chấm",
+    "markingTimeoutDesc": "Quá trình chấm bài mất nhiều thời gian hơn bình thường. Bạn có thể tiếp tục bài học, kết quả và nhận xét chi tiết sẽ hiển thị trong phần Bài viết của tôi.",
+    "goToMyWriting": "Xem Bài viết của tôi",
+    "markingFailedDesc": "Không thể chấm bài viết của bạn. Bài làm đã được lưu lại. Vui lòng thử lại.",
+    "finishedReading": "Tôi đã đọc xong",
+    "questionsLabel": "Câu hỏi đọc hiểu",
+    "readingSpeed": "Tốc độ đọc",
+    "questionNum": "Câu {{num}}",
+    "true": "Đúng (True)",
+    "false": "Sai (False)",
+    "notGiven": "Không đề cập (Not Given)",
+    "finishReadingPrompt": "Đọc bài viết theo tốc độ bình thường của bạn, sau đó tiếp tục trả lời câu hỏi."
   },
   "server": {
     "unreachable": "Máy chủ không phản hồi. Hãy tải lại trang để thử lại.",
@@ -767,11 +813,89 @@
     "title": "Từ của tôi",
     "verified": "đã thêm",
     "words": "từ",
-    "wordsFound": "từ được tìm thấy"
+    "wordsFound": "từ được tìm thấy",
+    "note": {
+      "spelling_corrected": "Bạn gõ {{term}} — đã thêm {{corrected}}.",
+      "meaning_corrected": "Đã thêm {{corrected}}. Ghi chú của bạn khớp với {{corrected}} thay vì {{term}}.",
+      "spelling_suggestion": "Có phải bạn định gõ {{suggested}}?",
+      "meaning_mismatch": "Đã thêm. Ghi chú của bạn không khớp lắm với nghĩa thông thường — định nghĩa ở đây là của từ điển.",
+      "already_in_your_words": "Từ này đã có trong danh sách từ của bạn.",
+      "not_a_word": "Chúng tôi không tìm thấy từ tiếng Anh này.",
+      "proper_noun": "Đây là tên riêng, không phải từ vựng chung.",
+      "queued_for_enrichment": "Đã xếp hàng chờ xử lý bổ sung. Thẻ ghi nhớ của bạn đã sẵn sàng để ôn tập."
+    }
   },
   "vocabulary": {
     "addCustomWord": "Thêm như một từ mới",
     "notFoundInDict": "Từ điển chưa có \"{{query}}\".",
     "searchPlaceholder": "Tra từ điển hoặc gõ một từ..."
+  },
+  "writing": {
+    "myWritingTitle": "Bài viết của tôi",
+    "myWritingDesc": "Xem lại các bài viết đã nộp, điểm band và nhận xét từ giám khảo AI.",
+    "feedbackTitle": "Đánh giá bài viết",
+    "overallBand": "Điểm Band tổng",
+    "score": "Điểm",
+    "summary": "Nhận xét tổng quan của giám khảo",
+    "criteriaBands": "Chi tiết các tiêu chí",
+    "taskResponse": "Khả năng hoàn thành yêu cầu đề bài",
+    "coherenceCohesion": "Tính mạch lạc và liên kết",
+    "lexicalResource": "Vốn từ vựng",
+    "grammaticalRange": "Độ đa dạng và chính xác ngữ pháp",
+    "annotations": "Sửa lỗi & Ghi chú bài viết",
+    "annotationClickHint": "Chạm vào đoạn bôi màu để xem ghi chú",
+    "noAnnotations": "Không có ghi chú cụ thể",
+    "modelAnswer": "Bài viết mẫu tham khảo",
+    "statusGraded": "Đã chấm",
+    "statusGrading": "Đang chấm...",
+    "statusFailed": "Thất bại",
+    "noSubmissions": "Chưa có bài viết nào",
+    "noSubmissionsDesc": "Hoàn thành các bài tập viết trong bài học để nhận điểm IELTS và nhận xét chi tiết từ AI.",
+    "viewFeedbackBtn": "Xem nhận xét",
+    "errorLoading": "Không thể tải danh sách bài viết. Vui lòng kiểm tra kết nối mạng.",
+    "feedbackError": "Không thể tải nhận xét bài viết",
+    "errorTitle": "Không thể tải danh sách bài viết",
+    "retry": "Thử lại",
+    "showingRange": "Hiện {{from}}–{{to}} trên {{total}}",
+    "pageOf": "Trang {{current}} trên {{total}}"
+  },
+  "report": {
+    "reportBtn": "Báo lỗi",
+    "reportSentence": "Báo lỗi câu này",
+    "title": "Báo cáo nội dung có lỗi",
+    "desc": "Giúp chúng tôi cải thiện bằng cách cho biết vấn đề của bài tập hoặc câu này.",
+    "selectReason": "Lý do báo cáo",
+    "reason": {
+      "wrong_answer": "Đáp án sai",
+      "unclear": "Câu hỏi không rõ ràng",
+      "typo": "Lỗi chính tả",
+      "my_answer_was_right": "Đáp án của tôi đúng nhưng bị tính sai",
+      "other": "Lỗi khác"
+    },
+    "noteLabel": "Chi tiết thêm (không bắt buộc)",
+    "notePlaceholder": "Mô tả ngắn gọn vấn đề (tối đa 500 ký tự)...",
+    "charsRemaining": "Còn lại {{count}} ký tự",
+    "cancel": "Hủy",
+    "submit": "Gửi báo cáo",
+    "submitting": "Đang gửi...",
+    "successTitle": "Đã gửi báo cáo",
+    "successDesc": "Cảm ơn đóng góp của bạn. Đội ngũ sẽ xem xét và cập nhật nội dung.",
+    "close": "Đóng",
+    "errorFailed": "Không thể gửi báo cáo. Vui lòng thử lại sau."
+  },
+  "adminReports": {
+    "tabLabel": "Báo cáo nội dung",
+    "title": "Hàng đợi nội dung bị báo cáo",
+    "desc": "Bài tập và nội dung được người học báo cáo, sắp xếp theo số lượng người báo cáo giảm dần. Kiểm tra và lưu trữ nội dung có vấn đề.",
+    "colItem": "Nội dung",
+    "colKind": "Loại",
+    "colLevel": "Trình độ",
+    "colStatus": "Trạng thái",
+    "colReporters": "Người báo cáo",
+    "colLastReported": "Báo cáo lần cuối",
+    "colActions": "Hành động",
+    "reviewBtn": "Xem xét",
+    "noReports": "Chưa có nội dung nào bị báo cáo.",
+    "reportsCount": "{{count}} người học"
   }
 }

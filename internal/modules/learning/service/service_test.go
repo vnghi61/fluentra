@@ -32,6 +32,7 @@ const (
 	testScopeActivity   = "activity"
 	testSkillReading    = "reading"
 	testSkillGrammar    = "grammar"
+	testKindAsyncGrader = "async_grader"
 )
 
 type fakeLearningRepo struct {
@@ -164,8 +165,30 @@ func (f *fakeLearningRepo) ClaimAttemptForGrading(
 	att.Status = domain.StatusGrading
 	att.IdempotencyKey = &keyStr
 	att.Response = params.Response
+	att.Grader = params.Grader
 	att.UpdatedAt = time.Now().UTC()
 	return cloneAttempt(att), nil
+}
+
+func (f *fakeLearningRepo) UnclaimAttempt(
+	_ context.Context, id uuid.UUID, _ time.Time,
+) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.queryCounter.Add(1)
+
+	att, ok := f.attempts[id]
+	if !ok {
+		return domain.ErrAttemptNotFound
+	}
+	if att.Status == domain.StatusGrading {
+		att.Status = domain.StatusInProgress
+		att.IdempotencyKey = nil
+		att.Grader = nil
+		att.Response = nil
+		att.UpdatedAt = time.Now().UTC()
+	}
+	return nil
 }
 
 func (f *fakeLearningRepo) UpdateAttemptStatus(
@@ -194,6 +217,98 @@ func (f *fakeLearningRepo) UpdateAttemptStatus(
 	att.DurationMs = &d
 	att.UpdatedAt = time.Now().UTC()
 	return att, nil
+}
+
+func (f *fakeLearningRepo) CompleteGradingAttempt(
+	_ context.Context, params repository.CompleteGradingAttemptParams,
+) (int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.queryCounter.Add(1)
+
+	att, ok := f.attempts[params.ID]
+	if !ok {
+		return 0, domain.ErrAttemptNotFound
+	}
+	if att.Status != domain.StatusGrading {
+		return 0, nil
+	}
+	att.Status = domain.StatusGraded
+	if params.Score != nil {
+		sc := int(*params.Score)
+		att.Score = &sc
+	}
+	if params.Grader != nil {
+		att.Grader = params.Grader
+	}
+	d := int64(params.DurationMs)
+	att.DurationMs = &d
+	att.UpdatedAt = time.Now().UTC()
+	return 1, nil
+}
+
+func (f *fakeLearningRepo) FailGradingAttempt(
+	_ context.Context, id uuid.UUID, _ time.Time,
+) (int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.queryCounter.Add(1)
+
+	att, ok := f.attempts[id]
+	if !ok {
+		return 0, domain.ErrAttemptNotFound
+	}
+	if att.Status != domain.StatusGrading {
+		return 0, nil
+	}
+	att.Status = domain.StatusFailed
+	att.UpdatedAt = time.Now().UTC()
+	return 1, nil
+}
+
+func (f *fakeLearningRepo) FailStuckGradingAttempts(
+	_ context.Context, cutoff time.Time,
+) (int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.queryCounter.Add(1)
+
+	var count int64
+	for _, att := range f.attempts {
+		if att.Status == domain.StatusGrading && att.UpdatedAt.Before(cutoff) {
+			att.Status = domain.StatusFailed
+			att.UpdatedAt = time.Now().UTC()
+			count++
+		}
+	}
+	return count, nil
+}
+
+func (f *fakeLearningRepo) SetAttemptUpdatedAt(id uuid.UUID, t time.Time) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if att, ok := f.attempts[id]; ok {
+		att.UpdatedAt = t
+	}
+}
+
+func (f *fakeLearningRepo) CountAttemptsTowardLimitSince(
+	_ context.Context, userID uuid.UUID, grader string, since time.Time,
+) (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.queryCounter.Add(1)
+
+	var count int
+	for _, att := range f.attempts {
+		if att.UserID == userID &&
+			(att.Status == domain.StatusGraded || att.Status == domain.StatusGrading) &&
+			att.Grader != nil && *att.Grader == grader &&
+			!att.CreatedAt.Before(since) {
+			count++
+		}
+	}
+	return count, nil
 }
 
 func (f *fakeLearningRepo) GetProgressByUserScope(
@@ -501,6 +616,36 @@ func (f *fakeLearningRepo) WithTx(_ pgx.Tx) service.Repository {
 	return f
 }
 
+func (f *fakeLearningRepo) GetDailySet(_ context.Context, _ uuid.UUID, _ time.Time) (*domain.DailySet, error) {
+	return nil, nil
+}
+
+func (f *fakeLearningRepo) CreateDailySet(
+	_ context.Context, userID uuid.UUID, localDate time.Time, activityIDs []uuid.UUID,
+) (*domain.DailySet, error) {
+	return &domain.DailySet{
+		ID:          uuid.New(),
+		UserID:      userID,
+		LocalDate:   localDate,
+		ActivityIDs: activityIDs,
+		CreatedAt:   time.Now(),
+	}, nil
+}
+
+func (f *fakeLearningRepo) RecordItemExposure(_ context.Context, _ uuid.UUID, _ uuid.UUID) error {
+	return nil
+}
+
+func (f *fakeLearningRepo) ListItemExposures(
+	_ context.Context, _ uuid.UUID, _ []uuid.UUID,
+) (map[uuid.UUID]time.Time, error) {
+	return map[uuid.UUID]time.Time{}, nil
+}
+
+func (f *fakeLearningRepo) HasActiveLearnerRunningLow(_ context.Context, _ []uuid.UUID, _ int) (bool, error) {
+	return false, nil
+}
+
 type fakeLessonReader struct {
 	// calls counts reads per method, so a test can assert what resolving one
 	// answer costs rather than only what it returns. The dashboard is opened on
@@ -651,7 +796,7 @@ func setupTestService() (*service.Service, *fakeLearningRepo, *fakeLessonReader,
 	}
 	graders := domain.NewGraderRegistry()
 	_ = graders.Register(testKindQuiz, domain.NewFakeGrader())
-	_ = graders.Register("async_grader", domain.NewAsyncFakeGrader())
+	_ = graders.Register(testKindAsyncGrader, domain.NewAsyncFakeGrader())
 
 	clk := clock.NewFake(time.Date(2026, 8, 24, 9, 0, 0, 0, time.UTC))
 	svc := service.New(service.Deps{
@@ -751,7 +896,7 @@ func TestSubmitAttempt_AsyncGrading(t *testing.T) {
 	activityID := uuid.New()
 	reader.hierarchy[activityID] = &lessoncontract.ActivityHierarchy{
 		ActivityID: activityID,
-		Kind:       "async_grader",
+		Kind:       testKindAsyncGrader,
 	}
 
 	userID := uuid.New()
@@ -1836,5 +1981,73 @@ func TestGradePreview_AttachesExplanation(t *testing.T) {
 	}
 	if preview.Explanation.Text != "English explanation" {
 		t.Errorf("unexpected preview explanation: %+v", preview.Explanation)
+	}
+}
+
+type fakeMeteredGrader struct {
+	calls atomic.Int32
+	money bool
+}
+
+func (f *fakeMeteredGrader) Grade(_ context.Context, _ contract.GradeRequest) (contract.GradeResult, error) {
+	f.calls.Add(1)
+	return contract.GradeResult{Score: 80, Correct: true}, nil
+}
+
+func (f *fakeMeteredGrader) SpendsMoney() bool {
+	return f.money
+}
+
+func TestGradePreview_RefusesMeteredGrader(t *testing.T) {
+	repo := newFakeRepo()
+	reader := &fakeLessonReader{
+		calls:     map[string]int{},
+		hierarchy: make(map[uuid.UUID]*lessoncontract.ActivityHierarchy),
+	}
+	graders := domain.NewGraderRegistry()
+	metered := &fakeMeteredGrader{money: true}
+	_ = graders.Register("metered_kind", metered)
+
+	svc := service.New(service.Deps{
+		Repo:    repo,
+		Lesson:  reader,
+		Graders: graders,
+		Events:  &fakeEventWriter{},
+	})
+
+	activityID := uuid.New()
+	reader.hierarchy[activityID] = &lessoncontract.ActivityHierarchy{
+		ActivityID:       activityID,
+		ContentVersionID: uuid.New(),
+		Kind:             "metered_kind",
+	}
+
+	ctx := context.Background()
+	_, err := svc.GradePreview(ctx, activityID, json.RawMessage(`{}`))
+	if err == nil {
+		t.Fatal("expected GradePreview to fail for metered grader, got nil")
+	}
+
+	if !domain.IsAccountRequired(err) {
+		t.Fatalf("expected ErrAccountRequired, got: %v", err)
+	}
+
+	var appErr *apperr.Error
+	if !errors.As(err, &appErr) || appErr.Kind != apperr.Unauthenticated {
+		t.Fatalf("expected Unauthenticated kind (401), got: %v", err)
+	}
+
+	// Counting fake records ZERO calls before the guard.
+	if calls := metered.calls.Load(); calls != 0 {
+		t.Fatalf("expected 0 calls to metered grader, got %d", calls)
+	}
+
+	// If the grader is called directly without the guard, it records a call.
+	_, err = metered.Grade(ctx, contract.GradeRequest{})
+	if err != nil {
+		t.Fatalf("direct grade: %v", err)
+	}
+	if calls := metered.calls.Load(); calls != 1 {
+		t.Fatalf("expected 1 call after direct grade, got %d", calls)
 	}
 }

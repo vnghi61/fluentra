@@ -562,3 +562,87 @@ func (r *Repository) CountContentItemsFiltered(
 	}
 	return count, nil
 }
+
+// InsertItemReport creates or updates an item report by a user for a version.
+func (r *Repository) InsertItemReport(
+	ctx context.Context,
+	versionID, userID uuid.UUID,
+	reason domain.ReportReason,
+	note *string,
+) (domain.ItemReport, error) {
+	row, err := r.queries.InsertItemReport(ctx, sqlccontent.InsertItemReportParams{
+		ContentVersionID: versionID,
+		UserID:           userID,
+		Reason:           string(reason),
+		Note:             note,
+	})
+	if err != nil {
+		return domain.ItemReport{}, fmt.Errorf("insert item report: %w", err)
+	}
+	return domain.ItemReport{
+		ID:               row.ID,
+		ContentVersionID: row.ContentVersionID,
+		UserID:           row.UserID,
+		Reason:           domain.ReportReason(row.Reason),
+		Note:             row.Note,
+		CreatedAt:        row.CreatedAt,
+	}, nil
+}
+
+// ListItemReportsByVersion returns all reports for a specific content version.
+func (r *Repository) ListItemReportsByVersion(
+	ctx context.Context, versionID uuid.UUID,
+) ([]domain.ItemReport, error) {
+	rows, err := r.queries.ListItemReportsByVersion(ctx, versionID)
+	if err != nil {
+		return nil, fmt.Errorf("list item reports by version: %w", err)
+	}
+	reports := make([]domain.ItemReport, len(rows))
+	for i, row := range rows {
+		reports[i] = domain.ItemReport{
+			ID:               row.ID,
+			ContentVersionID: row.ContentVersionID,
+			UserID:           row.UserID,
+			Reason:           domain.ReportReason(row.Reason),
+			Note:             row.Note,
+			CreatedAt:        row.CreatedAt,
+		}
+	}
+	return reports, nil
+}
+
+// ListReportedContentVersions returns aggregated reported versions ordered by distinct reporters.
+func (r *Repository) ListReportedContentVersions(
+	ctx context.Context, limit, offset int32,
+) ([]domain.ReportedVersionSummary, error) {
+	rows, err := r.queries.ListReportedContentVersions(ctx, sqlccontent.ListReportedContentVersionsParams{
+		Limit:  limit,
+		Offset: offset,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list reported content versions: %w", err)
+	}
+	summaries := make([]domain.ReportedVersionSummary, len(rows))
+	for i, row := range rows {
+		summaries[i] = domain.ReportedVersionSummary{
+			ContentVersionID: row.ContentVersionID,
+			ItemID:           row.ItemID,
+			Slug:             row.Slug,
+			Kind:             row.Kind,
+			CEFRLevel:        row.CefrLevel,
+			ItemStatus:       string(row.ItemStatus),
+			ReportCount:      int(row.ReportCount),
+			LastReportedAt:   row.LastReportedAt,
+		}
+	}
+	return summaries, nil
+}
+
+// CountReportedContentVersions counts distinct reported content versions.
+func (r *Repository) CountReportedContentVersions(ctx context.Context) (int, error) {
+	total, err := r.queries.CountReportedContentVersions(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("count reported content versions: %w", err)
+	}
+	return int(total), nil
+}

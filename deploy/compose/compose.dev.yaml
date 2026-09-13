@@ -160,7 +160,8 @@ services:
   # finding. One-shot: it exits 0 once the five buckets are there, and `--ignore-existing`
   # makes a second `up` a no-op rather than an error.
   createbuckets:
-    image: minio/mc:latest
+    # MinIO no longer publishes to Docker Hub (minio/minio is gone); quay.io is its official registry.
+    image: quay.io/minio/mc:latest
     networks: [backend]
     depends_on:
       minio:

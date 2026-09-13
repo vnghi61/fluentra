@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ChevronDown, Languages } from "lucide-react";
+import { ChevronDown, Flag, Languages } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { PronounceButton } from "@/components/ui/pronounce-button";
@@ -34,6 +34,7 @@ export interface ExampleSentencesProps {
   /** How many to show before collapsing the rest. */
   initialVisible?: number;
   className?: string;
+  onReportSentence?: ((sentenceText: string) => void) | undefined;
 }
 
 /** Splits a sentence around each occurrence of the target word, case-insensitively. */
@@ -68,6 +69,7 @@ export const ExampleSentences: React.FC<ExampleSentencesProps> = ({
   highlight,
   initialVisible = 2,
   className,
+  onReportSentence,
 }) => {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
@@ -127,11 +129,29 @@ export const ExampleSentences: React.FC<ExampleSentencesProps> = ({
                 </p>
               )}
             </div>
-            <PronounceButton
-              text={sentence.text}
-              audioUrl={sentence.audioUrl}
-              label={t("examples.listen", "Listen to this sentence")}
-            />
+            <div className="flex items-center gap-1 shrink-0 pt-1">
+              <PronounceButton
+                text={sentence.text}
+                audioUrl={sentence.audioUrl}
+                label={t("examples.listen", "Listen to this sentence")}
+              />
+              {onReportSentence && (
+                <button
+                  type="button"
+                  onClick={contain(() => onReportSentence(sentence.text))}
+                  aria-label={t(
+                    "report.reportSentence",
+                    "Report this sentence",
+                  )}
+                  title={t("report.reportSentence", "Report this sentence")}
+                  // Sized like PronounceButton beside it: ADR-0024's 44 px floor
+                  // holds for an icon-only control, and the E2E at 320 px checks it.
+                  className="inline-flex h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full text-text-muted hover:text-danger hover:bg-surface-muted transition-colors"
+                >
+                  <Flag className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+              )}
+            </div>
           </li>
         ))}
       </ul>

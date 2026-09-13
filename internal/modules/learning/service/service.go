@@ -11,6 +11,7 @@ import (
 	"math"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -18,10 +19,12 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	contentcontract "github.com/fluentra/fluentra/internal/modules/content/contract"
 	"github.com/fluentra/fluentra/internal/modules/learning/contract"
 	"github.com/fluentra/fluentra/internal/modules/learning/domain"
 	"github.com/fluentra/fluentra/internal/modules/learning/repository"
 	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
+
 	srscontract "github.com/fluentra/fluentra/internal/modules/srs/contract"
 	"github.com/fluentra/fluentra/internal/platform/ai"
 	"github.com/fluentra/fluentra/internal/platform/cache"
@@ -41,9 +44,18 @@ type Repository interface {
 	CreateAttempt(ctx context.Context, params repository.CreateAttemptParams) (*domain.Attempt, error)
 	GetAttemptByID(ctx context.Context, id uuid.UUID) (*domain.Attempt, error)
 	ClaimAttemptForGrading(ctx context.Context, params repository.ClaimAttemptParams) (*domain.Attempt, error)
+	UnclaimAttempt(ctx context.Context, id uuid.UUID, createdAt time.Time) error
 	UpdateAttemptStatus(
 		ctx context.Context, params repository.UpdateAttemptStatusParams,
 	) (*domain.Attempt, error)
+	CompleteGradingAttempt(
+		ctx context.Context, params repository.CompleteGradingAttemptParams,
+	) (int64, error)
+	FailGradingAttempt(ctx context.Context, id uuid.UUID, createdAt time.Time) (int64, error)
+	FailStuckGradingAttempts(ctx context.Context, cutoff time.Time) (int64, error)
+	CountAttemptsTowardLimitSince(
+		ctx context.Context, userID uuid.UUID, grader string, since time.Time,
+	) (int, error)
 	GetProgressByUserScope(
 		ctx context.Context, userID uuid.UUID, scope string, scopeID uuid.UUID,
 	) (*repository.ProgressDTO, error)
@@ -90,6 +102,22 @@ type Repository interface {
 	UpsertAnswerExplanation(
 		ctx context.Context, explanation repository.AnswerExplanationDTO,
 	) (*repository.AnswerExplanationDTO, error)
+	GetDailySet(
+		ctx context.Context, userID uuid.UUID, localDate time.Time,
+	) (*domain.DailySet, error)
+	// CreateDailySet returns nil when another request stored the day's set first.
+	CreateDailySet(
+		ctx context.Context, userID uuid.UUID, localDate time.Time, activityIDs []uuid.UUID,
+	) (*domain.DailySet, error)
+	RecordItemExposure(
+		ctx context.Context, userID uuid.UUID, activityID uuid.UUID,
+	) error
+	ListItemExposures(
+		ctx context.Context, userID uuid.UUID, activityIDs []uuid.UUID,
+	) (map[uuid.UUID]time.Time, error)
+	HasActiveLearnerRunningLow(
+		ctx context.Context, activityIDs []uuid.UUID, threshold int,
+	) (bool, error)
 	// WithTx returns this repository bound to tx. It returns the interface, not
 	// the concrete struct: returning *repository.Repository dropped every
 	// decorator the service had been given the moment the grading transaction
@@ -129,6 +157,7 @@ type SubmitAttemptResultDTO struct {
 	CorrectAnswer *string                     `json:"correct_answer,omitempty"`
 	Async         bool                        `json:"async"`
 	Explanation   *contract.AnswerExplanation `json:"explanation,omitempty"`
+	ItemResults   []contract.ItemResult       `json:"item_results,omitempty"`
 }
 
 // AttemptDetailDTO models the complete attempt view returned by GET /attempts/{id}.
@@ -154,36 +183,52 @@ type LearningCaches struct {
 
 // Deps holds dependencies for constructing the learning service.
 type Deps struct {
-	Pool     *pgxpool.Pool
-	Repo     Repository
-	Lesson   lessoncontract.Reader
-	SRSDue   srscontract.QueueReader
-	SRSCards srscontract.CardWriter
-	Graders  *domain.GraderRegistry
-	Events   EventWriter
-	Metrics  telemetry.Instruments
-	Clock    clock.Clock
-	NewID    func() (uuid.UUID, error)
-	Caches   LearningCaches
-	Env      string
-	AI       ai.Client
+	Pool          *pgxpool.Pool
+	Repo          Repository
+	Lesson        lessoncontract.Reader
+	LessonAuthor  lessoncontract.Author
+	Content       contentcontract.Reader
+	ContentAuthor contentcontract.Author
+	SRSDue        srscontract.QueueReader
+	SRSCards      srscontract.CardWriter
+	Graders       *domain.GraderRegistry
+	Events        EventWriter
+	Metrics       telemetry.Instruments
+	Clock         clock.Clock
+	NewID         func() (uuid.UUID, error)
+	Caches        LearningCaches
+	Env           string
+	AI            ai.Client
+	// GeneratorAuthorID owns the content the practice pool generates.
+	// content_items.owner_id is required, and without an owner the top-up stands
+	// down rather than generate items EnsurePublished would refuse.
+	GeneratorAuthorID uuid.UUID
 }
 
 // Service coordinates attempt execution, grading, progress rollups, and event emission.
 type Service struct {
-	pool     *pgxpool.Pool
-	repo     Repository
-	lesson   lessoncontract.Reader
-	srsDue   srscontract.QueueReader
-	srsCards srscontract.CardWriter
-	graders  *domain.GraderRegistry
-	events   EventWriter
-	metrics  telemetry.Instruments
-	clock    clock.Clock
-	newID    func() (uuid.UUID, error)
-	caches   LearningCaches
-	env      string
-	ai       ai.Client
+	pool          *pgxpool.Pool
+	repo          Repository
+	lesson        lessoncontract.Reader
+	lessonAuthor  lessoncontract.Author
+	content       contentcontract.Reader
+	contentAuthor contentcontract.Author
+	srsDue        srscontract.QueueReader
+	srsCards      srscontract.CardWriter
+	graders       *domain.GraderRegistry
+	events        EventWriter
+	metrics       telemetry.Instruments
+	clock         clock.Clock
+	newID         func() (uuid.UUID, error)
+	caches        LearningCaches
+	env           string
+	ai            ai.Client
+
+	generatorAuthor uuid.UUID
+	// poolMu guards poolLayout, the practice pool's course and slot lessons,
+	// resolved once per process.
+	poolMu     sync.Mutex
+	poolLayout *practicePoolLayout
 }
 
 // New constructs a new Service.
@@ -199,19 +244,24 @@ func New(deps Deps) *Service {
 		}
 	}
 	return &Service{
-		pool:     deps.Pool,
-		repo:     deps.Repo,
-		lesson:   deps.Lesson,
-		srsDue:   deps.SRSDue,
-		srsCards: deps.SRSCards,
-		graders:  deps.Graders,
-		events:   deps.Events,
-		metrics:  deps.Metrics,
-		clock:    clk,
-		newID:    idGen,
-		caches:   deps.Caches,
-		env:      deps.Env,
-		ai:       deps.AI,
+		pool:          deps.Pool,
+		repo:          deps.Repo,
+		lesson:        deps.Lesson,
+		lessonAuthor:  deps.LessonAuthor,
+		content:       deps.Content,
+		contentAuthor: deps.ContentAuthor,
+		srsDue:        deps.SRSDue,
+		srsCards:      deps.SRSCards,
+		graders:       deps.Graders,
+		events:        deps.Events,
+		metrics:       deps.Metrics,
+		clock:         clk,
+		newID:         idGen,
+		caches:        deps.Caches,
+		env:           deps.Env,
+		ai:            deps.AI,
+
+		generatorAuthor: deps.GeneratorAuthorID,
 	}
 }
 
@@ -279,35 +329,29 @@ func (s *Service) StartAttempt(ctx context.Context, userID, activityID uuid.UUID
 // grader dispatch, synchronous scoring, transactional progress rollup, and outbox event publishing.
 func (s *Service) SubmitAttempt(
 	ctx context.Context, userID, attemptID, idempotencyKey uuid.UUID, response json.RawMessage,
-) (*SubmitAttemptResultDTO, error) {
-	attempt, err := s.repo.GetAttemptByID(ctx, attemptID)
+) (result *SubmitAttemptResultDTO, err error) {
+	var attempt *domain.Attempt
+	attempt, err = s.repo.GetAttemptByID(ctx, attemptID)
 	if err != nil {
 		return nil, err
 	}
 
 	if attempt.UserID != userID {
-		return nil, domain.ErrUnauthorizedAttemptAccess
-	}
-
-	if earlyResult, err := s.checkEarlySubmissionState(ctx, attempt, idempotencyKey); err != nil || earlyResult != nil {
-		return earlyResult, err
-	}
-
-	claimed, current, err := s.claimAttempt(ctx, attempt, idempotencyKey, response)
-	if err != nil {
+		err = domain.ErrUnauthorizedAttemptAccess
 		return nil, err
 	}
-	if !claimed {
-		// A concurrent copy of this same submission won the claim. Wait for it to
-		// commit, return what it stored, and do not grade it again.
-		settled, waitErr := s.awaitSettledAttempt(ctx, current)
-		if waitErr != nil {
-			return nil, waitErr
-		}
-		return s.buildStoredSubmissionResult(settled), nil
+
+	earlyResult, earlyErr := s.checkEarlySubmissionState(ctx, attempt, idempotencyKey)
+	if earlyErr != nil || earlyResult != nil {
+		return earlyResult, earlyErr
 	}
 
-	activity, err := s.resolveActivityHierarchy(ctx, attempt.ActivityID)
+	// The activity is resolved before the claim, so the claim can record which
+	// grader the attempt is for. Counting by grader — the writing daily limit —
+	// then sees an attempt that is still being graded, not only the ones already
+	// finished. Resolving is a read, so a failure here has nothing to undo.
+	var activity *lessoncontract.ActivityHierarchy
+	activity, err = s.resolveActivityHierarchy(ctx, attempt.ActivityID)
 	if err != nil {
 		return nil, err
 	}
@@ -316,10 +360,35 @@ func (s *Service) SubmitAttempt(
 	if !ok || grader == nil {
 		// The kind goes in the response. A 422 that does not say which kind is
 		// unsupported sends the reader back to the database to find out.
-		return nil, domain.ErrGraderNotRegistered.WithMeta("kind", activity.Kind)
+		err = domain.ErrGraderNotRegistered.WithMeta("kind", activity.Kind)
+		return nil, err
 	}
 
-	gradeResult, err := grader.Grade(ctx, contract.GradeRequest{
+	var claimed bool
+	var current *domain.Attempt
+	claimed, current, err = s.claimAttempt(ctx, attempt, idempotencyKey, response, activity.Kind)
+	if err != nil {
+		return nil, err
+	}
+	if !claimed {
+		// A concurrent copy of this same submission won the claim. Wait for it to
+		// commit, return what it stored, and do not grade it again.
+		settled, waitErr := s.awaitSettledAttempt(ctx, current)
+		if waitErr != nil {
+			err = waitErr
+			return nil, err
+		}
+		return s.buildStoredSubmissionResult(settled), nil
+	}
+
+	defer func() {
+		if err != nil {
+			_ = s.repo.UnclaimAttempt(ctx, attempt.ID, attempt.CreatedAt)
+		}
+	}()
+
+	var gradeResult contract.GradeResult
+	gradeResult, err = grader.Grade(ctx, contract.GradeRequest{
 		AttemptID:        attempt.ID,
 		ActivityID:       attempt.ActivityID,
 		ContentVersionID: activity.ContentVersionID,
@@ -327,7 +396,8 @@ func (s *Service) SubmitAttempt(
 		Response:         response,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("grading attempt %s: %w", attempt.ID, err)
+		err = fmt.Errorf("grading attempt %s: %w", attempt.ID, err)
+		return nil, err
 	}
 
 	if gradeResult.Async {
@@ -417,12 +487,14 @@ func (s *Service) awaitSettledAttempt(
 // the caller ignored the refusal.
 func (s *Service) claimAttempt(
 	ctx context.Context, attempt *domain.Attempt, idempotencyKey uuid.UUID, response json.RawMessage,
+	graderName string,
 ) (claimed bool, current *domain.Attempt, err error) {
 	if _, claimErr := s.repo.ClaimAttemptForGrading(ctx, repository.ClaimAttemptParams{
 		ID:             attempt.ID,
 		CreatedAt:      attempt.CreatedAt,
 		IdempotencyKey: &idempotencyKey,
 		Response:       response,
+		Grader:         &graderName,
 	}); claimErr == nil {
 		return true, attempt, nil
 	}
@@ -539,6 +611,9 @@ func (s *Service) completeSynchronousGrading(
 		answer := gradeResult.CorrectAnswer
 		result.CorrectAnswer = &answer
 	}
+	if len(gradeResult.ItemResults) > 0 {
+		result.ItemResults = gradeResult.ItemResults
+	}
 	if gradeResult.Explanation != nil {
 		result.Explanation = gradeResult.Explanation
 	} else {
@@ -565,6 +640,7 @@ type PreviewGradeResultDTO struct {
 	Feedback      string                      `json:"feedback"`
 	CorrectAnswer *string                     `json:"correct_answer,omitempty"`
 	Explanation   *contract.AnswerExplanation `json:"explanation,omitempty"`
+	ItemResults   []contract.ItemResult       `json:"item_results,omitempty"`
 }
 
 // GradePreview grades a response and records nothing.
@@ -597,6 +673,10 @@ func (s *Service) GradePreview(
 		return nil, domain.ErrGraderNotRegistered.WithMeta("kind", activity.Kind)
 	}
 
+	if mg, ok := grader.(contract.MeteredGrader); ok && mg.SpendsMoney() {
+		return nil, domain.ErrAccountRequired.WithMeta("kind", activity.Kind)
+	}
+
 	result, err := grader.Grade(ctx, contract.GradeRequest{
 		ActivityID:       activityID,
 		ContentVersionID: activity.ContentVersionID,
@@ -622,6 +702,9 @@ func (s *Service) GradePreview(
 	if result.CorrectAnswer != "" {
 		answer := result.CorrectAnswer
 		preview.CorrectAnswer = &answer
+	}
+	if len(result.ItemResults) > 0 {
+		preview.ItemResults = result.ItemResults
 	}
 	if result.Explanation != nil {
 		preview.Explanation = result.Explanation
@@ -863,8 +946,25 @@ func (s *Service) executeRollupTx(
 		return fmt.Errorf("update attempt status: %w", err)
 	}
 
-	// 2. Rollup Activity Progress
-	_, err = repo.UpsertProgress(ctx, repository.UpsertProgressParams{
+	return s.executeRollupSteps(
+		ctx, tx, repo, userID, activity, gradeResult, scoreInt, durationMs, now,
+	)
+}
+
+// executeRollupSteps executes the progress updates, event emissions, and mastery updates
+// shared between synchronous and asynchronous grading rollups.
+func (s *Service) executeRollupSteps(
+	ctx context.Context,
+	tx OutboxTx,
+	repo Repository,
+	userID uuid.UUID,
+	activity *lessoncontract.ActivityHierarchy,
+	gradeResult contract.GradeResult,
+	scoreInt, durationMs int32,
+	now time.Time,
+) error {
+	// 1. Rollup Activity Progress
+	_, err := repo.UpsertProgress(ctx, repository.UpsertProgressParams{
 		UserID:      userID,
 		Scope:       "activity",
 		ScopeID:     activity.ActivityID,
@@ -876,7 +976,7 @@ func (s *Service) executeRollupTx(
 		return fmt.Errorf("upsert activity progress: %w", err)
 	}
 
-	// 3. Emit activity.completed outbox event
+	// 2. Emit activity.completed outbox event
 	if s.events != nil {
 		actEvent := contract.ActivityCompleted{
 			UserID:     userID,
@@ -889,14 +989,10 @@ func (s *Service) executeRollupTx(
 		if _, err := s.events.Write(ctx, tx, contract.Aggregate, contract.EventActivityCompleted, actEvent); err != nil {
 			return fmt.Errorf("write activity.completed event: %w", err)
 		}
-		// The counter sits beside the outbox write, not instead of it: the event
-		// is the record, the metric is what a dashboard can draw. Emitting from
-		// here rather than from a consumer means the funnel counts what happened
-		// even before anything subscribes.
 		s.metrics.RecordFunnelStep(ctx, telemetry.FunnelActivityCompleted)
 	}
 
-	// 4. Update incremental skill mastery if focus is a valid skill (Trap 4)
+	// 3. Update incremental skill mastery if focus is a valid skill (Trap 4)
 	if err := updateSkillMastery(
 		ctx, repo, userID, activity.LessonSkillFocus, gradeResult.Score, gradeResult.MaxScore,
 	); err != nil {
@@ -1413,6 +1509,7 @@ func (s *Service) activeEnrollment(
 	if err != nil {
 		return nil, "", fmt.Errorf("list enrollments: %w", err)
 	}
+	enrollments = s.withoutPoolCourse(ctx, enrollments)
 	if len(enrollments) == 0 {
 		return nil, domain.StateNotStarted, nil
 	}
@@ -1721,6 +1818,7 @@ func (s *Service) loadProgress(ctx context.Context, userID uuid.UUID) (*domain.P
 	if err != nil {
 		return nil, fmt.Errorf("list enrollments: %w", err)
 	}
+	enrollments = s.withoutPoolCourse(ctx, enrollments)
 
 	masteries, err := s.repo.ListSkillMasteryByUser(ctx, userID)
 	if err != nil {
@@ -1905,4 +2003,161 @@ func (s *Service) invalidateLearningCaches(ctx context.Context, userID uuid.UUID
 // and nothing else should be tempted to reuse it as a general normaliser.
 func normaliseAnswerKey(answer string) string {
 	return strings.TrimSpace(strings.ToLower(answer))
+}
+
+// GetAttemptForGrading returns attempt details across modules for asynchronous grading.
+func (s *Service) GetAttemptForGrading(
+	ctx context.Context, attemptID uuid.UUID,
+) (*contract.AttemptDetail, error) {
+	attempt, err := s.repo.GetAttemptByID(ctx, attemptID)
+	if err != nil {
+		return nil, err
+	}
+
+	activity, err := s.resolveActivityHierarchy(ctx, attempt.ActivityID)
+	if err != nil {
+		return nil, fmt.Errorf("resolve activity for attempt %s: %w", attemptID, err)
+	}
+
+	return &contract.AttemptDetail{
+		ID:               attempt.ID,
+		UserID:           attempt.UserID,
+		ActivityID:       attempt.ActivityID,
+		ContentVersionID: activity.ContentVersionID,
+		Response:         attempt.Response,
+		CreatedAt:        attempt.CreatedAt,
+		Status:           string(attempt.Status),
+	}, nil
+}
+
+// CompleteAsyncGrading transitions an attempt from grading to graded and executes rollup.
+// It returns (true, nil) if the attempt was updated, or (false, nil) if the attempt
+// was no longer in status 'grading' (for example, if the stuck grading sweep already failed it).
+func (s *Service) CompleteAsyncGrading(
+	ctx context.Context, attemptID uuid.UUID, gradeResult contract.GradeResult,
+) (bool, error) {
+	attempt, err := s.repo.GetAttemptByID(ctx, attemptID)
+	if err != nil {
+		return false, fmt.Errorf("get attempt %s: %w", attemptID, err)
+	}
+	if !attempt.IsGrading() {
+		return false, nil
+	}
+
+	activity, err := s.resolveActivityHierarchy(ctx, attempt.ActivityID)
+	if err != nil {
+		return false, fmt.Errorf("resolve activity %s: %w", attempt.ActivityID, err)
+	}
+
+	now := s.clock.Now().UTC()
+	durationMs := safeDurationMs(attempt.CreatedAt, now)
+	scoreInt := safeScore(gradeResult.Score)
+	graderName := activity.Kind
+
+	var updated bool
+	if s.pool != nil {
+		txErr := dbx.InTx(ctx, s.pool, func(txCtx context.Context, tx pgx.Tx) error {
+			txRepo := s.repo.WithTx(tx)
+			rows, err := txRepo.CompleteGradingAttempt(txCtx, repository.CompleteGradingAttemptParams{
+				ID:         attempt.ID,
+				CreatedAt:  attempt.CreatedAt,
+				Score:      &scoreInt,
+				Grader:     &graderName,
+				DurationMs: durationMs,
+			})
+			if err != nil {
+				return fmt.Errorf("complete grading attempt: %w", err)
+			}
+			if rows == 0 {
+				return nil
+			}
+			updated = true
+			return s.executeRollupSteps(
+				txCtx, tx, txRepo, attempt.UserID, activity, gradeResult, scoreInt, durationMs, now,
+			)
+		})
+		if txErr != nil {
+			return false, fmt.Errorf("commit async grading transaction: %w", txErr)
+		}
+	} else {
+		rows, err := s.repo.CompleteGradingAttempt(ctx, repository.CompleteGradingAttemptParams{
+			ID:         attempt.ID,
+			CreatedAt:  attempt.CreatedAt,
+			Score:      &scoreInt,
+			Grader:     &graderName,
+			DurationMs: durationMs,
+		})
+		if err != nil {
+			return false, fmt.Errorf("complete grading attempt: %w", err)
+		}
+		if rows == 0 {
+			return false, nil
+		}
+		updated = true
+		if err := s.executeRollupSteps(
+			ctx, noopTx{}, s.repo, attempt.UserID, activity, gradeResult, scoreInt, durationMs, now,
+		); err != nil {
+			return false, fmt.Errorf("roll up async attempt %s: %w", attempt.ID, err)
+		}
+	}
+
+	if !updated {
+		return false, nil
+	}
+
+	if s.srsCards != nil && len(gradeResult.ReviewItems) > 0 {
+		if err := s.srsCards.UpsertCards(ctx, attempt.UserID, gradeResult.ReviewItems); err != nil {
+			slog.WarnContext(ctx, "failed to upsert srs review cards after async grading",
+				"user_id", attempt.UserID, "error", err)
+		}
+	}
+
+	s.invalidateLearningCaches(ctx, attempt.UserID)
+	return true, nil
+}
+
+// FailAsyncGrading transitions an attempt from grading to failed.
+// It returns (true, nil) if the status was updated, or (false, nil) if the attempt
+// was not in status 'grading'.
+func (s *Service) FailAsyncGrading(
+	ctx context.Context, attemptID uuid.UUID, reason string,
+) (bool, error) {
+	attempt, err := s.repo.GetAttemptByID(ctx, attemptID)
+	if err != nil {
+		return false, fmt.Errorf("get attempt %s: %w", attemptID, err)
+	}
+	if !attempt.IsGrading() {
+		return false, nil
+	}
+
+	rows, err := s.repo.FailGradingAttempt(ctx, attempt.ID, attempt.CreatedAt)
+	if err != nil {
+		return false, fmt.Errorf("fail grading attempt %s: %w", attemptID, err)
+	}
+	if rows > 0 {
+		slog.InfoContext(ctx, "failed async grading attempt",
+			"attempt_id", attemptID, "reason", reason)
+	}
+	return rows > 0, nil
+}
+
+// CountAttemptsTowardLimitSince counts a user's graded and still-grading attempts
+// for a grader since a given time — what a per-learner daily limit is charged on.
+func (s *Service) CountAttemptsTowardLimitSince(
+	ctx context.Context, userID uuid.UUID, grader string, since time.Time,
+) (int, error) {
+	return s.repo.CountAttemptsTowardLimitSince(ctx, userID, grader, since)
+}
+
+// SweepStuckGrading fails attempts that have been in status 'grading' for more than an hour.
+func (s *Service) SweepStuckGrading(ctx context.Context) error {
+	cutoff := s.clock.Now().UTC().Add(-1 * time.Hour)
+	rows, err := s.repo.FailStuckGradingAttempts(ctx, cutoff)
+	if err != nil {
+		return fmt.Errorf("sweep stuck grading attempts: %w", err)
+	}
+	if rows > 0 {
+		slog.InfoContext(ctx, "swept stuck grading attempts", "count", rows, "cutoff", cutoff)
+	}
+	return nil
 }

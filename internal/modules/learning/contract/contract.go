@@ -104,6 +104,14 @@ type GradeResult struct {
 	Async         bool               `json:"async"`
 	ReviewItems   []ReviewItem       `json:"review_items,omitempty"`
 	Explanation   *AnswerExplanation `json:"explanation,omitempty"`
+	ItemResults   []ItemResult       `json:"item_results,omitempty"`
+}
+
+// ItemResult models the grading outcome of a single question within a multi-question activity.
+type ItemResult struct {
+	ID            string  `json:"id"`
+	Correct       bool    `json:"correct"`
+	CorrectAnswer *string `json:"correct_answer,omitempty"`
 }
 
 // AnswerExplanation models an explanation in English and Vietnamese for an exercise answer.
@@ -115,6 +123,14 @@ type AnswerExplanation struct {
 // ExerciseGrader is implemented by every skill module to grade domain-specific exercises.
 type ExerciseGrader interface {
 	Grade(ctx context.Context, req GradeRequest) (GradeResult, error)
+}
+
+// MeteredGrader is optionally implemented by an ExerciseGrader that consumes metered,
+// billable resources (such as external AI models).
+//
+// Unauthenticated visitors reaching preview routes are refused before metered grading runs.
+type MeteredGrader interface {
+	SpendsMoney() bool
 }
 
 // ProgressScope represents the aggregation level of learner progress.
@@ -153,4 +169,35 @@ type ProgressReader interface {
 // Batched to avoid N+1 queries when evaluating an entire course tree (Trap 3).
 type UnlockChecker interface {
 	IsUnlocked(ctx context.Context, userID uuid.UUID, lessonIDs []uuid.UUID) (map[uuid.UUID]bool, error)
+}
+
+// AsyncGradingCompleter handles asynchronous grading completion and failure.
+//
+// Both methods update the attempt row only WHERE status = 'grading' and report
+// whether they did, preventing races with background sweeps and concurrent workers.
+type AsyncGradingCompleter interface {
+	CompleteAsyncGrading(ctx context.Context, attemptID uuid.UUID, result GradeResult) (bool, error)
+	FailAsyncGrading(ctx context.Context, attemptID uuid.UUID, reason string) (bool, error)
+}
+
+// AttemptCounter reports how many of a user's attempts for a grader count toward a
+// daily limit: graded ones and ones still being graded, but not failed ones.
+type AttemptCounter interface {
+	CountAttemptsTowardLimitSince(ctx context.Context, userID uuid.UUID, grader string, since time.Time) (int, error)
+}
+
+// AttemptDetail contains attempt data needed by asynchronous graders.
+type AttemptDetail struct {
+	ID               uuid.UUID
+	UserID           uuid.UUID
+	ActivityID       uuid.UUID
+	ContentVersionID uuid.UUID
+	Response         json.RawMessage
+	CreatedAt        time.Time
+	Status           string
+}
+
+// AttemptReader reads an attempt by ID across modules.
+type AttemptReader interface {
+	GetAttemptForGrading(ctx context.Context, attemptID uuid.UUID) (*AttemptDetail, error)
 }

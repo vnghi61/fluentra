@@ -142,3 +142,42 @@ func TestRedactVersionForLearner_DoesNotMutateTheOriginal(t *testing.T) {
 		t.Error("a nil version must stay nil")
 	}
 }
+
+func TestRedactForLearner_ReadingQuestionsArray(t *testing.T) {
+	t.Parallel()
+
+	body := json.RawMessage(`{
+		"passage_title": "Planetary Geology",
+		"passage": "Mars has red soil due to iron oxide minerals on its surface.",
+		"questions": [
+			{
+				"id": "q1",
+				"type": "multiple_choice",
+				"prompt": "Why is Mars red?",
+				"options": [{"id": "opt_iron", "text": "Iron oxide"}],
+				"answer": "opt_iron",
+				"correct_option_id": "opt_iron",
+				"correct_answer": "iron oxide"
+			},
+			{
+				"id": "q2",
+				"type": "gap_fill",
+				"prompt": "The red colour is due to ___ oxide.",
+				"answer": "iron",
+				"acceptable": ["iron"]
+			}
+		]
+	}`)
+
+	redacted := string(contract.RedactForLearner(body))
+
+	for _, leaked := range []string{"correct_option_id", "correct_answer", `"answer"`} {
+		if strings.Contains(redacted, leaked) {
+			t.Errorf("%q survived redaction of reading questions array: %s", leaked, redacted)
+		}
+	}
+
+	if !strings.Contains(redacted, "Planetary Geology") || !strings.Contains(redacted, "Why is Mars red?") {
+		t.Errorf("passage/prompt did not survive: %s", redacted)
+	}
+}

@@ -126,6 +126,7 @@ components:
   g_learning:    { in: generated/learning/sqlc }
   g_srs:         { in: generated/srs/sqlc }
   g_vocabulary:  { in: generated/vocabulary/sqlc }
+  g_writing:     { in: generated/writing/sqlc }
   g_gamification: { in: generated/gamification/sqlc }
 
   # platform capabilities
@@ -247,8 +248,11 @@ components:
   m_reading_service: { in: modules/reading/service }
   m_listening:     { in: modules/listening/** }
   m_speaking:      { in: modules/speaking/** }
-  m_writing:         { in: modules/writing }
-  m_writing_service: { in: modules/writing/service }
+  m_writing:            { in: modules/writing }
+  m_writing_repository: { in: modules/writing/repository }
+  m_writing_service:    { in: modules/writing/service }
+  m_writing_job:        { in: modules/writing/job }
+  m_writing_http:       { in: modules/writing/transport/http }
   m_questionbank:  { in: modules/questionbank/** }
   m_exam:          { in: modules/exam/** }
   # gamification, split by layer for the same reason learning is: the module has
@@ -305,6 +309,7 @@ deps:
   g_learning:  { anyVendorDeps: true }
   g_srs:        { anyVendorDeps: true }
   g_vocabulary: { anyVendorDeps: true }
+  g_writing:    { anyVendorDeps: true }
 
   # A platform capability exists to wrap a vendor SDK, so each may import one.
   # Business modules deliberately may not: they reach external systems through
@@ -420,7 +425,7 @@ deps:
   # mayDependOn. Every other module here with real code is split the same way.
   m_learning_domain:     { mayDependOn: [c_learning] }
   m_learning_repository: { mayDependOn: [m_learning_domain, c_learning, g_learning] }
-  m_learning_service:    { mayDependOn: [m_learning_domain, m_learning_repository, c_learning, c_lesson, c_srs, p_cache, p_job, p_telemetry, p_ai] }
+  m_learning_service:    { mayDependOn: [m_learning_domain, m_learning_repository, c_learning, c_lesson, c_content, c_srs, p_cache, p_job, p_telemetry, p_ai] }
   m_learning_http:       { mayDependOn: [m_learning_domain, m_learning_service, c_learning] }
   m_learning_job:        { mayDependOn: [m_learning_domain, p_job, p_telemetry] }
   m_learning:            { mayDependOn: [m_learning_domain, m_learning_repository, m_learning_service, m_learning_http, m_learning_job, c_learning, c_lesson, c_content, c_srs, g_learning, p_cache, p_job, p_telemetry, p_ai] }
@@ -458,8 +463,11 @@ deps:
   m_reading:         { mayDependOn: [m_reading_service, c_reading, c_content, c_learning, p_cache, p_telemetry] }
   m_listening:    { mayDependOn: [p_cache, p_media, p_storage, p_telemetry, c_content, c_questionbank, c_learning] }
   m_speaking:     { mayDependOn: [p_media, p_ai, p_storage, p_job, p_telemetry, c_content, c_learning] }
-  m_writing_service: { mayDependOn: [c_writing, c_content, c_learning, p_ai, p_telemetry] }
-  m_writing:         { mayDependOn: [m_writing_service, c_writing, c_content, c_learning, p_ai, p_telemetry] }
+  m_writing_repository: { mayDependOn: [c_writing, g_writing] }
+  m_writing_service:    { mayDependOn: [c_writing, c_content, c_learning, p_ai, p_job, p_telemetry] }
+  m_writing_job:        { mayDependOn: [m_writing_service, c_writing, c_content, c_learning, p_job, p_ai, p_telemetry], anyVendorDeps: true }
+  m_writing_http:       { mayDependOn: [m_writing_service, c_writing] }
+  m_writing:            { mayDependOn: [m_writing_repository, m_writing_service, m_writing_job, m_writing_http, c_writing, c_content, c_learning, p_job, p_ai, p_telemetry] }
   m_questionbank: { mayDependOn: [p_ai, p_search, p_telemetry, c_content, c_audit] }
   m_exam:         { mayDependOn: [p_job, p_ai, p_telemetry, c_questionbank, c_writing, c_speaking, c_learning] }
   # c_user is on this list and is not in MODULE_INDEX's original arrow set. It

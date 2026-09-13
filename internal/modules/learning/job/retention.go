@@ -15,7 +15,7 @@ import (
 
 // Advisory lock id for the retention refresh, by the convention that a cron job
 // takes the timestamp of the migration whose tables it reads.
-const retentionLockID int64 = 1_700_000_211
+const retentionLockID int64 = 1_700_000_214
 
 const retentionInterval = 15 * time.Minute
 

@@ -2,7 +2,7 @@
 module: telemetry
 tier: platform
 group: platform
-status: PLANNED
+status: IN_PROGRESS
 phase: 1
 owner: "@platform-team"
 schema: none

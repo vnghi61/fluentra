@@ -7,7 +7,7 @@ phase: 2
 owner: "@learning-team"
 schema: skill
 tables: [words, word_senses, word_relations, decks, deck_items, user_word_state, vocab_uploads, vocab_upload_items]
-depends_on: [content, lesson, srs, job, media, ai, search]
+depends_on: [content, srs, media, ai, search]
 depended_on_by: [learning, reading, writing, grammar]
 spec_version: 1.0.0
 last_verified: 2026-08-30
@@ -25,7 +25,7 @@ last_verified: 2026-08-30
 | Path | `internal/modules/vocabulary` |
 | Schema | `skill` |
 | Delivery phase | 2 |
-| Status | **ACTIVE** |
+| Status | **DONE** |
 | Owner | @learning-team |
 
 ---
@@ -98,6 +98,8 @@ Migrations: `db/migrations/vocabulary/` · Queries: `db/queries/vocabulary/`
 | `skill.decks` | Learner or curated collection | `owner_id` (null = curated), `slug`, `name`, `is_public` |
 | `skill.deck_items` | Word in a deck | Unique on (deck_id, word_sense_id) |
 | `skill.user_word_state` | Per-learner status | `user_id`, `word_sense_id`, `status` (new/learning/known/ignored), `first_seen_at` |
+| `skill.vocab_uploads` | Batch word uploads | `user_id`, `status`, `raw_text`, `item_count` |
+| `skill.vocab_upload_items` | Parsed items in an upload | `upload_id`, `raw_entry`, `parsed_word`, `parsed_notes`, `status`, `reason`, `sense_id` |
 
 <!-- END GENERATED: schema -->
 

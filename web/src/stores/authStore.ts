@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { components } from "@/types/api";
+import { clearAllWritingDrafts } from "@/lib/draftStorage";
 
 export type AuthSession = components["schemas"]["AuthSession"];
 
@@ -71,6 +72,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   clearAuth: () => {
+    clearAllWritingDrafts();
     set({
       accessToken: null,
       user: null,

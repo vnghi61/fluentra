@@ -2,7 +2,7 @@
 module: ai
 tier: platform
 group: platform
-status: PLANNED
+status: IN_PROGRESS
 phase: 3
 owner: "@ai-team"
 schema: ai

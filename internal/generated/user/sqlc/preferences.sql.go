@@ -16,7 +16,7 @@ const createUserPreferences = `-- name: CreateUserPreferences :one
 INSERT INTO core.user_preferences (id, user_id)
 VALUES ($1, $2)
 RETURNING id, user_id, locale, theme, daily_goal_minutes, notification_channels,
-          quiet_hours_start, quiet_hours_end, ai_processing_opt_out, created_at, updated_at
+          quiet_hours_start, quiet_hours_end, ai_processing_opt_out, created_at, updated_at, practice_level
 `
 
 type CreateUserPreferencesParams struct {
@@ -41,13 +41,14 @@ func (q *Queries) CreateUserPreferences(ctx context.Context, arg CreateUserPrefe
 		&i.AiProcessingOptOut,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PracticeLevel,
 	)
 	return i, err
 }
 
 const getUserPreferences = `-- name: GetUserPreferences :one
 SELECT id, user_id, locale, theme, daily_goal_minutes, notification_channels,
-       quiet_hours_start, quiet_hours_end, ai_processing_opt_out, created_at, updated_at
+       quiet_hours_start, quiet_hours_end, ai_processing_opt_out, created_at, updated_at, practice_level
 FROM core.user_preferences
 WHERE user_id = $1
 `
@@ -67,6 +68,7 @@ func (q *Queries) GetUserPreferences(ctx context.Context, userID uuid.UUID) (Cor
 		&i.AiProcessingOptOut,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PracticeLevel,
 	)
 	return i, err
 }
@@ -80,10 +82,11 @@ SET locale                = $2,
     quiet_hours_start     = $6,
     quiet_hours_end       = $7,
     ai_processing_opt_out = $8,
+    practice_level        = $9,
     updated_at            = now()
 WHERE user_id = $1
 RETURNING id, user_id, locale, theme, daily_goal_minutes, notification_channels,
-          quiet_hours_start, quiet_hours_end, ai_processing_opt_out, created_at, updated_at
+          quiet_hours_start, quiet_hours_end, ai_processing_opt_out, created_at, updated_at, practice_level
 `
 
 type ReplaceUserPreferencesParams struct {
@@ -95,6 +98,7 @@ type ReplaceUserPreferencesParams struct {
 	QuietHoursStart      pgtype.Time
 	QuietHoursEnd        pgtype.Time
 	AiProcessingOptOut   bool
+	PracticeLevel        *CoreCefrLevel
 }
 
 // `PUT /me/preferences` replaces the whole resource, so every column is
@@ -109,6 +113,7 @@ func (q *Queries) ReplaceUserPreferences(ctx context.Context, arg ReplaceUserPre
 		arg.QuietHoursStart,
 		arg.QuietHoursEnd,
 		arg.AiProcessingOptOut,
+		arg.PracticeLevel,
 	)
 	var i CoreUserPreference
 	err := row.Scan(
@@ -123,6 +128,7 @@ func (q *Queries) ReplaceUserPreferences(ctx context.Context, arg ReplaceUserPre
 		&i.AiProcessingOptOut,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PracticeLevel,
 	)
 	return i, err
 }

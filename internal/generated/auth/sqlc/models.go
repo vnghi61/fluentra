@@ -418,4 +418,5 @@ type CoreUserPreference struct {
 	AiProcessingOptOut   bool
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
+	PracticeLevel        *CoreCefrLevel
 }

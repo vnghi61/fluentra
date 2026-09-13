@@ -37,6 +37,7 @@ type LearningService interface {
 	GradePreview(
 		ctx context.Context, activityID uuid.UUID, response json.RawMessage,
 	) (*service.PreviewGradeResultDTO, error)
+	GetDailySet(ctx context.Context, userID uuid.UUID, levelOverride string) (*domain.DailySetDTO, error)
 }
 
 // Handler serves HTTP endpoints for attempts.
@@ -60,6 +61,7 @@ func NewHandler(service LearningService, guard Guard) (*Handler, error) {
 func (h *Handler) Routes(router chi.Router) {
 	router.Get("/me/dashboard", h.getDashboard)
 	router.Get("/me/progress", h.getProgress)
+	router.Get("/practice/daily", h.getDailyPractice)
 	router.Post("/courses/{id}/enroll", h.enroll)
 	router.Post("/activities/{id}/attempts", h.startAttempt)
 	router.Post("/activities/{id}/grade", h.gradePreview)
@@ -67,6 +69,24 @@ func (h *Handler) Routes(router chi.Router) {
 	router.Get("/attempts/{id}", h.getAttempt)
 	router.Post("/me/sessions", h.startSession)
 	router.Post("/me/sessions/{id}/complete", h.completeSession)
+}
+
+func (h *Handler) getDailyPractice(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	actor, ok := httpx.ActorFrom(ctx)
+	if !ok || actor.UserID == uuid.Nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Unauthenticated, "UNAUTHORIZED", "Authentication required"))
+		return
+	}
+
+	level := r.URL.Query().Get("level")
+	dailySet, err := h.service.GetDailySet(ctx, actor.UserID, level)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	httpx.WriteJSON(w, r, http.StatusOK, toDailyPracticeResponse(dailySet))
 }
 
 func (h *Handler) enroll(w http.ResponseWriter, r *http.Request) {

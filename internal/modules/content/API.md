@@ -2,11 +2,11 @@
 module: content
 tier: learning
 group: modules
-status: PLANNED
+status: DONE
 phase: 2
 owner: "@learning-team"
 schema: content
-tables: [content_items, content_versions, media_assets, taxonomies, content_tags, content_reviews]
+tables: [content_items, content_versions, media_assets, taxonomies, content_tags, content_reviews, item_reports]
 depends_on: [storage, search, audit, ai, media]
 depended_on_by: [lesson, learning, vocabulary, grammar, reading, listening, speaking, writing, questionbank]
 spec_version: 1.0.0
@@ -29,6 +29,7 @@ Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR
 |---|---|---|---|
 | `GET` | `/api/v1/content/{slug}` | `content.read.published` | Fetch a published content version |
 | `GET` | `/api/v1/content` | `content.read.published` | Browse published content with taxonomy filters |
+| `POST` | `/api/v1/content/versions/{id}/reports` | `self` | Report an issue with a content version |
 | `POST` | `/api/v1/admin/content` | `content.create` | Create a draft item |
 | `PUT` | `/api/v1/admin/content/{id}/draft` | `content.edit` | Update the working draft |
 | `POST` | `/api/v1/admin/content/{id}/submit` | `content.edit` | Submit for review |
@@ -59,6 +60,16 @@ Browse published content with taxonomy filters
 | Permission | `content.read.published` |
 | Success | 200 |
 | Errors | standard set |
+
+### `POST /api/v1/content/versions/{id}/reports`
+
+Report an issue with a content version
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 201 |
+| Errors | `VALIDATION_FAILED` |
 
 ### `POST /api/v1/admin/content`
 

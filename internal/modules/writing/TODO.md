@@ -6,11 +6,11 @@ status: IMPLEMENTED
 phase: 3
 owner: "@learning-team"
 schema: skill
-tables: [writing_tasks, writing_drafts, writing_submissions, writing_feedback, writing_revisions]
+tables: [writing_feedback]
 depends_on: [ai, job, content, learning, notification]
 depended_on_by: [learning, analytics, gamification]
 spec_version: 1.0.0
-last_verified: 2026-09-10
+last_verified: 2026-09-11
 ---
 
 # writing — TODO
@@ -47,18 +47,28 @@ _Nothing deferred._
 - Peer review
 <!-- END GENERATED: todo-future -->
 
-## Shipped in work order 10
+## Shipped in work orders 10 & 11
 
 The boxes above are unticked because docgen renders every generated item that
-way. What exists in code today is the **grader**, and only that:
+way. What exists in code today:
 
 - [x] `writing.Grader` implements `learning.ExerciseGrader` for
       `writing_prompt`, registered through `cmd/api/modules.go` and rendered by
       `ExerciseWriting.tsx`.
-- [x] `writing_grade.v1.md` is the versioned prompt behind it.
+- [x] `writing_grade.v1.md` and `writing_grade.v2.md` prompts.
+- [x] Background grading via River worker (`writingjob.GradeSubmissionWorker`).
+- [x] `skill.writing_feedback` table storing structured IELTS feedback (criteria, located annotations, band scores).
+- [x] `GET /writing/attempts/{id}/feedback` endpoint for reading learner feedback.
+- [x] Grading guarantees, corrected in review on 2026-09-12. There is no synchronous path: without
+      a queue the grader refuses with `WRITING_QUEUE_UNAVAILABLE` (BR-WRITING-01). No AI provider
+      is an error, never a default band. Model output is checked against the rubric — score 0–100,
+      bands 0–9, exactly four criteria — before it is stored. A provider error fails the attempt
+      only on River's last attempt, so a retry can still grade it.
 
-`status` stays `PLANNED` on purpose. The front matter names five tables —
-`writing_tasks`, `writing_drafts`, `writing_submissions`, `writing_feedback`,
-`writing_revisions` — and none exist. Autosaved drafts, revision history and
-per-criterion band feedback are the module those tables describe, and none of it
-is built. Retire the list, or build it, and then change the status deliberately.
+### Schema rationalisation (tables retired)
+
+- `writing_tasks`: prompts and rubrics are authored directly into `content.versions` (kind `writing_prompt`), eliminating a duplicate tasks table.
+- `writing_drafts`: drafts are saved client-side in localStorage (`fluentra.writing_draft.<activityId>`), eliminating ephemeral database writes.
+- `writing_revisions`: draft revisions are handled locally; server-side snapshot history is deferred until high-stakes exam tracking is built.
+
+The only table `writing` owns is `writing_feedback`.

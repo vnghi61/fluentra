@@ -2,7 +2,7 @@
 module: mailer
 tier: platform
 group: platform
-status: PLANNED
+status: READY
 phase: 1
 owner: "@platform-team"
 schema: comm

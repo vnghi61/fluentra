@@ -359,6 +359,15 @@ type ContentContentVersion struct {
 	UpdatedAt   time.Time
 }
 
+type ContentItemReport struct {
+	ID               uuid.UUID
+	ContentVersionID uuid.UUID
+	UserID           uuid.UUID
+	Reason           string
+	Note             *string
+	CreatedAt        time.Time
+}
+
 type ContentMediaAsset struct {
 	ID         uuid.UUID
 	ObjectKey  string
@@ -466,6 +475,7 @@ type CoreUserPreference struct {
 	AiProcessingOptOut   bool
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
+	PracticeLevel        *CoreCefrLevel
 }
 
 type LearnActivity struct {
@@ -478,6 +488,7 @@ type LearnActivity struct {
 	Weight           int32
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
+	RetiredAt        *time.Time
 }
 
 type LearnCourse struct {

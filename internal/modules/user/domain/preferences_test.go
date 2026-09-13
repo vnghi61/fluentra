@@ -44,7 +44,7 @@ func TestPreferences_ValidateRejectsEachInvariant(t *testing.T) {
 		},
 		"unknown theme": {
 			mutate: func(p *domain.Preferences) { p.Theme = "solarized" },
-			field:  "theme", code: "UNKNOWN",
+			field:  "theme", code: codeUnknown,
 		},
 		"daily goal below the floor": {
 			mutate: func(p *domain.Preferences) { p.DailyGoalMinutes = 4 },
@@ -62,7 +62,14 @@ func TestPreferences_ValidateRejectsEachInvariant(t *testing.T) {
 			mutate: func(p *domain.Preferences) {
 				p.NotificationChannels = []domain.Channel{"carrier_pigeon"}
 			},
-			field: fieldNotificationChannels, code: "UNKNOWN",
+			field: fieldNotificationChannels, code: codeUnknown,
+		},
+		"practice level outside the pool": {
+			mutate: func(p *domain.Preferences) {
+				level := domain.PracticeLevel("C1")
+				p.PracticeLevel = &level
+			},
+			field: "practice_level", code: codeUnknown,
 		},
 		"duplicate channel": {
 			mutate: func(p *domain.Preferences) {
@@ -83,6 +90,26 @@ func TestPreferences_ValidateRejectsEachInvariant(t *testing.T) {
 			}
 			assertFieldCode(t, err, testCase.field, testCase.code)
 		})
+	}
+}
+
+// TestPreferences_PracticeLevelMayBeUnchosen. Nil is the state in which the
+// daily practice card asks the learner, so it has to be valid, and so does
+// every level the practice pool holds.
+func TestPreferences_PracticeLevelMayBeUnchosen(t *testing.T) {
+	t.Parallel()
+
+	preferences := validPreferences()
+	if err := preferences.Validate(); err != nil {
+		t.Fatalf("no practice level was refused: %v", err)
+	}
+	for _, level := range []domain.PracticeLevel{
+		domain.PracticeLevelA2, domain.PracticeLevelB1, domain.PracticeLevelB2,
+	} {
+		preferences.PracticeLevel = &level
+		if err := preferences.Validate(); err != nil {
+			t.Errorf("practice level %s was refused: %v", level, err)
+		}
 	}
 }
 

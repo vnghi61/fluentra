@@ -896,7 +896,7 @@ INSERT INTO skill.user_word_state (
 ON CONFLICT (user_id, word_sense_id) DO UPDATE SET
     status = EXCLUDED.status,
     updated_at = now()
-RETURNING id, user_id, word_sense_id, status, first_seen_at, updated_at
+RETURNING id, user_id, word_sense_id, status, first_seen_at, updated_at, (xmax = 0) AS inserted
 `
 
 type UpsertUserWordStateParams struct {
@@ -905,9 +905,19 @@ type UpsertUserWordStateParams struct {
 	Status      string
 }
 
-func (q *Queries) UpsertUserWordState(ctx context.Context, arg UpsertUserWordStateParams) (SkillUserWordState, error) {
+type UpsertUserWordStateRow struct {
+	ID          uuid.UUID
+	UserID      uuid.UUID
+	WordSenseID uuid.UUID
+	Status      string
+	FirstSeenAt time.Time
+	UpdatedAt   time.Time
+	Inserted    bool
+}
+
+func (q *Queries) UpsertUserWordState(ctx context.Context, arg UpsertUserWordStateParams) (UpsertUserWordStateRow, error) {
 	row := q.db.QueryRow(ctx, upsertUserWordState, arg.UserID, arg.WordSenseID, arg.Status)
-	var i SkillUserWordState
+	var i UpsertUserWordStateRow
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
@@ -915,6 +925,7 @@ func (q *Queries) UpsertUserWordState(ctx context.Context, arg UpsertUserWordSta
 		&i.Status,
 		&i.FirstSeenAt,
 		&i.UpdatedAt,
+		&i.Inserted,
 	)
 	return i, err
 }

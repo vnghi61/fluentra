@@ -91,6 +91,12 @@ export const PreferencesSettings: React.FC<PreferencesSettingsProps> = ({
             }
           : null,
         ai_processing_opt_out: values.ai_processing_opt_out,
+        // Not on this form, and a replacement stores an omitted level as null:
+        // send back the one the daily practice card saved.
+        practice_level:
+          usePreferencesStore.getState().preferences?.practice_level ??
+          preferences.practice_level ??
+          null,
       });
 
       setPreferences(updated);

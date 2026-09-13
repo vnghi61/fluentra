@@ -1229,6 +1229,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/content/versions/{id}/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Report an issue with a content version.
+         * @description Learner reports a problem with an activity or content item.
+         */
+        post: operations["reportContentVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/content": {
         parameters: {
             query?: never;
@@ -1247,6 +1267,26 @@ export interface paths {
          * @description Creates a new content item with an initial draft version.
          */
         post: operations["adminCreateContent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/content/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List reported content versions ordered by distinct reporters.
+         * @description Ordered by number of distinct reporters descending.
+         */
+        get: operations["adminListReportedContent"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1509,6 +1549,26 @@ export interface paths {
          * @description Returns attempt status, response payload, and grading result.
          */
         get: operations["getAttempt"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/practice/daily": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get today's practice set for the authenticated learner.
+         * @description Returns the daily practice set for today in timezone Asia/Ho_Chi_Minh. If not yet generated today, builds it from the practice pool (1 passage, 5 grammar items, 3 rewrite items) and records exposures.
+         */
+        get: operations["getDailyPractice"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2079,6 +2139,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/writing/attempts/{id}/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read detailed writing feedback for an attempt.
+         * @description Returns IELTS-style criteria scores, located annotations, and bilingual feedback for a graded writing attempt owned by the caller.
+         */
+        get: operations["getWritingFeedback"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/writing/submissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the learner's writing submissions.
+         * @description Returns a paginated list of writing submissions with status, band scores, and submission dates for the authenticated user.
+         */
+        get: operations["listWritingSubmissions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2629,6 +2729,11 @@ export interface components {
             quiet_hours?: components["schemas"]["QuietHours"] | null;
             /** @description Disables AI grading only. Deterministic exercises keep working, so opting out never costs the learner access to the product. */
             ai_processing_opt_out: boolean;
+            /**
+             * @description The level the daily practice set is drawn at, or null until the learner chooses one. The practice pool holds A2, B1 and B2 only.
+             * @example B1
+             */
+            practice_level?: ("A2" | "B1" | "B2") | null;
             /** Format: date-time */
             updated_at: string;
         };
@@ -2639,7 +2744,7 @@ export interface components {
             /** @example 07:00 */
             end: string;
         };
-        /** @description The complete preference set. This is a PUT: every field is required, and what the caller sends is exactly what is stored. */
+        /** @description The complete preference set. This is a PUT: every field is required, and what the caller sends is exactly what is stored. The two nullable members, quiet_hours and practice_level, may be omitted, and omitted means null — so a client changing one field must send practice_level back unchanged. */
         ReplacePreferencesRequest: {
             /** @example vi */
             locale: string;
@@ -2657,6 +2762,8 @@ export interface components {
             quiet_hours?: components["schemas"]["QuietHours"] | null;
             /** @example false */
             ai_processing_opt_out: boolean;
+            /** @example B1 */
+            practice_level?: ("A2" | "B1" | "B2") | null;
         };
         /** @description Constrained browser upload intent for an avatar image. */
         AvatarUploadIntent: {
@@ -3257,6 +3364,48 @@ export interface components {
             updated_at: string;
             versions: components["schemas"]["ContentVersion"][];
         };
+        /**
+         * @description Why the learner is reporting this item.
+         * @enum {string}
+         */
+        ItemReportReason: "wrong_answer" | "unclear" | "typo" | "my_answer_was_right" | "other";
+        CreateItemReportRequest: {
+            reason: components["schemas"]["ItemReportReason"];
+            /** @description Optional comment explaining the problem. */
+            note?: string | null;
+        };
+        ItemReport: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            content_version_id: string;
+            /** Format: uuid */
+            user_id: string;
+            reason: components["schemas"]["ItemReportReason"];
+            note?: string | null;
+            /** Format: date-time */
+            created_at: string;
+        };
+        ReportedContentVersion: {
+            /** Format: uuid */
+            content_version_id: string;
+            /** Format: uuid */
+            item_id: string;
+            slug: string;
+            kind: string;
+            cefr_level: string;
+            item_status: string;
+            /** @description Number of distinct learners who reported this version. */
+            report_count: number;
+            /** Format: date-time */
+            last_reported_at: string;
+        };
+        ReportedContentList: {
+            items: components["schemas"]["ReportedContentVersion"][];
+            total: number;
+            limit: number;
+            offset: number;
+        };
         CourseSummary: {
             /** Format: uuid */
             id: string;
@@ -3552,6 +3701,7 @@ export interface components {
             /** @example Correct! Well done. */
             feedback?: string | null;
             explanation?: components["schemas"]["AnswerExplanation"];
+            item_results?: components["schemas"]["ItemResult"][];
         };
         /** @description The outcome of grading that recorded nothing. There is no attempt id and no status, because nothing was created and nothing moved. */
         PreviewGradeResult: {
@@ -3574,6 +3724,15 @@ export interface components {
              */
             saved: boolean;
             explanation?: components["schemas"]["AnswerExplanation"];
+            item_results?: components["schemas"]["ItemResult"][];
+        };
+        ItemResult: {
+            /** @example q1 */
+            id: string;
+            /** @example true */
+            correct: boolean;
+            /** @example opt_b */
+            correct_answer?: string | null;
         };
         AnswerExplanation: {
             /**
@@ -3647,6 +3806,18 @@ export interface components {
         CompleteSessionRequest: {
             /** @example 3 */
             activities_completed?: number | null;
+        };
+        DailyPracticeSet: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * Format: date
+             * @example 2026-09-11
+             */
+            local_date: string;
+            /** @example B1 */
+            level: string;
+            activities: components["schemas"]["LessonActivity"][];
         };
         /**
          * @description FSRS recall evaluation grade.
@@ -3980,6 +4151,21 @@ export interface components {
             topic?: string;
             /** @description Example sentences illustrating the word in context. */
             examples?: string[];
+            /**
+             * @description The word actually added, when it differs from term.
+             * @example school
+             */
+            corrected_term?: string | null;
+            /**
+             * @description The suggestion, when nothing was added.
+             * @example school
+             */
+            suggested_term?: string | null;
+            /**
+             * @description Machine-readable reason or note code for the item.
+             * @enum {string|null}
+             */
+            note_code?: "spelling_corrected" | "meaning_corrected" | "spelling_suggestion" | "meaning_mismatch" | "already_in_your_words" | "not_a_word" | "proper_noun" | "queued_for_enrichment" | null;
         };
         VocabUploadList: {
             items: components["schemas"]["VocabUpload"][];
@@ -4262,6 +4448,93 @@ export interface components {
             topic?: string | null;
             examples?: components["schemas"]["ExampleSentence"][];
         };
+        WritingCriterion: {
+            /** @example task_response */
+            name: string;
+            /**
+             * Format: float
+             * @example 7
+             */
+            band: number;
+            /** @example Good development of main ideas with relevant examples. */
+            comment_en: string;
+            /** @example Phát triển ý chính tốt với các ví dụ phù hợp. */
+            comment_vi: string;
+        };
+        WritingAnnotation: {
+            /** @example rapid advancement */
+            quoted_text: string;
+            /** @example 16 */
+            start_offset: number;
+            /** @example 33 */
+            end_offset: number;
+            /** @example Strong adjective-noun collocation. */
+            comment_en: string;
+            /** @example Cụm tính từ - danh từ rất tốt. */
+            comment_vi: string;
+        };
+        WritingFeedback: {
+            /** Format: uuid */
+            attempt_id: string;
+            /** Format: uuid */
+            user_id: string;
+            /**
+             * Format: float
+             * @example 6.5
+             */
+            overall_band: number;
+            /** @example 72 */
+            score: number;
+            criteria: components["schemas"]["WritingCriterion"][];
+            annotations: components["schemas"]["WritingAnnotation"][];
+            /** @example Your essay shows a clear understanding of the topic... */
+            feedback_en: string;
+            /** @example Bài viết của bạn thể hiện sự hiểu biết rõ ràng về chủ đề... */
+            feedback_vi: string;
+            /** @example writing_grade.v2 */
+            prompt_version: string;
+            /** @example gpt-4o-mini */
+            model?: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-11T12:00:00Z
+             */
+            created_at: string;
+        };
+        WritingSubmissionSummary: {
+            /** Format: uuid */
+            attempt_id: string;
+            /**
+             * @example graded
+             * @enum {string}
+             */
+            status: "grading" | "graded" | "failed";
+            /**
+             * Format: float
+             * @example 6.5
+             */
+            overall_band: number;
+            /** @example 72 */
+            score: number;
+            /** @example Good overall effort. */
+            feedback_en?: string;
+            /** @example Bài viết tổng thể tốt. */
+            feedback_vi?: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-11T12:00:00Z
+             */
+            created_at: string;
+        };
+        WritingSubmissionList: {
+            items: components["schemas"]["WritingSubmissionSummary"][];
+            /** @example 42 */
+            total: number;
+            /** @example 1 */
+            page: number;
+            /** @example 10 */
+            page_size: number;
+        };
     };
     responses: {
         /** @description The request is malformed or has an invalid cursor. */
@@ -4296,6 +4569,25 @@ export interface components {
                  *       "status": 401,
                  *       "detail": "Provide a valid access token.",
                  *       "code": "UNAUTHENTICATED",
+                 *       "request_id": "01J8XQ7Z9K3M4N5P6Q7R8S9T0V"
+                 *     }
+                 */
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description Authentication required. The activity requires a signed-in account to grade. */
+        AccountRequired: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "type": "https://fluentra.dev/errors/unauthenticated",
+                 *       "title": "Authentication required",
+                 *       "status": 401,
+                 *       "detail": "An account is required to grade this activity.",
+                 *       "code": "ACCOUNT_REQUIRED",
                  *       "request_id": "01J8XQ7Z9K3M4N5P6Q7R8S9T0V"
                  *     }
                  */
@@ -5474,6 +5766,7 @@ export interface operations {
                      *         "end": "07:00"
                      *       },
                      *       "ai_processing_opt_out": false,
+                     *       "practice_level": "B1",
                      *       "updated_at": "2026-08-09T04:21:07Z"
                      *     }
                      */
@@ -5534,6 +5827,7 @@ export interface operations {
                      *         "end": "07:00"
                      *       },
                      *       "ai_processing_opt_out": false,
+                     *       "practice_level": "B1",
                      *       "updated_at": "2026-08-09T04:21:07Z"
                      *     }
                      */
@@ -7003,6 +7297,48 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    reportContentVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateItemReportRequest"];
+            };
+        };
+        responses: {
+            /** @description Report recorded. */
+            201: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "88888888-8888-8888-8888-888888888888",
+                     *       "content_version_id": "77777777-7777-7777-7777-777777777777",
+                     *       "user_id": "00000000-0000-0000-0000-000000000001",
+                     *       "reason": "typo",
+                     *       "note": "Typo in the second paragraph",
+                     *       "created_at": "2026-09-11T12:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ItemReport"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
     adminListContent: {
         parameters: {
             query?: {
@@ -7096,6 +7432,52 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    adminListReportedContent: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of reported versions. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "content_version_id": "77777777-7777-7777-7777-777777777777",
+                     *           "item_id": "66666666-6666-6666-6666-666666666666",
+                     *           "slug": "climate-change-reading-1",
+                     *           "kind": "reading_comprehension",
+                     *           "cefr_level": "B1",
+                     *           "item_status": "published",
+                     *           "report_count": 3,
+                     *           "last_reported_at": "2026-09-11T12:00:00Z"
+                     *         }
+                     *       ],
+                     *       "total": 1,
+                     *       "limit": 20,
+                     *       "offset": 0
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ReportedContentList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalServerError"];
         };
     };
     adminGetContent: {
@@ -7543,6 +7925,7 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["AccountRequired"];
             404: components["responses"]["NotFound"];
             422: components["responses"]["ValidationFailed"];
             500: components["responses"]["InternalServerError"];
@@ -7665,6 +8048,38 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    getDailyPractice: {
+        parameters: {
+            query?: {
+                level?: "A2" | "B1" | "B2";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Today's practice set. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "11111111-1111-1111-1111-111111111111",
+                     *       "local_date": "2026-09-11",
+                     *       "level": "B1",
+                     *       "activities": []
+                     *     }
+                     */
+                    "application/json": components["schemas"]["DailyPracticeSet"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
         };
     };
     startLearningSession: {
@@ -9035,6 +9450,92 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    getWritingFeedback: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Unique identifier of the attempt. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Detailed writing feedback for the attempt. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "attempt_id": "55555555-5555-5555-5555-555555555555",
+                     *       "user_id": "00000000-0000-0000-0000-000000000001",
+                     *       "overall_band": 6.5,
+                     *       "score": 72,
+                     *       "criteria": [],
+                     *       "annotations": [],
+                     *       "feedback_en": "Your essay shows a clear understanding of the topic.",
+                     *       "feedback_vi": "Bài viết của bạn thể hiện sự hiểu biết rõ ràng về chủ đề.",
+                     *       "prompt_version": "writing_grade.v2",
+                     *       "created_at": "2026-09-11T12:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["WritingFeedback"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    listWritingSubmissions: {
+        parameters: {
+            query?: {
+                /** @description Page number (1-based). */
+                page?: number;
+                /** @description Number of items per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated list of writing submissions. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "attempt_id": "55555555-5555-5555-5555-555555555555",
+                     *           "status": "graded",
+                     *           "overall_band": 6.5,
+                     *           "score": 72,
+                     *           "created_at": "2026-09-11T12:00:00Z"
+                     *         }
+                     *       ],
+                     *       "total": 1,
+                     *       "page": 1,
+                     *       "page_size": 10
+                     *     }
+                     */
+                    "application/json": components["schemas"]["WritingSubmissionList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
             500: components["responses"]["InternalServerError"];
         };
     };

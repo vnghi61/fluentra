@@ -2,11 +2,11 @@
 module: gamification
 tier: learning
 group: modules
-status: PLANNED
+status: DONE
 phase: 3
 owner: "@learning-team"
 schema: learn
-tables: [xp_events, streaks, badges, badges_earned, quests, user_quests, leaderboard_snapshots]
+tables: [xp_events, xp_activity_high_water, streaks, badges, badges_earned, quests, user_quests, leaderboard_snapshots]
 depends_on: [learning, srs, cache, job, notification]
 depended_on_by: [notification, analytics, admin]
 spec_version: 1.0.0

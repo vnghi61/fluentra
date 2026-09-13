@@ -77,10 +77,19 @@ func (p *MockProvider) gradeWriting(req Request) (Response, error) {
 		feedbackVi = "Bài viết quá ngắn để đánh giá chi tiết."
 	}
 	payload, err := json.Marshal(map[string]any{
-		"score":       score,
-		"correct":     correct,
-		"feedback":    feedback,
-		"feedback_vi": feedbackVi,
+		"overall_band": 6.5,
+		"score":        score,
+		"correct":      correct,
+		"feedback":     feedback,
+		"feedback_en":  feedback,
+		"feedback_vi":  feedbackVi,
+		"criteria": []map[string]any{
+			mockCriterion("task_response", 7.0, "Good response to the prompt.", "Phản hồi tốt yêu cầu đề bài."),
+			mockCriterion("coherence_cohesion", 6.5, "Clear progression of ideas.", "Ý tứ phát triển rõ ràng."),
+			mockCriterion("lexical_resource", 6.5, "Varied vocabulary used appropriately.", "Sử dụng từ vựng đa dạng, phù hợp."),
+			mockCriterion("grammatical_range", 6.0, "Good range of grammatical structures.", "Cấu trúc ngữ pháp tương đối tốt."),
+		},
+		"annotations": []map[string]any{},
 	})
 	if err != nil {
 		return Response{}, fmt.Errorf("ai: encode mock writing grade: %w", err)
@@ -184,3 +193,8 @@ func intVar(vars map[string]any, key string, fallback, ceiling int) int {
 }
 
 var _ Client = (*MockProvider)(nil)
+
+// mockCriterion is one rubric criterion in the mock's writing grade.
+func mockCriterion(name string, band float64, commentEn, commentVi string) map[string]any {
+	return map[string]any{"name": name, "band": band, "comment_en": commentEn, "comment_vi": commentVi}
+}

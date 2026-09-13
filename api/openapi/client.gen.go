@@ -165,6 +165,13 @@ type ClientInterface interface {
 	// Corresponds with POST /admin/content (the `AdminCreateContent` operationId).
 	AdminCreateContent(ctx context.Context, body AdminCreateContentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AdminListReportedContent List reported content versions ordered by distinct reporters.
+	//
+	// Ordered by number of distinct reporters descending.
+	//
+	// Corresponds with GET /admin/content/reports (the `AdminListReportedContent` operationId).
+	AdminListReportedContent(ctx context.Context, params *AdminListReportedContentParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AdminGetContent Get content item details including all versions.
 	//
 	// Returns a single content item record with its complete version history.
@@ -909,6 +916,24 @@ type ClientInterface interface {
 	// Corresponds with GET /content (the `BrowsePublishedContent` operationId).
 	BrowsePublishedContent(ctx context.Context, params *BrowsePublishedContentParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ReportContentVersionWithBody Report an issue with a content version.
+	//
+	// Learner reports a problem with an activity or content item.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /content/versions/{id}/reports (the `ReportContentVersion` operationId).
+	ReportContentVersionWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ReportContentVersion Report an issue with a content version.
+	//
+	// Learner reports a problem with an activity or content item.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /content/versions/{id}/reports (the `ReportContentVersion` operationId).
+	ReportContentVersion(ctx context.Context, id openapi_types.UUID, body ReportContentVersionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetContentBySlug Fetch a published content version by item slug.
 	//
 	// Returns the current published version of a content item by its stable slug.
@@ -1236,6 +1261,13 @@ type ClientInterface interface {
 	// Corresponds with GET /ping (the `SystemPing` operationId).
 	SystemPing(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetDailyPractice Get today's practice set for the authenticated learner.
+	//
+	// Returns the daily practice set for today in timezone Asia/Ho_Chi_Minh. If not yet generated today, builds it from the practice pool (1 passage, 5 grammar items, 3 rewrite items) and records exposures.
+	//
+	// Corresponds with GET /practice/daily (the `GetDailyPractice` operationId).
+	GetDailyPractice(ctx context.Context, params *GetDailyPracticeParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// SystemReady Check dependency readiness.
 	//
 	// Returns success only when every hard dependency is usable.
@@ -1422,6 +1454,20 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /vocabulary/words/{sense_id}/state (the `UpdateWordState` operationId).
 	UpdateWordState(ctx context.Context, senseId openapi_types.UUID, body UpdateWordStateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetWritingFeedback Read detailed writing feedback for an attempt.
+	//
+	// Returns IELTS-style criteria scores, located annotations, and bilingual feedback for a graded writing attempt owned by the caller.
+	//
+	// Corresponds with GET /writing/attempts/{id}/feedback (the `GetWritingFeedback` operationId).
+	GetWritingFeedback(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListWritingSubmissions List the learner's writing submissions.
+	//
+	// Returns a paginated list of writing submissions with status, band scores, and submission dates for the authenticated user.
+	//
+	// Corresponds with GET /writing/submissions (the `ListWritingSubmissions` operationId).
+	ListWritingSubmissions(ctx context.Context, params *ListWritingSubmissionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 // StartAttempt Start an activity attempt.
@@ -1568,6 +1614,23 @@ func (c *Client) AdminCreateContentWithBody(ctx context.Context, contentType str
 // Corresponds with POST /admin/content (the `AdminCreateContent` operationId).
 func (c *Client) AdminCreateContent(ctx context.Context, body AdminCreateContentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAdminCreateContentRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AdminListReportedContent List reported content versions ordered by distinct reporters.
+//
+// Ordered by number of distinct reporters descending.
+//
+// Corresponds with GET /admin/content/reports (the `AdminListReportedContent` operationId).
+func (c *Client) AdminListReportedContent(ctx context.Context, params *AdminListReportedContentParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAdminListReportedContentRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -3062,6 +3125,44 @@ func (c *Client) BrowsePublishedContent(ctx context.Context, params *BrowsePubli
 	return c.Client.Do(req)
 }
 
+// ReportContentVersionWithBody Report an issue with a content version.
+//
+// Learner reports a problem with an activity or content item.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /content/versions/{id}/reports (the `ReportContentVersion` operationId).
+func (c *Client) ReportContentVersionWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReportContentVersionRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ReportContentVersion Report an issue with a content version.
+//
+// Learner reports a problem with an activity or content item.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /content/versions/{id}/reports (the `ReportContentVersion` operationId).
+func (c *Client) ReportContentVersion(ctx context.Context, id openapi_types.UUID, body ReportContentVersionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReportContentVersionRequest(c.Server, id, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // GetContentBySlug Fetch a published content version by item slug.
 //
 // Returns the current published version of a content item by its stable slug.
@@ -3799,6 +3900,23 @@ func (c *Client) SystemPing(ctx context.Context, reqEditors ...RequestEditorFn) 
 	return c.Client.Do(req)
 }
 
+// GetDailyPractice Get today's practice set for the authenticated learner.
+//
+// Returns the daily practice set for today in timezone Asia/Ho_Chi_Minh. If not yet generated today, builds it from the practice pool (1 passage, 5 grammar items, 3 rewrite items) and records exposures.
+//
+// Corresponds with GET /practice/daily (the `GetDailyPractice` operationId).
+func (c *Client) GetDailyPractice(ctx context.Context, params *GetDailyPracticeParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetDailyPracticeRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // SystemReady Check dependency readiness.
 //
 // Returns success only when every hard dependency is usable.
@@ -4216,6 +4334,40 @@ func (c *Client) UpdateWordState(ctx context.Context, senseId openapi_types.UUID
 	return c.Client.Do(req)
 }
 
+// GetWritingFeedback Read detailed writing feedback for an attempt.
+//
+// Returns IELTS-style criteria scores, located annotations, and bilingual feedback for a graded writing attempt owned by the caller.
+//
+// Corresponds with GET /writing/attempts/{id}/feedback (the `GetWritingFeedback` operationId).
+func (c *Client) GetWritingFeedback(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetWritingFeedbackRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListWritingSubmissions List the learner's writing submissions.
+//
+// Returns a paginated list of writing submissions with status, band scores, and submission dates for the authenticated user.
+//
+// Corresponds with GET /writing/submissions (the `ListWritingSubmissions` operationId).
+func (c *Client) ListWritingSubmissions(ctx context.Context, params *ListWritingSubmissionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListWritingSubmissionsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // NewStartAttemptRequest constructs an http.Request for the StartAttempt method
 func NewStartAttemptRequest(server string, id openapi_types.UUID) (*http.Request, error) {
 	var err error
@@ -4600,6 +4752,72 @@ func NewAdminCreateContentRequestWithBody(server string, contentType string, bod
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewAdminListReportedContentRequest constructs an http.Request for the AdminListReportedContent method
+func NewAdminListReportedContentRequest(server string, params *AdminListReportedContentParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/content/reports")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "offset", *params.Offset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -6915,6 +7133,53 @@ func NewBrowsePublishedContentRequest(server string, params *BrowsePublishedCont
 	return req, nil
 }
 
+// NewReportContentVersionRequest calls the generic ReportContentVersion builder with application/json body
+func NewReportContentVersionRequest(server string, id openapi_types.UUID, body ReportContentVersionJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewReportContentVersionRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewReportContentVersionRequestWithBody constructs an http.Request for the ReportContentVersion method, with any body, and a specified content type
+func NewReportContentVersionRequestWithBody(server string, id openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/content/versions/%s/reports", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetContentBySlugRequest constructs an http.Request for the GetContentBySlug method
 func NewGetContentBySlugRequest(server string, slug string) (*http.Request, error) {
 	var err error
@@ -8030,6 +8295,60 @@ func NewSystemPingRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewGetDailyPracticeRequest constructs an http.Request for the GetDailyPractice method
+func NewGetDailyPracticeRequest(server string, params *GetDailyPracticeParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/practice/daily")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Level != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "level", *params.Level, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewSystemReadyRequest constructs an http.Request for the SystemReady method
 func NewSystemReadyRequest(server string) (*http.Request, error) {
 	var err error
@@ -8791,6 +9110,106 @@ func NewUpdateWordStateRequestWithBody(server string, senseId openapi_types.UUID
 	return req, nil
 }
 
+// NewGetWritingFeedbackRequest constructs an http.Request for the GetWritingFeedback method
+func NewGetWritingFeedbackRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/writing/attempts/%s/feedback", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListWritingSubmissionsRequest constructs an http.Request for the ListWritingSubmissions method
+func NewListWritingSubmissionsRequest(server string, params *ListWritingSubmissionsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/writing/submissions")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page", *params.Page, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.PageSize != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page_size", *params.PageSize, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -8916,6 +9335,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /admin/content (the `AdminCreateContent` operationId).
 	AdminCreateContentWithResponse(ctx context.Context, body AdminCreateContentJSONRequestBody, reqEditors ...RequestEditorFn) (*AdminCreateContentResponse, error)
+
+	// AdminListReportedContentWithResponse List reported content versions ordered by distinct reporters.
+	//
+	// Ordered by number of distinct reporters descending.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/content/reports (the `AdminListReportedContent` operationId).
+	AdminListReportedContentWithResponse(ctx context.Context, params *AdminListReportedContentParams, reqEditors ...RequestEditorFn) (*AdminListReportedContentResponse, error)
 
 	// AdminGetContentWithResponse Get content item details including all versions.
 	//
@@ -9717,6 +10145,24 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /content (the `BrowsePublishedContent` operationId).
 	BrowsePublishedContentWithResponse(ctx context.Context, params *BrowsePublishedContentParams, reqEditors ...RequestEditorFn) (*BrowsePublishedContentResponse, error)
 
+	// ReportContentVersionWithBodyWithResponse Report an issue with a content version.
+	//
+	// Learner reports a problem with an activity or content item.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /content/versions/{id}/reports (the `ReportContentVersion` operationId).
+	ReportContentVersionWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReportContentVersionResponse, error)
+
+	// ReportContentVersionWithResponse Report an issue with a content version.
+	//
+	// Learner reports a problem with an activity or content item.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /content/versions/{id}/reports (the `ReportContentVersion` operationId).
+	ReportContentVersionWithResponse(ctx context.Context, id openapi_types.UUID, body ReportContentVersionJSONRequestBody, reqEditors ...RequestEditorFn) (*ReportContentVersionResponse, error)
+
 	// GetContentBySlugWithResponse Fetch a published content version by item slug.
 	//
 	// Returns the current published version of a content item by its stable slug.
@@ -10090,6 +10536,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /ping (the `SystemPing` operationId).
 	SystemPingWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*SystemPingResponse, error)
 
+	// GetDailyPracticeWithResponse Get today's practice set for the authenticated learner.
+	//
+	// Returns the daily practice set for today in timezone Asia/Ho_Chi_Minh. If not yet generated today, builds it from the practice pool (1 passage, 5 grammar items, 3 rewrite items) and records exposures.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /practice/daily (the `GetDailyPractice` operationId).
+	GetDailyPracticeWithResponse(ctx context.Context, params *GetDailyPracticeParams, reqEditors ...RequestEditorFn) (*GetDailyPracticeResponse, error)
+
 	// SystemReadyWithResponse Check dependency readiness.
 	//
 	// Returns success only when every hard dependency is usable.
@@ -10302,6 +10757,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /vocabulary/words/{sense_id}/state (the `UpdateWordState` operationId).
 	UpdateWordStateWithResponse(ctx context.Context, senseId openapi_types.UUID, body UpdateWordStateJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateWordStateResponse, error)
+
+	// GetWritingFeedbackWithResponse Read detailed writing feedback for an attempt.
+	//
+	// Returns IELTS-style criteria scores, located annotations, and bilingual feedback for a graded writing attempt owned by the caller.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /writing/attempts/{id}/feedback (the `GetWritingFeedback` operationId).
+	GetWritingFeedbackWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetWritingFeedbackResponse, error)
+
+	// ListWritingSubmissionsWithResponse List the learner's writing submissions.
+	//
+	// Returns a paginated list of writing submissions with status, band scores, and submission dates for the authenticated user.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /writing/submissions (the `ListWritingSubmissions` operationId).
+	ListWritingSubmissionsWithResponse(ctx context.Context, params *ListWritingSubmissionsParams, reqEditors ...RequestEditorFn) (*ListWritingSubmissionsResponse, error)
 }
 
 // StartAttemptResponse201Headers the declared response headers of an HTTP 201 response for StartAttempt
@@ -10399,6 +10872,8 @@ type GradeActivityPreviewResponse struct {
 	JSON200 *PreviewGradeResult
 	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
 	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *AccountRequired
 	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
 	ApplicationproblemJSON404 *NotFound
 	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
@@ -10417,6 +10892,11 @@ func (r GradeActivityPreviewResponse) GetJSON200() *PreviewGradeResult {
 // GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
 func (r GradeActivityPreviewResponse) GetApplicationproblemJSON400() *BadRequest {
 	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GradeActivityPreviewResponse) GetApplicationproblemJSON401() *AccountRequired {
+	return r.ApplicationproblemJSON401
 }
 
 // GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
@@ -10733,6 +11213,75 @@ func (r AdminCreateContentResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r AdminCreateContentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AdminListReportedContentResponse200Headers the declared response headers of an HTTP 200 response for AdminListReportedContent
+type AdminListReportedContentResponse200Headers struct {
+	XRequestId *string
+}
+
+type AdminListReportedContentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ReportedContentList
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AdminListReportedContentResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AdminListReportedContentResponse) GetJSON200() *ReportedContentList {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AdminListReportedContentResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AdminListReportedContentResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r AdminListReportedContentResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r AdminListReportedContentResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AdminListReportedContentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AdminListReportedContentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AdminListReportedContentResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -14611,6 +15160,99 @@ func (r BrowsePublishedContentResponse) ContentType() string {
 	return ""
 }
 
+// ReportContentVersionResponse201Headers the declared response headers of an HTTP 201 response for ReportContentVersion
+type ReportContentVersionResponse201Headers struct {
+	XRequestId *string
+}
+
+// ReportContentVersionResponse429Headers the declared response headers of an HTTP 429 response for ReportContentVersion
+type ReportContentVersionResponse429Headers struct {
+	RateLimitLimit     *int
+	RateLimitRemaining *int
+	RateLimitReset     *int
+	RetryAfter         *int
+}
+
+type ReportContentVersionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *ItemReport
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *ReportContentVersionResponse201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ReportContentVersionResponse429Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r ReportContentVersionResponse) GetJSON201() *ItemReport {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r ReportContentVersionResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ReportContentVersionResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ReportContentVersionResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ReportContentVersionResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r ReportContentVersionResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ReportContentVersionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ReportContentVersionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ReportContentVersionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ReportContentVersionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // GetContentBySlugResponse200Headers the declared response headers of an HTTP 200 response for GetContentBySlug
 type GetContentBySlugResponse200Headers struct {
 	XRequestId *string
@@ -16731,6 +17373,61 @@ func (r SystemPingResponse) ContentType() string {
 	return ""
 }
 
+// GetDailyPracticeResponse200Headers the declared response headers of an HTTP 200 response for GetDailyPractice
+type GetDailyPracticeResponse200Headers struct {
+	XRequestId *string
+}
+
+type GetDailyPracticeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *DailyPracticeSet
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetDailyPracticeResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetDailyPracticeResponse) GetJSON200() *DailyPracticeSet {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetDailyPracticeResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetBody returns the raw response body bytes
+func (r GetDailyPracticeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetDailyPracticeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetDailyPracticeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetDailyPracticeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // SystemReadyResponse200Headers the declared response headers of an HTTP 200 response for SystemReady
 type SystemReadyResponse200Headers struct {
 	XRequestId *string
@@ -17925,6 +18622,144 @@ func (r UpdateWordStateResponse) ContentType() string {
 	return ""
 }
 
+// GetWritingFeedbackResponse200Headers the declared response headers of an HTTP 200 response for GetWritingFeedback
+type GetWritingFeedbackResponse200Headers struct {
+	XRequestId *string
+}
+
+type GetWritingFeedbackResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WritingFeedback
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetWritingFeedbackResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetWritingFeedbackResponse) GetJSON200() *WritingFeedback {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetWritingFeedbackResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r GetWritingFeedbackResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GetWritingFeedbackResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r GetWritingFeedbackResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetWritingFeedbackResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetWritingFeedbackResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetWritingFeedbackResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetWritingFeedbackResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ListWritingSubmissionsResponse200Headers the declared response headers of an HTTP 200 response for ListWritingSubmissions
+type ListWritingSubmissionsResponse200Headers struct {
+	XRequestId *string
+}
+
+type ListWritingSubmissionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WritingSubmissionList
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ListWritingSubmissionsResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListWritingSubmissionsResponse) GetJSON200() *WritingSubmissionList {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ListWritingSubmissionsResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r ListWritingSubmissionsResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ListWritingSubmissionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListWritingSubmissionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListWritingSubmissionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListWritingSubmissionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // StartAttemptWithResponse Start an activity attempt.
 //
 // Verifies unlocking prerequisites and starts a new in-progress attempt for an activity.
@@ -18053,6 +18888,21 @@ func (c *ClientWithResponses) AdminCreateContentWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParseAdminCreateContentResponse(rsp)
+}
+
+// AdminListReportedContentWithResponse List reported content versions ordered by distinct reporters.
+//
+// Ordered by number of distinct reporters descending.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/content/reports (the `AdminListReportedContent` operationId).
+func (c *ClientWithResponses) AdminListReportedContentWithResponse(ctx context.Context, params *AdminListReportedContentParams, reqEditors ...RequestEditorFn) (*AdminListReportedContentResponse, error) {
+	rsp, err := c.AdminListReportedContent(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAdminListReportedContentResponse(rsp)
 }
 
 // AdminGetContentWithResponse Get content item details including all versions.
@@ -19299,6 +20149,36 @@ func (c *ClientWithResponses) BrowsePublishedContentWithResponse(ctx context.Con
 	return ParseBrowsePublishedContentResponse(rsp)
 }
 
+// ReportContentVersionWithBodyWithResponse Report an issue with a content version.
+//
+// Learner reports a problem with an activity or content item.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /content/versions/{id}/reports (the `ReportContentVersion` operationId).
+func (c *ClientWithResponses) ReportContentVersionWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReportContentVersionResponse, error) {
+	rsp, err := c.ReportContentVersionWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseReportContentVersionResponse(rsp)
+}
+
+// ReportContentVersionWithResponse Report an issue with a content version.
+//
+// Learner reports a problem with an activity or content item.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /content/versions/{id}/reports (the `ReportContentVersion` operationId).
+func (c *ClientWithResponses) ReportContentVersionWithResponse(ctx context.Context, id openapi_types.UUID, body ReportContentVersionJSONRequestBody, reqEditors ...RequestEditorFn) (*ReportContentVersionResponse, error) {
+	rsp, err := c.ReportContentVersion(ctx, id, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseReportContentVersionResponse(rsp)
+}
+
 // GetContentBySlugWithResponse Fetch a published content version by item slug.
 //
 // Returns the current published version of a content item by its stable slug.
@@ -19918,6 +20798,21 @@ func (c *ClientWithResponses) SystemPingWithResponse(ctx context.Context, reqEdi
 	return ParseSystemPingResponse(rsp)
 }
 
+// GetDailyPracticeWithResponse Get today's practice set for the authenticated learner.
+//
+// Returns the daily practice set for today in timezone Asia/Ho_Chi_Minh. If not yet generated today, builds it from the practice pool (1 passage, 5 grammar items, 3 rewrite items) and records exposures.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /practice/daily (the `GetDailyPractice` operationId).
+func (c *ClientWithResponses) GetDailyPracticeWithResponse(ctx context.Context, params *GetDailyPracticeParams, reqEditors ...RequestEditorFn) (*GetDailyPracticeResponse, error) {
+	rsp, err := c.GetDailyPractice(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetDailyPracticeResponse(rsp)
+}
+
 // SystemReadyWithResponse Check dependency readiness.
 //
 // Returns success only when every hard dependency is usable.
@@ -20269,6 +21164,36 @@ func (c *ClientWithResponses) UpdateWordStateWithResponse(ctx context.Context, s
 	return ParseUpdateWordStateResponse(rsp)
 }
 
+// GetWritingFeedbackWithResponse Read detailed writing feedback for an attempt.
+//
+// Returns IELTS-style criteria scores, located annotations, and bilingual feedback for a graded writing attempt owned by the caller.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /writing/attempts/{id}/feedback (the `GetWritingFeedback` operationId).
+func (c *ClientWithResponses) GetWritingFeedbackWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetWritingFeedbackResponse, error) {
+	rsp, err := c.GetWritingFeedback(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetWritingFeedbackResponse(rsp)
+}
+
+// ListWritingSubmissionsWithResponse List the learner's writing submissions.
+//
+// Returns a paginated list of writing submissions with status, band scores, and submission dates for the authenticated user.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /writing/submissions (the `ListWritingSubmissions` operationId).
+func (c *ClientWithResponses) ListWritingSubmissionsWithResponse(ctx context.Context, params *ListWritingSubmissionsParams, reqEditors ...RequestEditorFn) (*ListWritingSubmissionsResponse, error) {
+	rsp, err := c.ListWritingSubmissions(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListWritingSubmissionsResponse(rsp)
+}
+
 // ParseStartAttemptResponse parses an HTTP response from a StartAttemptWithResponse call
 func ParseStartAttemptResponse(rsp *http.Response) (*StartAttemptResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -20370,6 +21295,13 @@ func ParseGradeActivityPreviewResponse(rsp *http.Response) (*GradeActivityPrevie
 			return nil, err
 		}
 		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest AccountRequired
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
 		var dest NotFound
@@ -20639,6 +21571,66 @@ func ParseAdminCreateContentResponse(rsp *http.Response) (*AdminCreateContentRes
 			headers.XRequestId = &value
 		}
 		response.Headers201 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAdminListReportedContentResponse parses an HTTP response from a AdminListReportedContentWithResponse call
+func ParseAdminListReportedContentResponse(rsp *http.Response) (*AdminListReportedContentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AdminListReportedContentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ReportedContentList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AdminListReportedContentResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
 	}
 
 	return response, nil
@@ -24435,6 +25427,111 @@ func ParseBrowsePublishedContentResponse(rsp *http.Response) (*BrowsePublishedCo
 	return response, nil
 }
 
+// ParseReportContentVersionResponse parses an HTTP response from a ReportContentVersionWithResponse call
+func ParseReportContentVersionResponse(rsp *http.Response) (*ReportContentVersionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ReportContentVersionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest ItemReport
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers ReportContentVersionResponse201Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers ReportContentVersionResponse429Headers
+		if values := rsp.Header.Values("RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitReset = &value
+		}
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseGetContentBySlugResponse parses an HTTP response from a GetContentBySlugWithResponse call
 func ParseGetContentBySlugResponse(rsp *http.Response) (*GetContentBySlugResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -26291,6 +27388,52 @@ func ParseSystemPingResponse(rsp *http.Response) (*SystemPingResponse, error) {
 	return response, nil
 }
 
+// ParseGetDailyPracticeResponse parses an HTTP response from a GetDailyPracticeWithResponse call
+func ParseGetDailyPracticeResponse(rsp *http.Response) (*GetDailyPracticeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetDailyPracticeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DailyPracticeSet
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetDailyPracticeResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseSystemReadyResponse parses an HTTP response from a SystemReadyWithResponse call
 func ParseSystemReadyResponse(rsp *http.Response) (*SystemReadyResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -27325,6 +28468,126 @@ func ParseUpdateWordStateResponse(rsp *http.Response) (*UpdateWordStateResponse,
 	switch {
 	case rsp.StatusCode == 200:
 		var headers UpdateWordStateResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGetWritingFeedbackResponse parses an HTTP response from a GetWritingFeedbackWithResponse call
+func ParseGetWritingFeedbackResponse(rsp *http.Response) (*GetWritingFeedbackResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetWritingFeedbackResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WritingFeedback
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetWritingFeedbackResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseListWritingSubmissionsResponse parses an HTTP response from a ListWritingSubmissionsWithResponse call
+func ParseListWritingSubmissionsResponse(rsp *http.Response) (*ListWritingSubmissionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListWritingSubmissionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WritingSubmissionList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ListWritingSubmissionsResponse200Headers
 		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
 			var value string
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {

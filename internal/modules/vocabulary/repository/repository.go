@@ -25,7 +25,7 @@ type Repository interface {
 	ListSensesByIDs(ctx context.Context, ids []uuid.UUID) ([]sqlc.ListSensesByIDsRow, error)
 	InsertWordRelation(ctx context.Context, arg sqlc.InsertWordRelationParams) (sqlc.SkillWordRelation, error)
 	ListRelationsByWordID(ctx context.Context, wordID uuid.UUID) ([]sqlc.ListRelationsByWordIDRow, error)
-	UpsertUserWordState(ctx context.Context, arg sqlc.UpsertUserWordStateParams) (sqlc.SkillUserWordState, error)
+	UpsertUserWordState(ctx context.Context, arg sqlc.UpsertUserWordStateParams) (sqlc.UpsertUserWordStateRow, error)
 	GetUserWordState(ctx context.Context, userID, wordSenseID uuid.UUID) (sqlc.SkillUserWordState, error)
 	InsertDeck(ctx context.Context, arg sqlc.InsertDeckParams) (sqlc.SkillDeck, error)
 	GetDeckByID(ctx context.Context, id uuid.UUID) (sqlc.SkillDeck, error)
@@ -53,8 +53,12 @@ type Repository interface {
 	) ([]sqlc.SkillVocabUploadItem, error)
 	MarkUploadItemVerified(
 		ctx context.Context, id uuid.UUID, senseID *uuid.UUID, model, reason string,
+		correctedTerm, noteCode *string,
 	) (sqlc.SkillVocabUploadItem, error)
-	MarkUploadItemRejected(ctx context.Context, id uuid.UUID, reason string) (sqlc.SkillVocabUploadItem, error)
+	MarkUploadItemRejected(
+		ctx context.Context, id uuid.UUID, reason string,
+		suggestedTerm, noteCode *string,
+	) (sqlc.SkillVocabUploadItem, error)
 	RecordUploadItemAttempt(ctx context.Context, id uuid.UUID, reason string) error
 	SetUploadDeck(ctx context.Context, uploadID, deckID uuid.UUID) error
 	UpdateWordSenseEnrichment(
@@ -62,15 +66,18 @@ type Repository interface {
 	) (sqlc.SkillWordSense, error)
 	MarkUploadItemQueued(
 		ctx context.Context, id uuid.UUID, senseID *uuid.UUID, reason string,
+		noteCode *string,
 	) (sqlc.SkillVocabUploadItem, error)
 	ClaimQueuedUploadItems(
 		ctx context.Context, maxAttempts, limit int32,
 	) ([]sqlc.SkillVocabUploadItem, error)
 	MarkQueuedUploadItemVerified(
 		ctx context.Context, id uuid.UUID, model, reason string,
+		correctedTerm, noteCode *string,
 	) (sqlc.SkillVocabUploadItem, error)
 	MarkQueuedUploadItemRejected(
 		ctx context.Context, id uuid.UUID, reason string,
+		suggestedTerm, noteCode *string,
 	) (sqlc.SkillVocabUploadItem, error)
 	MarkQueuedUploadItemFailed(
 		ctx context.Context, id uuid.UUID, reason string,
@@ -182,8 +189,8 @@ func (r *pgxRepository) ListRelationsByWordID(
 }
 
 func (r *pgxRepository) UpsertUserWordState(
-	ctx context.Context, arg sqlc.UpsertUserWordStateParams) (sqlc.SkillUserWordState, error,
-) {
+	ctx context.Context, arg sqlc.UpsertUserWordStateParams,
+) (sqlc.UpsertUserWordStateRow, error) {
 	return r.q.UpsertUserWordState(ctx, arg)
 }
 
@@ -291,16 +298,28 @@ func (r *pgxRepository) ClaimPendingUploadItemsByUploadID(
 
 func (r *pgxRepository) MarkUploadItemVerified(
 	ctx context.Context, id uuid.UUID, senseID *uuid.UUID, model, reason string,
+	correctedTerm, noteCode *string,
 ) (sqlc.SkillVocabUploadItem, error) {
 	return r.q.MarkUploadItemVerified(ctx, sqlc.MarkUploadItemVerifiedParams{
-		ID: id, WordSenseID: senseID, VerifiedByModel: model, Reason: reason,
+		ID:              id,
+		WordSenseID:     senseID,
+		VerifiedByModel: model,
+		Reason:          reason,
+		CorrectedTerm:   correctedTerm,
+		NoteCode:        noteCode,
 	})
 }
 
 func (r *pgxRepository) MarkUploadItemRejected(
 	ctx context.Context, id uuid.UUID, reason string,
+	suggestedTerm, noteCode *string,
 ) (sqlc.SkillVocabUploadItem, error) {
-	return r.q.MarkUploadItemRejected(ctx, sqlc.MarkUploadItemRejectedParams{ID: id, Reason: reason})
+	return r.q.MarkUploadItemRejected(ctx, sqlc.MarkUploadItemRejectedParams{
+		ID:            id,
+		Reason:        reason,
+		SuggestedTerm: suggestedTerm,
+		NoteCode:      noteCode,
+	})
 }
 
 func (r *pgxRepository) RecordUploadItemAttempt(
@@ -327,11 +346,13 @@ func (r *pgxRepository) UpdateWordSenseEnrichment(
 
 func (r *pgxRepository) MarkUploadItemQueued(
 	ctx context.Context, id uuid.UUID, senseID *uuid.UUID, reason string,
+	noteCode *string,
 ) (sqlc.SkillVocabUploadItem, error) {
 	return r.q.MarkUploadItemQueued(ctx, sqlc.MarkUploadItemQueuedParams{
 		ID:          id,
 		WordSenseID: senseID,
 		Reason:      reason,
+		NoteCode:    noteCode,
 	})
 }
 
@@ -346,20 +367,26 @@ func (r *pgxRepository) ClaimQueuedUploadItems(
 
 func (r *pgxRepository) MarkQueuedUploadItemVerified(
 	ctx context.Context, id uuid.UUID, model, reason string,
+	correctedTerm, noteCode *string,
 ) (sqlc.SkillVocabUploadItem, error) {
 	return r.q.MarkQueuedUploadItemVerified(ctx, sqlc.MarkQueuedUploadItemVerifiedParams{
 		ID:              id,
 		VerifiedByModel: model,
 		Reason:          reason,
+		CorrectedTerm:   correctedTerm,
+		NoteCode:        noteCode,
 	})
 }
 
 func (r *pgxRepository) MarkQueuedUploadItemRejected(
 	ctx context.Context, id uuid.UUID, reason string,
+	suggestedTerm, noteCode *string,
 ) (sqlc.SkillVocabUploadItem, error) {
 	return r.q.MarkQueuedUploadItemRejected(ctx, sqlc.MarkQueuedUploadItemRejectedParams{
-		ID:     id,
-		Reason: reason,
+		ID:            id,
+		Reason:        reason,
+		SuggestedTerm: suggestedTerm,
+		NoteCode:      noteCode,
 	})
 }
 

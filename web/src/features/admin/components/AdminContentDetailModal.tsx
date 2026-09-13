@@ -35,7 +35,7 @@ const CEFR_LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"];
  * Specifically checks for valid JSON and key attributes like `correct_answer` or `correct_pairs`
  * so an authored exercise never fails during a learner's submission.
  */
-function validateContentBody(
+export function validateContentBody(
   kind: string,
   rawJson: string,
 ): { valid: boolean; error?: string; parsed?: unknown } {
@@ -98,6 +98,83 @@ function validateContentBody(
             "Interactive exercises must declare either 'correct_answer' or 'correct_pairs'; the grader refuses to score without them.",
         };
       }
+    }
+  }
+
+  if (kind === "reading_comprehension") {
+    const hasPassage =
+      typeof record.passage === "string" && record.passage.trim().length > 0;
+    if (!hasPassage) {
+      return {
+        valid: false,
+        error: "Reading comprehension exercises require a non-empty 'passage'.",
+      };
+    }
+
+    if (Array.isArray(record.questions)) {
+      if (record.questions.length === 0) {
+        return {
+          valid: false,
+          error:
+            "Reading comprehension with 'questions' must include at least one question.",
+        };
+      }
+      const questionsList = record.questions as unknown[];
+      for (let i = 0; i < questionsList.length; i++) {
+        const q = questionsList[i];
+        if (typeof q !== "object" || q === null) {
+          return {
+            valid: false,
+            error: `Question at index ${i} must be an object.`,
+          };
+        }
+        const qRec = q as Record<string, unknown>;
+        const qAnswer =
+          (typeof qRec.answer === "string" && qRec.answer.trim().length > 0) ||
+          (typeof qRec.correct_answer === "string" &&
+            qRec.correct_answer.trim().length > 0) ||
+          (typeof qRec.correct_option_id === "string" &&
+            qRec.correct_option_id.trim().length > 0);
+        if (!qAnswer) {
+          return {
+            valid: false,
+            error: `Question at index ${i} (${typeof qRec.prompt === "string" ? qRec.prompt : "unnamed"}) must specify an answer.`,
+          };
+        }
+      }
+    } else {
+      const hasAnswer =
+        (typeof record.correct_answer === "string" &&
+          record.correct_answer.trim().length > 0) ||
+        (typeof record.correct_option_id === "string" &&
+          record.correct_option_id.trim().length > 0);
+      if (!hasAnswer) {
+        return {
+          valid: false,
+          error:
+            "Reading comprehension requires 'correct_answer' or a 'questions' array where every question has an answer.",
+        };
+      }
+    }
+  }
+
+  if (kind === "writing_prompt") {
+    const hasPrompt =
+      typeof record.prompt === "string" && record.prompt.trim().length > 0;
+    if (!hasPrompt) {
+      return {
+        valid: false,
+        error: "Writing prompt exercises require a non-empty 'prompt'.",
+      };
+    }
+
+    const minWords = record.min_words;
+    if (typeof minWords !== "number" || minWords <= 0) {
+      return {
+        valid: false,
+        error:
+          "Writing prompt exercises require 'min_words' to be greater than zero.",
+      };
     }
   }
 

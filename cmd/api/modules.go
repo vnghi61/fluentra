@@ -132,6 +132,9 @@ type identityDeps struct {
 
 	// WorkerNudger signals a background worker to wake up after an upload is committed.
 	WorkerNudger vocabulary.WorkerNudger
+
+	// WritingDailyLimit is the maximum number of writing submissions graded per day.
+	WritingDailyLimit int
 }
 
 // newIdentity constructs the modules in dependency order — audit, then rbac,
@@ -270,16 +273,25 @@ func newIdentity(deps identityDeps) *identity {
 	})
 
 	assembled.writing = writing.New(writing.Deps{
-		Content: assembled.content.Reader(),
-		AI:      deps.AI,
+		Pool:         deps.Pool,
+		Enqueuer:     deps.Enqueuer,
+		Content:      assembled.content.Reader(),
+		AI:           deps.AI,
+		Counter:      lazyAttemptCounter{of: assembled},
+		WorkerNudger: deps.WorkerNudger,
+		DailyLimit:   deps.WritingDailyLimit,
 	})
 
 	assembled.learning = learning.New(learning.Deps{
-		Pool:     deps.Pool,
-		Caches:   newLearningCaches(deps.Redis),
-		Guard:    lazyGuard{of: assembled},
-		Lesson:   assembled.lesson.Reader(),
-		SRSDue:   assembled.srs.QueueReader(),
+		Pool:          deps.Pool,
+		Caches:        newLearningCaches(deps.Redis),
+		Guard:         lazyGuard{of: assembled},
+		Lesson:        assembled.lesson.Reader(),
+		LessonAuthor:  assembled.lesson.Author(),
+		Content:       assembled.content.Reader(),
+		ContentAuthor: assembled.content.Author(),
+		SRSDue:        assembled.srs.QueueReader(),
+
 		SRSCards: assembled.srs.CardWriter(),
 		Graders: buildGraders(
 			assembled.vocabulary.Grader(),
@@ -449,6 +461,7 @@ func (i *identity) Routes(api chi.Router) {
 		i.srs.Routes(authenticated)
 		i.vocabulary.Routes(authenticated)
 		i.gamification.Routes(authenticated)
+		i.writing.Routes(authenticated)
 
 		authenticated.Group(func(admin chi.Router) {
 			admin.Use(i.rbac.AdminOnly())
@@ -538,6 +551,19 @@ func (p lazyLessonProgress) CompletedLessonIDs(
 // learning stores it as a string; comparing to a literal in three places is how
 // a typo becomes a lesson that never shows a tick.
 const learningStatusCompleted = "completed"
+
+type lazyAttemptCounter struct{ of *identity }
+
+var _ learningcontract.AttemptCounter = lazyAttemptCounter{}
+
+func (c lazyAttemptCounter) CountAttemptsTowardLimitSince(
+	ctx context.Context, userID uuid.UUID, grader string, since time.Time,
+) (int, error) {
+	if c.of.learning == nil {
+		return 0, nil
+	}
+	return c.of.learning.AttemptCounter().CountAttemptsTowardLimitSince(ctx, userID, grader, since)
+}
 
 // rateLimiterAdapter bridges platform/cache's limiter to the one httpx declares.
 //

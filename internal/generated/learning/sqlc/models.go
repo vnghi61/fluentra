@@ -359,6 +359,15 @@ type ContentContentVersion struct {
 	UpdatedAt   time.Time
 }
 
+type ContentItemReport struct {
+	ID               uuid.UUID
+	ContentVersionID uuid.UUID
+	UserID           uuid.UUID
+	Reason           string
+	Note             *string
+	CreatedAt        time.Time
+}
+
 type ContentMediaAsset struct {
 	ID         uuid.UUID
 	ObjectKey  string
@@ -466,6 +475,7 @@ type CoreUserPreference struct {
 	AiProcessingOptOut   bool
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
+	PracticeLevel        *CoreCefrLevel
 }
 
 type LearnActivity struct {
@@ -478,6 +488,7 @@ type LearnActivity struct {
 	Weight           int32
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
+	RetiredAt        *time.Time
 }
 
 type LearnAnswerExplanation struct {
@@ -530,6 +541,14 @@ type LearnCourseUnit struct {
 	UpdatedAt   time.Time
 }
 
+type LearnDailySet struct {
+	ID          uuid.UUID
+	UserID      uuid.UUID
+	LocalDate   pgtype.Date
+	ActivityIds []uuid.UUID
+	CreatedAt   time.Time
+}
+
 type LearnEnrollment struct {
 	ID          uuid.UUID
 	UserID      uuid.UUID
@@ -539,6 +558,12 @@ type LearnEnrollment struct {
 	CompletedAt *time.Time
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+}
+
+type LearnItemExposure struct {
+	UserID        uuid.UUID
+	ActivityID    uuid.UUID
+	FirstServedAt time.Time
 }
 
 type LearnLearningSession struct {

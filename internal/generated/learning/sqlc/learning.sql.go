@@ -18,6 +18,7 @@ UPDATE learn.attempts
 SET status          = 'grading',
     idempotency_key = $3,
     response        = $4,
+    grader          = $5,
     updated_at      = now()
 WHERE id = $1
   AND created_at = $2
@@ -31,6 +32,7 @@ type ClaimAttemptForGradingParams struct {
 	CreatedAt      time.Time
 	IdempotencyKey *uuid.UUID
 	Response       []byte
+	Grader         *string
 }
 
 // ClaimAttemptForGrading is what makes submission idempotent, and it is the
@@ -55,6 +57,7 @@ func (q *Queries) ClaimAttemptForGrading(ctx context.Context, arg ClaimAttemptFo
 		arg.CreatedAt,
 		arg.IdempotencyKey,
 		arg.Response,
+		arg.Grader,
 	)
 	var i LearnAttempt
 	err := row.Scan(
@@ -72,6 +75,40 @@ func (q *Queries) ClaimAttemptForGrading(ctx context.Context, arg ClaimAttemptFo
 		&i.Status,
 	)
 	return i, err
+}
+
+const completeGradingAttempt = `-- name: CompleteGradingAttempt :execrows
+UPDATE learn.attempts
+SET status      = 'graded',
+    score       = $3,
+    grader      = $4,
+    duration_ms = $5,
+    updated_at  = now()
+WHERE id = $1
+  AND created_at = $2
+  AND status = 'grading'
+`
+
+type CompleteGradingAttemptParams struct {
+	ID         uuid.UUID
+	CreatedAt  time.Time
+	Score      *int32
+	Grader     *string
+	DurationMs int32
+}
+
+func (q *Queries) CompleteGradingAttempt(ctx context.Context, arg CompleteGradingAttemptParams) (int64, error) {
+	result, err := q.db.Exec(ctx, completeGradingAttempt,
+		arg.ID,
+		arg.CreatedAt,
+		arg.Score,
+		arg.Grader,
+		arg.DurationMs,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const completeLearningSession = `-- name: CompleteLearningSession :one
@@ -111,6 +148,33 @@ func (q *Queries) CompleteLearningSession(ctx context.Context, arg CompleteLearn
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const countAttemptsTowardLimitSince = `-- name: CountAttemptsTowardLimitSince :one
+SELECT count(*)::integer
+FROM learn.attempts
+WHERE user_id = $1
+  AND grader = $2
+  AND status IN ('grading', 'graded')
+  AND created_at >= $3
+`
+
+type CountAttemptsTowardLimitSinceParams struct {
+	UserID    uuid.UUID
+	Grader    *string
+	CreatedAt time.Time
+}
+
+// Graded and still-grading attempts both count. An essay being marked has already
+// been handed to the model the limit exists to bound, and counting only graded
+// ones let a learner submit fifty in the seconds before the first came back.
+// Failed attempts do not count: quota is charged on success (writing/DECISIONS.md).
+// The claim records the grader, which is what makes an in-flight attempt visible.
+func (q *Queries) CountAttemptsTowardLimitSince(ctx context.Context, arg CountAttemptsTowardLimitSinceParams) (int32, error) {
+	row := q.db.QueryRow(ctx, countAttemptsTowardLimitSince, arg.UserID, arg.Grader, arg.CreatedAt)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
 }
 
 const createAttempt = `-- name: CreateAttempt :one
@@ -313,6 +377,44 @@ func (q *Queries) EnsurePartitions(ctx context.Context, dollar_1 int32) (int32, 
 	var created_count int32
 	err := row.Scan(&created_count)
 	return created_count, err
+}
+
+const failGradingAttempt = `-- name: FailGradingAttempt :execrows
+UPDATE learn.attempts
+SET status     = 'failed',
+    updated_at = now()
+WHERE id = $1
+  AND created_at = $2
+  AND status = 'grading'
+`
+
+type FailGradingAttemptParams struct {
+	ID        uuid.UUID
+	CreatedAt time.Time
+}
+
+func (q *Queries) FailGradingAttempt(ctx context.Context, arg FailGradingAttemptParams) (int64, error) {
+	result, err := q.db.Exec(ctx, failGradingAttempt, arg.ID, arg.CreatedAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const failStuckGradingAttempts = `-- name: FailStuckGradingAttempts :execrows
+UPDATE learn.attempts
+SET status     = 'failed',
+    updated_at = now()
+WHERE status = 'grading'
+  AND updated_at < $1
+`
+
+func (q *Queries) FailStuckGradingAttempts(ctx context.Context, updatedAt time.Time) (int64, error) {
+	result, err := q.db.Exec(ctx, failStuckGradingAttempts, updatedAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const getAnswerExplanation = `-- name: GetAnswerExplanation :one
@@ -749,6 +851,28 @@ func (q *Queries) ListSkillMasteryByUser(ctx context.Context, userID uuid.UUID) 
 		return nil, err
 	}
 	return items, nil
+}
+
+const unclaimAttempt = `-- name: UnclaimAttempt :exec
+UPDATE learn.attempts
+SET status          = 'in_progress',
+    idempotency_key = NULL,
+    response        = '{}'::jsonb,
+    grader          = NULL,
+    updated_at      = now()
+WHERE id = $1
+  AND created_at = $2
+  AND status = 'grading'
+`
+
+type UnclaimAttemptParams struct {
+	ID        uuid.UUID
+	CreatedAt time.Time
+}
+
+func (q *Queries) UnclaimAttempt(ctx context.Context, arg UnclaimAttemptParams) error {
+	_, err := q.db.Exec(ctx, unclaimAttempt, arg.ID, arg.CreatedAt)
+	return err
 }
 
 const updateAttemptStatus = `-- name: UpdateAttemptStatus :one

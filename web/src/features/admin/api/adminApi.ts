@@ -26,6 +26,9 @@ export type AdminContentItemDetail =
 export type ContentItem = components["schemas"]["ContentItem"];
 export type ContentVersion = components["schemas"]["ContentVersion"];
 export type AuthoringStatus = components["schemas"]["AuthoringStatus"];
+export type ReportedContentVersion =
+  components["schemas"]["ReportedContentVersion"];
+export type ReportedContentList = components["schemas"]["ReportedContentList"];
 
 export type AdminWordList = components["schemas"]["AdminWordList"];
 export type AdminWordSummary = components["schemas"]["AdminWordSummary"];
@@ -287,6 +290,19 @@ export const adminApi = {
     return apiFetch<void>(`/api/v1/admin/vocabulary/senses/${id}`, {
       method: "DELETE",
     });
+  },
+
+  /** List reported content versions ordered by distinct reporters */
+  async listReportedContent(
+    params: { limit?: number; offset?: number } = {},
+  ): Promise<ReportedContentList> {
+    const sp = new URLSearchParams();
+    if (params.limit !== undefined) sp.set("limit", params.limit.toString());
+    if (params.offset !== undefined) sp.set("offset", params.offset.toString());
+    const qs = sp.toString();
+    return apiFetch<ReportedContentList>(
+      `/api/v1/admin/content/reports${qs ? `?${qs}` : ""}`,
+    );
   },
 };
 
