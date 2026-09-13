@@ -36,8 +36,8 @@ func TestModule_New_DefaultGraders(t *testing.T) {
 	}
 
 	cronJobs := mod.CronJobs()
-	if len(cronJobs) != 3 {
-		t.Fatalf("expected 3 cron jobs, got %d", len(cronJobs))
+	if len(cronJobs) != 4 {
+		t.Fatalf("expected 4 cron jobs, got %d", len(cronJobs))
 	}
 	if cronJobs[0].Name != "learning.rotate_partitions" {
 		t.Errorf("got job name %s, want learning.rotate_partitions", cronJobs[0].Name)
@@ -47,6 +47,9 @@ func TestModule_New_DefaultGraders(t *testing.T) {
 	}
 	if cronJobs[2].Name != "learning.top_up_practice_pool" {
 		t.Errorf("got job name %s, want learning.top_up_practice_pool", cronJobs[2].Name)
+	}
+	if cronJobs[3].Name != "learning.top_up_exam_pool" {
+		t.Errorf("got job name %s, want learning.top_up_exam_pool", cronJobs[3].Name)
 	}
 
 	r := chi.NewRouter()

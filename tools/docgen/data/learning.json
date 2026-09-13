@@ -979,7 +979,7 @@
     "group": "modules",
     "schema": "skill",
     "phase": 3,
-    "status": "IMPLEMENTED",
+    "status": "DONE",
     "owner": "@learning-team",
     "hasJobs": true,
     "purpose": "Spoken practice: prompts, browser recording, automatic speech recognition, phoneme-level pronunciation assessment, fluency measurement, and AI coaching built on top of those numbers.",
@@ -1067,18 +1067,7 @@
       { "question": "Keep recordings indefinitely?", "choice": "90 days, learner-deletable, pinnable", "why": "Storage cost and privacy exposure both grow with retention, and the scores — which are what progress is built on — do not need the audio" },
       { "question": "Send audio to the LLM?", "choice": "No — transcript and scores only", "why": "Cheaper, faster, and it keeps voice data out of a second vendor's hands" }
     ],
-    "todo": [
-      { "title": "Phase 3", "items": [
-        "Tasks, attempts and scores model",
-        "Consent flow and recording UI with timers",
-        "Presigned upload plus post-upload verification",
-        "Media pipeline orchestration",
-        "Pronunciation heat map rendering data",
-        "AI coaching via `speaking.feedback`",
-        "Retention job and recording deletion",
-        "Score progression history"
-      ]}
-    ],
+    "todo": [],
     "future": ["Real-time streaming feedback", "Noise suppression before ASR", "Accent-aware scoring calibration", "Conversation practice with a model"],
     "doNot": [
       "Do not stream audio through the API.",
@@ -1187,7 +1176,7 @@
     "group": "modules",
     "schema": "skill",
     "phase": 3,
-    "status": "IMPLEMENTED",
+    "status": "DONE",
     "owner": "@learning-team",
     "purpose": "Audio comprehension: audio items, transcripts, play-limit policy, dictation, note-taking, and listening graders.",
     "responsibilities": [
@@ -1254,16 +1243,7 @@
       { "question": "Count plays on the client or the server?", "choice": "Server", "why": "Anything the client enforces alone is not enforced; exam realism depends on the limit being real" },
       { "question": "Reveal the transcript when?", "choice": "After submission by default, configurable per activity", "why": "Seeing the transcript first turns a listening exercise into a reading exercise" }
     ],
-    "todo": [
-      { "title": "Phase 3", "items": [
-        "Audio items with transcripts and metadata",
-        "Attempt with server-side play counting",
-        "Graders for MCQ, gap-fill, dictation and ordering",
-        "Transcript reveal policy",
-        "Study-mode segment replay",
-        "Player UI for both modes"
-      ]}
-    ],
+    "todo": [],
     "future": ["Adaptive speed for study mode", "Accent-targeted practice", "Shadowing exercises combining listening and speaking"],
     "doNot": [
       "Do not enforce the play limit only in the UI.",
@@ -1500,7 +1480,7 @@
     "group": "modules",
     "schema": "assess",
     "phase": 3,
-    "status": "IMPLEMENTED",
+    "status": "DONE",
     "owner": "@learning-team",
     "hasJobs": true,
     "purpose": "Timed mock exams in real formats (IELTS, TOEIC): sections, strict timing, auto-submit, integrity signals, scoring and score reports.",
@@ -1601,20 +1581,13 @@
     "decisions": [
       { "question": "Client or server timing?", "choice": "Server, always", "why": "Client timing is trivially manipulable, and an exam whose timing can be manipulated has no value as practice" },
       { "question": "Auto-invalidate on integrity signals?", "choice": "No — record and show", "why": "False positives (a notification, a second monitor) would penalise honest learners; the signal is more useful as self-awareness feedback than as enforcement" },
-      { "question": "Store or recompute score reports?", "choice": "Store", "why": "A learner's past band must not change because we revised a conversion table" }
+      { "question": "Store or recompute score reports?", "choice": "Store", "why": "A learner's past band must not change because we revised a conversion table" },
+      { "question": "How are exam timeouts enforced?", "choice": "3-tier expiry: River job at deadline, 1-minute sweep cron, and lazy check on read", "why": "Guarantees attempt finalisation and score reporting even if learner abandons sitting or background workers experience delays" },
+      { "question": "How does practice mode differ from exam mode?", "choice": "Custom duration 10–180 minutes, free section navigation, and re-recordable speaking", "why": "Enables targeted practice without breaking realistic exam constraints" },
+      { "question": "How is the exam pool isolated from the practice pool?", "choice": "Distinct pool course pool-exam and strict refusal guards in preview and lessons", "why": "Prevents exam questions from leaking through regular study or practice routes" },
+      { "question": "When can a listening item be drawn for an exam sitting?", "choice": "Only when TTS audio has been rendered and object key exists in storage", "why": "A learner cannot be tested on listening audio that does not exist" }
     ],
-    "todo": [
-      { "title": "Phase 4", "items": [
-        "Exam and section definitions with navigation rules",
-        "Attempt with server-authoritative timing and autosave",
-        "Auto-submit job",
-        "Objective scoring and band conversion",
-        "Async dispatch to writing and speaking",
-        "Score report generation and storage",
-        "Integrity signal collection",
-        "Exam player UI with a faithful timer"
-      ]}
-    ],
+    "todo": [],
     "future": ["Adaptive placement variant", "Percentile comparison once the population is large enough", "Proctoring integration", "Section-only practice mode"],
     "doNot": [
       "Do not trust client-reported time.",

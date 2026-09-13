@@ -2,7 +2,7 @@
 module: speaking
 tier: learning
 group: modules
-status: IMPLEMENTED
+status: DONE
 phase: 3
 owner: "@learning-team"
 schema: skill
@@ -19,16 +19,9 @@ Ordered backlog. Every item states what "done" means. Keep this current — it i
 agent knows what is already handled and what is deliberately deferred.
 
 <!-- BEGIN GENERATED: todo -->
-## Phase 3
+## Backlog
 
-- [ ] Tasks, attempts and scores model
-- [ ] Consent flow and recording UI with timers
-- [ ] Presigned upload plus post-upload verification
-- [ ] Media pipeline orchestration
-- [ ] Pronunciation heat map rendering data
-- [ ] AI coaching via `speaking.feedback`
-- [ ] Retention job and recording deletion
-- [ ] Score progression history
+_Empty. Add items with acceptance criteria as they are identified._
 <!-- END GENERATED: todo -->
 
 ## Deferred (deliberately not doing yet)

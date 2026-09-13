@@ -2,7 +2,7 @@
 module: listening
 tier: learning
 group: modules
-status: IMPLEMENTED
+status: DONE
 phase: 3
 owner: "@learning-team"
 schema: skill
@@ -25,7 +25,7 @@ last_verified: 2026-08-06
 | Path | `internal/modules/listening` |
 | Schema | `skill` |
 | Delivery phase | 3 |
-| Status | **IMPLEMENTED** |
+| Status | **DONE** |
 | Owner | @learning-team |
 
 ---

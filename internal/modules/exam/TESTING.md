@@ -2,7 +2,7 @@
 module: exam
 tier: learning
 group: modules
-status: IMPLEMENTED
+status: DONE
 phase: 3
 owner: "@learning-team"
 schema: assess

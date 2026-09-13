@@ -2,7 +2,7 @@
 module: exam
 tier: learning
 group: modules
-status: IMPLEMENTED
+status: DONE
 phase: 3
 owner: "@learning-team"
 schema: assess
@@ -19,16 +19,9 @@ Ordered backlog. Every item states what "done" means. Keep this current — it i
 agent knows what is already handled and what is deliberately deferred.
 
 <!-- BEGIN GENERATED: todo -->
-## Phase 4
+## Backlog
 
-- [ ] Exam and section definitions with navigation rules
-- [ ] Attempt with server-authoritative timing and autosave
-- [ ] Auto-submit job
-- [ ] Objective scoring and band conversion
-- [ ] Async dispatch to writing and speaking
-- [ ] Score report generation and storage
-- [ ] Integrity signal collection
-- [ ] Exam player UI with a faithful timer
+_Empty. Add items with acceptance criteria as they are identified._
 <!-- END GENERATED: todo -->
 
 ## Deferred (deliberately not doing yet)
