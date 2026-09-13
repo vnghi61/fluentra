@@ -33,8 +33,10 @@
       { "name": "taxonomies", "purpose": "Controlled vocabularies", "notes": "`namespace` (topic/skill/exam), `code`, `label`, `parent_id`" },
       { "name": "content_tags", "purpose": "Item ↔ taxonomy mapping", "notes": "Composite PK; indexed for filtered browsing" },
       { "name": "content_reviews", "purpose": "Review workflow record", "notes": "`version_id`, `reviewer_id`, `decision`, `comments`" },
-      { "name": "item_reports", "purpose": "Learner issue reports on content versions", "notes": "`content_version_id`, `user_id`, `reason`, `note`. Unique on (content_version_id, user_id)." }
+      { "name": "item_reports", "purpose": "Learner issue reports on content versions", "notes": "`content_version_id`, `user_id`, `reason`, `note`. Unique on (content_version_id, user_id)." },
+      { "name": "tts_cache", "purpose": "Pre-generated synthesised speech audio keyed by text hash and voice", "notes": "`text_hash`, `voice`, `engine`, `engine_version`, `object_key`, `created_at`" }
     ],
+
     "indexes": [
       "`idx_content_versions_item_version` — unique on (item_id, version)",
       "`idx_content_items_status_kind` — partial `WHERE status = 'published'`, the learner-facing browse path",

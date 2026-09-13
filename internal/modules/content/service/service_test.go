@@ -31,6 +31,7 @@ type fakeRepo struct {
 	reviews     map[uuid.UUID]domain.Review
 	tags        map[uuid.UUID][]domain.TaxonomyTag
 	reports     []domain.ItemReport
+	ttsCache    map[string]string
 	queriesRun  int
 
 	// what the last ListContentItemsFiltered call was given. The window is
@@ -56,6 +57,7 @@ func newFakeRepo() *fakeRepo {
 		mediaAssets: make(map[string]domain.MediaAsset),
 		reviews:     make(map[uuid.UUID]domain.Review),
 		tags:        make(map[uuid.UUID][]domain.TaxonomyTag),
+		ttsCache:    make(map[string]string),
 	}
 }
 
@@ -599,6 +601,18 @@ func (f *fakeRepo) CountReportedContentVersions(_ context.Context) (int, error) 
 		grouped[r.ContentVersionID] = struct{}{}
 	}
 	return len(grouped), nil
+}
+
+func (f *fakeRepo) GetTTSCache(_ context.Context, textHash, voice string) (string, bool, error) {
+	key := textHash + ":" + voice
+	val, ok := f.ttsCache[key]
+	return val, ok, nil
+}
+
+func (f *fakeRepo) UpsertTTSCache(_ context.Context, textHash, voice, _, _, objectKey string) error {
+	key := textHash + ":" + voice
+	f.ttsCache[key] = objectKey
+	return nil
 }
 
 type fakeEvents struct {

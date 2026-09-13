@@ -115,6 +115,9 @@ type Repository interface {
 	ListReportedContentVersions(ctx context.Context, limit, offset int32) ([]domain.ReportedVersionSummary, error)
 	CountReportedContentVersions(ctx context.Context) (int, error)
 
+	GetTTSCache(ctx context.Context, textHash, voice string) (string, bool, error)
+	UpsertTTSCache(ctx context.Context, textHash, voice, engine, engineVersion, objectKey string) error
+
 	WithTx(tx pgx.Tx) Repository
 }
 
@@ -950,4 +953,14 @@ func (s *Service) ListReportedContent(
 	}
 
 	return items, total, nil
+}
+
+// Get implements contract.TTSCache.
+func (s *Service) Get(ctx context.Context, textHash, voice string) (string, bool, error) {
+	return s.repo.GetTTSCache(ctx, textHash, voice)
+}
+
+// Put implements contract.TTSCache.
+func (s *Service) Put(ctx context.Context, textHash, voice, engine, engineVersion, objectKey string) error {
+	return s.repo.UpsertTTSCache(ctx, textHash, voice, engine, engineVersion, objectKey)
 }

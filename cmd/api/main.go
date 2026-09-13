@@ -182,6 +182,18 @@ type applicationConfig struct {
 	Worker struct {
 		URL string `koanf:"url"`
 	} `koanf:"worker"`
+	Speech struct {
+		TTSEngine            string        `koanf:"tts_engine"`
+		TTSVoice             string        `koanf:"tts_voice"`
+		ASRBaseURL           string        `koanf:"asr_base_url"`
+		ASRModel             string        `koanf:"asr_model"`
+		ASRAPIKey            string        `koanf:"asr_api_key"`
+		ASRTimeout           time.Duration `koanf:"asr_timeout"`
+		DailyRecordingsLimit int           `koanf:"daily_recordings_limit"`
+	} `koanf:"speech"`
+	Exam struct {
+		DailySittingsLimit int `koanf:"daily_sittings_limit"`
+	} `koanf:"exam"`
 }
 
 func (cfg applicationConfig) aiProviders() []ai.ProviderConfig {
@@ -526,7 +538,16 @@ func configOptions() config.Options {
 			"ai.provider_4_timeout":          defaultAITimeout,
 			"ai.writing_daily_limit":         10,
 			"worker.url":                     "",
+			"speech.tts_engine":              "offline",
+			"speech.tts_voice":               "en_US-lessac-medium",
+			"speech.asr_base_url":            "",
+			"speech.asr_model":               "whisper-large-v3",
+			"speech.asr_api_key":             "",
+			"speech.asr_timeout":             "60s",
+			"speech.daily_recordings_limit":  30,
+			"exam.daily_sittings_limit":      5,
 		},
+		EnvSections: []string{"SPEECH", "EXAM"},
 		Required: []config.RequiredKey{
 			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},
 			{Name: "redis.url", DocSection: "docs/deployment/configuration.md#redis"},

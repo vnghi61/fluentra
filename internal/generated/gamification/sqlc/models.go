@@ -391,6 +391,15 @@ type ContentTaxonomy struct {
 	UpdatedAt time.Time
 }
 
+type ContentTtsCache struct {
+	TextHash      string
+	Voice         string
+	Engine        string
+	EngineVersion string
+	ObjectKey     string
+	CreatedAt     time.Time
+}
+
 type CoreAvatarAsset struct {
 	AssetID   uuid.UUID
 	Variant   string

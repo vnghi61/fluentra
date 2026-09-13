@@ -646,3 +646,34 @@ func (r *Repository) CountReportedContentVersions(ctx context.Context) (int, err
 	}
 	return int(total), nil
 }
+
+// GetTTSCache retrieves a cached TTS audio entry by text hash and voice.
+func (r *Repository) GetTTSCache(ctx context.Context, textHash, voice string) (string, bool, error) {
+	row, err := r.queries.GetTTSCache(ctx, sqlccontent.GetTTSCacheParams{
+		TextHash: textHash,
+		Voice:    voice,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", false, nil
+		}
+		return "", false, fmt.Errorf("get tts cache: %w", err)
+	}
+	return row.ObjectKey, true, nil
+}
+
+// UpsertTTSCache inserts or updates a TTS cache record.
+func (r *Repository) UpsertTTSCache(ctx context.Context, textHash, voice, engine, engineVersion, objectKey string) error {
+	_, err := r.queries.UpsertTTSCache(ctx, sqlccontent.UpsertTTSCacheParams{
+		TextHash:      textHash,
+		Voice:         voice,
+		Engine:        engine,
+		EngineVersion: engineVersion,
+		ObjectKey:     objectKey,
+	})
+	if err != nil {
+		return fmt.Errorf("upsert tts cache: %w", err)
+	}
+	return nil
+}
+
