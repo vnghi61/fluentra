@@ -176,7 +176,8 @@ jobs:
           docker run -d --name minio -p 9000:9000 \
             -e MINIO_ROOT_USER=minioadmin \
             -e MINIO_ROOT_PASSWORD=minioadmin \
-            minio/minio:latest server /data
+            # MinIO no longer publishes to Docker Hub (minio/minio is gone); quay.io is its official registry.
+            quay.io/minio/minio:latest server /data
           for i in $(seq 1 30); do
             if curl -sf http://127.0.0.1:9000/minio/health/live; then exit 0; fi
             sleep 2
