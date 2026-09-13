@@ -18,6 +18,7 @@ import (
 	authservice "github.com/fluentra/fluentra/internal/modules/auth/service"
 	"github.com/fluentra/fluentra/internal/modules/auth/service/oauth/google"
 	"github.com/fluentra/fluentra/internal/modules/content"
+	"github.com/fluentra/fluentra/internal/modules/exam"
 	"github.com/fluentra/fluentra/internal/modules/gamification"
 	"github.com/fluentra/fluentra/internal/modules/grammar"
 	grammarcontract "github.com/fluentra/fluentra/internal/modules/grammar/contract"
@@ -70,6 +71,7 @@ type identity struct {
 	writing    *writing.Module
 	listening  *listening.Module
 	speaking   *speaking.Module
+	exam       *exam.Module
 	//nolint:unused // read through Routes and by the dashboard's Reader.
 	gamification *gamification.Module
 
@@ -319,6 +321,17 @@ func newIdentity(deps identityDeps) *identity {
 		ASRModel:     deps.SpeechASRModel,
 	})
 
+	assembled.exam = exam.New(exam.Deps{
+		Pool:         deps.Pool,
+		Learning:     lazySittingAnswerSubmitter{of: assembled},
+		Exposures:    lazyItemExposureRecorder{of: assembled},
+		Lesson:       assembled.lesson.Reader(),
+		Drawer:       nil,
+		Enqueuer:     deps.Enqueuer,
+		WorkerNudger: deps.WorkerNudger,
+		DailyLimit:   5,
+	})
+
 	assembled.learning = learning.New(learning.Deps{
 		Pool:          deps.Pool,
 		Caches:        newLearningCaches(deps.Redis),
@@ -527,6 +540,7 @@ func (i *identity) Routes(api chi.Router) {
 		i.writing.Routes(authenticated)
 		i.listening.Routes(authenticated)
 		i.speaking.Routes(authenticated)
+		i.exam.Routes(authenticated)
 
 		authenticated.Group(func(admin chi.Router) {
 			admin.Use(i.rbac.AdminOnly())
@@ -628,6 +642,41 @@ func (c lazyAttemptCounter) CountAttemptsTowardLimitSince(
 		return 0, nil
 	}
 	return c.of.learning.AttemptCounter().CountAttemptsTowardLimitSince(ctx, userID, grader, since)
+}
+
+type lazySittingAnswerSubmitter struct{ of *identity }
+
+var _ learningcontract.SittingAnswerSubmitter = lazySittingAnswerSubmitter{}
+
+func (s lazySittingAnswerSubmitter) SubmitSittingAnswer(
+	ctx context.Context, req learningcontract.SittingAnswerRequest,
+) (*learningcontract.SittingAnswerResult, error) {
+	if s.of.learning == nil {
+		return nil, fmt.Errorf("learning module is not assembled")
+	}
+	return s.of.learning.SittingAnswerSubmitter().SubmitSittingAnswer(ctx, req)
+}
+
+type lazyItemExposureRecorder struct{ of *identity }
+
+var _ learningcontract.ItemExposureRecorder = lazyItemExposureRecorder{}
+
+func (r lazyItemExposureRecorder) RecordItemExposures(
+	ctx context.Context, userID uuid.UUID, activityIDs []uuid.UUID,
+) error {
+	if r.of.learning == nil {
+		return fmt.Errorf("learning module is not assembled")
+	}
+	return r.of.learning.ItemExposureRecorder().RecordItemExposures(ctx, userID, activityIDs)
+}
+
+func (r lazyItemExposureRecorder) ListItemExposures(
+	ctx context.Context, userID uuid.UUID, activityIDs []uuid.UUID,
+) (map[uuid.UUID]time.Time, error) {
+	if r.of.learning == nil {
+		return nil, fmt.Errorf("learning module is not assembled")
+	}
+	return r.of.learning.ItemExposureRecorder().ListItemExposures(ctx, userID, activityIDs)
 }
 
 // rateLimiterAdapter bridges platform/cache's limiter to the one httpx declares.

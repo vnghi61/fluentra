@@ -24,6 +24,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/auth"
 	authservice "github.com/fluentra/fluentra/internal/modules/auth/service"
 	"github.com/fluentra/fluentra/internal/modules/content"
+	"github.com/fluentra/fluentra/internal/modules/exam"
 	"github.com/fluentra/fluentra/internal/modules/gamification"
 	"github.com/fluentra/fluentra/internal/modules/grammar"
 	grammarcontract "github.com/fluentra/fluentra/internal/modules/grammar/contract"
@@ -745,7 +746,7 @@ func startRiverWorker(
 
 // registerJobKinds is where a module's job handlers are counted.
 func registerJobKinds(_ *river.Workers) int {
-	return 4
+	return 5
 }
 
 // newStorageStore validates the storage configuration and builds the facade.
@@ -918,6 +919,15 @@ func startPracticeGenerator(
 	})
 	river.AddWorker(workers, speakingModule.GradeRecordingWorker())
 	cron.Register(speakingModule.PurgeJob())
+
+	examModule := exam.New(exam.Deps{
+		Pool:      pool,
+		Learning:  learningModule.SittingAnswerSubmitter(),
+		Exposures: learningModule.ItemExposureRecorder(),
+		Lesson:    lessonModule.Reader(),
+	})
+	river.AddWorker(workers, examModule.ExpireAttemptWorker())
+	cron.Register(examModule.SweepJob())
 
 	for _, scheduled := range vocabularyModule.CronJobs() {
 		cron.Register(scheduled)

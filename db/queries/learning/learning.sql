@@ -95,6 +95,14 @@ WHERE user_id = $1 AND activity_id = $2
 ORDER BY created_at DESC
 LIMIT $3;
 
+-- name: GetAttemptByUserActivityIdempotencyKey :one
+SELECT id, created_at, updated_at, user_id, activity_id, idempotency_key,
+       response, score, max_score, grader, duration_ms, status
+FROM learn.attempts
+WHERE user_id = $1 AND activity_id = $2 AND idempotency_key = $3
+ORDER BY created_at DESC
+LIMIT 1;
+
 -- ClaimAttemptForGrading is what makes submission idempotent, and it is the
 -- reason `attempts` needs no unique index on idempotency_key.
 --

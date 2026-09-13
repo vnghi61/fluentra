@@ -165,6 +165,27 @@ func (r *Repository) GetAttemptByID(ctx context.Context, id uuid.UUID) (*domain.
 	return toDomainAttempt(row), nil
 }
 
+// GetAttemptByUserActivityIdempotencyKey retrieves an attempt by user, activity, and idempotency key.
+func (r *Repository) GetAttemptByUserActivityIdempotencyKey(
+	ctx context.Context, userID, activityID, idempotencyKey uuid.UUID,
+) (*domain.Attempt, error) {
+	if r.queries == nil {
+		return nil, domain.ErrAttemptNotFound
+	}
+	row, err := r.queries.GetAttemptByUserActivityIdempotencyKey(ctx, sqlc.GetAttemptByUserActivityIdempotencyKeyParams{
+		UserID:         userID,
+		ActivityID:     activityID,
+		IdempotencyKey: &idempotencyKey,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrAttemptNotFound
+		}
+		return nil, mapPgError(err)
+	}
+	return toDomainAttempt(row), nil
+}
+
 // ClaimAttemptForGrading atomically flips an in-progress attempt to grading.
 // Returns pgx.ErrNoRows if another concurrent caller claimed it first (Trap 4).
 func (r *Repository) ClaimAttemptForGrading(ctx context.Context, params ClaimAttemptParams) (*domain.Attempt, error) {

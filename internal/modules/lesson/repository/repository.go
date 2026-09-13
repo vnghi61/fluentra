@@ -631,6 +631,7 @@ func (r *Repository) ResolveActivity(
 		LessonID:         row.LessonID,
 		UnitID:           row.UnitID,
 		CourseID:         row.CourseID,
+		CourseSlug:       row.CourseSlug,
 		Kind:             row.ActivityKind,
 		ContentVersionID: row.ContentVersionID,
 		Config:           row.ActivityConfig,

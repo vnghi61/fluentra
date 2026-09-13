@@ -130,6 +130,7 @@ components:
   g_gamification: { in: generated/gamification/sqlc }
   g_listening:   { in: generated/listening/sqlc }
   g_speaking:    { in: generated/speaking/sqlc }
+  g_exam:        { in: generated/exam/sqlc }
 
   # platform capabilities
   p_telemetry:   { in: platform/telemetry/** }
@@ -248,15 +249,29 @@ components:
   m_grammar_service: { in: modules/grammar/service }
   m_reading:         { in: modules/reading }
   m_reading_service: { in: modules/reading/service }
-  m_listening:     { in: modules/listening/** }
-  m_speaking:      { in: modules/speaking/** }
+  m_listening:            { in: modules/listening }
+  m_listening_domain:     { in: modules/listening/domain }
+  m_listening_repository: { in: modules/listening/repository }
+  m_listening_service:    { in: modules/listening/service }
+  m_listening_http:       { in: modules/listening/transport/http }
+  m_speaking:            { in: modules/speaking }
+  m_speaking_domain:     { in: modules/speaking/domain }
+  m_speaking_repository: { in: modules/speaking/repository }
+  m_speaking_service:    { in: modules/speaking/service }
+  m_speaking_job:        { in: modules/speaking/job }
+  m_speaking_http:       { in: modules/speaking/transport/http }
   m_writing:            { in: modules/writing }
   m_writing_repository: { in: modules/writing/repository }
   m_writing_service:    { in: modules/writing/service }
   m_writing_job:        { in: modules/writing/job }
   m_writing_http:       { in: modules/writing/transport/http }
   m_questionbank:  { in: modules/questionbank/** }
-  m_exam:          { in: modules/exam/** }
+  m_exam:            { in: modules/exam }
+  m_exam_domain:     { in: modules/exam/domain }
+  m_exam_repository: { in: modules/exam/repository }
+  m_exam_service:    { in: modules/exam/service }
+  m_exam_job:        { in: modules/exam/job }
+  m_exam_http:       { in: modules/exam/transport/http }
   # gamification, split by layer for the same reason learning is: the module has
   # more than one package now, `modules/gamification/**` makes each of them its
   # own import target, and a component may not name itself in mayDependOn.
@@ -437,6 +452,8 @@ deps:
   c_grammar:       { mayDependOn: [c_learning] }
   c_reading:       { mayDependOn: [c_learning] }
   c_writing:       { mayDependOn: [c_learning] }
+  c_listening:     { mayDependOn: [c_learning] }
+  c_speaking:      { mayDependOn: [c_learning] }
   m_srs_domain:     { mayDependOn: [c_srs] }
   m_srs_repository: { mayDependOn: [m_srs_domain, c_srs, g_srs] }
   m_srs_service:    { mayDependOn: [m_srs_domain, m_srs_repository, c_srs, c_user, c_content, c_learning, g_srs, p_cache, p_job, p_telemetry] }
@@ -464,15 +481,29 @@ deps:
   m_grammar:         { mayDependOn: [m_grammar_service, c_grammar, c_content, c_srs, c_learning, p_cache, p_ai, p_telemetry] }
   m_reading_service: { mayDependOn: [c_reading, c_content, c_learning, p_cache, p_telemetry] }
   m_reading:         { mayDependOn: [m_reading_service, c_reading, c_content, c_learning, p_cache, p_telemetry] }
-  m_listening:    { mayDependOn: [g_listening, c_listening, p_cache, p_media, p_storage, p_telemetry, c_content, c_questionbank, c_learning] }
-  m_speaking:     { mayDependOn: [g_speaking, c_speaking, p_media, p_ai, p_storage, p_job, p_telemetry, c_content, c_learning] }
+  m_listening_domain:     { mayDependOn: [c_listening] }
+  m_listening_repository: { mayDependOn: [m_listening_domain, c_listening, g_listening] }
+  m_listening_service:    { mayDependOn: [m_listening_domain, m_listening_repository, c_listening, c_content, c_learning, p_cache, p_media, p_storage, p_telemetry] }
+  m_listening_http:       { mayDependOn: [m_listening_domain, m_listening_service, c_listening] }
+  m_listening:            { mayDependOn: [m_listening_domain, m_listening_repository, m_listening_service, m_listening_http, c_listening, c_content, c_questionbank, c_learning, g_listening, p_cache, p_media, p_storage, p_telemetry] }
+  m_speaking_domain:     { mayDependOn: [c_speaking] }
+  m_speaking_repository: { mayDependOn: [m_speaking_domain, c_speaking, g_speaking] }
+  m_speaking_service:    { mayDependOn: [m_speaking_domain, m_speaking_repository, c_speaking, c_content, c_learning, p_media, p_ai, p_storage, p_job, p_telemetry] }
+  m_speaking_job:        { mayDependOn: [m_speaking_service, c_speaking, p_job, p_telemetry], anyVendorDeps: true }
+  m_speaking_http:       { mayDependOn: [m_speaking_domain, m_speaking_service, c_speaking] }
+  m_speaking:            { mayDependOn: [m_speaking_domain, m_speaking_repository, m_speaking_service, m_speaking_job, m_speaking_http, c_speaking, c_content, c_learning, g_speaking, p_media, p_ai, p_storage, p_job, p_telemetry] }
   m_writing_repository: { mayDependOn: [c_writing, g_writing] }
   m_writing_service:    { mayDependOn: [c_writing, c_content, c_learning, p_ai, p_job, p_telemetry] }
   m_writing_job:        { mayDependOn: [m_writing_service, c_writing, c_content, c_learning, p_job, p_ai, p_telemetry], anyVendorDeps: true }
   m_writing_http:       { mayDependOn: [m_writing_service, c_writing] }
   m_writing:            { mayDependOn: [m_writing_repository, m_writing_service, m_writing_job, m_writing_http, c_writing, c_content, c_learning, p_job, p_ai, p_telemetry] }
   m_questionbank: { mayDependOn: [p_ai, p_search, p_telemetry, c_content, c_audit] }
-  m_exam:         { mayDependOn: [p_job, p_ai, p_telemetry, c_questionbank, c_writing, c_speaking, c_learning, c_lesson, c_listening] }
+  m_exam_domain:     { mayDependOn: [c_exam] }
+  m_exam_repository: { mayDependOn: [m_exam_domain, c_exam, g_exam] }
+  m_exam_service:    { mayDependOn: [m_exam_domain, m_exam_repository, m_exam_job, c_exam, c_learning, c_lesson, c_listening, c_writing, c_speaking, g_exam, p_job, p_telemetry], anyVendorDeps: true }
+  m_exam_job:        { mayDependOn: [c_exam, p_job, p_telemetry], anyVendorDeps: true }
+  m_exam_http:       { mayDependOn: [m_exam_domain, m_exam_service, c_exam] }
+  m_exam:            { mayDependOn: [m_exam_domain, m_exam_repository, m_exam_service, m_exam_job, m_exam_http, c_exam, c_learning, c_lesson, c_listening, c_writing, c_speaking, c_questionbank, g_exam, p_job, p_ai, p_telemetry] }
   # c_user is on this list and is not in MODULE_INDEX's original arrow set. It
   # is there for one field: the learner's timezone. BR-GAMIFICATION-02 puts the
   # streak day boundary in the learner's own zone, and without reading it every

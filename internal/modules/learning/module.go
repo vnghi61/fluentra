@@ -184,6 +184,16 @@ func (m *Module) AttemptCounter() contract.AttemptCounter {
 	return m.service
 }
 
+// SittingAnswerSubmitter returns the public SittingAnswerSubmitter contract implementation.
+func (m *Module) SittingAnswerSubmitter() contract.SittingAnswerSubmitter {
+	return m.service
+}
+
+// ItemExposureRecorder returns the public ItemExposureRecorder contract implementation.
+func (m *Module) ItemExposureRecorder() contract.ItemExposureRecorder {
+	return m.service
+}
+
 // Routes mounts learner-facing attempt endpoints under the authenticated router.
 func (m *Module) Routes(router chi.Router) {
 	if m.handler != nil {

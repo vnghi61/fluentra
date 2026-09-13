@@ -95,6 +95,9 @@ tags:
   - name: speaking
     description: >-
       Spoken practice, browser recording upload intents, and audio evaluation.
+  - name: exam
+    description: >-
+      Timed mock exams, section navigation, auto-submit on expiry, integrity signals, and score reports.
 security:
   - BearerAuth: []
 paths:
@@ -5406,6 +5409,440 @@ paths:
               $ref: '#/components/headers/X-Request-Id'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /exams:
+    get:
+      tags: [exam]
+      operationId: listExams
+      summary: Available mock exams
+      description: Lists active mock exam templates available to learners.
+      x-permission: content.read.published
+      responses:
+        '200':
+          description: List of available exams.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [id, slug, title_en, title_vi, level, format, total_minutes]
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    slug:
+                      type: string
+                    title_en:
+                      type: string
+                    title_vi:
+                      type: string
+                    description_en:
+                      type: string
+                    description_vi:
+                      type: string
+                    level:
+                      type: string
+                    format:
+                      type: string
+                    total_minutes:
+                      type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /exams/{id}/attempts:
+    post:
+      tags: [exam]
+      operationId: startExamAttempt
+      summary: Start a sitting
+      description: Starts an exam sitting in exam mode or practice mode.
+      x-permission: self
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Exam template ID.
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mode]
+              properties:
+                mode:
+                  type: string
+                  enum: [exam, practice]
+                chosen_duration_minutes:
+                  type: integer
+                  minimum: 10
+                  maximum: 180
+      responses:
+        '201':
+          description: Exam sitting successfully started.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, exam_id, mode, started_at, deadline_at, remaining_seconds, current_section, status]
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  exam_id:
+                    type: string
+                    format: uuid
+                  mode:
+                    type: string
+                  started_at:
+                    type: string
+                    format: date-time
+                  deadline_at:
+                    type: string
+                    format: date-time
+                  remaining_seconds:
+                    type: integer
+                  current_section:
+                    type: integer
+                  status:
+                    type: string
+                  section_activities:
+                    type: array
+                    items:
+                      type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /exam-attempts:
+    get:
+      tags: [exam]
+      operationId: listExamAttempts
+      summary: List past sittings for current user
+      description: Returns a paginated list of past exam sittings for the caller.
+      x-permission: self
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Paginated sittings list.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, total]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                  total:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /exam-attempts/{id}:
+    get:
+      tags: [exam]
+      operationId: getExamAttempt
+      summary: Current state with server time remaining
+      description: Returns current attempt status, remaining time, draft answers, and activities.
+      x-permission: self
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Sitting attempt ID.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Current exam attempt details.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, exam_id, mode, started_at, deadline_at, remaining_seconds, current_section, status]
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  exam_id:
+                    type: string
+                    format: uuid
+                  mode:
+                    type: string
+                  started_at:
+                    type: string
+                    format: date-time
+                  deadline_at:
+                    type: string
+                    format: date-time
+                  remaining_seconds:
+                    type: integer
+                  current_section:
+                    type: integer
+                  status:
+                    type: string
+                  section_activities:
+                    type: array
+                    items:
+                      type: object
+                  draft_answers:
+                    type: object
+                  server_time:
+                    type: string
+                    format: date-time
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /exam-attempts/{id}/answers:
+    put:
+      tags: [exam]
+      operationId: saveExamDraftAnswers
+      summary: Save answers (autosave)
+      description: Saves draft answers and integrity events for an ongoing attempt before its deadline.
+      x-permission: self
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Sitting attempt ID.
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                answers:
+                  type: object
+                integrity_events:
+                  type: array
+                  items:
+                    type: object
+                    required: [kind, occurred_at]
+                    properties:
+                      kind:
+                        type: string
+                      occurred_at:
+                        type: string
+                        format: date-time
+                      metadata:
+                        type: object
+      responses:
+        '200':
+          description: Answers autosaved successfully.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [saved, remaining_seconds]
+                properties:
+                  saved:
+                    type: boolean
+                  remaining_seconds:
+                    type: integer
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /exam-attempts/{id}/sections/{n}/complete:
+    post:
+      tags: [exam]
+      operationId: completeExamSection
+      summary: Finish a section
+      description: Advances the sitting to the next section or concludes the final section.
+      x-permission: self
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Sitting attempt ID.
+          schema:
+            type: string
+            format: uuid
+        - name: n
+          in: path
+          required: true
+          description: 1-indexed section position being completed.
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Section completed; advanced to next section.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [current_section, remaining_seconds]
+                properties:
+                  current_section:
+                    type: integer
+                  remaining_seconds:
+                    type: integer
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /exam-attempts/{id}/submit:
+    post:
+      tags: [exam]
+      operationId: submitExamAttempt
+      summary: Submit the whole exam
+      description: Concludes the sitting, grading all answered items and initializing the score report.
+      x-permission: self
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Sitting attempt ID.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '202':
+          description: Exam submitted; grading in progress.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [attempt_id, status, report_status]
+                properties:
+                  attempt_id:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                  report_status:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /exam-attempts/{id}/report:
+    get:
+      tags: [exam]
+      operationId: getExamScoreReport
+      summary: Score report when ready
+      description: Returns the stored score report for a completed sitting.
+      x-permission: self
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Sitting attempt ID.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Exam score report.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [attempt_id, status, overall_score, overall_band, per_section]
+                properties:
+                  attempt_id:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                  overall_score:
+                    type: number
+                  overall_band:
+                    type: string
+                  per_section:
+                    type: array
+                    items:
+                      type: object
+                  feedback:
+                    type: object
+                  integrity_signals:
+                    type: array
+                    items:
+                      type: object
+                  disclaimer:
+                    type: string
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':

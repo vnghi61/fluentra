@@ -1,0 +1,249 @@
+package repository
+
+import (
+	"context"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/fluentra/fluentra/internal/generated/exam/sqlc"
+)
+
+// Repository manages persistent operations for the assess schema.
+type Repository struct {
+	pool    *pgxpool.Pool
+	queries *sqlc.Queries
+}
+
+// New constructs an exam repository.
+func New(pool *pgxpool.Pool) *Repository {
+	if pool == nil {
+		return &Repository{}
+	}
+	return &Repository{
+		pool:    pool,
+		queries: sqlc.New(pool),
+	}
+}
+
+func (r *Repository) ListExams(ctx context.Context) ([]sqlc.AssessExam, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	return r.queries.ListExams(ctx)
+}
+
+func (r *Repository) GetExamByID(ctx context.Context, id uuid.UUID) (*sqlc.AssessExam, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	exam, err := r.queries.GetExamByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return &exam, nil
+}
+
+func (r *Repository) GetExamBySlug(ctx context.Context, slug string) (*sqlc.AssessExam, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	exam, err := r.queries.GetExamBySlug(ctx, slug)
+	if err != nil {
+		return nil, err
+	}
+	return &exam, nil
+}
+
+func (r *Repository) ListExamSections(ctx context.Context, examID uuid.UUID) ([]sqlc.AssessExamSection, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	return r.queries.ListExamSections(ctx, examID)
+}
+
+func (r *Repository) CreateExamAttempt(ctx context.Context, arg sqlc.CreateExamAttemptParams) (*sqlc.AssessExamAttempt, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	attempt, err := r.queries.CreateExamAttempt(ctx, arg)
+	if err != nil {
+		return nil, err
+	}
+	return &attempt, nil
+}
+
+func (r *Repository) GetExamAttemptByID(ctx context.Context, id uuid.UUID) (*sqlc.AssessExamAttempt, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	attempt, err := r.queries.GetExamAttemptByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return &attempt, nil
+}
+
+func (r *Repository) GetExamAttemptForUser(ctx context.Context, id, userID uuid.UUID) (*sqlc.AssessExamAttempt, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	attempt, err := r.queries.GetExamAttemptForUser(ctx, sqlc.GetExamAttemptForUserParams{
+		ID:     id,
+		UserID: userID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &attempt, nil
+}
+
+func (r *Repository) ListUserExamAttempts(ctx context.Context, userID uuid.UUID, limit, offset int32) ([]sqlc.AssessExamAttempt, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	return r.queries.ListUserExamAttempts(ctx, sqlc.ListUserExamAttemptsParams{
+		UserID: userID,
+		Limit:  limit,
+		Offset: offset,
+	})
+}
+
+func (r *Repository) CountUserExamAttempts(ctx context.Context, userID uuid.UUID) (int64, error) {
+	if r.queries == nil {
+		return 0, nil
+	}
+	return r.queries.CountUserExamAttempts(ctx, userID)
+}
+
+func (r *Repository) CountUserActiveAttempts(ctx context.Context, userID uuid.UUID) (int64, error) {
+	if r.queries == nil {
+		return 0, nil
+	}
+	return r.queries.CountUserActiveAttempts(ctx, userID)
+}
+
+func (r *Repository) CountUserAttemptsToday(ctx context.Context, userID uuid.UUID, start, end time.Time) (int64, error) {
+	if r.queries == nil {
+		return 0, nil
+	}
+	return r.queries.CountUserAttemptsToday(ctx, sqlc.CountUserAttemptsTodayParams{
+		UserID:    userID,
+		StartedAt: start,
+		StartedAt_2: end,
+	})
+}
+
+func (r *Repository) UpdateDraftAnswers(ctx context.Context, id uuid.UUID, draftAnswers []byte, updatedAt time.Time) (*sqlc.AssessExamAttempt, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	attempt, err := r.queries.UpdateDraftAnswers(ctx, sqlc.UpdateDraftAnswersParams{
+		ID:           id,
+		DraftAnswers: draftAnswers,
+		UpdatedAt:    updatedAt,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &attempt, nil
+}
+
+func (r *Repository) UpdateCurrentSection(ctx context.Context, id uuid.UUID, section int32, updatedAt time.Time) (*sqlc.AssessExamAttempt, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	attempt, err := r.queries.UpdateCurrentSection(ctx, sqlc.UpdateCurrentSectionParams{
+		ID:             id,
+		CurrentSection: section,
+		UpdatedAt:      updatedAt,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &attempt, nil
+}
+
+func (r *Repository) MarkAttemptCompleted(ctx context.Context, id uuid.UUID, submittedAt time.Time, submittedBy string) (*sqlc.AssessExamAttempt, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	attempt, err := r.queries.MarkAttemptCompleted(ctx, sqlc.MarkAttemptCompletedParams{
+		ID:          id,
+		SubmittedAt: &submittedAt,
+		SubmittedBy: &submittedBy,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &attempt, nil
+}
+
+func (r *Repository) MarkAttemptExpired(ctx context.Context, id uuid.UUID, submittedAt time.Time) (*sqlc.AssessExamAttempt, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	attempt, err := r.queries.MarkAttemptExpired(ctx, sqlc.MarkAttemptExpiredParams{
+		ID:          id,
+		SubmittedAt: &submittedAt,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &attempt, nil
+}
+
+func (r *Repository) ListExpiredInProgressAttempts(ctx context.Context, now time.Time) ([]sqlc.AssessExamAttempt, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	return r.queries.ListExpiredInProgressAttempts(ctx, now)
+}
+
+func (r *Repository) CreateScoreReport(ctx context.Context, arg sqlc.CreateScoreReportParams) (*sqlc.AssessScoreReport, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	report, err := r.queries.CreateScoreReport(ctx, arg)
+	if err != nil {
+		return nil, err
+	}
+	return &report, nil
+}
+
+func (r *Repository) GetScoreReportByAttemptID(ctx context.Context, attemptID uuid.UUID) (*sqlc.AssessScoreReport, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	report, err := r.queries.GetScoreReportByAttemptID(ctx, attemptID)
+	if err != nil {
+		return nil, err
+	}
+	return &report, nil
+}
+
+func (r *Repository) UpdateScoreReport(ctx context.Context, arg sqlc.UpdateScoreReportParams) (*sqlc.AssessScoreReport, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	report, err := r.queries.UpdateScoreReport(ctx, arg)
+	if err != nil {
+		return nil, err
+	}
+	return &report, nil
+}
+
+func (r *Repository) RecordIntegrityEvent(ctx context.Context, arg sqlc.RecordIntegrityEventParams) error {
+	if r.queries == nil {
+		return nil
+	}
+	return r.queries.RecordIntegrityEvent(ctx, arg)
+}
+
+func (r *Repository) ListIntegrityEvents(ctx context.Context, attemptID uuid.UUID) ([]sqlc.AssessIntegrityEvent, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	return r.queries.ListIntegrityEvents(ctx, attemptID)
+}

@@ -254,10 +254,12 @@ SELECT
     a.weight AS activity_weight,
     l.unit_id,
     l.skill_focus AS lesson_skill_focus,
-    u.course_id
+    u.course_id,
+    c.slug AS course_slug
 FROM learn.activities a
 JOIN learn.lessons l ON l.id = a.lesson_id
 JOIN learn.course_units u ON u.id = l.unit_id
+JOIN learn.courses c ON c.id = u.course_id
 WHERE a.id = $1
 `
 
@@ -271,6 +273,7 @@ type ResolveActivityHierarchyRow struct {
 	UnitID           uuid.UUID
 	LessonSkillFocus string
 	CourseID         uuid.UUID
+	CourseSlug       string
 }
 
 func (q *Queries) ResolveActivityHierarchy(ctx context.Context, id uuid.UUID) (ResolveActivityHierarchyRow, error) {
@@ -286,6 +289,7 @@ func (q *Queries) ResolveActivityHierarchy(ctx context.Context, id uuid.UUID) (R
 		&i.UnitID,
 		&i.LessonSkillFocus,
 		&i.CourseID,
+		&i.CourseSlug,
 	)
 	return i, err
 }

@@ -201,3 +201,35 @@ type AttemptDetail struct {
 type AttemptReader interface {
 	GetAttemptForGrading(ctx context.Context, attemptID uuid.UUID) (*AttemptDetail, error)
 }
+
+// SittingAnswerRequest contains an answer to be graded and recorded as an attempt from an exam sitting.
+type SittingAnswerRequest struct {
+	UserID         uuid.UUID       `json:"user_id"`
+	ActivityID     uuid.UUID       `json:"activity_id"`
+	Response       json.RawMessage `json:"response"`
+	IdempotencyKey uuid.UUID       `json:"idempotency_key"`
+}
+
+// SittingAnswerResult is the outcome of grading a sitting answer.
+type SittingAnswerResult struct {
+	AttemptID   uuid.UUID    `json:"attempt_id"`
+	Status      string       `json:"status"`
+	Score       int          `json:"score"`
+	MaxScore    int          `json:"max_score"`
+	Correct     bool         `json:"correct"`
+	Feedback    string       `json:"feedback"`
+	Async       bool         `json:"async"`
+	ItemResults []ItemResult `json:"item_results,omitempty"`
+}
+
+// SittingAnswerSubmitter submits and grades an exam sitting answer into a learn.attempts row.
+type SittingAnswerSubmitter interface {
+	SubmitSittingAnswer(ctx context.Context, req SittingAnswerRequest) (*SittingAnswerResult, error)
+}
+
+// ItemExposureRecorder records and lists exposed items for a user.
+type ItemExposureRecorder interface {
+	RecordItemExposures(ctx context.Context, userID uuid.UUID, activityIDs []uuid.UUID) error
+	ListItemExposures(ctx context.Context, userID uuid.UUID, activityIDs []uuid.UUID) (map[uuid.UUID]time.Time, error)
+}
+

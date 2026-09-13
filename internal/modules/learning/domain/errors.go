@@ -13,6 +13,11 @@ var (
 		apperr.NotFound, "ATTEMPT_NOT_FOUND", "The attempt was not found.",
 	)
 
+	// ErrActivityNotFound is returned when an activity is not found.
+	ErrActivityNotFound = apperr.New(
+		apperr.NotFound, "ACTIVITY_NOT_FOUND", "The activity was not found.",
+	)
+
 	// ErrAlreadyGraded is returned when an attempt is already graded under a different idempotency key.
 	ErrAlreadyGraded = apperr.New(
 		apperr.Conflict, "ALREADY_GRADED", "The attempt has already been graded.",

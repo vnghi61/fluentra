@@ -471,6 +471,41 @@ func (q *Queries) GetAttemptByID(ctx context.Context, id uuid.UUID) (LearnAttemp
 	return i, err
 }
 
+const getAttemptByUserActivityIdempotencyKey = `-- name: GetAttemptByUserActivityIdempotencyKey :one
+SELECT id, created_at, updated_at, user_id, activity_id, idempotency_key,
+       response, score, max_score, grader, duration_ms, status
+FROM learn.attempts
+WHERE user_id = $1 AND activity_id = $2 AND idempotency_key = $3
+ORDER BY created_at DESC
+LIMIT 1
+`
+
+type GetAttemptByUserActivityIdempotencyKeyParams struct {
+	UserID         uuid.UUID
+	ActivityID     uuid.UUID
+	IdempotencyKey *uuid.UUID
+}
+
+func (q *Queries) GetAttemptByUserActivityIdempotencyKey(ctx context.Context, arg GetAttemptByUserActivityIdempotencyKeyParams) (LearnAttempt, error) {
+	row := q.db.QueryRow(ctx, getAttemptByUserActivityIdempotencyKey, arg.UserID, arg.ActivityID, arg.IdempotencyKey)
+	var i LearnAttempt
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.UserID,
+		&i.ActivityID,
+		&i.IdempotencyKey,
+		&i.Response,
+		&i.Score,
+		&i.MaxScore,
+		&i.Grader,
+		&i.DurationMs,
+		&i.Status,
+	)
+	return i, err
+}
+
 const getEnrollmentByUserCourse = `-- name: GetEnrollmentByUserCourse :one
 SELECT id, user_id, course_id, status, started_at, completed_at, created_at, updated_at
 FROM learn.enrollments
