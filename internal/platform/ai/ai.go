@@ -49,6 +49,8 @@ const (
 	TaskPracticeGenerate Task = "practice_generate"
 	// TaskPracticeSolve blind-solves a practice item given without answers to verify item quality.
 	TaskPracticeSolve Task = "practice_solve"
+	// TaskListeningGenerate writes an audio script and comprehension questions for listening exercises.
+	TaskListeningGenerate Task = "listening_generate"
 )
 
 // Request is one unit of work.

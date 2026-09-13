@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -32,6 +33,8 @@ import (
 	learningcontract "github.com/fluentra/fluentra/internal/modules/learning/contract"
 	learningjob "github.com/fluentra/fluentra/internal/modules/learning/job"
 	"github.com/fluentra/fluentra/internal/modules/lesson"
+	"github.com/fluentra/fluentra/internal/modules/listening"
+	listeningcontract "github.com/fluentra/fluentra/internal/modules/listening/contract"
 	"github.com/fluentra/fluentra/internal/modules/reading"
 	readingcontract "github.com/fluentra/fluentra/internal/modules/reading/contract"
 	"github.com/fluentra/fluentra/internal/modules/speaking"
@@ -459,8 +462,17 @@ func run(ctx context.Context) error {
 	return nil
 }
 
-// startModules builds the business modules this binary works for, subscribes
-// their event consumers, and hands their scheduled work to the cron scheduler.
+type roleAuthorResolver struct {
+	members rbaccontract.RoleMembers
+}
+
+func (r roleAuthorResolver) FirstHolderOf(ctx context.Context, role string) (uuid.UUID, error) {
+	if r.members == nil {
+		return uuid.Nil, errors.New("no role members provider")
+	}
+	return r.members.FirstHolderOf(ctx, rbaccontract.Role(role))
+}
+
 // startLearning wires the learning module's scheduled work: the attempt-table
 // partition rotation, and the retention refresh that makes ROADMAP.md's Phase 2
 // exit criterion a number rather than a query someone could write.
@@ -469,7 +481,9 @@ func startLearning(
 	instruments telemetry.Instruments, lessonModule *lesson.Module,
 	contentModule *content.Module, aiClient ai.Client,
 	readingModule *reading.Module, grammarModule *grammar.Module,
+	listeningModule *listening.Module,
 	rbacModule *rbac.Module,
+	cfg workerConfig, storageStore storage.Store,
 ) (*learning.Module, error) {
 	graders := make(map[string]learningcontract.ExerciseGrader)
 	if readingModule != nil {
@@ -480,6 +494,11 @@ func startLearning(
 	if grammarModule != nil {
 		for _, kind := range grammarcontract.GradedKinds() {
 			graders[kind] = grammarModule.Grader()
+		}
+	}
+	if listeningModule != nil {
+		for _, kind := range listeningcontract.GradedKinds() {
+			graders[kind] = listeningModule.Grader()
 		}
 	}
 
@@ -493,6 +512,13 @@ func startLearning(
 			"the practice pool will not grow", "error", err)
 	}
 
+	var mediaSynthesiser media.Synthesiser
+	if cfg.Speech.TTSEngine == "mock" || cfg.Speech.TTSEngine == "" {
+		mediaSynthesiser = &media.MockSynthesiser{}
+	} else {
+		mediaSynthesiser = media.NewCachedSynthesiser(nil, nil, storageStore, "")
+	}
+
 	learningModule := learning.New(learning.Deps{
 		Pool:          pool,
 		Lesson:        lessonModule.Reader(),
@@ -503,6 +529,8 @@ func startLearning(
 		AI:            aiClient,
 
 		GeneratorAuthorID: generatorAuthor,
+		AuthorResolver:    roleAuthorResolver{members: rbacModule.RoleMembers()},
+		Synthesiser:       mediaSynthesiser,
 	})
 
 	for _, scheduled := range learningModule.CronJobs() {
@@ -590,12 +618,17 @@ func startModules(
 	contentModule := content.NewAuthoring(content.Deps{Pool: pool})
 	readingModule := reading.New(reading.Deps{Content: contentModule.Reader()})
 	grammarModule := grammar.New(grammar.Deps{Content: contentModule.Reader()})
+	listeningModule := listening.New(listening.Deps{
+		Pool:    pool,
+		Content: contentModule.Reader(),
+		Storage: storageStore,
+	})
 
 	aiClient := newWorkerAIClient(ctx, cfg, pool)
 
 	learningModule, err := startLearning(
 		ctx, pool, cron, instruments, lessonModule, contentModule, aiClient, readingModule, grammarModule,
-		rbacModule,
+		listeningModule, rbacModule, cfg, storageStore,
 	)
 	if err != nil {
 		return err

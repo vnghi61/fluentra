@@ -195,7 +195,8 @@ func (s *Service) TopUpPracticePool(ctx context.Context) error {
 	// content_items.owner_id is required, and EnsurePublished refuses uuid.Nil. The
 	// top-up used to publish with no owner, so every item that passed all six checks
 	// was refused at the last step and the pool never held a single item.
-	if s.generatorAuthor == uuid.Nil {
+	author := s.resolveGeneratorAuthor(ctx)
+	if author == uuid.Nil {
 		slog.WarnContext(ctx, "practice pool top-up skipped: no owner for generated content")
 		return nil
 	}
@@ -206,13 +207,13 @@ func (s *Service) TopUpPracticePool(ctx context.Context) error {
 	}
 	for _, level := range practiceLevels {
 		for _, lesson := range practiceLessons {
-			s.topUpSlot(ctx, layout, level, lesson.kind)
+			s.topUpSlot(ctx, layout, level, lesson.kind, author)
 		}
 	}
 	return nil
 }
 
-func (s *Service) topUpSlot(ctx context.Context, layout *practicePoolLayout, level, kind string) {
+func (s *Service) topUpSlot(ctx context.Context, layout *practicePoolLayout, level, kind string, author uuid.UUID) {
 	activities, err := s.slotActivities(ctx, layout, level, kind)
 	if err != nil {
 		slog.ErrorContext(ctx, "could not list practice pool slot", "level", level, "kind", kind, "error", err)
@@ -227,7 +228,7 @@ func (s *Service) topUpSlot(ctx context.Context, layout *practicePoolLayout, lev
 	lessonID := layout.lessons[slotKey{level: level, kind: kind}]
 	added := 0
 	for i := 0; i < toAdd; i++ {
-		body, err := s.generateAndVerifyItem(ctx, level, kind, lessonID, activities)
+		body, err := s.generateAndVerifyItem(ctx, level, kind, author, lessonID, activities)
 		if err != nil {
 			slog.WarnContext(ctx, "practice pool item not added", "level", level, "kind", kind, "error", err)
 			continue
@@ -264,11 +265,11 @@ func (s *Service) itemsToAdd(ctx context.Context, activities []lessoncontract.Ac
 // generateAndVerifyItem tries a candidate up to three times and returns the body
 // of the one it published.
 func (s *Service) generateAndVerifyItem(
-	ctx context.Context, level, kind string, lessonID uuid.UUID, existing []lessoncontract.Activity,
+	ctx context.Context, level, kind string, author uuid.UUID, lessonID uuid.UUID, existing []lessoncontract.Activity,
 ) (json.RawMessage, error) {
 	var lastErr error
 	for attempt := 0; attempt <= maxRetriesPerItem; attempt++ {
-		body, err := s.tryGenerateAndVerify(ctx, level, kind, lessonID, existing)
+		body, err := s.tryGenerateAndVerify(ctx, level, kind, author, lessonID, existing)
 		if err == nil {
 			return body, nil
 		}
@@ -280,7 +281,7 @@ func (s *Service) generateAndVerifyItem(
 }
 
 func (s *Service) tryGenerateAndVerify(
-	ctx context.Context, level, kind string, lessonID uuid.UUID, existing []lessoncontract.Activity,
+	ctx context.Context, level, kind string, author uuid.UUID, lessonID uuid.UUID, existing []lessoncontract.Activity,
 ) (json.RawMessage, error) {
 	// CompleteJSON takes the JSON out of whatever the model wrapped it in: a model
 	// that answers inside a ```json fence is still answering.
@@ -295,7 +296,7 @@ func (s *Service) tryGenerateAndVerify(
 	if err := s.checkCandidate(ctx, level, kind, body, existing); err != nil {
 		return nil, err
 	}
-	if err := s.publishCandidate(ctx, level, kind, lessonID, body); err != nil {
+	if err := s.publishCandidate(ctx, level, kind, author, lessonID, body); err != nil {
 		return nil, err
 	}
 	return body, nil
@@ -384,7 +385,7 @@ func gradesFullMarks(
 // publishCandidate publishes an item that passed every check and appends it to its
 // slot's lesson. Appending, never replacing: see work order 11 §3.0.
 func (s *Service) publishCandidate(
-	ctx context.Context, level, kind string, lessonID uuid.UUID, body json.RawMessage,
+	ctx context.Context, level, kind string, author uuid.UUID, lessonID uuid.UUID, body json.RawMessage,
 ) error {
 	// content_items.slug is kebab-case (ck_content_items_slug_format) and a kind is
 	// snake_case, so the kind's underscores made every insert fail.
@@ -395,7 +396,7 @@ func (s *Service) publishCandidate(
 		Kind:      kind,
 		CEFRLevel: level,
 		Body:      body,
-		AuthorID:  s.generatorAuthor,
+		AuthorID:  author,
 	})
 	if err != nil {
 		return fmt.Errorf("publish verified content: %w", err)

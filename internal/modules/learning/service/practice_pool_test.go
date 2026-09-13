@@ -151,6 +151,8 @@ func (r *fakePoolRepo) exposureCount() int {
 type fakePoolLessons struct {
 	mu         sync.Mutex
 	ids        map[string]uuid.UUID
+	courseSlug map[uuid.UUID]string
+	unitCourse map[uuid.UUID]uuid.UUID
 	unitTitles map[uuid.UUID]string
 	slotLesson map[string]uuid.UUID
 	activities map[uuid.UUID][]lessoncontract.Activity
@@ -161,6 +163,8 @@ type fakePoolLessons struct {
 func newFakePoolLessons() *fakePoolLessons {
 	return &fakePoolLessons{
 		ids:        map[string]uuid.UUID{},
+		courseSlug: map[uuid.UUID]string{},
+		unitCourse: map[uuid.UUID]uuid.UUID{},
 		unitTitles: map[uuid.UUID]string{},
 		slotLesson: map[string]uuid.UUID{},
 		activities: map[uuid.UUID][]lessoncontract.Activity{},
@@ -185,13 +189,16 @@ func (l *fakePoolLessons) stableID(key string) uuid.UUID {
 func (l *fakePoolLessons) EnsureCourse(_ context.Context, spec lessoncontract.CourseSpec) (uuid.UUID, error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	return l.stableID("course/" + spec.Slug), nil
+	id := l.stableID("course/" + spec.Slug)
+	l.courseSlug[id] = spec.Slug
+	return id, nil
 }
 
 func (l *fakePoolLessons) EnsureUnit(_ context.Context, spec lessoncontract.UnitSpec) (uuid.UUID, error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	id := l.stableID(fmt.Sprintf("unit/%s/%d", spec.CourseID, spec.Position))
+	l.unitCourse[id] = spec.CourseID
 	l.unitTitles[id] = spec.Title
 	return id, nil
 }
@@ -200,6 +207,9 @@ func (l *fakePoolLessons) EnsureLesson(_ context.Context, spec lessoncontract.Le
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	id := l.stableID(fmt.Sprintf("lesson/%s/%d", spec.UnitID, spec.Position))
+	if slug := l.courseSlug[l.unitCourse[spec.UnitID]]; slug != "" {
+		l.slotLesson[slug+"/"+l.unitTitles[spec.UnitID]+"/"+spec.Title] = id
+	}
 	l.slotLesson[l.unitTitles[spec.UnitID]+"/"+spec.Title] = id
 	return id, nil
 }
@@ -239,9 +249,25 @@ func (l *fakePoolLessons) seed(
 	t.Helper()
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	lessonID, ok := l.slotLesson[level+"/"+title]
+	lessonID, ok := l.slotLesson["pool-practice/"+level+"/"+title]
+	if !ok {
+		lessonID, ok = l.slotLesson[level+"/"+title]
+	}
 	if !ok {
 		t.Fatalf("no pool lesson for %s/%s; resolve the pool structure first", level, title)
+	}
+	return l.addLocked(lessonID, lessoncontract.ActivitySpec{Kind: kind, ContentVersionID: versionID, Config: body})
+}
+
+func (l *fakePoolLessons) seedCourse(
+	t *testing.T, courseSlug, level, title, kind string, versionID uuid.UUID, body json.RawMessage,
+) uuid.UUID {
+	t.Helper()
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	lessonID, ok := l.slotLesson[courseSlug+"/"+level+"/"+title]
+	if !ok {
+		t.Fatalf("no pool lesson for %s/%s/%s; resolve the pool structure first", courseSlug, level, title)
 	}
 	return l.addLocked(lessonID, lessoncontract.ActivitySpec{Kind: kind, ContentVersionID: versionID, Config: body})
 }

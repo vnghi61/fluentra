@@ -326,7 +326,7 @@ func newIdentity(deps identityDeps) *identity {
 		Learning:     lazySittingAnswerSubmitter{of: assembled},
 		Exposures:    lazyItemExposureRecorder{of: assembled},
 		Lesson:       assembled.lesson.Reader(),
-		Drawer:       nil,
+		Drawer:       lazyExamPoolDrawer{of: assembled},
 		Enqueuer:     deps.Enqueuer,
 		WorkerNudger: deps.WorkerNudger,
 		DailyLimit:   5,
@@ -678,6 +678,42 @@ func (r lazyItemExposureRecorder) ListItemExposures(
 	}
 	return r.of.learning.ItemExposureRecorder().ListItemExposures(ctx, userID, activityIDs)
 }
+
+type lazyExamPoolDrawer struct{ of *identity }
+
+var _ exam.PoolDrawer = lazyExamPoolDrawer{}
+
+func (d lazyExamPoolDrawer) DrawSitting(
+	ctx context.Context, userID uuid.UUID, level string,
+) ([]exam.SectionActivities, error) {
+	if d.of.learning == nil {
+		return nil, fmt.Errorf("learning module is not assembled")
+	}
+	drawn, err := d.of.learning.ExamPoolDrawer().DrawExamSitting(ctx, userID, level)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]exam.SectionActivities, len(drawn))
+	for i, sec := range drawn {
+		acts := make([]exam.SittingActivityDTO, len(sec.Activities))
+		for j, act := range sec.Activities {
+			acts[j] = exam.SittingActivityDTO{
+				ID:               act.ID,
+				Kind:             act.Kind,
+				ContentVersionID: act.ContentVersionID,
+				Config:           act.Config,
+				Weight:           act.Weight,
+			}
+		}
+		out[i] = exam.SectionActivities{
+			SectionPosition: sec.SectionPosition,
+			Skill:           sec.Skill,
+			Activities:      acts,
+		}
+	}
+	return out, nil
+}
+
 
 // rateLimiterAdapter bridges platform/cache's limiter to the one httpx declares.
 //

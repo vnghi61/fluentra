@@ -233,3 +233,30 @@ type ItemExposureRecorder interface {
 	ListItemExposures(ctx context.Context, userID uuid.UUID, activityIDs []uuid.UUID) (map[uuid.UUID]time.Time, error)
 }
 
+// ExamSectionActivities represents drawn activities for an exam sitting section.
+type ExamSectionActivities struct {
+	SectionPosition int            `json:"section_position"`
+	Skill           string         `json:"skill"`
+	Activities      []ExamActivity `json:"activities"`
+}
+
+// ExamActivity represents an activity drawn for an exam sitting.
+type ExamActivity struct {
+	ID               uuid.UUID       `json:"id"`
+	Kind             string          `json:"kind"`
+	ContentVersionID uuid.UUID       `json:"content_version_id"`
+	Config           json.RawMessage `json:"config,omitempty"`
+	Weight           int             `json:"weight"`
+}
+
+// ExamPoolDrawer draws activities across the 4 skills for an exam sitting.
+type ExamPoolDrawer interface {
+	DrawExamSitting(ctx context.Context, userID uuid.UUID, level string) ([]ExamSectionActivities, error)
+}
+
+// AuthorResolver resolves an author for generated content.
+type AuthorResolver interface {
+	FirstHolderOf(ctx context.Context, role string) (uuid.UUID, error)
+}
+
+

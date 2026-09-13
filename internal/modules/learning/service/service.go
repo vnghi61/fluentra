@@ -206,6 +206,15 @@ type Deps struct {
 	// content_items.owner_id is required, and without an owner the top-up stands
 	// down rather than generate items EnsurePublished would refuse.
 	GeneratorAuthorID uuid.UUID
+	// AuthorResolver dynamically resolves the author when the top-up runs.
+	AuthorResolver contract.AuthorResolver
+	// Synthesiser turns listening script text into pre-rendered audio.
+	Synthesiser AudioSynthesiser
+}
+
+// AudioSynthesiser produces pre-rendered audio for listening exercises.
+type AudioSynthesiser interface {
+	Synthesise(ctx context.Context, text, voice string) (string, error)
 }
 
 // Service coordinates attempt execution, grading, progress rollups, and event emission.
@@ -228,10 +237,17 @@ type Service struct {
 	ai            ai.Client
 
 	generatorAuthor uuid.UUID
+	authorResolver  contract.AuthorResolver
+	synthesiser     AudioSynthesiser
+
 	// poolMu guards poolLayout, the practice pool's course and slot lessons,
 	// resolved once per process.
 	poolMu     sync.Mutex
 	poolLayout *practicePoolLayout
+
+	// examPoolMu guards examPoolLayout, the exam pool's course and slot lessons.
+	examPoolMu     sync.Mutex
+	examPoolLayout *examPoolLayout
 }
 
 // New constructs a new Service.
@@ -265,6 +281,8 @@ func New(deps Deps) *Service {
 		ai:            deps.AI,
 
 		generatorAuthor: deps.GeneratorAuthorID,
+		authorResolver:  deps.AuthorResolver,
+		synthesiser:     deps.Synthesiser,
 	}
 }
 

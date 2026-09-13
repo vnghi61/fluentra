@@ -41,6 +41,8 @@ var answerKeys = map[string]struct{}{
 	// listening into reading if leaked to the client before grading.
 	"script":     {},
 	"transcript": {},
+	// Writing prompt: the model answer must not leak to the learner before submission.
+	"model_answer": {},
 }
 
 // RedactForLearner strips the answer from a content body.

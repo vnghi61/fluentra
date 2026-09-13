@@ -57,6 +57,10 @@ type Deps struct {
 	// GeneratorAuthorID owns generated practice content. The worker resolves it;
 	// the API has no top-up to run and leaves it zero.
 	GeneratorAuthorID uuid.UUID
+	// AuthorResolver dynamically resolves the author when top-up runs.
+	AuthorResolver contract.AuthorResolver
+	// Synthesiser turns listening scripts into pre-rendered audio.
+	Synthesiser service.AudioSynthesiser
 }
 
 // Module represents the learning module, assembled.
@@ -131,6 +135,8 @@ func New(deps Deps) *Module {
 		AI:            deps.AI,
 
 		GeneratorAuthorID: deps.GeneratorAuthorID,
+		AuthorResolver:    deps.AuthorResolver,
+		Synthesiser:       deps.Synthesiser,
 	})
 
 	var handler *learninghttp.Handler
@@ -207,7 +213,10 @@ const topUpPracticePoolLockID int64 = 1_700_000_211
 // Advisory lock id for learning module stuck grading sweep.
 const sweepStuckGradingLockID int64 = 1_700_000_212
 
-// CronJobs returns the scheduled partition maintenance, grading sweep, and practice pool jobs.
+// Advisory lock id for exam pool top-up job (work order 12 §3.7).
+const topUpExamPoolLockID int64 = 1_700_000_213
+
+// CronJobs returns the scheduled partition maintenance, grading sweep, and pool jobs.
 func (m *Module) CronJobs() []job.CronJob {
 	return []job.CronJob{
 		{
@@ -228,12 +237,28 @@ func (m *Module) CronJobs() []job.CronJob {
 			Interval: 1 * time.Hour,
 			Task:     m.TopUpPracticePool,
 		},
+		{
+			Name:     "learning.top_up_exam_pool",
+			LockID:   topUpExamPoolLockID,
+			Interval: 1 * time.Hour,
+			Task:     m.TopUpExamPool,
+		},
 	}
 }
 
 // TopUpPracticePool generates and adds verified exercises to the practice pool.
 func (m *Module) TopUpPracticePool(ctx context.Context) error {
 	return m.service.TopUpPracticePool(ctx)
+}
+
+// TopUpExamPool generates and adds verified exercises to the exam pool.
+func (m *Module) TopUpExamPool(ctx context.Context) error {
+	return m.service.TopUpExamPool(ctx)
+}
+
+// ExamPoolDrawer returns the service implementing contract.ExamPoolDrawer.
+func (m *Module) ExamPoolDrawer() contract.ExamPoolDrawer {
+	return m.service
 }
 
 // SweepStuckGrading fails attempts in status 'grading' that have been stuck beyond 1 hour.
