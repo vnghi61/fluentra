@@ -5,12 +5,16 @@ import (
 	"unicode/utf8"
 )
 
-// maxSpellingRunes is the longest term OSADistance will align. The matrix is
-// (len1+1)×(len2+1) ints and an uploaded term has no other length limit, so an
-// unbounded pair is memory a paste can spend. No word worth correcting is this
+// maxSpellingRunes is the longest term OSADistance will align. An uploaded term
+// has no other length limit, so the alignment works in a fixed matrix of this
+// size rather than one a paste could size. No word worth correcting is this
 // long; past it the distance is reported as the longer length, which no
 // spelling bound accepts.
 const maxSpellingRunes = 64
+
+// osaMatrix holds one alignment. It is a value, not a make() sized by the input:
+// (maxSpellingRunes+1)² ints, about 34 KB.
+type osaMatrix = [maxSpellingRunes + 1][maxSpellingRunes + 1]int
 
 // OSADistance calculates the Optimal String Alignment distance (restricted Damerau-Levenshtein
 // distance) between two strings, compared case-insensitively.
@@ -37,9 +41,8 @@ func OSADistance(s1, s2 string) int {
 		return max(len1, len2)
 	}
 
-	d := make([][]int, len1+1)
-	for i := range d {
-		d[i] = make([]int, len2+1)
+	var d osaMatrix
+	for i := 0; i <= len1; i++ {
 		d[i][0] = i
 	}
 	for j := 0; j <= len2; j++ {
@@ -48,7 +51,7 @@ func OSADistance(s1, s2 string) int {
 
 	for i := 1; i <= len1; i++ {
 		for j := 1; j <= len2; j++ {
-			d[i][j] = osaCell(d, r1, r2, i, j)
+			d[i][j] = osaCell(&d, r1, r2, i, j)
 		}
 	}
 
@@ -57,7 +60,7 @@ func OSADistance(s1, s2 string) int {
 
 // osaCell is one step of the alignment: the cheapest of a deletion, an insertion
 // and a substitution, or a transposition of the two runes before it.
-func osaCell(d [][]int, r1, r2 []rune, i, j int) int {
+func osaCell(d *osaMatrix, r1, r2 []rune, i, j int) int {
 	cost := 1
 	if r1[i-1] == r2[j-1] {
 		cost = 0
