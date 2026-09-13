@@ -89,6 +89,9 @@ tags:
   - name: writing
     description: >-
       Writing exercises, IELTS-style criteria evaluation, and essay feedback.
+  - name: listening
+    description: >-
+      Audio comprehension, play limit enforcement, and listening transcripts.
 security:
   - BearerAuth: []
 paths:
@@ -5209,6 +5212,119 @@ paths:
                 page_size: 10
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /listening/items/{versionId}/plays:
+    post:
+      tags: [listening]
+      operationId: recordListeningPlay
+      summary: Checks the play policy, records the play, and returns a short-lived presigned audio GET URL.
+      description: >-
+        Enforces server-side play limits (exam mode allows 1 play, practice mode allows 3).
+        Returns a short-lived presigned audio download URL valid for the clip length plus one minute.
+      x-permission: self
+      parameters:
+        - name: versionId
+          in: path
+          required: true
+          description: Content version ID of the listening exercise.
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [context_type, context_id]
+              properties:
+                context_type:
+                  type: string
+                  enum: [attempt, exam]
+                  description: Context of the play ('attempt' for learning, 'exam' for mock exam sitting).
+                context_id:
+                  type: string
+                  format: uuid
+                  description: ID of the attempt or exam sitting.
+      responses:
+        '200':
+          description: Play recorded and presigned audio URL issued.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [audio_url, plays_used, plays_allowed, expires_at]
+                properties:
+                  audio_url:
+                    type: string
+                    format: uri
+                  plays_used:
+                    type: integer
+                  plays_allowed:
+                    type: integer
+                  expires_at:
+                    type: string
+                    format: date-time
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /listening/items/{versionId}/transcript:
+    get:
+      tags: [listening]
+      operationId: getListeningTranscript
+      summary: Returns script only for a graded attempt belonging to caller.
+      description: >-
+        In accordance with ADR-0025, the transcript is withheld until the attempt
+        is graded, ensuring that the listening exercise cannot be solved by reading ahead.
+      x-permission: self
+      parameters:
+        - name: versionId
+          in: path
+          required: true
+          description: Content version ID of the listening exercise.
+          schema:
+            type: string
+            format: uuid
+        - name: attempt_id
+          in: query
+          required: true
+          description: ID of the graded attempt belonging to the caller.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The transcript for the listening exercise.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [script]
+                properties:
+                  script:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalServerError'
 components:

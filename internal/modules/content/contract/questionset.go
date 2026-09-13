@@ -72,6 +72,12 @@ func ParseComprehensionResponse(raw json.RawMessage) ComprehensionResponse {
 				resp.Answers[item.ID] = item.Answer
 			}
 		}
+		if resp.Answers == nil && resp.Answer == "" && resp.SelectedOptionID == "" && resp.TextAnswer == "" {
+			var directMap map[string]string
+			if err := json.Unmarshal(raw, &directMap); err == nil && len(directMap) > 0 {
+				resp.Answers = directMap
+			}
+		}
 		return resp
 	}
 

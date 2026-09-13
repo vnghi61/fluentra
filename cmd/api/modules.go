@@ -27,6 +27,8 @@ import (
 	learningservice "github.com/fluentra/fluentra/internal/modules/learning/service"
 	"github.com/fluentra/fluentra/internal/modules/lesson"
 	lessonservice "github.com/fluentra/fluentra/internal/modules/lesson/service"
+	"github.com/fluentra/fluentra/internal/modules/listening"
+	listeningcontract "github.com/fluentra/fluentra/internal/modules/listening/contract"
 	"github.com/fluentra/fluentra/internal/modules/rbac"
 	rbaccontract "github.com/fluentra/fluentra/internal/modules/rbac/contract"
 	"github.com/fluentra/fluentra/internal/modules/reading"
@@ -63,6 +65,7 @@ type identity struct {
 	grammar    *grammar.Module
 	reading    *reading.Module
 	writing    *writing.Module
+	listening  *listening.Module
 	//nolint:unused // read through Routes and by the dashboard's Reader.
 	gamification *gamification.Module
 
@@ -282,6 +285,13 @@ func newIdentity(deps identityDeps) *identity {
 		DailyLimit:   deps.WritingDailyLimit,
 	})
 
+	assembled.listening = listening.New(listening.Deps{
+		Pool:     deps.Pool,
+		Content:  assembled.content.Reader(),
+		Learning: lazyAttemptReader{of: assembled},
+		Storage:  deps.Storage,
+	})
+
 	assembled.learning = learning.New(learning.Deps{
 		Pool:          deps.Pool,
 		Caches:        newLearningCaches(deps.Redis),
@@ -298,6 +308,7 @@ func newIdentity(deps identityDeps) *identity {
 			assembled.grammar.Grader(),
 			assembled.reading.Grader(),
 			assembled.writing.Grader(),
+			assembled.listening.Grader(),
 		),
 		Metrics:       deps.Instruments,
 		DeclaredKinds: buildDeclaredKinds(),
@@ -314,11 +325,13 @@ func buildDeclaredKinds() []string {
 		len(vocabularycontract.GradedKinds())+
 			len(grammarcontract.GradedKinds())+
 			len(readingcontract.GradedKinds())+
-			len(writingcontract.GradedKinds()))
+			len(writingcontract.GradedKinds())+
+			len(listeningcontract.GradedKinds()))
 	kinds = append(kinds, vocabularycontract.GradedKinds()...)
 	kinds = append(kinds, grammarcontract.GradedKinds()...)
 	kinds = append(kinds, readingcontract.GradedKinds()...)
 	kinds = append(kinds, writingcontract.GradedKinds()...)
+	kinds = append(kinds, listeningcontract.GradedKinds()...)
 	return kinds
 }
 
@@ -328,12 +341,14 @@ func buildGraders(
 	grammarGrader learningcontract.ExerciseGrader,
 	readingGrader learningcontract.ExerciseGrader,
 	writingGrader learningcontract.ExerciseGrader,
+	listeningGrader learningcontract.ExerciseGrader,
 ) map[string]learningcontract.ExerciseGrader {
 	return mergeGraders(
 		vocabularyGraders(vocabGrader),
 		grammarGraders(grammarGrader),
 		readingGraders(readingGrader),
 		writingGraders(writingGrader),
+		listeningGraders(listeningGrader),
 	)
 }
 
@@ -365,6 +380,14 @@ func readingGraders(grader learningcontract.ExerciseGrader) map[string]learningc
 func writingGraders(grader learningcontract.ExerciseGrader) map[string]learningcontract.ExerciseGrader {
 	graders := make(map[string]learningcontract.ExerciseGrader, len(writingcontract.GradedKinds()))
 	for _, kind := range writingcontract.GradedKinds() {
+		graders[kind] = grader
+	}
+	return graders
+}
+
+func listeningGraders(grader learningcontract.ExerciseGrader) map[string]learningcontract.ExerciseGrader {
+	graders := make(map[string]learningcontract.ExerciseGrader, len(listeningcontract.GradedKinds()))
+	for _, kind := range listeningcontract.GradedKinds() {
 		graders[kind] = grader
 	}
 	return graders
@@ -462,6 +485,7 @@ func (i *identity) Routes(api chi.Router) {
 		i.vocabulary.Routes(authenticated)
 		i.gamification.Routes(authenticated)
 		i.writing.Routes(authenticated)
+		i.listening.Routes(authenticated)
 
 		authenticated.Group(func(admin chi.Router) {
 			admin.Use(i.rbac.AdminOnly())
@@ -617,4 +641,17 @@ func (r aiUsageReporter) GetUsageOverview(ctx context.Context) ([]adminsvc.AIUsa
 		})
 	}
 	return out, nil
+}
+
+type lazyAttemptReader struct{ of *identity }
+
+var _ learningcontract.AttemptReader = lazyAttemptReader{}
+
+func (r lazyAttemptReader) GetAttemptForGrading(
+	ctx context.Context, attemptID uuid.UUID,
+) (*learningcontract.AttemptDetail, error) {
+	if r.of.learning == nil {
+		return nil, fmt.Errorf("learning module is not assembled")
+	}
+	return r.of.learning.AttemptReader().GetAttemptForGrading(ctx, attemptID)
 }
