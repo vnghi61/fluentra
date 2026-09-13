@@ -461,8 +461,11 @@ Every screen lazy, every string through `t()` in both locales, every screen chec
 
 ## 4. Spike findings
 
-_Empty until §3.0 is done. Its three findings go here, dated, before any work on §3.3 starts —
-including the ones that say free did not fit._
+_Recorded on 2026-09-13 before work on §3.3 starts._
+
+1. **Text to speech on this hosting**: The Render free worker has 512MB RAM, shared CPU, no GPU, and sleeps on inactivity. The repository has no production Dockerfile or `render.yaml` (configured in Render dashboard). Compiling or executing an on-worker neural TTS engine (e.g., Piper/Coqui) in that memory space for a two-minute clip risks worker OOM and timeouts. Following the §3.0 design: **render audio offline**. A `cmd/tts` CLI tool run by the owner or a CI workflow synthesises listening item scripts and uploads the audio directly to `fluentra-media` (MinIO/S3), recording entries in `content.tts_cache`. Listening items cannot be drawn for exam sittings until their audio exists in storage.
+2. **Transcription on a free tier**: OpenAI-compatible `POST /audio/transcriptions` (e.g., Groq `whisper-large-v3`, Cloudflare Workers AI Whisper, or an OpenAI-compatible endpoint) accepts both WebM/Opus (from Chrome/Firefox `MediaRecorder`) and MP4/AAC (from Safari) files up to 25MB. For a 45-second clip, transcription latency is typically 1–3 seconds. Because provider terms may process submitted voice data, a clear privacy notice is displayed to the learner prior to their first recording, recordings are retained for at most 90 days (`speaking.purge_recordings`), and all audio objects are deleted upon account erasure.
+3. **Scheduled jobs**: Verified `InsertOpts.ScheduledAt` in River `v0.43.0`. River marks future jobs as `scheduled` and transitions them to `available` once `scheduled_at <= now()`. If the worker sleeps through a deadline, overdue jobs are picked up immediately when the worker awakes. The 3-tier expiry design in §3.6 (River `ScheduledAt`, 1-minute sweep cron with lock `1_700_000_601`, and lazy expiry upon reading an overdue attempt) ensures guaranteed submission even if the worker slept or a job was delayed.
 
 ---
 

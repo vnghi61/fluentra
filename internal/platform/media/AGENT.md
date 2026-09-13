@@ -2,11 +2,11 @@
 module: media
 tier: platform
 group: platform
-status: PLANNED
+status: IMPLEMENTED
 phase: 3
 owner: "@platform-team"
 schema: content
-tables: [media_derivatives, transcripts, tts_cache]
+tables: [tts_cache]
 depends_on: [storage, job, ai, telemetry]
 depended_on_by: [speaking, listening, content, vocabulary, user]
 spec_version: 1.0.0
@@ -25,7 +25,7 @@ last_verified: 2026-08-06
 | Path | `internal/platform/media` |
 | Schema | `content` |
 | Delivery phase | 3 |
-| Status | **PLANNED** |
+| Status | **IMPLEMENTED** |
 | Owner | @platform-team |
 
 ---
@@ -98,9 +98,7 @@ Migrations: `db/migrations/media/` · Queries: `db/queries/media/`
 
 | Table | Purpose | Key columns / notes |
 |---|---|---|
-| `content.media_derivatives` | Derived artefacts from a source asset | `source_asset_id`, `kind` (opus/wav16k/waveform/thumb), `object_key`, `status`, `duration_ms` |
-| `content.transcripts` | ASR output | `asset_id`, `text`, `words` jsonb (with timings), `confidence`, `provider`, `language` |
-| `content.tts_cache` | Synthesised audio keyed by text and voice | `text_hash` + `voice` UNIQUE, `object_key`, `hits` |
+| `content.tts_cache` | Synthesised audio keyed by text hash and voice | `text_hash`, `voice`, `engine`, `engine_version`, `object_key`, `created_at` |
 
 <!-- END GENERATED: schema -->
 

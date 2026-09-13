@@ -977,7 +977,7 @@
     "group": "modules",
     "schema": "skill",
     "phase": 3,
-    "status": "PLANNED",
+    "status": "IMPLEMENTED",
     "owner": "@learning-team",
     "hasJobs": true,
     "purpose": "Spoken practice: prompts, browser recording, automatic speech recognition, phoneme-level pronunciation assessment, fluency measurement, and AI coaching built on top of those numbers.",
@@ -991,18 +991,11 @@
     ],
     "notResponsibilities": ["Transcoding or ASR — that is `platform/media`", "Storing audio — that is `platform/storage`", "Generating text feedback directly — it asks `platform/ai`"],
     "tables": [
-      { "name": "speaking_tasks", "purpose": "Prompt definitions", "notes": "Content-versioned. `type`, `prompt`, `reference_text` (read-aloud only), `prep_seconds`, `max_seconds`" },
-      { "name": "speaking_attempts", "purpose": "One recording", "notes": "`user_id`, `task_id`, `asset_id`, `status`, `transcript_id`, `overall_score`, `duration_ms`" },
-      { "name": "pronunciation_scores", "purpose": "Per-attempt assessment", "notes": "`attempt_id`, `accuracy`, `fluency`, `completeness`, `prosody`, `words` jsonb (per-word and per-phoneme)" },
-      { "name": "speaking_feedback", "purpose": "AI coaching", "notes": "`attempt_id`, `summary`, `strengths`, `improvements`, `prompt_version`" }
+      { "name": "speaking_feedback", "purpose": "Per-attempt asynchronous feedback, metrics, and transcript", "notes": "`attempt_id` UNIQUE FK learn.attempts, `user_id`, `recording_key`, `recording_deleted_at`, `transcript`, `criteria` jsonb, `read_aloud_accuracy`, `words_per_minute`, `feedback_en`, `feedback_vi`" }
     ],
     "endpoints": [
-      { "method": "GET", "path": "/api/v1/speaking/tasks", "permission": "content.read.published", "purpose": "Available tasks", "success": "200" },
-      { "method": "POST", "path": "/api/v1/speaking/upload-intent", "permission": "self", "purpose": "Presigned URL for the recording", "success": "200", "errors": ["UNSUPPORTED_AUDIO_FORMAT", "AUDIO_TOO_LONG"] },
-      { "method": "POST", "path": "/api/v1/speaking/attempts", "permission": "self", "purpose": "Create the attempt after upload", "success": "202", "errors": ["UPLOAD_VERIFICATION_FAILED", "AI_QUOTA_EXCEEDED"] },
-      { "method": "GET", "path": "/api/v1/speaking/attempts/{id}", "permission": "self", "purpose": "Attempt with scores and feedback when ready", "success": "200" },
-      { "method": "GET", "path": "/api/v1/speaking/attempts", "permission": "self", "purpose": "History with score progression", "success": "200" },
-      { "method": "DELETE", "path": "/api/v1/speaking/attempts/{id}/recording", "permission": "self", "purpose": "Delete the audio while keeping the scores", "success": "204" }
+      { "method": "POST", "path": "/api/v1/speaking/upload-intent", "permission": "self", "purpose": "Presigned PUT URL for recording upload to storage", "success": "200", "errors": ["UNSUPPORTED_AUDIO_FORMAT", "SPEECH_DAILY_LIMIT_REACHED"] },
+      { "method": "DELETE", "path": "/api/v1/speaking/attempts/{id}/recording", "permission": "self", "purpose": "Purges the recording object while keeping scores and feedback", "success": "204" }
     ],
     "contract": [{ "kind": "interface", "name": "speaking.Grader", "purpose": "Implements `learning.ExerciseGrader`; always asynchronous" }],
     "events": {
@@ -1192,7 +1185,7 @@
     "group": "modules",
     "schema": "skill",
     "phase": 3,
-    "status": "PLANNED",
+    "status": "IMPLEMENTED",
     "owner": "@learning-team",
     "purpose": "Audio comprehension: audio items, transcripts, play-limit policy, dictation, note-taking, and listening graders.",
     "responsibilities": [
@@ -1205,16 +1198,11 @@
     ],
     "notResponsibilities": ["Audio processing — that is `platform/media`", "Question authoring — that is `questionbank`"],
     "tables": [
-      { "name": "audio_items", "purpose": "A listening resource", "notes": "Content-versioned. `asset_id`, `duration_ms`, `accent`, `speech_rate`, `cefr_level`" },
-      { "name": "transcripts", "purpose": "Aligned transcript", "notes": "`audio_item_id`, `segments` jsonb with timings and speaker labels" },
-      { "name": "listening_attempts", "purpose": "One attempt", "notes": "`user_id`, `audio_item_id`, `plays_used`, `score`, `answers` jsonb" }
+      { "name": "listening_plays", "purpose": "Play log enforcing play limits per attempt or exam sitting", "notes": "`user_id`, `content_version_id`, `context_type`, `context_id`, `played_at`" }
     ],
     "endpoints": [
-      { "method": "GET", "path": "/api/v1/listening/items/{id}", "permission": "content.read.published", "purpose": "Item with a presigned audio URL and the play policy", "success": "200" },
-      { "method": "POST", "path": "/api/v1/listening/attempts", "permission": "self", "purpose": "Start an attempt", "success": "201" },
-      { "method": "POST", "path": "/api/v1/listening/attempts/{id}/play", "permission": "self", "purpose": "Record a play (server-side counter)", "success": "200", "errors": ["PLAY_LIMIT_REACHED"] },
-      { "method": "POST", "path": "/api/v1/listening/attempts/{id}/submit", "permission": "self", "purpose": "Submit answers", "success": "200" },
-      { "method": "GET", "path": "/api/v1/listening/attempts/{id}/transcript", "permission": "self", "purpose": "Transcript after submission", "success": "200", "errors": ["TRANSCRIPT_LOCKED"] }
+      { "method": "POST", "path": "/api/v1/listening/items/{versionId}/plays", "permission": "self", "purpose": "Checks the play policy, records the play, and returns a short-lived presigned audio GET URL", "success": "200", "errors": ["PLAY_LIMIT_REACHED"] },
+      { "method": "GET", "path": "/api/v1/listening/items/{versionId}/transcript", "permission": "self", "purpose": "Returns script only for a graded attempt belonging to caller", "success": "200", "errors": ["TRANSCRIPT_LOCKED"] }
     ],
     "contract": [{ "kind": "interface", "name": "listening.Grader", "purpose": "Implements `learning.ExerciseGrader` for listening activity kinds" }],
     "events": { "publishes": [{ "name": "listening.attempt_completed", "payload": "`{user_id, item_id, score, plays_used}`" }], "consumes": [{ "name": "media.processed", "reason": "Mark an audio item ready for publication" }] },
@@ -1509,8 +1497,8 @@
     "tier": "learning",
     "group": "modules",
     "schema": "assess",
-    "phase": 4,
-    "status": "PLANNED",
+    "phase": 3,
+    "status": "IMPLEMENTED",
     "owner": "@learning-team",
     "hasJobs": true,
     "purpose": "Timed mock exams in real formats (IELTS, TOEIC): sections, strict timing, auto-submit, integrity signals, scoring and score reports.",
@@ -1528,14 +1516,14 @@
     "tables": [
       { "name": "exams", "purpose": "Exam definition", "notes": "Content-versioned. `format`, `total_minutes`, `scoring_model`" },
       { "name": "exam_sections", "purpose": "Timed part", "notes": "`exam_id`, `position`, `skill`, `minutes`, `question_set_id`, `navigation` (linear/free)" },
-      { "name": "exam_attempts", "purpose": "One sitting", "notes": "`user_id`, `exam_id`, `status`, `started_at`, `expires_at`, `submitted_at`, `raw_score`, `band`" },
-      { "name": "attempt_answers", "purpose": "Per-question responses", "notes": "Partitioned monthly. `attempt_id`, `question_id`, `answer` jsonb, `answered_at`, `time_ms`" },
+      { "name": "exam_attempts", "purpose": "One sitting", "notes": "`user_id`, `exam_id`, `mode`, `chosen_duration_minutes`, `started_at`, `deadline_at`, `status`, `section_activities`, `draft_answers`, `submitted_at`, `submitted_by`" },
       { "name": "score_reports", "purpose": "Learner-facing result", "notes": "`attempt_id`, `overall_band`, `per_section` jsonb, `feedback`, `percentile`" },
       { "name": "integrity_events", "purpose": "Signals during an attempt", "notes": "`attempt_id`, `kind`, `occurred_at` — informational, never punitive automatically" }
     ],
     "endpoints": [
       { "method": "GET", "path": "/api/v1/exams", "permission": "content.read.published", "purpose": "Available mock exams", "success": "200" },
       { "method": "POST", "path": "/api/v1/exams/{id}/attempts", "permission": "self", "purpose": "Start a sitting", "success": "201", "errors": ["EXAM_WINDOW_CLOSED", "ATTEMPT_IN_PROGRESS", "INSUFFICIENT_ITEMS"] },
+      { "method": "GET", "path": "/api/v1/exam-attempts", "permission": "self", "purpose": "List past sittings for current user", "success": "200" },
       { "method": "GET", "path": "/api/v1/exam-attempts/{id}", "permission": "self", "purpose": "Current state with server time remaining", "success": "200" },
       { "method": "PUT", "path": "/api/v1/exam-attempts/{id}/answers", "permission": "self", "purpose": "Save answers (autosave)", "success": "200", "errors": ["ATTEMPT_EXPIRED"] },
       { "method": "POST", "path": "/api/v1/exam-attempts/{id}/sections/{n}/complete", "permission": "self", "purpose": "Finish a section", "success": "200" },
@@ -1550,7 +1538,7 @@
       ],
       "consumes": [{ "name": "writing.graded", "reason": "Complete the writing section score" }, { "name": "speaking.scored", "reason": "Complete the speaking section score" }]
     },
-    "dependsOn": ["questionbank", "job", "ai", "writing", "speaking", "learning"],
+    "dependsOn": ["questionbank", "job", "ai", "writing", "speaking", "learning", "lesson", "listening"],
     "dependedOnBy": ["learning", "analytics", "admin"],
     "rules": [
       "Time is server-authoritative. The client displays a countdown; the server decides when it is over.",

@@ -2,12 +2,12 @@
 module: exam
 tier: learning
 group: modules
-status: PLANNED
-phase: 4
+status: IMPLEMENTED
+phase: 3
 owner: "@learning-team"
 schema: assess
-tables: [exams, exam_sections, exam_attempts, attempt_answers, score_reports, integrity_events]
-depends_on: [questionbank, job, ai, writing, speaking, learning]
+tables: [exams, exam_sections, exam_attempts, score_reports, integrity_events]
+depends_on: [questionbank, job, ai, writing, speaking, learning, lesson, listening]
 depended_on_by: [learning, analytics, admin]
 spec_version: 1.0.0
 last_verified: 2026-08-06
@@ -25,7 +25,7 @@ last_verified: 2026-08-06
 | Path | `internal/modules/exam` |
 | Schema | `assess` |
 | Delivery phase | 4 |
-| Status | **PLANNED** |
+| Status | **IMPLEMENTED** |
 | Owner | @learning-team |
 
 ---
@@ -97,8 +97,7 @@ Migrations: `db/migrations/exam/` · Queries: `db/queries/exam/`
 |---|---|---|
 | `assess.exams` | Exam definition | Content-versioned. `format`, `total_minutes`, `scoring_model` |
 | `assess.exam_sections` | Timed part | `exam_id`, `position`, `skill`, `minutes`, `question_set_id`, `navigation` (linear/free) |
-| `assess.exam_attempts` | One sitting | `user_id`, `exam_id`, `status`, `started_at`, `expires_at`, `submitted_at`, `raw_score`, `band` |
-| `assess.attempt_answers` | Per-question responses | Partitioned monthly. `attempt_id`, `question_id`, `answer` jsonb, `answered_at`, `time_ms` |
+| `assess.exam_attempts` | One sitting | `user_id`, `exam_id`, `mode`, `chosen_duration_minutes`, `started_at`, `deadline_at`, `status`, `section_activities`, `draft_answers`, `submitted_at`, `submitted_by` |
 | `assess.score_reports` | Learner-facing result | `attempt_id`, `overall_band`, `per_section` jsonb, `feedback`, `percentile` |
 | `assess.integrity_events` | Signals during an attempt | `attempt_id`, `kind`, `occurred_at` — informational, never punitive automatically |
 
@@ -114,6 +113,7 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 |---|---|---|---|
 | `GET` | `/api/v1/exams` | `content.read.published` | Available mock exams |
 | `POST` | `/api/v1/exams/{id}/attempts` | `self` | Start a sitting |
+| `GET` | `/api/v1/exam-attempts` | `self` | List past sittings for current user |
 | `GET` | `/api/v1/exam-attempts/{id}` | `self` | Current state with server time remaining |
 | `PUT` | `/api/v1/exam-attempts/{id}/answers` | `self` | Save answers (autosave) |
 | `POST` | `/api/v1/exam-attempts/{id}/sections/{n}/complete` | `self` | Finish a section |
@@ -146,6 +146,8 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | [`writing`](../../modules/writing/AGENT.md) | → depends on | see its contract |
 | [`speaking`](../../modules/speaking/AGENT.md) | → depends on | see its contract |
 | [`learning`](../../modules/learning/AGENT.md) | → depends on | see its contract |
+| [`lesson`](../../modules/lesson/AGENT.md) | → depends on | see its contract |
+| [`listening`](../../modules/listening/AGENT.md) | → depends on | see its contract |
 | [`learning`](../../modules/learning/AGENT.md) | ← used by | consumes this module's contract |
 | [`analytics`](../../modules/analytics/AGENT.md) | ← used by | consumes this module's contract |
 | [`admin`](../../modules/admin/AGENT.md) | ← used by | consumes this module's contract |

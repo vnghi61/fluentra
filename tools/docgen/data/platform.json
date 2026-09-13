@@ -236,7 +236,7 @@
     "group": "platform",
     "schema": "content",
     "phase": 3,
-    "status": "PLANNED",
+    "status": "IMPLEMENTED",
     "owner": "@platform-team",
     "hasJobs": true,
     "purpose": "Everything that happens to audio and images: transcoding, waveform generation, speech recognition, pronunciation assessment, text-to-speech, and thumbnailing. It is the CPU-heavy part of the system and the first candidate for extraction to a separate service.",
@@ -257,9 +257,7 @@
       "Text generation — that is `platform/ai`"
     ],
     "tables": [
-      { "name": "media_derivatives", "purpose": "Derived artefacts from a source asset", "notes": "`source_asset_id`, `kind` (opus/wav16k/waveform/thumb), `object_key`, `status`, `duration_ms`" },
-      { "name": "transcripts", "purpose": "ASR output", "notes": "`asset_id`, `text`, `words` jsonb (with timings), `confidence`, `provider`, `language`" },
-      { "name": "tts_cache", "purpose": "Synthesised audio keyed by text and voice", "notes": "`text_hash` + `voice` UNIQUE, `object_key`, `hits`" }
+      { "name": "tts_cache", "purpose": "Synthesised audio keyed by text hash and voice", "notes": "`text_hash`, `voice`, `engine`, `engine_version`, `object_key`, `created_at`" }
     ],
     "endpoints": [
       { "method": "GET", "path": "/api/v1/admin/media/{asset_id}/derivatives", "permission": "content.read", "purpose": "Inspect the pipeline output for one asset", "success": "200" },

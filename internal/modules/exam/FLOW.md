@@ -2,12 +2,12 @@
 module: exam
 tier: learning
 group: modules
-status: PLANNED
-phase: 4
+status: IMPLEMENTED
+phase: 3
 owner: "@learning-team"
 schema: assess
-tables: [exams, exam_sections, exam_attempts, attempt_answers, score_reports, integrity_events]
-depends_on: [questionbank, job, ai, writing, speaking, learning]
+tables: [exams, exam_sections, exam_attempts, score_reports, integrity_events]
+depends_on: [questionbank, job, ai, writing, speaking, learning, lesson, listening]
 depended_on_by: [learning, analytics, admin]
 spec_version: 1.0.0
 last_verified: 2026-08-06

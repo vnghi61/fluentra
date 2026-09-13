@@ -2,11 +2,11 @@
 module: listening
 tier: learning
 group: modules
-status: PLANNED
+status: IMPLEMENTED
 phase: 3
 owner: "@learning-team"
 schema: skill
-tables: [audio_items, transcripts, listening_attempts]
+tables: [listening_plays]
 depends_on: [content, media, questionbank, learning]
 depended_on_by: [learning, exam, analytics]
 spec_version: 1.0.0
@@ -27,39 +27,16 @@ Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR
 <!-- BEGIN GENERATED: api-summary -->
 | Method | Path | Permission | Purpose |
 |---|---|---|---|
-| `GET` | `/api/v1/listening/items/{id}` | `content.read.published` | Item with a presigned audio URL and the play policy |
-| `POST` | `/api/v1/listening/attempts` | `self` | Start an attempt |
-| `POST` | `/api/v1/listening/attempts/{id}/play` | `self` | Record a play (server-side counter) |
-| `POST` | `/api/v1/listening/attempts/{id}/submit` | `self` | Submit answers |
-| `GET` | `/api/v1/listening/attempts/{id}/transcript` | `self` | Transcript after submission |
+| `POST` | `/api/v1/listening/items/{versionId}/plays` | `self` | Checks the play policy, records the play, and returns a short-lived presigned audio GET URL |
+| `GET` | `/api/v1/listening/items/{versionId}/transcript` | `self` | Returns script only for a graded attempt belonging to caller |
 <!-- END GENERATED: api-summary -->
 
 ## Endpoint detail
 
 <!-- BEGIN GENERATED: api-detail -->
-### `GET /api/v1/listening/items/{id}`
+### `POST /api/v1/listening/items/{versionId}/plays`
 
-Item with a presigned audio URL and the play policy
-
-| | |
-|---|---|
-| Permission | `content.read.published` |
-| Success | 200 |
-| Errors | standard set |
-
-### `POST /api/v1/listening/attempts`
-
-Start an attempt
-
-| | |
-|---|---|
-| Permission | `self` |
-| Success | 201 |
-| Errors | standard set |
-
-### `POST /api/v1/listening/attempts/{id}/play`
-
-Record a play (server-side counter)
+Checks the play policy, records the play, and returns a short-lived presigned audio GET URL
 
 | | |
 |---|---|
@@ -67,19 +44,9 @@ Record a play (server-side counter)
 | Success | 200 |
 | Errors | `PLAY_LIMIT_REACHED` |
 
-### `POST /api/v1/listening/attempts/{id}/submit`
+### `GET /api/v1/listening/items/{versionId}/transcript`
 
-Submit answers
-
-| | |
-|---|---|
-| Permission | `self` |
-| Success | 200 |
-| Errors | standard set |
-
-### `GET /api/v1/listening/attempts/{id}/transcript`
-
-Transcript after submission
+Returns script only for a graded attempt belonging to caller
 
 | | |
 |---|---|
