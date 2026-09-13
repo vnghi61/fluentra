@@ -144,7 +144,9 @@ export const ExampleSentences: React.FC<ExampleSentencesProps> = ({
                     "Report this sentence",
                   )}
                   title={t("report.reportSentence", "Report this sentence")}
-                  className="rounded-md p-1.5 text-text-muted hover:text-danger hover:bg-surface-muted transition-colors"
+                  // Sized like PronounceButton beside it: ADR-0024's 44 px floor
+                  // holds for an icon-only control, and the E2E at 320 px checks it.
+                  className="inline-flex h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full text-text-muted hover:text-danger hover:bg-surface-muted transition-colors"
                 >
                   <Flag className="h-3.5 w-3.5" aria-hidden="true" />
                 </button>
