@@ -2,6 +2,7 @@
 task: practice_generate
 version: 1
 output: json
+cache: false
 max_tokens: 2048
 temperature: 0.3
 description: >-

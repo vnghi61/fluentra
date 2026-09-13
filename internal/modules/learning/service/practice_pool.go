@@ -282,14 +282,15 @@ func (s *Service) generateAndVerifyItem(
 func (s *Service) tryGenerateAndVerify(
 	ctx context.Context, level, kind string, lessonID uuid.UUID, existing []lessoncontract.Activity,
 ) (json.RawMessage, error) {
-	response, err := s.ai.Complete(ctx, ai.Request{
+	// CompleteJSON takes the JSON out of whatever the model wrapped it in: a model
+	// that answers inside a ```json fence is still answering.
+	var body json.RawMessage
+	if err := ai.CompleteJSON(ctx, s.ai, ai.Request{
 		Task: ai.TaskPracticeGenerate,
 		Vars: map[string]any{"Kind": kind, "CEFRLevel": level},
-	})
-	if err != nil {
+	}, &body); err != nil {
 		return nil, fmt.Errorf("ai generate call failed: %w", err)
 	}
-	body := json.RawMessage(strings.TrimSpace(response.Text))
 
 	if err := s.checkCandidate(ctx, level, kind, body, existing); err != nil {
 		return nil, err
@@ -350,14 +351,14 @@ func (s *Service) blindSolve(
 	ctx context.Context, grader learningcontract.ExerciseGrader, versionID uuid.UUID, kind string,
 	redacted json.RawMessage,
 ) error {
-	response, err := s.ai.Complete(ctx, ai.Request{
+	var reply json.RawMessage
+	if err := ai.CompleteJSON(ctx, s.ai, ai.Request{
 		Task: ai.TaskPracticeSolve,
 		Vars: map[string]any{"Kind": kind, "RedactedBody": string(redacted)},
-	})
-	if err != nil {
+	}, &reply); err != nil {
 		return fmt.Errorf("ai blind solve call failed: %w", err)
 	}
-	payload, err := parseBlindSolvePayload(kind, []byte(strings.TrimSpace(response.Text)))
+	payload, err := parseBlindSolvePayload(kind, reply)
 	if err != nil {
 		return fmt.Errorf("parse blind solve response: %w", err)
 	}
@@ -385,7 +386,10 @@ func gradesFullMarks(
 func (s *Service) publishCandidate(
 	ctx context.Context, level, kind string, lessonID uuid.UUID, body json.RawMessage,
 ) error {
-	slug := fmt.Sprintf("pool-%s-%s-%s", strings.ToLower(level), kind, uuid.New().String()[:8])
+	// content_items.slug is kebab-case (ck_content_items_slug_format) and a kind is
+	// snake_case, so the kind's underscores made every insert fail.
+	slug := fmt.Sprintf("pool-%s-%s-%s",
+		strings.ToLower(level), strings.ReplaceAll(kind, "_", "-"), uuid.New().String()[:8])
 	versionID, err := s.contentAuthor.EnsurePublished(ctx, contentcontract.AuthorSpec{
 		Slug:      slug,
 		Kind:      kind,

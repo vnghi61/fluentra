@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -308,9 +309,16 @@ type fakeContentAuthor struct {
 	specs []contentcontract.AuthorSpec
 }
 
+// kebabSlug is content_items' slug CHECK constraint. The pool built slugs from a
+// snake_case kind, and every real insert failed while this fake accepted them.
+var kebabSlug = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
+
 func (f *fakeContentAuthor) EnsurePublished(_ context.Context, spec contentcontract.AuthorSpec) (uuid.UUID, error) {
 	if spec.AuthorID == uuid.Nil {
 		return uuid.Nil, errors.New("authored content needs an author")
+	}
+	if !kebabSlug.MatchString(spec.Slug) {
+		return uuid.Nil, fmt.Errorf("slug %q violates ck_content_items_slug_format", spec.Slug)
 	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -398,20 +406,27 @@ type cannedPracticeAI struct {
 	mu        sync.Mutex
 	generated int
 	solve     string
+	// fenced wraps every reply in a ```json block, as models often do.
+	fenced bool
 }
 
 func (c *cannedPracticeAI) Complete(_ context.Context, req ai.Request) (ai.Response, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	var text string
 	switch req.Task {
 	case ai.TaskPracticeGenerate:
 		c.generated++
-		return ai.Response{Text: tenseChoiceItem(c.generated)}, nil
+		text = tenseChoiceItem(c.generated)
 	case ai.TaskPracticeSolve:
-		return ai.Response{Text: c.solve}, nil
+		text = c.solve
 	default:
 		return ai.Response{}, nil
 	}
+	if c.fenced {
+		text = "```json\n" + text + "\n```"
+	}
+	return ai.Response{Text: text}, nil
 }
 
 func (c *cannedPracticeAI) generatedCount() int {
@@ -771,6 +786,29 @@ func TestTopUpPracticePool_PublishesUnderTheGeneratorAuthor(t *testing.T) {
 	}
 	if published[0].AuthorID != author {
 		t.Errorf("published under %s, want the generator author %s", published[0].AuthorID, author)
+	}
+}
+
+// TestTopUpPracticePool_AcceptsRepliesInACodeFence. Models wrap JSON in a
+// ```json fence more often than not. The pool parsed both replies as raw text,
+// so every fenced candidate failed and the pool never grew.
+func TestTopUpPracticePool_AcceptsRepliesInACodeFence(t *testing.T) {
+	t.Parallel()
+	f := newPoolFixture(t, testClock(), uuid.New(), passingGraders(),
+		&cannedPracticeAI{solve: solveOptionA, fenced: true})
+	for _, level := range []string{"A2", "B1", "B2"} {
+		counts := map[string]int{poolKindReading: 50, poolKindTense: 50, poolKindTransform: 50}
+		if level == poolLevel {
+			counts[poolKindTense] = 49
+		}
+		f.seed(t, level, counts)
+	}
+
+	if err := f.svc.TopUpPracticePool(context.Background()); err != nil {
+		t.Fatalf("TopUpPracticePool: %v", err)
+	}
+	if f.lessons.appendedCount() != 1 {
+		t.Fatalf("appended %d items from fenced replies, want 1", f.lessons.appendedCount())
 	}
 }
 

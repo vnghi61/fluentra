@@ -471,6 +471,51 @@ func TestRouter_FallsBackWhenPrimaryFails(t *testing.T) {
 	assert.Contains(t, res.Text, "leisure")
 }
 
+// TestRegistry_PracticeGenerationIsNeverCached. The cache key is the task and its
+// inputs, and generation is asked for with the same kind and level every time: a
+// cached reply is the same practice item handed back for a day, so the pool could
+// never gain more than one.
+func TestRegistry_PracticeGenerationIsNeverCached(t *testing.T) {
+	registry, err := ai.NewRegistry()
+	require.NoError(t, err)
+
+	generate, err := registry.Get(ai.TaskPracticeGenerate)
+	require.NoError(t, err)
+	assert.False(t, generate.Cache, "practice_generate must say cache: false in its front matter")
+
+	verify, err := registry.Get(ai.TaskVerifyVocabulary)
+	require.NoError(t, err)
+	assert.True(t, verify.Cache, "a task caches unless its front matter opts out")
+}
+
+// TestRouter_AnUncachedTaskReachesTheProviderEveryTime. Two identical requests for
+// a task that opts out both go to the provider, and neither is served from cache.
+func TestRouter_AnUncachedTaskReachesTheProviderEveryTime(t *testing.T) {
+	registry, err := ai.NewRegistry()
+	require.NoError(t, err)
+
+	recorder := &recordingUsageRecorder{}
+	router := ai.NewRouter(ai.RouterOptions{
+		Prompts:   registry,
+		Providers: ai.NewProviderRegistry(&namedProvider{name: testPrimaryLLM, res: ai.Response{Text: `{}`}}),
+		Cache:     ai.NewMemoryCache(),
+		Usage:     recorder,
+	})
+	request := ai.Request{
+		Task: ai.TaskPracticeGenerate,
+		Vars: map[string]any{"Kind": "grammar_tense_choice", "CEFRLevel": "B1"},
+	}
+
+	for range 2 {
+		_, err := router.Complete(context.Background(), request)
+		require.NoError(t, err)
+	}
+	require.Len(t, recorder.logs, 2)
+	for _, entry := range recorder.logs {
+		assert.Equal(t, ai.StatusSuccess, entry.Status, "an uncached task must not be served from cache")
+	}
+}
+
 func TestDBCache_NilPoolDoesNotPanic(t *testing.T) {
 	cache := ai.NewDBCache(nil)
 	ctx := context.Background()

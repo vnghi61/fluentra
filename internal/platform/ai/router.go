@@ -68,9 +68,13 @@ func (r *Router) Complete(ctx context.Context, req Request) (Response, error) {
 		return Response{}, err
 	}
 
-	// 1. Consult exact-hash response cache
-	cacheKey := ComputeCacheKey(req.Task, tmpl.Version, req.Vars)
-	if cached, found := r.cache.Get(ctx, cacheKey); found {
+	// 1. Consult exact-hash response cache, unless the task opts out. An empty key
+	// is neither read nor written.
+	cacheKey := ""
+	if tmpl.Cache {
+		cacheKey = ComputeCacheKey(req.Task, tmpl.Version, req.Vars)
+	}
+	if cached, found := r.cacheGet(ctx, cacheKey); found {
 		r.record(ctx, RequestLog{
 			Task:      req.Task,
 			Provider:  cached.Provider,
@@ -104,7 +108,7 @@ func (r *Router) Complete(ctx context.Context, req Request) (Response, error) {
 		res, err := r.executeWithRetry(ctx, primary, req)
 		if err == nil {
 			res.Provider = primary.Name()
-			r.cache.Set(ctx, cacheKey, req.Task, res, r.cacheTTL)
+			r.cacheSet(ctx, cacheKey, req.Task, res)
 			r.record(ctx, RequestLog{
 				Task:             req.Task,
 				Provider:         primary.Name(),
@@ -121,6 +125,22 @@ func (r *Router) Complete(ctx context.Context, req Request) (Response, error) {
 	}
 
 	return r.executeFallback(ctx, req, cacheKey, primary, primaryExecErr, primaryVerdict, start)
+}
+
+// cacheGet reads a cached reply; an empty key is a task that is never cached.
+func (r *Router) cacheGet(ctx context.Context, key string) (Response, bool) {
+	if key == "" {
+		return Response{}, false
+	}
+	return r.cache.Get(ctx, key)
+}
+
+// cacheSet stores a reply under key; an empty key is a task that is never cached.
+func (r *Router) cacheSet(ctx context.Context, key string, task Task, res Response) {
+	if key == "" {
+		return
+	}
+	r.cache.Set(ctx, key, task, res, r.cacheTTL)
 }
 
 // quotaVerdict is what a budget check actually told us.
@@ -226,7 +246,7 @@ func (r *Router) executeFallback(
 		res, err := r.executeWithRetry(ctx, fallback, req)
 		if err == nil {
 			res.Provider = fallback.Name()
-			r.cache.Set(ctx, cacheKey, req.Task, res, r.cacheTTL)
+			r.cacheSet(ctx, cacheKey, req.Task, res)
 			r.record(ctx, RequestLog{
 				Task:             req.Task,
 				Provider:         fallback.Name(),
