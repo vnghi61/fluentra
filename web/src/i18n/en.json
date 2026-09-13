@@ -350,7 +350,8 @@
     "somethingBroke": "Something broke",
     "tagline": "Learn English that stays learned",
     "thisScreenFailedToRender": "This screen failed to render.",
-    "tryAgain": "Try again"
+    "tryAgain": "Try again",
+    "starting": "Starting..."
   },
   "auth": {
     "atLeast12Characters": "At least 12 characters",
@@ -398,7 +399,13 @@
     "next": "Next",
     "previous": "Previous",
     "rowNumber": "#",
-    "saveChanges": "Save Changes"
+    "saveChanges": "Save Changes",
+    "retry": "Retry",
+    "pause": "Pause",
+    "play": "Play",
+    "reset": "Reset",
+    "refresh": "Refresh",
+    "unknownError": "An unexpected error occurred."
   },
   "dashboard": {
     "welcome": "Welcome to Fluentra",
@@ -549,7 +556,8 @@
     "settings": "Settings",
     "signIn": "Sign in",
     "signOut": "Sign out",
-    "myWriting": "My Writing"
+    "myWriting": "My Writing",
+    "exams": "Mock Exams"
   },
   "page": {
     "accountSettings": "Account Settings",
@@ -897,5 +905,146 @@
     "reviewBtn": "Review item",
     "noReports": "No items have been reported yet.",
     "reportsCount": "{{count}} learners"
+  },
+  "exam": {
+    "title": "4-Skill Mock Exam",
+    "hub": {
+      "badge": "4-Skill Mock Exams",
+      "title": "Standardized Exam Simulation",
+      "subtitle": "Comprehensive 4-skill testing: Listening clips, Reading passages, Essay writing, and Spoken audio responses uniquely generated from our pool.",
+      "dailySittings": "Daily Sittings Remaining",
+      "chooseLevel": "Select CEFR Proficiency Level",
+      "recommendedLevel": "Recommended: {{level}}",
+      "availableExams": "Available Mock Exams",
+      "notAvailableYetTitle": "Exams not available yet at this level",
+      "notAvailableYetDesc": "Our hourly pool generator is actively assembling verified listening, reading, writing, and speaking items for this level. Please check back soon or try another level.",
+      "minutes": "mins",
+      "defaultDesc": "Complete 4-skill mock exam including listening clips, reading comprehension passages, essay writing, and voice recording speaking tasks.",
+      "startExamMode": "Exam Mode (75 min)",
+      "practiceMode": "Practice Mode (Custom)",
+      "pastAttempts": "Your Exam History",
+      "noAttemptsYet": "You have not completed any mock exams yet. Start your first session above!",
+      "resume": "Resume Sitting",
+      "viewReport": "View Report",
+      "practiceDurationTitle": "Customize Practice Duration",
+      "practiceDurationDesc": "In Practice Mode, you can choose any time limit from 10 to 180 minutes and freely navigate between sections.",
+      "chosenDuration": "Time Limit:",
+      "mins": "mins",
+      "startPractice": "Start Practice",
+      "dailyLimitReached": "Daily limit reached (5 sittings per day). Please return tomorrow for more attempts.",
+      "startFailed": "Unable to start exam sitting."
+    },
+    "mode": {
+      "exam": "Exam Mode",
+      "practice": "Practice Mode"
+    },
+    "sections": {
+      "listening": "Listening",
+      "reading": "Reading",
+      "writing": "Writing",
+      "speaking": "Speaking"
+    },
+    "runner": {
+      "timeIsUp": "Time's up!",
+      "submittingNow": "Your exam is being automatically submitted. Please wait...",
+      "answeredStatus": "{{answered}}/{{total}} answered",
+      "remainingTime": "Time Remaining",
+      "finishExam": "Submit Exam",
+      "sectionLabel": "Section {{num}} of 4",
+      "saving": "Saving answers...",
+      "saved": "All answers saved",
+      "forwardOnlyNotice": "Note: Advancing will permanently lock this section in Exam Mode.",
+      "practiceNavNotice": "You can freely revisit sections in Practice Mode.",
+      "nextSection": "Next Section",
+      "finishAndSubmit": "Complete & Submit",
+      "submitConfirmTitle": "Ready to submit your exam?",
+      "answeredQuestions": "Answered Questions:",
+      "unansweredWarning": "You have unanswered items. Unanswered questions score 0 points.",
+      "submitNotice": "Once submitted, your answers will be graded and your score report will be generated. You cannot change your responses after submitting.",
+      "submitting": "Submitting...",
+      "confirmSubmit": "Confirm & Submit",
+      "loadingSitting": "Preparing your exam sitting...",
+      "loadSittingFailed": "Unable to load exam sitting"
+    },
+    "listening": {
+      "audioClip": "Audio Clip",
+      "instructions": "Listen carefully to answer the following questions.",
+      "playsLeft": "{{count}}/{{total}} plays left",
+      "maxPlays": "Up to {{count}} plays",
+      "limitReached": "Maximum play limit reached for this audio track.",
+      "loadFailed": "Unable to load audio track."
+    },
+    "reading": {
+      "passageTitle": "Reading Passage"
+    },
+    "writing": {
+      "essayPrompt": "Essay Writing Task",
+      "words": "words",
+      "placeholder": "Write your essay here. Support your argument with clear reasons and relevant examples...",
+      "sentenceTransform": "Sentence Transformation",
+      "yourAnswer": "Your Rewritten Sentence:",
+      "transformPlaceholder": "Type rewritten sentence here..."
+    },
+    "speaking": {
+      "taskReadAloud": "Speaking: Read Aloud",
+      "taskRespond": "Speaking: Spoken Response",
+      "readAloudTitle": "Read Aloud Task",
+      "respondTitle": "Spoken Response Task",
+      "readAloudDesc": "Read the text clearly at a natural speaking pace.",
+      "respondDesc": "Speak your answer clearly within the time limit.",
+      "timeLimit": "{{seconds}}s limit",
+      "recordedSuccess": "Audio response recorded and saved.",
+      "readyToRecord": "Press Record when ready to begin speaking.",
+      "startRecording": "Start Recording",
+      "reRecord": "Re-record",
+      "recorded": "Recorded",
+      "record": "Record",
+      "stopRecording": "Stop Recording",
+      "stop": "Stop",
+      "uploading": "Uploading audio recording...",
+      "uploaded": "Audio successfully saved.",
+      "uploadFailed": "Failed to upload voice recording. Please retry.",
+      "micPermissionDenied": "Microphone access denied. Please allow microphone permissions in your browser settings.",
+      "privacyTitle": "Voice Recording Notice",
+      "privacySubtitle": "How your audio is processed and stored",
+      "privacyConsentBody1": "Before speaking, please note that your audio recording is sent to an automated transcription service to generate a text transcript for scoring.",
+      "privacyConsentBody2": "Audio files are retained securely for a maximum of 90 days, after which they are permanently deleted. You can delete your recording at any time from your score report or settings. Deleting your account immediately erases all voice recordings.",
+      "iUnderstand": "I understand & consent"
+    },
+    "report": {
+      "gradingInProgressTitle": "Scoring in Progress",
+      "gradingInProgressDesc": "AI assessment for Writing and Speaking is finalizing. This screen refreshes automatically.",
+      "partialReportTitle": "Partial Score Report",
+      "partialReportDesc": "Some asynchronous grading tasks could not complete and are marked 'Not Scored'. Only completed sections factor into your total score.",
+      "officialScoreSummary": "Mock Exam Score Summary",
+      "congratulations": "Exam Completed",
+      "summarySubtitle": "Comprehensive assessment across Listening, Reading, Writing, and Speaking skills.",
+      "overallScore": "Overall Score",
+      "estimatedCEFR": "Estimated CEFR Band",
+      "disclaimerTitle": "Important Score Disclaimers",
+      "notOfficialTOEIC": "Not an official TOEIC score.",
+      "pronunciationNotice": "Pronunciation is not assessed: speaking tasks are evaluated on fluency, vocabulary, and grammar through automatic transcription.",
+      "poolNotice": "Each exam sitting is uniquely drawn from our verified question pool. Tests taken at different times or by different learners contain different items.",
+      "sectionBreakdown": "Section Performance Breakdown",
+      "unbanded": "Unbanded",
+      "notScored": "Not Scored",
+      "readAloudAccuracy": "Read Aloud Accuracy:",
+      "speechRate": "Speech Rate:",
+      "deleteVoiceRecording": "Delete Voice Recording (GDPR)",
+      "recordingDeleted": "Voice recording deleted.",
+      "confirmDeleteRecording": "Permanently delete your speaking audio recording? Scores and transcript will be retained.",
+      "deleteRecordingFailed": "Failed to delete audio recording.",
+      "itemReviewTitle": "Item-by-Item Review",
+      "reviewDetailed": "Review questions and model answers",
+      "questionNum": "Question {{num}}",
+      "reported": "Reported",
+      "reportItem": "Report error",
+      "itemReportedSuccess": "Question reported to curriculum team for review. Thank you!",
+      "integritySummaryTitle": "Test Session Integrity Record",
+      "integritySummaryDesc": "Integrity telemetry records test environment events for self-study accountability.",
+      "returnToExams": "Back to Exam Hub",
+      "loadingReport": "Loading score report...",
+      "loadReportFailed": "Unable to load score report"
+    }
   }
 }
