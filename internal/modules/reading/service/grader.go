@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math"
 	"strings"
-	"unicode"
 
 	"github.com/google/uuid"
 
@@ -33,22 +32,12 @@ const (
 	maxReadingDurationMs = 3600 * 1000
 )
 
-type readingOption struct {
-	ID   string `json:"id"`
-	Text string `json:"text"`
-}
-
-type readingQuestion struct {
-	ID              string                              `json:"id"`
-	Type            string                              `json:"type"` // multiple_choice, true_false_not_given, gap_fill
-	Prompt          string                              `json:"prompt"`
-	Options         []readingOption                     `json:"options,omitempty"`
-	Answer          string                              `json:"answer,omitempty"`
-	CorrectAnswer   string                              `json:"correct_answer,omitempty"`
-	CorrectOptionID string                              `json:"correct_option_id,omitempty"`
-	Acceptable      []string                            `json:"acceptable,omitempty"`
-	Explanation     *learningcontract.AnswerExplanation `json:"explanation,omitempty"`
-}
+type (
+	readingOption     = contentcontract.QuestionOption
+	readingQuestion   = contentcontract.QuestionItem
+	readingAnswerItem = contentcontract.AnswerItem
+	readingResponse   = contentcontract.ComprehensionResponse
+)
 
 type readingQuizBody struct {
 	PassageTitle    string                              `json:"passage_title,omitempty"`
@@ -58,21 +47,7 @@ type readingQuizBody struct {
 	CorrectOptionID string                              `json:"correct_option_id,omitempty"`
 	Acceptable      []string                            `json:"acceptable,omitempty"`
 	Explanation     *learningcontract.AnswerExplanation `json:"explanation,omitempty"`
-	Questions       []readingQuestion                   `json:"questions,omitempty"`
-}
-
-type readingAnswerItem struct {
-	ID     string `json:"id"`
-	Answer string `json:"answer"`
-}
-
-type readingResponse struct {
-	SelectedOptionID string              `json:"selected_option_id,omitempty"`
-	TextAnswer       string              `json:"text_answer,omitempty"`
-	Answer           string              `json:"answer,omitempty"`
-	Answers          map[string]string   `json:"answers,omitempty"`
-	Items            []readingAnswerItem `json:"items,omitempty"`
-	ReadingMs        *int64              `json:"reading_ms,omitempty"`
+	Questions       []contentcontract.QuestionItem      `json:"questions,omitempty"`
 }
 
 // Grader implements learningcontract.ExerciseGrader and contract.Grader.
@@ -124,7 +99,7 @@ func (g *Grader) Grade(
 		return learningcontract.GradeResult{}, err
 	}
 
-	resp := parseReadingResponse(req.Response)
+	resp := contentcontract.ParseComprehensionResponse(req.Response)
 	wpm := calculateWPM(body.Passage, resp.ReadingMs)
 
 	// Multi-question comprehension set
@@ -135,31 +110,6 @@ func (g *Grader) Grade(
 	// Legacy single-question format (BR-CONTENT-01)
 	score, correct := gradeSingle(resp, body)
 	return buildSingleResult(req.ContentVersionID, score, correct, body, wpm), nil
-}
-
-func parseReadingResponse(raw json.RawMessage) readingResponse {
-	if len(raw) == 0 {
-		return readingResponse{}
-	}
-
-	var resp readingResponse
-	if err := json.Unmarshal(raw, &resp); err == nil {
-		if resp.Answers == nil && len(resp.Items) > 0 {
-			resp.Answers = make(map[string]string, len(resp.Items))
-			for _, item := range resp.Items {
-				resp.Answers[item.ID] = item.Answer
-			}
-		}
-		return resp
-	}
-
-	// Fallback for raw string answer
-	var str string
-	if err := json.Unmarshal(raw, &str); err == nil {
-		return readingResponse{Answer: str}
-	}
-
-	return readingResponse{}
 }
 
 func calculateWPM(passage string, readingMs *int64) int {
@@ -181,46 +131,27 @@ func calculateWPM(passage string, readingMs *int64) int {
 func gradeQuestionSet(
 	contentVersionID uuid.UUID,
 	body readingQuizBody,
-	resp readingResponse,
+	resp contentcontract.ComprehensionResponse,
 	wpm int,
 ) learningcontract.GradeResult {
-	total := len(body.Questions)
-	itemResults := make([]learningcontract.ItemResult, total)
-	correctCount := 0
+	qResult := contentcontract.GradeQuestionSet(body.Questions, resp.Answers, maxReadingScore)
 
-	for i, q := range body.Questions {
-		submitted := ""
-		if resp.Answers != nil {
-			submitted = resp.Answers[q.ID]
-		}
-		isCorrect := matchQuestion(submitted, q)
-		if isCorrect {
-			correctCount++
-		}
-
-		ans := questionCanonicalAnswer(q)
-		var ca *string
-		if ans != "" {
-			ca = &ans
-		}
-
+	itemResults := make([]learningcontract.ItemResult, len(qResult.ItemResults))
+	for i, r := range qResult.ItemResults {
 		itemResults[i] = learningcontract.ItemResult{
-			ID:            q.ID,
-			Correct:       isCorrect,
-			CorrectAnswer: ca,
+			ID:            r.ID,
+			Correct:       r.Correct,
+			CorrectAnswer: r.CorrectAnswer,
 		}
 	}
 
-	score := int(math.Round(float64(correctCount) / float64(total) * float64(maxReadingScore)))
-	correct := correctCount == total
-
 	initialGrade := gradeAgain
-	if correct {
+	if qResult.AllCorrect {
 		initialGrade = gradeGood
 	}
 
-	feedback := fmt.Sprintf("You scored %d%% (%d/%d questions correct).", score, correctCount, total)
-	if correct {
+	feedback := fmt.Sprintf("You scored %d%% (%d/%d questions correct).", qResult.Score, qResult.CorrectCount, qResult.TotalCount)
+	if qResult.AllCorrect {
 		feedback = "All answers correct! Excellent reading comprehension."
 	}
 	if wpm > 0 {
@@ -239,9 +170,9 @@ func gradeQuestionSet(
 	}
 
 	return learningcontract.GradeResult{
-		Score:       score,
+		Score:       qResult.Score,
 		MaxScore:    maxReadingScore,
-		Correct:     correct,
+		Correct:     qResult.AllCorrect,
 		Feedback:    feedback,
 		Async:       false,
 		ReviewItems: items,
@@ -250,102 +181,12 @@ func gradeQuestionSet(
 	}
 }
 
-func questionCanonicalAnswer(q readingQuestion) string {
-	if q.CorrectOptionID != "" {
-		return q.CorrectOptionID
-	}
-	if q.Answer != "" {
-		return q.Answer
-	}
-	if q.CorrectAnswer != "" {
-		return q.CorrectAnswer
-	}
-	if len(q.Acceptable) > 0 {
-		return q.Acceptable[0]
-	}
-	return ""
-}
-
-func matchQuestion(submitted string, q readingQuestion) bool {
-	if submitted == "" {
-		return false
-	}
-
-	normSubmitted := normalise(submitted)
-
-	if q.CorrectOptionID != "" && normSubmitted == normalise(q.CorrectOptionID) {
-		return true
-	}
-	if q.Answer != "" && (normSubmitted == normalise(q.Answer) || sentence(submitted) == sentence(q.Answer)) {
-		return true
-	}
-	if q.CorrectAnswer != "" &&
-		(normSubmitted == normalise(q.CorrectAnswer) || sentence(submitted) == sentence(q.CorrectAnswer)) {
-		return true
-	}
-	for _, alt := range q.Acceptable {
-		if normSubmitted == normalise(alt) || sentence(submitted) == sentence(alt) {
-			return true
-		}
-	}
-	return false
-}
-
-func gradeSingle(resp readingResponse, body readingQuizBody) (int, bool) {
-	submitted := singleSubmittedAnswer(resp)
-	if matchesSingle(submitted, body) {
+func gradeSingle(resp contentcontract.ComprehensionResponse, body readingQuizBody) (int, bool) {
+	submitted := contentcontract.SingleSubmittedAnswer(resp)
+	if contentcontract.MatchesSingleAnswer(submitted, body.CorrectOptionID, body.CorrectAnswer, body.Acceptable) {
 		return maxReadingScore, true
 	}
 	return 0, false
-}
-
-func singleSubmittedAnswer(resp readingResponse) string {
-	if resp.SelectedOptionID != "" {
-		return resp.SelectedOptionID
-	}
-	if resp.TextAnswer != "" {
-		return resp.TextAnswer
-	}
-	if resp.Answer != "" {
-		return resp.Answer
-	}
-	return ""
-}
-
-func matchesSingle(submitted string, body readingQuizBody) bool {
-	if submitted == "" {
-		return false
-	}
-
-	normSubmitted := normalise(submitted)
-
-	if body.CorrectOptionID != "" && normSubmitted == normalise(body.CorrectOptionID) {
-		return true
-	}
-
-	if body.CorrectAnswer != "" &&
-		(normSubmitted == normalise(body.CorrectAnswer) || sentence(submitted) == sentence(body.CorrectAnswer)) {
-		return true
-	}
-
-	for _, alt := range body.Acceptable {
-		if normSubmitted == normalise(alt) || sentence(submitted) == sentence(alt) {
-			return true
-		}
-	}
-
-	return false
-}
-
-func normalise(s string) string {
-	return strings.TrimSpace(strings.ToLower(s))
-}
-
-func sentence(s string) string {
-	fields := strings.FieldsFunc(strings.ToLower(s), func(r rune) bool {
-		return !unicode.IsLetter(r) && !unicode.IsNumber(r)
-	})
-	return strings.Join(fields, " ")
 }
 
 func buildSingleResult(

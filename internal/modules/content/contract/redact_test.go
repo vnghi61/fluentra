@@ -181,3 +181,40 @@ func TestRedactForLearner_ReadingQuestionsArray(t *testing.T) {
 		t.Errorf("passage/prompt did not survive: %s", redacted)
 	}
 }
+
+func TestRedactForLearner_ListeningComprehension(t *testing.T) {
+	t.Parallel()
+
+	body := json.RawMessage(`{
+		"title": "Airport Announcement",
+		"audio_key": "media/audio/flight-101.opus",
+		"voice": "en-US-Jenny",
+		"script": "Attention passengers on flight 101 to London, boarding now.",
+		"transcript": "Attention passengers on flight 101 to London, boarding now.",
+		"questions": [
+			{
+				"id": "q1",
+				"type": "multiple_choice",
+				"prompt": "Which flight is boarding?",
+				"options": [{"id": "opt_101", "text": "101"}, {"id": "opt_202", "text": "202"}],
+				"correct_option_id": "opt_101",
+				"correct_answer": "101",
+				"acceptable": ["101"]
+			}
+		]
+	}`)
+
+	redacted := string(contract.RedactForLearner(body))
+
+	for _, leaked := range []string{"script", "transcript", "correct_option_id", "correct_answer", "acceptable", "London"} {
+		if strings.Contains(redacted, leaked) {
+			t.Errorf("%q survived redaction of listening comprehension body: %s", leaked, redacted)
+		}
+	}
+
+	// Audio key and prompt must survive so the player knows what audio file to stream
+	if !strings.Contains(redacted, "media/audio/flight-101.opus") || !strings.Contains(redacted, "Which flight is boarding?") {
+		t.Errorf("audio_key or prompt did not survive: %s", redacted)
+	}
+}
+

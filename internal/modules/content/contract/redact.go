@@ -37,6 +37,10 @@ var answerKeys = map[string]struct{}{
 	"solution":      {},
 	"solutions":     {},
 	"rubric":        {},
+	// Listening comprehension: the script/transcript is answer-bearing and turns
+	// listening into reading if leaked to the client before grading.
+	"script":     {},
+	"transcript": {},
 }
 
 // RedactForLearner strips the answer from a content body.
