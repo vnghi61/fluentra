@@ -129,6 +129,7 @@ components:
   g_writing:     { in: generated/writing/sqlc }
   g_gamification: { in: generated/gamification/sqlc }
   g_listening:   { in: generated/listening/sqlc }
+  g_speaking:    { in: generated/speaking/sqlc }
 
   # platform capabilities
   p_telemetry:   { in: platform/telemetry/** }
@@ -464,7 +465,7 @@ deps:
   m_reading_service: { mayDependOn: [c_reading, c_content, c_learning, p_cache, p_telemetry] }
   m_reading:         { mayDependOn: [m_reading_service, c_reading, c_content, c_learning, p_cache, p_telemetry] }
   m_listening:    { mayDependOn: [g_listening, c_listening, p_cache, p_media, p_storage, p_telemetry, c_content, c_questionbank, c_learning] }
-  m_speaking:     { mayDependOn: [p_media, p_ai, p_storage, p_job, p_telemetry, c_content, c_learning] }
+  m_speaking:     { mayDependOn: [g_speaking, c_speaking, p_media, p_ai, p_storage, p_job, p_telemetry, c_content, c_learning] }
   m_writing_repository: { mayDependOn: [c_writing, g_writing] }
   m_writing_service:    { mayDependOn: [c_writing, c_content, c_learning, p_ai, p_job, p_telemetry] }
   m_writing_job:        { mayDependOn: [m_writing_service, c_writing, c_content, c_learning, p_job, p_ai, p_telemetry], anyVendorDeps: true }

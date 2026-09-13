@@ -33,6 +33,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/lesson"
 	"github.com/fluentra/fluentra/internal/modules/reading"
 	readingcontract "github.com/fluentra/fluentra/internal/modules/reading/contract"
+	"github.com/fluentra/fluentra/internal/modules/speaking"
 
 	lessonservice "github.com/fluentra/fluentra/internal/modules/lesson/service"
 	"github.com/fluentra/fluentra/internal/modules/rbac"
@@ -46,6 +47,7 @@ import (
 	"github.com/fluentra/fluentra/internal/platform/cache"
 	"github.com/fluentra/fluentra/internal/platform/job"
 	"github.com/fluentra/fluentra/internal/platform/mailer"
+	"github.com/fluentra/fluentra/internal/platform/media"
 	"github.com/fluentra/fluentra/internal/platform/storage"
 	"github.com/fluentra/fluentra/internal/platform/telemetry"
 	"github.com/fluentra/fluentra/internal/shared/config"
@@ -613,7 +615,7 @@ func startModules(
 
 	startPracticeGenerator(
 		ctx, cfg, pool, cron, rbacModule, lessonModule, srsModule, workers, learningModule,
-		contentModule, aiClient,
+		contentModule, aiClient, storageStore,
 	)
 
 	if err := startGamification(pool, bus, cron); err != nil {
@@ -743,7 +745,7 @@ func startRiverWorker(
 
 // registerJobKinds is where a module's job handlers are counted.
 func registerJobKinds(_ *river.Workers) int {
-	return 3
+	return 4
 }
 
 // newStorageStore validates the storage configuration and builds the facade.
@@ -859,6 +861,7 @@ func startPracticeGenerator(
 	learningModule *learning.Module,
 	contentModule *content.Module,
 	aiClient ai.Client,
+	storageStore storage.Store,
 ) {
 	author, err := rbacModule.RoleMembers().FirstHolderOf(ctx, rbaccontract.RoleAdmin)
 	if err != nil {
@@ -889,6 +892,32 @@ func startPracticeGenerator(
 		DailyLimit: cfg.AI.WritingDailyLimit,
 	})
 	river.AddWorker(workers, writingModule.GradeSubmissionWorker())
+
+	var mediaTranscriber media.Transcriber
+	if cfg.Speech.ASRBaseURL != "" && cfg.Speech.ASRBaseURL != "mock" {
+		mediaTranscriber = media.NewHTTPTranscriber(media.HTTPTranscriberConfig{
+			BaseURL: cfg.Speech.ASRBaseURL,
+			Model:   cfg.Speech.ASRModel,
+			APIKey:  cfg.Speech.ASRAPIKey,
+			Timeout: cfg.Speech.ASRTimeout,
+		})
+	} else {
+		mediaTranscriber = &media.MockTranscriber{}
+	}
+
+	speakingModule := speaking.New(speaking.Deps{
+		Pool:        pool,
+		Storage:     storageStore,
+		Transcriber: mediaTranscriber,
+		AI:          aiClient,
+		Content:     contentModule.Reader(),
+		Attempts:    learningModule.AttemptReader(),
+		Completer:   learningModule.AsyncGradingCompleter(),
+		DailyLimit:  cfg.Speech.DailyRecordingsLimit,
+		ASRModel:    cfg.Speech.ASRModel,
+	})
+	river.AddWorker(workers, speakingModule.GradeRecordingWorker())
+	cron.Register(speakingModule.PurgeJob())
 
 	for _, scheduled := range vocabularyModule.CronJobs() {
 		cron.Register(scheduled)

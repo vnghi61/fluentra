@@ -33,6 +33,8 @@ import (
 	rbaccontract "github.com/fluentra/fluentra/internal/modules/rbac/contract"
 	"github.com/fluentra/fluentra/internal/modules/reading"
 	readingcontract "github.com/fluentra/fluentra/internal/modules/reading/contract"
+	"github.com/fluentra/fluentra/internal/modules/speaking"
+	speakingcontract "github.com/fluentra/fluentra/internal/modules/speaking/contract"
 	"github.com/fluentra/fluentra/internal/modules/srs"
 	srsservice "github.com/fluentra/fluentra/internal/modules/srs/service"
 	"github.com/fluentra/fluentra/internal/modules/user"
@@ -44,6 +46,7 @@ import (
 	"github.com/fluentra/fluentra/internal/platform/cache"
 	"github.com/fluentra/fluentra/internal/platform/job"
 	"github.com/fluentra/fluentra/internal/platform/mailer"
+	"github.com/fluentra/fluentra/internal/platform/media"
 	"github.com/fluentra/fluentra/internal/platform/storage"
 	"github.com/fluentra/fluentra/internal/platform/telemetry"
 	"github.com/fluentra/fluentra/internal/shared/httpx"
@@ -66,6 +69,7 @@ type identity struct {
 	reading    *reading.Module
 	writing    *writing.Module
 	listening  *listening.Module
+	speaking   *speaking.Module
 	//nolint:unused // read through Routes and by the dashboard's Reader.
 	gamification *gamification.Module
 
@@ -123,7 +127,7 @@ type identityDeps struct {
 	// completable.
 	OAuthStateTTL time.Duration
 
-	// Enqueuer schedules background River jobs within database transactions.
+	// Enqueuer submits River background jobs within a pgx transaction.
 	Enqueuer job.Enqueuer
 
 	// Instruments are the shared metric instruments, wired into the modules that
@@ -138,6 +142,15 @@ type identityDeps struct {
 
 	// WritingDailyLimit is the maximum number of writing submissions graded per day.
 	WritingDailyLimit int
+
+	// SpeechDailyLimit is the maximum number of speaking recordings per day.
+	SpeechDailyLimit int
+
+	// SpeechASRModel is the speech recognition model name.
+	SpeechASRModel string
+
+	// Transcriber is the audio transcription provider adapter.
+	Transcriber media.Transcriber
 }
 
 // newIdentity constructs the modules in dependency order — audit, then rbac,
@@ -292,6 +305,20 @@ func newIdentity(deps identityDeps) *identity {
 		Storage:  deps.Storage,
 	})
 
+	assembled.speaking = speaking.New(speaking.Deps{
+		Pool:         deps.Pool,
+		Enqueuer:     deps.Enqueuer,
+		Storage:      deps.Storage,
+		Transcriber:  deps.Transcriber,
+		AI:           deps.AI,
+		Content:      assembled.content.Reader(),
+		Counter:      lazyAttemptCounter{of: assembled},
+		Attempts:     lazyAttemptReader{of: assembled},
+		WorkerNudger: deps.WorkerNudger,
+		DailyLimit:   deps.SpeechDailyLimit,
+		ASRModel:     deps.SpeechASRModel,
+	})
+
 	assembled.learning = learning.New(learning.Deps{
 		Pool:          deps.Pool,
 		Caches:        newLearningCaches(deps.Redis),
@@ -309,6 +336,7 @@ func newIdentity(deps identityDeps) *identity {
 			assembled.reading.Grader(),
 			assembled.writing.Grader(),
 			assembled.listening.Grader(),
+			assembled.speaking.Grader(),
 		),
 		Metrics:       deps.Instruments,
 		DeclaredKinds: buildDeclaredKinds(),
@@ -326,12 +354,14 @@ func buildDeclaredKinds() []string {
 			len(grammarcontract.GradedKinds())+
 			len(readingcontract.GradedKinds())+
 			len(writingcontract.GradedKinds())+
-			len(listeningcontract.GradedKinds()))
+			len(listeningcontract.GradedKinds())+
+			len(speakingcontract.GradedKinds()))
 	kinds = append(kinds, vocabularycontract.GradedKinds()...)
 	kinds = append(kinds, grammarcontract.GradedKinds()...)
 	kinds = append(kinds, readingcontract.GradedKinds()...)
 	kinds = append(kinds, writingcontract.GradedKinds()...)
 	kinds = append(kinds, listeningcontract.GradedKinds()...)
+	kinds = append(kinds, speakingcontract.GradedKinds()...)
 	return kinds
 }
 
@@ -342,6 +372,7 @@ func buildGraders(
 	readingGrader learningcontract.ExerciseGrader,
 	writingGrader learningcontract.ExerciseGrader,
 	listeningGrader learningcontract.ExerciseGrader,
+	speakingGrader learningcontract.ExerciseGrader,
 ) map[string]learningcontract.ExerciseGrader {
 	return mergeGraders(
 		vocabularyGraders(vocabGrader),
@@ -349,6 +380,7 @@ func buildGraders(
 		readingGraders(readingGrader),
 		writingGraders(writingGrader),
 		listeningGraders(listeningGrader),
+		speakingGraders(speakingGrader),
 	)
 }
 
@@ -388,6 +420,14 @@ func writingGraders(grader learningcontract.ExerciseGrader) map[string]learningc
 func listeningGraders(grader learningcontract.ExerciseGrader) map[string]learningcontract.ExerciseGrader {
 	graders := make(map[string]learningcontract.ExerciseGrader, len(listeningcontract.GradedKinds()))
 	for _, kind := range listeningcontract.GradedKinds() {
+		graders[kind] = grader
+	}
+	return graders
+}
+
+func speakingGraders(grader learningcontract.ExerciseGrader) map[string]learningcontract.ExerciseGrader {
+	graders := make(map[string]learningcontract.ExerciseGrader, len(speakingcontract.GradedKinds()))
+	for _, kind := range speakingcontract.GradedKinds() {
 		graders[kind] = grader
 	}
 	return graders
@@ -486,6 +526,7 @@ func (i *identity) Routes(api chi.Router) {
 		i.gamification.Routes(authenticated)
 		i.writing.Routes(authenticated)
 		i.listening.Routes(authenticated)
+		i.speaking.Routes(authenticated)
 
 		authenticated.Group(func(admin chi.Router) {
 			admin.Use(i.rbac.AdminOnly())

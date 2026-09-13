@@ -27,6 +27,7 @@ import (
 	"github.com/fluentra/fluentra/internal/platform/cache"
 	"github.com/fluentra/fluentra/internal/platform/job"
 	"github.com/fluentra/fluentra/internal/platform/mailer"
+	"github.com/fluentra/fluentra/internal/platform/media"
 	"github.com/fluentra/fluentra/internal/platform/storage"
 	"github.com/fluentra/fluentra/internal/platform/telemetry"
 	"github.com/fluentra/fluentra/internal/shared/config"
@@ -357,6 +358,18 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("create job client: %w", err)
 	}
 
+	var mediaTranscriber media.Transcriber
+	if cfg.Speech.ASRBaseURL != "" && cfg.Speech.ASRBaseURL != "mock" {
+		mediaTranscriber = media.NewHTTPTranscriber(media.HTTPTranscriberConfig{
+			BaseURL: cfg.Speech.ASRBaseURL,
+			Model:   cfg.Speech.ASRModel,
+			APIKey:  cfg.Speech.ASRAPIKey,
+			Timeout: cfg.Speech.ASRTimeout,
+		})
+	} else {
+		mediaTranscriber = &media.MockTranscriber{}
+	}
+
 	aiClient := initAIClient(ctx, cfg, pool)
 
 	modules := newIdentity(identityDeps{
@@ -402,6 +415,9 @@ func run(ctx context.Context) error {
 		Mailer:            newAPIMailSender(cfg, pool),
 		WorkerNudger:      newWorkerNudger(cfg.Worker.URL),
 		WritingDailyLimit: cfg.AI.WritingDailyLimit,
+		SpeechDailyLimit:  cfg.Speech.DailyRecordingsLimit,
+		SpeechASRModel:    cfg.Speech.ASRModel,
+		Transcriber:       mediaTranscriber,
 	})
 
 	health := telemetry.NewHealthHandler(cfg.App.Version,

@@ -59,6 +59,8 @@ func (p *MockProvider) Complete(_ context.Context, req Request) (Response, error
 		return p.enrichExamples(req)
 	case TaskGradeWriting:
 		return p.gradeWriting(req)
+	case TaskGradeSpeaking:
+		return p.gradeSpeaking(req)
 	default:
 		return Response{}, fmt.Errorf("ai: mock provider has no answer for task %q", req.Task)
 	}
@@ -93,6 +95,38 @@ func (p *MockProvider) gradeWriting(req Request) (Response, error) {
 	})
 	if err != nil {
 		return Response{}, fmt.Errorf("ai: encode mock writing grade: %w", err)
+	}
+	return Response{Text: string(payload), Model: MockModelName}, nil
+}
+
+func (p *MockProvider) gradeSpeaking(req Request) (Response, error) {
+	transcript := strings.TrimSpace(stringVar(req.Vars, "Transcript"))
+	score := 80
+	correct := true
+	feedback := "Good spoken response with clear communication."
+	feedbackVi := "Bài nói tốt với khả năng giao tiếp rõ ràng."
+	if len(strings.Fields(transcript)) < 2 {
+		score = 25
+		correct = false
+		feedback = "The spoken response is too brief."
+		feedbackVi = "Bài nói quá ngắn."
+	}
+	payload, err := json.Marshal(map[string]any{
+		"overall_band": 6.5,
+		"score":        score,
+		"correct":      correct,
+		"feedback":     feedback,
+		"feedback_en":  feedback,
+		"feedback_vi":  feedbackVi,
+		"criteria": []map[string]any{
+			mockCriterion("task_response", 6.5, "Addressed the task reasonably well.", "Đáp ứng khá tốt yêu cầu bài nói."),
+			mockCriterion("fluency_coherence", 6.5, "Good flow of speech.", "Độ trôi chảy tốt."),
+			mockCriterion("lexical_resource", 6.5, "Appropriate vocabulary.", "Từ vựng phù hợp."),
+			mockCriterion("grammatical_range", 6.0, "Generally accurate grammar.", "Ngữ pháp nhìn chung chính xác."),
+		},
+	})
+	if err != nil {
+		return Response{}, fmt.Errorf("ai: encode mock speaking grade: %w", err)
 	}
 	return Response{Text: string(payload), Model: MockModelName}, nil
 }

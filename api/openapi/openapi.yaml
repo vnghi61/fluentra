@@ -92,6 +92,9 @@ tags:
   - name: listening
     description: >-
       Audio comprehension, play limit enforcement, and listening transcripts.
+  - name: speaking
+    description: >-
+      Spoken practice, browser recording upload intents, and audio evaluation.
 security:
   - BearerAuth: []
 paths:
@@ -5323,6 +5326,88 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /speaking/upload-intent:
+    post:
+      tags: [speaking]
+      operationId: createSpeakingUploadIntent
+      summary: Presigned PUT URL for recording upload to storage.
+      description: >-
+        Generates a constrained presigned PUT URL directly to the media storage bucket.
+        Validates daily recording quotas before issuing the intent.
+      x-permission: self
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content_type:
+                  type: string
+                  example: audio/webm
+      responses:
+        '200':
+          description: Presigned upload URL and quota details.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [upload_url, object_key, expires_at, daily_recordings_used, daily_recordings_limit]
+                properties:
+                  upload_url:
+                    type: string
+                    format: uri
+                  object_key:
+                    type: string
+                  expires_at:
+                    type: string
+                    format: date-time
+                  daily_recordings_used:
+                    type: integer
+                  daily_recordings_limit:
+                    type: integer
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /speaking/attempts/{id}/recording:
+    delete:
+      tags: [speaking]
+      operationId: deleteSpeakingRecording
+      summary: Purges the recording object while keeping scores and feedback.
+      description: >-
+        Deletes the audio file from media storage for an attempt belonging to the caller,
+        marking it deleted while preserving the grade, transcript, and criteria feedback.
+      x-permission: self
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID of the speaking attempt.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Audio recording purged from storage.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
         '500':
