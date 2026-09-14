@@ -100,6 +100,31 @@ var (
 	ErrAccountRequired = apperr.New(
 		apperr.Unauthenticated, "ACCOUNT_REQUIRED", "An account is required to grade this activity.",
 	)
+
+	// ErrPlacementSessionNotFound is returned when a placement test session is not found.
+	ErrPlacementSessionNotFound = apperr.New(
+		apperr.NotFound, "PLACEMENT_SESSION_NOT_FOUND", "The placement session was not found.",
+	)
+
+	// ErrPlacementSessionExpired is returned when attempting to interact with an expired placement session.
+	ErrPlacementSessionExpired = apperr.New(
+		apperr.Validation, "PLACEMENT_SESSION_EXPIRED", "The placement session has expired.",
+	)
+
+	// ErrPlacementSessionCompleted is returned when attempting to interact with an already completed placement session.
+	ErrPlacementSessionCompleted = apperr.New(
+		apperr.Conflict, "PLACEMENT_SESSION_COMPLETED", "The placement session has already been completed.",
+	)
+
+	// ErrPlacementCooldownActive is returned when a user attempts to start a new placement test within 30 days of the last test.
+	ErrPlacementCooldownActive = apperr.New(
+		apperr.Conflict, "PLACEMENT_COOLDOWN_ACTIVE", "A new placement test can only be taken 30 days after the last completed test.",
+	)
+
+	// ErrPlacementInsufficientPool is returned when the placement pool does not have enough items to conduct a test.
+	ErrPlacementInsufficientPool = apperr.New(
+		apperr.Validation, "PLACEMENT_INSUFFICIENT_POOL", "The placement pool has insufficient items to start a test.",
+	)
 )
 
 // IsAlreadyEnrolled reports whether err represents ErrAlreadyEnrolled.
@@ -136,4 +161,16 @@ func IsSessionNotFound(err error) bool {
 func IsAccountRequired(err error) bool {
 	var e *apperr.Error
 	return errors.As(err, &e) && e.Code == "ACCOUNT_REQUIRED"
+}
+
+// IsPlacementSessionNotFound reports whether err represents ErrPlacementSessionNotFound.
+func IsPlacementSessionNotFound(err error) bool {
+	var e *apperr.Error
+	return errors.As(err, &e) && e.Code == "PLACEMENT_SESSION_NOT_FOUND"
+}
+
+// IsPlacementCooldownActive reports whether err represents ErrPlacementCooldownActive.
+func IsPlacementCooldownActive(err error) bool {
+	var e *apperr.Error
+	return errors.As(err, &e) && e.Code == "PLACEMENT_COOLDOWN_ACTIVE"
 }
