@@ -615,6 +615,27 @@ type LearnPlacementResult struct {
 	TakenAt        time.Time
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
+	SessionID      *uuid.UUID
+}
+
+type LearnPlacementSession struct {
+	ID                uuid.UUID
+	UserID            uuid.UUID
+	Status            string
+	Stage             string
+	ThetaEstimate     pgtype.Numeric
+	PlacedLevel       *string
+	Confidence        pgtype.Numeric
+	CurrentActivityID *uuid.UUID
+	CurrentItemKind   *string
+	CurrentItemLevel  *string
+	Responses         []byte
+	AdaptiveState     []byte
+	StartedAt         time.Time
+	CompletedAt       *time.Time
+	ExpiresAt         time.Time
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
 
 type LearnProgress struct {
@@ -688,6 +709,18 @@ type LearnSrsParam struct {
 	Weights          []byte
 	RequestRetention float64
 	MaxInterval      int32
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+}
+
+type LearnWeeklyPlan struct {
+	ID               uuid.UUID
+	UserID           uuid.UUID
+	WeekStartDate    pgtype.Date
+	PlacedLevel      string
+	WeakestSkill     string
+	TimeDistribution []byte
+	DailyTargets     []byte
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 }

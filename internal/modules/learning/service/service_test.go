@@ -663,6 +663,46 @@ func (f *fakeLearningRepo) HasActiveLearnerRunningLow(_ context.Context, _ []uui
 	return false, nil
 }
 
+func (f *fakeLearningRepo) GetActivePlacementSessionByUser(_ context.Context, _ uuid.UUID) (*domain.PlacementSession, error) {
+	return nil, nil
+}
+
+func (f *fakeLearningRepo) GetPlacementSessionByID(_ context.Context, _ uuid.UUID) (*domain.PlacementSession, error) {
+	return nil, nil
+}
+
+func (f *fakeLearningRepo) GetLatestCompletedPlacementSession(_ context.Context, _ uuid.UUID) (*domain.PlacementSession, error) {
+	return nil, nil
+}
+
+func (f *fakeLearningRepo) CreatePlacementSession(_ context.Context, session *domain.PlacementSession) (*domain.PlacementSession, error) {
+	return session, nil
+}
+
+func (f *fakeLearningRepo) UpdatePlacementSessionProgress(_ context.Context, session *domain.PlacementSession) (*domain.PlacementSession, error) {
+	return session, nil
+}
+
+func (f *fakeLearningRepo) CompletePlacementSession(_ context.Context, session *domain.PlacementSession) (*domain.PlacementSession, error) {
+	return session, nil
+}
+
+func (f *fakeLearningRepo) ExpireStalePlacementSessions(_ context.Context) (int64, error) {
+	return 0, nil
+}
+
+func (f *fakeLearningRepo) CreatePlacementResult(_ context.Context, result *domain.PlacementResult) (*domain.PlacementResult, error) {
+	return result, nil
+}
+
+func (f *fakeLearningRepo) GetWeeklyPlanByUserAndDate(_ context.Context, _ uuid.UUID, _ time.Time) (*domain.WeeklyPlan, error) {
+	return nil, nil
+}
+
+func (f *fakeLearningRepo) UpsertWeeklyPlan(_ context.Context, plan *domain.WeeklyPlan) (*domain.WeeklyPlan, error) {
+	return plan, nil
+}
+
 type fakeLessonReader struct {
 	// calls counts reads per method, so a test can assert what resolving one
 	// answer costs rather than only what it returns. The dashboard is opened on

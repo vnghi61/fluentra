@@ -309,14 +309,24 @@ type CreatePlacementResultParams struct {
 	TakenAt        time.Time
 }
 
-func (q *Queries) CreatePlacementResult(ctx context.Context, arg CreatePlacementResultParams) (LearnPlacementResult, error) {
+type CreatePlacementResultRow struct {
+	ID             uuid.UUID
+	UserID         uuid.UUID
+	EstimatedLevel string
+	PerSkill       []byte
+	TakenAt        time.Time
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+func (q *Queries) CreatePlacementResult(ctx context.Context, arg CreatePlacementResultParams) (CreatePlacementResultRow, error) {
 	row := q.db.QueryRow(ctx, createPlacementResult,
 		arg.UserID,
 		arg.EstimatedLevel,
 		arg.PerSkill,
 		arg.TakenAt,
 	)
-	var i LearnPlacementResult
+	var i CreatePlacementResultRow
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
@@ -541,9 +551,19 @@ ORDER BY taken_at DESC
 LIMIT 1
 `
 
-func (q *Queries) GetLatestPlacementResult(ctx context.Context, userID uuid.UUID) (LearnPlacementResult, error) {
+type GetLatestPlacementResultRow struct {
+	ID             uuid.UUID
+	UserID         uuid.UUID
+	EstimatedLevel string
+	PerSkill       []byte
+	TakenAt        time.Time
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+func (q *Queries) GetLatestPlacementResult(ctx context.Context, userID uuid.UUID) (GetLatestPlacementResultRow, error) {
 	row := q.db.QueryRow(ctx, getLatestPlacementResult, userID)
-	var i LearnPlacementResult
+	var i GetLatestPlacementResultRow
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,

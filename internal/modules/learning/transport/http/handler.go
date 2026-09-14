@@ -11,6 +11,7 @@ import (
 
 	"github.com/fluentra/fluentra/internal/modules/learning/domain"
 	"github.com/fluentra/fluentra/internal/modules/learning/service"
+	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
 	"github.com/fluentra/fluentra/internal/shared/apperr"
 	"github.com/fluentra/fluentra/internal/shared/httpx"
 )
@@ -38,6 +39,12 @@ type LearningService interface {
 		ctx context.Context, activityID uuid.UUID, response json.RawMessage,
 	) (*service.PreviewGradeResultDTO, error)
 	GetDailySet(ctx context.Context, userID uuid.UUID, levelOverride string) (*domain.DailySetDTO, error)
+	GetPlacementInvitation(ctx context.Context, userID uuid.UUID) (*domain.PlacementInvitationDTO, error)
+	StartPlacementSession(ctx context.Context, userID uuid.UUID) (*domain.PlacementSession, *lessoncontract.ActivityHierarchy, error)
+	GetPlacementSession(ctx context.Context, userID, sessionID uuid.UUID) (*domain.PlacementSession, *lessoncontract.ActivityHierarchy, error)
+	SubmitPlacementAnswer(ctx context.Context, userID, sessionID uuid.UUID, response json.RawMessage) (*domain.PlacementSession, *lessoncontract.ActivityHierarchy, bool, error)
+	GetStartingPath(ctx context.Context, userID uuid.UUID) (*domain.StartingPathDTO, error)
+	GetWeeklyPlan(ctx context.Context, userID uuid.UUID) (*domain.WeeklyPlan, error)
 }
 
 // Handler serves HTTP endpoints for attempts.
@@ -62,6 +69,12 @@ func (h *Handler) Routes(router chi.Router) {
 	router.Get("/me/dashboard", h.getDashboard)
 	router.Get("/me/progress", h.getProgress)
 	router.Get("/practice/daily", h.getDailyPractice)
+	router.Get("/me/path", h.getStartingPath)
+	router.Get("/me/weekly-plan", h.getWeeklyPlan)
+	router.Get("/placement/invitation", h.getPlacementInvitation)
+	router.Post("/placement/sessions", h.startPlacementSession)
+	router.Get("/placement/sessions/{id}", h.getPlacementSession)
+	router.Post("/placement/sessions/{id}/answers", h.submitPlacementAnswer)
 	router.Post("/courses/{id}/enroll", h.enroll)
 	router.Post("/activities/{id}/attempts", h.startAttempt)
 	router.Post("/activities/{id}/grade", h.gradePreview)

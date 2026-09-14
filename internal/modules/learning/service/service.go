@@ -26,6 +26,7 @@ import (
 	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
 
 	srscontract "github.com/fluentra/fluentra/internal/modules/srs/contract"
+	usercontract "github.com/fluentra/fluentra/internal/modules/user/contract"
 	"github.com/fluentra/fluentra/internal/platform/ai"
 	"github.com/fluentra/fluentra/internal/platform/cache"
 	"github.com/fluentra/fluentra/internal/platform/telemetry"
@@ -121,6 +122,36 @@ type Repository interface {
 	HasActiveLearnerRunningLow(
 		ctx context.Context, activityIDs []uuid.UUID, threshold int,
 	) (bool, error)
+	GetActivePlacementSessionByUser(
+		ctx context.Context, userID uuid.UUID,
+	) (*domain.PlacementSession, error)
+	GetPlacementSessionByID(
+		ctx context.Context, id uuid.UUID,
+	) (*domain.PlacementSession, error)
+	GetLatestCompletedPlacementSession(
+		ctx context.Context, userID uuid.UUID,
+	) (*domain.PlacementSession, error)
+	CreatePlacementSession(
+		ctx context.Context, session *domain.PlacementSession,
+	) (*domain.PlacementSession, error)
+	UpdatePlacementSessionProgress(
+		ctx context.Context, session *domain.PlacementSession,
+	) (*domain.PlacementSession, error)
+	CompletePlacementSession(
+		ctx context.Context, session *domain.PlacementSession,
+	) (*domain.PlacementSession, error)
+	ExpireStalePlacementSessions(
+		ctx context.Context,
+	) (int64, error)
+	CreatePlacementResult(
+		ctx context.Context, result *domain.PlacementResult,
+	) (*domain.PlacementResult, error)
+	GetWeeklyPlanByUserAndDate(
+		ctx context.Context, userID uuid.UUID, weekStartDate time.Time,
+	) (*domain.WeeklyPlan, error)
+	UpsertWeeklyPlan(
+		ctx context.Context, plan *domain.WeeklyPlan,
+	) (*domain.WeeklyPlan, error)
 	// WithTx returns this repository bound to tx. It returns the interface, not
 	// the concrete struct: returning *repository.Repository dropped every
 	// decorator the service had been given the moment the grading transaction
@@ -212,6 +243,8 @@ type Deps struct {
 	Synthesiser AudioSynthesiser
 	// Audio finds a listening item's rendered clip when its body carries no key.
 	Audio contract.AudioLocator
+	// User reads user learning profiles for placement test personalization.
+	User usercontract.LearningProfileReader
 }
 
 // AudioSynthesiser produces pre-rendered audio for listening exercises.
@@ -237,6 +270,7 @@ type Service struct {
 	caches        LearningCaches
 	env           string
 	ai            ai.Client
+	user          usercontract.LearningProfileReader
 
 	generatorAuthor uuid.UUID
 	authorResolver  contract.AuthorResolver
@@ -286,6 +320,7 @@ func New(deps Deps) *Service {
 		caches:        deps.Caches,
 		env:           deps.Env,
 		ai:            deps.AI,
+		user:          deps.User,
 
 		generatorAuthor: deps.GeneratorAuthorID,
 		authorResolver:  deps.AuthorResolver,
@@ -1428,6 +1463,14 @@ func (s *Service) IsUnlocked(
 		}
 	}
 
+	// Unlocking lessons at or below placed level (WO13 §2 & §3.6).
+	var userCEFRRank int
+	if userID != uuid.Nil {
+		if latest, err := s.repo.GetLatestCompletedPlacementSession(ctx, userID); err == nil && latest != nil && latest.PlacedLevel != nil {
+			userCEFRRank = cefrRank(*latest.PlacedLevel)
+		}
+	}
+
 	result := make(map[uuid.UUID]bool, len(lessonIDs))
 	for _, id := range lessonIDs {
 		reqs := prereqsByLesson[id]
@@ -1437,11 +1480,39 @@ func (s *Service) IsUnlocked(
 		case userID == uuid.Nil:
 			result[id] = false
 		default:
-			result[id] = prerequisitesMet(reqs, progressMap)
+			if prerequisitesMet(reqs, progressMap) {
+				result[id] = true
+			} else if userCEFRRank > 0 {
+				if lesson, err := s.lesson.GetLesson(ctx, id); err == nil && lesson != nil && lesson.CEFRLevel != nil {
+					lessonRank := cefrRank(*lesson.CEFRLevel)
+					if lessonRank > 0 && lessonRank <= userCEFRRank {
+						result[id] = true
+					}
+				}
+			}
 		}
 	}
 
 	return result, nil
+}
+
+func cefrRank(level string) int {
+	switch strings.ToUpper(strings.TrimSpace(level)) {
+	case "A1":
+		return 1
+	case "A2":
+		return 2
+	case "B1":
+		return 3
+	case "B2":
+		return 4
+	case "C1":
+		return 5
+	case "C2":
+		return 6
+	default:
+		return 0
+	}
 }
 
 // prerequisitesMet reports whether every prerequisite is complete and scored at

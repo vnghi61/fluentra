@@ -20,6 +20,7 @@ import (
 	learninghttp "github.com/fluentra/fluentra/internal/modules/learning/transport/http"
 	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
 	srscontract "github.com/fluentra/fluentra/internal/modules/srs/contract"
+	usercontract "github.com/fluentra/fluentra/internal/modules/user/contract"
 	"github.com/fluentra/fluentra/internal/platform/ai"
 	"github.com/fluentra/fluentra/internal/platform/job"
 	"github.com/fluentra/fluentra/internal/platform/telemetry"
@@ -48,6 +49,7 @@ type Deps struct {
 	ContentAuthor contentcontract.Author
 	SRSDue        srscontract.QueueReader
 	SRSCards      srscontract.CardWriter
+	User          usercontract.LearningProfileReader
 	Graders       map[string]contract.ExerciseGrader
 	DeclaredKinds []string
 	Metrics       telemetry.Instruments
@@ -140,6 +142,7 @@ func New(deps Deps) *Module {
 		AuthorResolver:    deps.AuthorResolver,
 		Synthesiser:       deps.Synthesiser,
 		Audio:             deps.Audio,
+		User:              deps.User,
 	})
 
 	var handler *learninghttp.Handler
@@ -227,6 +230,9 @@ const topUpExamPoolLockID int64 = 1_700_000_213
 // Advisory lock id for placement pool top-up job (work order 13 §5).
 const topUpPlacementPoolLockID int64 = 1_700_000_216
 
+// Advisory lock id for placement session expiry sweep job (work order 13 §5).
+const sweepPlacementSessionsLockID int64 = 1_700_000_701
+
 // CronJobs returns the scheduled partition maintenance, grading sweep, and pool jobs.
 func (m *Module) CronJobs() []job.CronJob {
 	return []job.CronJob{
@@ -260,6 +266,12 @@ func (m *Module) CronJobs() []job.CronJob {
 			Interval: 1 * time.Hour,
 			Task:     m.TopUpPlacementPool,
 		},
+		{
+			Name:     "learning.sweep_placement_sessions",
+			LockID:   sweepPlacementSessionsLockID,
+			Interval: 15 * time.Minute,
+			Task:     m.SweepPlacementSessions,
+		},
 	}
 }
 
@@ -276,6 +288,12 @@ func (m *Module) TopUpExamPool(ctx context.Context) error {
 // TopUpPlacementPool generates and adds verified exercises to the placement pool.
 func (m *Module) TopUpPlacementPool(ctx context.Context) error {
 	return m.service.TopUpPlacementPool(ctx)
+}
+
+// SweepPlacementSessions sweeps and expires stale in-progress placement sessions.
+func (m *Module) SweepPlacementSessions(ctx context.Context) error {
+	_, err := m.service.SweepExpiredPlacementSessions(ctx)
+	return err
 }
 
 // ExamPoolDrawer returns the service implementing contract.ExamPoolDrawer.

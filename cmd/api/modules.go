@@ -363,6 +363,7 @@ func newIdentity(deps identityDeps) *identity {
 		Audio:         media.NewCacheLocator(assembled.content.TTSCache()),
 		Env:           deps.Env,
 		AI:            deps.AI,
+		User:          assembled.user.LearningProfileReader(),
 	})
 
 	return assembled
