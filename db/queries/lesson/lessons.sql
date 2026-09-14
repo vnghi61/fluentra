@@ -17,6 +17,7 @@ JOIN learn.courses c ON c.id = u.course_id
 WHERE l.id = $1
   AND l.status = 'published'
   AND c.status = 'published'
+  AND c.slug != 'pool-exam'
 LIMIT 1;
 
 -- name: ListLessonsByUnitID :many

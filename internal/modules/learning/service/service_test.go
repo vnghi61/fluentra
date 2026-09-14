@@ -129,6 +129,23 @@ func (f *fakeLearningRepo) GetAttemptByID(_ context.Context, id uuid.UUID) (*dom
 	return cloneAttempt(att), nil
 }
 
+func (f *fakeLearningRepo) GetAttemptByUserActivityIdempotencyKey(
+	_ context.Context, userID, activityID, idempotencyKey uuid.UUID,
+) (*domain.Attempt, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.queryCounter.Add(1)
+
+	keyStr := idempotencyKey.String()
+	for _, att := range f.attempts {
+		if att.UserID == userID && att.ActivityID == activityID &&
+			att.IdempotencyKey != nil && *att.IdempotencyKey == keyStr {
+			return cloneAttempt(att), nil
+		}
+	}
+	return nil, domain.ErrAttemptNotFound
+}
+
 // cloneAttempt is what makes this fake behave like the repository it stands in
 // for. The real one scans a fresh struct out of every row, so no two callers
 // ever hold the same attempt; handing back the stored pointer let one goroutine

@@ -2179,6 +2179,266 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/listening/items/{versionId}/plays": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Checks the play policy, records the play, and returns a short-lived presigned audio GET URL.
+         * @description Enforces server-side play limits: a learning attempt allows 3 plays, an exam sitting 1 in exam mode and 3 in practice mode. The context must be the caller's own attempt at this item, or the caller's open sitting holding it (in exam mode, in the section open now); anything else is 403 LISTENING_PLAY_NOT_ALLOWED. 409 AUDIO_NOT_READY until the clip is rendered. Returns a short-lived presigned audio download URL valid for the clip length plus one minute.
+         */
+        post: operations["recordListeningPlay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/listening/items/{versionId}/transcript": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Returns script only for a graded attempt belonging to caller.
+         * @description In accordance with ADR-0025, the transcript is withheld until the attempt is graded, ensuring that the listening exercise cannot be solved by reading ahead.
+         */
+        get: operations["getListeningTranscript"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/speaking/upload-intent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Presigned PUT URL for recording upload to storage.
+         * @description Generates a constrained presigned PUT URL directly to the media storage bucket. Validates daily recording quotas before issuing the intent.
+         */
+        post: operations["createSpeakingUploadIntent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/speaking/attempts/{id}/recording": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Purges the recording object while keeping scores and feedback.
+         * @description Deletes the audio file from media storage for an attempt belonging to the caller, marking it deleted while preserving the grade, transcript, and criteria feedback.
+         */
+        delete: operations["deleteSpeakingRecording"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/speaking/attempts/{id}/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read feedback on a graded speaking attempt.
+         * @description Returns the transcript, criteria and bilingual feedback for a graded speaking attempt owned by the caller. Pronunciation is not assessed.
+         */
+        get: operations["getSpeakingFeedback"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/exams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Available mock exams
+         * @description Lists active mock exam templates available to learners.
+         */
+        get: operations["listExams"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/exams/{id}/attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start a sitting
+         * @description Starts a sitting in exam mode (75 minutes, fixed) or practice mode (10–180 minutes, clamped on the server), drawing its items from the exam pool and marking them seen in the same transaction. 404 EXAM_POOL_EMPTY means the pool does not yet hold a sitting's worth at this level. The sixth sitting in a day is 429 EXAM_DAILY_LIMIT_REACHED.
+         */
+        post: operations["startExamAttempt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/exam-attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List past sittings for current user
+         * @description Returns the caller's sittings, newest first, with the total and today's sitting count.
+         */
+        get: operations["listExamAttempts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/exam-attempts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Current state with server time remaining
+         * @description Returns the sitting with remaining time computed on the server. Reading a sitting past its deadline submits it first.
+         */
+        get: operations["getExamAttempt"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/exam-attempts/{id}/answers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Save answers (autosave)
+         * @description Saves draft answers and integrity signals while the sitting is open. Refused past the deadline (409 ATTEMPT_EXPIRED), for an item the sitting does not hold (400 EXAM_ITEM_NOT_IN_SITTING), for an answer over 32 KiB (400 EXAM_ANSWER_TOO_LARGE), and in exam mode for an item outside the current section (400 SECTION_ALREADY_COMPLETED or INVALID_SECTION_PROGRESSION). Signals are recorded at server time.
+         */
+        put: operations["saveExamDraftAnswers"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/exam-attempts/{id}/sections/{n}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Finish a section
+         * @description Closes a section and moves on; completing section 4 submits the sitting. In exam mode, completing a section whose time already ran out returns the current section rather than an error.
+         */
+        post: operations["completeExamSection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/exam-attempts/{id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit the whole exam
+         * @description Submits the caller's sitting: each saved answer becomes a learning attempt, and the report is created pending until asynchronous grades settle. A submission past the deadline is recorded as the expiry's. Idempotent.
+         */
+        post: operations["submitExamAttempt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/exam-attempts/{id}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Score report when ready
+         * @description Returns the stored report for a submitted sitting, bringing a pending report up to date first. A report still pending an hour after submission becomes partial, its waiting items not scored. 404 REPORT_NOT_READY while the sitting is open.
+         */
+        get: operations["getExamScoreReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -4534,6 +4794,182 @@ export interface components {
             page: number;
             /** @example 10 */
             page_size: number;
+        };
+        /** @description One drawn item, with its answer key removed. */
+        ExamSittingActivity: {
+            /** Format: uuid */
+            id: string;
+            /** @example listening_comprehension */
+            kind: string;
+            /** Format: uuid */
+            content_version_id: string;
+            /** @description The item's learner-facing body. No script, answer, model answer or transcript. */
+            config?: {
+                [key: string]: unknown;
+            };
+            weight: number;
+        };
+        ExamSittingSection: {
+            section_position: number;
+            /** @enum {string} */
+            skill: "listening" | "reading" | "writing" | "speaking";
+            activities: components["schemas"]["ExamSittingActivity"][];
+        };
+        /** @description A sitting. Every time in it is the server's. */
+        ExamAttempt: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            exam_id: string;
+            exam_slug?: string;
+            exam_title?: string;
+            /** @enum {string} */
+            level?: "A2" | "B1" | "B2";
+            /** @enum {string} */
+            mode: "exam" | "practice";
+            chosen_duration_minutes: number;
+            /** Format: date-time */
+            started_at: string;
+            /** Format: date-time */
+            deadline_at: string;
+            remaining_seconds: number;
+            /** @description In exam mode, the later of the section the learner reached and the first whose time has not run out. */
+            current_section: number;
+            /**
+             * Format: date-time
+             * @description Exam mode only. When the current section closes.
+             */
+            section_deadline_at?: string;
+            /** @description Exam mode only. Seconds until the current section closes. */
+            section_remaining_seconds?: number;
+            /** @enum {string} */
+            status: "in_progress" | "completed" | "expired";
+            /** Format: date-time */
+            submitted_at?: string;
+            section_activities?: components["schemas"]["ExamSittingSection"][];
+            /** @description Saved answers keyed by activity ID. */
+            draft_answers?: {
+                [key: string]: unknown;
+            };
+            /** Format: date-time */
+            server_time: string;
+        };
+        ExamAttemptList: {
+            items: components["schemas"]["ExamAttempt"][];
+            total: number;
+            /** @description Sittings started today, counted in Asia/Ho_Chi_Minh. */
+            sittings_today: number;
+            daily_limit: number;
+        };
+        SaveExamAnswersRequest: {
+            section_number?: number;
+            /** @description Answers keyed by activity ID, each at most 32 KiB. In exam mode only items of the current section are accepted. */
+            answers?: {
+                [key: string]: unknown;
+            };
+            integrity_events?: {
+                /** @enum {string} */
+                kind: "tab_hidden" | "window_blurred" | "paste";
+            }[];
+        };
+        SaveExamAnswersResult: {
+            saved: boolean;
+            remaining_seconds: number;
+            current_section: number;
+            section_remaining_seconds?: number;
+        };
+        CompleteExamSectionResult: {
+            current_section: number;
+            remaining_seconds: number;
+            section_remaining_seconds?: number;
+            /** @description True when the section completed was the last and the sitting was submitted. */
+            submitted: boolean;
+        };
+        ExamItemOutcome: {
+            /** Format: uuid */
+            activity_id: string;
+            /** Format: uuid */
+            content_version_id: string;
+            kind: string;
+            /**
+             * Format: uuid
+             * @description The learning attempt the answer became. Absent for an unanswered item.
+             */
+            attempt_id?: string;
+            /** @enum {string} */
+            status: "graded" | "pending" | "failed" | "unanswered";
+            score: number;
+            max_score: number;
+            item_results?: {
+                [key: string]: unknown;
+            }[];
+        };
+        ExamSectionOutcome: {
+            position: number;
+            /** @enum {string} */
+            skill: "listening" | "reading" | "writing" | "speaking";
+            /** @enum {string} */
+            status: "scored" | "pending" | "not_scored";
+            /** @description Present only when the section is scored. A section that is not scored has no score, never zero. */
+            score?: number;
+            max_score: number;
+            items: components["schemas"]["ExamItemOutcome"][];
+        };
+        ExamIntegritySignal: {
+            /** @enum {string} */
+            kind: "tab_hidden" | "window_blurred" | "paste";
+            count: number;
+        };
+        ExamScoreReport: {
+            /** Format: uuid */
+            attempt_id: string;
+            /** @enum {string} */
+            mode: "exam" | "practice";
+            /** @enum {string} */
+            submitted_by?: "learner" | "expiry";
+            /** @enum {string} */
+            status: "pending" | "ready" | "partial";
+            /** @description Mean of the scored sections, 0–100. */
+            overall_score: number;
+            /** @description Estimated CEFR band. Absent until a section is scored. */
+            overall_band?: string;
+            per_section: components["schemas"]["ExamSectionOutcome"][];
+            integrity_signals: components["schemas"]["ExamIntegritySignal"][];
+            disclaimer: string;
+        };
+        SpeakingCriterion: {
+            /** @example fluency */
+            name: string;
+            /** Format: float */
+            band: number;
+            comment_en: string;
+            comment_vi: string;
+        };
+        /** @description Feedback on a graded recording, scored from its transcript. Pronunciation is not assessed, and a read-aloud accuracy built on a transcript runs high. */
+        SpeakingFeedback: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            attempt_id: string;
+            /** Format: uuid */
+            user_id: string;
+            recording_key: string;
+            /** Format: date-time */
+            recording_deleted_at?: string;
+            transcript: string;
+            criteria: components["schemas"]["SpeakingCriterion"][];
+            /** Format: float */
+            read_aloud_accuracy?: number;
+            words_per_minute?: number;
+            feedback_en: string;
+            feedback_vi: string;
+            prompt_version: string;
+            model: string;
+            asr_model: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
         };
     };
     responses: {
@@ -9536,6 +9972,726 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    recordListeningPlay: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Content version ID of the listening exercise. */
+                versionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description Context of the play ('attempt' for learning, 'exam' for mock exam sitting).
+                     * @enum {string}
+                     */
+                    context_type: "attempt" | "exam";
+                    /**
+                     * Format: uuid
+                     * @description ID of the attempt or exam sitting.
+                     */
+                    context_id: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Play recorded and presigned audio URL issued. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "audio_url": "https://media.example.com/tts/en_US-lessac-medium/3f9a.wav?X-Amz-Expires=105",
+                     *       "plays_used": 1,
+                     *       "plays_allowed": 1,
+                     *       "expires_at": "2026-09-14T09:16:45Z"
+                     *     }
+                     */
+                    "application/json": {
+                        /** Format: uri */
+                        audio_url: string;
+                        plays_used: number;
+                        plays_allowed: number;
+                        /** Format: date-time */
+                        expires_at: string;
+                    };
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    getListeningTranscript: {
+        parameters: {
+            query: {
+                /** @description ID of the graded attempt belonging to the caller. */
+                attempt_id: string;
+            };
+            header?: never;
+            path: {
+                /** @description Content version ID of the listening exercise. */
+                versionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The transcript for the listening exercise. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "script": "Good morning. The 9:15 train to Hue now leaves from platform 3."
+                     *     }
+                     */
+                    "application/json": {
+                        script: string;
+                    };
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    createSpeakingUploadIntent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @example audio/webm */
+                    content_type?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Presigned upload URL and quota details. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "upload_url": "https://media.example.com/recordings/00000000-0000-0000-0000-000000000001/0b6c.webm?X-Amz-Expires=900",
+                     *       "object_key": "recordings/00000000-0000-0000-0000-000000000001/0b6c.webm",
+                     *       "expires_at": "2026-09-14T09:30:00Z",
+                     *       "daily_recordings_used": 2,
+                     *       "daily_recordings_limit": 30
+                     *     }
+                     */
+                    "application/json": {
+                        /** Format: uri */
+                        upload_url: string;
+                        object_key: string;
+                        /** Format: date-time */
+                        expires_at: string;
+                        daily_recordings_used: number;
+                        daily_recordings_limit: number;
+                    };
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    deleteSpeakingRecording: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID of the speaking attempt. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Audio recording purged from storage. */
+            204: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    getSpeakingFeedback: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID of the speaking attempt. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Feedback for the attempt. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "88888888-8888-8888-8888-888888888888",
+                     *       "attempt_id": "77777777-7777-7777-7777-777777777777",
+                     *       "user_id": "00000000-0000-0000-0000-000000000001",
+                     *       "recording_key": "recordings/00000000-0000-0000-0000-000000000001/0b6c.webm",
+                     *       "transcript": "I usually take the bus to work because it is cheaper.",
+                     *       "criteria": [
+                     *         {
+                     *           "name": "fluency",
+                     *           "band": 6,
+                     *           "comment_en": "Steady pace.",
+                     *           "comment_vi": "Tốc độ ổn định."
+                     *         }
+                     *       ],
+                     *       "words_per_minute": 118,
+                     *       "feedback_en": "Clear answer with simple structures.",
+                     *       "feedback_vi": "Câu trả lời rõ ràng với cấu trúc đơn giản.",
+                     *       "prompt_version": "speaking_grade.v1",
+                     *       "model": "llama-3.3-70b",
+                     *       "asr_model": "whisper-large-v3",
+                     *       "created_at": "2026-09-14T10:20:00Z",
+                     *       "updated_at": "2026-09-14T10:20:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SpeakingFeedback"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    listExams: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of available exams. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example [
+                     *       {
+                     *         "id": "10000000-0000-0000-0000-0000000000b1",
+                     *         "slug": "mock-toeic-b1",
+                     *         "title_en": "TOEIC Mock Exam (B1)",
+                     *         "title_vi": "Bài thi thử TOEIC (B1)",
+                     *         "description_en": "Full 4-skill mock examination at CEFR B1 level",
+                     *         "description_vi": "Bài thi thử đầy đủ 4 kỹ năng ở trình độ CEFR B1",
+                     *         "level": "B1",
+                     *         "format": "mock_toeic",
+                     *         "total_minutes": 75
+                     *       }
+                     *     ]
+                     */
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        slug: string;
+                        title_en: string;
+                        title_vi: string;
+                        description_en?: string;
+                        description_vi?: string;
+                        level: string;
+                        format: string;
+                        total_minutes: number;
+                    }[];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    startExamAttempt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Exam template ID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    mode: "exam" | "practice";
+                    chosen_duration_minutes?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Sitting started. */
+            201: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "44444444-4444-4444-4444-444444444444",
+                     *       "exam_id": "10000000-0000-0000-0000-0000000000b1",
+                     *       "exam_slug": "mock-toeic-b1",
+                     *       "exam_title": "TOEIC Mock Exam (B1)",
+                     *       "level": "B1",
+                     *       "mode": "exam",
+                     *       "chosen_duration_minutes": 75,
+                     *       "started_at": "2026-09-14T09:00:00Z",
+                     *       "deadline_at": "2026-09-14T10:15:00Z",
+                     *       "remaining_seconds": 3600,
+                     *       "current_section": 1,
+                     *       "section_deadline_at": "2026-09-14T09:20:00Z",
+                     *       "section_remaining_seconds": 300,
+                     *       "status": "in_progress",
+                     *       "section_activities": [
+                     *         {
+                     *           "section_position": 1,
+                     *           "skill": "listening",
+                     *           "activities": [
+                     *             {
+                     *               "id": "55555555-5555-5555-5555-555555555555",
+                     *               "kind": "listening_comprehension",
+                     *               "content_version_id": "66666666-6666-6666-6666-666666666666",
+                     *               "weight": 1,
+                     *               "config": {
+                     *                 "title": "Platform announcement",
+                     *                 "questions": [
+                     *                   {
+                     *                     "id": "q1",
+                     *                     "prompt": "Which platform?",
+                     *                     "options": [
+                     *                       {
+                     *                         "id": "A",
+                     *                         "text": "3"
+                     *                       },
+                     *                       {
+                     *                         "id": "B",
+                     *                         "text": "5"
+                     *                       }
+                     *                     ]
+                     *                   }
+                     *                 ]
+                     *               }
+                     *             }
+                     *           ]
+                     *         }
+                     *       ],
+                     *       "draft_answers": {
+                     *         "55555555-5555-5555-5555-555555555555": {
+                     *           "answers": {
+                     *             "q1": "A"
+                     *           }
+                     *         }
+                     *       },
+                     *       "server_time": "2026-09-14T09:15:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ExamAttempt"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    listExamAttempts: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated sittings list. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "id": "44444444-4444-4444-4444-444444444444",
+                     *           "exam_id": "10000000-0000-0000-0000-0000000000b1",
+                     *           "exam_slug": "mock-toeic-b1",
+                     *           "exam_title": "TOEIC Mock Exam (B1)",
+                     *           "level": "B1",
+                     *           "mode": "exam",
+                     *           "chosen_duration_minutes": 75,
+                     *           "started_at": "2026-09-14T09:00:00Z",
+                     *           "deadline_at": "2026-09-14T10:15:00Z",
+                     *           "remaining_seconds": 3600,
+                     *           "current_section": 1,
+                     *           "section_deadline_at": "2026-09-14T09:20:00Z",
+                     *           "section_remaining_seconds": 300,
+                     *           "status": "in_progress",
+                     *           "server_time": "2026-09-14T09:15:00Z"
+                     *         }
+                     *       ],
+                     *       "total": 1,
+                     *       "sittings_today": 1,
+                     *       "daily_limit": 5
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ExamAttemptList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    getExamAttempt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Sitting ID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The sitting. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "44444444-4444-4444-4444-444444444444",
+                     *       "exam_id": "10000000-0000-0000-0000-0000000000b1",
+                     *       "exam_slug": "mock-toeic-b1",
+                     *       "exam_title": "TOEIC Mock Exam (B1)",
+                     *       "level": "B1",
+                     *       "mode": "exam",
+                     *       "chosen_duration_minutes": 75,
+                     *       "started_at": "2026-09-14T09:00:00Z",
+                     *       "deadline_at": "2026-09-14T10:15:00Z",
+                     *       "remaining_seconds": 3600,
+                     *       "current_section": 1,
+                     *       "section_deadline_at": "2026-09-14T09:20:00Z",
+                     *       "section_remaining_seconds": 300,
+                     *       "status": "in_progress",
+                     *       "section_activities": [
+                     *         {
+                     *           "section_position": 1,
+                     *           "skill": "listening",
+                     *           "activities": [
+                     *             {
+                     *               "id": "55555555-5555-5555-5555-555555555555",
+                     *               "kind": "listening_comprehension",
+                     *               "content_version_id": "66666666-6666-6666-6666-666666666666",
+                     *               "weight": 1,
+                     *               "config": {
+                     *                 "title": "Platform announcement",
+                     *                 "questions": [
+                     *                   {
+                     *                     "id": "q1",
+                     *                     "prompt": "Which platform?",
+                     *                     "options": [
+                     *                       {
+                     *                         "id": "A",
+                     *                         "text": "3"
+                     *                       },
+                     *                       {
+                     *                         "id": "B",
+                     *                         "text": "5"
+                     *                       }
+                     *                     ]
+                     *                   }
+                     *                 ]
+                     *               }
+                     *             }
+                     *           ]
+                     *         }
+                     *       ],
+                     *       "draft_answers": {
+                     *         "55555555-5555-5555-5555-555555555555": {
+                     *           "answers": {
+                     *             "q1": "A"
+                     *           }
+                     *         }
+                     *       },
+                     *       "server_time": "2026-09-14T09:15:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ExamAttempt"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    saveExamDraftAnswers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Sitting ID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveExamAnswersRequest"];
+            };
+        };
+        responses: {
+            /** @description Answers saved. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "saved": true,
+                     *       "remaining_seconds": 3600,
+                     *       "current_section": 1,
+                     *       "section_remaining_seconds": 300
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SaveExamAnswersResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    completeExamSection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Sitting ID. */
+                id: string;
+                /** @description 1-indexed section position being completed. */
+                n: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Section closed. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "current_section": 2,
+                     *       "remaining_seconds": 3600,
+                     *       "section_remaining_seconds": 1500,
+                     *       "submitted": false
+                     *     }
+                     */
+                    "application/json": components["schemas"]["CompleteExamSectionResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    submitExamAttempt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Sitting ID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sitting submitted. */
+            202: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "attempt_id": "44444444-4444-4444-4444-444444444444",
+                     *       "status": "completed",
+                     *       "report_status": "pending"
+                     *     }
+                     */
+                    "application/json": {
+                        /** Format: uuid */
+                        attempt_id: string;
+                        /** @enum {string} */
+                        status: "completed" | "expired";
+                        /** @enum {string} */
+                        report_status: "pending" | "ready" | "partial";
+                    };
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    getExamScoreReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Sitting ID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Exam score report. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "attempt_id": "44444444-4444-4444-4444-444444444444",
+                     *       "mode": "exam",
+                     *       "submitted_by": "learner",
+                     *       "status": "partial",
+                     *       "overall_score": 72,
+                     *       "overall_band": "B1",
+                     *       "per_section": [
+                     *         {
+                     *           "position": 1,
+                     *           "skill": "listening",
+                     *           "status": "scored",
+                     *           "score": 80,
+                     *           "max_score": 100,
+                     *           "items": [
+                     *             {
+                     *               "activity_id": "55555555-5555-5555-5555-555555555555",
+                     *               "content_version_id": "66666666-6666-6666-6666-666666666666",
+                     *               "kind": "listening_comprehension",
+                     *               "attempt_id": "77777777-7777-7777-7777-777777777777",
+                     *               "status": "graded",
+                     *               "score": 4,
+                     *               "max_score": 5,
+                     *               "item_results": [
+                     *                 {
+                     *                   "id": "q1",
+                     *                   "correct": true
+                     *                 }
+                     *               ]
+                     *             }
+                     *           ]
+                     *         },
+                     *         {
+                     *           "position": 4,
+                     *           "skill": "speaking",
+                     *           "status": "not_scored",
+                     *           "max_score": 100,
+                     *           "items": [
+                     *             {
+                     *               "activity_id": "55555555-5555-5555-5555-555555555555",
+                     *               "content_version_id": "66666666-6666-6666-6666-666666666666",
+                     *               "kind": "speaking_task",
+                     *               "status": "failed",
+                     *               "score": 0,
+                     *               "max_score": 0
+                     *             }
+                     *           ]
+                     *         }
+                     *       ],
+                     *       "integrity_signals": [
+                     *         {
+                     *           "kind": "tab_hidden",
+                     *           "count": 2
+                     *         }
+                     *       ],
+                     *       "disclaimer": "Not an official TOEIC score. Pronunciation not assessed."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ExamScoreReport"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
             500: components["responses"]["InternalServerError"];
         };
     };

@@ -2,11 +2,11 @@
 module: speaking
 tier: learning
 group: modules
-status: PLANNED
+status: DONE
 phase: 3
 owner: "@learning-team"
 schema: skill
-tables: [speaking_tasks, speaking_attempts, pronunciation_scores, speaking_feedback]
+tables: [speaking_feedback]
 depends_on: [media, ai, storage, job, content, learning]
 depended_on_by: [learning, analytics, gamification]
 spec_version: 1.0.0
@@ -25,7 +25,7 @@ last_verified: 2026-08-06
 | Path | `internal/modules/speaking` |
 | Schema | `skill` |
 | Delivery phase | 3 |
-| Status | **PLANNED** |
+| Status | **DONE** |
 | Owner | @learning-team |
 
 ---
@@ -82,6 +82,7 @@ Other modules may import **only** `internal/modules/speaking/contract`.
 | `speaking.attempt_recorded` | publishes | `{user_id, attempt_id, asset_id}` |
 | `speaking.scored` | publishes | `{user_id, attempt_id, accuracy, fluency}` |
 | `media.transcribed` | consumes | Continue the pipeline once ASR is done |
+| `user.deleted` | consumes | Delete the account's recordings from storage; the anonymised user row never cascades |
 <!-- END GENERATED: contract -->
 
 ## 5. Database schema
@@ -92,10 +93,7 @@ Migrations: `db/migrations/speaking/` · Queries: `db/queries/speaking/`
 
 | Table | Purpose | Key columns / notes |
 |---|---|---|
-| `skill.speaking_tasks` | Prompt definitions | Content-versioned. `type`, `prompt`, `reference_text` (read-aloud only), `prep_seconds`, `max_seconds` |
-| `skill.speaking_attempts` | One recording | `user_id`, `task_id`, `asset_id`, `status`, `transcript_id`, `overall_score`, `duration_ms` |
-| `skill.pronunciation_scores` | Per-attempt assessment | `attempt_id`, `accuracy`, `fluency`, `completeness`, `prosody`, `words` jsonb (per-word and per-phoneme) |
-| `skill.speaking_feedback` | AI coaching | `attempt_id`, `summary`, `strengths`, `improvements`, `prompt_version` |
+| `skill.speaking_feedback` | Per-attempt asynchronous feedback, metrics, and transcript | `attempt_id` UNIQUE FK learn.attempts, `user_id`, `recording_key`, `recording_deleted_at`, `transcript`, `criteria` jsonb, `read_aloud_accuracy`, `words_per_minute`, `feedback_en`, `feedback_vi` |
 
 <!-- END GENERATED: schema -->
 
@@ -107,12 +105,9 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 <!-- BEGIN GENERATED: endpoints -->
 | Method | Path | Permission | Purpose |
 |---|---|---|---|
-| `GET` | `/api/v1/speaking/tasks` | `content.read.published` | Available tasks |
-| `POST` | `/api/v1/speaking/upload-intent` | `self` | Presigned URL for the recording |
-| `POST` | `/api/v1/speaking/attempts` | `self` | Create the attempt after upload |
-| `GET` | `/api/v1/speaking/attempts/{id}` | `self` | Attempt with scores and feedback when ready |
-| `GET` | `/api/v1/speaking/attempts` | `self` | History with score progression |
-| `DELETE` | `/api/v1/speaking/attempts/{id}/recording` | `self` | Delete the audio while keeping the scores |
+| `POST` | `/api/v1/speaking/upload-intent` | `self` | Presigned PUT URL for recording upload to storage |
+| `DELETE` | `/api/v1/speaking/attempts/{id}/recording` | `self` | Purges the recording object while keeping scores and feedback |
+| `GET` | `/api/v1/speaking/attempts/{id}/feedback` | `self` | Read feedback on a graded speaking attempt |
 <!-- END GENERATED: endpoints -->
 
 ## 7. Folder map

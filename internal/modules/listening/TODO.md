@@ -2,11 +2,11 @@
 module: listening
 tier: learning
 group: modules
-status: PLANNED
+status: DONE
 phase: 3
 owner: "@learning-team"
 schema: skill
-tables: [audio_items, transcripts, listening_attempts]
+tables: [listening_plays]
 depends_on: [content, media, questionbank, learning]
 depended_on_by: [learning, exam, analytics]
 spec_version: 1.0.0
@@ -19,14 +19,9 @@ Ordered backlog. Every item states what "done" means. Keep this current — it i
 agent knows what is already handled and what is deliberately deferred.
 
 <!-- BEGIN GENERATED: todo -->
-## Phase 3
+## Backlog
 
-- [ ] Audio items with transcripts and metadata
-- [ ] Attempt with server-side play counting
-- [ ] Graders for MCQ, gap-fill, dictation and ordering
-- [ ] Transcript reveal policy
-- [ ] Study-mode segment replay
-- [ ] Player UI for both modes
+_Empty. Add items with acceptance criteria as they are identified._
 <!-- END GENERATED: todo -->
 
 ## Deferred (deliberately not doing yet)

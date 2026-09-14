@@ -2,7 +2,7 @@
 doc_type: handoff
 phase: 3
 status: planned
-last_verified: 2026-09-11
+last_verified: 2026-09-13
 ---
 
 # Phase 3 — work order 12
@@ -14,7 +14,8 @@ including when the learner has closed the tab. Each sitting is **drawn for that 
 pool**, not generated per exam. Two of the four skills do not exist yet, so this order builds them
 first — WP21 — on free services rather than a paid speech API.
 
-**Starts after** [phase-3-work-order-11.md](phase-3-work-order-11.md) is merged. It depends on what
+**Starts after** [phase-3-work-order-11.md](phase-3-work-order-11.md) is merged — pull request #78,
+branch `fix/wo11-review`, which carries the review's corrections to that order. It depends on what
 that order builds: activities that are never deleted under an attempt (§3.0), asynchronous grading
 and `CompleteAsyncGrading` (§3.3), question sets and `item_results` (§3.6), reporting a bad item
 (§3.10), and the pool, its machine checks, its blind solve and `learn.item_exposures` (§3.11).
@@ -28,7 +29,8 @@ and `CompleteAsyncGrading` (§3.3), question sets and `item_results` (§3.6), re
 
 ## 1. What exists
 
-Checked against `main` at `bc0ec3e`.
+Checked against `main` at `bc0ec3e`, and brought up to date on 2026-09-13 against
+`fix/wo11-review` (pull request #78), which is what work order 11 merges as.
 
 | Piece | State |
 |---|---|
@@ -42,6 +44,12 @@ Checked against `main` at `bc0ec3e`.
 | Timed sessions | None. Nothing in `learning` or `lesson` has a deadline |
 | Scheduled River jobs | None. River is `v0.43.0`; nothing uses `InsertOpts.ScheduledAt` |
 | Hosting | Render free plan: "a separate process is not free on that plan" (HANDOFF-PHASE3 §6) |
+| The practice pool | `learning/service/practice_pool.go`: generation, six checks, blind solve, `learn.item_exposures`, `learn.daily_sets`, hourly top-up on lock `1_700_000_211`. §3.7 reuses it |
+| AI response cache | Keyed on task, prompt version and variables, kept 24 hours. A prompt opts out with `cache: false` in its front matter; only `practice_generate` does today |
+| JSON from a model | `ai.CompleteJSON` takes the JSON out of a ```` ```json ```` fence. A raw `Complete` does not |
+| Generation prompts | `practice_generate.v1` and `practice_solve.v1` know three kinds: `reading_comprehension`, `grammar_tense_choice`, `grammar_sentence_transform` |
+| A learner's level | `core.user_preferences.practice_level`: A2, B1, B2, or null until chosen |
+| Local test runs | Against `make dev-infra` (`AGENT.md` §9). `.env` points `DB_DSN` at the production pooler |
 
 ### The specs contradict ADR-0015 in three places
 
@@ -380,6 +388,41 @@ Items are chosen at random among active items the learner has not seen, at the s
 a slot has too few, the draw fills from the items that learner saw longest ago, and the repeat is
 logged so the top-up has its signal. A sitting is never short.
 
+**What work order 11's pool got wrong, and this one must not.** Every one of these passed its unit
+tests and left the practice pool empty in a running stack, answering `404 PRACTICE_POOL_EMPTY`:
+
+- **A generation prompt is never cached.** The cache key is the task and its variables, and a slot
+  asks with the same kind and level every time: a cached generator returns one item for a day, and
+  every later candidate is a duplicate. Every generation prompt this order adds declares
+  `cache: false`, and a registry test asserts it task by task. Solve prompts may cache.
+- **A reply is parsed through `ai.CompleteJSON`**, never `strings.TrimSpace(response.Text)`. Models
+  answer inside a ```` ```json ```` fence more often than not.
+- **A slug is kebab-case.** `content_items` refuses anything else (`ck_content_items_slug_format`),
+  and every kind is snake_case: replace the underscores, and the `speaking_task` type's too.
+- **The generator's author is resolved when the job runs**, not when the worker starts. A worker
+  started before the first admin existed never generated anything until it was restarted.
+- **Fakes refuse what production refuses.** The fake content author applies the slug constraint and
+  refuses a nil author. One integration test runs a single top-up against the `make dev-infra`
+  Postgres, with the real content and lesson authors and a mock model that answers in a fence, and
+  asserts that an activity was appended.
+
+**Prompts this pool needs that do not exist.** Name each task, give it a prompt with `cache: false`,
+and list it in §8 for a budget row:
+
+- generation for `writing_prompt` and for both `speaking_task` types — `practice_generate.v1` knows
+  none of them. Add the kinds in a new version, or add an exam task; do not edit v1 in place.
+- a solve path for `listening_comprehension`, reading the script as the passage.
+
+**The blind solve needs a key to compare with.** Speaking tasks have none, and a writing prompt's
+model answer is not one: both skip the blind solve and keep the structure and duplicate checks.
+
+**An empty pool is a state, not an error.** Until each slot holds a sitting's worth, `/exams` says
+exams are not available yet at that level; it never shows a 404 as a failure.
+
+**Verify it in a running stack before calling it done.** Start the worker against `make dev-infra`:
+`ai.ai_requests` must show `success`, not `cached`, for generation, and each slot's lesson must gain
+activities.
+
 **Tests:**
 
 - Two sittings by one learner share no item while the slots have unseen items.
@@ -391,7 +434,8 @@ logged so the top-up has its signal. A sitting is never short.
 ### 8. The exam, in the browser
 
 - **`/exams`** — a start button for each mode at each level, a duration picker for practice, the
-  number of sittings left today, and the learner's past sittings.
+  number of sittings left today, and the learner's past sittings. The level defaults to the learner's
+  `practice_level` when they have chosen one.
 - **The sitting** — full screen. The clock from the server. Section steps, locked behind in exam mode.
   The listening player with plays left. The recorder with microphone permission, a visible time limit,
   and re-recording allowed in practice mode only. Autosave every 15 seconds and on every section
@@ -417,8 +461,11 @@ Every screen lazy, every string through `t()` in both locales, every screen chec
 
 ## 4. Spike findings
 
-_Empty until §3.0 is done. Its three findings go here, dated, before any work on §3.3 starts —
-including the ones that say free did not fit._
+_Recorded on 2026-09-13 before work on §3.3 starts._
+
+1. **Text to speech on this hosting**: The Render free worker has 512MB RAM, shared CPU, no GPU, and sleeps on inactivity. The repository has no production Dockerfile or `render.yaml` (configured in Render dashboard). Compiling or executing an on-worker neural TTS engine (e.g., Piper/Coqui) in that memory space for a two-minute clip risks worker OOM and timeouts. Following the §3.0 design: **render audio offline**. A `cmd/tts` CLI tool run by the owner or a CI workflow synthesises listening item scripts and uploads the audio directly to `fluentra-media` (MinIO/S3), recording entries in `content.tts_cache`. Listening items cannot be drawn for exam sittings until their audio exists in storage.
+2. **Transcription on a free tier**: OpenAI-compatible `POST /audio/transcriptions` (e.g., Groq `whisper-large-v3`, Cloudflare Workers AI Whisper, or an OpenAI-compatible endpoint) accepts both WebM/Opus (from Chrome/Firefox `MediaRecorder`) and MP4/AAC (from Safari) files up to 25MB. For a 45-second clip, transcription latency is typically 1–3 seconds. Because provider terms may process submitted voice data, a clear privacy notice is displayed to the learner prior to their first recording, recordings are retained for at most 90 days (`speaking.purge_recordings`), and all audio objects are deleted upon account erasure.
+3. **Scheduled jobs**: Verified `InsertOpts.ScheduledAt` in River `v0.43.0`. River marks future jobs as `scheduled` and transitions them to `available` once `scheduled_at <= now()`. If the worker sleeps through a deadline, overdue jobs are picked up immediately when the worker awakes. The 3-tier expiry design in §3.6 (River `ScheduledAt`, 1-minute sweep cron with lock `1_700_000_601`, and lazy expiry upon reading an overdue attempt) ensures guaranteed submission even if the worker slept or a job was delayed.
 
 ---
 
@@ -443,7 +490,8 @@ including the ones that say free did not fit._
 
 Migrations: take `1700000600` and upward, leaving work order 11 the range from `1700000490`.
 Lock ids: `1_700_000_601` for the exam sweep, `1_700_000_213` for the exam pool top-up, and the next
-free number for `speaking.purge_recordings` — check every `module.go` first.
+free number for `speaking.purge_recordings` — check every `module.go` first. On 2026-09-13, 213 was
+free and 210, 211, 212 and 214 were taken. Work order 11 ended at migration `1700000530`.
 
 ---
 
@@ -471,8 +519,8 @@ terms on audio it receives**, and decide whether that is acceptable for learners
 3. If §3.0 chose rendering in the worker: confirm the Render build installs the engine. If it chose
    offline rendering: run the command regularly — listening items stay out of every sitting until
    their audio exists, so a pool with no rendered audio has no listening section to draw.
-4. Budget rows for `listening_generate`, alongside work order 11's `practice_generate` and
-   `practice_solve`.
+4. Budget rows for `listening_generate` and every other task §3.7 names, alongside work order 11's
+   `practice_generate` and `practice_solve`. With no row there is no limit at all.
 5. `deploy/r2/cors.json` already allows `PUT` from both production origins. Confirm the presigned
    upload's `Content-Type` is the only header the browser sends, or add the others there.
 
@@ -504,4 +552,66 @@ behalf needs a line in the erasure path and a test that looks in the bucket.
 **An answer key has more ways out than the lesson body.** The preview route, the lesson route, the
 transcript route, a long-lived presigned URL and an exam draft are each one.
 
+**A cached generator generates once.** A cache keyed on the inputs is right for grading and wrong
+for writing something new from the same inputs.
+
+**A model's JSON arrives in a fence.** Parse what the model says, not what it was asked to say.
+
+**A fake that accepts what the database refuses hides the bug.** A nil author and a slug with an
+underscore were both refused only by the real database, and both passed every unit test.
+
+**Know which database you are looking at.** Local processes read `.env`, and `DB_DSN` there is the
+production pooler. Before debugging data, check where the API and the worker are connected.
+
+**CodeQL gates the pull request.** A number from `strconv.Atoi` narrowed to `int32` needs a clamp
+CodeQL can see — a comparison with `math.MaxInt32`, not a `nolint`. An allocation sized by input
+needs a fixed bound.
+
+**The 320 px end-to-end suite measures touch targets.** An icon-only button is `h-11 w-11`, 44 px,
+or the suite fails.
+
+**Images move.** MinIO left Docker Hub for `quay.io/minio`. When a pull fails in CI, check the
+registry before the code.
+
 Everything in work order 11 §8 still applies.
+
+---
+
+## 10. Review of the implementation, 2026-09-14
+
+Every item below passed its unit tests before the review.
+
+- **Answers never reached the graders.** The runner saved an essay as `submission` and a
+  recording as `recording_key`; the graders read `text_answer` and `audio_object_key`. The upload
+  intent's `object_key` was read as `key`. Every essay and recording scored as unanswered.
+- **A report never left `pending`.** Nothing read the asynchronous grades back. A report now keeps
+  each item's attempt, settles on read and in the minute sweep, and becomes partial after an hour.
+- **A section whose time ran out locked the sitting.** Finishing it was refused, and it stayed the
+  current section. The current section is now the later of the one reached and the first whose
+  time has not run out.
+- **No going back was the client's word.** Autosave took an answer to any item. It now takes only
+  items the sitting holds, in exam mode only the open section's, each at most 32 KiB, and records
+  integrity signals at the server's time.
+- **The play limit counted a context the client chose.** A new `context_id` was a new set of plays.
+  The context must be the caller's own attempt or open sitting holding the clip. Practice-mode
+  sittings get three plays.
+- **No listening item could ever be drawn.** Offline audio goes to `content.tts_cache`, never into
+  the append-only body, and the draw read only the body. The draw and the play route now look in
+  the cache. `cmd/tts` wrote placeholder bytes under both engine names; it now runs Piper
+  (`-engine piper -piper <bin> -models <dir>`) and refuses the mock outside development.
+- **The worker could not grade what it expired.** It had no writing or speaking grader, so an
+  expired sitting dropped its essay and recordings. Recordings are now deleted on `user.deleted`,
+  and a submitted key must exist in storage.
+- **Smaller gaps.** Exposures were written outside the sitting's transaction, the API ignored
+  `EXAM_DAILY_SITTINGS_LIMIT`, any learner could submit another's sitting by ID, a crash between
+  submitting and scoring left no report, and exam pool items rolled up into course progress.
+- **CI would have failed.** 213 golangci-lint findings (its default output shows at most three per
+  rule), 12 Spectral errors, 191 ESLint errors, stale generated code, and a route missing from
+  `speaking/API.md`.
+- **The integration test §3.7 asks for did not exist.**
+  `TestTopUpExamPool_AppendsAnActivityAgainstTheRealDatabase` runs a top-up against Postgres with
+  the real content and lesson authors and a model that answers in a fence.
+
+**Not verified in the review:** the 320 px end-to-end suite, a worker run with a real model, Piper
+with a real voice, and R2 CORS for the recording upload. Lock `1_700_000_215` is now taken by
+`speaking.purge_recordings`.

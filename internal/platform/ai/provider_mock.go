@@ -59,6 +59,14 @@ func (p *MockProvider) Complete(_ context.Context, req Request) (Response, error
 		return p.enrichExamples(req)
 	case TaskGradeWriting:
 		return p.gradeWriting(req)
+	case TaskGradeSpeaking:
+		return p.gradeSpeaking(req)
+	case TaskPracticeGenerate:
+		return p.practiceGenerate(req)
+	case TaskPracticeSolve:
+		return p.practiceSolve(req)
+	case TaskListeningGenerate:
+		return p.listeningGenerate(req)
 	default:
 		return Response{}, fmt.Errorf("ai: mock provider has no answer for task %q", req.Task)
 	}
@@ -93,6 +101,38 @@ func (p *MockProvider) gradeWriting(req Request) (Response, error) {
 	})
 	if err != nil {
 		return Response{}, fmt.Errorf("ai: encode mock writing grade: %w", err)
+	}
+	return Response{Text: string(payload), Model: MockModelName}, nil
+}
+
+func (p *MockProvider) gradeSpeaking(req Request) (Response, error) {
+	transcript := strings.TrimSpace(stringVar(req.Vars, "Transcript"))
+	score := 80
+	correct := true
+	feedback := "Good spoken response with clear communication."
+	feedbackVi := "Bài nói tốt với khả năng giao tiếp rõ ràng."
+	if len(strings.Fields(transcript)) < 2 {
+		score = 25
+		correct = false
+		feedback = "The spoken response is too brief."
+		feedbackVi = "Bài nói quá ngắn."
+	}
+	payload, err := json.Marshal(map[string]any{
+		"overall_band": 6.5,
+		"score":        score,
+		"correct":      correct,
+		"feedback":     feedback,
+		"feedback_en":  feedback,
+		"feedback_vi":  feedbackVi,
+		"criteria": []map[string]any{
+			mockCriterion("task_response", 6.5, "Addressed the task reasonably well.", "Đáp ứng khá tốt yêu cầu bài nói."),
+			mockCriterion("fluency_coherence", 6.5, "Good flow of speech.", "Độ trôi chảy tốt."),
+			mockCriterion("lexical_resource", 6.5, "Appropriate vocabulary.", "Từ vựng phù hợp."),
+			mockCriterion("grammatical_range", 6.0, "Generally accurate grammar.", "Ngữ pháp nhìn chung chính xác."),
+		},
+	})
+	if err != nil {
+		return Response{}, fmt.Errorf("ai: encode mock speaking grade: %w", err)
 	}
 	return Response{Text: string(payload), Model: MockModelName}, nil
 }
@@ -197,4 +237,266 @@ var _ Client = (*MockProvider)(nil)
 // mockCriterion is one rubric criterion in the mock's writing grade.
 func mockCriterion(name string, band float64, commentEn, commentVi string) map[string]any {
 	return map[string]any{"name": name, "band": band, "comment_en": commentEn, "comment_vi": commentVi}
+}
+
+func (p *MockProvider) practiceGenerate(req Request) (Response, error) {
+	kind := stringVar(req.Vars, "Kind")
+	taskType := stringVar(req.Vars, "TaskType")
+	var payload []byte
+	var err error
+
+	switch kind {
+	case "reading_comprehension":
+		payload, err = json.Marshal(map[string]any{
+			"passage_title": "The Community Garden Project",
+			"passage":       "Last year, the neighborhood association established a community garden in the city center. Residents of all ages volunteered their weekends to plant vegetables, build flower beds, and install irrigation systems. The initiative not only increased local green space but also strengthened interpersonal bonds among neighbors.",
+			"questions": []map[string]any{
+				{
+					"id":     "q1",
+					"type":   "multiple_choice",
+					"prompt": "What was established in the city center?",
+					"options": []map[string]any{
+						{"id": "A", "text": "A community garden"},
+						{"id": "B", "text": "A shopping center"},
+						{"id": "C", "text": "A sports stadium"},
+						{"id": "D", "text": "A bus terminal"},
+					},
+					"correct_option_id": "A",
+					"explanation": map[string]string{
+						"explanation_en": "The passage states that a community garden was established in the city center.",
+						"explanation_vi": "Đoạn văn nêu rõ khu vườn cộng đồng được xây dựng tại trung tâm thành phố.",
+					},
+				},
+				{
+					"id":     "q2",
+					"type":   "multiple_choice",
+					"prompt": "Who volunteered on weekends?",
+					"options": []map[string]any{
+						{"id": "A", "text": "Residents of all ages"},
+						{"id": "B", "text": "Only university students"},
+						{"id": "C", "text": "City officials only"},
+						{"id": "D", "text": "Hired contractors"},
+					},
+					"correct_option_id": "A",
+					"explanation": map[string]string{
+						"explanation_en": "The passage mentions that residents of all ages volunteered.",
+						"explanation_vi": "Đoạn văn đề cập người dân ở mọi lứa tuổi đã tình nguyện tham gia.",
+					},
+				},
+				{
+					"id":     "q3",
+					"type":   "multiple_choice",
+					"prompt": "What was one outcome of the initiative?",
+					"options": []map[string]any{
+						{"id": "A", "text": "It strengthened bonds among neighbors"},
+						{"id": "B", "text": "It caused high city taxes"},
+						{"id": "C", "text": "It created severe traffic congestion"},
+						{"id": "D", "text": "It reduced nearby green areas"},
+					},
+					"correct_option_id": "A",
+					"explanation": map[string]string{
+						"explanation_en": "The initiative strengthened interpersonal bonds among neighbors.",
+						"explanation_vi": "Sáng kiến này đã thắt chặt tình cảm giữa các cư dân láng giềng.",
+					},
+				},
+				{
+					"id":     "q4",
+					"type":   "multiple_choice",
+					"prompt": "When was the project started?",
+					"options": []map[string]any{
+						{"id": "A", "text": "Last year"},
+						{"id": "B", "text": "Five years ago"},
+						{"id": "C", "text": "Last month"},
+						{"id": "D", "text": "Yesterday"},
+					},
+					"correct_option_id": "A",
+					"explanation": map[string]string{
+						"explanation_en": "The text begins with 'Last year, the neighborhood association...'",
+						"explanation_vi": "Bài viết bắt đầu với 'Vào năm ngoái, hiệp hội khu phố...'",
+					},
+				},
+			},
+		})
+	case "grammar_tense_choice":
+		payload, err = json.Marshal(map[string]any{
+			"prompt": "By the time the train arrived, they ___ for over an hour.",
+			"options": []map[string]any{
+				{"id": "A", "text": "had been waiting"},
+				{"id": "B", "text": "are waiting"},
+				{"id": "C", "text": "will wait"},
+				{"id": "D", "text": "waits"},
+			},
+			"correct_option_id": "A",
+			"explanation": map[string]string{
+				"explanation_en": "Past perfect continuous is used for an action continuing up to another past event.",
+				"explanation_vi": "Quá khứ hoàn thành tiếp diễn dùng để chỉ hành động kéo dài đến một thời điểm trong quá khứ.",
+			},
+		})
+	case "grammar_sentence_transform":
+		payload, err = json.Marshal(map[string]any{
+			"prompt":         "Rewrite the sentence using 'Although': He was exhausted, but he completed the project.",
+			"correct_answer": "Although he was exhausted, he completed the project.",
+			"acceptable":     []string{"Although he was exhausted, he completed his project."},
+			"explanation": map[string]string{
+				"explanation_en": "Begin with 'Although' and remove 'but'.",
+				"explanation_vi": "Bắt đầu với 'Although' và bỏ liên từ 'but'.",
+			},
+		})
+	case "writing_prompt":
+		payload, err = json.Marshal(map[string]any{
+			"prompt":             "Some people believe that public transportation should be completely free for all citizens. Do you agree or disagree? Give reasons and examples.",
+			"model_answer":       "The proposition that public transit should be provided at no cost has become a focal point of urban development debates. In my perspective, making public transportation free yields considerable societal advantages. Primarily, zero-fare systems incentivize commuters to leave private automobiles at home, directly curbing traffic gridlock and harmful vehicle emissions. Furthermore, free transit functions as an equalizer, ensuring low-income households maintain reliable access to educational and employment hubs. In conclusion, offering free public transit represents an effective investment in environmental health and social equity.",
+			"min_words":          150,
+			"time_limit_minutes": 20,
+			"topic":              "Urban Planning & Environment",
+			"explanation": map[string]string{
+				"explanation_en": "A clear position supported by environmental and socioeconomic benefits.",
+				"explanation_vi": "Bài viết có quan điểm rõ ràng được hỗ trợ bởi các lý lẽ về môi trường và kinh tế xã hội.",
+			},
+		})
+	case "speaking_task":
+		if taskType == "read_aloud" {
+			payload, err = json.Marshal(map[string]any{
+				"task_type":             "read_aloud",
+				"prompt":                "Read the following text aloud clearly and naturally.",
+				"reference_text":        "Good afternoon and welcome to the annual technology conference. Please ensure all portable electronic devices are set to silent mode during keynotes. The schedule is available at the registration desk.",
+				"speaking_time_seconds": 45,
+				"explanation": map[string]string{
+					"explanation_en": "Maintain consistent pace and clear articulation of consonant clusters.",
+					"explanation_vi": "Giữ tốc độ ổn định và phát âm rõ ràng các cụm phụ âm.",
+				},
+			})
+		} else {
+			payload, err = json.Marshal(map[string]any{
+				"task_type":             "respond",
+				"prompt":                "Describe an accomplishment you are proud of. Explain why it was meaningful and what you learned.",
+				"speaking_time_seconds": 45,
+				"explanation": map[string]string{
+					"explanation_en": "Provide context, detail the action taken, and reflect on the outcome.",
+					"explanation_vi": "Cung cấp bối cảnh, chi tiết hành động và bài học rút ra.",
+				},
+			})
+		}
+	default:
+		return Response{}, fmt.Errorf("ai: mock practiceGenerate has no mock for kind %q", kind)
+	}
+
+	if err != nil {
+		return Response{}, fmt.Errorf("ai: encode mock practice item: %w", err)
+	}
+	return Response{Text: string(payload), Model: MockModelName}, nil
+}
+
+func (p *MockProvider) practiceSolve(req Request) (Response, error) {
+	kind := stringVar(req.Vars, "Kind")
+	var payload []byte
+	var err error
+
+	switch kind {
+	case "reading_comprehension", "listening_comprehension":
+		payload, err = json.Marshal(map[string]any{
+			"answers": map[string]string{
+				"q1": "A",
+				"q2": "A",
+				"q3": "A",
+				"q4": "A",
+				"q5": "A",
+			},
+		})
+	case "grammar_tense_choice":
+		payload, err = json.Marshal(map[string]any{
+			"selected_option_id": "A",
+		})
+	case "grammar_sentence_transform":
+		payload, err = json.Marshal(map[string]any{
+			"answer": "Although he was exhausted, he completed the project.",
+		})
+	default:
+		payload, err = json.Marshal(map[string]any{
+			"answers": map[string]string{"q1": "A"},
+		})
+	}
+
+	if err != nil {
+		return Response{}, fmt.Errorf("ai: encode mock solve answer: %w", err)
+	}
+	return Response{Text: string(payload), Model: MockModelName}, nil
+}
+
+func (p *MockProvider) listeningGenerate(_ Request) (Response, error) {
+	payload, err := json.Marshal(map[string]any{
+		"title":  "Flight Announcement at International Airport",
+		"script": "Attention all passengers on flight 402 to Tokyo. Due to adverse weather conditions along the flight route, boarding will be delayed by approximately forty-five minutes. Please remain near gate 14 for further announcements.",
+		"voice":  "en-US-Standard-C",
+		"questions": []map[string]any{
+			{
+				"id":     "q1",
+				"type":   "multiple_choice",
+				"prompt": "What is the destination of flight 402?",
+				"options": []map[string]any{
+					{"id": "A", "text": "Tokyo"},
+					{"id": "B", "text": "Seoul"},
+					{"id": "C", "text": "London"},
+					{"id": "D", "text": "Singapore"},
+				},
+				"correct_option_id": "A",
+				"explanation": map[string]string{
+					"explanation_en": "The announcement specifies flight 402 to Tokyo.",
+					"explanation_vi": "Thông báo nêu rõ chuyến bay 402 tới Tokyo.",
+				},
+			},
+			{
+				"id":     "q2",
+				"type":   "multiple_choice",
+				"prompt": "Why is the flight delayed?",
+				"options": []map[string]any{
+					{"id": "A", "text": "Adverse weather conditions"},
+					{"id": "B", "text": "Mechanical repairs"},
+					{"id": "C", "text": "Crew unavailability"},
+					{"id": "D", "text": "Air traffic control strike"},
+				},
+				"correct_option_id": "A",
+				"explanation": map[string]string{
+					"explanation_en": "The speaker mentions adverse weather conditions along the route.",
+					"explanation_vi": "Người nói nhắc đến điều kiện thời tiết xấu dọc đường bay.",
+				},
+			},
+			{
+				"id":     "q3",
+				"type":   "multiple_choice",
+				"prompt": "How long is the expected delay?",
+				"options": []map[string]any{
+					{"id": "A", "text": "About 45 minutes"},
+					{"id": "B", "text": "Two hours"},
+					{"id": "C", "text": "Fifteen minutes"},
+					{"id": "D", "text": "Overnight"},
+				},
+				"correct_option_id": "A",
+				"explanation": map[string]string{
+					"explanation_en": "The announcement states boarding will be delayed by approximately forty-five minutes.",
+					"explanation_vi": "Thông báo nêu rõ hoãn khoảng 45 phút.",
+				},
+			},
+			{
+				"id":     "q4",
+				"type":   "multiple_choice",
+				"prompt": "Where should passengers remain?",
+				"options": []map[string]any{
+					{"id": "A", "text": "Near gate 14"},
+					{"id": "B", "text": "At baggage claim"},
+					{"id": "C", "text": "In the dining lounge"},
+					{"id": "D", "text": "Outside security"},
+				},
+				"correct_option_id": "A",
+				"explanation": map[string]string{
+					"explanation_en": "Passengers are asked to remain near gate 14.",
+					"explanation_vi": "Hành khách được yêu cầu ở gần cổng 14.",
+				},
+			},
+		},
+	})
+	if err != nil {
+		return Response{}, fmt.Errorf("ai: encode mock listening generation: %w", err)
+	}
+	return Response{Text: string(payload), Model: MockModelName}, nil
 }

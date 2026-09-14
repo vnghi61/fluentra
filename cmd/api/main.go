@@ -27,6 +27,7 @@ import (
 	"github.com/fluentra/fluentra/internal/platform/cache"
 	"github.com/fluentra/fluentra/internal/platform/job"
 	"github.com/fluentra/fluentra/internal/platform/mailer"
+	"github.com/fluentra/fluentra/internal/platform/media"
 	"github.com/fluentra/fluentra/internal/platform/storage"
 	"github.com/fluentra/fluentra/internal/platform/telemetry"
 	"github.com/fluentra/fluentra/internal/shared/config"
@@ -182,6 +183,18 @@ type applicationConfig struct {
 	Worker struct {
 		URL string `koanf:"url"`
 	} `koanf:"worker"`
+	Speech struct {
+		TTSEngine            string        `koanf:"tts_engine"`
+		TTSVoice             string        `koanf:"tts_voice"`
+		ASRBaseURL           string        `koanf:"asr_base_url"`
+		ASRModel             string        `koanf:"asr_model"`
+		ASRAPIKey            string        `koanf:"asr_api_key"`
+		ASRTimeout           time.Duration `koanf:"asr_timeout"`
+		DailyRecordingsLimit int           `koanf:"daily_recordings_limit"`
+	} `koanf:"speech"`
+	Exam struct {
+		DailySittingsLimit int `koanf:"daily_sittings_limit"`
+	} `koanf:"exam"`
 }
 
 func (cfg applicationConfig) aiProviders() []ai.ProviderConfig {
@@ -345,6 +358,18 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("create job client: %w", err)
 	}
 
+	var mediaTranscriber media.Transcriber
+	if cfg.Speech.ASRBaseURL != "" && cfg.Speech.ASRBaseURL != "mock" {
+		mediaTranscriber = media.NewHTTPTranscriber(media.HTTPTranscriberConfig{
+			BaseURL: cfg.Speech.ASRBaseURL,
+			Model:   cfg.Speech.ASRModel,
+			APIKey:  cfg.Speech.ASRAPIKey,
+			Timeout: cfg.Speech.ASRTimeout,
+		})
+	} else {
+		mediaTranscriber = &media.MockTranscriber{}
+	}
+
 	aiClient := initAIClient(ctx, cfg, pool)
 
 	modules := newIdentity(identityDeps{
@@ -390,6 +415,10 @@ func run(ctx context.Context) error {
 		Mailer:            newAPIMailSender(cfg, pool),
 		WorkerNudger:      newWorkerNudger(cfg.Worker.URL),
 		WritingDailyLimit: cfg.AI.WritingDailyLimit,
+		SpeechDailyLimit:  cfg.Speech.DailyRecordingsLimit,
+		SpeechASRModel:    cfg.Speech.ASRModel,
+		ExamDailyLimit:    cfg.Exam.DailySittingsLimit,
+		Transcriber:       mediaTranscriber,
 	})
 
 	health := telemetry.NewHealthHandler(cfg.App.Version,
@@ -526,7 +555,16 @@ func configOptions() config.Options {
 			"ai.provider_4_timeout":          defaultAITimeout,
 			"ai.writing_daily_limit":         10,
 			"worker.url":                     "",
+			"speech.tts_engine":              "offline",
+			"speech.tts_voice":               "en_US-lessac-medium",
+			"speech.asr_base_url":            "",
+			"speech.asr_model":               "whisper-large-v3",
+			"speech.asr_api_key":             "",
+			"speech.asr_timeout":             "60s",
+			"speech.daily_recordings_limit":  30,
+			"exam.daily_sittings_limit":      5,
 		},
+		EnvSections: []string{"SPEECH", "EXAM"},
 		Required: []config.RequiredKey{
 			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},
 			{Name: "redis.url", DocSection: "docs/deployment/configuration.md#redis"},

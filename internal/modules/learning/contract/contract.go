@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 // Aggregate is the outbox aggregate name every event below is written under.
@@ -200,4 +201,86 @@ type AttemptDetail struct {
 // AttemptReader reads an attempt by ID across modules.
 type AttemptReader interface {
 	GetAttemptForGrading(ctx context.Context, attemptID uuid.UUID) (*AttemptDetail, error)
+}
+
+// SittingAnswerRequest contains an answer to be graded and recorded as an attempt from an exam sitting.
+type SittingAnswerRequest struct {
+	UserID         uuid.UUID       `json:"user_id"`
+	ActivityID     uuid.UUID       `json:"activity_id"`
+	Response       json.RawMessage `json:"response"`
+	IdempotencyKey uuid.UUID       `json:"idempotency_key"`
+}
+
+// SittingAnswerResult is the outcome of grading a sitting answer.
+type SittingAnswerResult struct {
+	AttemptID   uuid.UUID    `json:"attempt_id"`
+	Status      string       `json:"status"`
+	Score       int          `json:"score"`
+	MaxScore    int          `json:"max_score"`
+	Correct     bool         `json:"correct"`
+	Feedback    string       `json:"feedback"`
+	Async       bool         `json:"async"`
+	ItemResults []ItemResult `json:"item_results,omitempty"`
+}
+
+// SittingAnswerSubmitter submits and grades an exam sitting answer into a learn.attempts row.
+type SittingAnswerSubmitter interface {
+	SubmitSittingAnswer(ctx context.Context, req SittingAnswerRequest) (*SittingAnswerResult, error)
+}
+
+// ItemExposureRecorder records and lists exposed items for a user.
+//
+// RecordItemExposures takes the caller's transaction: a sitting that fails to
+// start must mark nothing as seen, so the exposures commit with the sitting or
+// not at all. A nil tx writes outside any transaction.
+type ItemExposureRecorder interface {
+	RecordItemExposures(ctx context.Context, tx pgx.Tx, userID uuid.UUID, activityIDs []uuid.UUID) error
+	ListItemExposures(ctx context.Context, userID uuid.UUID, activityIDs []uuid.UUID) (map[uuid.UUID]time.Time, error)
+}
+
+// ExamSectionActivities represents drawn activities for an exam sitting section.
+type ExamSectionActivities struct {
+	SectionPosition int            `json:"section_position"`
+	Skill           string         `json:"skill"`
+	Activities      []ExamActivity `json:"activities"`
+}
+
+// ExamActivity represents an activity drawn for an exam sitting.
+type ExamActivity struct {
+	ID               uuid.UUID       `json:"id"`
+	Kind             string          `json:"kind"`
+	ContentVersionID uuid.UUID       `json:"content_version_id"`
+	Config           json.RawMessage `json:"config,omitempty"`
+	Weight           int             `json:"weight"`
+}
+
+// ExamPoolDrawer draws activities across the 4 skills for an exam sitting.
+type ExamPoolDrawer interface {
+	DrawExamSitting(ctx context.Context, userID uuid.UUID, level string) ([]ExamSectionActivities, error)
+}
+
+// AuthorResolver resolves an author for generated content.
+type AuthorResolver interface {
+	FirstHolderOf(ctx context.Context, role string) (uuid.UUID, error)
+}
+
+// AttemptOutcome is where an attempt's grading stands.
+type AttemptOutcome struct {
+	AttemptID uuid.UUID
+	Status    string
+	Score     *int
+	MaxScore  int
+}
+
+// AttemptOutcomeReader reads where an attempt's grading stands. The exam report
+// uses it to settle the items that were graded asynchronously.
+type AttemptOutcomeReader interface {
+	GetAttemptOutcome(ctx context.Context, attemptID uuid.UUID) (*AttemptOutcome, error)
+}
+
+// AudioLocator finds the rendered audio for a listening script, if there is any.
+// Audio is rendered offline after an item is published, so an item's body may
+// carry no object key while the clip exists in the TTS cache.
+type AudioLocator interface {
+	AudioKey(ctx context.Context, script, voice string) (objectKey string, found bool, err error)
 }

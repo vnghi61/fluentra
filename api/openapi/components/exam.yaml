@@ -1,0 +1,262 @@
+ExamSittingActivity:
+  type: object
+  description: One drawn item, with its answer key removed.
+  required: [id, kind, content_version_id, weight]
+  properties:
+    id:
+      type: string
+      format: uuid
+    kind:
+      type: string
+      example: listening_comprehension
+    content_version_id:
+      type: string
+      format: uuid
+    config:
+      type: object
+      additionalProperties: true
+      description: The item's learner-facing body. No script, answer, model answer or transcript.
+    weight:
+      type: integer
+
+ExamSittingSection:
+  type: object
+  required: [section_position, skill, activities]
+  properties:
+    section_position:
+      type: integer
+      minimum: 1
+      maximum: 4
+    skill:
+      type: string
+      enum: [listening, reading, writing, speaking]
+    activities:
+      type: array
+      items:
+        $ref: '#/ExamSittingActivity'
+
+ExamAttempt:
+  type: object
+  description: A sitting. Every time in it is the server's.
+  required: [id, exam_id, mode, chosen_duration_minutes, started_at, deadline_at, remaining_seconds, current_section, status, server_time]
+  properties:
+    id:
+      type: string
+      format: uuid
+    exam_id:
+      type: string
+      format: uuid
+    exam_slug:
+      type: string
+    exam_title:
+      type: string
+    level:
+      type: string
+      enum: [A2, B1, B2]
+    mode:
+      type: string
+      enum: [exam, practice]
+    chosen_duration_minutes:
+      type: integer
+    started_at:
+      type: string
+      format: date-time
+    deadline_at:
+      type: string
+      format: date-time
+    remaining_seconds:
+      type: integer
+      minimum: 0
+    current_section:
+      type: integer
+      minimum: 1
+      maximum: 4
+      description: In exam mode, the later of the section the learner reached and the first whose time has not run out.
+    section_deadline_at:
+      type: string
+      format: date-time
+      description: Exam mode only. When the current section closes.
+    section_remaining_seconds:
+      type: integer
+      minimum: 0
+      description: Exam mode only. Seconds until the current section closes.
+    status:
+      type: string
+      enum: [in_progress, completed, expired]
+    submitted_at:
+      type: string
+      format: date-time
+    section_activities:
+      type: array
+      items:
+        $ref: '#/ExamSittingSection'
+    draft_answers:
+      type: object
+      description: Saved answers keyed by activity ID.
+      additionalProperties: true
+    server_time:
+      type: string
+      format: date-time
+
+ExamAttemptList:
+  type: object
+  required: [items, total, sittings_today, daily_limit]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/ExamAttempt'
+    total:
+      type: integer
+    sittings_today:
+      type: integer
+      description: Sittings started today, counted in Asia/Ho_Chi_Minh.
+    daily_limit:
+      type: integer
+
+SaveExamAnswersRequest:
+  type: object
+  properties:
+    section_number:
+      type: integer
+      minimum: 1
+      maximum: 4
+    answers:
+      type: object
+      description: >-
+        Answers keyed by activity ID, each at most 32 KiB. In exam mode only items of the
+        current section are accepted.
+      additionalProperties: true
+    integrity_events:
+      type: array
+      maxItems: 50
+      items:
+        type: object
+        required: [kind]
+        properties:
+          kind:
+            type: string
+            enum: [tab_hidden, window_blurred, paste]
+
+SaveExamAnswersResult:
+  type: object
+  required: [saved, remaining_seconds, current_section]
+  properties:
+    saved:
+      type: boolean
+    remaining_seconds:
+      type: integer
+    current_section:
+      type: integer
+    section_remaining_seconds:
+      type: integer
+
+CompleteExamSectionResult:
+  type: object
+  required: [current_section, remaining_seconds, submitted]
+  properties:
+    current_section:
+      type: integer
+    remaining_seconds:
+      type: integer
+    section_remaining_seconds:
+      type: integer
+    submitted:
+      type: boolean
+      description: True when the section completed was the last and the sitting was submitted.
+
+ExamItemOutcome:
+  type: object
+  required: [activity_id, content_version_id, kind, status, score, max_score]
+  properties:
+    activity_id:
+      type: string
+      format: uuid
+    content_version_id:
+      type: string
+      format: uuid
+    kind:
+      type: string
+    attempt_id:
+      type: string
+      format: uuid
+      description: The learning attempt the answer became. Absent for an unanswered item.
+    status:
+      type: string
+      enum: [graded, pending, failed, unanswered]
+    score:
+      type: integer
+    max_score:
+      type: integer
+    item_results:
+      type: array
+      items:
+        type: object
+        additionalProperties: true
+
+ExamSectionOutcome:
+  type: object
+  required: [position, skill, status, max_score, items]
+  properties:
+    position:
+      type: integer
+    skill:
+      type: string
+      enum: [listening, reading, writing, speaking]
+    status:
+      type: string
+      enum: [scored, pending, not_scored]
+    score:
+      type: integer
+      minimum: 0
+      maximum: 100
+      description: Present only when the section is scored. A section that is not scored has no score, never zero.
+    max_score:
+      type: integer
+    items:
+      type: array
+      items:
+        $ref: '#/ExamItemOutcome'
+
+ExamIntegritySignal:
+  type: object
+  required: [kind, count]
+  properties:
+    kind:
+      type: string
+      enum: [tab_hidden, window_blurred, paste]
+    count:
+      type: integer
+
+ExamScoreReport:
+  type: object
+  required: [attempt_id, mode, status, overall_score, per_section, integrity_signals, disclaimer]
+  properties:
+    attempt_id:
+      type: string
+      format: uuid
+    mode:
+      type: string
+      enum: [exam, practice]
+    submitted_by:
+      type: string
+      enum: [learner, expiry]
+    status:
+      type: string
+      enum: [pending, ready, partial]
+    overall_score:
+      type: number
+      description: Mean of the scored sections, 0–100.
+    overall_band:
+      type: string
+      description: Estimated CEFR band. Absent until a section is scored.
+    per_section:
+      type: array
+      items:
+        $ref: '#/ExamSectionOutcome'
+    integrity_signals:
+      type: array
+      items:
+        $ref: '#/ExamIntegritySignal'
+    disclaimer:
+      type: string

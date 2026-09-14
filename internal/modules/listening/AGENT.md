@@ -2,11 +2,11 @@
 module: listening
 tier: learning
 group: modules
-status: PLANNED
+status: DONE
 phase: 3
 owner: "@learning-team"
 schema: skill
-tables: [audio_items, transcripts, listening_attempts]
+tables: [listening_plays]
 depends_on: [content, media, questionbank, learning]
 depended_on_by: [learning, exam, analytics]
 spec_version: 1.0.0
@@ -25,7 +25,7 @@ last_verified: 2026-08-06
 | Path | `internal/modules/listening` |
 | Schema | `skill` |
 | Delivery phase | 3 |
-| Status | **PLANNED** |
+| Status | **DONE** |
 | Owner | @learning-team |
 
 ---
@@ -90,9 +90,7 @@ Migrations: `db/migrations/listening/` · Queries: `db/queries/listening/`
 
 | Table | Purpose | Key columns / notes |
 |---|---|---|
-| `skill.audio_items` | A listening resource | Content-versioned. `asset_id`, `duration_ms`, `accent`, `speech_rate`, `cefr_level` |
-| `skill.transcripts` | Aligned transcript | `audio_item_id`, `segments` jsonb with timings and speaker labels |
-| `skill.listening_attempts` | One attempt | `user_id`, `audio_item_id`, `plays_used`, `score`, `answers` jsonb |
+| `skill.listening_plays` | Play log enforcing play limits per attempt or exam sitting | `user_id`, `content_version_id`, `context_type`, `context_id`, `played_at` |
 
 <!-- END GENERATED: schema -->
 
@@ -104,11 +102,8 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 <!-- BEGIN GENERATED: endpoints -->
 | Method | Path | Permission | Purpose |
 |---|---|---|---|
-| `GET` | `/api/v1/listening/items/{id}` | `content.read.published` | Item with a presigned audio URL and the play policy |
-| `POST` | `/api/v1/listening/attempts` | `self` | Start an attempt |
-| `POST` | `/api/v1/listening/attempts/{id}/play` | `self` | Record a play (server-side counter) |
-| `POST` | `/api/v1/listening/attempts/{id}/submit` | `self` | Submit answers |
-| `GET` | `/api/v1/listening/attempts/{id}/transcript` | `self` | Transcript after submission |
+| `POST` | `/api/v1/listening/items/{versionId}/plays` | `self` | Checks the play policy, records the play, and returns a short-lived presigned audio GET URL |
+| `GET` | `/api/v1/listening/items/{versionId}/transcript` | `self` | Returns script only for a graded attempt belonging to caller |
 <!-- END GENERATED: endpoints -->
 
 ## 7. Folder map

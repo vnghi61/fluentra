@@ -64,7 +64,7 @@ Legend — **Status**: `PLANNED` (spec only) · `IN_PROGRESS` · `DONE` · `DEPR
 | P4 | `job` | River wiring, queue registry, cron scheduler, job middleware, DLQ | `ops` | telemetry | 1 | PLANNED |
 | P5 | `mailer` | Template rendering, SMTP/API sending, bounce handling, dev mailbox | `comm` | job, storage | 1 | PLANNED |
 | P6 | `ai` | Provider registry, prompt registry, routing, cache, budget, usage tracking | `ai` | cache, telemetry, job | 2 | PLANNED |
-| P7 | `media` | ffmpeg transcode, waveform, ASR, TTS, pronunciation scoring adapters | `content` (read) | storage, job, ai | 2 | PLANNED |
+| P7 | `media` | ffmpeg transcode, waveform, ASR, TTS, pronunciation scoring adapters | `content` (read) | storage, job, ai | 3 | IMPLEMENTED |
 | P8 | `search` | Postgres FTS abstraction, indexers, query builder; pluggable engine later | per-owner | cache | 3 | PLANNED |
 
 ### 2.2 Core tier — `internal/modules/`
@@ -89,11 +89,11 @@ Legend — **Status**: `PLANNED` (spec only) · `IN_PROGRESS` · `DONE` · `DEPR
 | L5 | `vocabulary` | Words, senses, decks, collocations, word families, vocab exercises, practice generation | `skill` | `words`, `word_senses`, `decks`, `deck_items`, `user_word_state` | content, lesson, srs, job, media, ai | 2 | DONE |
 | L6 | `grammar` | Grammar point taxonomy, rules, error tagging, gap-fill and transformation drills | `skill` | `grammar_points`, `grammar_rules`, `grammar_exercises`, `error_tags` | content, srs, ai | 3 | PLANNED |
 | L7 | `reading` | Passages, comprehension sets, span answers, reading speed, difficulty estimation | `skill` | — | content, questionbank, vocabulary, learning | 3 | IMPLEMENTED |
-| L8 | `listening` | Audio items, transcripts, play-limit policy, dictation, note-taking | `skill` | `audio_items`, `transcripts`, `listening_attempts` | content, media | 3 | PLANNED |
-| L9 | `speaking` | Prompts, recording, ASR, pronunciation scoring, fluency feedback | `skill` | `speaking_tasks`, `speaking_attempts`, `pronunciation_scores` | media, ai, storage | 3 | PLANNED |
+| L8 | `listening` | Audio items, transcripts, play-limit policy, dictation, note-taking | `skill` | `listening_plays` | content, media | 3 | IMPLEMENTED |
+| L9 | `speaking` | Prompts, recording, ASR, pronunciation scoring, fluency feedback | `skill` | `speaking_feedback` | media, ai, storage | 3 | IMPLEMENTED |
 | L10 | `writing` | Tasks, drafts, submissions, AI rubric grading, revision history, plagiarism | `skill` | `writing_feedback` | ai, job, content, learning, notification | 3 | IMPLEMENTED |
 | L11 | `questionbank` | Item authoring, item types, tagging, difficulty (IRT-lite), review workflow, AI generation | `assess` | `questions`, `question_options`, `question_sets`, `question_stats` | content, ai, audit | 3 | PLANNED |
-| L12 | `exam` | Mock exams (IELTS/TOEIC), sections, timing, auto-submit, scoring, score reports | `assess` | `exams`, `exam_sections`, `exam_attempts`, `attempt_answers`, `score_reports` | questionbank, job, ai | 4 | PLANNED |
+| L12 | `exam` | Mock exams (IELTS/TOEIC), sections, timing, auto-submit, scoring, score reports | `assess` | `exams`, `exam_sections`, `exam_attempts`, `score_reports`, `integrity_events` | questionbank, job, ai, writing, speaking, learning, lesson, listening | 3 | IMPLEMENTED |
 | L13 | `gamification` | XP, levels, streaks, badges, quests, leaderboards | `learn` | `xp_events`, `streaks`, `badges`, `badges_earned`, `quests`, `user_quests`, `leaderboard_snapshots` | learning, srs, user, cache, job, notification | 3 | DONE |
 
 ### 2.4 Commerce & insight tier — `internal/modules/`
@@ -149,6 +149,7 @@ graph BT
     LRN --> LSN & SRS
     SRS --> CNT
     SRS --> USR
+    SPK --> USR
     SRS --> LRN
     VOC & GRM --> SRS
     VOC --> LSN
@@ -161,7 +162,7 @@ graph BT
     QB --> CNT
     WRT & GAM & SUB --> NOT
     EXM --> QB
-    EXM --> WRT & SPK
+    EXM --> WRT & SPK & LSN & LIS
     GAM --> LRN
     GAM --> SRS
     GAM --> USR

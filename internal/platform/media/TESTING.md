@@ -2,11 +2,11 @@
 module: media
 tier: platform
 group: platform
-status: PLANNED
+status: IMPLEMENTED
 phase: 3
 owner: "@platform-team"
 schema: content
-tables: [media_derivatives, transcripts, tts_cache]
+tables: [tts_cache]
 depends_on: [storage, job, ai, telemetry]
 depended_on_by: [speaking, listening, content, vocabulary, user]
 spec_version: 1.0.0

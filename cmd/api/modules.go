@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 
@@ -18,6 +19,7 @@ import (
 	authservice "github.com/fluentra/fluentra/internal/modules/auth/service"
 	"github.com/fluentra/fluentra/internal/modules/auth/service/oauth/google"
 	"github.com/fluentra/fluentra/internal/modules/content"
+	"github.com/fluentra/fluentra/internal/modules/exam"
 	"github.com/fluentra/fluentra/internal/modules/gamification"
 	"github.com/fluentra/fluentra/internal/modules/grammar"
 	grammarcontract "github.com/fluentra/fluentra/internal/modules/grammar/contract"
@@ -27,10 +29,14 @@ import (
 	learningservice "github.com/fluentra/fluentra/internal/modules/learning/service"
 	"github.com/fluentra/fluentra/internal/modules/lesson"
 	lessonservice "github.com/fluentra/fluentra/internal/modules/lesson/service"
+	"github.com/fluentra/fluentra/internal/modules/listening"
+	listeningcontract "github.com/fluentra/fluentra/internal/modules/listening/contract"
 	"github.com/fluentra/fluentra/internal/modules/rbac"
 	rbaccontract "github.com/fluentra/fluentra/internal/modules/rbac/contract"
 	"github.com/fluentra/fluentra/internal/modules/reading"
 	readingcontract "github.com/fluentra/fluentra/internal/modules/reading/contract"
+	"github.com/fluentra/fluentra/internal/modules/speaking"
+	speakingcontract "github.com/fluentra/fluentra/internal/modules/speaking/contract"
 	"github.com/fluentra/fluentra/internal/modules/srs"
 	srsservice "github.com/fluentra/fluentra/internal/modules/srs/service"
 	"github.com/fluentra/fluentra/internal/modules/user"
@@ -42,6 +48,7 @@ import (
 	"github.com/fluentra/fluentra/internal/platform/cache"
 	"github.com/fluentra/fluentra/internal/platform/job"
 	"github.com/fluentra/fluentra/internal/platform/mailer"
+	"github.com/fluentra/fluentra/internal/platform/media"
 	"github.com/fluentra/fluentra/internal/platform/storage"
 	"github.com/fluentra/fluentra/internal/platform/telemetry"
 	"github.com/fluentra/fluentra/internal/shared/httpx"
@@ -63,6 +70,9 @@ type identity struct {
 	grammar    *grammar.Module
 	reading    *reading.Module
 	writing    *writing.Module
+	listening  *listening.Module
+	speaking   *speaking.Module
+	exam       *exam.Module
 	//nolint:unused // read through Routes and by the dashboard's Reader.
 	gamification *gamification.Module
 
@@ -120,7 +130,7 @@ type identityDeps struct {
 	// completable.
 	OAuthStateTTL time.Duration
 
-	// Enqueuer schedules background River jobs within database transactions.
+	// Enqueuer submits River background jobs within a pgx transaction.
 	Enqueuer job.Enqueuer
 
 	// Instruments are the shared metric instruments, wired into the modules that
@@ -135,6 +145,18 @@ type identityDeps struct {
 
 	// WritingDailyLimit is the maximum number of writing submissions graded per day.
 	WritingDailyLimit int
+
+	// SpeechDailyLimit is the maximum number of speaking recordings per day.
+	SpeechDailyLimit int
+
+	// SpeechASRModel is the speech recognition model name.
+	SpeechASRModel string
+
+	// Transcriber is the audio transcription provider adapter.
+	Transcriber media.Transcriber
+
+	// ExamDailyLimit is the number of exam sittings a learner may start per day.
+	ExamDailyLimit int
 }
 
 // newIdentity constructs the modules in dependency order — audit, then rbac,
@@ -282,6 +304,41 @@ func newIdentity(deps identityDeps) *identity {
 		DailyLimit:   deps.WritingDailyLimit,
 	})
 
+	assembled.listening = listening.New(listening.Deps{
+		Pool:     deps.Pool,
+		Content:  assembled.content.Reader(),
+		Learning: lazyAttemptReader{of: assembled},
+		Storage:  deps.Storage,
+		Sittings: lazyListeningSittings{of: assembled},
+		Audio:    media.NewCacheLocator(assembled.content.TTSCache()),
+	})
+
+	assembled.speaking = speaking.New(speaking.Deps{
+		Pool:         deps.Pool,
+		Enqueuer:     deps.Enqueuer,
+		Storage:      deps.Storage,
+		Transcriber:  deps.Transcriber,
+		AI:           deps.AI,
+		Content:      assembled.content.Reader(),
+		Counter:      lazyAttemptCounter{of: assembled},
+		Attempts:     lazyAttemptReader{of: assembled},
+		WorkerNudger: deps.WorkerNudger,
+		DailyLimit:   deps.SpeechDailyLimit,
+		ASRModel:     deps.SpeechASRModel,
+	})
+
+	assembled.exam = exam.New(exam.Deps{
+		Pool:         deps.Pool,
+		Learning:     lazySittingAnswerSubmitter{of: assembled},
+		Attempts:     lazyAttemptOutcomeReader{of: assembled},
+		Exposures:    lazyItemExposureRecorder{of: assembled},
+		Lesson:       assembled.lesson.Reader(),
+		Drawer:       lazyExamPoolDrawer{of: assembled},
+		Enqueuer:     deps.Enqueuer,
+		WorkerNudger: deps.WorkerNudger,
+		DailyLimit:   deps.ExamDailyLimit,
+	})
+
 	assembled.learning = learning.New(learning.Deps{
 		Pool:          deps.Pool,
 		Caches:        newLearningCaches(deps.Redis),
@@ -298,9 +355,12 @@ func newIdentity(deps identityDeps) *identity {
 			assembled.grammar.Grader(),
 			assembled.reading.Grader(),
 			assembled.writing.Grader(),
+			assembled.listening.Grader(),
+			assembled.speaking.Grader(),
 		),
 		Metrics:       deps.Instruments,
 		DeclaredKinds: buildDeclaredKinds(),
+		Audio:         media.NewCacheLocator(assembled.content.TTSCache()),
 		Env:           deps.Env,
 		AI:            deps.AI,
 	})
@@ -314,11 +374,15 @@ func buildDeclaredKinds() []string {
 		len(vocabularycontract.GradedKinds())+
 			len(grammarcontract.GradedKinds())+
 			len(readingcontract.GradedKinds())+
-			len(writingcontract.GradedKinds()))
+			len(writingcontract.GradedKinds())+
+			len(listeningcontract.GradedKinds())+
+			len(speakingcontract.GradedKinds()))
 	kinds = append(kinds, vocabularycontract.GradedKinds()...)
 	kinds = append(kinds, grammarcontract.GradedKinds()...)
 	kinds = append(kinds, readingcontract.GradedKinds()...)
 	kinds = append(kinds, writingcontract.GradedKinds()...)
+	kinds = append(kinds, listeningcontract.GradedKinds()...)
+	kinds = append(kinds, speakingcontract.GradedKinds()...)
 	return kinds
 }
 
@@ -328,12 +392,16 @@ func buildGraders(
 	grammarGrader learningcontract.ExerciseGrader,
 	readingGrader learningcontract.ExerciseGrader,
 	writingGrader learningcontract.ExerciseGrader,
+	listeningGrader learningcontract.ExerciseGrader,
+	speakingGrader learningcontract.ExerciseGrader,
 ) map[string]learningcontract.ExerciseGrader {
 	return mergeGraders(
 		vocabularyGraders(vocabGrader),
 		grammarGraders(grammarGrader),
 		readingGraders(readingGrader),
 		writingGraders(writingGrader),
+		listeningGraders(listeningGrader),
+		speakingGraders(speakingGrader),
 	)
 }
 
@@ -365,6 +433,22 @@ func readingGraders(grader learningcontract.ExerciseGrader) map[string]learningc
 func writingGraders(grader learningcontract.ExerciseGrader) map[string]learningcontract.ExerciseGrader {
 	graders := make(map[string]learningcontract.ExerciseGrader, len(writingcontract.GradedKinds()))
 	for _, kind := range writingcontract.GradedKinds() {
+		graders[kind] = grader
+	}
+	return graders
+}
+
+func listeningGraders(grader learningcontract.ExerciseGrader) map[string]learningcontract.ExerciseGrader {
+	graders := make(map[string]learningcontract.ExerciseGrader, len(listeningcontract.GradedKinds()))
+	for _, kind := range listeningcontract.GradedKinds() {
+		graders[kind] = grader
+	}
+	return graders
+}
+
+func speakingGraders(grader learningcontract.ExerciseGrader) map[string]learningcontract.ExerciseGrader {
+	graders := make(map[string]learningcontract.ExerciseGrader, len(speakingcontract.GradedKinds()))
+	for _, kind := range speakingcontract.GradedKinds() {
 		graders[kind] = grader
 	}
 	return graders
@@ -462,6 +546,9 @@ func (i *identity) Routes(api chi.Router) {
 		i.vocabulary.Routes(authenticated)
 		i.gamification.Routes(authenticated)
 		i.writing.Routes(authenticated)
+		i.listening.Routes(authenticated)
+		i.speaking.Routes(authenticated)
+		i.exam.Routes(authenticated)
 
 		authenticated.Group(func(admin chi.Router) {
 			admin.Use(i.rbac.AdminOnly())
@@ -565,6 +652,102 @@ func (c lazyAttemptCounter) CountAttemptsTowardLimitSince(
 	return c.of.learning.AttemptCounter().CountAttemptsTowardLimitSince(ctx, userID, grader, since)
 }
 
+type lazySittingAnswerSubmitter struct{ of *identity }
+
+var _ learningcontract.SittingAnswerSubmitter = lazySittingAnswerSubmitter{}
+
+func (s lazySittingAnswerSubmitter) SubmitSittingAnswer(
+	ctx context.Context, req learningcontract.SittingAnswerRequest,
+) (*learningcontract.SittingAnswerResult, error) {
+	if s.of.learning == nil {
+		return nil, fmt.Errorf("learning module is not assembled")
+	}
+	return s.of.learning.SittingAnswerSubmitter().SubmitSittingAnswer(ctx, req)
+}
+
+type lazyItemExposureRecorder struct{ of *identity }
+
+var _ learningcontract.ItemExposureRecorder = lazyItemExposureRecorder{}
+
+func (r lazyItemExposureRecorder) RecordItemExposures(
+	ctx context.Context, tx pgx.Tx, userID uuid.UUID, activityIDs []uuid.UUID,
+) error {
+	if r.of.learning == nil {
+		return fmt.Errorf("learning module is not assembled")
+	}
+	return r.of.learning.ItemExposureRecorder().RecordItemExposures(ctx, tx, userID, activityIDs)
+}
+
+func (r lazyItemExposureRecorder) ListItemExposures(
+	ctx context.Context, userID uuid.UUID, activityIDs []uuid.UUID,
+) (map[uuid.UUID]time.Time, error) {
+	if r.of.learning == nil {
+		return nil, fmt.Errorf("learning module is not assembled")
+	}
+	return r.of.learning.ItemExposureRecorder().ListItemExposures(ctx, userID, activityIDs)
+}
+
+type lazyAttemptOutcomeReader struct{ of *identity }
+
+var _ learningcontract.AttemptOutcomeReader = lazyAttemptOutcomeReader{}
+
+func (r lazyAttemptOutcomeReader) GetAttemptOutcome(
+	ctx context.Context, attemptID uuid.UUID,
+) (*learningcontract.AttemptOutcome, error) {
+	if r.of.learning == nil {
+		return nil, fmt.Errorf("learning module is not assembled")
+	}
+	return r.of.learning.AttemptOutcomeReader().GetAttemptOutcome(ctx, attemptID)
+}
+
+// lazyListeningSittings answers listening's play policy with the exam module,
+// which is assembled after listening and which listening may not import.
+type lazyListeningSittings struct{ of *identity }
+
+func (l lazyListeningSittings) ListeningPlayPolicy(
+	ctx context.Context, userID, sittingID, versionID uuid.UUID,
+) (int, error) {
+	if l.of.exam == nil {
+		return 0, fmt.Errorf("exam module is not assembled")
+	}
+	return l.of.exam.Service().ListeningPlayPolicy(ctx, userID, sittingID, versionID)
+}
+
+type lazyExamPoolDrawer struct{ of *identity }
+
+var _ exam.PoolDrawer = lazyExamPoolDrawer{}
+
+func (d lazyExamPoolDrawer) DrawSitting(
+	ctx context.Context, userID uuid.UUID, level string,
+) ([]exam.SectionActivities, error) {
+	if d.of.learning == nil {
+		return nil, fmt.Errorf("learning module is not assembled")
+	}
+	drawn, err := d.of.learning.ExamPoolDrawer().DrawExamSitting(ctx, userID, level)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]exam.SectionActivities, len(drawn))
+	for i, sec := range drawn {
+		acts := make([]exam.SittingActivityDTO, len(sec.Activities))
+		for j, act := range sec.Activities {
+			acts[j] = exam.SittingActivityDTO{
+				ID:               act.ID,
+				Kind:             act.Kind,
+				ContentVersionID: act.ContentVersionID,
+				Config:           act.Config,
+				Weight:           act.Weight,
+			}
+		}
+		out[i] = exam.SectionActivities{
+			SectionPosition: sec.SectionPosition,
+			Skill:           sec.Skill,
+			Activities:      acts,
+		}
+	}
+	return out, nil
+}
+
 // rateLimiterAdapter bridges platform/cache's limiter to the one httpx declares.
 //
 // The two structs are identical field for field, and they are two structs
@@ -617,4 +800,17 @@ func (r aiUsageReporter) GetUsageOverview(ctx context.Context) ([]adminsvc.AIUsa
 		})
 	}
 	return out, nil
+}
+
+type lazyAttemptReader struct{ of *identity }
+
+var _ learningcontract.AttemptReader = lazyAttemptReader{}
+
+func (r lazyAttemptReader) GetAttemptForGrading(
+	ctx context.Context, attemptID uuid.UUID,
+) (*learningcontract.AttemptDetail, error) {
+	if r.of.learning == nil {
+		return nil, fmt.Errorf("learning module is not assembled")
+	}
+	return r.of.learning.AttemptReader().GetAttemptForGrading(ctx, attemptID)
 }

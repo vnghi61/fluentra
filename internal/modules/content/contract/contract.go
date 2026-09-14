@@ -110,3 +110,9 @@ type Archived struct {
 	VersionID  uuid.UUID `json:"version_id"`
 	OccurredAt time.Time `json:"occurred_at"`
 }
+
+// TTSCache provides caching and retrieval of synthesised speech audio.
+type TTSCache interface {
+	Get(ctx context.Context, textHash, voice string) (objectKey string, found bool, err error)
+	Put(ctx context.Context, textHash, voice, engine, engineVersion, objectKey string) error
+}

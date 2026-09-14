@@ -66,6 +66,7 @@ type ActivityHierarchy struct {
 	LessonID         uuid.UUID       `json:"lesson_id"`
 	UnitID           uuid.UUID       `json:"unit_id"`
 	CourseID         uuid.UUID       `json:"course_id"`
+	CourseSlug       string          `json:"course_slug"`
 	Kind             string          `json:"kind"`
 	ContentVersionID uuid.UUID       `json:"content_version_id"`
 	Config           json.RawMessage `json:"config"`

@@ -43,6 +43,9 @@ const (
 type Repository interface {
 	CreateAttempt(ctx context.Context, params repository.CreateAttemptParams) (*domain.Attempt, error)
 	GetAttemptByID(ctx context.Context, id uuid.UUID) (*domain.Attempt, error)
+	GetAttemptByUserActivityIdempotencyKey(
+		ctx context.Context, userID, activityID, idempotencyKey uuid.UUID,
+	) (*domain.Attempt, error)
 	ClaimAttemptForGrading(ctx context.Context, params repository.ClaimAttemptParams) (*domain.Attempt, error)
 	UnclaimAttempt(ctx context.Context, id uuid.UUID, createdAt time.Time) error
 	UpdateAttemptStatus(
@@ -203,6 +206,17 @@ type Deps struct {
 	// content_items.owner_id is required, and without an owner the top-up stands
 	// down rather than generate items EnsurePublished would refuse.
 	GeneratorAuthorID uuid.UUID
+	// AuthorResolver dynamically resolves the author when the top-up runs.
+	AuthorResolver contract.AuthorResolver
+	// Synthesiser turns listening script text into pre-rendered audio.
+	Synthesiser AudioSynthesiser
+	// Audio finds a listening item's rendered clip when its body carries no key.
+	Audio contract.AudioLocator
+}
+
+// AudioSynthesiser produces pre-rendered audio for listening exercises.
+type AudioSynthesiser interface {
+	Synthesise(ctx context.Context, text, voice string) (string, error)
 }
 
 // Service coordinates attempt execution, grading, progress rollups, and event emission.
@@ -225,10 +239,18 @@ type Service struct {
 	ai            ai.Client
 
 	generatorAuthor uuid.UUID
+	authorResolver  contract.AuthorResolver
+	synthesiser     AudioSynthesiser
+	audio           contract.AudioLocator
+
 	// poolMu guards poolLayout, the practice pool's course and slot lessons,
 	// resolved once per process.
 	poolMu     sync.Mutex
 	poolLayout *practicePoolLayout
+
+	// examPoolMu guards examPoolLayout, the exam pool's course and slot lessons.
+	examPoolMu     sync.Mutex
+	examPoolLayout *examPoolLayout
 }
 
 // New constructs a new Service.
@@ -262,6 +284,9 @@ func New(deps Deps) *Service {
 		ai:            deps.AI,
 
 		generatorAuthor: deps.GeneratorAuthorID,
+		authorResolver:  deps.AuthorResolver,
+		synthesiser:     deps.Synthesiser,
+		audio:           deps.Audio,
 	}
 }
 
@@ -272,6 +297,11 @@ func (s *Service) StartAttempt(ctx context.Context, userID, activityID uuid.UUID
 	activity, err := s.resolveActivityHierarchy(ctx, activityID)
 	if err != nil {
 		return nil, err
+	}
+
+	// Anti-leak guard: exam pool activities cannot be started as standalone lesson attempts (WO12 §3.6)
+	if activity.CourseSlug == ExamPoolCourseSlug {
+		return nil, domain.ErrUnauthorizedAttemptAccess
 	}
 
 	// 2. Check course enrollment (Trap 6: do not auto-enroll, reject if not enrolled)
@@ -354,6 +384,11 @@ func (s *Service) SubmitAttempt(
 	activity, err = s.resolveActivityHierarchy(ctx, attempt.ActivityID)
 	if err != nil {
 		return nil, err
+	}
+
+	// Anti-leak guard: exam pool activities cannot be submitted via standalone attempt submit (WO12 §3.6)
+	if activity.CourseSlug == ExamPoolCourseSlug {
+		return nil, domain.ErrUnauthorizedAttemptAccess
 	}
 
 	grader, ok := s.graders.Get(activity.Kind)
@@ -666,6 +701,11 @@ func (s *Service) GradePreview(
 	activity, err := s.resolveActivityHierarchy(ctx, activityID)
 	if err != nil {
 		return nil, err
+	}
+
+	// Anti-leak guard: exam pool activities cannot be preview graded (WO12 §3.6)
+	if activity.CourseSlug == ExamPoolCourseSlug {
+		return nil, domain.ErrActivityNotFound
 	}
 
 	grader, ok := s.graders.Get(activity.Kind)
@@ -997,6 +1037,12 @@ func (s *Service) executeRollupSteps(
 		ctx, repo, userID, activity.LessonSkillFocus, gradeResult.Score, gradeResult.MaxScore,
 	); err != nil {
 		return err
+	}
+
+	// An exam pool item is not course material: it counts toward no lesson, unit
+	// or course progress and appears in no "continue learning" (work order 12 §3.6).
+	if activity.CourseSlug == ExamPoolCourseSlug {
+		return nil
 	}
 
 	return s.rollupLessonAndAbove(ctx, tx, repo, userID, activity, now)
@@ -2160,4 +2206,137 @@ func (s *Service) SweepStuckGrading(ctx context.Context) error {
 		slog.InfoContext(ctx, "swept stuck grading attempts", "count", rows, "cutoff", cutoff)
 	}
 	return nil
+}
+
+// RecordItemExposures records item exposures for a learner, inside tx when one is given.
+func (s *Service) RecordItemExposures(ctx context.Context, tx pgx.Tx, userID uuid.UUID, activityIDs []uuid.UUID) error {
+	repo := s.repo
+	if tx != nil {
+		repo = s.repo.WithTx(tx)
+	}
+	for _, actID := range activityIDs {
+		if err := repo.RecordItemExposure(ctx, userID, actID); err != nil {
+			return fmt.Errorf("record exposure of %s: %w", actID, err)
+		}
+	}
+	return nil
+}
+
+// ListItemExposures returns when the learner was last served each activity.
+func (s *Service) ListItemExposures(
+	ctx context.Context, userID uuid.UUID, activityIDs []uuid.UUID,
+) (map[uuid.UUID]time.Time, error) {
+	return s.repo.ListItemExposures(ctx, userID, activityIDs)
+}
+
+// GetAttemptOutcome implements contract.AttemptOutcomeReader.
+func (s *Service) GetAttemptOutcome(ctx context.Context, attemptID uuid.UUID) (*contract.AttemptOutcome, error) {
+	attempt, err := s.repo.GetAttemptByID(ctx, attemptID)
+	if err != nil {
+		return nil, err
+	}
+	return &contract.AttemptOutcome{
+		AttemptID: attempt.ID,
+		Status:    attempt.Status,
+		Score:     attempt.Score,
+		MaxScore:  attempt.MaxScore,
+	}, nil
+}
+
+// SubmitSittingAnswer grades and records an exam sitting answer with idempotency.
+func (s *Service) SubmitSittingAnswer(
+	ctx context.Context, req contract.SittingAnswerRequest,
+) (*contract.SittingAnswerResult, error) {
+	// Idempotency: return existing attempt if already submitted for this user + activity + key
+	existing, err := s.repo.GetAttemptByUserActivityIdempotencyKey(ctx, req.UserID, req.ActivityID, req.IdempotencyKey)
+	if err == nil && existing != nil {
+		score := 0
+		if existing.Score != nil {
+			score = *existing.Score
+		}
+		maxScore := existing.MaxScore
+		return &contract.SittingAnswerResult{
+			AttemptID: existing.ID,
+			Status:    existing.Status,
+			Score:     score,
+			MaxScore:  maxScore,
+			Correct:   score == maxScore && maxScore > 0,
+			Async:     existing.Status == domain.StatusGrading,
+		}, nil
+	}
+
+	activity, err := s.resolveActivityHierarchy(ctx, req.ActivityID)
+	if err != nil {
+		return nil, err
+	}
+
+	grader, ok := s.graders.Get(activity.Kind)
+	if !ok || grader == nil {
+		return nil, domain.ErrGraderNotRegistered.WithMeta("kind", activity.Kind)
+	}
+
+	attemptID, err := s.newID()
+	if err != nil {
+		return nil, fmt.Errorf("generate attempt id: %w", err)
+	}
+
+	now := s.clock.Now().UTC()
+	attempt, err := s.repo.CreateAttempt(ctx, repository.CreateAttemptParams{
+		ID:         attemptID,
+		CreatedAt:  now,
+		UserID:     req.UserID,
+		ActivityID: req.ActivityID,
+		Response:   req.Response,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create sitting attempt: %w", err)
+	}
+
+	claimed, _, err := s.claimAttempt(ctx, attempt, req.IdempotencyKey, req.Response, activity.Kind)
+	if err != nil {
+		return nil, err
+	}
+	if !claimed {
+		return nil, fmt.Errorf("claim sitting attempt: already claimed")
+	}
+
+	gradeResult, err := grader.Grade(ctx, contract.GradeRequest{
+		AttemptID:        attempt.ID,
+		ActivityID:       req.ActivityID,
+		ContentVersionID: activity.ContentVersionID,
+		UserID:           req.UserID,
+		Response:         req.Response,
+	})
+	if err != nil {
+		_ = s.repo.UnclaimAttempt(ctx, attempt.ID, attempt.CreatedAt)
+		return nil, fmt.Errorf("grading sitting attempt %s: %w", attempt.ID, err)
+	}
+
+	if gradeResult.Async {
+		return &contract.SittingAnswerResult{
+			AttemptID: attempt.ID,
+			Status:    domain.StatusGrading,
+			Async:     true,
+		}, nil
+	}
+
+	score := gradeResult.Score
+	maxScore := gradeResult.MaxScore
+	feedback := gradeResult.Feedback
+	correct := gradeResult.Correct
+
+	if _, err := s.completeSynchronousGrading(ctx, req.UserID, attempt, activity, gradeResult, req.Response); err != nil {
+		return nil, fmt.Errorf("complete synchronous grading: %w", err)
+	}
+
+	return &contract.SittingAnswerResult{
+		AttemptID:   attempt.ID,
+		Status:      domain.StatusGraded,
+		Score:       score,
+		MaxScore:    maxScore,
+		Correct:     correct,
+		Feedback:    feedback,
+		Async:       false,
+		ItemResults: gradeResult.ItemResults,
+	}, nil
 }

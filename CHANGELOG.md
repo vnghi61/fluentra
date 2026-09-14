@@ -13,6 +13,14 @@ generated text describes commits; release notes should describe change.
 
 ### Added
 
+- **Full 4-skill mock exams (Phase 3 Work Order 12)**:
+  - **Standardized Exam Simulation (`/exams`)**: Full 4-skill mock examinations (Listening, Reading, Writing, Speaking) mapped across CEFR levels (A2, B1, B2). Supports both **Exam Mode** (fixed 75-minute duration, linear forward-only section progression, locked navigation, no re-recording) and **Practice Mode** (custom duration 10–180 minutes, free tab navigation, re-recordable speaking).
+  - **Server-Authoritative Timing & 3-Tier Expiry**: Strict server-enforced countdown with 5-second network grace period. Sittings are auto-finalised via three independent layers: scheduled River job at deadline, 1-minute database sweep cron (`1_700_000_601`), and lazy check on attempt reads.
+  - **Listening Module & Play Policy**: Server-tracked audio plays (`POST /api/v1/listening/items/{id}/plays`) preventing client play manipulation. Transcripts remain strictly locked until attempt submission.
+  - **Speaking Module & Audio Lifecycle**: Browser recording with consent modal, waveform audio pulse, and presigned direct-to-storage PUT uploads (`recordings/{user_id}/{ulid}.webm`). Asynchronous River worker for speech recognition, Levenshtein read-aloud accuracy scoring, criteria assessment, and automated 90-day recording purge cron (`1_700_000_215`) with full GDPR account erasure support.
+  - **Dynamic Exam Pool & Anti-Leak Safeguards**: Course `pool-exam` with 18 slots across A2/B1/B2, hourly River top-up cron (`1_700_000_213`), blind solve verification, and drawer sampling unseen items per learner. Pool exam items are strictly refused by preview and standard lesson routes to prevent answer key leakage.
+  - **Score Reports & TOEIC Disclaimers**: Comprehensive score report (`/exams/$attemptId/report`) with overall score (0–100), estimated CEFR band, per-section breakdown, integrity event tracking, and mandatory official TOEIC disclaimers.
+
 - **Your own vocabulary**: paste a list at `/practice/my-words` — tab, dash, colon, equals,
   semicolon or pipe all separate a word from its meaning, bullets and numbering are
   stripped, and a bare word list is accepted. Submitting stores and returns; an hourly job

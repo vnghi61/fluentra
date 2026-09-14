@@ -2,11 +2,11 @@
 module: speaking
 tier: learning
 group: modules
-status: PLANNED
+status: DONE
 phase: 3
 owner: "@learning-team"
 schema: skill
-tables: [speaking_tasks, speaking_attempts, pronunciation_scores, speaking_feedback]
+tables: [speaking_feedback]
 depends_on: [media, ai, storage, job, content, learning]
 depended_on_by: [learning, analytics, gamification]
 spec_version: 1.0.0

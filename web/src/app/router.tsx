@@ -47,6 +47,9 @@ const bareRoutes = [
 ];
 
 function isBareRoute(pathname: string): boolean {
+  if (pathname.startsWith("/exams/") && !pathname.endsWith("/report")) {
+    return true;
+  }
   return bareRoutes.some(
     (prefix) => pathname === prefix || pathname.startsWith(prefix),
   );
@@ -131,6 +134,21 @@ const AdminPage = lazyRouteComponent(
 const MyWritingPage = lazyRouteComponent(
   () => import("@/routes/MyWritingPage"),
   "MyWritingPage",
+);
+
+const ExamsPage = lazyRouteComponent(
+  () => import("@/routes/ExamsPage"),
+  "ExamsPage",
+);
+
+const ExamSittingPage = lazyRouteComponent(
+  () => import("@/routes/ExamSittingPage"),
+  "ExamSittingPage",
+);
+
+const ExamReportPage = lazyRouteComponent(
+  () => import("@/routes/ExamReportPage"),
+  "ExamReportPage",
 );
 
 function RootApp(): React.JSX.Element {
@@ -372,6 +390,42 @@ export const oauthCallbackRoute = createRoute({
   component: OAuthCallbackPage,
 });
 
+export const examsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/exams",
+  beforeLoad: () => {
+    const { status } = useAuthStore.getState();
+    if (status === "unauthenticated") {
+      throw redirect({ to: "/login" });
+    }
+  },
+  component: ExamsPage,
+});
+
+export const examSittingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/exams/$attemptId",
+  beforeLoad: () => {
+    const { status } = useAuthStore.getState();
+    if (status === "unauthenticated") {
+      throw redirect({ to: "/login" });
+    }
+  },
+  component: ExamSittingPage,
+});
+
+export const examReportRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/exams/$attemptId/report",
+  beforeLoad: () => {
+    const { status } = useAuthStore.getState();
+    if (status === "unauthenticated") {
+      throw redirect({ to: "/login" });
+    }
+  },
+  component: ExamReportPage,
+});
+
 export const routeTree = rootRoute.addChildren([
   homeRoute,
   learnRoute,
@@ -381,6 +435,9 @@ export const routeTree = rootRoute.addChildren([
   reviewRoute,
   myWordsRoute,
   myWritingRoute,
+  examsRoute,
+  examSittingRoute,
+  examReportRoute,
   progressRoute,
   settingsRoute,
   adminRoute,

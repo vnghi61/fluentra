@@ -2,11 +2,11 @@
 module: listening
 tier: learning
 group: modules
-status: PLANNED
+status: DONE
 phase: 3
 owner: "@learning-team"
 schema: skill
-tables: [audio_items, transcripts, listening_attempts]
+tables: [listening_plays]
 depends_on: [content, media, questionbank, learning]
 depended_on_by: [learning, exam, analytics]
 spec_version: 1.0.0

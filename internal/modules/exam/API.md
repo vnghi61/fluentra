@@ -2,12 +2,12 @@
 module: exam
 tier: learning
 group: modules
-status: PLANNED
-phase: 4
+status: DONE
+phase: 3
 owner: "@learning-team"
 schema: assess
-tables: [exams, exam_sections, exam_attempts, attempt_answers, score_reports, integrity_events]
-depends_on: [questionbank, job, ai, writing, speaking, learning]
+tables: [exams, exam_sections, exam_attempts, score_reports, integrity_events]
+depends_on: [questionbank, job, ai, writing, speaking, learning, lesson, listening]
 depended_on_by: [learning, analytics, admin]
 spec_version: 1.0.0
 last_verified: 2026-08-06
@@ -29,6 +29,7 @@ Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR
 |---|---|---|---|
 | `GET` | `/api/v1/exams` | `content.read.published` | Available mock exams |
 | `POST` | `/api/v1/exams/{id}/attempts` | `self` | Start a sitting |
+| `GET` | `/api/v1/exam-attempts` | `self` | List past sittings for current user |
 | `GET` | `/api/v1/exam-attempts/{id}` | `self` | Current state with server time remaining |
 | `PUT` | `/api/v1/exam-attempts/{id}/answers` | `self` | Save answers (autosave) |
 | `POST` | `/api/v1/exam-attempts/{id}/sections/{n}/complete` | `self` | Finish a section |
@@ -58,6 +59,16 @@ Start a sitting
 | Permission | `self` |
 | Success | 201 |
 | Errors | `EXAM_WINDOW_CLOSED`, `ATTEMPT_IN_PROGRESS`, `INSUFFICIENT_ITEMS` |
+
+### `GET /api/v1/exam-attempts`
+
+List past sittings for current user
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
 
 ### `GET /api/v1/exam-attempts/{id}`
 

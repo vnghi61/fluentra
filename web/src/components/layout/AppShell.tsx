@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "@tanstack/react-router";
 import {
   BookOpen,
+  GraduationCap,
   LayoutDashboard,
   LineChart,
   LogIn,
@@ -78,6 +79,13 @@ const destinations = [
     labelKey: "nav.practice",
     fallback: "Practice",
     Icon: Target,
+    exact: false,
+  },
+  {
+    to: "/exams",
+    labelKey: "nav.exams",
+    fallback: "Exams",
+    Icon: GraduationCap,
     exact: false,
   },
   {

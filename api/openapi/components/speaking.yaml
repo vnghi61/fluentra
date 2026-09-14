@@ -1,0 +1,63 @@
+SpeakingCriterion:
+  type: object
+  required: [name, band, comment_en, comment_vi]
+  properties:
+    name:
+      type: string
+      example: fluency
+    band:
+      type: number
+      format: float
+    comment_en:
+      type: string
+    comment_vi:
+      type: string
+
+SpeakingFeedback:
+  type: object
+  description: >-
+    Feedback on a graded recording, scored from its transcript. Pronunciation is not
+    assessed, and a read-aloud accuracy built on a transcript runs high.
+  required: [id, attempt_id, user_id, recording_key, transcript, criteria, feedback_en, feedback_vi, prompt_version, model, asr_model, created_at, updated_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+    attempt_id:
+      type: string
+      format: uuid
+    user_id:
+      type: string
+      format: uuid
+    recording_key:
+      type: string
+    recording_deleted_at:
+      type: string
+      format: date-time
+    transcript:
+      type: string
+    criteria:
+      type: array
+      items:
+        $ref: '#/SpeakingCriterion'
+    read_aloud_accuracy:
+      type: number
+      format: float
+    words_per_minute:
+      type: integer
+    feedback_en:
+      type: string
+    feedback_vi:
+      type: string
+    prompt_version:
+      type: string
+    model:
+      type: string
+    asr_model:
+      type: string
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
