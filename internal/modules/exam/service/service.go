@@ -1,3 +1,4 @@
+// Package service runs exam sittings: drawing, the server clock, expiry and the report.
 package service
 
 import (
@@ -7,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -26,11 +28,20 @@ import (
 	"github.com/fluentra/fluentra/internal/shared/dbx"
 )
 
+// Defaults and names the exam service works with.
 const (
 	DefaultDailySittingsLimit = 5
 	HoChiMinhTimeZone         = "Asia/Ho_Chi_Minh"
 	ExamPoolCourseSlug        = "pool-exam"
 	OfficialDisclaimer        = "Not an official TOEIC score. Pronunciation not assessed."
+
+	kindListeningComprehension = "listening_comprehension"
+
+	// regradeAfter is how old a report must be before the settle sweep submits an
+	// item the submitting request never reached. Younger than this, the request
+	// that created the report may still be grading it, and two submissions of one
+	// answer would race to create two attempts.
+	regradeAfter = 5 * time.Minute
 )
 
 // WorkerNudger signals a background worker to wake up after a job is enqueued.
@@ -72,13 +83,20 @@ type ExamRepository interface {
 	CountUserExamAttempts(ctx context.Context, userID uuid.UUID) (int64, error)
 	CountUserActiveAttempts(ctx context.Context, userID uuid.UUID) (int64, error)
 	CountUserAttemptsToday(ctx context.Context, userID uuid.UUID, start, end time.Time) (int64, error)
-	UpdateDraftAnswers(ctx context.Context, id uuid.UUID, draftAnswers []byte, updatedAt time.Time) (*sqlc.AssessExamAttempt, error)
-	UpdateCurrentSection(ctx context.Context, id uuid.UUID, section int32, updatedAt time.Time) (*sqlc.AssessExamAttempt, error)
-	MarkAttemptCompleted(ctx context.Context, id uuid.UUID, submittedAt time.Time, submittedBy string) (*sqlc.AssessExamAttempt, error)
+	UpdateDraftAnswers(
+		ctx context.Context, id uuid.UUID, draftAnswers []byte, updatedAt time.Time,
+	) (*sqlc.AssessExamAttempt, error)
+	UpdateCurrentSection(
+		ctx context.Context, id uuid.UUID, section int32, updatedAt time.Time,
+	) (*sqlc.AssessExamAttempt, error)
+	MarkAttemptCompleted(
+		ctx context.Context, id uuid.UUID, submittedAt time.Time, submittedBy string,
+	) (*sqlc.AssessExamAttempt, error)
 	MarkAttemptExpired(ctx context.Context, id uuid.UUID, submittedAt time.Time) (*sqlc.AssessExamAttempt, error)
 	ListExpiredInProgressAttempts(ctx context.Context, now time.Time) ([]sqlc.AssessExamAttempt, error)
 	CreateScoreReport(ctx context.Context, arg sqlc.CreateScoreReportParams) (*sqlc.AssessScoreReport, error)
 	GetScoreReportByAttemptID(ctx context.Context, attemptID uuid.UUID) (*sqlc.AssessScoreReport, error)
+	ListPendingScoreReports(ctx context.Context) ([]sqlc.AssessScoreReport, error)
 	UpdateScoreReport(ctx context.Context, arg sqlc.UpdateScoreReportParams) (*sqlc.AssessScoreReport, error)
 	RecordIntegrityEvent(ctx context.Context, arg sqlc.RecordIntegrityEventParams) error
 	ListIntegrityEvents(ctx context.Context, attemptID uuid.UUID) ([]sqlc.AssessIntegrityEvent, error)
@@ -86,16 +104,17 @@ type ExamRepository interface {
 
 // Deps defines dependencies for the exam service.
 type Deps struct {
-	Pool        *pgxpool.Pool
-	Repo        ExamRepository
-	Learning    learningcontract.SittingAnswerSubmitter
-	Exposures   learningcontract.ItemExposureRecorder
-	Lesson      lessoncontract.Reader
-	Drawer      PoolDrawer
-	Clock       clock.Clock
-	DailyLimit  int
-	Enqueuer    platformjob.Enqueuer
-	Nudger      WorkerNudger
+	Pool       *pgxpool.Pool
+	Repo       ExamRepository
+	Learning   learningcontract.SittingAnswerSubmitter
+	Attempts   learningcontract.AttemptOutcomeReader
+	Exposures  learningcontract.ItemExposureRecorder
+	Lesson     lessoncontract.Reader
+	Drawer     PoolDrawer
+	Clock      clock.Clock
+	DailyLimit int
+	Enqueuer   platformjob.Enqueuer
+	Nudger     WorkerNudger
 }
 
 // Service orchestrates exam sittings, timing, auto-submission, and scoring.
@@ -103,6 +122,7 @@ type Service struct {
 	pool       *pgxpool.Pool
 	repo       ExamRepository
 	learning   learningcontract.SittingAnswerSubmitter
+	attempts   learningcontract.AttemptOutcomeReader
 	exposures  learningcontract.ItemExposureRecorder
 	lesson     lessoncontract.Reader
 	drawer     PoolDrawer
@@ -126,6 +146,7 @@ func New(deps Deps) *Service {
 		pool:       deps.Pool,
 		repo:       deps.Repo,
 		learning:   deps.Learning,
+		attempts:   deps.Attempts,
 		exposures:  deps.Exposures,
 		lesson:     deps.Lesson,
 		drawer:     deps.Drawer,
@@ -167,48 +188,54 @@ type StartAttemptRequest struct {
 	ChosenDurationMinutes int    `json:"chosen_duration_minutes,omitempty"`
 }
 
-// ExamAttemptDTO describes an exam attempt sitting.
+// ExamAttemptDTO describes an exam sitting.
 type ExamAttemptDTO struct {
-	ID                    uuid.UUID           `json:"id"`
-	ExamID                uuid.UUID           `json:"exam_id"`
-	ExamSlug              string              `json:"exam_slug,omitempty"`
-	ExamTitle             string              `json:"exam_title,omitempty"`
-	Mode                  string              `json:"mode"`
-	ChosenDurationMinutes int                 `json:"chosen_duration_minutes"`
-	StartedAt             time.Time           `json:"started_at"`
-	DeadlineAt            time.Time           `json:"deadline_at"`
-	RemainingSeconds      int                 `json:"remaining_seconds"`
-	CurrentSection        int                 `json:"current_section"`
-	Status                string              `json:"status"`
-	SectionActivities     []SectionActivities `json:"section_activities,omitempty"`
-	DraftAnswers          map[string]any      `json:"draft_answers,omitempty"`
-	ServerTime            time.Time           `json:"server_time"`
+	ID                      uuid.UUID                  `json:"id"`
+	ExamID                  uuid.UUID                  `json:"exam_id"`
+	ExamSlug                string                     `json:"exam_slug,omitempty"`
+	ExamTitle               string                     `json:"exam_title,omitempty"`
+	Level                   string                     `json:"level,omitempty"`
+	Mode                    string                     `json:"mode"`
+	ChosenDurationMinutes   int                        `json:"chosen_duration_minutes"`
+	StartedAt               time.Time                  `json:"started_at"`
+	DeadlineAt              time.Time                  `json:"deadline_at"`
+	RemainingSeconds        int                        `json:"remaining_seconds"`
+	CurrentSection          int                        `json:"current_section"`
+	SectionDeadlineAt       *time.Time                 `json:"section_deadline_at,omitempty"`
+	SectionRemainingSeconds *int                       `json:"section_remaining_seconds,omitempty"`
+	Status                  string                     `json:"status"`
+	SubmittedAt             *time.Time                 `json:"submitted_at,omitempty"`
+	SectionActivities       []SectionActivities        `json:"section_activities,omitempty"`
+	DraftAnswers            map[string]json.RawMessage `json:"draft_answers,omitempty"`
+	ServerTime              time.Time                  `json:"server_time"`
 }
 
-// SaveAnswersRequest parameters.
+// SaveAnswersRequest parameters. Answers are keyed by activity ID.
 type SaveAnswersRequest struct {
-	SectionNumber   int                 `json:"section_number,omitempty"`
-	Answers         map[string]any      `json:"answers"`
-	IntegrityEvents []IntegrityEventDTO `json:"integrity_events,omitempty"`
+	SectionNumber   int                        `json:"section_number,omitempty"`
+	Answers         map[string]json.RawMessage `json:"answers"`
+	IntegrityEvents []IntegrityEventDTO        `json:"integrity_events,omitempty"`
 }
 
-// IntegrityEventDTO parameters.
+// IntegrityEventDTO is a signal the client observed. Its time is the server's.
 type IntegrityEventDTO struct {
-	Kind       string         `json:"kind"`
-	OccurredAt time.Time      `json:"occurred_at"`
-	Metadata   map[string]any `json:"metadata,omitempty"`
+	Kind string `json:"kind"`
 }
 
 // SaveAnswersResult response.
 type SaveAnswersResult struct {
-	Saved            bool `json:"saved"`
-	RemainingSeconds int  `json:"remaining_seconds"`
+	Saved                   bool `json:"saved"`
+	RemainingSeconds        int  `json:"remaining_seconds"`
+	CurrentSection          int  `json:"current_section"`
+	SectionRemainingSeconds *int `json:"section_remaining_seconds,omitempty"`
 }
 
 // CompleteSectionResult response.
 type CompleteSectionResult struct {
-	CurrentSection   int `json:"current_section"`
-	RemainingSeconds int `json:"remaining_seconds"`
+	CurrentSection          int  `json:"current_section"`
+	RemainingSeconds        int  `json:"remaining_seconds"`
+	SectionRemainingSeconds *int `json:"section_remaining_seconds,omitempty"`
+	Submitted               bool `json:"submitted"`
 }
 
 // SubmitExamResult response.
@@ -218,26 +245,29 @@ type SubmitExamResult struct {
 	ReportStatus string    `json:"report_status"`
 }
 
-// ScoreReportDTO response.
-type ScoreReportDTO struct {
-	AttemptID        uuid.UUID        `json:"attempt_id"`
-	Status           string           `json:"status"`
-	OverallScore     float64          `json:"overall_score"`
-	OverallBand      string           `json:"overall_band"`
-	PerSection       []SectionScoreDTO `json:"per_section"`
-	Feedback         map[string]any   `json:"feedback,omitempty"`
-	IntegritySignals []map[string]any `json:"integrity_signals,omitempty"`
-	Disclaimer       string           `json:"disclaimer"`
+// IntegritySignalDTO counts one kind of signal in a sitting.
+type IntegritySignalDTO struct {
+	Kind  string `json:"kind"`
+	Count int    `json:"count"`
 }
 
-// SectionScoreDTO score breakdown per skill.
-type SectionScoreDTO struct {
-	Skill       string `json:"skill"`
-	Score       int    `json:"score"`
-	MaxScore    int    `json:"max_score"`
-	Band        string `json:"band,omitempty"`
-	Status      string `json:"status,omitempty"` // "scored", "not_scored", "pending"
-	ItemResults any    `json:"item_results,omitempty"`
+// ScoreReportDTO response.
+type ScoreReportDTO struct {
+	AttemptID        uuid.UUID               `json:"attempt_id"`
+	Mode             string                  `json:"mode"`
+	SubmittedBy      string                  `json:"submitted_by,omitempty"`
+	Status           string                  `json:"status"`
+	OverallScore     float64                 `json:"overall_score"`
+	OverallBand      string                  `json:"overall_band,omitempty"`
+	PerSection       []domain.SectionOutcome `json:"per_section"`
+	IntegritySignals []IntegritySignalDTO    `json:"integrity_signals"`
+	Disclaimer       string                  `json:"disclaimer"`
+}
+
+// SittingsToday is how many sittings the learner has started today, and the limit.
+type SittingsToday struct {
+	Used  int `json:"sittings_today"`
+	Limit int `json:"daily_limit"`
 }
 
 // ListExams returns all available active exam templates.
@@ -251,17 +281,7 @@ func (s *Service) ListExams(ctx context.Context) ([]ExamDTO, error) {
 	}
 	exams := make([]ExamDTO, len(rows))
 	for i, r := range rows {
-		exams[i] = ExamDTO{
-			ID:            r.ID,
-			Slug:          r.Slug,
-			TitleEn:       r.TitleEn,
-			TitleVi:       r.TitleVi,
-			DescriptionEn: r.DescriptionEn,
-			DescriptionVi: r.DescriptionVi,
-			Level:         r.Level,
-			Format:        r.Format,
-			TotalMinutes:  int(r.TotalMinutes),
-		}
+		exams[i] = examDTO(&r)
 	}
 	return exams, nil
 }
@@ -272,18 +292,19 @@ func (s *Service) GetExam(ctx context.Context, id uuid.UUID) (*ExamDTO, error) {
 		return nil, domain.ErrExamNotFound
 	}
 	exam, err := s.repo.GetExamByID(ctx, id)
-	if err != nil {
+	if err != nil || exam == nil {
 		return nil, domain.ErrExamNotFound
 	}
 	secRows, err := s.repo.ListExamSections(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	sections := make([]ExamSectionDTO, len(secRows))
+	dto := examDTO(exam)
+	dto.Sections = make([]ExamSectionDTO, len(secRows))
 	for i, sec := range secRows {
 		var kinds []string
 		_ = json.Unmarshal(sec.ItemKinds, &kinds)
-		sections[i] = ExamSectionDTO{
+		dto.Sections[i] = ExamSectionDTO{
 			ID:                  sec.ID,
 			ExamID:              sec.ExamID,
 			Position:            int(sec.Position),
@@ -293,21 +314,24 @@ func (s *Service) GetExam(ctx context.Context, id uuid.UUID) (*ExamDTO, error) {
 			ItemKinds:           kinds,
 		}
 	}
-	return &ExamDTO{
-		ID:            exam.ID,
-		Slug:          exam.Slug,
-		TitleEn:       exam.TitleEn,
-		TitleVi:       exam.TitleVi,
-		DescriptionEn: exam.DescriptionEn,
-		DescriptionVi: exam.DescriptionVi,
-		Level:         exam.Level,
-		Format:        exam.Format,
-		TotalMinutes:  int(exam.TotalMinutes),
-		Sections:      sections,
-	}, nil
+	return &dto, nil
 }
 
-// StartSitting begins a new exam attempt sitting.
+func examDTO(r *sqlc.AssessExam) ExamDTO {
+	return ExamDTO{
+		ID:            r.ID,
+		Slug:          r.Slug,
+		TitleEn:       r.TitleEn,
+		TitleVi:       r.TitleVi,
+		DescriptionEn: r.DescriptionEn,
+		DescriptionVi: r.DescriptionVi,
+		Level:         r.Level,
+		Format:        r.Format,
+		TotalMinutes:  int(r.TotalMinutes),
+	}
+}
+
+// StartSitting begins a new exam sitting.
 func (s *Service) StartSitting(
 	ctx context.Context, userID, examID uuid.UUID, req StartAttemptRequest,
 ) (*ExamAttemptDTO, error) {
@@ -316,53 +340,30 @@ func (s *Service) StartSitting(
 	}
 
 	exam, err := s.repo.GetExamByID(ctx, examID)
-	if err != nil {
+	if err != nil || exam == nil {
 		return nil, domain.ErrExamNotFound
 	}
 
-	// 1. Invariant: one active attempt in progress per learner (BR-EXAM-04)
-	activeCount, err := s.repo.CountUserActiveAttempts(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-	if activeCount > 0 {
-		return nil, domain.ErrAttemptInProgress
-	}
-
-	// 2. Daily sitting limit per learner in Asia/Ho_Chi_Minh
 	now := s.clock.Now().UTC()
-	loc, lErr := time.LoadLocation(HoChiMinhTimeZone)
-	if lErr != nil {
-		loc = time.FixedZone("ICT", 7*3600)
-	}
-	nowLocal := now.In(loc)
-	startOfDay := time.Date(nowLocal.Year(), nowLocal.Month(), nowLocal.Day(), 0, 0, 0, 0, loc).UTC()
-	endOfDay := startOfDay.Add(24 * time.Hour)
-
-	todayCount, err := s.repo.CountUserAttemptsToday(ctx, userID, startOfDay, endOfDay)
-	if err != nil {
+	if err := s.checkCanStart(ctx, userID, now); err != nil {
 		return nil, err
 	}
-	if todayCount >= int64(s.dailyLimit) {
-		return nil, domain.ErrExamDailyLimitReached
-	}
 
-	// 3. Draw activities for the sitting
 	var drawn []SectionActivities
 	if s.drawer != nil {
-		var dErr error
-		drawn, dErr = s.drawer.DrawSitting(ctx, userID, exam.Level)
-		if dErr != nil {
-			return nil, dErr
+		drawn, err = s.drawer.DrawSitting(ctx, userID, exam.Level)
+		if err != nil {
+			return nil, err
 		}
 	}
 	if len(drawn) == 0 {
 		return nil, domain.ErrInsufficientItems
 	}
 
-	// 4. Calculate timing
+	mode := domain.ModeExam
 	duration := int(exam.TotalMinutes)
 	if req.Mode == domain.ModePractice {
+		mode = domain.ModePractice
 		duration = domain.ClampPracticeDuration(req.ChosenDurationMinutes)
 	}
 	deadlineAt := now.Add(time.Duration(duration) * time.Minute)
@@ -372,449 +373,614 @@ func (s *Service) StartSitting(
 		return nil, fmt.Errorf("serialize section activities: %w", err)
 	}
 
-	attemptID := uuid.New()
-	mode := req.Mode
-	if mode != domain.ModePractice {
-		mode = domain.ModeExam
-	}
-
-	// Extract all activity IDs to record exposure in one transaction
-	var allActivityIDs []uuid.UUID
+	var activityIDs []uuid.UUID
 	for _, sec := range drawn {
 		for _, act := range sec.Activities {
-			allActivityIDs = append(allActivityIDs, act.ID)
+			activityIDs = append(activityIDs, act.ID)
 		}
 	}
 
-	var attempt *sqlc.AssessExamAttempt
-	if s.pool != nil {
-		txErr := dbx.InTx(ctx, s.pool, func(txCtx context.Context, tx pgx.Tx) error {
-			created, cErr := s.repo.CreateExamAttempt(txCtx, sqlc.CreateExamAttemptParams{
-				ID:                    attemptID,
-				UserID:                userID,
-				ExamID:                examID,
-				Mode:                  mode,
-				ChosenDurationMinutes: int32(duration),
-				StartedAt:             now,
-				DeadlineAt:            deadlineAt,
-				CurrentSection:        1,
-				Status:                domain.StatusInProgress,
-				SectionActivities:     drawnBytes,
-				DraftAnswers:          []byte("{}"),
-			})
-			if cErr != nil {
-				return cErr
-			}
-			attempt = created
-
-			if s.exposures != nil && len(allActivityIDs) > 0 {
-				if expErr := s.exposures.RecordItemExposures(txCtx, userID, allActivityIDs); expErr != nil {
-					return fmt.Errorf("record item exposures: %w", expErr)
-				}
-			}
-
-			// Enqueue scheduled River job at deadline
-			if s.enqueuer != nil {
-				args := examjob.ExpireAttemptArgs{AttemptID: attemptID}
-				opts := &river.InsertOpts{ScheduledAt: deadlineAt}
-				if _, qErr := s.enqueuer.EnqueueTx(txCtx, tx, args, opts); qErr != nil {
-					slog.WarnContext(txCtx, "could not schedule river expire job", "error", qErr)
-				}
-			}
-			return nil
-		})
-		if txErr != nil {
-			return nil, txErr
-		}
-	} else {
-		created, cErr := s.repo.CreateExamAttempt(ctx, sqlc.CreateExamAttemptParams{
-			ID:                    attemptID,
-			UserID:                userID,
-			ExamID:                examID,
-			Mode:                  mode,
-			ChosenDurationMinutes: int32(duration),
-			StartedAt:             now,
-			DeadlineAt:            deadlineAt,
-			CurrentSection:        1,
-			Status:                domain.StatusInProgress,
-			SectionActivities:     drawnBytes,
-			DraftAnswers:          []byte("{}"),
-		})
-		if cErr != nil {
-			return nil, cErr
-		}
-		attempt = created
-		if s.exposures != nil && len(allActivityIDs) > 0 {
-			_ = s.exposures.RecordItemExposures(ctx, userID, allActivityIDs)
-		}
+	params := sqlc.CreateExamAttemptParams{
+		ID:                    uuid.New(),
+		UserID:                userID,
+		ExamID:                examID,
+		Mode:                  mode,
+		ChosenDurationMinutes: clampInt32(duration),
+		StartedAt:             now,
+		DeadlineAt:            deadlineAt,
+		CurrentSection:        1,
+		Status:                domain.StatusInProgress,
+		SectionActivities:     drawnBytes,
+		DraftAnswers:          []byte("{}"),
 	}
 
-	return &ExamAttemptDTO{
-		ID:                    attempt.ID,
-		ExamID:                attempt.ExamID,
-		ExamSlug:              exam.Slug,
-		ExamTitle:             exam.TitleEn,
-		Mode:                  attempt.Mode,
-		ChosenDurationMinutes: int(attempt.ChosenDurationMinutes),
-		StartedAt:             attempt.StartedAt,
-		DeadlineAt:            attempt.DeadlineAt,
-		RemainingSeconds:      domain.RemainingSeconds(attempt.DeadlineAt, now),
-		CurrentSection:        int(attempt.CurrentSection),
-		Status:                attempt.Status,
-		SectionActivities:     drawn,
-		DraftAnswers:          map[string]any{},
-		ServerTime:            now,
-	}, nil
-}
-
-// GetExamAttempt retrieves current attempt state, enforcing lazy auto-expiry if overdue.
-func (s *Service) GetExamAttempt(ctx context.Context, userID, attemptID uuid.UUID) (*ExamAttemptDTO, error) {
-	if s.repo == nil {
-		return nil, domain.ErrAttemptNotFound
-	}
-	attempt, err := s.repo.GetExamAttemptForUser(ctx, attemptID, userID)
+	attempt, err := s.createSitting(ctx, params, activityIDs)
 	if err != nil {
-		return nil, domain.ErrAttemptNotFound
-	}
-
-	now := s.clock.Now().UTC()
-
-	// Tier 3: Lazy expiry upon reading an attempt past its deadline (WO12 §3.6)
-	if attempt.Status == domain.StatusInProgress && domain.IsPastDeadline(attempt.DeadlineAt, now) {
-		slog.InfoContext(ctx, "lazy expiring overdue attempt on read", "attempt_id", attemptID)
-		_, _ = s.SubmitExam(ctx, userID, attemptID, domain.SubmittedByExpiry)
-		if refreshed, rErr := s.repo.GetExamAttemptForUser(ctx, attemptID, userID); rErr == nil {
-			attempt = refreshed
-		}
-	}
-
-	var drawn []SectionActivities
-	_ = json.Unmarshal(attempt.SectionActivities, &drawn)
-	var answers map[string]any
-	_ = json.Unmarshal(attempt.DraftAnswers, &answers)
-
-	var examSlug, examTitle string
-	if exam, eErr := s.repo.GetExamByID(ctx, attempt.ExamID); eErr == nil {
-		examSlug = exam.Slug
-		examTitle = exam.TitleEn
-	}
-
-	return &ExamAttemptDTO{
-		ID:                    attempt.ID,
-		ExamID:                attempt.ExamID,
-		ExamSlug:              examSlug,
-		ExamTitle:             examTitle,
-		Mode:                  attempt.Mode,
-		ChosenDurationMinutes: int(attempt.ChosenDurationMinutes),
-		StartedAt:             attempt.StartedAt,
-		DeadlineAt:            attempt.DeadlineAt,
-		RemainingSeconds:      domain.RemainingSeconds(attempt.DeadlineAt, now),
-		CurrentSection:        int(attempt.CurrentSection),
-		Status:                attempt.Status,
-		SectionActivities:     drawn,
-		DraftAnswers:          answers,
-		ServerTime:            now,
-	}, nil
-}
-
-// AutosaveAnswers saves draft answers and records integrity events if within deadline.
-func (s *Service) AutosaveAnswers(
-	ctx context.Context, userID, attemptID uuid.UUID, req SaveAnswersRequest,
-) (*SaveAnswersResult, error) {
-	if s.repo == nil {
-		return nil, domain.ErrAttemptNotFound
-	}
-	attempt, err := s.repo.GetExamAttemptForUser(ctx, attemptID, userID)
-	if err != nil {
-		return nil, domain.ErrAttemptNotFound
-	}
-
-	now := s.clock.Now().UTC()
-	if domain.IsPastDeadline(attempt.DeadlineAt, now) {
-		return nil, domain.ErrAttemptExpired
-	}
-	if attempt.Status != domain.StatusInProgress {
-		return nil, domain.ErrExamAlreadySubmitted
-	}
-
-	if attempt.Mode == domain.ModeExam && req.SectionNumber > 0 {
-		if req.SectionNumber < int(attempt.CurrentSection) {
-			return nil, domain.ErrSectionAlreadyCompleted
-		}
-		if req.SectionNumber > int(attempt.CurrentSection) {
-			return nil, domain.ErrInvalidSectionProgression
-		}
-	}
-
-	// Merge draft answers
-	var currentAnswers map[string]any
-	_ = json.Unmarshal(attempt.DraftAnswers, &currentAnswers)
-	if currentAnswers == nil {
-		currentAnswers = make(map[string]any)
-	}
-	for k, v := range req.Answers {
-		currentAnswers[k] = v
-	}
-	mergedBytes, err := json.Marshal(currentAnswers)
-	if err != nil {
-		return nil, fmt.Errorf("serialize draft answers: %w", err)
-	}
-
-	if _, err := s.repo.UpdateDraftAnswers(ctx, attemptID, mergedBytes, now); err != nil {
-		return nil, fmt.Errorf("update draft answers: %w", err)
-	}
-
-	// Record integrity events
-	for _, ev := range req.IntegrityEvents {
-		metaBytes, _ := json.Marshal(ev.Metadata)
-		_ = s.repo.RecordIntegrityEvent(ctx, sqlc.RecordIntegrityEventParams{
-			ID:         uuid.New(),
-			AttemptID:  attemptID,
-			Kind:       ev.Kind,
-			OccurredAt: ev.OccurredAt,
-			Metadata:   metaBytes,
-		})
-	}
-
-	return &SaveAnswersResult{
-		Saved:            true,
-		RemainingSeconds: domain.RemainingSeconds(attempt.DeadlineAt, now),
-	}, nil
-}
-
-// CompleteSection advances to the next section or auto-submits if last section in exam mode.
-func (s *Service) CompleteSection(
-	ctx context.Context, userID, attemptID uuid.UUID, sectionNum int,
-) (*CompleteSectionResult, error) {
-	if s.repo == nil {
-		return nil, domain.ErrAttemptNotFound
-	}
-	attempt, err := s.repo.GetExamAttemptForUser(ctx, attemptID, userID)
-	if err != nil {
-		return nil, domain.ErrAttemptNotFound
-	}
-
-	now := s.clock.Now().UTC()
-	if domain.IsPastDeadline(attempt.DeadlineAt, now) {
-		return nil, domain.ErrAttemptExpired
-	}
-	if attempt.Status != domain.StatusInProgress {
-		return nil, domain.ErrExamAlreadySubmitted
-	}
-
-	if attempt.Mode == domain.ModeExam {
-		if sectionNum != int(attempt.CurrentSection) {
-			return nil, domain.ErrInvalidSectionProgression
-		}
-		secDeadline := domain.SectionDeadline(attempt.StartedAt, sectionNum)
-		if domain.IsPastDeadline(secDeadline, now) {
-			return nil, domain.ErrSectionTimeExpired
-		}
-	}
-
-	nextSection := sectionNum + 1
-	if nextSection > 4 {
-		// Completed final section -> submit exam
-		_, subErr := s.SubmitExam(ctx, userID, attemptID, domain.SubmittedByLearner)
-		if subErr != nil {
-			return nil, subErr
-		}
-		return &CompleteSectionResult{
-			CurrentSection:   4,
-			RemainingSeconds: 0,
-		}, nil
-	}
-
-	if _, err := s.repo.UpdateCurrentSection(ctx, attemptID, int32(nextSection), now); err != nil {
 		return nil, err
 	}
 
-	return &CompleteSectionResult{
-		CurrentSection:   nextSection,
-		RemainingSeconds: domain.RemainingSeconds(attempt.DeadlineAt, now),
-	}, nil
+	dto := s.attemptDTO(attempt, exam, now, true)
+	return &dto, nil
 }
 
-// SubmitExam concludes an attempt, grades answers into learn.attempts, and compiles score report.
-func (s *Service) SubmitExam(
-	ctx context.Context, userID, attemptID uuid.UUID, submittedBy string,
-) (*SubmitExamResult, error) {
-	if s.repo == nil {
-		return nil, domain.ErrAttemptNotFound
+// checkCanStart refuses a second open sitting (BR-EXAM-04) and a sitting past
+// the daily limit. Both are checked before anything is drawn, so a refused start
+// marks nothing as seen.
+func (s *Service) checkCanStart(ctx context.Context, userID uuid.UUID, now time.Time) error {
+	activeCount, err := s.repo.CountUserActiveAttempts(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if activeCount > 0 {
+		return domain.ErrAttemptInProgress
+	}
+	today, err := s.sittingsToday(ctx, userID, now)
+	if err != nil {
+		return err
+	}
+	if today.Used >= today.Limit {
+		return domain.ErrExamDailyLimitReached
+	}
+	return nil
+}
+
+// createSitting writes the sitting, the exposures of every drawn item and the
+// expiry job in one transaction: a sitting that fails to start marks nothing as seen.
+func (s *Service) createSitting(
+	ctx context.Context, params sqlc.CreateExamAttemptParams, activityIDs []uuid.UUID,
+) (*sqlc.AssessExamAttempt, error) {
+	if s.pool == nil {
+		created, err := s.repo.CreateExamAttempt(ctx, params)
+		if err != nil {
+			return nil, err
+		}
+		if s.exposures != nil && len(activityIDs) > 0 {
+			if err := s.exposures.RecordItemExposures(ctx, nil, params.UserID, activityIDs); err != nil {
+				return nil, fmt.Errorf("record item exposures: %w", err)
+			}
+		}
+		return created, nil
+	}
+
+	var attempt *sqlc.AssessExamAttempt
+	txErr := dbx.InTx(ctx, s.pool, func(txCtx context.Context, tx pgx.Tx) error {
+		created, err := s.repo.CreateExamAttempt(txCtx, params)
+		if err != nil {
+			return err
+		}
+		attempt = created
+
+		if s.exposures != nil && len(activityIDs) > 0 {
+			if err := s.exposures.RecordItemExposures(txCtx, tx, params.UserID, activityIDs); err != nil {
+				return fmt.Errorf("record item exposures: %w", err)
+			}
+		}
+
+		// The sweep and the next read both back this job up, so a failure to
+		// schedule it is logged, not fatal.
+		if s.enqueuer != nil {
+			args := examjob.ExpireAttemptArgs{AttemptID: params.ID}
+			opts := &river.InsertOpts{ScheduledAt: params.DeadlineAt}
+			if _, err := s.enqueuer.EnqueueTx(txCtx, tx, args, opts); err != nil {
+				slog.WarnContext(txCtx, "could not schedule the sitting's expiry job", "error", err)
+			}
+		}
+		return nil
+	})
+	if txErr != nil {
+		return nil, txErr
+	}
+	return attempt, nil
+}
+
+// GetExamAttempt returns a sitting, submitting it first when its deadline has passed.
+func (s *Service) GetExamAttempt(ctx context.Context, userID, attemptID uuid.UUID) (*ExamAttemptDTO, error) {
+	attempt, err := s.sittingFor(ctx, userID, attemptID)
+	if err != nil {
+		return nil, err
 	}
 
 	now := s.clock.Now().UTC()
 
-	// Atomically move attempt out of in_progress
-	var attempt *sqlc.AssessExamAttempt
-	var err error
-	if submittedBy == domain.SubmittedByExpiry {
-		attempt, err = s.repo.MarkAttemptExpired(ctx, attemptID, now)
-	} else {
-		attempt, err = s.repo.MarkAttemptCompleted(ctx, attemptID, now, domain.SubmittedByLearner)
-	}
-	if err != nil || attempt == nil {
-		// Idempotency check: if already submitted, return stored state
-		current, cErr := s.repo.GetExamAttemptByID(ctx, attemptID)
-		if cErr == nil && current != nil && current.Status != domain.StatusInProgress {
-			rep, _ := s.repo.GetScoreReportByAttemptID(ctx, attemptID)
-			repStatus := domain.ReportStatusPending
-			if rep != nil {
-				repStatus = rep.Status
-			}
-			return &SubmitExamResult{
-				AttemptID:    attemptID,
-				Status:       current.Status,
-				ReportStatus: repStatus,
-			}, nil
+	// Reading a sitting past its deadline is itself a trigger (§3.6): a learner
+	// returning after the deadline sees their result being built, not a clock at zero.
+	if attempt.Status == domain.StatusInProgress && domain.IsPastDeadline(attempt.DeadlineAt, now) {
+		if _, err := s.submit(ctx, attempt, domain.SubmittedByExpiry); err != nil {
+			slog.WarnContext(ctx, "could not submit an overdue sitting on read", "attempt_id", attemptID, "error", err)
 		}
+		if refreshed, rErr := s.repo.GetExamAttemptByID(ctx, attemptID); rErr == nil && refreshed != nil {
+			attempt = refreshed
+		}
+	} else {
+		s.persistSection(ctx, attempt, now)
+	}
+
+	var exam *sqlc.AssessExam
+	if found, eErr := s.repo.GetExamByID(ctx, attempt.ExamID); eErr == nil {
+		exam = found
+	}
+	dto := s.attemptDTO(attempt, exam, now, true)
+	return &dto, nil
+}
+
+// AutosaveAnswers saves draft answers and integrity signals while the sitting is open.
+func (s *Service) AutosaveAnswers(
+	ctx context.Context, userID, attemptID uuid.UUID, req SaveAnswersRequest,
+) (*SaveAnswersResult, error) {
+	attempt, err := s.sittingFor(ctx, userID, attemptID)
+	if err != nil {
+		return nil, err
+	}
+
+	now := s.clock.Now().UTC()
+	if attempt.Status != domain.StatusInProgress {
 		return nil, domain.ErrExamAlreadySubmitted
 	}
+	if domain.IsPastDeadline(attempt.DeadlineAt, now) {
+		return nil, domain.ErrAttemptExpired
+	}
 
-	var drawn []SectionActivities
-	_ = json.Unmarshal(attempt.SectionActivities, &drawn)
-	var answers map[string]any
-	_ = json.Unmarshal(attempt.DraftAnswers, &answers)
-
-	var hasAsync bool
-	var sectionScores []SectionScoreDTO
-	var totalPercentage float64
-	var scoredSectionCount int
-
-	for _, sec := range drawn {
-		secScore := 0
-		secMaxScore := 0
-		secAsync := false
-		var itemResults []any
-
-		for _, act := range sec.Activities {
-			rawAns, answered := answers[act.ID.String()]
-			if !answered || rawAns == nil {
-				// Unanswered item scores zero and creates no attempt (WO12 §3.6)
-				secMaxScore += 100
-				continue
-			}
-
-			ansBytes, mErr := json.Marshal(rawAns)
-			if mErr != nil {
-				continue
-			}
-
-			// Deterministic idempotency key from sitting and activity
-			idempotencyKey := uuid.NewSHA1(attemptID, []byte(act.ID.String()))
-
-			if s.learning != nil {
-				res, gErr := s.learning.SubmitSittingAnswer(ctx, learningcontract.SittingAnswerRequest{
-					UserID:         attempt.UserID,
-					ActivityID:     act.ID,
-					Response:       ansBytes,
-					IdempotencyKey: idempotencyKey,
-				})
-				if gErr != nil {
-					slog.WarnContext(ctx, "failed grading sitting item", "activity_id", act.ID, "error", gErr)
-					continue
-				}
-				if res.Async {
-					secAsync = true
-					hasAsync = true
-				} else {
-					secScore += res.Score
-					secMaxScore += res.MaxScore
-				}
-				if len(res.ItemResults) > 0 {
-					itemResults = append(itemResults, res.ItemResults)
-				}
-			}
-		}
-
-		status := "scored"
-		if secAsync {
-			status = "pending"
-		}
-		sectionScores = append(sectionScores, SectionScoreDTO{
-			Skill:       sec.Skill,
-			Score:       secScore,
-			MaxScore:    secMaxScore,
-			Status:      status,
-			ItemResults: itemResults,
-		})
-
-		if !secAsync && secMaxScore > 0 {
-			totalPercentage += (float64(secScore) / float64(secMaxScore)) * 100.0
-			scoredSectionCount++
+	current := s.currentSection(attempt, now)
+	if attempt.Mode == domain.ModeExam && req.SectionNumber > 0 {
+		if err := sectionOrder(req.SectionNumber, current); err != nil {
+			return nil, err
 		}
 	}
 
-	var overallScore float64
-	if scoredSectionCount > 0 {
-		overallScore = math.Round(totalPercentage / float64(scoredSectionCount))
-	}
-	overallBand := domain.EstimateCEFRBand(overallScore)
-
-	reportStatus := domain.ReportStatusReady
-	if hasAsync {
-		reportStatus = domain.ReportStatusPending
+	answers := decodeAnswers(attempt)
+	if err := mergeAnswers(attempt, current, req.Answers, answers); err != nil {
+		return nil, err
 	}
 
-	secBytes, _ := json.Marshal(sectionScores)
-
-	// Fetch integrity signals
-	events, _ := s.repo.ListIntegrityEvents(ctx, attemptID)
-	var signals []map[string]any
-	for _, ev := range events {
-		signals = append(signals, map[string]any{
-			"kind":        ev.Kind,
-			"occurred_at": ev.OccurredAt,
-		})
+	merged, err := json.Marshal(answers)
+	if err != nil {
+		return nil, fmt.Errorf("serialize draft answers: %w", err)
 	}
-	sigBytes, _ := json.Marshal(signals)
+	if _, err := s.repo.UpdateDraftAnswers(ctx, attemptID, merged, now); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrExamAlreadySubmitted
+		}
+		return nil, fmt.Errorf("update draft answers: %w", err)
+	}
 
-	var scoreNumeric pgtype.Numeric
-	_ = scoreNumeric.Scan(fmt.Sprintf("%.2f", overallScore))
+	s.recordIntegrityEvents(ctx, attemptID, req.IntegrityEvents, now)
+	s.persistSection(ctx, attempt, now)
 
-	_, _ = s.repo.CreateScoreReport(ctx, sqlc.CreateScoreReportParams{
-		ID:               uuid.New(),
-		AttemptID:        attemptID,
-		UserID:           attempt.UserID,
-		ExamID:           attempt.ExamID,
-		OverallScore:     scoreNumeric,
-		OverallBand:      overallBand,
-		Status:           reportStatus,
-		PerSection:       secBytes,
-		Feedback:         []byte("{}"),
-		IntegritySignals: sigBytes,
-	})
-
-	return &SubmitExamResult{
-		AttemptID:    attemptID,
-		Status:       attempt.Status,
-		ReportStatus: reportStatus,
+	return &SaveAnswersResult{
+		Saved:                   true,
+		RemainingSeconds:        domain.RemainingSeconds(attempt.DeadlineAt, now),
+		CurrentSection:          current,
+		SectionRemainingSeconds: sectionRemaining(attempt, current, now),
 	}, nil
 }
 
-// ExpireAttempt submits an attempt as expired.
+// sectionOrder refuses, in exam mode, anything aimed at a section other than the open one.
+func sectionOrder(position, current int) error {
+	switch {
+	case position < current:
+		return domain.ErrSectionAlreadyCompleted
+	case position > current:
+		return domain.ErrInvalidSectionProgression
+	default:
+		return nil
+	}
+}
+
+// mergeAnswers checks each incoming answer and adds it to the saved ones.
+//
+// An answer must be for an item the sitting holds and fit domain.MaxAnswerBytes.
+// In exam mode it must also be for the open section: there is no going back,
+// whatever section number the client claims.
+func mergeAnswers(
+	attempt *sqlc.AssessExamAttempt, current int,
+	incoming map[string]json.RawMessage, answers map[string]json.RawMessage,
+) error {
+	positions := activityPositions(decodeSections(attempt))
+	isExam := attempt.Mode == domain.ModeExam
+	for key, raw := range incoming {
+		id, err := uuid.Parse(key)
+		if err != nil {
+			return domain.ErrUnknownItem
+		}
+		position, held := positions[id]
+		if !held {
+			return domain.ErrUnknownItem
+		}
+		if isExam {
+			if err := sectionOrder(position, current); err != nil {
+				return err
+			}
+		}
+		if len(raw) > domain.MaxAnswerBytes {
+			return domain.ErrAnswerTooLarge
+		}
+		answers[id.String()] = raw
+	}
+	return nil
+}
+
+func (s *Service) recordIntegrityEvents(
+	ctx context.Context, attemptID uuid.UUID, events []IntegrityEventDTO, now time.Time,
+) {
+	recorded := 0
+	for _, ev := range events {
+		if recorded >= domain.MaxIntegrityEventsPerSave {
+			return
+		}
+		if !domain.IsIntegrityKind(ev.Kind) {
+			continue
+		}
+		if err := s.repo.RecordIntegrityEvent(ctx, sqlc.RecordIntegrityEventParams{
+			ID:         uuid.New(),
+			AttemptID:  attemptID,
+			Kind:       ev.Kind,
+			OccurredAt: now,
+			Metadata:   []byte("{}"),
+		}); err != nil {
+			slog.WarnContext(ctx, "could not record integrity signal", "attempt_id", attemptID, "error", err)
+			return
+		}
+		recorded++
+	}
+}
+
+// CompleteSection closes a section and moves on; closing the last one submits the sitting.
+func (s *Service) CompleteSection(
+	ctx context.Context, userID, attemptID uuid.UUID, sectionNum int,
+) (*CompleteSectionResult, error) {
+	attempt, err := s.sittingFor(ctx, userID, attemptID)
+	if err != nil {
+		return nil, err
+	}
+
+	now := s.clock.Now().UTC()
+	if attempt.Status != domain.StatusInProgress {
+		return nil, domain.ErrExamAlreadySubmitted
+	}
+	if domain.IsPastDeadline(attempt.DeadlineAt, now) {
+		return nil, domain.ErrAttemptExpired
+	}
+	if sectionNum < 1 || sectionNum > domain.SectionCount {
+		return nil, domain.ErrInvalidSectionProgression
+	}
+
+	if attempt.Mode == domain.ModeExam {
+		current := s.currentSection(attempt, now)
+		if sectionNum < current {
+			// Already closed — by the learner or by its clock. Say where the sitting is.
+			s.persistSection(ctx, attempt, now)
+			return &CompleteSectionResult{
+				CurrentSection:          current,
+				RemainingSeconds:        domain.RemainingSeconds(attempt.DeadlineAt, now),
+				SectionRemainingSeconds: sectionRemaining(attempt, current, now),
+			}, nil
+		}
+		if sectionNum > current {
+			return nil, domain.ErrInvalidSectionProgression
+		}
+	}
+
+	if sectionNum == domain.SectionCount {
+		if _, err := s.submit(ctx, attempt, domain.SubmittedByLearner); err != nil {
+			return nil, err
+		}
+		return &CompleteSectionResult{CurrentSection: domain.SectionCount, Submitted: true}, nil
+	}
+
+	next := sectionNum + 1
+	updated, err := s.repo.UpdateCurrentSection(ctx, attemptID, clampInt32(next), now)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrExamAlreadySubmitted
+		}
+		return nil, err
+	}
+	if updated != nil {
+		attempt = updated
+	}
+
+	return &CompleteSectionResult{
+		CurrentSection:          next,
+		RemainingSeconds:        domain.RemainingSeconds(attempt.DeadlineAt, now),
+		SectionRemainingSeconds: sectionRemaining(attempt, next, now),
+	}, nil
+}
+
+// SubmitExam submits the caller's sitting.
+func (s *Service) SubmitExam(
+	ctx context.Context, userID, attemptID uuid.UUID, submittedBy string,
+) (*SubmitExamResult, error) {
+	attempt, err := s.sittingFor(ctx, userID, attemptID)
+	if err != nil {
+		return nil, err
+	}
+	return s.submit(ctx, attempt, submittedBy)
+}
+
+// submit moves a sitting out of in_progress and builds its report.
+//
+// Every path — the learner, the scheduled job, the sweep and a read — ends here,
+// and the conditional update is what makes them one outcome: only the path that
+// moves the sitting builds the report, and a path that finds it already moved
+// returns what is stored.
+func (s *Service) submit(
+	ctx context.Context, attempt *sqlc.AssessExamAttempt, submittedBy string,
+) (*SubmitExamResult, error) {
+	now := s.clock.Now().UTC()
+
+	if attempt.Status == domain.StatusInProgress {
+		// A write past the deadline is refused; what was saved before it counts.
+		// So a late submission is the expiry's, not the learner's.
+		if submittedBy != domain.SubmittedByExpiry && domain.IsPastDeadline(attempt.DeadlineAt, now) {
+			submittedBy = domain.SubmittedByExpiry
+		}
+		var marked *sqlc.AssessExamAttempt
+		var err error
+		if submittedBy == domain.SubmittedByExpiry {
+			marked, err = s.repo.MarkAttemptExpired(ctx, attempt.ID, now)
+		} else {
+			marked, err = s.repo.MarkAttemptCompleted(ctx, attempt.ID, now, domain.SubmittedByLearner)
+		}
+		switch {
+		case err == nil && marked != nil:
+			attempt = marked
+		case err == nil || errors.Is(err, pgx.ErrNoRows):
+			current, gErr := s.repo.GetExamAttemptByID(ctx, attempt.ID)
+			if gErr != nil || current == nil {
+				return nil, domain.ErrAttemptNotFound
+			}
+			attempt = current
+		default:
+			return nil, fmt.Errorf("move sitting out of in_progress: %w", err)
+		}
+	}
+
+	report, err := s.ensureReport(ctx, attempt)
+	if err != nil {
+		return nil, err
+	}
+	return &SubmitExamResult{
+		AttemptID:    attempt.ID,
+		Status:       attempt.Status,
+		ReportStatus: report.Status,
+	}, nil
+}
+
+// ensureReport returns the sitting's report, creating and grading it if there is none.
+//
+// The report row is created before any item is graded. Two paths that both find
+// no report both try to create it; the unique attempt_id lets one win, and only
+// the winner submits answers to learning — so a sitting produces one set of attempts.
+func (s *Service) ensureReport(ctx context.Context, attempt *sqlc.AssessExamAttempt) (*sqlc.AssessScoreReport, error) {
+	if existing, err := s.repo.GetScoreReportByAttemptID(ctx, attempt.ID); err == nil && existing != nil {
+		return existing, nil
+	}
+
+	sections := skeletonOutcomes(decodeSections(attempt))
+	sectionBytes, err := json.Marshal(sections)
+	if err != nil {
+		return nil, fmt.Errorf("serialize report skeleton: %w", err)
+	}
+	signals, signalBytes := s.integritySignals(ctx, attempt.ID)
+	_ = signals
+
+	now := s.clock.Now().UTC()
+	created, err := s.repo.CreateScoreReport(ctx, sqlc.CreateScoreReportParams{
+		ID:               uuid.New(),
+		AttemptID:        attempt.ID,
+		UserID:           attempt.UserID,
+		ExamID:           attempt.ExamID,
+		OverallScore:     numericOf(0),
+		OverallBand:      "",
+		Status:           domain.ReportStatusPending,
+		PerSection:       sectionBytes,
+		Feedback:         []byte("{}"),
+		IntegritySignals: signalBytes,
+		CreatedAt:        now,
+	})
+	if err != nil || created == nil {
+		if existing, gErr := s.repo.GetScoreReportByAttemptID(ctx, attempt.ID); gErr == nil && existing != nil {
+			return existing, nil
+		}
+		return nil, fmt.Errorf("create score report: %w", err)
+	}
+
+	answers := decodeAnswers(attempt)
+	for si := range sections {
+		for ii := range sections[si].Items {
+			s.gradeItem(ctx, attempt, answers, &sections[si].Items[ii])
+		}
+	}
+	return s.storeReport(ctx, attempt, created, sections)
+}
+
+// gradeItem submits one saved answer to learning as an ordinary attempt.
+func (s *Service) gradeItem(
+	ctx context.Context, attempt *sqlc.AssessExamAttempt, answers map[string]json.RawMessage, item *domain.ItemOutcome,
+) {
+	raw, answered := answers[item.ActivityID.String()]
+	if !answered || isEmptyAnswer(raw) {
+		// An unanswered item scores zero and creates no attempt (§3.6).
+		item.Status = domain.ItemUnanswered
+		item.Score, item.MaxScore = 0, 0
+		return
+	}
+	if s.learning == nil {
+		item.Status = domain.ItemFailed
+		return
+	}
+
+	res, err := s.learning.SubmitSittingAnswer(ctx, learningcontract.SittingAnswerRequest{
+		UserID:     attempt.UserID,
+		ActivityID: item.ActivityID,
+		Response:   raw,
+		// Derived from the sitting and the activity, so a retried submission
+		// finds the attempt it already made instead of grading twice.
+		IdempotencyKey: uuid.NewSHA1(attempt.ID, []byte(item.ActivityID.String())),
+	})
+	if err != nil {
+		slog.WarnContext(ctx, "could not grade a sitting item",
+			"attempt_id", attempt.ID, "activity_id", item.ActivityID, "error", err)
+		item.Status = domain.ItemFailed
+		return
+	}
+
+	attemptID := res.AttemptID
+	item.AttemptID = &attemptID
+	score := res.Score
+	status := res.Status
+	if res.Async {
+		status = learningStatusGrading
+	}
+	applyOutcome(item, status, &score, res.MaxScore)
+	if len(res.ItemResults) > 0 {
+		if b, mErr := json.Marshal(res.ItemResults); mErr == nil {
+			item.ItemResults = b
+		}
+	}
+}
+
+const (
+	learningStatusGraded  = "graded"
+	learningStatusGrading = "grading"
+	learningStatusFailed  = "failed"
+)
+
+func applyOutcome(item *domain.ItemOutcome, status string, score *int, maxScore int) {
+	switch status {
+	case learningStatusGraded:
+		item.Status = domain.ItemGraded
+		item.Score = 0
+		if score != nil {
+			item.Score = *score
+		}
+		item.MaxScore = maxScore
+	case learningStatusFailed:
+		item.Status = domain.ItemFailed
+	default:
+		item.Status = domain.ItemPending
+	}
+}
+
+// storeReport scores the sections and writes the report.
+func (s *Service) storeReport(
+	ctx context.Context, attempt *sqlc.AssessExamAttempt, report *sqlc.AssessScoreReport, sections []domain.SectionOutcome,
+) (*sqlc.AssessScoreReport, error) {
+	score := domain.ScoreReport(sections)
+	sectionBytes, err := json.Marshal(sections)
+	if err != nil {
+		return nil, fmt.Errorf("serialize report sections: %w", err)
+	}
+	_, signalBytes := s.integritySignals(ctx, attempt.ID)
+
+	updated, err := s.repo.UpdateScoreReport(ctx, sqlc.UpdateScoreReportParams{
+		AttemptID:        attempt.ID,
+		OverallScore:     numericOf(score.Overall),
+		OverallBand:      score.Band,
+		Status:           score.Status,
+		PerSection:       sectionBytes,
+		Feedback:         report.Feedback,
+		IntegritySignals: signalBytes,
+		UpdatedAt:        s.clock.Now().UTC(),
+	})
+	if err != nil || updated == nil {
+		return nil, fmt.Errorf("update score report: %w", err)
+	}
+	return updated, nil
+}
+
+// settleReport brings a pending report up to date with the grades that have
+// arrived since, and closes the items still waiting after ReportSettleLimit as
+// not scored. A report that is not pending is returned as stored.
+func (s *Service) settleReport(ctx context.Context, report *sqlc.AssessScoreReport) (*sqlc.AssessScoreReport, error) {
+	if report.Status != domain.ReportStatusPending {
+		return report, nil
+	}
+	attempt, err := s.repo.GetExamAttemptByID(ctx, report.AttemptID)
+	if err != nil || attempt == nil {
+		return report, fmt.Errorf("load sitting for report: %w", err)
+	}
+
+	var sections []domain.SectionOutcome
+	if err := json.Unmarshal(report.PerSection, &sections); err != nil {
+		return report, fmt.Errorf("decode report sections: %w", err)
+	}
+
+	now := s.clock.Now().UTC()
+	age := now.Sub(report.CreatedAt)
+	answers := decodeAnswers(attempt)
+	changed := false
+
+	for si := range sections {
+		for ii := range sections[si].Items {
+			if s.settleItem(ctx, attempt, answers, &sections[si].Items[ii], age) {
+				changed = true
+			}
+		}
+	}
+
+	if !changed {
+		return report, nil
+	}
+	return s.storeReport(ctx, attempt, report, sections)
+}
+
+// settleItem brings one pending item up to date and reports whether its status changed.
+func (s *Service) settleItem(
+	ctx context.Context, attempt *sqlc.AssessExamAttempt, answers map[string]json.RawMessage,
+	item *domain.ItemOutcome, age time.Duration,
+) bool {
+	if item.Status != domain.ItemPending {
+		return false
+	}
+	before := item.Status
+	switch {
+	case item.AttemptID == nil && age >= regradeAfter:
+		// The request that created the report did not reach this item.
+		s.gradeItem(ctx, attempt, answers, item)
+	case item.AttemptID != nil && s.attempts != nil:
+		outcome, err := s.attempts.GetAttemptOutcome(ctx, *item.AttemptID)
+		if err != nil {
+			slog.WarnContext(ctx, "could not read a sitting item's grade",
+				"attempt_id", *item.AttemptID, "error", err)
+		} else {
+			applyOutcome(item, outcome.Status, outcome.Score, outcome.MaxScore)
+		}
+	}
+	if item.Status == domain.ItemPending && age > domain.ReportSettleLimit {
+		item.Status = domain.ItemFailed
+	}
+	return item.Status != before
+}
+
+// ExpireAttempt submits a sitting whose deadline has passed. It is the
+// scheduled job's entry point, and it also rebuilds a report a crash left unwritten.
 func (s *Service) ExpireAttempt(ctx context.Context, attemptID uuid.UUID) error {
 	if s.repo == nil {
 		return nil
 	}
 	attempt, err := s.repo.GetExamAttemptByID(ctx, attemptID)
-	if err != nil || attempt == nil {
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && attempt == nil) {
+		// A sitting that no longer exists has nothing to expire; the job is done.
 		return nil
 	}
-	if attempt.Status != domain.StatusInProgress {
+	if err != nil {
+		return fmt.Errorf("load sitting %s: %w", attemptID, err)
+	}
+	if attempt.Status == domain.StatusInProgress && !domain.IsPastDeadline(attempt.DeadlineAt, s.clock.Now().UTC()) {
 		return nil
 	}
-	_, subErr := s.SubmitExam(ctx, attempt.UserID, attemptID, domain.SubmittedByExpiry)
-	return subErr
+	_, err = s.submit(ctx, attempt, domain.SubmittedByExpiry)
+	return err
 }
 
-// SweepExpired finds in-progress attempts past their deadline and submits them as expired.
+// SweepExpired submits sittings past their deadline and settles pending reports.
 func (s *Service) SweepExpired(ctx context.Context) error {
 	if s.repo == nil {
 		return nil
 	}
 	now := s.clock.Now().UTC()
-	overdue, err := s.repo.ListExpiredInProgressAttempts(ctx, now)
+	overdue, err := s.repo.ListExpiredInProgressAttempts(ctx, now.Add(-domain.NetworkGracePeriod))
 	if err != nil {
 		return err
 	}
@@ -823,64 +989,83 @@ func (s *Service) SweepExpired(ctx context.Context) error {
 			slog.WarnContext(ctx, "failed expiring overdue sitting", "attempt_id", att.ID, "error", err)
 		}
 	}
+
+	pending, err := s.repo.ListPendingScoreReports(ctx)
+	if err != nil {
+		return fmt.Errorf("list pending score reports: %w", err)
+	}
+	for i := range pending {
+		if _, err := s.settleReport(ctx, &pending[i]); err != nil {
+			slog.WarnContext(ctx, "failed settling a score report", "attempt_id", pending[i].AttemptID, "error", err)
+		}
+	}
 	return nil
 }
 
-// GetScoreReport returns the score report for an attempt.
+// GetScoreReport returns the report for the caller's sitting.
 func (s *Service) GetScoreReport(ctx context.Context, userID, attemptID uuid.UUID) (*ScoreReportDTO, error) {
-	if s.repo == nil {
-		return nil, domain.ErrReportNotReady
-	}
-	report, err := s.repo.GetScoreReportByAttemptID(ctx, attemptID)
+	attempt, err := s.sittingFor(ctx, userID, attemptID)
 	if err != nil {
-		return nil, domain.ErrReportNotReady
-	}
-	if report.UserID != userID {
-		return nil, domain.ErrUnauthorizedAttempt
+		return nil, err
 	}
 
-	now := s.clock.Now().UTC()
-	// If still pending after 1 hour, transition to partial (WO12 §3.6)
-	if report.Status == domain.ReportStatusPending && now.Sub(report.CreatedAt) > 1*time.Hour {
-		var scoreNumeric pgtype.Numeric
-		_ = scoreNumeric.Scan("0.00")
-		if updated, uErr := s.repo.UpdateScoreReport(ctx, sqlc.UpdateScoreReportParams{
-			AttemptID:        report.AttemptID,
-			OverallScore:     report.OverallScore,
-			OverallBand:      report.OverallBand,
-			Status:           domain.ReportStatusPartial,
-			PerSection:       report.PerSection,
-			Feedback:         report.Feedback,
-			IntegritySignals: report.IntegritySignals,
-			UpdatedAt:        now,
-		}); uErr == nil {
-			report = updated
+	if attempt.Status == domain.StatusInProgress {
+		if !domain.IsPastDeadline(attempt.DeadlineAt, s.clock.Now().UTC()) {
+			return nil, domain.ErrReportNotReady
+		}
+		if _, err := s.submit(ctx, attempt, domain.SubmittedByExpiry); err != nil {
+			return nil, err
+		}
+		if refreshed, rErr := s.repo.GetExamAttemptByID(ctx, attemptID); rErr == nil && refreshed != nil {
+			attempt = refreshed
 		}
 	}
 
-	var perSection []SectionScoreDTO
+	report, err := s.repo.GetScoreReportByAttemptID(ctx, attemptID)
+	if err != nil || report == nil {
+		report, err = s.ensureReport(ctx, attempt)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if settled, sErr := s.settleReport(ctx, report); sErr != nil {
+		slog.WarnContext(ctx, "could not settle a score report on read", "attempt_id", attemptID, "error", sErr)
+	} else {
+		report = settled
+	}
+
+	var perSection []domain.SectionOutcome
 	_ = json.Unmarshal(report.PerSection, &perSection)
-	var feedback map[string]any
-	_ = json.Unmarshal(report.Feedback, &feedback)
-	var signals []map[string]any
+	if perSection == nil {
+		perSection = []domain.SectionOutcome{}
+	}
+	var signals []IntegritySignalDTO
 	_ = json.Unmarshal(report.IntegritySignals, &signals)
+	if signals == nil {
+		signals = []IntegritySignalDTO{}
+	}
+	overall, _ := report.OverallScore.Float64Value()
 
-	scoreFloat, _ := report.OverallScore.Float64Value()
-
-	return &ScoreReportDTO{
+	dto := &ScoreReportDTO{
 		AttemptID:        report.AttemptID,
+		Mode:             attempt.Mode,
 		Status:           report.Status,
-		OverallScore:     scoreFloat.Float64,
+		OverallScore:     overall.Float64,
 		OverallBand:      report.OverallBand,
 		PerSection:       perSection,
-		Feedback:         feedback,
 		IntegritySignals: signals,
 		Disclaimer:       OfficialDisclaimer,
-	}, nil
+	}
+	if attempt.SubmittedBy != nil {
+		dto.SubmittedBy = *attempt.SubmittedBy
+	}
+	return dto, nil
 }
 
-// ListUserAttempts returns paginated past sittings for the caller.
-func (s *Service) ListUserAttempts(ctx context.Context, userID uuid.UUID, limit, offset int32) ([]ExamAttemptDTO, int64, error) {
+// ListUserAttempts returns the caller's sittings, newest first, with the total.
+func (s *Service) ListUserAttempts(
+	ctx context.Context, userID uuid.UUID, limit, offset int32,
+) ([]ExamAttemptDTO, int64, error) {
 	if s.repo == nil {
 		return nil, 0, nil
 	}
@@ -894,54 +1079,76 @@ func (s *Service) ListUserAttempts(ctx context.Context, userID uuid.UUID, limit,
 	}
 
 	now := s.clock.Now().UTC()
+	exams := make(map[uuid.UUID]*sqlc.AssessExam)
 	attempts := make([]ExamAttemptDTO, len(rows))
-	for i, r := range rows {
-		attempts[i] = ExamAttemptDTO{
-			ID:                    r.ID,
-			ExamID:                r.ExamID,
-			Mode:                  r.Mode,
-			ChosenDurationMinutes: int(r.ChosenDurationMinutes),
-			StartedAt:             r.StartedAt,
-			DeadlineAt:            r.DeadlineAt,
-			RemainingSeconds:      domain.RemainingSeconds(r.DeadlineAt, now),
-			CurrentSection:        int(r.CurrentSection),
-			Status:                r.Status,
-			ServerTime:            now,
+	for i := range rows {
+		exam, seen := exams[rows[i].ExamID]
+		if !seen {
+			if found, eErr := s.repo.GetExamByID(ctx, rows[i].ExamID); eErr == nil {
+				exam = found
+			}
+			exams[rows[i].ExamID] = exam
 		}
+		attempts[i] = s.attemptDTO(&rows[i], exam, now, false)
 	}
 	return attempts, total, nil
+}
+
+// SittingsToday reports how many sittings the caller has started today and the daily limit.
+func (s *Service) SittingsToday(ctx context.Context, userID uuid.UUID) (SittingsToday, error) {
+	if s.repo == nil {
+		return SittingsToday{Limit: s.dailyLimit}, nil
+	}
+	return s.sittingsToday(ctx, userID, s.clock.Now().UTC())
+}
+
+func (s *Service) sittingsToday(ctx context.Context, userID uuid.UUID, now time.Time) (SittingsToday, error) {
+	loc, err := time.LoadLocation(HoChiMinhTimeZone)
+	if err != nil {
+		loc = time.FixedZone("ICT", 7*60*60)
+	}
+	local := now.In(loc)
+	start := time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, loc).UTC()
+	count, err := s.repo.CountUserAttemptsToday(ctx, userID, start, start.Add(24*time.Hour))
+	if err != nil {
+		return SittingsToday{}, err
+	}
+	return SittingsToday{Used: int(count), Limit: s.dailyLimit}, nil
 }
 
 // AttemptHistory implements contract.Reader.
 func (s *Service) AttemptHistory(
 	ctx context.Context, userID uuid.UUID, limit, offset int,
 ) ([]examcontract.AttemptSummary, int, error) {
-	attempts, total, err := s.ListUserAttempts(ctx, userID, int32(limit), int32(offset))
+	attempts, total, err := s.ListUserAttempts(ctx, userID, clampInt32(limit), clampInt32(offset))
 	if err != nil {
 		return nil, 0, err
 	}
 	summaries := make([]examcontract.AttemptSummary, len(attempts))
 	for i, a := range attempts {
 		summaries[i] = examcontract.AttemptSummary{
-			ID:        a.ID,
-			ExamID:    a.ExamID,
-			Mode:      a.Mode,
-			StartedAt: a.StartedAt,
-			Status:    a.Status,
+			ID:          a.ID,
+			ExamID:      a.ExamID,
+			ExamSlug:    a.ExamSlug,
+			ExamTitle:   a.ExamTitle,
+			Mode:        a.Mode,
+			StartedAt:   a.StartedAt,
+			SubmittedAt: a.SubmittedAt,
+			Status:      a.Status,
 		}
 	}
 	return summaries, int(total), nil
 }
 
-// LatestBand implements contract.Reader.
+// LatestBand implements contract.Reader: the band of the latest sitting with a scored report.
 func (s *Service) LatestBand(ctx context.Context, userID uuid.UUID) (*string, error) {
 	attempts, _, err := s.ListUserAttempts(ctx, userID, 1, 0)
 	if err != nil || len(attempts) == 0 {
 		return nil, err
 	}
 	rep, rErr := s.repo.GetScoreReportByAttemptID(ctx, attempts[0].ID)
-	if rErr != nil || rep == nil {
-		return nil, nil
+	if rErr != nil || rep == nil || rep.Status == domain.ReportStatusPending || rep.OverallBand == "" {
+		return nil, nil //nolint:nilerr // no report yet is no band, not a failure
 	}
 	return &rep.OverallBand, nil
 }
@@ -953,7 +1160,216 @@ func (s *Service) IsExamPoolActivity(ctx context.Context, activityID uuid.UUID) 
 	}
 	act, err := s.lesson.ResolveActivity(ctx, activityID)
 	if err != nil || act == nil {
-		return false, nil
+		return false, nil //nolint:nilerr // an activity that cannot be resolved is not a pool item
 	}
 	return act.CourseSlug == ExamPoolCourseSlug, nil
+}
+
+// ListeningPlayPolicy says how many plays a clip has in the caller's sitting.
+//
+// The sitting must be the caller's, still open, and hold the clip — in exam
+// mode, in the section that is open now. Exam mode allows one play, practice
+// mode three. listening asks this through an interface it declares.
+func (s *Service) ListeningPlayPolicy(ctx context.Context, userID, sittingID, versionID uuid.UUID) (int, error) {
+	attempt, err := s.sittingFor(ctx, userID, sittingID)
+	if err != nil {
+		return 0, domain.ErrPlayNotAllowed
+	}
+	now := s.clock.Now().UTC()
+	if attempt.Status != domain.StatusInProgress || domain.IsPastDeadline(attempt.DeadlineAt, now) {
+		return 0, domain.ErrPlayNotAllowed
+	}
+	current := s.currentSection(attempt, now)
+	for _, sec := range decodeSections(attempt) {
+		for _, act := range sec.Activities {
+			if act.ContentVersionID != versionID || act.Kind != kindListeningComprehension {
+				continue
+			}
+			if attempt.Mode == domain.ModeExam && sec.SectionPosition != current {
+				return 0, domain.ErrPlayNotAllowed
+			}
+			return domain.ListeningPlays(attempt.Mode), nil
+		}
+	}
+	return 0, domain.ErrPlayNotAllowed
+}
+
+// ---------------------------------------------------------------------------
+// helpers
+// ---------------------------------------------------------------------------
+
+func (s *Service) sittingFor(ctx context.Context, userID, attemptID uuid.UUID) (*sqlc.AssessExamAttempt, error) {
+	if s.repo == nil {
+		return nil, domain.ErrAttemptNotFound
+	}
+	attempt, err := s.repo.GetExamAttemptForUser(ctx, attemptID, userID)
+	if err != nil || attempt == nil {
+		return nil, domain.ErrAttemptNotFound
+	}
+	return attempt, nil
+}
+
+func (s *Service) currentSection(attempt *sqlc.AssessExamAttempt, now time.Time) int {
+	if attempt.Mode != domain.ModeExam {
+		return int(attempt.CurrentSection)
+	}
+	return domain.CurrentExamSection(attempt.StartedAt, int(attempt.CurrentSection), now)
+}
+
+// persistSection stores the section an exam-mode sitting's clock has moved it to.
+func (s *Service) persistSection(ctx context.Context, attempt *sqlc.AssessExamAttempt, now time.Time) {
+	if attempt.Status != domain.StatusInProgress || attempt.Mode != domain.ModeExam {
+		return
+	}
+	current := s.currentSection(attempt, now)
+	if current <= int(attempt.CurrentSection) {
+		return
+	}
+	if updated, err := s.repo.UpdateCurrentSection(
+		ctx, attempt.ID, clampInt32(current), now,
+	); err == nil && updated != nil {
+		*attempt = *updated
+	}
+}
+
+func (s *Service) attemptDTO(
+	attempt *sqlc.AssessExamAttempt, exam *sqlc.AssessExam, now time.Time, withContent bool,
+) ExamAttemptDTO {
+	current := s.currentSection(attempt, now)
+	dto := ExamAttemptDTO{
+		ID:                    attempt.ID,
+		ExamID:                attempt.ExamID,
+		Mode:                  attempt.Mode,
+		ChosenDurationMinutes: int(attempt.ChosenDurationMinutes),
+		StartedAt:             attempt.StartedAt,
+		DeadlineAt:            attempt.DeadlineAt,
+		RemainingSeconds:      domain.RemainingSeconds(attempt.DeadlineAt, now),
+		CurrentSection:        current,
+		Status:                attempt.Status,
+		SubmittedAt:           attempt.SubmittedAt,
+		ServerTime:            now,
+	}
+	if exam != nil {
+		dto.ExamSlug = exam.Slug
+		dto.ExamTitle = exam.TitleEn
+		dto.Level = exam.Level
+	}
+	if attempt.Status != domain.StatusInProgress {
+		dto.RemainingSeconds = 0
+	} else if attempt.Mode == domain.ModeExam {
+		end := sectionEnd(attempt, current)
+		dto.SectionDeadlineAt = &end
+		dto.SectionRemainingSeconds = sectionRemaining(attempt, current, now)
+	}
+	if withContent {
+		dto.SectionActivities = decodeSections(attempt)
+		dto.DraftAnswers = decodeAnswers(attempt)
+	}
+	return dto
+}
+
+func sectionEnd(attempt *sqlc.AssessExamAttempt, section int) time.Time {
+	end := domain.SectionDeadline(attempt.StartedAt, section)
+	if end.After(attempt.DeadlineAt) {
+		end = attempt.DeadlineAt
+	}
+	return end
+}
+
+func sectionRemaining(attempt *sqlc.AssessExamAttempt, section int, now time.Time) *int {
+	if attempt.Mode != domain.ModeExam {
+		return nil
+	}
+	remaining := domain.RemainingSeconds(sectionEnd(attempt, section), now)
+	return &remaining
+}
+
+func decodeSections(attempt *sqlc.AssessExamAttempt) []SectionActivities {
+	var drawn []SectionActivities
+	_ = json.Unmarshal(attempt.SectionActivities, &drawn)
+	return drawn
+}
+
+func decodeAnswers(attempt *sqlc.AssessExamAttempt) map[string]json.RawMessage {
+	answers := make(map[string]json.RawMessage)
+	_ = json.Unmarshal(attempt.DraftAnswers, &answers)
+	return answers
+}
+
+func activityPositions(sections []SectionActivities) map[uuid.UUID]int {
+	positions := make(map[uuid.UUID]int)
+	for _, sec := range sections {
+		for _, act := range sec.Activities {
+			positions[act.ID] = sec.SectionPosition
+		}
+	}
+	return positions
+}
+
+func skeletonOutcomes(sections []SectionActivities) []domain.SectionOutcome {
+	outcomes := make([]domain.SectionOutcome, len(sections))
+	for i, sec := range sections {
+		items := make([]domain.ItemOutcome, len(sec.Activities))
+		for j, act := range sec.Activities {
+			items[j] = domain.ItemOutcome{
+				ActivityID:       act.ID,
+				ContentVersionID: act.ContentVersionID,
+				Kind:             act.Kind,
+				Status:           domain.ItemPending,
+			}
+		}
+		outcomes[i] = domain.SectionOutcome{
+			Position: sec.SectionPosition,
+			Skill:    sec.Skill,
+			Status:   domain.SectionPending,
+			Items:    items,
+		}
+	}
+	return outcomes
+}
+
+func isEmptyAnswer(raw json.RawMessage) bool {
+	switch string(raw) {
+	case "", "null", "{}", `""`, "[]":
+		return true
+	default:
+		return false
+	}
+}
+
+func (s *Service) integritySignals(ctx context.Context, attemptID uuid.UUID) ([]IntegritySignalDTO, []byte) {
+	events, err := s.repo.ListIntegrityEvents(ctx, attemptID)
+	if err != nil {
+		slog.WarnContext(ctx, "could not list integrity signals", "attempt_id", attemptID, "error", err)
+	}
+	counts := make(map[string]int)
+	var order []string
+	for _, ev := range events {
+		if _, seen := counts[ev.Kind]; !seen {
+			order = append(order, ev.Kind)
+		}
+		counts[ev.Kind]++
+	}
+	signals := make([]IntegritySignalDTO, 0, len(order))
+	for _, kind := range order {
+		signals = append(signals, IntegritySignalDTO{Kind: kind, Count: counts[kind]})
+	}
+	b, _ := json.Marshal(signals)
+	return signals, b
+}
+
+func numericOf(v float64) pgtype.Numeric {
+	var n pgtype.Numeric
+	_ = n.Scan(strconv.FormatFloat(v, 'f', 2, 64))
+	return n
+}
+
+func clampInt32(v int) int32 {
+	if v > math.MaxInt32 {
+		return math.MaxInt32
+	}
+	if v < 0 {
+		return 0
+	}
+	return int32(v)
 }

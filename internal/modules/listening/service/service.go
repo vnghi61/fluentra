@@ -13,7 +13,6 @@ import (
 	contentcontract "github.com/fluentra/fluentra/internal/modules/content/contract"
 	learningcontract "github.com/fluentra/fluentra/internal/modules/learning/contract"
 	"github.com/fluentra/fluentra/internal/modules/listening/domain"
-	"github.com/fluentra/fluentra/internal/platform/media"
 	"github.com/fluentra/fluentra/internal/platform/storage"
 	"github.com/fluentra/fluentra/internal/shared/clock"
 )
@@ -39,6 +38,17 @@ type AttemptReader interface {
 	GetAttemptForGrading(ctx context.Context, attemptID uuid.UUID) (*learningcontract.AttemptDetail, error)
 }
 
+// SittingPlayPolicy says how many plays a clip has in an exam sitting. cmd/api
+// implements it with the exam module, which listening may not import.
+type SittingPlayPolicy interface {
+	ListeningPlayPolicy(ctx context.Context, userID, sittingID, versionID uuid.UUID) (int, error)
+}
+
+// AudioLocator finds the rendered clip for a script in the TTS cache.
+type AudioLocator interface {
+	AudioKey(ctx context.Context, script, voice string) (objectKey string, found bool, err error)
+}
+
 // StorageSigner generates short-lived presigned URLs for audio playback.
 type StorageSigner interface {
 	PresignGet(ctx context.Context, bucket, objectKey string, expiry time.Duration) (string, error)
@@ -50,6 +60,8 @@ type Deps struct {
 	Content  ContentReader
 	Learning AttemptReader
 	Storage  StorageSigner
+	Sittings SittingPlayPolicy
+	Audio    AudioLocator
 	Clock    clock.Clock
 }
 
@@ -59,6 +71,8 @@ type Service struct {
 	content  ContentReader
 	learning AttemptReader
 	storage  StorageSigner
+	sittings SittingPlayPolicy
+	audio    AudioLocator
 	clock    clock.Clock
 }
 
@@ -73,6 +87,8 @@ func New(deps Deps) *Service {
 		content:  deps.Content,
 		learning: deps.Learning,
 		storage:  deps.Storage,
+		sittings: deps.Sittings,
+		audio:    deps.Audio,
 		clock:    timekeeper,
 	}
 }
@@ -101,34 +117,20 @@ func (s *Service) RecordPlay(
 		return nil, domain.ErrInvalidContext
 	}
 
-	version, err := s.content.GetVersion(ctx, versionID)
-	if err != nil || version == nil {
-		return nil, domain.ErrItemNotFound
-	}
-	if version.Kind != domain.KindListeningComprehension {
-		return nil, domain.ErrItemNotFound
+	body, err := s.loadBody(ctx, versionID)
+	if err != nil {
+		return nil, err
 	}
 
-	var body listeningBody
-	if len(version.Body) > 0 {
-		if err := json.Unmarshal(version.Body, &body); err != nil {
-			return nil, fmt.Errorf("unmarshal listening body: %w", err)
-		}
+	audioKey, err := s.audioKey(ctx, body)
+	if err != nil {
+		return nil, err
 	}
 
-	audioKey := strings.TrimSpace(body.AudioObjectKey)
-	if audioKey == "" && strings.TrimSpace(body.Script) != "" {
-		voice := body.Voice
-		if voice == "" {
-			voice = "en_US-lessac-medium"
-		}
-		audioKey = fmt.Sprintf("tts/%s/%s.mp3", voice, media.HashText(body.Script))
+	maxAllowed, err := s.playsAllowed(ctx, userID, versionID, contextType, contextID)
+	if err != nil {
+		return nil, err
 	}
-	if audioKey == "" {
-		return nil, domain.ErrAudioNotReady
-	}
-
-	maxAllowed := domain.MaxPlays(contextType)
 	existingCount, err := s.repo.CountPlays(ctx, userID, versionID, contextID)
 	if err != nil {
 		return nil, err
@@ -163,6 +165,71 @@ func (s *Service) RecordPlay(
 		ExpiresAt:    s.clock.Now().Add(expiry),
 	}, nil
 }
+
+// loadBody reads a listening item's full body; anything that is not a listening item is not found.
+func (s *Service) loadBody(ctx context.Context, versionID uuid.UUID) (listeningBody, error) {
+	var body listeningBody
+	version, err := s.content.GetVersion(ctx, versionID)
+	if err != nil || version == nil || version.Kind != domain.KindListeningComprehension {
+		return body, domain.ErrItemNotFound
+	}
+	if len(version.Body) > 0 {
+		if err := json.Unmarshal(version.Body, &body); err != nil {
+			return body, fmt.Errorf("unmarshal listening body: %w", err)
+		}
+	}
+	return body, nil
+}
+
+// audioKey is the clip's object: named in the body, or found in the TTS cache,
+// where the offline renderer records it without touching the published body.
+func (s *Service) audioKey(ctx context.Context, body listeningBody) (string, error) {
+	if key := strings.TrimSpace(body.AudioObjectKey); key != "" {
+		return key, nil
+	}
+	if s.audio == nil || strings.TrimSpace(body.Script) == "" {
+		return "", domain.ErrAudioNotReady
+	}
+	key, found, err := s.audio.AudioKey(ctx, body.Script, body.Voice)
+	if err != nil {
+		return "", fmt.Errorf("look up listening audio: %w", err)
+	}
+	if !found {
+		return "", domain.ErrAudioNotReady
+	}
+	return key, nil
+}
+
+// playsAllowed checks that the context belongs to the caller and holds the clip,
+// and returns its play limit.
+//
+// The context is what the limit counts against, so it cannot be taken on the
+// client's word: a new random context_id per request would be a fresh set of
+// plays every time, and the limit would be no limit.
+func (s *Service) playsAllowed(
+	ctx context.Context, userID, versionID uuid.UUID, contextType string, contextID uuid.UUID,
+) (int, error) {
+	if contextType == domain.ContextTypeExam {
+		if s.sittings == nil {
+			return 0, domain.ErrPlayNotAllowed
+		}
+		return s.sittings.ListeningPlayPolicy(ctx, userID, contextID, versionID)
+	}
+
+	if s.learning == nil {
+		return 0, domain.ErrPlayNotAllowed
+	}
+	attempt, err := s.learning.GetAttemptForGrading(ctx, contextID)
+	if err != nil || attempt == nil {
+		return 0, domain.ErrPlayNotAllowed
+	}
+	if attempt.UserID != userID || attempt.ContentVersionID != versionID || attempt.Status != attemptInProgress {
+		return 0, domain.ErrPlayNotAllowed
+	}
+	return domain.MaxAttemptPlays, nil
+}
+
+const attemptInProgress = "in_progress"
 
 // GetTranscript returns the script only if the caller owns a graded attempt for this content version.
 func (s *Service) GetTranscript(

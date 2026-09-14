@@ -417,6 +417,7 @@ func run(ctx context.Context) error {
 		WritingDailyLimit: cfg.AI.WritingDailyLimit,
 		SpeechDailyLimit:  cfg.Speech.DailyRecordingsLimit,
 		SpeechASRModel:    cfg.Speech.ASRModel,
+		ExamDailyLimit:    cfg.Exam.DailySittingsLimit,
 		Transcriber:       mediaTranscriber,
 	})
 

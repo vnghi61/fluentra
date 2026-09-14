@@ -6,6 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -23,6 +24,9 @@ import (
 )
 
 type ttsCLIConfig struct {
+	App struct {
+		Environment string `koanf:"environment"`
+	} `koanf:"app"`
 	Database struct {
 		DSN string `koanf:"dsn"`
 	} `koanf:"db"`
@@ -35,8 +39,7 @@ type ttsCLIConfig struct {
 		UsePostPolicy bool   `koanf:"use_post_policy"`
 	} `koanf:"s3"`
 	Speech struct {
-		TTSEngine string `koanf:"tts_engine"`
-		TTSVoice  string `koanf:"tts_voice"`
+		TTSVoice string `koanf:"tts_voice"`
 	} `koanf:"speech"`
 }
 
@@ -50,51 +53,31 @@ func main() {
 func run(ctx context.Context, args []string, out io.Writer) error {
 	flags := flag.NewFlagSet("tts", flag.ContinueOnError)
 	textFlag := flags.String("text", "", "Text to synthesise")
-	voiceFlag := flags.String("voice", "", "Voice name (e.g. en_US-lessac-medium)")
-	engineFlag := flags.String("engine", "mock", "TTS engine (mock | piper)")
-	allFlag := flags.Bool("all", false, "Synthesise all listening_comprehension content versions in database")
+	voiceFlag := flags.String("voice", "", "Voice name, the model file without .onnx (e.g. en_US-lessac-medium)")
+	engineFlag := flags.String("engine", media.EnginePiper, "TTS engine: piper, or mock for local development only")
+	piperFlag := flags.String("piper", media.EnginePiper, "Path to the piper binary")
+	modelsFlag := flags.String("models", "", "Directory holding the piper voice models")
+	versionFlag := flags.String("engine-version", "", "Engine version recorded in the TTS cache")
+	allFlag := flags.Bool("all", false, "Render every listening_comprehension script that has no clip yet")
 
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
-
 	if *textFlag == "" && !*allFlag {
-		fmt.Fprintln(out, "Usage: tts [-text <text> -voice <voice>] [-all] [-engine <mock|piper>]")
+		_, _ = fmt.Fprintln(out,
+			"Usage: tts [-text <text> -voice <voice>] [-all] [-engine piper|mock] [-piper <bin>] [-models <dir>]")
 		return nil
 	}
 
-	var cfg ttsCLIConfig
-	opts := config.Options{
-		Defaults: map[string]any{
-			"speech.tts_engine": "mock",
-			"speech.tts_voice":  "en_US-lessac-medium",
-			"s3.endpoint":       "localhost:9000",
-			"s3.access_key":     "minioadmin",
-			"s3.secret_key":     "minioadmin",
-			"s3.region":         "us-east-1",
-			"s3.use_ssl":        false,
-		},
-		EnvSections: []string{"SPEECH"},
-		Required: []config.RequiredKey{
-			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},
-		},
+	cfg, err := loadTTSConfig(ctx)
+	if err != nil {
+		return err
 	}
-	if err := config.Load(ctx, opts, &cfg); err != nil {
-		return fmt.Errorf("load config: %w", err)
+	engine, err := engineFor(*engineFlag, *piperFlag, *modelsFlag, *versionFlag, cfg.App.Environment)
+	if err != nil {
+		return err
 	}
-
-	voice := *voiceFlag
-	if voice == "" {
-		voice = cfg.Speech.TTSVoice
-	}
-	if voice == "" {
-		voice = "en_US-lessac-medium"
-	}
-
-	engineName := *engineFlag
-	if engineName == "" {
-		engineName = cfg.Speech.TTSEngine
-	}
+	voice := firstNonEmpty(*voiceFlag, cfg.Speech.TTSVoice, media.DefaultVoice)
 
 	db, err := sql.Open("pgx", cfg.Database.DSN)
 	if err != nil {
@@ -102,29 +85,9 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	}
 	defer func() { _ = db.Close() }()
 
-	endpoint := strings.TrimPrefix(strings.TrimPrefix(cfg.Storage.Endpoint, "https://"), "http://")
-	minioClient, err := minio.New(endpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(cfg.Storage.AccessKey, cfg.Storage.SecretKey, ""),
-		Secure: cfg.Storage.UseSSL,
-		Region: cfg.Storage.Region,
-	})
+	uploader, err := newUploader(cfg)
 	if err != nil {
-		return fmt.Errorf("create minio client: %w", err)
-	}
-
-	var uploader storage.Store
-	if cfg.Storage.UsePostPolicy {
-		uploader = storage.NewMinIOStore(minioClient)
-	} else {
-		uploader = storage.NewMinIOStoreNoPostPolicy(minioClient)
-	}
-
-	var engine media.SynthesiserEngine
-	switch engineName {
-	case "piper":
-		engine = &media.MockSynthesiserEngine{Name: "piper", Version: "1.0.0"}
-	default:
-		engine = &media.MockSynthesiserEngine{Name: "mock", Version: "1.0.0"}
+		return err
 	}
 
 	if *textFlag != "" {
@@ -132,18 +95,84 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(out, "Successfully synthesised clip: %s\n", key)
+		_, _ = fmt.Fprintf(out, "Rendered clip: %s\n", key)
 	}
-
 	if *allFlag {
 		count, err := processAll(ctx, db, uploader, engine, voice, out)
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(out, "Finished processing: %d clips verified or synthesised\n", count)
+		_, _ = fmt.Fprintf(out, "Finished: %d clips rendered or already cached\n", count)
 	}
-
 	return nil
+}
+
+func loadTTSConfig(ctx context.Context) (ttsCLIConfig, error) {
+	var cfg ttsCLIConfig
+	opts := config.Options{
+		Defaults: map[string]any{
+			"app.environment":  "development",
+			"speech.tts_voice": media.DefaultVoice,
+			"s3.endpoint":      "localhost:9000",
+			"s3.access_key":    "minioadmin",
+			"s3.secret_key":    "minioadmin",
+			"s3.region":        "us-east-1",
+			"s3.use_ssl":       false,
+		},
+		EnvSections: []string{"SPEECH"},
+		Required: []config.RequiredKey{
+			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},
+		},
+	}
+	if err := config.Load(ctx, opts, &cfg); err != nil {
+		return cfg, fmt.Errorf("load config: %w", err)
+	}
+	return cfg, nil
+}
+
+// engineFor builds the engine. The mock renders a few bytes that are not audio,
+// so it is refused anywhere but a development database: a learner would get a
+// play URL for silence and no one would notice until they pressed play.
+func engineFor(name, piperBinary, modelDir, version, environment string) (media.SynthesiserEngine, error) {
+	switch name {
+	case media.EnginePiper:
+		if modelDir == "" {
+			return nil, errors.New("-models is required: the directory holding the piper voice models")
+		}
+		return media.NewPiperEngine(piperBinary, modelDir, version), nil
+	case media.EngineMock:
+		if environment == "production" || environment == "staging" {
+			return nil, fmt.Errorf("the mock engine renders no audio and is refused in %s", environment)
+		}
+		return &media.MockSynthesiserEngine{Name: media.EngineMock, Version: "1.0.0"}, nil
+	default:
+		return nil, fmt.Errorf("unknown engine %q: use piper or mock", name)
+	}
+}
+
+func newUploader(cfg ttsCLIConfig) (storage.Store, error) {
+	endpoint := strings.TrimPrefix(strings.TrimPrefix(cfg.Storage.Endpoint, "https://"), "http://")
+	minioClient, err := minio.New(endpoint, &minio.Options{
+		Creds:  credentials.NewStaticV4(cfg.Storage.AccessKey, cfg.Storage.SecretKey, ""),
+		Secure: cfg.Storage.UseSSL,
+		Region: cfg.Storage.Region,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create minio client: %w", err)
+	}
+	if cfg.Storage.UsePostPolicy {
+		return storage.NewMinIOStore(minioClient), nil
+	}
+	return storage.NewMinIOStoreNoPostPolicy(minioClient), nil
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, v := range values {
+		if strings.TrimSpace(v) != "" {
+			return v
+		}
+	}
+	return ""
 }
 
 func processItem(
@@ -154,7 +183,6 @@ func processItem(
 	text, voice string,
 ) (string, error) {
 	textHash := media.HashText(text)
-	objectKey := fmt.Sprintf("tts/%s/%s.mp3", voice, textHash)
 
 	// Check if already in cache
 	var existingKey string
@@ -172,8 +200,11 @@ func processItem(
 	if err != nil {
 		return "", fmt.Errorf("render audio: %w", err)
 	}
+	objectKey := media.ObjectKey(voice, textHash, mimeType)
 
-	if err := uploader.Put(ctx, storage.BucketMedia, objectKey, bytes.NewReader(data), int64(len(data)), mimeType); err != nil {
+	if err := uploader.Put(
+		ctx, storage.BucketMedia, objectKey, bytes.NewReader(data), int64(len(data)), mimeType,
+	); err != nil {
 		return "", fmt.Errorf("upload audio to storage: %w", err)
 	}
 
@@ -239,11 +270,11 @@ func processAll(
 
 		key, err := processItem(ctx, db, uploader, engine, body.Script, voice)
 		if err != nil {
-			fmt.Fprintf(out, "Warning: failed to synthesise item %s: %v\n", id, err)
+			_, _ = fmt.Fprintf(out, "Warning: failed to synthesise item %s: %v\n", id, err)
 			continue
 		}
 		processed++
-		fmt.Fprintf(out, "Processed item %s -> %s\n", id, key)
+		_, _ = fmt.Fprintf(out, "Processed item %s -> %s\n", id, key)
 	}
 
 	return processed, rows.Err()

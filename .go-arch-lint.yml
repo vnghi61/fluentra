@@ -491,7 +491,7 @@ deps:
   m_speaking_service:    { mayDependOn: [m_speaking_domain, m_speaking_repository, c_speaking, c_content, c_learning, p_media, p_ai, p_storage, p_job, p_telemetry] }
   m_speaking_job:        { mayDependOn: [m_speaking_service, c_speaking, p_job, p_telemetry], anyVendorDeps: true }
   m_speaking_http:       { mayDependOn: [m_speaking_domain, m_speaking_service, c_speaking] }
-  m_speaking:            { mayDependOn: [m_speaking_domain, m_speaking_repository, m_speaking_service, m_speaking_job, m_speaking_http, c_speaking, c_content, c_learning, g_speaking, p_media, p_ai, p_storage, p_job, p_telemetry] }
+  m_speaking:            { mayDependOn: [m_speaking_domain, m_speaking_repository, m_speaking_service, m_speaking_job, m_speaking_http, c_speaking, c_content, c_learning, c_user, g_speaking, p_media, p_ai, p_storage, p_job, p_telemetry] }
   m_writing_repository: { mayDependOn: [c_writing, g_writing] }
   m_writing_service:    { mayDependOn: [c_writing, c_content, c_learning, p_ai, p_job, p_telemetry] }
   m_writing_job:        { mayDependOn: [m_writing_service, c_writing, c_content, c_learning, p_job, p_ai, p_telemetry], anyVendorDeps: true }
@@ -501,7 +501,7 @@ deps:
   m_exam_domain:     { mayDependOn: [c_exam] }
   m_exam_repository: { mayDependOn: [m_exam_domain, c_exam, g_exam] }
   m_exam_service:    { mayDependOn: [m_exam_domain, m_exam_repository, m_exam_job, c_exam, c_learning, c_lesson, c_listening, c_writing, c_speaking, g_exam, p_job, p_telemetry], anyVendorDeps: true }
-  m_exam_job:        { mayDependOn: [c_exam, p_job, p_telemetry], anyVendorDeps: true }
+  m_exam_job:        { mayDependOn: [m_exam_service, c_exam, p_job, p_telemetry], anyVendorDeps: true }
   m_exam_http:       { mayDependOn: [m_exam_domain, m_exam_service, c_exam] }
   m_exam:            { mayDependOn: [m_exam_domain, m_exam_repository, m_exam_service, m_exam_job, m_exam_http, c_exam, c_learning, c_lesson, c_listening, c_writing, c_speaking, c_questionbank, g_exam, p_job, p_ai, p_telemetry] }
   # c_user is on this list and is not in MODULE_INDEX's original arrow set. It

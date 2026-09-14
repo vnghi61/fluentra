@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 
@@ -153,6 +154,9 @@ type identityDeps struct {
 
 	// Transcriber is the audio transcription provider adapter.
 	Transcriber media.Transcriber
+
+	// ExamDailyLimit is the number of exam sittings a learner may start per day.
+	ExamDailyLimit int
 }
 
 // newIdentity constructs the modules in dependency order — audit, then rbac,
@@ -305,6 +309,8 @@ func newIdentity(deps identityDeps) *identity {
 		Content:  assembled.content.Reader(),
 		Learning: lazyAttemptReader{of: assembled},
 		Storage:  deps.Storage,
+		Sittings: lazyListeningSittings{of: assembled},
+		Audio:    media.NewCacheLocator(assembled.content.TTSCache()),
 	})
 
 	assembled.speaking = speaking.New(speaking.Deps{
@@ -324,12 +330,13 @@ func newIdentity(deps identityDeps) *identity {
 	assembled.exam = exam.New(exam.Deps{
 		Pool:         deps.Pool,
 		Learning:     lazySittingAnswerSubmitter{of: assembled},
+		Attempts:     lazyAttemptOutcomeReader{of: assembled},
 		Exposures:    lazyItemExposureRecorder{of: assembled},
 		Lesson:       assembled.lesson.Reader(),
 		Drawer:       lazyExamPoolDrawer{of: assembled},
 		Enqueuer:     deps.Enqueuer,
 		WorkerNudger: deps.WorkerNudger,
-		DailyLimit:   5,
+		DailyLimit:   deps.ExamDailyLimit,
 	})
 
 	assembled.learning = learning.New(learning.Deps{
@@ -353,6 +360,7 @@ func newIdentity(deps identityDeps) *identity {
 		),
 		Metrics:       deps.Instruments,
 		DeclaredKinds: buildDeclaredKinds(),
+		Audio:         media.NewCacheLocator(assembled.content.TTSCache()),
 		Env:           deps.Env,
 		AI:            deps.AI,
 	})
@@ -662,12 +670,12 @@ type lazyItemExposureRecorder struct{ of *identity }
 var _ learningcontract.ItemExposureRecorder = lazyItemExposureRecorder{}
 
 func (r lazyItemExposureRecorder) RecordItemExposures(
-	ctx context.Context, userID uuid.UUID, activityIDs []uuid.UUID,
+	ctx context.Context, tx pgx.Tx, userID uuid.UUID, activityIDs []uuid.UUID,
 ) error {
 	if r.of.learning == nil {
 		return fmt.Errorf("learning module is not assembled")
 	}
-	return r.of.learning.ItemExposureRecorder().RecordItemExposures(ctx, userID, activityIDs)
+	return r.of.learning.ItemExposureRecorder().RecordItemExposures(ctx, tx, userID, activityIDs)
 }
 
 func (r lazyItemExposureRecorder) ListItemExposures(
@@ -677,6 +685,32 @@ func (r lazyItemExposureRecorder) ListItemExposures(
 		return nil, fmt.Errorf("learning module is not assembled")
 	}
 	return r.of.learning.ItemExposureRecorder().ListItemExposures(ctx, userID, activityIDs)
+}
+
+type lazyAttemptOutcomeReader struct{ of *identity }
+
+var _ learningcontract.AttemptOutcomeReader = lazyAttemptOutcomeReader{}
+
+func (r lazyAttemptOutcomeReader) GetAttemptOutcome(
+	ctx context.Context, attemptID uuid.UUID,
+) (*learningcontract.AttemptOutcome, error) {
+	if r.of.learning == nil {
+		return nil, fmt.Errorf("learning module is not assembled")
+	}
+	return r.of.learning.AttemptOutcomeReader().GetAttemptOutcome(ctx, attemptID)
+}
+
+// lazyListeningSittings answers listening's play policy with the exam module,
+// which is assembled after listening and which listening may not import.
+type lazyListeningSittings struct{ of *identity }
+
+func (l lazyListeningSittings) ListeningPlayPolicy(
+	ctx context.Context, userID, sittingID, versionID uuid.UUID,
+) (int, error) {
+	if l.of.exam == nil {
+		return 0, fmt.Errorf("exam module is not assembled")
+	}
+	return l.of.exam.Service().ListeningPlayPolicy(ctx, userID, sittingID, versionID)
 }
 
 type lazyExamPoolDrawer struct{ of *identity }
@@ -713,7 +747,6 @@ func (d lazyExamPoolDrawer) DrawSitting(
 	}
 	return out, nil
 }
-
 
 // rateLimiterAdapter bridges platform/cache's limiter to the one httpx declares.
 //

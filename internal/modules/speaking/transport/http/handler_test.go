@@ -26,7 +26,9 @@ type fakeSpeakingService struct {
 	getFeedbackFn  func(ctx context.Context, attemptID, userID uuid.UUID) (*contract.SpeakingFeedback, error)
 }
 
-func (f *fakeSpeakingService) UploadIntent(ctx context.Context, userID uuid.UUID, contentType string) (*contract.UploadIntentResult, error) {
+func (f *fakeSpeakingService) UploadIntent(
+	ctx context.Context, userID uuid.UUID, contentType string,
+) (*contract.UploadIntentResult, error) {
 	if f.uploadIntentFn != nil {
 		return f.uploadIntentFn(ctx, userID, contentType)
 	}
@@ -40,7 +42,9 @@ func (f *fakeSpeakingService) DeleteAttemptRecording(ctx context.Context, attemp
 	return nil
 }
 
-func (f *fakeSpeakingService) GetSpeakingFeedback(ctx context.Context, attemptID, userID uuid.UUID) (*contract.SpeakingFeedback, error) {
+func (f *fakeSpeakingService) GetSpeakingFeedback(
+	ctx context.Context, attemptID, userID uuid.UUID,
+) (*contract.SpeakingFeedback, error) {
 	if f.getFeedbackFn != nil {
 		return f.getFeedbackFn(ctx, attemptID, userID)
 	}
@@ -65,7 +69,7 @@ func setupSpeakingRouter(svc speakinghttp.SpeakingService) chi.Router {
 func TestUploadIntent_Success(t *testing.T) {
 	userID := uuid.New()
 	svc := &fakeSpeakingService{
-		uploadIntentFn: func(ctx context.Context, uID uuid.UUID, ct string) (*contract.UploadIntentResult, error) {
+		uploadIntentFn: func(_ context.Context, uID uuid.UUID, ct string) (*contract.UploadIntentResult, error) {
 			assert.Equal(t, userID, uID)
 			assert.Equal(t, "audio/webm", ct)
 			return &contract.UploadIntentResult{
@@ -116,7 +120,7 @@ func TestDeleteRecording_Success(t *testing.T) {
 
 	var deletedAttempt, deletedUser uuid.UUID
 	svc := &fakeSpeakingService{
-		deleteRecordFn: func(ctx context.Context, aID, uID uuid.UUID) error {
+		deleteRecordFn: func(_ context.Context, aID, uID uuid.UUID) error {
 			deletedAttempt = aID
 			deletedUser = uID
 			return nil
@@ -141,7 +145,7 @@ func TestGetFeedback_Success(t *testing.T) {
 	attemptID := uuid.New()
 
 	svc := &fakeSpeakingService{
-		getFeedbackFn: func(ctx context.Context, aID, uID uuid.UUID) (*contract.SpeakingFeedback, error) {
+		getFeedbackFn: func(_ context.Context, aID, uID uuid.UUID) (*contract.SpeakingFeedback, error) {
 			assert.Equal(t, attemptID, aID)
 			assert.Equal(t, userID, uID)
 			return &contract.SpeakingFeedback{

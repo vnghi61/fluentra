@@ -23,6 +23,10 @@ const (
 var (
 	// ErrPlayLimitReached is returned when the user has exhausted allowed plays.
 	ErrPlayLimitReached = apperr.New(apperr.Forbidden, "PLAY_LIMIT_REACHED", "no plays remaining for this attempt")
+	// ErrPlayNotAllowed is returned when the context is not the caller's or does not hold the clip.
+	ErrPlayNotAllowed = apperr.New(
+		apperr.Forbidden, "LISTENING_PLAY_NOT_ALLOWED", "this clip cannot be played in this context",
+	)
 	// ErrTranscriptLocked is returned when attempting to access the transcript before the attempt is graded.
 	ErrTranscriptLocked = apperr.New(apperr.Forbidden, "TRANSCRIPT_LOCKED", "transcript not yet available")
 	// ErrAudioNotReady is returned when audio has not been synthesised or uploaded.

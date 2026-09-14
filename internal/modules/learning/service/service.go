@@ -210,6 +210,8 @@ type Deps struct {
 	AuthorResolver contract.AuthorResolver
 	// Synthesiser turns listening script text into pre-rendered audio.
 	Synthesiser AudioSynthesiser
+	// Audio finds a listening item's rendered clip when its body carries no key.
+	Audio contract.AudioLocator
 }
 
 // AudioSynthesiser produces pre-rendered audio for listening exercises.
@@ -239,6 +241,7 @@ type Service struct {
 	generatorAuthor uuid.UUID
 	authorResolver  contract.AuthorResolver
 	synthesiser     AudioSynthesiser
+	audio           contract.AudioLocator
 
 	// poolMu guards poolLayout, the practice pool's course and slot lessons,
 	// resolved once per process.
@@ -283,6 +286,7 @@ func New(deps Deps) *Service {
 		generatorAuthor: deps.GeneratorAuthorID,
 		authorResolver:  deps.AuthorResolver,
 		synthesiser:     deps.Synthesiser,
+		audio:           deps.Audio,
 	}
 }
 
@@ -296,7 +300,7 @@ func (s *Service) StartAttempt(ctx context.Context, userID, activityID uuid.UUID
 	}
 
 	// Anti-leak guard: exam pool activities cannot be started as standalone lesson attempts (WO12 §3.6)
-	if activity.CourseSlug == "pool-exam" {
+	if activity.CourseSlug == ExamPoolCourseSlug {
 		return nil, domain.ErrUnauthorizedAttemptAccess
 	}
 
@@ -383,7 +387,7 @@ func (s *Service) SubmitAttempt(
 	}
 
 	// Anti-leak guard: exam pool activities cannot be submitted via standalone attempt submit (WO12 §3.6)
-	if activity.CourseSlug == "pool-exam" {
+	if activity.CourseSlug == ExamPoolCourseSlug {
 		return nil, domain.ErrUnauthorizedAttemptAccess
 	}
 
@@ -700,7 +704,7 @@ func (s *Service) GradePreview(
 	}
 
 	// Anti-leak guard: exam pool activities cannot be preview graded (WO12 §3.6)
-	if activity.CourseSlug == "pool-exam" {
+	if activity.CourseSlug == ExamPoolCourseSlug {
 		return nil, domain.ErrActivityNotFound
 	}
 
@@ -1033,6 +1037,12 @@ func (s *Service) executeRollupSteps(
 		ctx, repo, userID, activity.LessonSkillFocus, gradeResult.Score, gradeResult.MaxScore,
 	); err != nil {
 		return err
+	}
+
+	// An exam pool item is not course material: it counts toward no lesson, unit
+	// or course progress and appears in no "continue learning" (work order 12 §3.6).
+	if activity.CourseSlug == ExamPoolCourseSlug {
+		return nil
 	}
 
 	return s.rollupLessonAndAbove(ctx, tx, repo, userID, activity, now)
@@ -2198,19 +2208,39 @@ func (s *Service) SweepStuckGrading(ctx context.Context) error {
 	return nil
 }
 
-// RecordItemExposures records item exposures for a learner.
-func (s *Service) RecordItemExposures(ctx context.Context, userID uuid.UUID, activityIDs []uuid.UUID) error {
+// RecordItemExposures records item exposures for a learner, inside tx when one is given.
+func (s *Service) RecordItemExposures(ctx context.Context, tx pgx.Tx, userID uuid.UUID, activityIDs []uuid.UUID) error {
+	repo := s.repo
+	if tx != nil {
+		repo = s.repo.WithTx(tx)
+	}
 	for _, actID := range activityIDs {
-		if err := s.repo.RecordItemExposure(ctx, userID, actID); err != nil {
-			return err
+		if err := repo.RecordItemExposure(ctx, userID, actID); err != nil {
+			return fmt.Errorf("record exposure of %s: %w", actID, err)
 		}
 	}
 	return nil
 }
 
 // ListItemExposures returns when the learner was last served each activity.
-func (s *Service) ListItemExposures(ctx context.Context, userID uuid.UUID, activityIDs []uuid.UUID) (map[uuid.UUID]time.Time, error) {
+func (s *Service) ListItemExposures(
+	ctx context.Context, userID uuid.UUID, activityIDs []uuid.UUID,
+) (map[uuid.UUID]time.Time, error) {
 	return s.repo.ListItemExposures(ctx, userID, activityIDs)
+}
+
+// GetAttemptOutcome implements contract.AttemptOutcomeReader.
+func (s *Service) GetAttemptOutcome(ctx context.Context, attemptID uuid.UUID) (*contract.AttemptOutcome, error) {
+	attempt, err := s.repo.GetAttemptByID(ctx, attemptID)
+	if err != nil {
+		return nil, err
+	}
+	return &contract.AttemptOutcome{
+		AttemptID: attempt.ID,
+		Status:    attempt.Status,
+		Score:     attempt.Score,
+		MaxScore:  attempt.MaxScore,
+	}, nil
 }
 
 // SubmitSittingAnswer grades and records an exam sitting answer with idempotency.
@@ -2310,4 +2340,3 @@ func (s *Service) SubmitSittingAnswer(
 		ItemResults: gradeResult.ItemResults,
 	}, nil
 }
-

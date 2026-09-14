@@ -61,6 +61,8 @@ type Deps struct {
 	AuthorResolver contract.AuthorResolver
 	// Synthesiser turns listening scripts into pre-rendered audio.
 	Synthesiser service.AudioSynthesiser
+	// Audio finds a listening item's rendered clip in the TTS cache.
+	Audio contract.AudioLocator
 }
 
 // Module represents the learning module, assembled.
@@ -137,6 +139,7 @@ func New(deps Deps) *Module {
 		GeneratorAuthorID: deps.GeneratorAuthorID,
 		AuthorResolver:    deps.AuthorResolver,
 		Synthesiser:       deps.Synthesiser,
+		Audio:             deps.Audio,
 	})
 
 	var handler *learninghttp.Handler
@@ -192,6 +195,11 @@ func (m *Module) AttemptCounter() contract.AttemptCounter {
 
 // SittingAnswerSubmitter returns the public SittingAnswerSubmitter contract implementation.
 func (m *Module) SittingAnswerSubmitter() contract.SittingAnswerSubmitter {
+	return m.service
+}
+
+// AttemptOutcomeReader returns the public AttemptOutcomeReader contract implementation.
+func (m *Module) AttemptOutcomeReader() contract.AttemptOutcomeReader {
 	return m.service
 }
 

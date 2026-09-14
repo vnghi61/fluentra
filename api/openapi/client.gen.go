@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/oapi-codegen/runtime"
 	openapi_types "github.com/oapi-codegen/runtime/types"
@@ -962,6 +963,84 @@ type ClientInterface interface {
 	// Corresponds with GET /courses/{slug} (the `GetCourseBySlug` operationId).
 	GetCourseBySlug(ctx context.Context, slug string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListExamAttempts List past sittings for current user
+	//
+	// Returns the caller's sittings, newest first, with the total and today's sitting count.
+	//
+	// Corresponds with GET /exam-attempts (the `ListExamAttempts` operationId).
+	ListExamAttempts(ctx context.Context, params *ListExamAttemptsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetExamAttempt Current state with server time remaining
+	//
+	// Returns the sitting with remaining time computed on the server. Reading a sitting past its deadline submits it first.
+	//
+	// Corresponds with GET /exam-attempts/{id} (the `GetExamAttempt` operationId).
+	GetExamAttempt(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SaveExamDraftAnswersWithBody Save answers (autosave)
+	//
+	// Saves draft answers and integrity signals while the sitting is open. Refused past the deadline (409 ATTEMPT_EXPIRED), for an item the sitting does not hold (400 EXAM_ITEM_NOT_IN_SITTING), for an answer over 32 KiB (400 EXAM_ANSWER_TOO_LARGE), and in exam mode for an item outside the current section (400 SECTION_ALREADY_COMPLETED or INVALID_SECTION_PROGRESSION). Signals are recorded at server time.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /exam-attempts/{id}/answers (the `SaveExamDraftAnswers` operationId).
+	SaveExamDraftAnswersWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SaveExamDraftAnswers Save answers (autosave)
+	//
+	// Saves draft answers and integrity signals while the sitting is open. Refused past the deadline (409 ATTEMPT_EXPIRED), for an item the sitting does not hold (400 EXAM_ITEM_NOT_IN_SITTING), for an answer over 32 KiB (400 EXAM_ANSWER_TOO_LARGE), and in exam mode for an item outside the current section (400 SECTION_ALREADY_COMPLETED or INVALID_SECTION_PROGRESSION). Signals are recorded at server time.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /exam-attempts/{id}/answers (the `SaveExamDraftAnswers` operationId).
+	SaveExamDraftAnswers(ctx context.Context, id openapi_types.UUID, body SaveExamDraftAnswersJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetExamScoreReport Score report when ready
+	//
+	// Returns the stored report for a submitted sitting, bringing a pending report up to date first. A report still pending an hour after submission becomes partial, its waiting items not scored. 404 REPORT_NOT_READY while the sitting is open.
+	//
+	// Corresponds with GET /exam-attempts/{id}/report (the `GetExamScoreReport` operationId).
+	GetExamScoreReport(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CompleteExamSection Finish a section
+	//
+	// Closes a section and moves on; completing section 4 submits the sitting. In exam mode, completing a section whose time already ran out returns the current section rather than an error.
+	//
+	// Corresponds with POST /exam-attempts/{id}/sections/{n}/complete (the `CompleteExamSection` operationId).
+	CompleteExamSection(ctx context.Context, id openapi_types.UUID, n int, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SubmitExamAttempt Submit the whole exam
+	//
+	// Submits the caller's sitting: each saved answer becomes a learning attempt, and the report is created pending until asynchronous grades settle. A submission past the deadline is recorded as the expiry's. Idempotent.
+	//
+	// Corresponds with POST /exam-attempts/{id}/submit (the `SubmitExamAttempt` operationId).
+	SubmitExamAttempt(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListExams Available mock exams
+	//
+	// Lists active mock exam templates available to learners.
+	//
+	// Corresponds with GET /exams (the `ListExams` operationId).
+	ListExams(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StartExamAttemptWithBody Start a sitting
+	//
+	// Starts a sitting in exam mode (75 minutes, fixed) or practice mode (10–180 minutes, clamped on the server), drawing its items from the exam pool and marking them seen in the same transaction. 404 EXAM_POOL_EMPTY means the pool does not yet hold a sitting's worth at this level. The sixth sitting in a day is 429 EXAM_DAILY_LIMIT_REACHED.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /exams/{id}/attempts (the `StartExamAttempt` operationId).
+	StartExamAttemptWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StartExamAttempt Start a sitting
+	//
+	// Starts a sitting in exam mode (75 minutes, fixed) or practice mode (10–180 minutes, clamped on the server), drawing its items from the exam pool and marking them seen in the same transaction. 404 EXAM_POOL_EMPTY means the pool does not yet hold a sitting's worth at this level. The sixth sitting in a day is 429 EXAM_DAILY_LIMIT_REACHED.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /exams/{id}/attempts (the `StartExamAttempt` operationId).
+	StartExamAttempt(ctx context.Context, id openapi_types.UUID, body StartExamAttemptJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// SystemHealth Check process liveness.
 	//
 	// Returns success when the API process is able to serve requests.
@@ -986,6 +1065,31 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /lessons/{id} (the `GetLessonById` operationId).
 	GetLessonById(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RecordListeningPlayWithBody Checks the play policy, records the play, and returns a short-lived presigned audio GET URL.
+	//
+	// Enforces server-side play limits: a learning attempt allows 3 plays, an exam sitting 1 in exam mode and 3 in practice mode. The context must be the caller's own attempt at this item, or the caller's open sitting holding it (in exam mode, in the section open now); anything else is 403 LISTENING_PLAY_NOT_ALLOWED. 409 AUDIO_NOT_READY until the clip is rendered. Returns a short-lived presigned audio download URL valid for the clip length plus one minute.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /listening/items/{versionId}/plays (the `RecordListeningPlay` operationId).
+	RecordListeningPlayWithBody(ctx context.Context, versionId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RecordListeningPlay Checks the play policy, records the play, and returns a short-lived presigned audio GET URL.
+	//
+	// Enforces server-side play limits: a learning attempt allows 3 plays, an exam sitting 1 in exam mode and 3 in practice mode. The context must be the caller's own attempt at this item, or the caller's open sitting holding it (in exam mode, in the section open now); anything else is 403 LISTENING_PLAY_NOT_ALLOWED. 409 AUDIO_NOT_READY until the clip is rendered. Returns a short-lived presigned audio download URL valid for the clip length plus one minute.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /listening/items/{versionId}/plays (the `RecordListeningPlay` operationId).
+	RecordListeningPlay(ctx context.Context, versionId openapi_types.UUID, body RecordListeningPlayJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetListeningTranscript Returns script only for a graded attempt belonging to caller.
+	//
+	// In accordance with ADR-0025, the transcript is withheld until the attempt is graded, ensuring that the listening exercise cannot be solved by reading ahead.
+	//
+	// Corresponds with GET /listening/items/{versionId}/transcript (the `GetListeningTranscript` operationId).
+	GetListeningTranscript(ctx context.Context, versionId openapi_types.UUID, params *GetListeningTranscriptParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UserRequestDeletion Request account deletion (GDPR Article 17).
 	//
@@ -1345,6 +1449,38 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /reviews/{card_id}/suspend (the `SuspendReviewCard` operationId).
 	SuspendReviewCard(ctx context.Context, cardId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetSpeakingFeedback Read feedback on a graded speaking attempt.
+	//
+	// Returns the transcript, criteria and bilingual feedback for a graded speaking attempt owned by the caller. Pronunciation is not assessed.
+	//
+	// Corresponds with GET /speaking/attempts/{id}/feedback (the `GetSpeakingFeedback` operationId).
+	GetSpeakingFeedback(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteSpeakingRecording Purges the recording object while keeping scores and feedback.
+	//
+	// Deletes the audio file from media storage for an attempt belonging to the caller, marking it deleted while preserving the grade, transcript, and criteria feedback.
+	//
+	// Corresponds with DELETE /speaking/attempts/{id}/recording (the `DeleteSpeakingRecording` operationId).
+	DeleteSpeakingRecording(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateSpeakingUploadIntentWithBody Presigned PUT URL for recording upload to storage.
+	//
+	// Generates a constrained presigned PUT URL directly to the media storage bucket. Validates daily recording quotas before issuing the intent.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /speaking/upload-intent (the `CreateSpeakingUploadIntent` operationId).
+	CreateSpeakingUploadIntentWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateSpeakingUploadIntent Presigned PUT URL for recording upload to storage.
+	//
+	// Generates a constrained presigned PUT URL directly to the media storage bucket. Validates daily recording quotas before issuing the intent.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /speaking/upload-intent (the `CreateSpeakingUploadIntent` operationId).
+	CreateSpeakingUploadIntent(ctx context.Context, body CreateSpeakingUploadIntentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StorageGetAvatar Serve a stored avatar image.
 	//
@@ -3231,6 +3367,184 @@ func (c *Client) GetCourseBySlug(ctx context.Context, slug string, reqEditors ..
 	return c.Client.Do(req)
 }
 
+// ListExamAttempts List past sittings for current user
+//
+// Returns the caller's sittings, newest first, with the total and today's sitting count.
+//
+// Corresponds with GET /exam-attempts (the `ListExamAttempts` operationId).
+func (c *Client) ListExamAttempts(ctx context.Context, params *ListExamAttemptsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListExamAttemptsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetExamAttempt Current state with server time remaining
+//
+// Returns the sitting with remaining time computed on the server. Reading a sitting past its deadline submits it first.
+//
+// Corresponds with GET /exam-attempts/{id} (the `GetExamAttempt` operationId).
+func (c *Client) GetExamAttempt(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetExamAttemptRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SaveExamDraftAnswersWithBody Save answers (autosave)
+//
+// Saves draft answers and integrity signals while the sitting is open. Refused past the deadline (409 ATTEMPT_EXPIRED), for an item the sitting does not hold (400 EXAM_ITEM_NOT_IN_SITTING), for an answer over 32 KiB (400 EXAM_ANSWER_TOO_LARGE), and in exam mode for an item outside the current section (400 SECTION_ALREADY_COMPLETED or INVALID_SECTION_PROGRESSION). Signals are recorded at server time.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /exam-attempts/{id}/answers (the `SaveExamDraftAnswers` operationId).
+func (c *Client) SaveExamDraftAnswersWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSaveExamDraftAnswersRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SaveExamDraftAnswers Save answers (autosave)
+//
+// Saves draft answers and integrity signals while the sitting is open. Refused past the deadline (409 ATTEMPT_EXPIRED), for an item the sitting does not hold (400 EXAM_ITEM_NOT_IN_SITTING), for an answer over 32 KiB (400 EXAM_ANSWER_TOO_LARGE), and in exam mode for an item outside the current section (400 SECTION_ALREADY_COMPLETED or INVALID_SECTION_PROGRESSION). Signals are recorded at server time.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /exam-attempts/{id}/answers (the `SaveExamDraftAnswers` operationId).
+func (c *Client) SaveExamDraftAnswers(ctx context.Context, id openapi_types.UUID, body SaveExamDraftAnswersJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSaveExamDraftAnswersRequest(c.Server, id, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetExamScoreReport Score report when ready
+//
+// Returns the stored report for a submitted sitting, bringing a pending report up to date first. A report still pending an hour after submission becomes partial, its waiting items not scored. 404 REPORT_NOT_READY while the sitting is open.
+//
+// Corresponds with GET /exam-attempts/{id}/report (the `GetExamScoreReport` operationId).
+func (c *Client) GetExamScoreReport(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetExamScoreReportRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CompleteExamSection Finish a section
+//
+// Closes a section and moves on; completing section 4 submits the sitting. In exam mode, completing a section whose time already ran out returns the current section rather than an error.
+//
+// Corresponds with POST /exam-attempts/{id}/sections/{n}/complete (the `CompleteExamSection` operationId).
+func (c *Client) CompleteExamSection(ctx context.Context, id openapi_types.UUID, n int, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCompleteExamSectionRequest(c.Server, id, n)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SubmitExamAttempt Submit the whole exam
+//
+// Submits the caller's sitting: each saved answer becomes a learning attempt, and the report is created pending until asynchronous grades settle. A submission past the deadline is recorded as the expiry's. Idempotent.
+//
+// Corresponds with POST /exam-attempts/{id}/submit (the `SubmitExamAttempt` operationId).
+func (c *Client) SubmitExamAttempt(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSubmitExamAttemptRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListExams Available mock exams
+//
+// Lists active mock exam templates available to learners.
+//
+// Corresponds with GET /exams (the `ListExams` operationId).
+func (c *Client) ListExams(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListExamsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StartExamAttemptWithBody Start a sitting
+//
+// Starts a sitting in exam mode (75 minutes, fixed) or practice mode (10–180 minutes, clamped on the server), drawing its items from the exam pool and marking them seen in the same transaction. 404 EXAM_POOL_EMPTY means the pool does not yet hold a sitting's worth at this level. The sixth sitting in a day is 429 EXAM_DAILY_LIMIT_REACHED.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /exams/{id}/attempts (the `StartExamAttempt` operationId).
+func (c *Client) StartExamAttemptWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStartExamAttemptRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StartExamAttempt Start a sitting
+//
+// Starts a sitting in exam mode (75 minutes, fixed) or practice mode (10–180 minutes, clamped on the server), drawing its items from the exam pool and marking them seen in the same transaction. 404 EXAM_POOL_EMPTY means the pool does not yet hold a sitting's worth at this level. The sixth sitting in a day is 429 EXAM_DAILY_LIMIT_REACHED.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /exams/{id}/attempts (the `StartExamAttempt` operationId).
+func (c *Client) StartExamAttempt(ctx context.Context, id openapi_types.UUID, body StartExamAttemptJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStartExamAttemptRequest(c.Server, id, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // SystemHealth Check process liveness.
 //
 // Returns success when the API process is able to serve requests.
@@ -3276,6 +3590,61 @@ func (c *Client) GetLeaderboard(ctx context.Context, reqEditors ...RequestEditor
 // Corresponds with GET /lessons/{id} (the `GetLessonById` operationId).
 func (c *Client) GetLessonById(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetLessonByIdRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RecordListeningPlayWithBody Checks the play policy, records the play, and returns a short-lived presigned audio GET URL.
+//
+// Enforces server-side play limits: a learning attempt allows 3 plays, an exam sitting 1 in exam mode and 3 in practice mode. The context must be the caller's own attempt at this item, or the caller's open sitting holding it (in exam mode, in the section open now); anything else is 403 LISTENING_PLAY_NOT_ALLOWED. 409 AUDIO_NOT_READY until the clip is rendered. Returns a short-lived presigned audio download URL valid for the clip length plus one minute.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /listening/items/{versionId}/plays (the `RecordListeningPlay` operationId).
+func (c *Client) RecordListeningPlayWithBody(ctx context.Context, versionId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRecordListeningPlayRequestWithBody(c.Server, versionId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RecordListeningPlay Checks the play policy, records the play, and returns a short-lived presigned audio GET URL.
+//
+// Enforces server-side play limits: a learning attempt allows 3 plays, an exam sitting 1 in exam mode and 3 in practice mode. The context must be the caller's own attempt at this item, or the caller's open sitting holding it (in exam mode, in the section open now); anything else is 403 LISTENING_PLAY_NOT_ALLOWED. 409 AUDIO_NOT_READY until the clip is rendered. Returns a short-lived presigned audio download URL valid for the clip length plus one minute.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /listening/items/{versionId}/plays (the `RecordListeningPlay` operationId).
+func (c *Client) RecordListeningPlay(ctx context.Context, versionId openapi_types.UUID, body RecordListeningPlayJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRecordListeningPlayRequest(c.Server, versionId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetListeningTranscript Returns script only for a graded attempt belonging to caller.
+//
+// In accordance with ADR-0025, the transcript is withheld until the attempt is graded, ensuring that the listening exercise cannot be solved by reading ahead.
+//
+// Corresponds with GET /listening/items/{versionId}/transcript (the `GetListeningTranscript` operationId).
+func (c *Client) GetListeningTranscript(ctx context.Context, versionId openapi_types.UUID, params *GetListeningTranscriptParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetListeningTranscriptRequest(c.Server, versionId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -4085,6 +4454,78 @@ func (c *Client) ResetReviewCard(ctx context.Context, cardId openapi_types.UUID,
 // Corresponds with POST /reviews/{card_id}/suspend (the `SuspendReviewCard` operationId).
 func (c *Client) SuspendReviewCard(ctx context.Context, cardId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSuspendReviewCardRequest(c.Server, cardId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetSpeakingFeedback Read feedback on a graded speaking attempt.
+//
+// Returns the transcript, criteria and bilingual feedback for a graded speaking attempt owned by the caller. Pronunciation is not assessed.
+//
+// Corresponds with GET /speaking/attempts/{id}/feedback (the `GetSpeakingFeedback` operationId).
+func (c *Client) GetSpeakingFeedback(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetSpeakingFeedbackRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteSpeakingRecording Purges the recording object while keeping scores and feedback.
+//
+// Deletes the audio file from media storage for an attempt belonging to the caller, marking it deleted while preserving the grade, transcript, and criteria feedback.
+//
+// Corresponds with DELETE /speaking/attempts/{id}/recording (the `DeleteSpeakingRecording` operationId).
+func (c *Client) DeleteSpeakingRecording(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteSpeakingRecordingRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateSpeakingUploadIntentWithBody Presigned PUT URL for recording upload to storage.
+//
+// Generates a constrained presigned PUT URL directly to the media storage bucket. Validates daily recording quotas before issuing the intent.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /speaking/upload-intent (the `CreateSpeakingUploadIntent` operationId).
+func (c *Client) CreateSpeakingUploadIntentWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateSpeakingUploadIntentRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateSpeakingUploadIntent Presigned PUT URL for recording upload to storage.
+//
+// Generates a constrained presigned PUT URL directly to the media storage bucket. Validates daily recording quotas before issuing the intent.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /speaking/upload-intent (the `CreateSpeakingUploadIntent` operationId).
+func (c *Client) CreateSpeakingUploadIntent(ctx context.Context, body CreateSpeakingUploadIntentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateSpeakingUploadIntentRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -7360,6 +7801,336 @@ func NewGetCourseBySlugRequest(server string, slug string) (*http.Request, error
 	return req, nil
 }
 
+// NewListExamAttemptsRequest constructs an http.Request for the ListExamAttempts method
+func NewListExamAttemptsRequest(server string, params *ListExamAttemptsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/exam-attempts")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "offset", *params.Offset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetExamAttemptRequest constructs an http.Request for the GetExamAttempt method
+func NewGetExamAttemptRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/exam-attempts/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSaveExamDraftAnswersRequest calls the generic SaveExamDraftAnswers builder with application/json body
+func NewSaveExamDraftAnswersRequest(server string, id openapi_types.UUID, body SaveExamDraftAnswersJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSaveExamDraftAnswersRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewSaveExamDraftAnswersRequestWithBody constructs an http.Request for the SaveExamDraftAnswers method, with any body, and a specified content type
+func NewSaveExamDraftAnswersRequestWithBody(server string, id openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/exam-attempts/%s/answers", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetExamScoreReportRequest constructs an http.Request for the GetExamScoreReport method
+func NewGetExamScoreReportRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/exam-attempts/%s/report", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCompleteExamSectionRequest constructs an http.Request for the CompleteExamSection method
+func NewCompleteExamSectionRequest(server string, id openapi_types.UUID, n int) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "n", n, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/exam-attempts/%s/sections/%s/complete", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSubmitExamAttemptRequest constructs an http.Request for the SubmitExamAttempt method
+func NewSubmitExamAttemptRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/exam-attempts/%s/submit", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListExamsRequest constructs an http.Request for the ListExams method
+func NewListExamsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/exams")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewStartExamAttemptRequest calls the generic StartExamAttempt builder with application/json body
+func NewStartExamAttemptRequest(server string, id openapi_types.UUID, body StartExamAttemptJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewStartExamAttemptRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewStartExamAttemptRequestWithBody constructs an http.Request for the StartExamAttempt method, with any body, and a specified content type
+func NewStartExamAttemptRequestWithBody(server string, id openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/exams/%s/attempts", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewSystemHealthRequest constructs an http.Request for the SystemHealth method
 func NewSystemHealthRequest(server string) (*http.Request, error) {
 	var err error
@@ -7438,6 +8209,110 @@ func NewGetLessonByIdRequest(server string, id openapi_types.UUID) (*http.Reques
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewRecordListeningPlayRequest calls the generic RecordListeningPlay builder with application/json body
+func NewRecordListeningPlayRequest(server string, versionId openapi_types.UUID, body RecordListeningPlayJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRecordListeningPlayRequestWithBody(server, versionId, "application/json", bodyReader)
+}
+
+// NewRecordListeningPlayRequestWithBody constructs an http.Request for the RecordListeningPlay method, with any body, and a specified content type
+func NewRecordListeningPlayRequestWithBody(server string, versionId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "versionId", versionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/listening/items/%s/plays", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetListeningTranscriptRequest constructs an http.Request for the GetListeningTranscript method
+func NewGetListeningTranscriptRequest(server string, versionId openapi_types.UUID, params *GetListeningTranscriptParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "versionId", versionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/listening/items/%s/transcript", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "attempt_id", params.AttemptId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -8647,6 +9522,114 @@ func NewSuspendReviewCardRequest(server string, cardId openapi_types.UUID) (*htt
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewGetSpeakingFeedbackRequest constructs an http.Request for the GetSpeakingFeedback method
+func NewGetSpeakingFeedbackRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/speaking/attempts/%s/feedback", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewDeleteSpeakingRecordingRequest constructs an http.Request for the DeleteSpeakingRecording method
+func NewDeleteSpeakingRecordingRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/speaking/attempts/%s/recording", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateSpeakingUploadIntentRequest calls the generic CreateSpeakingUploadIntent builder with application/json body
+func NewCreateSpeakingUploadIntentRequest(server string, body CreateSpeakingUploadIntentJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateSpeakingUploadIntentRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateSpeakingUploadIntentRequestWithBody constructs an http.Request for the CreateSpeakingUploadIntent method, with any body, and a specified content type
+func NewCreateSpeakingUploadIntentRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/speaking/upload-intent")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -10199,6 +11182,96 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /courses/{slug} (the `GetCourseBySlug` operationId).
 	GetCourseBySlugWithResponse(ctx context.Context, slug string, reqEditors ...RequestEditorFn) (*GetCourseBySlugResponse, error)
 
+	// ListExamAttemptsWithResponse List past sittings for current user
+	//
+	// Returns the caller's sittings, newest first, with the total and today's sitting count.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /exam-attempts (the `ListExamAttempts` operationId).
+	ListExamAttemptsWithResponse(ctx context.Context, params *ListExamAttemptsParams, reqEditors ...RequestEditorFn) (*ListExamAttemptsResponse, error)
+
+	// GetExamAttemptWithResponse Current state with server time remaining
+	//
+	// Returns the sitting with remaining time computed on the server. Reading a sitting past its deadline submits it first.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /exam-attempts/{id} (the `GetExamAttempt` operationId).
+	GetExamAttemptWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetExamAttemptResponse, error)
+
+	// SaveExamDraftAnswersWithBodyWithResponse Save answers (autosave)
+	//
+	// Saves draft answers and integrity signals while the sitting is open. Refused past the deadline (409 ATTEMPT_EXPIRED), for an item the sitting does not hold (400 EXAM_ITEM_NOT_IN_SITTING), for an answer over 32 KiB (400 EXAM_ANSWER_TOO_LARGE), and in exam mode for an item outside the current section (400 SECTION_ALREADY_COMPLETED or INVALID_SECTION_PROGRESSION). Signals are recorded at server time.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /exam-attempts/{id}/answers (the `SaveExamDraftAnswers` operationId).
+	SaveExamDraftAnswersWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SaveExamDraftAnswersResponse, error)
+
+	// SaveExamDraftAnswersWithResponse Save answers (autosave)
+	//
+	// Saves draft answers and integrity signals while the sitting is open. Refused past the deadline (409 ATTEMPT_EXPIRED), for an item the sitting does not hold (400 EXAM_ITEM_NOT_IN_SITTING), for an answer over 32 KiB (400 EXAM_ANSWER_TOO_LARGE), and in exam mode for an item outside the current section (400 SECTION_ALREADY_COMPLETED or INVALID_SECTION_PROGRESSION). Signals are recorded at server time.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /exam-attempts/{id}/answers (the `SaveExamDraftAnswers` operationId).
+	SaveExamDraftAnswersWithResponse(ctx context.Context, id openapi_types.UUID, body SaveExamDraftAnswersJSONRequestBody, reqEditors ...RequestEditorFn) (*SaveExamDraftAnswersResponse, error)
+
+	// GetExamScoreReportWithResponse Score report when ready
+	//
+	// Returns the stored report for a submitted sitting, bringing a pending report up to date first. A report still pending an hour after submission becomes partial, its waiting items not scored. 404 REPORT_NOT_READY while the sitting is open.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /exam-attempts/{id}/report (the `GetExamScoreReport` operationId).
+	GetExamScoreReportWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetExamScoreReportResponse, error)
+
+	// CompleteExamSectionWithResponse Finish a section
+	//
+	// Closes a section and moves on; completing section 4 submits the sitting. In exam mode, completing a section whose time already ran out returns the current section rather than an error.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /exam-attempts/{id}/sections/{n}/complete (the `CompleteExamSection` operationId).
+	CompleteExamSectionWithResponse(ctx context.Context, id openapi_types.UUID, n int, reqEditors ...RequestEditorFn) (*CompleteExamSectionResponse, error)
+
+	// SubmitExamAttemptWithResponse Submit the whole exam
+	//
+	// Submits the caller's sitting: each saved answer becomes a learning attempt, and the report is created pending until asynchronous grades settle. A submission past the deadline is recorded as the expiry's. Idempotent.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /exam-attempts/{id}/submit (the `SubmitExamAttempt` operationId).
+	SubmitExamAttemptWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*SubmitExamAttemptResponse, error)
+
+	// ListExamsWithResponse Available mock exams
+	//
+	// Lists active mock exam templates available to learners.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /exams (the `ListExams` operationId).
+	ListExamsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListExamsResponse, error)
+
+	// StartExamAttemptWithBodyWithResponse Start a sitting
+	//
+	// Starts a sitting in exam mode (75 minutes, fixed) or practice mode (10–180 minutes, clamped on the server), drawing its items from the exam pool and marking them seen in the same transaction. 404 EXAM_POOL_EMPTY means the pool does not yet hold a sitting's worth at this level. The sixth sitting in a day is 429 EXAM_DAILY_LIMIT_REACHED.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /exams/{id}/attempts (the `StartExamAttempt` operationId).
+	StartExamAttemptWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StartExamAttemptResponse, error)
+
+	// StartExamAttemptWithResponse Start a sitting
+	//
+	// Starts a sitting in exam mode (75 minutes, fixed) or practice mode (10–180 minutes, clamped on the server), drawing its items from the exam pool and marking them seen in the same transaction. 404 EXAM_POOL_EMPTY means the pool does not yet hold a sitting's worth at this level. The sixth sitting in a day is 429 EXAM_DAILY_LIMIT_REACHED.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /exams/{id}/attempts (the `StartExamAttempt` operationId).
+	StartExamAttemptWithResponse(ctx context.Context, id openapi_types.UUID, body StartExamAttemptJSONRequestBody, reqEditors ...RequestEditorFn) (*StartExamAttemptResponse, error)
+
 	// SystemHealthWithResponse Check process liveness.
 	//
 	// Returns success when the API process is able to serve requests.
@@ -10229,6 +11302,33 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /lessons/{id} (the `GetLessonById` operationId).
 	GetLessonByIdWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetLessonByIdResponse, error)
+
+	// RecordListeningPlayWithBodyWithResponse Checks the play policy, records the play, and returns a short-lived presigned audio GET URL.
+	//
+	// Enforces server-side play limits: a learning attempt allows 3 plays, an exam sitting 1 in exam mode and 3 in practice mode. The context must be the caller's own attempt at this item, or the caller's open sitting holding it (in exam mode, in the section open now); anything else is 403 LISTENING_PLAY_NOT_ALLOWED. 409 AUDIO_NOT_READY until the clip is rendered. Returns a short-lived presigned audio download URL valid for the clip length plus one minute.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /listening/items/{versionId}/plays (the `RecordListeningPlay` operationId).
+	RecordListeningPlayWithBodyWithResponse(ctx context.Context, versionId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RecordListeningPlayResponse, error)
+
+	// RecordListeningPlayWithResponse Checks the play policy, records the play, and returns a short-lived presigned audio GET URL.
+	//
+	// Enforces server-side play limits: a learning attempt allows 3 plays, an exam sitting 1 in exam mode and 3 in practice mode. The context must be the caller's own attempt at this item, or the caller's open sitting holding it (in exam mode, in the section open now); anything else is 403 LISTENING_PLAY_NOT_ALLOWED. 409 AUDIO_NOT_READY until the clip is rendered. Returns a short-lived presigned audio download URL valid for the clip length plus one minute.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /listening/items/{versionId}/plays (the `RecordListeningPlay` operationId).
+	RecordListeningPlayWithResponse(ctx context.Context, versionId openapi_types.UUID, body RecordListeningPlayJSONRequestBody, reqEditors ...RequestEditorFn) (*RecordListeningPlayResponse, error)
+
+	// GetListeningTranscriptWithResponse Returns script only for a graded attempt belonging to caller.
+	//
+	// In accordance with ADR-0025, the transcript is withheld until the attempt is graded, ensuring that the listening exercise cannot be solved by reading ahead.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /listening/items/{versionId}/transcript (the `GetListeningTranscript` operationId).
+	GetListeningTranscriptWithResponse(ctx context.Context, versionId openapi_types.UUID, params *GetListeningTranscriptParams, reqEditors ...RequestEditorFn) (*GetListeningTranscriptResponse, error)
 
 	// UserRequestDeletionWithResponse Request account deletion (GDPR Article 17).
 	//
@@ -10634,6 +11734,42 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /reviews/{card_id}/suspend (the `SuspendReviewCard` operationId).
 	SuspendReviewCardWithResponse(ctx context.Context, cardId openapi_types.UUID, reqEditors ...RequestEditorFn) (*SuspendReviewCardResponse, error)
+
+	// GetSpeakingFeedbackWithResponse Read feedback on a graded speaking attempt.
+	//
+	// Returns the transcript, criteria and bilingual feedback for a graded speaking attempt owned by the caller. Pronunciation is not assessed.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /speaking/attempts/{id}/feedback (the `GetSpeakingFeedback` operationId).
+	GetSpeakingFeedbackWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetSpeakingFeedbackResponse, error)
+
+	// DeleteSpeakingRecordingWithResponse Purges the recording object while keeping scores and feedback.
+	//
+	// Deletes the audio file from media storage for an attempt belonging to the caller, marking it deleted while preserving the grade, transcript, and criteria feedback.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /speaking/attempts/{id}/recording (the `DeleteSpeakingRecording` operationId).
+	DeleteSpeakingRecordingWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteSpeakingRecordingResponse, error)
+
+	// CreateSpeakingUploadIntentWithBodyWithResponse Presigned PUT URL for recording upload to storage.
+	//
+	// Generates a constrained presigned PUT URL directly to the media storage bucket. Validates daily recording quotas before issuing the intent.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /speaking/upload-intent (the `CreateSpeakingUploadIntent` operationId).
+	CreateSpeakingUploadIntentWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateSpeakingUploadIntentResponse, error)
+
+	// CreateSpeakingUploadIntentWithResponse Presigned PUT URL for recording upload to storage.
+	//
+	// Generates a constrained presigned PUT URL directly to the media storage bucket. Validates daily recording quotas before issuing the intent.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /speaking/upload-intent (the `CreateSpeakingUploadIntent` operationId).
+	CreateSpeakingUploadIntentWithResponse(ctx context.Context, body CreateSpeakingUploadIntentJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateSpeakingUploadIntentResponse, error)
 
 	// StorageGetAvatarWithResponse Serve a stored avatar image.
 	//
@@ -15543,6 +16679,645 @@ func (r GetCourseBySlugResponse) ContentType() string {
 	return ""
 }
 
+// ListExamAttemptsResponse200Headers the declared response headers of an HTTP 200 response for ListExamAttempts
+type ListExamAttemptsResponse200Headers struct {
+	XRequestId *string
+}
+
+type ListExamAttemptsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ExamAttemptList
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ListExamAttemptsResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListExamAttemptsResponse) GetJSON200() *ExamAttemptList {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ListExamAttemptsResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r ListExamAttemptsResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ListExamAttemptsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListExamAttemptsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListExamAttemptsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListExamAttemptsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GetExamAttemptResponse200Headers the declared response headers of an HTTP 200 response for GetExamAttempt
+type GetExamAttemptResponse200Headers struct {
+	XRequestId *string
+}
+
+type GetExamAttemptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ExamAttempt
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetExamAttemptResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetExamAttemptResponse) GetJSON200() *ExamAttempt {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetExamAttemptResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GetExamAttemptResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r GetExamAttemptResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetExamAttemptResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetExamAttemptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetExamAttemptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetExamAttemptResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// SaveExamDraftAnswersResponse200Headers the declared response headers of an HTTP 200 response for SaveExamDraftAnswers
+type SaveExamDraftAnswersResponse200Headers struct {
+	XRequestId *string
+}
+
+type SaveExamDraftAnswersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SaveExamAnswersResult
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *SaveExamDraftAnswersResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SaveExamDraftAnswersResponse) GetJSON200() *SaveExamAnswersResult {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r SaveExamDraftAnswersResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r SaveExamDraftAnswersResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r SaveExamDraftAnswersResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r SaveExamDraftAnswersResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r SaveExamDraftAnswersResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r SaveExamDraftAnswersResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SaveExamDraftAnswersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SaveExamDraftAnswersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SaveExamDraftAnswersResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GetExamScoreReportResponse200Headers the declared response headers of an HTTP 200 response for GetExamScoreReport
+type GetExamScoreReportResponse200Headers struct {
+	XRequestId *string
+}
+
+type GetExamScoreReportResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ExamScoreReport
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetExamScoreReportResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetExamScoreReportResponse) GetJSON200() *ExamScoreReport {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetExamScoreReportResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GetExamScoreReportResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r GetExamScoreReportResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetExamScoreReportResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetExamScoreReportResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetExamScoreReportResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetExamScoreReportResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// CompleteExamSectionResponse200Headers the declared response headers of an HTTP 200 response for CompleteExamSection
+type CompleteExamSectionResponse200Headers struct {
+	XRequestId *string
+}
+
+type CompleteExamSectionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *CompleteExamSectionResult
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *CompleteExamSectionResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CompleteExamSectionResponse) GetJSON200() *CompleteExamSectionResult {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r CompleteExamSectionResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r CompleteExamSectionResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r CompleteExamSectionResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r CompleteExamSectionResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r CompleteExamSectionResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CompleteExamSectionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CompleteExamSectionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CompleteExamSectionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CompleteExamSectionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// SubmitExamAttemptResponse202Headers the declared response headers of an HTTP 202 response for SubmitExamAttempt
+type SubmitExamAttemptResponse202Headers struct {
+	XRequestId *string
+}
+
+type SubmitExamAttemptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON202 the response for an HTTP 202 `application/json` response
+	JSON202 *struct {
+		AttemptId    openapi_types.UUID                               `json:"attempt_id"`
+		ReportStatus SubmitExamAttempt202JSONResponseBodyReportStatus `json:"report_status"`
+		Status       SubmitExamAttempt202JSONResponseBodyStatus       `json:"status"`
+	}
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers202 the parsed response headers for an HTTP 202 response
+	Headers202 *SubmitExamAttemptResponse202Headers
+}
+
+// GetJSON202 returns the response for an HTTP 202 `application/json` response
+func (r SubmitExamAttemptResponse) GetJSON202() *struct {
+	AttemptId    openapi_types.UUID                               `json:"attempt_id"`
+	ReportStatus SubmitExamAttempt202JSONResponseBodyReportStatus `json:"report_status"`
+	Status       SubmitExamAttempt202JSONResponseBodyStatus       `json:"status"`
+} {
+	return r.JSON202
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r SubmitExamAttemptResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r SubmitExamAttemptResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r SubmitExamAttemptResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r SubmitExamAttemptResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r SubmitExamAttemptResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r SubmitExamAttemptResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SubmitExamAttemptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SubmitExamAttemptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SubmitExamAttemptResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ListExamsResponse200Headers the declared response headers of an HTTP 200 response for ListExams
+type ListExamsResponse200Headers struct {
+	XRequestId *string
+}
+
+type ListExamsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *[]struct {
+		DescriptionEn *string            `json:"description_en,omitempty"`
+		DescriptionVi *string            `json:"description_vi,omitempty"`
+		Format        string             `json:"format"`
+		Id            openapi_types.UUID `json:"id"`
+		Level         string             `json:"level"`
+		Slug          string             `json:"slug"`
+		TitleEn       string             `json:"title_en"`
+		TitleVi       string             `json:"title_vi"`
+		TotalMinutes  int                `json:"total_minutes"`
+	}
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ListExamsResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListExamsResponse) GetJSON200() *[]struct {
+	DescriptionEn *string            `json:"description_en,omitempty"`
+	DescriptionVi *string            `json:"description_vi,omitempty"`
+	Format        string             `json:"format"`
+	Id            openapi_types.UUID `json:"id"`
+	Level         string             `json:"level"`
+	Slug          string             `json:"slug"`
+	TitleEn       string             `json:"title_en"`
+	TitleVi       string             `json:"title_vi"`
+	TotalMinutes  int                `json:"total_minutes"`
+} {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ListExamsResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r ListExamsResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ListExamsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListExamsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListExamsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListExamsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// StartExamAttemptResponse201Headers the declared response headers of an HTTP 201 response for StartExamAttempt
+type StartExamAttemptResponse201Headers struct {
+	XRequestId *string
+}
+
+// StartExamAttemptResponse429Headers the declared response headers of an HTTP 429 response for StartExamAttempt
+type StartExamAttemptResponse429Headers struct {
+	RateLimitLimit     *int
+	RateLimitRemaining *int
+	RateLimitReset     *int
+	RetryAfter         *int
+}
+
+type StartExamAttemptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *ExamAttempt
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *StartExamAttemptResponse201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *StartExamAttemptResponse429Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r StartExamAttemptResponse) GetJSON201() *ExamAttempt {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r StartExamAttemptResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r StartExamAttemptResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r StartExamAttemptResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r StartExamAttemptResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r StartExamAttemptResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r StartExamAttemptResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r StartExamAttemptResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StartExamAttemptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StartExamAttemptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StartExamAttemptResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // SystemHealthResponse200Headers the declared response headers of an HTTP 200 response for SystemHealth
 type SystemHealthResponse200Headers struct {
 	XRequestId *string
@@ -15716,6 +17491,193 @@ func (r GetLessonByIdResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetLessonByIdResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// RecordListeningPlayResponse200Headers the declared response headers of an HTTP 200 response for RecordListeningPlay
+type RecordListeningPlayResponse200Headers struct {
+	XRequestId *string
+}
+
+type RecordListeningPlayResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AudioUrl     string    `json:"audio_url"`
+		ExpiresAt    time.Time `json:"expires_at"`
+		PlaysAllowed int       `json:"plays_allowed"`
+		PlaysUsed    int       `json:"plays_used"`
+	}
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *RecordListeningPlayResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RecordListeningPlayResponse) GetJSON200() *struct {
+	AudioUrl     string    `json:"audio_url"`
+	ExpiresAt    time.Time `json:"expires_at"`
+	PlaysAllowed int       `json:"plays_allowed"`
+	PlaysUsed    int       `json:"plays_used"`
+} {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r RecordListeningPlayResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r RecordListeningPlayResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r RecordListeningPlayResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r RecordListeningPlayResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r RecordListeningPlayResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r RecordListeningPlayResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r RecordListeningPlayResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RecordListeningPlayResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RecordListeningPlayResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RecordListeningPlayResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GetListeningTranscriptResponse200Headers the declared response headers of an HTTP 200 response for GetListeningTranscript
+type GetListeningTranscriptResponse200Headers struct {
+	XRequestId *string
+}
+
+type GetListeningTranscriptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Script string `json:"script"`
+	}
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetListeningTranscriptResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetListeningTranscriptResponse) GetJSON200() *struct {
+	Script string `json:"script"`
+} {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r GetListeningTranscriptResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetListeningTranscriptResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r GetListeningTranscriptResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GetListeningTranscriptResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r GetListeningTranscriptResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetListeningTranscriptResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetListeningTranscriptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetListeningTranscriptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetListeningTranscriptResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -17967,6 +19929,249 @@ func (r SuspendReviewCardResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r SuspendReviewCardResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GetSpeakingFeedbackResponse200Headers the declared response headers of an HTTP 200 response for GetSpeakingFeedback
+type GetSpeakingFeedbackResponse200Headers struct {
+	XRequestId *string
+}
+
+type GetSpeakingFeedbackResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SpeakingFeedback
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetSpeakingFeedbackResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetSpeakingFeedbackResponse) GetJSON200() *SpeakingFeedback {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r GetSpeakingFeedbackResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetSpeakingFeedbackResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GetSpeakingFeedbackResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r GetSpeakingFeedbackResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetSpeakingFeedbackResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetSpeakingFeedbackResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetSpeakingFeedbackResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetSpeakingFeedbackResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// DeleteSpeakingRecordingResponse204Headers the declared response headers of an HTTP 204 response for DeleteSpeakingRecording
+type DeleteSpeakingRecordingResponse204Headers struct {
+	XRequestId *string
+}
+
+type DeleteSpeakingRecordingResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers204 the parsed response headers for an HTTP 204 response
+	Headers204 *DeleteSpeakingRecordingResponse204Headers
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r DeleteSpeakingRecordingResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r DeleteSpeakingRecordingResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r DeleteSpeakingRecordingResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r DeleteSpeakingRecordingResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteSpeakingRecordingResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteSpeakingRecordingResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteSpeakingRecordingResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteSpeakingRecordingResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// CreateSpeakingUploadIntentResponse200Headers the declared response headers of an HTTP 200 response for CreateSpeakingUploadIntent
+type CreateSpeakingUploadIntentResponse200Headers struct {
+	XRequestId *string
+}
+
+// CreateSpeakingUploadIntentResponse429Headers the declared response headers of an HTTP 429 response for CreateSpeakingUploadIntent
+type CreateSpeakingUploadIntentResponse429Headers struct {
+	RateLimitLimit     *int
+	RateLimitRemaining *int
+	RateLimitReset     *int
+	RetryAfter         *int
+}
+
+type CreateSpeakingUploadIntentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		DailyRecordingsLimit int       `json:"daily_recordings_limit"`
+		DailyRecordingsUsed  int       `json:"daily_recordings_used"`
+		ExpiresAt            time.Time `json:"expires_at"`
+		ObjectKey            string    `json:"object_key"`
+		UploadUrl            string    `json:"upload_url"`
+	}
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *CreateSpeakingUploadIntentResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *CreateSpeakingUploadIntentResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateSpeakingUploadIntentResponse) GetJSON200() *struct {
+	DailyRecordingsLimit int       `json:"daily_recordings_limit"`
+	DailyRecordingsUsed  int       `json:"daily_recordings_used"`
+	ExpiresAt            time.Time `json:"expires_at"`
+	ObjectKey            string    `json:"object_key"`
+	UploadUrl            string    `json:"upload_url"`
+} {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r CreateSpeakingUploadIntentResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r CreateSpeakingUploadIntentResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r CreateSpeakingUploadIntentResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r CreateSpeakingUploadIntentResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateSpeakingUploadIntentResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateSpeakingUploadIntentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateSpeakingUploadIntentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateSpeakingUploadIntentResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -20239,6 +22444,156 @@ func (c *ClientWithResponses) GetCourseBySlugWithResponse(ctx context.Context, s
 	return ParseGetCourseBySlugResponse(rsp)
 }
 
+// ListExamAttemptsWithResponse List past sittings for current user
+//
+// Returns the caller's sittings, newest first, with the total and today's sitting count.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /exam-attempts (the `ListExamAttempts` operationId).
+func (c *ClientWithResponses) ListExamAttemptsWithResponse(ctx context.Context, params *ListExamAttemptsParams, reqEditors ...RequestEditorFn) (*ListExamAttemptsResponse, error) {
+	rsp, err := c.ListExamAttempts(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListExamAttemptsResponse(rsp)
+}
+
+// GetExamAttemptWithResponse Current state with server time remaining
+//
+// Returns the sitting with remaining time computed on the server. Reading a sitting past its deadline submits it first.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /exam-attempts/{id} (the `GetExamAttempt` operationId).
+func (c *ClientWithResponses) GetExamAttemptWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetExamAttemptResponse, error) {
+	rsp, err := c.GetExamAttempt(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetExamAttemptResponse(rsp)
+}
+
+// SaveExamDraftAnswersWithBodyWithResponse Save answers (autosave)
+//
+// Saves draft answers and integrity signals while the sitting is open. Refused past the deadline (409 ATTEMPT_EXPIRED), for an item the sitting does not hold (400 EXAM_ITEM_NOT_IN_SITTING), for an answer over 32 KiB (400 EXAM_ANSWER_TOO_LARGE), and in exam mode for an item outside the current section (400 SECTION_ALREADY_COMPLETED or INVALID_SECTION_PROGRESSION). Signals are recorded at server time.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /exam-attempts/{id}/answers (the `SaveExamDraftAnswers` operationId).
+func (c *ClientWithResponses) SaveExamDraftAnswersWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SaveExamDraftAnswersResponse, error) {
+	rsp, err := c.SaveExamDraftAnswersWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSaveExamDraftAnswersResponse(rsp)
+}
+
+// SaveExamDraftAnswersWithResponse Save answers (autosave)
+//
+// Saves draft answers and integrity signals while the sitting is open. Refused past the deadline (409 ATTEMPT_EXPIRED), for an item the sitting does not hold (400 EXAM_ITEM_NOT_IN_SITTING), for an answer over 32 KiB (400 EXAM_ANSWER_TOO_LARGE), and in exam mode for an item outside the current section (400 SECTION_ALREADY_COMPLETED or INVALID_SECTION_PROGRESSION). Signals are recorded at server time.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /exam-attempts/{id}/answers (the `SaveExamDraftAnswers` operationId).
+func (c *ClientWithResponses) SaveExamDraftAnswersWithResponse(ctx context.Context, id openapi_types.UUID, body SaveExamDraftAnswersJSONRequestBody, reqEditors ...RequestEditorFn) (*SaveExamDraftAnswersResponse, error) {
+	rsp, err := c.SaveExamDraftAnswers(ctx, id, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSaveExamDraftAnswersResponse(rsp)
+}
+
+// GetExamScoreReportWithResponse Score report when ready
+//
+// Returns the stored report for a submitted sitting, bringing a pending report up to date first. A report still pending an hour after submission becomes partial, its waiting items not scored. 404 REPORT_NOT_READY while the sitting is open.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /exam-attempts/{id}/report (the `GetExamScoreReport` operationId).
+func (c *ClientWithResponses) GetExamScoreReportWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetExamScoreReportResponse, error) {
+	rsp, err := c.GetExamScoreReport(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetExamScoreReportResponse(rsp)
+}
+
+// CompleteExamSectionWithResponse Finish a section
+//
+// Closes a section and moves on; completing section 4 submits the sitting. In exam mode, completing a section whose time already ran out returns the current section rather than an error.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /exam-attempts/{id}/sections/{n}/complete (the `CompleteExamSection` operationId).
+func (c *ClientWithResponses) CompleteExamSectionWithResponse(ctx context.Context, id openapi_types.UUID, n int, reqEditors ...RequestEditorFn) (*CompleteExamSectionResponse, error) {
+	rsp, err := c.CompleteExamSection(ctx, id, n, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCompleteExamSectionResponse(rsp)
+}
+
+// SubmitExamAttemptWithResponse Submit the whole exam
+//
+// Submits the caller's sitting: each saved answer becomes a learning attempt, and the report is created pending until asynchronous grades settle. A submission past the deadline is recorded as the expiry's. Idempotent.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /exam-attempts/{id}/submit (the `SubmitExamAttempt` operationId).
+func (c *ClientWithResponses) SubmitExamAttemptWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*SubmitExamAttemptResponse, error) {
+	rsp, err := c.SubmitExamAttempt(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSubmitExamAttemptResponse(rsp)
+}
+
+// ListExamsWithResponse Available mock exams
+//
+// Lists active mock exam templates available to learners.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /exams (the `ListExams` operationId).
+func (c *ClientWithResponses) ListExamsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListExamsResponse, error) {
+	rsp, err := c.ListExams(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListExamsResponse(rsp)
+}
+
+// StartExamAttemptWithBodyWithResponse Start a sitting
+//
+// Starts a sitting in exam mode (75 minutes, fixed) or practice mode (10–180 minutes, clamped on the server), drawing its items from the exam pool and marking them seen in the same transaction. 404 EXAM_POOL_EMPTY means the pool does not yet hold a sitting's worth at this level. The sixth sitting in a day is 429 EXAM_DAILY_LIMIT_REACHED.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /exams/{id}/attempts (the `StartExamAttempt` operationId).
+func (c *ClientWithResponses) StartExamAttemptWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StartExamAttemptResponse, error) {
+	rsp, err := c.StartExamAttemptWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStartExamAttemptResponse(rsp)
+}
+
+// StartExamAttemptWithResponse Start a sitting
+//
+// Starts a sitting in exam mode (75 minutes, fixed) or practice mode (10–180 minutes, clamped on the server), drawing its items from the exam pool and marking them seen in the same transaction. 404 EXAM_POOL_EMPTY means the pool does not yet hold a sitting's worth at this level. The sixth sitting in a day is 429 EXAM_DAILY_LIMIT_REACHED.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /exams/{id}/attempts (the `StartExamAttempt` operationId).
+func (c *ClientWithResponses) StartExamAttemptWithResponse(ctx context.Context, id openapi_types.UUID, body StartExamAttemptJSONRequestBody, reqEditors ...RequestEditorFn) (*StartExamAttemptResponse, error) {
+	rsp, err := c.StartExamAttempt(ctx, id, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStartExamAttemptResponse(rsp)
+}
+
 // SystemHealthWithResponse Check process liveness.
 //
 // Returns success when the API process is able to serve requests.
@@ -20286,6 +22641,51 @@ func (c *ClientWithResponses) GetLessonByIdWithResponse(ctx context.Context, id 
 		return nil, err
 	}
 	return ParseGetLessonByIdResponse(rsp)
+}
+
+// RecordListeningPlayWithBodyWithResponse Checks the play policy, records the play, and returns a short-lived presigned audio GET URL.
+//
+// Enforces server-side play limits: a learning attempt allows 3 plays, an exam sitting 1 in exam mode and 3 in practice mode. The context must be the caller's own attempt at this item, or the caller's open sitting holding it (in exam mode, in the section open now); anything else is 403 LISTENING_PLAY_NOT_ALLOWED. 409 AUDIO_NOT_READY until the clip is rendered. Returns a short-lived presigned audio download URL valid for the clip length plus one minute.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /listening/items/{versionId}/plays (the `RecordListeningPlay` operationId).
+func (c *ClientWithResponses) RecordListeningPlayWithBodyWithResponse(ctx context.Context, versionId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RecordListeningPlayResponse, error) {
+	rsp, err := c.RecordListeningPlayWithBody(ctx, versionId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRecordListeningPlayResponse(rsp)
+}
+
+// RecordListeningPlayWithResponse Checks the play policy, records the play, and returns a short-lived presigned audio GET URL.
+//
+// Enforces server-side play limits: a learning attempt allows 3 plays, an exam sitting 1 in exam mode and 3 in practice mode. The context must be the caller's own attempt at this item, or the caller's open sitting holding it (in exam mode, in the section open now); anything else is 403 LISTENING_PLAY_NOT_ALLOWED. 409 AUDIO_NOT_READY until the clip is rendered. Returns a short-lived presigned audio download URL valid for the clip length plus one minute.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /listening/items/{versionId}/plays (the `RecordListeningPlay` operationId).
+func (c *ClientWithResponses) RecordListeningPlayWithResponse(ctx context.Context, versionId openapi_types.UUID, body RecordListeningPlayJSONRequestBody, reqEditors ...RequestEditorFn) (*RecordListeningPlayResponse, error) {
+	rsp, err := c.RecordListeningPlay(ctx, versionId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRecordListeningPlayResponse(rsp)
+}
+
+// GetListeningTranscriptWithResponse Returns script only for a graded attempt belonging to caller.
+//
+// In accordance with ADR-0025, the transcript is withheld until the attempt is graded, ensuring that the listening exercise cannot be solved by reading ahead.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /listening/items/{versionId}/transcript (the `GetListeningTranscript` operationId).
+func (c *ClientWithResponses) GetListeningTranscriptWithResponse(ctx context.Context, versionId openapi_types.UUID, params *GetListeningTranscriptParams, reqEditors ...RequestEditorFn) (*GetListeningTranscriptResponse, error) {
+	rsp, err := c.GetListeningTranscript(ctx, versionId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetListeningTranscriptResponse(rsp)
 }
 
 // UserRequestDeletionWithResponse Request account deletion (GDPR Article 17).
@@ -20961,6 +23361,66 @@ func (c *ClientWithResponses) SuspendReviewCardWithResponse(ctx context.Context,
 		return nil, err
 	}
 	return ParseSuspendReviewCardResponse(rsp)
+}
+
+// GetSpeakingFeedbackWithResponse Read feedback on a graded speaking attempt.
+//
+// Returns the transcript, criteria and bilingual feedback for a graded speaking attempt owned by the caller. Pronunciation is not assessed.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /speaking/attempts/{id}/feedback (the `GetSpeakingFeedback` operationId).
+func (c *ClientWithResponses) GetSpeakingFeedbackWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetSpeakingFeedbackResponse, error) {
+	rsp, err := c.GetSpeakingFeedback(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetSpeakingFeedbackResponse(rsp)
+}
+
+// DeleteSpeakingRecordingWithResponse Purges the recording object while keeping scores and feedback.
+//
+// Deletes the audio file from media storage for an attempt belonging to the caller, marking it deleted while preserving the grade, transcript, and criteria feedback.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /speaking/attempts/{id}/recording (the `DeleteSpeakingRecording` operationId).
+func (c *ClientWithResponses) DeleteSpeakingRecordingWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteSpeakingRecordingResponse, error) {
+	rsp, err := c.DeleteSpeakingRecording(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteSpeakingRecordingResponse(rsp)
+}
+
+// CreateSpeakingUploadIntentWithBodyWithResponse Presigned PUT URL for recording upload to storage.
+//
+// Generates a constrained presigned PUT URL directly to the media storage bucket. Validates daily recording quotas before issuing the intent.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /speaking/upload-intent (the `CreateSpeakingUploadIntent` operationId).
+func (c *ClientWithResponses) CreateSpeakingUploadIntentWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateSpeakingUploadIntentResponse, error) {
+	rsp, err := c.CreateSpeakingUploadIntentWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateSpeakingUploadIntentResponse(rsp)
+}
+
+// CreateSpeakingUploadIntentWithResponse Presigned PUT URL for recording upload to storage.
+//
+// Generates a constrained presigned PUT URL directly to the media storage bucket. Validates daily recording quotas before issuing the intent.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /speaking/upload-intent (the `CreateSpeakingUploadIntent` operationId).
+func (c *ClientWithResponses) CreateSpeakingUploadIntentWithResponse(ctx context.Context, body CreateSpeakingUploadIntentJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateSpeakingUploadIntentResponse, error) {
+	rsp, err := c.CreateSpeakingUploadIntent(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateSpeakingUploadIntentResponse(rsp)
 }
 
 // StorageGetAvatarWithResponse Serve a stored avatar image.
@@ -25786,6 +28246,580 @@ func ParseGetCourseBySlugResponse(rsp *http.Response) (*GetCourseBySlugResponse,
 	return response, nil
 }
 
+// ParseListExamAttemptsResponse parses an HTTP response from a ListExamAttemptsWithResponse call
+func ParseListExamAttemptsResponse(rsp *http.Response) (*ListExamAttemptsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListExamAttemptsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ExamAttemptList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ListExamAttemptsResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGetExamAttemptResponse parses an HTTP response from a GetExamAttemptWithResponse call
+func ParseGetExamAttemptResponse(rsp *http.Response) (*GetExamAttemptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetExamAttemptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ExamAttempt
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetExamAttemptResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseSaveExamDraftAnswersResponse parses an HTTP response from a SaveExamDraftAnswersWithResponse call
+func ParseSaveExamDraftAnswersResponse(rsp *http.Response) (*SaveExamDraftAnswersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SaveExamDraftAnswersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SaveExamAnswersResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers SaveExamDraftAnswersResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGetExamScoreReportResponse parses an HTTP response from a GetExamScoreReportWithResponse call
+func ParseGetExamScoreReportResponse(rsp *http.Response) (*GetExamScoreReportResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetExamScoreReportResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ExamScoreReport
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetExamScoreReportResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseCompleteExamSectionResponse parses an HTTP response from a CompleteExamSectionWithResponse call
+func ParseCompleteExamSectionResponse(rsp *http.Response) (*CompleteExamSectionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CompleteExamSectionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CompleteExamSectionResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers CompleteExamSectionResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseSubmitExamAttemptResponse parses an HTTP response from a SubmitExamAttemptWithResponse call
+func ParseSubmitExamAttemptResponse(rsp *http.Response) (*SubmitExamAttemptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SubmitExamAttemptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest struct {
+			AttemptId    openapi_types.UUID                               `json:"attempt_id"`
+			ReportStatus SubmitExamAttempt202JSONResponseBodyReportStatus `json:"report_status"`
+			Status       SubmitExamAttempt202JSONResponseBodyStatus       `json:"status"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 202:
+		var headers SubmitExamAttemptResponse202Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers202 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseListExamsResponse parses an HTTP response from a ListExamsWithResponse call
+func ParseListExamsResponse(rsp *http.Response) (*ListExamsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListExamsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []struct {
+			DescriptionEn *string            `json:"description_en,omitempty"`
+			DescriptionVi *string            `json:"description_vi,omitempty"`
+			Format        string             `json:"format"`
+			Id            openapi_types.UUID `json:"id"`
+			Level         string             `json:"level"`
+			Slug          string             `json:"slug"`
+			TitleEn       string             `json:"title_en"`
+			TitleVi       string             `json:"title_vi"`
+			TotalMinutes  int                `json:"total_minutes"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ListExamsResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseStartExamAttemptResponse parses an HTTP response from a StartExamAttemptWithResponse call
+func ParseStartExamAttemptResponse(rsp *http.Response) (*StartExamAttemptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StartExamAttemptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest ExamAttempt
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers StartExamAttemptResponse201Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers StartExamAttemptResponse429Headers
+		if values := rsp.Header.Values("RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitReset = &value
+		}
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseSystemHealthResponse parses an HTTP response from a SystemHealthWithResponse call
 func ParseSystemHealthResponse(rsp *http.Response) (*SystemHealthResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -25925,6 +28959,168 @@ func ParseGetLessonByIdResponse(rsp *http.Response) (*GetLessonByIdResponse, err
 	switch {
 	case rsp.StatusCode == 200:
 		var headers GetLessonByIdResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseRecordListeningPlayResponse parses an HTTP response from a RecordListeningPlayWithResponse call
+func ParseRecordListeningPlayResponse(rsp *http.Response) (*RecordListeningPlayResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RecordListeningPlayResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AudioUrl     string    `json:"audio_url"`
+			ExpiresAt    time.Time `json:"expires_at"`
+			PlaysAllowed int       `json:"plays_allowed"`
+			PlaysUsed    int       `json:"plays_used"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers RecordListeningPlayResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGetListeningTranscriptResponse parses an HTTP response from a GetListeningTranscriptWithResponse call
+func ParseGetListeningTranscriptResponse(rsp *http.Response) (*GetListeningTranscriptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetListeningTranscriptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Script string `json:"script"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetListeningTranscriptResponse200Headers
 		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
 			var value string
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
@@ -27905,6 +31101,240 @@ func ParseSuspendReviewCardResponse(rsp *http.Response) (*SuspendReviewCardRespo
 			headers.XRequestId = &value
 		}
 		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGetSpeakingFeedbackResponse parses an HTTP response from a GetSpeakingFeedbackWithResponse call
+func ParseGetSpeakingFeedbackResponse(rsp *http.Response) (*GetSpeakingFeedbackResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetSpeakingFeedbackResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SpeakingFeedback
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetSpeakingFeedbackResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseDeleteSpeakingRecordingResponse parses an HTTP response from a DeleteSpeakingRecordingWithResponse call
+func ParseDeleteSpeakingRecordingResponse(rsp *http.Response) (*DeleteSpeakingRecordingResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteSpeakingRecordingResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		var headers DeleteSpeakingRecordingResponse204Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers204 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseCreateSpeakingUploadIntentResponse parses an HTTP response from a CreateSpeakingUploadIntentWithResponse call
+func ParseCreateSpeakingUploadIntentResponse(rsp *http.Response) (*CreateSpeakingUploadIntentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateSpeakingUploadIntentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			DailyRecordingsLimit int       `json:"daily_recordings_limit"`
+			DailyRecordingsUsed  int       `json:"daily_recordings_used"`
+			ExpiresAt            time.Time `json:"expires_at"`
+			ObjectKey            string    `json:"object_key"`
+			UploadUrl            string    `json:"upload_url"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers CreateSpeakingUploadIntentResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers CreateSpeakingUploadIntentResponse429Headers
+		if values := rsp.Header.Values("RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RateLimitReset = &value
+		}
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers429 = &headers
 	}
 
 	return response, nil

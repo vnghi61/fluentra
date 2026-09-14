@@ -997,7 +997,8 @@
     ],
     "endpoints": [
       { "method": "POST", "path": "/api/v1/speaking/upload-intent", "permission": "self", "purpose": "Presigned PUT URL for recording upload to storage", "success": "200", "errors": ["UNSUPPORTED_AUDIO_FORMAT", "SPEECH_DAILY_LIMIT_REACHED"] },
-      { "method": "DELETE", "path": "/api/v1/speaking/attempts/{id}/recording", "permission": "self", "purpose": "Purges the recording object while keeping scores and feedback", "success": "204" }
+      { "method": "DELETE", "path": "/api/v1/speaking/attempts/{id}/recording", "permission": "self", "purpose": "Purges the recording object while keeping scores and feedback", "success": "204" },
+      { "method": "GET", "path": "/api/v1/speaking/attempts/{id}/feedback", "permission": "self", "purpose": "Read feedback on a graded speaking attempt", "success": "200", "errors": ["FEEDBACK_NOT_FOUND"] }
     ],
     "contract": [{ "kind": "interface", "name": "speaking.Grader", "purpose": "Implements `learning.ExerciseGrader`; always asynchronous" }],
     "events": {
@@ -1005,7 +1006,10 @@
         { "name": "speaking.attempt_recorded", "payload": "`{user_id, attempt_id, asset_id}`" },
         { "name": "speaking.scored", "payload": "`{user_id, attempt_id, accuracy, fluency}`" }
       ],
-      "consumes": [{ "name": "media.transcribed", "reason": "Continue the pipeline once ASR is done" }]
+      "consumes": [
+        { "name": "media.transcribed", "reason": "Continue the pipeline once ASR is done" },
+        { "name": "user.deleted", "reason": "Delete the account's recordings from storage; the anonymised user row never cascades" }
+      ]
     },
     "dependsOn": ["media", "ai", "storage", "job", "content", "learning"],
     "dependedOnBy": ["learning", "analytics", "gamification"],

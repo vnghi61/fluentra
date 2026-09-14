@@ -20,11 +20,11 @@ import (
 )
 
 const (
-	examKindListeningComprehension = "listening_comprehension"
-	examKindReadingComprehension   = "reading_comprehension"
+	examKindListeningComprehension   = "listening_comprehension"
+	examKindReadingComprehension     = "reading_comprehension"
 	examKindGrammarSentenceTransform = "grammar_sentence_transform"
-	examKindWritingPrompt          = "writing_prompt"
-	examKindSpeakingTask           = "speaking_task"
+	examKindWritingPrompt            = "writing_prompt"
+	examKindSpeakingTask             = "speaking_task"
 )
 
 type examPoolFixture struct {
@@ -120,17 +120,23 @@ func (f examPoolFixture) seedExamSlot(
 func (f examPoolFixture) seedFullExamPool(t *testing.T, level string, multiplier int) {
 	t.Helper()
 	// Listening: 3 * multiplier
-	f.seedExamSlot(t, level, "Listening Comprehension", examKindListeningComprehension, 3*multiplier, func(i int) json.RawMessage {
-		return json.RawMessage(fmt.Sprintf(`{
+	f.seedExamSlot(t, level, "Listening Comprehension", examKindListeningComprehension, 3*multiplier,
+		func(i int) json.RawMessage {
+			return json.RawMessage(fmt.Sprintf(`{
 			"title": "Clip %d",
 			"script": "Script content %d",
 			"audio_object_key": "audio/listening/clip-%d.mp3",
-			"questions": [{"id": "q1", "type": "multiple_choice", "prompt": "P1", "options": [{"id":"A","text":"1"}], "correct_option_id":"A"}]
+			"questions": [{
+				"id": "q1", "type": "multiple_choice", "prompt": "P1",
+				"options": [{"id":"A","text":"1"}], "correct_option_id":"A"
+			}]
 		}`, i, i, i))
-	})
+		})
 
 	// Reading: 2 * multiplier
-	f.seedExamSlot(t, level, "Reading Comprehension", examKindReadingComprehension, 2*multiplier, func(i int) json.RawMessage {
+	f.seedExamSlot(t, level, "Reading Comprehension", examKindReadingComprehension, 2*multiplier, func(
+		i int,
+	) json.RawMessage {
 		return json.RawMessage(fmt.Sprintf(`{"passage": "Passage %d", "questions": []}`, i))
 	})
 
@@ -140,9 +146,10 @@ func (f examPoolFixture) seedFullExamPool(t *testing.T, level string, multiplier
 	})
 
 	// Sentence transform: 3 * multiplier
-	f.seedExamSlot(t, level, "Grammar Sentence Transform", examKindGrammarSentenceTransform, 3*multiplier, func(i int) json.RawMessage {
-		return json.RawMessage(fmt.Sprintf(`{"prompt": "Transform %d", "correct_answer": "Answer %d"}`, i, i))
-	})
+	f.seedExamSlot(t, level, "Grammar Sentence Transform", examKindGrammarSentenceTransform, 3*multiplier,
+		func(i int) json.RawMessage {
+			return json.RawMessage(fmt.Sprintf(`{"prompt": "Transform %d", "correct_answer": "Answer %d"}`, i, i))
+		})
 
 	// Speaking read aloud: 2 * multiplier
 	f.seedExamSlot(t, level, "Speaking Read Aloud", examKindSpeakingTask, 2*multiplier, func(i int) json.RawMessage {
@@ -201,9 +208,10 @@ func TestDrawExamSitting_CompositionAndSectionOrdering(t *testing.T) {
 	assert.Len(t, sections[2].Activities, 4)
 	essayCount, transformCount := 0, 0
 	for _, act := range sections[2].Activities {
-		if act.Kind == examKindWritingPrompt {
+		switch act.Kind {
+		case examKindWritingPrompt:
 			essayCount++
-		} else if act.Kind == examKindGrammarSentenceTransform {
+		case examKindGrammarSentenceTransform:
 			transformCount++
 		}
 	}
@@ -287,19 +295,21 @@ func TestDrawExamSitting_ListeningWithoutAudioNeverDrawn(t *testing.T) {
 	f := newExamPoolFixture(t, clk, uuid.New(), passingGraders(), nil)
 
 	// Seed reading, writing, speaking
-	f.seedExamSlot(t, "B1", "Reading Comprehension", examKindReadingComprehension, 2, func(i int) json.RawMessage {
+	f.seedExamSlot(t, "B1", "Reading Comprehension", examKindReadingComprehension, 2, func(_ int) json.RawMessage {
 		return json.RawMessage(`{"passage": "text"}`)
 	})
-	f.seedExamSlot(t, "B1", "Writing Prompt", examKindWritingPrompt, 1, func(i int) json.RawMessage {
+	f.seedExamSlot(t, "B1", "Writing Prompt", examKindWritingPrompt, 1, func(_ int) json.RawMessage {
 		return json.RawMessage(`{"prompt": "essay", "model_answer": "answer"}`)
 	})
-	f.seedExamSlot(t, "B1", "Grammar Sentence Transform", examKindGrammarSentenceTransform, 3, func(i int) json.RawMessage {
+	f.seedExamSlot(t, "B1", "Grammar Sentence Transform", examKindGrammarSentenceTransform, 3, func(
+		_ int,
+	) json.RawMessage {
 		return json.RawMessage(`{"prompt": "transform", "correct_answer": "answer"}`)
 	})
-	f.seedExamSlot(t, "B1", "Speaking Read Aloud", examKindSpeakingTask, 2, func(i int) json.RawMessage {
+	f.seedExamSlot(t, "B1", "Speaking Read Aloud", examKindSpeakingTask, 2, func(_ int) json.RawMessage {
 		return json.RawMessage(`{"task_type": "read_aloud", "reference_text": "read"}`)
 	})
-	f.seedExamSlot(t, "B1", "Speaking Respond", examKindSpeakingTask, 2, func(i int) json.RawMessage {
+	f.seedExamSlot(t, "B1", "Speaking Respond", examKindSpeakingTask, 2, func(_ int) json.RawMessage {
 		return json.RawMessage(`{"task_type": "respond", "prompt": "respond"}`)
 	})
 
@@ -318,7 +328,7 @@ func TestDrawExamSitting_ListeningWithoutAudioNeverDrawn(t *testing.T) {
 	assert.Contains(t, err.Error(), "insufficient listening items with audio")
 
 	// Now add a 3rd with audio
-	f.seedExamSlot(t, "B1", "Listening Comprehension", examKindListeningComprehension, 1, func(i int) json.RawMessage {
+	f.seedExamSlot(t, "B1", "Listening Comprehension", examKindListeningComprehension, 1, func(_ int) json.RawMessage {
 		return json.RawMessage(`{"script": "script 3", "audio_object_key": "audio/3.mp3"}`)
 	})
 
@@ -355,23 +365,15 @@ func TestPoolIsolation_PracticeNeverContainsExam_ExamNeverContainsPractice(t *te
 		poolKindTense:     10,
 		poolKindTransform: 6,
 	})
-	var allPracticeIDs []uuid.UUID
 	practiceSet := make(map[uuid.UUID]bool)
 	for _, ids := range practiceIDsMap {
 		for _, id := range ids {
-			allPracticeIDs = append(allPracticeIDs, id)
 			practiceSet[id] = true
 		}
 	}
 
 	// Seed exam pool
-	examFixture := examPoolFixture{
-		svc:     f.svc,
-		repo:    f.repo,
-		lessons: f.lessons,
-		content: f.content,
-		authors: f.authors,
-	}
+	examFixture := examPoolFixture(f)
 	examFixture.seedFullExamPool(t, "B1", 2)
 
 	// 1. Draw practice daily set -> must contain NO exam pool activity

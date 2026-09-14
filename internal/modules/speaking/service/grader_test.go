@@ -3,6 +3,7 @@ package service_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"testing"
 	"time"
@@ -35,7 +36,9 @@ type fakeAttemptReader struct {
 	err     error
 }
 
-func (f *fakeAttemptReader) GetAttemptForGrading(_ context.Context, _ uuid.UUID) (*learningcontract.AttemptDetail, error) {
+func (f *fakeAttemptReader) GetAttemptForGrading(_ context.Context, _ uuid.UUID) (
+	*learningcontract.AttemptDetail, error,
+) {
 	return f.attempt, f.err
 }
 
@@ -46,7 +49,9 @@ type fakeCompleter struct {
 	failReason  string
 }
 
-func (f *fakeCompleter) CompleteAsyncGrading(_ context.Context, attemptID uuid.UUID, result learningcontract.GradeResult) (bool, error) {
+func (f *fakeCompleter) CompleteAsyncGrading(
+	_ context.Context, attemptID uuid.UUID, result learningcontract.GradeResult,
+) (bool, error) {
 	f.completedID = attemptID
 	f.result = result
 	return true, nil
@@ -100,14 +105,18 @@ func (f *fakeAIClient) Complete(_ context.Context, _ ai.Request) (ai.Response, e
 	return f.response, nil
 }
 
+const keyAudioObject = "audio_object_key"
+
 func TestGrader_Grade_Validation(t *testing.T) {
 	userID := uuid.New()
 	attemptID := uuid.New()
 	versionID := uuid.New()
 
 	enqueuer := &fakeJobEnqueuer{}
+	store := &mockStorageStore{}
 	grader := service.NewGrader(service.GraderDeps{
 		Enqueuer:   enqueuer,
+		Storage:    store,
 		DailyLimit: 30,
 	})
 
@@ -127,7 +136,7 @@ func TestGrader_Grade_Validation(t *testing.T) {
 	// 2. Invalid recording key (belongs to other user)
 	otherUser := uuid.New()
 	invalidKey, _ := json.Marshal(map[string]string{
-		"audio_object_key": "recordings/" + otherUser.String() + "/01HX.webm",
+		keyAudioObject: "recordings/" + otherUser.String() + "/01HX.webm",
 	})
 	_, err = grader.Grade(context.Background(), learningcontract.GradeRequest{
 		AttemptID:        attemptID,
@@ -139,7 +148,7 @@ func TestGrader_Grade_Validation(t *testing.T) {
 
 	// 3. Valid key -> enqueued
 	validKey, _ := json.Marshal(map[string]string{
-		"audio_object_key": "recordings/" + userID.String() + "/01HX.webm",
+		keyAudioObject: "recordings/" + userID.String() + "/01HX.webm",
 	})
 	res, err = grader.Grade(context.Background(), learningcontract.GradeRequest{
 		AttemptID:        attemptID,
@@ -150,6 +159,15 @@ func TestGrader_Grade_Validation(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, res.Async)
 	assert.Equal(t, attemptID, enqueuer.enqueuedAttemptID)
+	// 4. A key with nothing uploaded behind it is refused.
+	store.statErr = errors.New("object does not exist")
+	_, err = grader.Grade(context.Background(), learningcontract.GradeRequest{
+		AttemptID:        attemptID,
+		UserID:           userID,
+		ContentVersionID: versionID,
+		Response:         validKey,
+	})
+	assert.ErrorIs(t, err, domain.ErrRecordingNotFound)
 }
 
 func TestGrader_GradeSubmission_ReadAloud(t *testing.T) {
@@ -171,7 +189,7 @@ func TestGrader_GradeSubmission_ReadAloud(t *testing.T) {
 	}
 
 	respJSON, _ := json.Marshal(map[string]string{
-		"audio_object_key": recordingKey,
+		keyAudioObject: recordingKey,
 	})
 	attemptReader := &fakeAttemptReader{
 		attempt: &learningcontract.AttemptDetail{

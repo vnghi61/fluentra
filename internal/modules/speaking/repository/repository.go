@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"time"
 
@@ -54,7 +55,7 @@ func (r *Repository) InsertFeedback(ctx context.Context, fb *contract.SpeakingFe
 
 	var wpm *int32
 	if fb.WordsPerMinute != nil {
-		v := int32(*fb.WordsPerMinute)
+		v := clampInt32(*fb.WordsPerMinute)
 		wpm = &v
 	}
 
@@ -96,7 +97,9 @@ func (r *Repository) InsertFeedback(ctx context.Context, fb *contract.SpeakingFe
 }
 
 // GetFeedbackByAttemptID retrieves speaking feedback for a given attempt.
-func (r *Repository) GetFeedbackByAttemptID(ctx context.Context, attemptID uuid.UUID) (*contract.SpeakingFeedback, error) {
+func (r *Repository) GetFeedbackByAttemptID(
+	ctx context.Context, attemptID uuid.UUID,
+) (*contract.SpeakingFeedback, error) {
 	row, err := r.queries.GetSpeakingFeedbackByAttemptID(ctx, attemptID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -108,7 +111,9 @@ func (r *Repository) GetFeedbackByAttemptID(ctx context.Context, attemptID uuid.
 }
 
 // GetFeedbackForUser retrieves speaking feedback verifying user ownership.
-func (r *Repository) GetFeedbackForUser(ctx context.Context, attemptID, userID uuid.UUID) (*contract.SpeakingFeedback, error) {
+func (r *Repository) GetFeedbackForUser(
+	ctx context.Context, attemptID, userID uuid.UUID,
+) (*contract.SpeakingFeedback, error) {
 	row, err := r.queries.GetSpeakingFeedbackForUser(ctx, sqlc.GetSpeakingFeedbackForUserParams{
 		AttemptID: attemptID,
 		UserID:    userID,
@@ -138,7 +143,9 @@ func (r *Repository) MarkRecordingDeleted(ctx context.Context, attemptID, userID
 }
 
 // ListRecordingsOlderThan returns recordings created before cutoff that have not yet been purged.
-func (r *Repository) ListRecordingsOlderThan(ctx context.Context, cutoff time.Time, limit int32) ([]sqlc.ListRecordingsOlderThanRow, error) {
+func (r *Repository) ListRecordingsOlderThan(
+	ctx context.Context, cutoff time.Time, limit int32,
+) ([]sqlc.ListRecordingsOlderThanRow, error) {
 	rows, err := r.queries.ListRecordingsOlderThan(ctx, sqlc.ListRecordingsOlderThanParams{
 		CreatedAt: cutoff,
 		Limit:     limit,
@@ -209,4 +216,15 @@ func toContractFeedback(row sqlc.SkillSpeakingFeedback) (*contract.SpeakingFeedb
 		CreatedAt:          row.CreatedAt,
 		UpdatedAt:          row.UpdatedAt,
 	}, nil
+}
+
+// clampInt32 narrows an int to int32 with a bound CodeQL and gosec can see.
+func clampInt32(v int) int32 {
+	if v > math.MaxInt32 {
+		return math.MaxInt32
+	}
+	if v < math.MinInt32 {
+		return math.MinInt32
+	}
+	return int32(v)
 }

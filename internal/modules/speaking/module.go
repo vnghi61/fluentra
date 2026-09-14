@@ -3,6 +3,8 @@ package speaking
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -16,12 +18,14 @@ import (
 	speakingrepo "github.com/fluentra/fluentra/internal/modules/speaking/repository"
 	"github.com/fluentra/fluentra/internal/modules/speaking/service"
 	speakinghttp "github.com/fluentra/fluentra/internal/modules/speaking/transport/http"
+	usercontract "github.com/fluentra/fluentra/internal/modules/user/contract"
 	"github.com/fluentra/fluentra/internal/platform/ai"
 	platformjob "github.com/fluentra/fluentra/internal/platform/job"
 	"github.com/fluentra/fluentra/internal/platform/media"
 	"github.com/fluentra/fluentra/internal/platform/storage"
 	"github.com/fluentra/fluentra/internal/shared/clock"
 	"github.com/fluentra/fluentra/internal/shared/dbx"
+	"github.com/fluentra/fluentra/internal/shared/eventbus"
 )
 
 // WorkerNudger signals a background worker to wake up after a job is enqueued.
@@ -134,6 +138,28 @@ func (m *Module) GradeRecordingWorker() *speakingjob.GradeRecordingWorker {
 // PurgeJob returns the scheduled 90-day retention cron job.
 func (m *Module) PurgeJob() platformjob.CronJob {
 	return speakingjob.PurgeJob(m.service)
+}
+
+// Subscribe registers the module's consumers in the worker.
+//
+// Account erasure anonymises the user row, so the feedback rows stay and the
+// cascade never runs; nothing but this consumer removes the recordings in storage.
+func (m *Module) Subscribe(bus eventbus.EventBus) error {
+	if err := bus.Subscribe(usercontract.EventDeleted, m.handleUserDeleted); err != nil {
+		return fmt.Errorf("subscribe speaking consumer to %s: %w", usercontract.EventDeleted, err)
+	}
+	return nil
+}
+
+func (m *Module) handleUserDeleted(ctx context.Context, msg eventbus.Message) error {
+	var payload usercontract.UserDeleted
+	if err := json.Unmarshal(msg.Payload, &payload); err != nil {
+		return fmt.Errorf("decode %s payload: %w", usercontract.EventDeleted, err)
+	}
+	if payload.UserID == uuid.Nil {
+		return nil
+	}
+	return m.service.DeleteUserRecordings(ctx, payload.UserID)
 }
 
 type jobEnqueuerAdapter struct {

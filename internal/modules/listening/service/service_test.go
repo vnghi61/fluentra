@@ -66,7 +66,9 @@ type fakeAttemptReader struct {
 	attempts map[uuid.UUID]*learningcontract.AttemptDetail
 }
 
-func (f *fakeAttemptReader) GetAttemptForGrading(_ context.Context, attemptID uuid.UUID) (*learningcontract.AttemptDetail, error) {
+func (f *fakeAttemptReader) GetAttemptForGrading(
+	_ context.Context, attemptID uuid.UUID,
+) (*learningcontract.AttemptDetail, error) {
 	a, ok := f.attempts[attemptID]
 	if !ok {
 		return nil, nil
@@ -75,12 +77,64 @@ func (f *fakeAttemptReader) GetAttemptForGrading(_ context.Context, attemptID uu
 }
 
 type fakeStorageSigner struct {
-	presigned map[string]string
 }
 
-func (f *fakeStorageSigner) PresignGet(_ context.Context, bucket, objectKey string, expiry time.Duration) (string, error) {
+func (f *fakeStorageSigner) PresignGet(
+	_ context.Context, bucket, objectKey string, expiry time.Duration,
+) (string, error) {
 	url := "https://media.fluentra.local/" + bucket + "/" + objectKey + "?exp=" + expiry.String()
 	return url, nil
+}
+
+type fakeSittings struct {
+	sittingID uuid.UUID
+	plays     int
+}
+
+func (f fakeSittings) ListeningPlayPolicy(_ context.Context, _, sittingID, _ uuid.UUID) (int, error) {
+	if sittingID != f.sittingID {
+		return 0, domain.ErrPlayNotAllowed
+	}
+	return f.plays, nil
+}
+
+type fakeAudio struct{}
+
+func (fakeAudio) AudioKey(_ context.Context, script, voice string) (string, bool, error) {
+	return "tts/" + voice + "/" + script + ".wav", true, nil
+}
+
+func TestRecordPlay_AContextThatIsNotTheCallersIsRefused(t *testing.T) {
+	userID := uuid.New()
+	versionID := uuid.New()
+	bodyJSON, _ := json.Marshal(listeningBody{AudioObjectKey: "tts/v/clip.wav"})
+	contentReader := &fakeContentReader{versions: map[uuid.UUID]*contentcontract.Version{
+		versionID: {ID: versionID, Kind: domain.KindListeningComprehension, Body: bodyJSON},
+	}}
+	othersAttempt := uuid.New()
+	svc := New(Deps{
+		Repo:     newFakeRepo(),
+		Content:  contentReader,
+		Storage:  &fakeStorageSigner{},
+		Sittings: fakeSittings{sittingID: uuid.New(), plays: 1},
+		Learning: &fakeAttemptReader{attempts: map[uuid.UUID]*learningcontract.AttemptDetail{
+			othersAttempt: {ID: othersAttempt, UserID: uuid.New(), ContentVersionID: versionID, Status: "in_progress"},
+		}},
+	})
+
+	// A made-up context ID would otherwise be a fresh set of plays on every request.
+	_, err := svc.RecordPlay(context.Background(), userID, versionID, domain.ContextTypeAttempt, uuid.New())
+	if !errors.Is(err, domain.ErrPlayNotAllowed) {
+		t.Fatalf("expected ErrPlayNotAllowed for an unknown attempt, got %v", err)
+	}
+	_, err = svc.RecordPlay(context.Background(), userID, versionID, domain.ContextTypeAttempt, othersAttempt)
+	if !errors.Is(err, domain.ErrPlayNotAllowed) {
+		t.Fatalf("expected ErrPlayNotAllowed for another learner's attempt, got %v", err)
+	}
+	_, err = svc.RecordPlay(context.Background(), userID, versionID, domain.ContextTypeExam, uuid.New())
+	if !errors.Is(err, domain.ErrPlayNotAllowed) {
+		t.Fatalf("expected ErrPlayNotAllowed for a sitting that is not the caller's, got %v", err)
+	}
 }
 
 func TestRecordPlay_ContextValidation(t *testing.T) {
@@ -141,10 +195,12 @@ func TestRecordPlay_ExamPolicy_AllowsOnePlayOnly(t *testing.T) {
 
 	repo := newFakeRepo()
 	svc := New(Deps{
-		Repo:    repo,
-		Content: contentReader,
-		Storage: &fakeStorageSigner{},
-		Clock:   clock.Real{},
+		Repo:     repo,
+		Content:  contentReader,
+		Storage:  &fakeStorageSigner{},
+		Sittings: fakeSittings{sittingID: examID, plays: 1},
+		Audio:    fakeAudio{},
+		Clock:    clock.Real{},
 	})
 
 	// First play in exam context: allowed
@@ -188,7 +244,10 @@ func TestRecordPlay_AttemptPolicy_AllowsThreePlays(t *testing.T) {
 		Repo:    repo,
 		Content: contentReader,
 		Storage: &fakeStorageSigner{},
-		Clock:   clock.Real{},
+		Learning: &fakeAttemptReader{attempts: map[uuid.UUID]*learningcontract.AttemptDetail{
+			attemptID: {ID: attemptID, UserID: userID, ContentVersionID: versionID, Status: "in_progress"},
+		}},
+		Clock: clock.Real{},
 	})
 
 	for i := 1; i <= 3; i++ {

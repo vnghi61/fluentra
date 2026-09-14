@@ -1,125 +1,116 @@
 import React, { useRef, useState } from "react";
-import { AlertCircle, Headphones, Loader2, Pause, Play, Volume2 } from "lucide-react";
+import { AlertCircle, Headphones, Loader2, Pause, Play } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { examApi } from "../api/examApi";
+import { examApi, problemCode } from "../api/examApi";
 
 export interface ListeningPlayerProps {
   versionId: string;
-  contextId: string;
+  sittingId: string;
   title?: string | undefined;
   className?: string | undefined;
 }
 
+function formatTime(secs: number): string {
+  if (!Number.isFinite(secs) || secs < 0) return "00:00";
+  const m = Math.floor(secs / 60);
+  const s = Math.floor(secs % 60);
+  return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+}
+
+/**
+ * Plays a clip through the play route. Every play is counted by the server, and
+ * the URL it returns expires shortly after the clip ends, so a play is spent
+ * when it starts. Pausing and resuming within that play does not spend another.
+ */
 export const ListeningPlayer: React.FC<ListeningPlayerProps> = ({
   versionId,
-  contextId,
+  sittingId,
   title,
   className,
 }) => {
   const { t } = useTranslation();
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [currentTime, setCurrentTime] = useState<number>(0);
-  const [duration, setDuration] = useState<number>(0);
-  const [playsRemaining, setPlaysRemaining] = useState<number | null>(null);
-  const [playsAllowed, setPlaysAllowed] = useState<number>(2);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [hasSource, setHasSource] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [playsLeft, setPlaysLeft] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const formatTime = (secs: number): string => {
-    if (isNaN(secs) || secs < 0) return "00:00";
-    const m = Math.floor(secs / 60);
-    const s = Math.floor(secs % 60);
-    return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
-  };
-
-  const handlePlayToggle = async () => {
-    setErrorMsg(null);
-
-    // If currently playing, allow pausing
-    if (isPlaying && audioRef.current) {
-      audioRef.current.pause();
-      setIsPlaying(false);
-      return;
-    }
-
-    // If audio already loaded and has duration, resume
-    if (audioUrl && audioRef.current) {
-      try {
-        await audioRef.current.play();
-        setIsPlaying(true);
-      } catch (err: any) {
-        setErrorMsg(err?.message || "Failed to play audio");
-      }
-      return;
-    }
-
-    // First time play -> request presigned URL and decrement play count on server
+  const startPlay = async () => {
     setIsLoading(true);
     try {
-      const res = await examApi.getListeningPlay(versionId, "exam", contextId);
-      setAudioUrl(res.audio_url);
-      setPlaysRemaining(Math.max(0, res.plays_allowed - res.plays_used));
-      setPlaysAllowed(res.plays_allowed);
-
-      if (audioRef.current) {
-        audioRef.current.src = res.audio_url;
-        await audioRef.current.play();
+      const res = await examApi.playListening(versionId, sittingId);
+      setPlaysLeft(Math.max(0, res.plays_allowed - res.plays_used));
+      const audio = audioRef.current;
+      if (audio) {
+        audio.src = res.audio_url;
+        setHasSource(true);
+        await audio.play();
         setIsPlaying(true);
       }
-    } catch (err: any) {
-      const isLimit =
-        err?.problem?.code === "PLAY_LIMIT_REACHED" ||
-        err?.status === 403 ||
-        err?.message?.includes("PLAY_LIMIT_REACHED");
-      if (isLimit) {
-        setPlaysRemaining(0);
-        setErrorMsg(t("exam.listening.limitReached", "Maximum play limit reached for this audio track."));
+    } catch (err: unknown) {
+      const code = problemCode(err);
+      if (code === "PLAY_LIMIT_REACHED") {
+        setPlaysLeft(0);
+        setError(t("exam.listening.limitReached"));
+      } else if (code === "AUDIO_NOT_READY") {
+        setError(t("exam.listening.notReady"));
       } else {
-        setErrorMsg(err?.message || t("exam.listening.loadFailed", "Unable to load audio track."));
+        setError(t("exam.listening.loadFailed"));
       }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleTimeUpdate = () => {
-    if (audioRef.current) {
-      setCurrentTime(audioRef.current.currentTime);
+  const handleToggle = async () => {
+    setError(null);
+    const audio = audioRef.current;
+    if (isPlaying && audio) {
+      audio.pause();
+      setIsPlaying(false);
+      return;
     }
-  };
-
-  const handleLoadedMetadata = () => {
-    if (audioRef.current) {
-      setDuration(audioRef.current.duration);
+    if (hasSource && audio) {
+      try {
+        await audio.play();
+        setIsPlaying(true);
+      } catch {
+        setError(t("exam.listening.loadFailed"));
+      }
+      return;
     }
+    await startPlay();
   };
 
   const handleEnded = () => {
+    // The play is over; the next one goes back to the server.
     setIsPlaying(false);
+    setHasSource(false);
     setCurrentTime(0);
   };
 
-  const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
-  const isPlayDisabled = isLoading || (playsRemaining !== null && playsRemaining <= 0 && !audioUrl);
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const disabled = isLoading || (playsLeft === 0 && !hasSource);
 
   return (
     <div
       className={cn(
-        "rounded-xl border border-border bg-card p-4 sm:p-5 shadow-sm space-y-4",
+        "space-y-4 rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5",
         className,
       )}
     >
       <audio
         ref={audioRef}
-        onTimeUpdate={handleTimeUpdate}
-        onLoadedMetadata={handleLoadedMetadata}
+        onTimeUpdate={() => setCurrentTime(audioRef.current?.currentTime ?? 0)}
+        onLoadedMetadata={() => setDuration(audioRef.current?.duration ?? 0)}
         onEnded={handleEnded}
         onError={() => {
           setIsPlaying(false);
@@ -127,77 +118,64 @@ export const ListeningPlayer: React.FC<ListeningPlayerProps> = ({
         }}
       />
 
-      {/* Header with Title & Plays Badge */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <Headphones className="h-5 w-5" />
+            <Headphones className="h-5 w-5" aria-hidden="true" />
           </div>
           <div>
-            <h4 className="font-semibold text-text text-base">
-              {title || t("exam.listening.audioClip", "Listening Audio Track")}
+            <h4 className="text-base font-semibold text-text">
+              {title || t("exam.listening.audioClip")}
             </h4>
             <p className="text-xs text-text-muted">
-              {t("exam.listening.instructions", "Listen carefully to answer the following questions.")}
+              {t("exam.listening.instructions")}
             </p>
           </div>
         </div>
-
-        <Badge
-          variant={playsRemaining === 0 ? "danger" : "outline"}
-          className="text-xs px-3 py-1 font-medium gap-1.5"
-        >
-          <Volume2 className="h-3.5 w-3.5" />
-          {playsRemaining !== null
-            ? t("exam.listening.playsLeft", {
-                count: playsRemaining,
-                total: playsAllowed,
-                defaultValue: `${playsRemaining}/${playsAllowed} plays left`,
-              })
-            : t("exam.listening.maxPlays", { count: playsAllowed, defaultValue: `Up to ${playsAllowed} plays` })}
-        </Badge>
+        {playsLeft !== null && (
+          <Badge variant={playsLeft === 0 ? "danger" : "outline"}>
+            {t("exam.listening.playsLeft", { count: playsLeft })}
+          </Badge>
+        )}
       </div>
 
-      {/* Player Controls Bar */}
-      <div className="flex items-center gap-4 bg-surface-muted/50 rounded-lg p-3">
+      <div className="flex items-center gap-4 rounded-lg bg-surface-muted/50 p-3">
         <Button
           type="button"
-          onClick={handlePlayToggle}
-          disabled={isPlayDisabled}
-          aria-label={isPlaying ? t("common.pause", "Pause") : t("common.play", "Play")}
-          className={cn(
-            "h-12 w-12 rounded-full shrink-0 flex items-center justify-center min-h-[44px] min-w-[44px] shadow-sm",
-            isPlaying ? "bg-accent hover:bg-accent/90" : "bg-primary hover:bg-primary/90",
-          )}
+          onClick={() => void handleToggle()}
+          disabled={disabled}
+          aria-label={isPlaying ? t("exam.listening.pause") : t("exam.listening.play")}
+          className="h-12 min-h-[44px] w-12 min-w-[44px] shrink-0 rounded-full"
         >
           {isLoading ? (
-            <Loader2 className="h-5 w-5 animate-spin text-white" />
+            <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
           ) : isPlaying ? (
-            <Pause className="h-5 w-5 text-white" />
+            <Pause className="h-5 w-5" aria-hidden="true" />
           ) : (
-            <Play className="h-5 w-5 fill-current text-white translate-x-0.5" />
+            <Play className="h-5 w-5" aria-hidden="true" />
           )}
         </Button>
-
-        {/* Progress Display */}
-        <div className="flex-1 min-w-0 space-y-1.5">
-          <div className="h-2 w-full bg-border-subtle rounded-full overflow-hidden">
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-border-subtle">
             <div
-              className="h-full bg-primary transition-all duration-150 rounded-full"
-              style={{ width: `${progressPercent}%` }}
+              className="h-full rounded-full bg-primary transition-all duration-150"
+              style={{ width: `${progress}%` }}
             />
           </div>
-          <div className="flex justify-between text-xs font-mono text-text-muted">
+          <div className="flex justify-between font-mono text-xs text-text-muted">
             <span>{formatTime(currentTime)}</span>
             <span>{formatTime(duration)}</span>
           </div>
         </div>
       </div>
 
-      {errorMsg && (
-        <div className="flex items-center gap-2 text-xs text-danger bg-danger/10 p-2.5 rounded-lg">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          <span>{errorMsg}</span>
+      {error && (
+        <div
+          role="alert"
+          className="flex items-center gap-2 rounded-lg bg-danger/10 p-2.5 text-xs text-danger"
+        >
+          <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>{error}</span>
         </div>
       )}
     </div>

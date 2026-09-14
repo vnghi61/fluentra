@@ -16,27 +16,33 @@ var (
 	// ErrUnsupportedAudioFormat is returned when the uploaded audio content type is not supported.
 	ErrUnsupportedAudioFormat = apperr.New(apperr.BadRequest, "UNSUPPORTED_AUDIO_FORMAT", "audio format not supported")
 	// ErrDailyLimitReached is returned when the user exceeds the daily speaking recording quota.
-	ErrDailyLimitReached = apperr.New(apperr.RateLimited, "SPEECH_DAILY_LIMIT_REACHED", "daily speaking recordings limit reached")
+	ErrDailyLimitReached = apperr.New(
+		apperr.RateLimited, "SPEECH_DAILY_LIMIT_REACHED", "daily speaking recordings limit reached",
+	)
 	// ErrRecordingNotFound is returned when audio recording object does not exist.
 	ErrRecordingNotFound = apperr.New(apperr.NotFound, "RECORDING_NOT_FOUND", "recording not found")
 	// ErrInvalidRecordingKey is returned when the object key does not belong to the learner.
-	ErrInvalidRecordingKey = apperr.New(apperr.BadRequest, "INVALID_RECORDING_KEY", "recording key is invalid or belongs to another user")
+	ErrInvalidRecordingKey = apperr.New(
+		apperr.BadRequest, "INVALID_RECORDING_KEY", "recording key is invalid or belongs to another user",
+	)
 	// ErrFeedbackNotFound is returned when speaking feedback does not exist.
 	ErrFeedbackNotFound = apperr.New(apperr.NotFound, "FEEDBACK_NOT_FOUND", "speaking feedback not found")
 	// ErrSpeakingQueueUnavailable is returned when River enqueuer is missing.
-	ErrSpeakingQueueUnavailable = apperr.New(apperr.Internal, "SPEAKING_QUEUE_UNAVAILABLE", "speaking grading queue is not configured")
+	ErrSpeakingQueueUnavailable = apperr.New(
+		apperr.Internal, "SPEAKING_QUEUE_UNAVAILABLE", "speaking grading queue is not configured",
+	)
 )
 
 // SupportedAudioTypes defines MIME types accepted for browser recordings.
 var SupportedAudioTypes = map[string]bool{
-	"audio/webm":          true,
+	"audio/webm":             true,
 	"audio/webm;codecs=opus": true,
-	"audio/mp4":           true,
-	"audio/ogg":           true,
+	"audio/mp4":              true,
+	"audio/ogg":              true,
 	"audio/ogg;codecs=opus":  true,
-	"audio/wav":           true,
-	"audio/x-wav":         true,
-	"audio/mpeg":          true,
+	"audio/wav":              true,
+	"audio/x-wav":            true,
+	"audio/mpeg":             true,
 }
 
 // IsValidAudioFormat checks if the content type is an accepted audio format.
@@ -136,7 +142,7 @@ func wordLevenshtein(s1, s2 []string) int {
 			if s1[i-1] == s2[j-1] {
 				cost = 0
 			}
-			d[i][j] = min(
+			d[i][j] = minOf3(
 				d[i-1][j]+1,      // deletion
 				d[i][j-1]+1,      // insertion
 				d[i-1][j-1]+cost, // substitution
@@ -146,7 +152,7 @@ func wordLevenshtein(s1, s2 []string) int {
 	return d[len(s1)][len(s2)]
 }
 
-func min(a, b, c int) int {
+func minOf3(a, b, c int) int {
 	if a < b {
 		if a < c {
 			return a

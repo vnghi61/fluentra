@@ -82,6 +82,7 @@ Other modules may import **only** `internal/modules/speaking/contract`.
 | `speaking.attempt_recorded` | publishes | `{user_id, attempt_id, asset_id}` |
 | `speaking.scored` | publishes | `{user_id, attempt_id, accuracy, fluency}` |
 | `media.transcribed` | consumes | Continue the pipeline once ASR is done |
+| `user.deleted` | consumes | Delete the account's recordings from storage; the anonymised user row never cascades |
 <!-- END GENERATED: contract -->
 
 ## 5. Database schema
@@ -106,6 +107,7 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 |---|---|---|---|
 | `POST` | `/api/v1/speaking/upload-intent` | `self` | Presigned PUT URL for recording upload to storage |
 | `DELETE` | `/api/v1/speaking/attempts/{id}/recording` | `self` | Purges the recording object while keeping scores and feedback |
+| `GET` | `/api/v1/speaking/attempts/{id}/feedback` | `self` | Read feedback on a graded speaking attempt |
 <!-- END GENERATED: endpoints -->
 
 ## 7. Folder map

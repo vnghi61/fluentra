@@ -663,7 +663,9 @@ func (r *Repository) GetTTSCache(ctx context.Context, textHash, voice string) (s
 }
 
 // UpsertTTSCache inserts or updates a TTS cache record.
-func (r *Repository) UpsertTTSCache(ctx context.Context, textHash, voice, engine, engineVersion, objectKey string) error {
+func (r *Repository) UpsertTTSCache(
+	ctx context.Context, textHash, voice, engine, engineVersion, objectKey string,
+) error {
 	_, err := r.queries.UpsertTTSCache(ctx, sqlccontent.UpsertTTSCacheParams{
 		TextHash:      textHash,
 		Voice:         voice,
@@ -676,4 +678,3 @@ func (r *Repository) UpsertTTSCache(ctx context.Context, textHash, voice, engine
 	}
 	return nil
 }
-

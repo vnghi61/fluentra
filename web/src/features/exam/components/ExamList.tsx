@@ -1,445 +1,351 @@
-import React, { useMemo, useState } from "react";
-import {
-  BookOpen,
-  Calendar,
-  Clock,
-  GraduationCap,
-  Headphones,
-  Info,
-  Mic,
-  PenTool,
-  Play,
-  Sliders,
-} from "lucide-react";
+import React, { useState } from "react";
+import { BookOpen, Calendar, Clock, Info, Play, Sliders } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "@tanstack/react-router";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { examApi, useExams, useUserExamAttempts } from "../api/examApi";
-import type { ExamLevel, ExamTemplate } from "../types";
+import {
+  examApi,
+  problemCode,
+  useExams,
+  useUserExamAttempts,
+} from "../api/examApi";
+import {
+  EXAM_LEVELS,
+  type ExamLevel,
+  type ExamStatus,
+  type ExamTemplate,
+} from "../types";
 
 export interface ExamListProps {
   userPracticeLevel?: string | undefined;
   className?: string | undefined;
 }
 
+const PRACTICE_DEFAULT_MINUTES = 60;
+
+function toLevel(value: string | undefined): ExamLevel {
+  return EXAM_LEVELS.find((level) => level === value) ?? "B1";
+}
+
 export const ExamList: React.FC<ExamListProps> = ({
   userPracticeLevel,
   className,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const vi = i18n.language.startsWith("vi");
 
-  const [selectedLevel, setSelectedLevel] = useState<ExamLevel>(() => {
-    if (userPracticeLevel === "A2" || userPracticeLevel === "B1" || userPracticeLevel === "B2") {
-      return userPracticeLevel;
-    }
-    return "B1";
-  });
-
-  // Practice duration modal state
+  const [level, setLevel] = useState<ExamLevel>(() => toLevel(userPracticeLevel));
+  const [unavailable, setUnavailable] = useState<ReadonlySet<ExamLevel>>(
+    () => new Set(),
+  );
   const [practiceExam, setPracticeExam] = useState<ExamTemplate | null>(null);
-  const [chosenDurationMinutes, setChosenDurationMinutes] = useState<number>(60);
-  const [isStarting, setIsStarting] = useState<boolean>(false);
+  const [minutes, setMinutes] = useState(PRACTICE_DEFAULT_MINUTES);
+  const [isStarting, setIsStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
 
-  const { data: exams = [], isLoading: isLoadingExams } = useExams();
-  const { data: attemptsData, isLoading: isLoadingAttempts } = useUserExamAttempts(1, 10);
+  const exams = useExams();
+  const attempts = useUserExamAttempts(10, 0);
 
-  // Daily limit estimate (count today's attempts)
-  const todaySittingsCount = useMemo(() => {
-    if (!attemptsData?.attempts) return 0;
-    const now = new Date();
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-    return attemptsData.attempts.filter((att) => {
-      const attDate = new Date(att.started_at);
-      const attDateStr = `${attDate.getFullYear()}-${String(attDate.getMonth() + 1).padStart(2, "0")}-${String(attDate.getDate()).padStart(2, "0")}`;
-      return attDateStr === todayStr;
-    }).length;
-  }, [attemptsData]);
+  const sittingsToday = attempts.data?.sittings_today ?? 0;
+  const dailyLimit = attempts.data?.daily_limit;
+  const sittingsLeft =
+    dailyLimit === undefined ? undefined : Math.max(0, dailyLimit - sittingsToday);
+  const hasOpenSitting = (attempts.data?.items ?? []).some(
+    (a) => a.status === "in_progress",
+  );
 
-  const sittingsLeft = Math.max(0, 5 - todaySittingsCount);
+  const levelExams = (exams.data ?? []).filter((exam) => exam.level === level);
+  const levelUnavailable = unavailable.has(level) || (exams.isSuccess && levelExams.length === 0);
 
-  // Filter exams by selected CEFR level
-  const filteredExams = useMemo(() => {
-    return exams.filter((ex) => ex.level === selectedLevel);
-  }, [exams, selectedLevel]);
-
-  const handleStartExamMode = async (exam: ExamTemplate) => {
+  const start = async (exam: ExamTemplate, mode: "exam" | "practice") => {
     setIsStarting(true);
     setStartError(null);
     try {
-      const attempt = await examApi.startSitting(exam.id, {
-        mode: "exam",
-      });
-      void navigate({
-        to: "/exams/$attemptId",
-        params: { attemptId: attempt.id },
-      });
-    } catch (err: any) {
-      const isDailyLimit =
-        err?.problem?.code === "EXAM_DAILY_LIMIT_REACHED" ||
-        err?.status === 429 ||
-        err?.message?.includes("EXAM_DAILY_LIMIT_REACHED");
-      if (isDailyLimit) {
-        setStartError(
-          t(
-            "exam.hub.dailyLimitReached",
-            "Daily limit reached (5 sittings per day). Please return tomorrow for more attempts.",
-          ),
-        );
-      } else {
-        setStartError(err?.message || t("exam.hub.startFailed", "Unable to start exam sitting."));
-      }
-      setIsStarting(false);
-    }
-  };
-
-  const handleStartPracticeMode = async () => {
-    if (!practiceExam) return;
-    setIsStarting(true);
-    setStartError(null);
-    try {
-      const attempt = await examApi.startSitting(practiceExam.id, {
-        mode: "practice",
-        chosen_duration_minutes: chosenDurationMinutes,
-      });
+      const attempt = await examApi.startSitting(
+        exam.id,
+        mode === "practice"
+          ? { mode, chosen_duration_minutes: minutes }
+          : { mode },
+      );
       setPracticeExam(null);
       void navigate({
         to: "/exams/$attemptId",
         params: { attemptId: attempt.id },
       });
-    } catch (err: any) {
-      setStartError(err?.message || t("exam.hub.startFailed", "Unable to start practice sitting."));
+    } catch (err: unknown) {
+      const code = problemCode(err);
+      if (code === "EXAM_POOL_EMPTY" || code === "INSUFFICIENT_ITEMS") {
+        // Not a failure: the pool does not hold a sitting's worth yet.
+        setUnavailable((prev) => new Set(prev).add(exam.level));
+        setPracticeExam(null);
+      } else if (code === "EXAM_DAILY_LIMIT_REACHED") {
+        setStartError(t("exam.hub.dailyLimitReached"));
+      } else if (code === "ATTEMPT_IN_PROGRESS") {
+        setStartError(t("exam.hub.sittingInProgress"));
+      } else {
+        setStartError(t("exam.hub.startFailed"));
+      }
+    } finally {
       setIsStarting(false);
     }
   };
 
-  const levels: ExamLevel[] = ["A2", "B1", "B2"];
+  const statusLabels: Record<ExamStatus, string> = {
+    in_progress: t("exam.hub.statusInProgress"),
+    completed: t("exam.hub.statusCompleted"),
+    expired: t("exam.hub.statusExpired"),
+  };
+  const levelNames: Record<ExamLevel, string> = {
+    A2: t("exam.hub.levelA2"),
+    B1: t("exam.hub.levelB1"),
+    B2: t("exam.hub.levelB2"),
+  };
+  const startDisabled = isStarting || sittingsLeft === 0 || hasOpenSitting;
 
   return (
-    <div className={cn("max-w-5xl mx-auto space-y-10 p-4 sm:p-6 md:p-8", className)}>
-      {/* Hero Hub Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 pb-6 border-b border-border">
+    <div className={cn("mx-auto max-w-5xl space-y-10 p-4 sm:p-6 md:p-8", className)}>
+      <div className="flex flex-col gap-6 border-b border-border pb-6 md:flex-row md:items-center md:justify-between">
         <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-xs uppercase font-semibold text-primary px-3 py-1">
-              <GraduationCap className="h-3.5 w-3.5 mr-1.5" />
-              {t("exam.hub.badge", "4-Skill Mock Exams")}
-            </Badge>
-          </div>
-          <h1 className="text-2xl sm:text-4xl font-extrabold text-text tracking-tight">
-            {t("exam.hub.title", "Standardized Exam Simulation")}
+          <h1 className="text-2xl font-extrabold tracking-tight text-text sm:text-4xl">
+            {t("exam.hub.title")}
           </h1>
-          <p className="text-xs sm:text-sm text-text-muted max-w-xl leading-relaxed">
-            {t(
-              "exam.hub.subtitle",
-              "Comprehensive 4-skill testing: Listening clips, Reading passages, Essay writing, and Spoken audio responses uniquely generated from our pool.",
-            )}
+          <p className="max-w-xl text-xs leading-relaxed text-text-muted sm:text-sm">
+            {t("exam.hub.subtitle")}
           </p>
         </div>
-
-        {/* Daily Limit Tracker */}
-        <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-xs flex items-center gap-4 shrink-0">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <Clock className="h-6 w-6" />
+        {sittingsLeft !== undefined && dailyLimit !== undefined && (
+          <div className="flex shrink-0 items-center gap-4 rounded-2xl border border-border bg-card p-4 sm:p-5">
+            <Clock className="h-6 w-6 text-primary" aria-hidden="true" />
+            <p className="text-sm font-medium text-text">
+              {t("exam.hub.sittingsLeft", { left: sittingsLeft, limit: dailyLimit })}
+            </p>
           </div>
-          <div>
-            <div className="text-xs text-text-muted font-medium">
-              {t("exam.hub.dailySittings", "Daily Sittings Remaining")}
-            </div>
-            <div className="text-xl sm:text-2xl font-bold font-mono text-text">
-              {sittingsLeft} / 5
-            </div>
-          </div>
-        </div>
+        )}
       </div>
 
-      {/* Start Error Alert */}
       {startError && (
-        <div className="flex items-center gap-2 text-xs sm:text-sm text-danger bg-danger/10 p-4 rounded-xl border border-danger/20">
-          <Info className="h-4 w-4 shrink-0" />
+        <div
+          role="alert"
+          className="flex items-center gap-2 rounded-xl border border-danger/20 bg-danger/10 p-4 text-xs text-danger sm:text-sm"
+        >
+          <Info className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span>{startError}</span>
         </div>
       )}
 
-      {/* Level Selection Tabs */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base sm:text-lg font-bold text-text">
-            {t("exam.hub.chooseLevel", "Select CEFR Proficiency Level")}
+      <section className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-base font-bold text-text sm:text-lg">
+            {t("exam.hub.chooseLevel")}
           </h2>
           {userPracticeLevel && (
             <span className="text-xs text-text-muted">
-              {t("exam.hub.recommendedLevel", { level: userPracticeLevel, defaultValue: `Recommended: ${userPracticeLevel}` })}
+              {t("exam.hub.practiceLevel", { level: userPracticeLevel })}
             </span>
           )}
         </div>
-
-        <div className="grid grid-cols-3 gap-3 max-w-md">
-          {levels.map((lvl) => {
-            const isSelected = selectedLevel === lvl;
-            return (
-              <button
-                key={lvl}
-                type="button"
-                onClick={() => setSelectedLevel(lvl)}
-                className={cn(
-                  "flex flex-col items-center justify-center py-3 px-4 rounded-xl border text-sm font-bold transition-all min-h-[44px]",
-                  isSelected
-                    ? "border-primary bg-primary text-white shadow-sm scale-102"
-                    : "border-border bg-card text-text hover:bg-surface-muted",
-                )}
-              >
-                <span>{lvl}</span>
-                <span className="text-[10px] font-normal opacity-80">
-                  {lvl === "A2" ? "Elementary" : lvl === "B1" ? "Intermediate" : "Upper-Int"}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Available Exam Cards */}
-      <div className="space-y-4">
-        <h2 className="text-base sm:text-lg font-bold text-text">
-          {t("exam.hub.availableExams", "Available Mock Exams")}
-        </h2>
-
-        {isLoadingExams ? (
-          <div className="rounded-2xl border border-border bg-card p-12 text-center text-text-muted text-sm">
-            {t("app.loading", "Loading exams...")}
-          </div>
-        ) : filteredExams.length === 0 ? (
-          /* Empty Pool State handling (Requirement §7 & §8) */
-          <div className="rounded-2xl border border-border-subtle bg-surface-muted/50 p-10 text-center space-y-3">
-            <div className="flex h-12 w-12 mx-auto items-center justify-center rounded-2xl bg-surface-muted text-text-muted">
-              <BookOpen className="h-6 w-6" />
-            </div>
-            <h3 className="font-bold text-text text-base">
-              {t("exam.hub.notAvailableYetTitle", "Exams not available yet at this level")}
-            </h3>
-            <p className="text-xs text-text-muted max-w-md mx-auto">
-              {t(
-                "exam.hub.notAvailableYetDesc",
-                "Our hourly pool generator is actively assembling verified listening, reading, writing, and speaking items for this level. Please check back soon or try another level.",
+        <div className="grid max-w-md grid-cols-3 gap-3" role="group" aria-label={t("exam.hub.chooseLevel")}>
+          {EXAM_LEVELS.map((lvl) => (
+            <button
+              key={lvl}
+              type="button"
+              aria-pressed={level === lvl}
+              onClick={() => setLevel(lvl)}
+              className={cn(
+                "flex min-h-[44px] flex-col items-center justify-center rounded-xl border px-4 py-3 text-sm font-bold",
+                level === lvl
+                  ? "border-primary bg-primary text-primary-fg"
+                  : "border-border bg-card text-text hover:bg-surface-muted",
               )}
+            >
+              <span>{lvl}</span>
+              <span className="text-[11px] font-normal">{levelNames[lvl]}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="space-y-4">
+        {exams.isLoading ? (
+          <p className="rounded-2xl border border-border bg-card p-12 text-center text-sm text-text-muted">
+            {t("exam.hub.loading")}
+          </p>
+        ) : exams.isError ? (
+          <p role="alert" className="rounded-2xl border border-danger/20 bg-danger/10 p-6 text-center text-sm text-danger">
+            {t("exam.hub.loadFailed")}
+          </p>
+        ) : levelUnavailable ? (
+          <div className="space-y-3 rounded-2xl border border-border-subtle bg-surface-muted/50 p-10 text-center">
+            <BookOpen className="mx-auto h-6 w-6 text-text-muted" aria-hidden="true" />
+            <h2 className="text-base font-bold text-text">
+              {t("exam.hub.notAvailableTitle")}
+            </h2>
+            <p className="mx-auto max-w-md text-xs text-text-muted">
+              {t("exam.hub.notAvailableBody")}
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-6">
-            {filteredExams.map((exam) => (
-              <div
-                key={exam.id}
-                className="rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6"
-              >
-                <div className="space-y-4 max-w-xl">
-                  <div className="flex flex-wrap items-center gap-2.5">
-                    <Badge variant="outline" className="font-bold text-xs">
-                      CEFR {exam.level}
-                    </Badge>
-                    <Badge variant="outline" className="text-xs text-text-muted">
-                      {exam.total_minutes} {t("exam.hub.minutes", "mins")}
-                    </Badge>
-                    <span className="text-xs text-text-muted">• 4 skills</span>
-                  </div>
-
-                  <div>
-                    <h3 className="text-xl sm:text-2xl font-bold text-text">
-                      {exam.title_en || exam.slug}
-                    </h3>
-                    <p className="text-xs sm:text-sm text-text-muted mt-1 leading-relaxed">
-                      {exam.description_en || t("exam.hub.defaultDesc", "Complete 4-skill mock exam including listening clips, reading comprehension passages, essay writing, and voice recording speaking tasks.")}
-                    </p>
-                  </div>
-
-                  {/* Skills Pills */}
-                  <div className="flex flex-wrap gap-2 pt-1 text-xs text-text-muted">
-                    <span className="flex items-center gap-1 bg-surface-muted px-2.5 py-1 rounded-md">
-                      <Headphones className="h-3.5 w-3.5 text-primary" /> Listening (3 clips)
-                    </span>
-                    <span className="flex items-center gap-1 bg-surface-muted px-2.5 py-1 rounded-md">
-                      <BookOpen className="h-3.5 w-3.5 text-primary" /> Reading (2 passages)
-                    </span>
-                    <span className="flex items-center gap-1 bg-surface-muted px-2.5 py-1 rounded-md">
-                      <PenTool className="h-3.5 w-3.5 text-primary" /> Writing (1 essay + 3 rewrites)
-                    </span>
-                    <span className="flex items-center gap-1 bg-surface-muted px-2.5 py-1 rounded-md">
-                      <Mic className="h-3.5 w-3.5 text-primary" /> Speaking (4 tasks)
-                    </span>
-                  </div>
+          levelExams.map((exam) => (
+            <div
+              key={exam.id}
+              className="flex flex-col justify-between gap-6 rounded-3xl border border-border bg-card p-6 sm:p-8 md:flex-row md:items-center"
+            >
+              <div className="max-w-xl space-y-3">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <Badge variant="outline">{exam.level}</Badge>
+                  <Badge variant="outline">
+                    {t("exam.hub.minutes", { count: exam.total_minutes })}
+                  </Badge>
                 </div>
-
-                {/* Actions: Exam vs Practice Mode */}
-                <div className="flex flex-col sm:flex-row md:flex-col gap-3 shrink-0">
-                  <Button
-                    type="button"
-                    disabled={isStarting || sittingsLeft <= 0}
-                    onClick={() => handleStartExamMode(exam)}
-                    className="bg-primary text-white hover:bg-primary/90 font-semibold min-h-[44px] px-6 gap-2 shadow-xs"
-                  >
-                    <Play className="h-4 w-4 fill-current" />
-                    <span>{t("exam.hub.startExamMode", "Exam Mode (75 min)")}</span>
-                  </Button>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={isStarting || sittingsLeft <= 0}
-                    onClick={() => {
-                      setPracticeExam(exam);
-                      setChosenDurationMinutes(60);
-                    }}
-                    className="font-semibold min-h-[44px] px-6 gap-2 border-border hover:bg-surface-muted"
-                  >
-                    <Sliders className="h-4 w-4" />
-                    <span>{t("exam.hub.practiceMode", "Practice Mode (Custom)")}</span>
-                  </Button>
-                </div>
+                <h3 className="text-xl font-bold text-text sm:text-2xl">
+                  {vi ? exam.title_vi : exam.title_en}
+                </h3>
+                <p className="text-xs leading-relaxed text-text-muted sm:text-sm">
+                  {t("exam.hub.composition")}
+                </p>
               </div>
-            ))}
-          </div>
+              <div className="flex shrink-0 flex-col gap-3 sm:flex-row md:flex-col">
+                <Button
+                  type="button"
+                  disabled={startDisabled}
+                  onClick={() => void start(exam, "exam")}
+                >
+                  <Play className="h-4 w-4" aria-hidden="true" />
+                  <span>{t("exam.hub.startExam", { count: exam.total_minutes })}</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={startDisabled}
+                  onClick={() => {
+                    setMinutes(PRACTICE_DEFAULT_MINUTES);
+                    setPracticeExam(exam);
+                  }}
+                >
+                  <Sliders className="h-4 w-4" aria-hidden="true" />
+                  <span>{t("exam.hub.startPractice")}</span>
+                </Button>
+              </div>
+            </div>
+          ))
         )}
-      </div>
+      </section>
 
-      {/* Past Attempts History */}
-      <div className="space-y-4 pt-4">
-        <h2 className="text-base sm:text-lg font-bold text-text">
-          {t("exam.hub.pastAttempts", "Your Exam History")}
+      <section className="space-y-4 pt-4">
+        <h2 className="text-base font-bold text-text sm:text-lg">
+          {t("exam.hub.history")}
         </h2>
-
-        {isLoadingAttempts ? (
-          <div className="rounded-xl border border-border bg-card p-6 text-center text-text-muted text-xs">
-            {t("app.loading", "Loading past attempts...")}
-          </div>
-        ) : !attemptsData?.attempts || attemptsData.attempts.length === 0 ? (
-          <div className="rounded-xl border border-border-subtle bg-surface-muted/30 p-8 text-center text-xs text-text-muted">
-            {t("exam.hub.noAttemptsYet", "You have not completed any mock exams yet. Start your first session above!")}
-          </div>
+        {attempts.isLoading ? (
+          <p className="rounded-xl border border-border bg-card p-6 text-center text-xs text-text-muted">
+            {t("exam.hub.loading")}
+          </p>
+        ) : (attempts.data?.items ?? []).length === 0 ? (
+          <p className="rounded-xl border border-border-subtle bg-surface-muted/30 p-8 text-center text-xs text-text-muted">
+            {t("exam.hub.noHistory")}
+          </p>
         ) : (
-          <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-xs divide-y divide-border">
-            {attemptsData.attempts.map((att) => (
-              <div
+          <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
+            {(attempts.data?.items ?? []).map((att) => (
+              <li
                 key={att.id}
-                className="p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4 hover:bg-surface-muted/40 transition-colors"
+                className="flex flex-wrap items-center justify-between gap-4 p-4 sm:p-5"
               >
                 <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-sm text-text">
-                      {att.exam_title || t("exam.title", "4-Skill Mock Exam")}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-bold text-text">
+                      {att.exam_title || t("exam.title")}
                     </span>
-                    <Badge variant="outline" className="text-[10px] uppercase">
-                      {att.mode}
+                    <Badge variant="outline">
+                      {att.mode === "exam" ? t("exam.mode.exam") : t("exam.mode.practice")}
                     </Badge>
                   </div>
                   <div className="flex items-center gap-2 text-xs text-text-muted">
-                    <Calendar className="h-3 w-3" />
-                    <span>{new Date(att.started_at).toLocaleDateString()}</span>
-                    <span>•</span>
-                    <span className="capitalize">{att.status}</span>
+                    <Calendar className="h-3 w-3" aria-hidden="true" />
+                    <span>{new Date(att.started_at).toLocaleDateString(i18n.language)}</span>
+                    <span aria-hidden="true">·</span>
+                    <span>{statusLabels[att.status]}</span>
                   </div>
                 </div>
-
-                <div className="flex items-center gap-3">
-                  {att.status === "in_progress" ? (
-                    <Link to="/exams/$attemptId" params={{ attemptId: att.id }}>
-                      <Button
-                        type="button"
-                        size="sm"
-                        className="bg-primary text-white text-xs min-h-[38px] px-4 font-semibold"
-                      >
-                        {t("exam.hub.resume", "Resume Sitting")}
-                      </Button>
-                    </Link>
-                  ) : (
-                    <Link to="/exams/$attemptId/report" params={{ attemptId: att.id }}>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="text-xs min-h-[38px] px-4 font-semibold"
-                      >
-                        {t("exam.hub.viewReport", "View Report")}
-                      </Button>
-                    </Link>
-                  )}
-                </div>
-              </div>
+                {att.status === "in_progress" ? (
+                  <Link
+                    to="/exams/$attemptId"
+                    params={{ attemptId: att.id }}
+                    className="inline-flex min-h-[44px] items-center rounded-lg bg-primary px-4 text-xs font-semibold text-primary-fg"
+                  >
+                    {t("exam.hub.resume")}
+                  </Link>
+                ) : (
+                  <Link
+                    to="/exams/$attemptId/report"
+                    params={{ attemptId: att.id }}
+                    className="inline-flex min-h-[44px] items-center rounded-lg border border-border px-4 text-xs font-semibold text-text"
+                  >
+                    {t("exam.hub.viewReport")}
+                  </Link>
+                )}
+              </li>
             ))}
-          </div>
+          </ul>
         )}
-      </div>
+      </section>
 
-      {/* Practice Duration Picker Modal (10–180 minutes) */}
       {practiceExam && (
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150"
+          aria-labelledby="practice-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
         >
-          <div className="max-w-md w-full rounded-2xl bg-card border border-border p-6 shadow-2xl space-y-6">
+          <div className="w-full max-w-md space-y-6 rounded-2xl border border-border bg-card p-6 shadow-2xl">
             <div className="space-y-1.5">
-              <h3 className="text-lg font-bold text-text">
-                {t("exam.hub.practiceDurationTitle", "Customize Practice Duration")}
+              <h3 id="practice-title" className="text-lg font-bold text-text">
+                {t("exam.hub.practiceTitle")}
               </h3>
-              <p className="text-xs text-text-muted leading-relaxed">
-                {t(
-                  "exam.hub.practiceDurationDesc",
-                  "In Practice Mode, you can choose any time limit from 10 to 180 minutes and freely navigate between sections.",
-                )}
+              <p className="text-xs leading-relaxed text-text-muted">
+                {t("exam.hub.practiceBody")}
               </p>
             </div>
-
-            {/* Duration Slider / Picker */}
-            <div className="space-y-4 bg-surface-muted/50 p-5 rounded-xl border border-border-subtle">
-              <div className="flex justify-between items-center">
-                <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">
-                  {t("exam.hub.chosenDuration", "Time Limit:")}
+            <div className="space-y-3 rounded-xl border border-border-subtle bg-surface-muted/50 p-5">
+              <label
+                htmlFor="practice-minutes"
+                className="flex items-center justify-between text-sm font-semibold text-text"
+              >
+                <span>{t("exam.hub.practiceDuration")}</span>
+                <span className="font-mono text-primary">
+                  {t("exam.hub.minutes", { count: minutes })}
                 </span>
-                <span className="font-mono text-2xl font-bold text-primary">
-                  {chosenDurationMinutes} {t("exam.hub.mins", "mins")}
-                </span>
-              </div>
-
+              </label>
               <input
+                id="practice-minutes"
                 type="range"
                 min={10}
                 max={180}
                 step={5}
-                value={chosenDurationMinutes}
-                onChange={(e) => setChosenDurationMinutes(Number(e.target.value))}
-                className="w-full accent-primary h-2 bg-border-subtle rounded-lg cursor-pointer"
+                value={minutes}
+                onChange={(e) => setMinutes(Number(e.target.value))}
+                className="h-11 w-full cursor-pointer accent-primary"
               />
-
-              <div className="flex justify-between text-[11px] text-text-muted font-mono">
-                <span>10 min</span>
-                <span>60 min</span>
-                <span>120 min</span>
-                <span>180 min</span>
-              </div>
             </div>
-
-            <div className="flex justify-end gap-3 pt-2">
+            <div className="flex justify-end gap-3">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setPracticeExam(null)}
                 disabled={isStarting}
-                className="min-h-[44px]"
               >
-                {t("common.cancel", "Cancel")}
+                {t("exam.hub.cancel")}
               </Button>
               <Button
                 type="button"
-                onClick={handleStartPracticeMode}
+                onClick={() => void start(practiceExam, "practice")}
                 disabled={isStarting}
-                className="bg-primary text-white hover:bg-primary/90 font-semibold min-h-[44px] px-6 gap-2"
               >
-                <Play className="h-4 w-4 fill-current" />
-                <span>{isStarting ? t("app.starting", "Starting...") : t("exam.hub.startPractice", "Start Practice")}</span>
+                <Play className="h-4 w-4" aria-hidden="true" />
+                <span>{t("exam.hub.practiceStart")}</span>
               </Button>
             </div>
           </div>

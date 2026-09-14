@@ -38,6 +38,8 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/reading"
 	readingcontract "github.com/fluentra/fluentra/internal/modules/reading/contract"
 	"github.com/fluentra/fluentra/internal/modules/speaking"
+	speakingcontract "github.com/fluentra/fluentra/internal/modules/speaking/contract"
+	writingcontract "github.com/fluentra/fluentra/internal/modules/writing/contract"
 
 	lessonservice "github.com/fluentra/fluentra/internal/modules/lesson/service"
 	"github.com/fluentra/fluentra/internal/modules/rbac"
@@ -243,27 +245,27 @@ func configOptions() config.Options {
 			"mail.transport":                  "smtp",
 			"mail.from":                       "no-reply@fluentra.local",
 			// Four numbered provider slots. Slot 1 defaults to mock.
-			"ai.provider_1_name":     "mock",
-			"ai.provider_1_base_url": "",
-			"ai.provider_1_model":    "",
-			"ai.provider_1_api_key":  "",
-			"ai.provider_1_timeout":  defaultAITimeout,
-			"ai.provider_2_name":     "",
-			"ai.provider_2_base_url": "",
-			"ai.provider_2_model":    "",
-			"ai.provider_2_api_key":  "",
-			"ai.provider_2_timeout":  defaultAITimeout,
-			"ai.provider_3_name":     "",
-			"ai.provider_3_base_url": "",
-			"ai.provider_3_model":    "",
-			"ai.provider_3_api_key":  "",
-			"ai.provider_3_timeout":  defaultAITimeout,
-			"ai.provider_4_name":     "",
-			"ai.provider_4_base_url": "",
-			"ai.provider_4_model":    "",
-			"ai.provider_4_api_key":  "",
-			"ai.provider_4_timeout":  defaultAITimeout,
-			"ai.writing_daily_limit": 10,
+			"ai.provider_1_name":            mockName,
+			"ai.provider_1_base_url":        "",
+			"ai.provider_1_model":           "",
+			"ai.provider_1_api_key":         "",
+			"ai.provider_1_timeout":         defaultAITimeout,
+			"ai.provider_2_name":            "",
+			"ai.provider_2_base_url":        "",
+			"ai.provider_2_model":           "",
+			"ai.provider_2_api_key":         "",
+			"ai.provider_2_timeout":         defaultAITimeout,
+			"ai.provider_3_name":            "",
+			"ai.provider_3_base_url":        "",
+			"ai.provider_3_model":           "",
+			"ai.provider_3_api_key":         "",
+			"ai.provider_3_timeout":         defaultAITimeout,
+			"ai.provider_4_name":            "",
+			"ai.provider_4_base_url":        "",
+			"ai.provider_4_model":           "",
+			"ai.provider_4_api_key":         "",
+			"ai.provider_4_timeout":         defaultAITimeout,
+			"ai.writing_daily_limit":        10,
 			"speech.tts_engine":             "offline",
 			"speech.tts_voice":              "en_US-lessac-medium",
 			"speech.asr_base_url":           "",
@@ -484,6 +486,7 @@ func startLearning(
 	listeningModule *listening.Module,
 	rbacModule *rbac.Module,
 	cfg workerConfig, storageStore storage.Store,
+	skillGraders map[string]learningcontract.ExerciseGrader,
 ) (*learning.Module, error) {
 	graders := make(map[string]learningcontract.ExerciseGrader)
 	if readingModule != nil {
@@ -501,6 +504,12 @@ func startLearning(
 			graders[kind] = listeningModule.Grader()
 		}
 	}
+	// Writing and speaking too: an exam sitting that expires is submitted here,
+	// in the worker, and an essay or a recording with no grader was dropped from
+	// the report as if the learner had never answered.
+	for kind, grader := range skillGraders {
+		graders[kind] = grader
+	}
 
 	// The owner of generated practice content, resolved the way the vocabulary
 	// generator resolves it. On a database with no administrator yet it is zero,
@@ -513,10 +522,12 @@ func startLearning(
 	}
 
 	var mediaSynthesiser media.Synthesiser
-	if cfg.Speech.TTSEngine == "mock" || cfg.Speech.TTSEngine == "" {
+	if cfg.Speech.TTSEngine == mockName || cfg.Speech.TTSEngine == "" {
 		mediaSynthesiser = &media.MockSynthesiser{}
 	} else {
-		mediaSynthesiser = media.NewCachedSynthesiser(nil, nil, storageStore, "")
+		// No engine runs in the worker (work order 12 §4): a script is rendered
+		// offline by cmd/tts, and the synthesiser only finds what is already cached.
+		mediaSynthesiser = media.NewCachedSynthesiser(contentModule.TTSCache(), nil, storageStore, "")
 	}
 
 	learningModule := learning.New(learning.Deps{
@@ -531,6 +542,7 @@ func startLearning(
 		GeneratorAuthorID: generatorAuthor,
 		AuthorResolver:    roleAuthorResolver{members: rbacModule.RoleMembers()},
 		Synthesiser:       mediaSynthesiser,
+		Audio:             media.NewCacheLocator(contentModule.TTSCache()),
 	})
 
 	for _, scheduled := range learningModule.CronJobs() {
@@ -626,11 +638,11 @@ func startModules(
 
 	aiClient := newWorkerAIClient(ctx, cfg, pool)
 
-	learningModule, err := startLearning(
-		ctx, pool, cron, instruments, lessonModule, contentModule, aiClient, readingModule, grammarModule,
-		listeningModule, rbacModule, cfg, storageStore,
-	)
-	if err != nil {
+	if err := startGrading(ctx, gradingDeps{
+		pool: pool, bus: bus, cron: cron, workers: workers, instruments: instruments, cfg: cfg,
+		storage: storageStore, ai: aiClient, lesson: lessonModule, content: contentModule,
+		reading: readingModule, grammar: grammarModule, listening: listeningModule, rbac: rbacModule,
+	}); err != nil {
 		return err
 	}
 
@@ -648,8 +660,7 @@ func startModules(
 	}
 
 	startPracticeGenerator(
-		ctx, cfg, pool, cron, rbacModule, lessonModule, srsModule, workers, learningModule,
-		contentModule, aiClient, storageStore,
+		ctx, pool, cron, rbacModule, lessonModule, srsModule, workers, contentModule, aiClient,
 	)
 
 	if err := startGamification(pool, bus, cron); err != nil {
@@ -885,17 +896,14 @@ func startGamification(
 // until somebody signs up.
 func startPracticeGenerator(
 	ctx context.Context,
-	cfg workerConfig,
 	pool *pgxpool.Pool,
 	cron *job.CronScheduler,
 	rbacModule *rbac.Module,
 	lessonModule *lesson.Module,
 	srsModule *srs.Module,
 	workers *river.Workers,
-	learningModule *learning.Module,
 	contentModule *content.Module,
 	aiClient ai.Client,
-	storageStore storage.Store,
 ) {
 	author, err := rbacModule.RoleMembers().FirstHolderOf(ctx, rbaccontract.RoleAdmin)
 	if err != nil {
@@ -917,51 +925,6 @@ func startPracticeGenerator(
 
 	river.AddWorker(workers, vocabularyModule.VerifyUploadWorker())
 
-	writingModule := writing.New(writing.Deps{
-		Pool:       pool,
-		Content:    contentModule.Reader(),
-		AI:         aiClient,
-		Completer:  learningModule.AsyncGradingCompleter(),
-		Attempts:   learningModule.AttemptReader(),
-		DailyLimit: cfg.AI.WritingDailyLimit,
-	})
-	river.AddWorker(workers, writingModule.GradeSubmissionWorker())
-
-	var mediaTranscriber media.Transcriber
-	if cfg.Speech.ASRBaseURL != "" && cfg.Speech.ASRBaseURL != "mock" {
-		mediaTranscriber = media.NewHTTPTranscriber(media.HTTPTranscriberConfig{
-			BaseURL: cfg.Speech.ASRBaseURL,
-			Model:   cfg.Speech.ASRModel,
-			APIKey:  cfg.Speech.ASRAPIKey,
-			Timeout: cfg.Speech.ASRTimeout,
-		})
-	} else {
-		mediaTranscriber = &media.MockTranscriber{}
-	}
-
-	speakingModule := speaking.New(speaking.Deps{
-		Pool:        pool,
-		Storage:     storageStore,
-		Transcriber: mediaTranscriber,
-		AI:          aiClient,
-		Content:     contentModule.Reader(),
-		Attempts:    learningModule.AttemptReader(),
-		Completer:   learningModule.AsyncGradingCompleter(),
-		DailyLimit:  cfg.Speech.DailyRecordingsLimit,
-		ASRModel:    cfg.Speech.ASRModel,
-	})
-	river.AddWorker(workers, speakingModule.GradeRecordingWorker())
-	cron.Register(speakingModule.PurgeJob())
-
-	examModule := exam.New(exam.Deps{
-		Pool:      pool,
-		Learning:  learningModule.SittingAnswerSubmitter(),
-		Exposures: learningModule.ItemExposureRecorder(),
-		Lesson:    lessonModule.Reader(),
-	})
-	river.AddWorker(workers, examModule.ExpireAttemptWorker())
-	cron.Register(examModule.SweepJob())
-
 	for _, scheduled := range vocabularyModule.CronJobs() {
 		cron.Register(scheduled)
 	}
@@ -973,6 +936,160 @@ func startPracticeGenerator(
 			"the scheduled job will retry", "error", err)
 	}
 }
+
+type gradingDeps struct {
+	pool        *pgxpool.Pool
+	bus         *eventbus.InProcessBus
+	cron        *job.CronScheduler
+	workers     *river.Workers
+	instruments telemetry.Instruments
+	cfg         workerConfig
+	storage     storage.Store
+	ai          ai.Client
+	lesson      *lesson.Module
+	content     *content.Module
+	reading     *reading.Module
+	grammar     *grammar.Module
+	listening   *listening.Module
+	rbac        *rbac.Module
+}
+
+// startGrading builds learning with every grader the worker needs, and the skill
+// modules that grade asynchronously through it.
+//
+// Writing and speaking complete their grades through learning, and learning
+// holds their graders; lateLearning lets both be built before learning is.
+func startGrading(ctx context.Context, d gradingDeps) error {
+	jobClient, err := job.NewClientFromPool(d.pool)
+	if err != nil {
+		return fmt.Errorf("create job client: %w", err)
+	}
+
+	learningRef := &lateLearning{}
+	writingModule := writing.New(writing.Deps{
+		Pool:       d.pool,
+		Enqueuer:   jobClient,
+		Content:    d.content.Reader(),
+		AI:         d.ai,
+		Completer:  learningRef,
+		Attempts:   learningRef,
+		DailyLimit: d.cfg.AI.WritingDailyLimit,
+	})
+	speakingModule := speaking.New(speaking.Deps{
+		Pool:        d.pool,
+		Enqueuer:    jobClient,
+		Storage:     d.storage,
+		Transcriber: newWorkerTranscriber(d.cfg),
+		AI:          d.ai,
+		Content:     d.content.Reader(),
+		Attempts:    learningRef,
+		Completer:   learningRef,
+		DailyLimit:  d.cfg.Speech.DailyRecordingsLimit,
+		ASRModel:    d.cfg.Speech.ASRModel,
+	})
+
+	learningModule, err := startLearning(
+		ctx, d.pool, d.cron, d.instruments, d.lesson, d.content, d.ai, d.reading, d.grammar,
+		d.listening, d.rbac, d.cfg, d.storage, skillGraders(writingModule, speakingModule),
+	)
+	if err != nil {
+		return err
+	}
+	learningRef.module = learningModule
+
+	if err := startSkills(
+		d.pool, d.bus, d.cron, d.workers, d.lesson, learningModule, writingModule, speakingModule,
+	); err != nil {
+		return err
+	}
+	return nil
+}
+
+// lateLearning forwards to the learning module once it is built.
+type lateLearning struct {
+	module *learning.Module
+}
+
+var errLearningNotStarted = errors.New("learning module is not started")
+
+func (l *lateLearning) CompleteAsyncGrading(
+	ctx context.Context, attemptID uuid.UUID, result learningcontract.GradeResult,
+) (bool, error) {
+	if l.module == nil {
+		return false, errLearningNotStarted
+	}
+	return l.module.AsyncGradingCompleter().CompleteAsyncGrading(ctx, attemptID, result)
+}
+
+func (l *lateLearning) FailAsyncGrading(ctx context.Context, attemptID uuid.UUID, reason string) (bool, error) {
+	if l.module == nil {
+		return false, errLearningNotStarted
+	}
+	return l.module.AsyncGradingCompleter().FailAsyncGrading(ctx, attemptID, reason)
+}
+
+func (l *lateLearning) GetAttemptForGrading(
+	ctx context.Context, attemptID uuid.UUID,
+) (*learningcontract.AttemptDetail, error) {
+	if l.module == nil {
+		return nil, errLearningNotStarted
+	}
+	return l.module.AttemptReader().GetAttemptForGrading(ctx, attemptID)
+}
+
+func skillGraders(
+	writingModule *writing.Module, speakingModule *speaking.Module,
+) map[string]learningcontract.ExerciseGrader {
+	graders := make(map[string]learningcontract.ExerciseGrader)
+	for _, kind := range writingcontract.GradedKinds() {
+		graders[kind] = writingModule.Grader()
+	}
+	for _, kind := range speakingcontract.GradedKinds() {
+		graders[kind] = speakingModule.Grader()
+	}
+	return graders
+}
+
+func newWorkerTranscriber(cfg workerConfig) media.Transcriber {
+	if cfg.Speech.ASRBaseURL == "" || cfg.Speech.ASRBaseURL == mockName {
+		return &media.MockTranscriber{}
+	}
+	return media.NewHTTPTranscriber(media.HTTPTranscriberConfig{
+		BaseURL: cfg.Speech.ASRBaseURL,
+		Model:   cfg.Speech.ASRModel,
+		APIKey:  cfg.Speech.ASRAPIKey,
+		Timeout: cfg.Speech.ASRTimeout,
+	})
+}
+
+// startSkills registers the grading workers, the recording purge and erasure
+// consumer, and the exam's expiry job and sweep.
+func startSkills(
+	pool *pgxpool.Pool, bus *eventbus.InProcessBus, cron *job.CronScheduler, workers *river.Workers,
+	lessonModule *lesson.Module, learningModule *learning.Module,
+	writingModule *writing.Module, speakingModule *speaking.Module,
+) error {
+	river.AddWorker(workers, writingModule.GradeSubmissionWorker())
+	river.AddWorker(workers, speakingModule.GradeRecordingWorker())
+	cron.Register(speakingModule.PurgeJob())
+	if err := speakingModule.Subscribe(bus); err != nil {
+		return err
+	}
+
+	examModule := exam.New(exam.Deps{
+		Pool:      pool,
+		Learning:  learningModule.SittingAnswerSubmitter(),
+		Attempts:  learningModule.AttemptOutcomeReader(),
+		Exposures: learningModule.ItemExposureRecorder(),
+		Lesson:    lessonModule.Reader(),
+	})
+	river.AddWorker(workers, examModule.ExpireAttemptWorker())
+	cron.Register(examModule.SweepJob())
+	return nil
+}
+
+// mockName selects the offline AI provider, TTS engine or transcriber.
+const mockName = "mock"
 
 type workerGuard struct{}
 

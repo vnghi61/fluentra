@@ -74,7 +74,9 @@ func New(deps Deps) *Service {
 }
 
 // UploadIntent generates a presigned PUT URL for browser audio upload to fluentra-media.
-func (s *Service) UploadIntent(ctx context.Context, userID uuid.UUID, contentType string) (*contract.UploadIntentResult, error) {
+func (s *Service) UploadIntent(
+	ctx context.Context, userID uuid.UUID, contentType string,
+) (*contract.UploadIntentResult, error) {
 	if !domain.IsValidAudioFormat(contentType) {
 		return nil, domain.ErrUnsupportedAudioFormat
 	}
@@ -186,6 +188,8 @@ func (s *Service) DeleteUserRecordings(ctx context.Context, userID uuid.UUID) er
 }
 
 // GetSpeakingFeedback retrieves feedback for a user attempt.
-func (s *Service) GetSpeakingFeedback(ctx context.Context, attemptID, userID uuid.UUID) (*contract.SpeakingFeedback, error) {
+func (s *Service) GetSpeakingFeedback(
+	ctx context.Context, attemptID, userID uuid.UUID,
+) (*contract.SpeakingFeedback, error) {
 	return s.repo.GetFeedbackForUser(ctx, attemptID, userID)
 }

@@ -3,128 +3,152 @@ import {
   AlertCircle,
   CheckCircle2,
   Mic,
-  RotateCcw,
   ShieldCheck,
   Square,
   UploadCloud,
-  Volume2,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { examApi } from "../api/examApi";
+import { examApi, problemCode } from "../api/examApi";
 
 export interface SpeakingRecorderProps {
   taskType: "read_aloud" | "respond";
-  promptText: string;
+  promptText?: string | undefined;
   referenceText?: string | undefined;
-  speakingTimeSeconds?: number | undefined;
-  mode?: "exam" | "practice" | undefined;
+  speakingTimeSeconds: number;
+  mode: "exam" | "practice";
   currentRecordingKey?: string | undefined;
-  onRecordingComplete: (key: string) => void;
+  onRecordingComplete: (objectKey: string) => void;
   className?: string | undefined;
 }
 
-const CONSENT_STORAGE_KEY = "fluentra_voice_consent_accepted";
+const NOTICE_STORAGE_KEY = "fluentra_voice_notice_seen";
+
+function readNoticeSeen(): boolean {
+  try {
+    return localStorage.getItem(NOTICE_STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function rememberNoticeSeen(): void {
+  try {
+    localStorage.setItem(NOTICE_STORAGE_KEY, "true");
+  } catch {
+    // The notice shows again next time; nothing else depends on it.
+  }
+}
+
+function pickMimeType(): string {
+  if (typeof MediaRecorder === "undefined") return "";
+  if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) {
+    return "audio/webm;codecs=opus";
+  }
+  if (MediaRecorder.isTypeSupported("audio/mp4")) return "audio/mp4";
+  return "";
+}
 
 export const SpeakingRecorder: React.FC<SpeakingRecorderProps> = ({
   taskType,
   promptText,
   referenceText,
-  speakingTimeSeconds = 45,
-  mode = "exam",
+  speakingTimeSeconds,
+  mode,
   currentRecordingKey,
   onRecordingComplete,
   className,
 }) => {
   const { t } = useTranslation();
 
-  const [hasConsent, setHasConsent] = useState<boolean>(() => {
-    return localStorage.getItem(CONSENT_STORAGE_KEY) === "true";
-  });
-  const [showConsentModal, setShowConsentModal] = useState<boolean>(false);
-
-  const [isRecording, setIsRecording] = useState<boolean>(false);
-  const [isUploading, setIsUploading] = useState<boolean>(false);
-  const [secondsRemaining, setSecondsRemaining] = useState<number>(speakingTimeSeconds);
-  const [recordingKey, setRecordingKey] = useState<string | null>(
-    currentRecordingKey || null,
+  const [noticeSeen, setNoticeSeen] = useState(readNoticeSeen);
+  const [showNotice, setShowNotice] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [secondsLeft, setSecondsLeft] = useState(speakingTimeSeconds);
+  const [recordingKey, setRecordingKey] = useState<string | undefined>(
+    currentRecordingKey,
   );
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const [permissionError, setPermissionError] = useState<string | null>(null);
-  const [hasTaken, setHasTaken] = useState<boolean>(!!currentRecordingKey);
+  const [error, setError] = useState<string | null>(null);
 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Clean up recording timer and object URLs
   useEffect(() => {
     return () => {
-      if (timerIntervalRef.current) {
-        clearInterval(timerIntervalRef.current);
-      }
-      if (audioUrl) {
-        URL.revokeObjectURL(audioUrl);
-      }
+      if (timerRef.current) clearInterval(timerRef.current);
+      const recorder = recorderRef.current;
+      if (recorder && recorder.state !== "inactive") recorder.stop();
     };
-  }, [audioUrl]);
+  }, []);
 
-  const acceptConsent = () => {
-    localStorage.setItem(CONSENT_STORAGE_KEY, "true");
-    setHasConsent(true);
-    setShowConsentModal(false);
+  // Exam mode records once; practice mode may record again.
+  const canRecord = !isUploading && (mode === "practice" || !recordingKey);
+
+  const upload = async (blob: Blob) => {
+    setIsUploading(true);
+    try {
+      const intent = await examApi.getSpeakingUploadIntent(
+        blob.type || "audio/webm",
+      );
+      await examApi.uploadSpeakingAudio(intent.upload_url, blob);
+      setRecordingKey(intent.object_key);
+      onRecordingComplete(intent.object_key);
+    } catch (err: unknown) {
+      setError(
+        problemCode(err) === "SPEECH_DAILY_LIMIT_REACHED"
+          ? t("exam.speaking.dailyLimitReached")
+          : t("exam.speaking.uploadFailed"),
+      );
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const stopRecording = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    const recorder = recorderRef.current;
+    if (recorder && recorder.state !== "inactive") recorder.stop();
+    setIsRecording(false);
   };
 
   const startRecording = async () => {
-    if (!hasConsent) {
-      setShowConsentModal(true);
+    if (!noticeSeen) {
+      setShowNotice(true);
       return;
     }
-
-    setPermissionError(null);
-    audioChunksRef.current = [];
-
+    setError(null);
+    chunksRef.current = [];
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      let mimeType = "audio/webm;codecs=opus";
-      if (!MediaRecorder.isTypeSupported(mimeType)) {
-        mimeType = MediaRecorder.isTypeSupported("audio/mp4")
-          ? "audio/mp4"
-          : "";
-      }
-
-      const options = mimeType ? { mimeType } : undefined;
-      const mediaRecorder = new MediaRecorder(stream, options);
-      mediaRecorderRef.current = mediaRecorder;
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) {
-          audioChunksRef.current.push(e.data);
-        }
+      const mimeType = pickMimeType();
+      const recorder = new MediaRecorder(
+        stream,
+        mimeType ? { mimeType } : undefined,
+      );
+      recorderRef.current = recorder;
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
       };
-
-      mediaRecorder.onstop = async () => {
+      recorder.onstop = () => {
         stream.getTracks().forEach((track) => track.stop());
-        const blob = new Blob(audioChunksRef.current, {
-          type: mediaRecorder.mimeType || "audio/webm",
+        const blob = new Blob(chunksRef.current, {
+          type: recorder.mimeType || "audio/webm",
         });
-        const url = URL.createObjectURL(blob);
-        setAudioUrl(url);
-        setHasTaken(true);
-
-        // Upload to S3/MinIO
-        await uploadRecording(blob);
+        void upload(blob);
       };
-
-      mediaRecorder.start(250); // Slice every 250ms
+      recorder.start(250);
       setIsRecording(true);
-      setSecondsRemaining(speakingTimeSeconds);
-
-      timerIntervalRef.current = setInterval(() => {
-        setSecondsRemaining((prev) => {
+      setSecondsLeft(speakingTimeSeconds);
+      timerRef.current = setInterval(() => {
+        setSecondsLeft((prev) => {
           if (prev <= 1) {
             stopRecording();
             return 0;
@@ -132,258 +156,150 @@ export const SpeakingRecorder: React.FC<SpeakingRecorderProps> = ({
           return prev - 1;
         });
       }, 1000);
-    } catch (err: any) {
-      setPermissionError(
-        t(
-          "exam.speaking.micPermissionDenied",
-          "Microphone access denied. Please allow microphone permissions in your browser settings.",
-        ),
-      );
+    } catch {
+      setError(t("exam.speaking.micPermissionDenied"));
     }
   };
 
-  const stopRecording = () => {
-    if (timerIntervalRef.current) {
-      clearInterval(timerIntervalRef.current);
-      timerIntervalRef.current = null;
-    }
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-      mediaRecorderRef.current.stop();
-    }
-    setIsRecording(false);
-  };
-
-  const uploadRecording = async (blob: Blob) => {
-    setIsUploading(true);
-    try {
-      const contentType = blob.type || "audio/webm";
-      const intent = await examApi.getSpeakingUploadIntent(
-        contentType,
-        blob.size,
-      );
-      await examApi.uploadSpeakingAudio(intent.upload_url, blob);
-      setRecordingKey(intent.key);
-      onRecordingComplete(intent.key);
-    } catch (err: any) {
-      setPermissionError(
-        t(
-          "exam.speaking.uploadFailed",
-          "Failed to upload voice recording. Please retry.",
-        ),
-      );
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleResetRecording = () => {
-    if (mode === "exam" && hasTaken) return;
-    setAudioUrl(null);
-    setRecordingKey(null);
-    setSecondsRemaining(speakingTimeSeconds);
-    setPermissionError(null);
-    setHasTaken(false);
+  const acceptNotice = () => {
+    rememberNoticeSeen();
+    setNoticeSeen(true);
+    setShowNotice(false);
   };
 
   return (
-    <div className={cn("space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm", className)}>
-      {/* Header Info */}
+    <div
+      className={cn(
+        "space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm",
+        className,
+      )}
+    >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h4 className="text-base font-semibold text-text">
             {taskType === "read_aloud"
-              ? t("exam.speaking.readAloudTitle", "Read Aloud Task")
-              : t("exam.speaking.respondTitle", "Spoken Response Task")}
+              ? t("exam.speaking.readAloudTitle")
+              : t("exam.speaking.respondTitle")}
           </h4>
           <p className="text-xs text-text-muted">
             {taskType === "read_aloud"
-              ? t("exam.speaking.readAloudDesc", "Read the text clearly at a natural speaking pace.")
-              : t("exam.speaking.respondDesc", "Speak your answer clearly within the time limit.")}
+              ? t("exam.speaking.readAloudDesc")
+              : t("exam.speaking.respondDesc")}
           </p>
         </div>
-
-        <Badge variant="outline" className="text-xs font-medium px-3 py-1 gap-1.5">
-          <Volume2 className="h-3.5 w-3.5" />
-          {t("exam.speaking.timeLimit", { seconds: speakingTimeSeconds, defaultValue: `${speakingTimeSeconds}s limit` })}
+        <Badge variant="outline">
+          {t("exam.speaking.timeLimit", { seconds: speakingTimeSeconds })}
         </Badge>
       </div>
 
-      {/* Task Content / Reference Text */}
       {taskType === "read_aloud" && referenceText && (
-        <div className="rounded-lg bg-surface-muted p-4 border border-border-subtle">
-          <p className="text-sm sm:text-base font-medium text-text leading-relaxed select-none">
+        <div className="rounded-lg border border-border-subtle bg-surface-muted p-4">
+          <p className="text-sm font-medium leading-relaxed text-text sm:text-base">
             {referenceText}
           </p>
         </div>
       )}
-
       {promptText && (
-        <div className="text-sm text-text-muted font-medium">
-          {promptText}
+        <p className="text-sm font-medium text-text-muted">{promptText}</p>
+      )}
+
+      {error && (
+        <div
+          role="alert"
+          className="flex items-center gap-2 rounded-lg bg-danger/10 p-3 text-xs text-danger"
+        >
+          <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>{error}</span>
         </div>
       )}
 
-      {/* Permission error banner */}
-      {permissionError && (
-        <div className="flex items-center gap-2 rounded-lg bg-danger/10 p-3 text-xs text-danger">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          <span>{permissionError}</span>
+      <div className="flex flex-col items-center justify-center space-y-4 rounded-xl border border-border-subtle bg-surface-muted/40 p-6">
+        <div
+          className={cn(
+            "font-mono text-3xl font-bold tracking-tight sm:text-4xl",
+            isRecording ? "text-danger" : "text-text",
+          )}
+          aria-live="polite"
+        >
+          {`00:${secondsLeft.toString().padStart(2, "0")}`}
         </div>
-      )}
 
-      {/* Recorder Controls Area */}
-      <div className="flex flex-col items-center justify-center rounded-xl bg-surface-muted/40 border border-border-subtle p-6 space-y-4">
-        {/* Timer / Waveform display */}
-        <div className="flex flex-col items-center gap-2">
-          <div
-            className={cn(
-              "font-mono text-3xl sm:text-4xl font-bold tracking-tight",
-              isRecording ? "text-danger animate-pulse" : "text-text",
-            )}
+        {isRecording ? (
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={stopRecording}
+            className="rounded-full px-6"
           >
-            00:{secondsRemaining.toString().padStart(2, "0")}
-          </div>
-
-          {isRecording ? (
-            <div className="flex items-center gap-1.5 h-6">
-              {[40, 75, 50, 90, 60, 100, 70, 45].map((h, idx) => (
-                <div
-                  key={idx}
-                  className="w-1 bg-danger rounded-full animate-pulse"
-                  style={{
-                    height: `${h}%`,
-                    animationDelay: `${idx * 120}ms`,
-                  }}
-                />
-              ))}
-            </div>
-          ) : (
-            <p className="text-xs text-text-muted">
+            <Square className="h-5 w-5" aria-hidden="true" />
+            <span>{t("exam.speaking.stop")}</span>
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            variant={recordingKey ? "outline" : "destructive"}
+            onClick={() => void startRecording()}
+            disabled={!canRecord}
+            className="rounded-full px-6"
+          >
+            <Mic className="h-5 w-5" aria-hidden="true" />
+            <span>
               {recordingKey
-                ? t("exam.speaking.recordedSuccess", "Audio response recorded and saved.")
-                : t("exam.speaking.readyToRecord", "Press Record when ready to begin speaking.")}
-            </p>
-          )}
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex items-center gap-3">
-          {!isRecording ? (
-            <Button
-              type="button"
-              onClick={startRecording}
-              disabled={isUploading || (mode === "exam" && hasTaken && !!recordingKey)}
-              aria-label={t("exam.speaking.startRecording", "Start Recording")}
-              className={cn(
-                "h-12 px-6 rounded-full font-semibold min-h-[44px] min-w-[44px] gap-2 shadow-sm",
-                recordingKey
-                  ? "bg-surface-muted text-text hover:bg-surface-muted/80"
-                  : "bg-danger text-white hover:bg-danger/90",
-              )}
-            >
-              <Mic className="h-5 w-5" />
-              <span>
-                {recordingKey
-                  ? mode === "practice"
-                    ? t("exam.speaking.reRecord", "Re-record")
-                    : t("exam.speaking.recorded", "Recorded")
-                  : t("exam.speaking.record", "Record")}
-              </span>
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              onClick={stopRecording}
-              aria-label={t("exam.speaking.stopRecording", "Stop Recording")}
-              className="h-12 px-6 rounded-full bg-danger text-white hover:bg-danger/90 font-semibold min-h-[44px] min-w-[44px] gap-2 shadow-sm"
-            >
-              <Square className="h-5 w-5 fill-current" />
-              <span>{t("exam.speaking.stop", "Stop")}</span>
-            </Button>
-          )}
-
-          {/* Practice mode reset button */}
-          {mode === "practice" && recordingKey && !isRecording && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleResetRecording}
-              className="h-12 px-4 rounded-full min-h-[44px] gap-2 text-xs"
-            >
-              <RotateCcw className="h-4 w-4" />
-              <span>{t("common.reset", "Reset")}</span>
-            </Button>
-          )}
-        </div>
-
-        {/* Upload status indicator */}
-        {isUploading && (
-          <div className="flex items-center gap-2 text-xs text-primary font-medium animate-pulse">
-            <UploadCloud className="h-4 w-4" />
-            <span>{t("exam.speaking.uploading", "Uploading audio recording...")}</span>
-          </div>
+                ? mode === "practice"
+                  ? t("exam.speaking.reRecord")
+                  : t("exam.speaking.recorded")
+                : t("exam.speaking.record")}
+            </span>
+          </Button>
         )}
 
-        {recordingKey && !isUploading && (
-          <div className="flex items-center gap-1.5 text-xs text-success font-medium">
-            <CheckCircle2 className="h-4 w-4" />
-            <span>{t("exam.speaking.uploaded", "Audio successfully saved.")}</span>
-          </div>
+        {isUploading && (
+          <p className="flex items-center gap-2 text-xs font-medium text-primary">
+            <UploadCloud className="h-4 w-4" aria-hidden="true" />
+            {t("exam.speaking.uploading")}
+          </p>
+        )}
+        {recordingKey && !isUploading && !isRecording && (
+          <p className="flex items-center gap-1.5 text-xs font-medium text-success">
+            <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+            {t("exam.speaking.uploaded")}
+          </p>
         )}
       </div>
 
-      {/* Voice Privacy Consent Modal */}
-      {showConsentModal && (
+      {showNotice && (
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+          aria-labelledby="voice-notice-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
         >
-          <div className="max-w-md w-full rounded-2xl bg-card border border-border p-6 shadow-xl space-y-4">
+          <div className="w-full max-w-md space-y-4 rounded-2xl border border-border bg-card p-6 shadow-xl">
             <div className="flex items-center gap-3">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <ShieldCheck className="h-6 w-6" />
+                <ShieldCheck className="h-6 w-6" aria-hidden="true" />
               </div>
-              <div>
-                <h3 className="font-semibold text-text text-base">
-                  {t("exam.speaking.privacyTitle", "Voice Recording Notice")}
-                </h3>
-                <p className="text-xs text-text-muted">
-                  {t("exam.speaking.privacySubtitle", "How your audio is processed and stored")}
-                </p>
-              </div>
+              <h3
+                id="voice-notice-title"
+                className="text-base font-semibold text-text"
+              >
+                {t("exam.speaking.noticeTitle")}
+              </h3>
             </div>
-
-            <div className="text-xs text-text-muted space-y-2 leading-relaxed bg-surface-muted/50 p-3.5 rounded-lg border border-border-subtle">
-              <p>
-                {t(
-                  "exam.speaking.privacyConsentBody1",
-                  "Before speaking, please note that your audio recording is sent to an automated transcription service to generate a text transcript for scoring.",
-                )}
-              </p>
-              <p>
-                {t(
-                  "exam.speaking.privacyConsentBody2",
-                  "Audio files are retained securely for a maximum of 90 days, after which they are permanently deleted. You can delete your recording at any time from your score report or settings. Deleting your account immediately erases all voice recordings.",
-                )}
-              </p>
+            <div className="space-y-2 rounded-lg border border-border-subtle bg-surface-muted/50 p-3.5 text-xs leading-relaxed text-text-muted">
+              <p>{t("exam.speaking.noticeTranscription")}</p>
+              <p>{t("exam.speaking.noticeRetention")}</p>
             </div>
-
-            <div className="flex justify-end gap-2.5 pt-2">
+            <div className="flex justify-end gap-2.5">
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setShowConsentModal(false)}
-                className="min-h-[44px]"
+                onClick={() => setShowNotice(false)}
               >
-                {t("common.cancel", "Cancel")}
+                {t("exam.speaking.noticeCancel")}
               </Button>
-              <Button
-                type="button"
-                onClick={acceptConsent}
-                className="bg-primary text-white hover:bg-primary/90 min-h-[44px]"
-              >
-                {t("exam.speaking.iUnderstand", "I understand & consent")}
+              <Button type="button" onClick={acceptNotice}>
+                {t("exam.speaking.noticeAccept")}
               </Button>
             </div>
           </div>

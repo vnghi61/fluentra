@@ -123,6 +123,15 @@ SELECT *
 FROM assess.score_reports
 WHERE attempt_id = $1;
 
+-- ListPendingScoreReports feeds the sweep that settles reports whose sittings
+-- held asynchronously graded items.
+-- name: ListPendingScoreReports :many
+SELECT *
+FROM assess.score_reports
+WHERE status = 'pending'
+ORDER BY created_at ASC
+LIMIT 50;
+
 -- name: UpdateScoreReport :one
 UPDATE assess.score_reports
 SET overall_score = $2,

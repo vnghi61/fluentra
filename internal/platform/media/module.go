@@ -28,7 +28,7 @@ type Module struct {
 func New(cfg Config) *Module {
 	var synth Synthesiser
 	switch cfg.TTSEngine {
-	case "mock":
+	case EngineMock:
 		synth = &MockSynthesiser{}
 	default:
 		// Default to CachedSynthesiser (offline: cache hit returns key; cache miss returns ErrTTSNotFound)

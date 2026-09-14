@@ -89,49 +89,22 @@ func (h *HTTPTranscriber) Transcribe(ctx context.Context, audio io.Reader, filen
 	if audio == nil {
 		return nil, ErrEmptyAudio
 	}
-	if strings.TrimSpace(filename) == "" {
-		filename = "recording.webm"
-	}
-
-	body := &bytes.Buffer{}
-	writer := multipart.NewWriter(body)
-
-	part, err := writer.CreateFormFile("file", filename)
+	body, contentType, err := buildTranscriptionForm(audio, filename, h.model)
 	if err != nil {
-		return nil, fmt.Errorf("create multipart form file: %w", err)
-	}
-	if _, err := io.Copy(part, audio); err != nil {
-		return nil, fmt.Errorf("copy audio to form: %w", err)
+		return nil, err
 	}
 
-	if err := writer.WriteField("model", h.model); err != nil {
-		return nil, fmt.Errorf("write model field: %w", err)
-	}
-	if err := writer.WriteField("response_format", "verbose_json"); err != nil {
-		return nil, fmt.Errorf("write response_format field: %w", err)
-	}
-	if err := writer.WriteField("timestamp_granularities[]", "word"); err != nil {
-		return nil, fmt.Errorf("write timestamp_granularities field: %w", err)
-	}
-
-	if err := writer.Close(); err != nil {
-		return nil, fmt.Errorf("close multipart writer: %w", err)
-	}
-
-	endpoint := h.baseURL + "/audio/transcriptions"
 	reqCtx := ctx
 	if h.timeout > 0 {
 		var cancel context.CancelFunc
 		reqCtx, cancel = context.WithTimeout(ctx, h.timeout)
 		defer cancel()
 	}
-
-	req, err := http.NewRequestWithContext(reqCtx, http.MethodPost, endpoint, body)
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodPost, h.baseURL+"/audio/transcriptions", body)
 	if err != nil {
 		return nil, fmt.Errorf("create transcription request: %w", err)
 	}
-
-	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("Content-Type", contentType)
 	if h.apiKey != "" {
 		req.Header.Set("Authorization", "Bearer "+h.apiKey)
 	}
@@ -142,54 +115,82 @@ func (h *HTTPTranscriber) Transcribe(ctx context.Context, audio io.Reader, filen
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	respBody, err := io.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, maxTranscriptionResponseBytes))
 	if err != nil {
 		return nil, apperr.Wrap(err, apperr.Unavailable, "ASR_READ_FAILED", "read transcription response failed")
 	}
-
 	if resp.StatusCode != http.StatusOK {
-		var errResp openAITranscribeResponse
-		if jsonErr := json.Unmarshal(respBody, &errResp); jsonErr == nil && errResp.Error != nil && errResp.Error.Message != "" {
-			return nil, apperr.New(apperr.Unavailable, "ASR_PROVIDER_ERROR", fmt.Sprintf("transcription provider error: %s", errResp.Error.Message))
-		}
-		return nil, apperr.New(apperr.Unavailable, "ASR_STATUS_ERROR", fmt.Sprintf("transcription provider returned status %d: %s", resp.StatusCode, string(respBody)))
+		return nil, transcriptionError(resp.StatusCode, respBody)
 	}
+	return parseTranscription(respBody)
+}
 
+// maxTranscriptionResponseBytes bounds the reply read back. A verbose transcript
+// of a three-minute recording with word timings is tens of kilobytes.
+const maxTranscriptionResponseBytes = 4 << 20
+
+// mockTranscriptLanguage is the language the mock transcriber reports.
+const mockTranscriptLanguage = "english"
+
+func buildTranscriptionForm(audio io.Reader, filename, model string) (*bytes.Buffer, string, error) {
+	if strings.TrimSpace(filename) == "" {
+		filename = "recording.webm"
+	}
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("file", filename)
+	if err != nil {
+		return nil, "", fmt.Errorf("create multipart form file: %w", err)
+	}
+	if _, err := io.Copy(part, audio); err != nil {
+		return nil, "", fmt.Errorf("copy audio to form: %w", err)
+	}
+	fields := [][2]string{
+		{"model", model},
+		{"response_format", "verbose_json"},
+		{"timestamp_granularities[]", "word"},
+	}
+	for _, field := range fields {
+		if err := writer.WriteField(field[0], field[1]); err != nil {
+			return nil, "", fmt.Errorf("write %s field: %w", field[0], err)
+		}
+	}
+	if err := writer.Close(); err != nil {
+		return nil, "", fmt.Errorf("close multipart writer: %w", err)
+	}
+	return body, writer.FormDataContentType(), nil
+}
+
+// transcriptionError names the provider's own message when it sent one. The
+// raw body is not echoed: it can hold anything, and the error reaches logs.
+func transcriptionError(status int, body []byte) error {
+	var errResp openAITranscribeResponse
+	if err := json.Unmarshal(body, &errResp); err == nil && errResp.Error != nil && errResp.Error.Message != "" {
+		return apperr.New(apperr.Unavailable, "ASR_PROVIDER_ERROR", "transcription provider error: "+errResp.Error.Message)
+	}
+	return apperr.New(apperr.Unavailable, "ASR_STATUS_ERROR",
+		fmt.Sprintf("transcription provider returned status %d", status))
+}
+
+func parseTranscription(body []byte) (*TranscribeResult, error) {
 	var parsed openAITranscribeResponse
-	if err := json.Unmarshal(respBody, &parsed); err != nil {
+	if err := json.Unmarshal(body, &parsed); err != nil {
 		return nil, apperr.Wrap(err, apperr.Unavailable, "ASR_PARSE_FAILED", "parse transcription response")
 	}
-
-
 	result := &TranscribeResult{
 		Text:     strings.TrimSpace(parsed.Text),
 		Language: parsed.Language,
 		Duration: parsed.Duration,
 	}
-
-	if len(parsed.Words) > 0 {
-		result.Words = make([]WordTiming, len(parsed.Words))
-		for i, w := range parsed.Words {
-			result.Words[i] = WordTiming{
-				Word:  w.Word,
-				Start: w.Start,
-				End:   w.End,
-			}
-		}
-	} else if len(parsed.Segments) > 0 {
-		var words []WordTiming
+	words := parsed.Words
+	if len(words) == 0 {
 		for _, seg := range parsed.Segments {
-			for _, w := range seg.Words {
-				words = append(words, WordTiming{
-					Word:  w.Word,
-					Start: w.Start,
-					End:   w.End,
-				})
-			}
+			words = append(words, seg.Words...)
 		}
-		result.Words = words
 	}
-
+	for _, w := range words {
+		result.Words = append(result.Words, WordTiming(w))
+	}
 	return result, nil
 }
 
@@ -213,7 +214,7 @@ func (m *MockTranscriber) Transcribe(ctx context.Context, audio io.Reader, filen
 	}
 	return &TranscribeResult{
 		Text:     "The quick brown fox jumps over the lazy dog.",
-		Language: "english",
+		Language: mockTranscriptLanguage,
 		Duration: 3.5,
 		Words: []WordTiming{
 			{Word: "The", Start: 0.0, End: 0.3},

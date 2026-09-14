@@ -8,27 +8,63 @@ import {
   Headphones,
   Mic,
   PenTool,
-  Save,
   Send,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "@tanstack/react-router";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { examApi } from "../api/examApi";
+import { examApi, problemCode } from "../api/examApi";
 import type {
+  ChoiceQuestion,
+  DraftAnswers,
   ExamAttempt,
+  ExamMode,
+  ExamSkill,
   IntegrityEvent,
+  IntegrityKind,
+  SaveAnswersRequest,
   SittingActivity,
+  SittingAnswer,
 } from "../types";
 import { ListeningPlayer } from "./ListeningPlayer";
 import { SpeakingRecorder } from "./SpeakingRecorder";
 
+const AUTOSAVE_MS = 15_000;
+const SECTION_COUNT = 4;
+const DEFAULT_SPEAKING_SECONDS = 45;
+// The server closes a section five seconds after its end; ask again after that.
+const SECTION_RESYNC_DELAY_MS = 6_000;
+
+const SECTION_ICONS: Record<ExamSkill, typeof Headphones> = {
+  listening: Headphones,
+  reading: BookOpen,
+  writing: PenTool,
+  speaking: Mic,
+};
+
 export interface ExamSittingRunnerProps {
   attempt: ExamAttempt;
-  onSubmitted?: () => void;
+  onSubmitted: () => void;
+}
+
+export function isAnswered(answer: SittingAnswer | undefined): boolean {
+  if (!answer) return false;
+  if ("answers" in answer) return Object.keys(answer.answers).length > 0;
+  if ("text_answer" in answer) return answer.text_answer.trim() !== "";
+  if ("answer" in answer) return answer.answer.trim() !== "";
+  return answer.audio_object_key !== "";
+}
+
+export function formatClock(totalSeconds: number): string {
+  const safe = Math.max(0, Math.floor(totalSeconds));
+  const hours = Math.floor(safe / 3600);
+  const minutes = Math.floor((safe % 3600) / 60)
+    .toString()
+    .padStart(2, "0");
+  const seconds = (safe % 60).toString().padStart(2, "0");
+  return hours > 0 ? `${hours}:${minutes}:${seconds}` : `${minutes}:${seconds}`;
 }
 
 export const ExamSittingRunner: React.FC<ExamSittingRunnerProps> = ({
@@ -36,549 +72,499 @@ export const ExamSittingRunner: React.FC<ExamSittingRunnerProps> = ({
   onSubmitted,
 }) => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
+  const isExamMode = attempt.mode === "exam";
+  const inProgress = attempt.status === "in_progress";
+  const sections = useMemo(
+    () => attempt.section_activities ?? [],
+    [attempt.section_activities],
+  );
 
-  // Active section index (1-based: 1=Listening, 2=Reading, 3=Writing, 4=Speaking)
-  const [currentSectionNum, setCurrentSectionNum] = useState<number>(
+  const [currentSection, setCurrentSection] = useState(
     attempt.current_section || 1,
   );
-  const [draftAnswers, setDraftAnswers] = useState<Record<string, any>>(
-    attempt.draft_answers || {},
+  const [answers, setAnswers] = useState<DraftAnswers>(
+    attempt.draft_answers ?? {},
   );
-  const [remainingSeconds, setRemainingSeconds] = useState<number>(
-    attempt.remaining_seconds,
+  const [remaining, setRemaining] = useState(attempt.remaining_seconds);
+  const [sectionRemaining, setSectionRemaining] = useState<number | undefined>(
+    attempt.section_remaining_seconds,
   );
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [isAutoSaving, setIsAutoSaving] = useState<boolean>(false);
-  const [isExpiring, setIsExpiring] = useState<boolean>(false);
-  const [showSubmitModal, setShowSubmitModal] = useState<boolean>(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveState, setSaveState] = useState<"saved" | "saving" | "failed">(
+    "saved",
+  );
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [timeUp, setTimeUp] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
-  // Integrity events buffer
-  const integrityEventsRef = useRef<IntegrityEvent[]>([]);
-  const draftAnswersRef = useRef<Record<string, any>>(draftAnswers);
-  draftAnswersRef.current = draftAnswers;
+  const answersRef = useRef<DraftAnswers>(attempt.draft_answers ?? {});
+  const dirtyRef = useRef(new Set<string>());
+  const eventsRef = useRef<IntegrityEvent[]>([]);
+  const sectionRef = useRef(attempt.current_section || 1);
+  const remainingRef = useRef(attempt.remaining_seconds);
+  const sectionRemainingRef = useRef(attempt.section_remaining_seconds);
+  const finishedRef = useRef(false);
 
-  const isExamMode = attempt.mode === "exam";
-  const sections = attempt.section_activities || [];
-
-  // -------------------------------------------------------------------------
-  // Server-Synced Countdown Timer
-  // -------------------------------------------------------------------------
-  useEffect(() => {
-    if (attempt.status !== "in_progress") return;
-
-    const timer = setInterval(() => {
-      setRemainingSeconds((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          void handleTimeExpired();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [attempt.status, attempt.id]);
-
-  // Handle auto-submit when server time expires
-  const handleTimeExpired = async () => {
-    setIsExpiring(true);
-    try {
-      // Flush any pending drafts first
-      await examApi.saveAnswers(attempt.id, {
-        section_number: currentSectionNum,
-        answers: draftAnswersRef.current,
-        integrity_events: integrityEventsRef.current,
-      });
-    } catch {
-      // Ignore save error on timeout
-    }
-
-    try {
-      await examApi.submitExam(attempt.id);
-    } catch {
-      // Even if call fails, server marked expired on read
-    }
-
-    if (onSubmitted) {
-      onSubmitted();
-    } else {
-      void navigate({
-        to: "/exams/$attemptId/report",
-        params: { attemptId: attempt.id },
-      });
-    }
-  };
-
-  // -------------------------------------------------------------------------
-  // Integrity Event Tracking (Tab switch, Blur, Paste)
-  // -------------------------------------------------------------------------
-  useEffect(() => {
-    if (attempt.status !== "in_progress") return;
-
-    const recordEvent = (kind: IntegrityEvent["kind"]) => {
-      integrityEventsRef.current.push({
-        kind,
-        occurred_at: new Date().toISOString(),
-      });
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "hidden") {
-        recordEvent("tab_hidden");
-      } else {
-        // Re-sync timer with server on return
-        void syncTimeWithServer();
+  const sectionOf = useMemo(() => {
+    const positions = new Map<string, number>();
+    for (const section of sections) {
+      for (const activity of section.activities) {
+        positions.set(activity.id, section.section_position);
       }
-    };
+    }
+    return positions;
+  }, [sections]);
 
-    const handleBlur = () => {
-      recordEvent("window_blurred");
-    };
+  const setClock = useCallback((seconds: number) => {
+    remainingRef.current = seconds;
+    setRemaining(seconds);
+  }, []);
 
-    const handlePaste = () => {
-      recordEvent("paste");
-    };
+  const setSection = useCallback(
+    (section: number, secondsLeft: number | undefined) => {
+      sectionRef.current = section;
+      sectionRemainingRef.current = secondsLeft;
+      setCurrentSection(section);
+      setSectionRemaining(secondsLeft);
+    },
+    [],
+  );
 
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("blur", handleBlur);
-    document.addEventListener("paste", handlePaste);
+  const finish = useCallback(() => {
+    if (finishedRef.current) return;
+    finishedRef.current = true;
+    onSubmitted();
+  }, [onSubmitted]);
 
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("blur", handleBlur);
-      document.removeEventListener("paste", handlePaste);
-    };
-  }, [attempt.id, attempt.status]);
-
-  const syncTimeWithServer = async () => {
+  const resync = useCallback(async () => {
     try {
-      const refreshed = await examApi.getAttempt(attempt.id);
-      if (refreshed.status === "expired" || refreshed.status === "completed") {
-        void handleTimeExpired();
-      } else {
-        setRemainingSeconds(refreshed.remaining_seconds);
+      const fresh = await examApi.getAttempt(attempt.id);
+      if (fresh.status !== "in_progress") {
+        finish();
+        return;
+      }
+      setClock(fresh.remaining_seconds);
+      if (isExamMode) {
+        setSection(fresh.current_section, fresh.section_remaining_seconds);
       }
     } catch {
-      // Ignore background sync error
+      // The next autosave or tick asks again.
     }
-  };
+  }, [attempt.id, finish, isExamMode, setClock, setSection]);
 
-  // -------------------------------------------------------------------------
-  // Autosave logic (Debounced 15s)
-  // -------------------------------------------------------------------------
-  const saveCurrentDrafts = useCallback(async () => {
-    if (attempt.status !== "in_progress") return;
-
-    setIsAutoSaving(true);
-    setSaveError(null);
-    try {
-      const eventsToFlush = [...integrityEventsRef.current];
-      integrityEventsRef.current = [];
-
-      const res = await examApi.saveAnswers(attempt.id, {
-        section_number: currentSectionNum,
-        answers: draftAnswersRef.current,
-        integrity_events: eventsToFlush,
-      });
-      setRemainingSeconds(res.remaining_seconds);
-    } catch (err: any) {
-      setSaveError(err?.message || "Autosave failed");
-    } finally {
-      setIsAutoSaving(false);
-    }
-  }, [attempt.id, attempt.status, currentSectionNum]);
-
-  useEffect(() => {
-    if (attempt.status !== "in_progress") return;
-
-    const interval = setInterval(() => {
-      void saveCurrentDrafts();
-    }, 15_000);
-
-    return () => clearInterval(interval);
-  }, [saveCurrentDrafts, attempt.status]);
-
-  // Save on tab close / beforeunload
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      void saveCurrentDrafts();
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [saveCurrentDrafts]);
-
-  // -------------------------------------------------------------------------
-  // Answer Update Handlers
-  // -------------------------------------------------------------------------
-  const handleUpdateActivityAnswer = (activityId: string, answer: any) => {
-    setDraftAnswers((prev) => ({
-      ...prev,
-      [activityId]: answer,
-    }));
-  };
-
-  // -------------------------------------------------------------------------
-  // Section Navigation
-  // -------------------------------------------------------------------------
-  const currentSection = useMemo(() => {
-    return (
-      sections.find((s) => s.section_position === currentSectionNum) ||
-      sections[0]
+  const save = useCallback(async (): Promise<boolean> => {
+    // In exam mode only the open section's answers are sent; the server refuses the rest.
+    const ids = [...dirtyRef.current].filter(
+      (id) => !isExamMode || sectionOf.get(id) === sectionRef.current,
     );
-  }, [sections, currentSectionNum]);
+    const events = eventsRef.current;
+    if (ids.length === 0 && events.length === 0) return true;
 
-  const handleNextSection = async () => {
-    await saveCurrentDrafts();
+    const payload: DraftAnswers = {};
+    for (const id of ids) {
+      const answer = answersRef.current[id];
+      if (answer) payload[id] = answer;
+    }
+    eventsRef.current = [];
+    setSaveState("saving");
 
-    if (isExamMode) {
-      // Exam mode completes current section permanently
-      try {
-        const res = await examApi.completeSection(
-          attempt.id,
-          currentSectionNum,
-        );
-        setCurrentSectionNum(res.current_section);
-        setRemainingSeconds(res.remaining_seconds);
-      } catch (err: any) {
-        setSaveError(err?.message || "Failed to complete section");
+    const request: SaveAnswersRequest = {
+      answers: payload,
+      integrity_events: events,
+    };
+    if (isExamMode) request.section_number = sectionRef.current;
+
+    try {
+      const res = await examApi.saveAnswers(attempt.id, request);
+      for (const id of ids) {
+        if (answersRef.current[id] === payload[id]) dirtyRef.current.delete(id);
       }
-    } else {
-      // Practice mode advances freely
-      if (currentSectionNum < 4) {
-        setCurrentSectionNum((prev) => prev + 1);
+      setClock(res.remaining_seconds);
+      if (isExamMode) {
+        setSection(res.current_section, res.section_remaining_seconds);
+      }
+      setSaveState("saved");
+      return true;
+    } catch (err: unknown) {
+      const code = problemCode(err);
+      if (code === "ATTEMPT_EXPIRED" || code === "EXAM_ALREADY_SUBMITTED") {
+        finish();
+        return false;
+      }
+      if (
+        code === "SECTION_ALREADY_COMPLETED" ||
+        code === "INVALID_SECTION_PROGRESSION"
+      ) {
+        for (const id of ids) dirtyRef.current.delete(id);
+        await resync();
+        setSaveState("saved");
+        return false;
+      }
+      eventsRef.current = [...events, ...eventsRef.current];
+      setSaveState("failed");
+      return false;
+    }
+  }, [attempt.id, finish, isExamMode, resync, sectionOf, setClock, setSection]);
+
+  const handleTimeUp = useCallback(async () => {
+    setTimeUp(true);
+    await save();
+    try {
+      await examApi.submitExam(attempt.id);
+    } catch {
+      // The server submits an expired sitting whether or not this call arrives.
+    }
+    finish();
+  }, [attempt.id, finish, save]);
+
+  const saveRef = useRef(save);
+  const resyncRef = useRef(resync);
+  const timeUpRef = useRef(handleTimeUp);
+  useEffect(() => {
+    saveRef.current = save;
+    resyncRef.current = resync;
+    timeUpRef.current = handleTimeUp;
+  }, [save, resync, handleTimeUp]);
+
+  // One clock, counted down locally and corrected by every server response.
+  useEffect(() => {
+    if (!inProgress) return undefined;
+    const timer = setInterval(() => {
+      const next = Math.max(0, remainingRef.current - 1);
+      remainingRef.current = next;
+      setRemaining(next);
+      if (next === 0) {
+        clearInterval(timer);
+        void timeUpRef.current();
+        return;
+      }
+      const sectionLeft = sectionRemainingRef.current;
+      if (sectionLeft !== undefined && sectionLeft > 0) {
+        const nextSection = sectionLeft - 1;
+        sectionRemainingRef.current = nextSection;
+        setSectionRemaining(nextSection);
+        if (nextSection === 0) {
+          setTimeout(() => void resyncRef.current(), SECTION_RESYNC_DELAY_MS);
+        }
+      }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [inProgress]);
+
+  useEffect(() => {
+    if (!inProgress) return undefined;
+    const interval = setInterval(() => void saveRef.current(), AUTOSAVE_MS);
+    return () => clearInterval(interval);
+  }, [inProgress]);
+
+  // Integrity signals are recorded and shown in the report, never enforced.
+  useEffect(() => {
+    if (!inProgress) return undefined;
+    const record = (kind: IntegrityKind) => {
+      eventsRef.current.push({ kind });
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        record("tab_hidden");
+      } else {
+        void resyncRef.current();
+      }
+    };
+    const onBlur = () => record("window_blurred");
+    const onPaste = () => record("paste");
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("blur", onBlur);
+    document.addEventListener("paste", onPaste);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("blur", onBlur);
+      document.removeEventListener("paste", onPaste);
+    };
+  }, [inProgress]);
+
+  const updateAnswer = (activityId: string, answer: SittingAnswer) => {
+    const next = { ...answersRef.current, [activityId]: answer };
+    answersRef.current = next;
+    dirtyRef.current.add(activityId);
+    setAnswers(next);
+  };
+
+  const handleRecorded = (activityId: string, objectKey: string) => {
+    updateAnswer(activityId, { audio_object_key: objectKey });
+    void save();
+  };
+
+  const goToSection = (target: number) => {
+    void save();
+    setSection(target, undefined);
+  };
+
+  const handleNext = async () => {
+    await save();
+    if (!isExamMode) {
+      goToSection(Math.min(SECTION_COUNT, currentSection + 1));
+      return;
+    }
+    try {
+      const res = await examApi.completeSection(attempt.id, sectionRef.current);
+      if (res.submitted) {
+        finish();
+        return;
+      }
+      setClock(res.remaining_seconds);
+      setSection(res.current_section, res.section_remaining_seconds);
+    } catch (err: unknown) {
+      const code = problemCode(err);
+      if (code === "ATTEMPT_EXPIRED" || code === "EXAM_ALREADY_SUBMITTED") {
+        finish();
+      } else {
+        await resync();
       }
     }
   };
 
-  const handleSwitchSectionPractice = (targetNum: number) => {
-    if (isExamMode) return; // Disallowed in exam mode
-    void saveCurrentDrafts();
-    setCurrentSectionNum(targetNum);
-  };
-
-  // -------------------------------------------------------------------------
-  // Final Submission
-  // -------------------------------------------------------------------------
-  const handleSubmitExam = async () => {
+  const handleSubmit = async () => {
     setIsSubmitting(true);
-    setSaveError(null);
+    await save();
     try {
-      await saveCurrentDrafts();
       await examApi.submitExam(attempt.id);
-      if (onSubmitted) {
-        onSubmitted();
-      } else {
-        void navigate({
-          to: "/exams/$attemptId/report",
-          params: { attemptId: attempt.id },
-        });
+      finish();
+    } catch (err: unknown) {
+      if (problemCode(err) === "EXAM_ALREADY_SUBMITTED") {
+        finish();
+        return;
       }
-    } catch (err: any) {
-      setSaveError(err?.message || "Submission failed");
+      setSaveState("failed");
       setIsSubmitting(false);
     }
   };
 
-  // Count answered items
-  const totalActivitiesCount = useMemo(() => {
-    return sections.reduce((acc, sec) => acc + (sec.activities?.length || 0), 0);
-  }, [sections]);
+  const section =
+    sections.find((s) => s.section_position === currentSection) ?? sections[0];
 
-  const answeredActivitiesCount = useMemo(() => {
-    let count = 0;
-    for (const sec of sections) {
-      for (const act of sec.activities || []) {
-        const ans = draftAnswers[act.id];
-        if (ans) {
-          if (typeof ans === "string" && ans.trim()) count++;
-          else if (ans.answers && Object.keys(ans.answers).length > 0) count++;
-          else if (ans.submission && ans.submission.trim()) count++;
-          else if (ans.answer && ans.answer.trim()) count++;
-          else if (ans.recording_key) count++;
-        }
-      }
+  let total = 0;
+  let answered = 0;
+  for (const s of sections) {
+    for (const activity of s.activities) {
+      total++;
+      if (isAnswered(answers[activity.id])) answered++;
     }
-    return count;
-  }, [sections, draftAnswers]);
+  }
 
-  // Format remaining timer
-  const formatTimer = (totalSecs: number) => {
-    const m = Math.floor(Math.max(0, totalSecs) / 60);
-    const s = Math.floor(Math.max(0, totalSecs) % 60);
-    return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  const sectionLabels: Record<ExamSkill, string> = {
+    listening: t("exam.sections.listening"),
+    reading: t("exam.sections.reading"),
+    writing: t("exam.sections.writing"),
+    speaking: t("exam.sections.speaking"),
   };
 
-  const isLowTime = remainingSeconds < 120; // under 2 mins
-
-  const sectionMeta = [
-    { num: 1, label: t("exam.sections.listening", "Listening"), Icon: Headphones },
-    { num: 2, label: t("exam.sections.reading", "Reading"), Icon: BookOpen },
-    { num: 3, label: t("exam.sections.writing", "Writing"), Icon: PenTool },
-    { num: 4, label: t("exam.sections.speaking", "Speaking"), Icon: Mic },
-  ];
-
   return (
-    <div className="min-h-screen bg-background text-text flex flex-col">
-      {/* Expiry Overlay Banner */}
-      {isExpiring && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 text-center">
+    <div className="flex min-h-screen flex-col bg-background text-text">
+      {timeUp && (
+        <div
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="time-up-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 text-center"
+        >
           <div className="max-w-md space-y-3 text-white">
-            <Clock className="h-12 w-12 mx-auto animate-spin text-danger" />
-            <h2 className="text-2xl font-bold">
-              {t("exam.runner.timeIsUp", "Time's up!")}
+            <Clock className="mx-auto h-12 w-12" aria-hidden="true" />
+            <h2 id="time-up-title" className="text-2xl font-bold">
+              {t("exam.runner.timeUpTitle")}
             </h2>
-            <p className="text-sm text-gray-300">
-              {t(
-                "exam.runner.submittingNow",
-                "Your exam is being automatically submitted. Please wait...",
-              )}
-            </p>
+            <p className="text-sm">{t("exam.runner.timeUpBody")}</p>
           </div>
         </div>
       )}
 
-      {/* Top Runner Header */}
-      <header className="sticky top-0 z-40 bg-card border-b border-border px-4 sm:px-8 py-3 flex flex-wrap items-center justify-between gap-3 shadow-xs">
-        {/* Left: Title & Mode */}
-        <div className="flex items-center gap-3">
-          <div>
-            <h1 className="text-base sm:text-lg font-bold text-text truncate max-w-[200px] sm:max-w-md">
-              {attempt.exam_title || t("exam.title", "4-Skill Mock Exam")}
-            </h1>
-            <div className="flex items-center gap-2 text-xs text-text-muted">
-              <Badge variant="outline" className="text-[10px] uppercase font-semibold">
-                {attempt.mode === "exam" ? t("exam.mode.exam", "Exam Mode") : t("exam.mode.practice", "Practice Mode")}
-              </Badge>
-              <span>•</span>
-              <span>
-                {t("exam.runner.answeredStatus", {
-                  answered: answeredActivitiesCount,
-                  total: totalActivitiesCount,
-                  defaultValue: `${answeredActivitiesCount}/${totalActivitiesCount} answered`,
-                })}
-              </span>
-            </div>
+      <header className="sticky top-0 z-40 flex flex-wrap items-center justify-between gap-3 border-b border-border bg-card px-4 py-3 sm:px-8">
+        <div className="min-w-0">
+          <h1 className="truncate text-base font-bold text-text sm:text-lg">
+            {attempt.exam_title || t("exam.title")}
+          </h1>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-text-muted">
+            <Badge variant="outline">
+              {isExamMode ? t("exam.mode.exam") : t("exam.mode.practice")}
+            </Badge>
+            <span>{t("exam.runner.answered", { answered, total })}</span>
           </div>
         </div>
 
-        {/* Center: Section Step Tabs */}
-        <nav className="flex items-center gap-1 sm:gap-2">
-          {sectionMeta.map(({ num, label, Icon }) => {
-            const isCurrent = currentSectionNum === num;
-            const isPassed = isExamMode && num < currentSectionNum;
-            const isLocked = isExamMode && num > currentSectionNum;
-
+        <nav aria-label={t("exam.runner.sectionsNav")} className="flex items-center gap-1 sm:gap-2">
+          {sections.map((s) => {
+            const Icon = SECTION_ICONS[s.skill];
+            const isCurrent = s.section_position === currentSection;
+            const locked = isExamMode && !isCurrent;
             return (
               <button
-                key={num}
+                key={s.section_position}
                 type="button"
-                disabled={isLocked || isPassed}
-                onClick={() => handleSwitchSectionPractice(num)}
+                disabled={locked}
+                aria-current={isCurrent ? "step" : undefined}
+                aria-label={sectionLabels[s.skill]}
+                onClick={() => goToSection(s.section_position)}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all min-h-[44px]",
+                  "flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-lg px-3 text-xs font-medium",
                   isCurrent
-                    ? "bg-primary text-white shadow-xs"
-                    : isPassed
-                      ? "bg-surface-muted text-text-muted opacity-60 cursor-not-allowed line-through"
-                      : isLocked
-                        ? "text-text-muted opacity-40 cursor-not-allowed"
-                        : "text-text-muted hover:bg-surface-muted hover:text-text",
+                    ? "bg-primary text-primary-fg"
+                    : locked
+                      ? "cursor-not-allowed text-text-muted opacity-50"
+                      : "text-text-muted hover:bg-surface-muted hover:text-text",
                 )}
               >
-                <Icon className="h-4 w-4 shrink-0" />
-                <span className="hidden md:inline">{label}</span>
-                <span className="md:hidden">{num}</span>
+                <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <span className="hidden md:inline">{sectionLabels[s.skill]}</span>
               </button>
             );
           })}
         </nav>
 
-        {/* Right: Server Countdown Timer & Submit Button */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div
             className={cn(
-              "flex items-center gap-2 px-3 py-1.5 rounded-lg font-mono text-sm sm:text-base font-bold transition-colors",
-              isLowTime
-                ? "bg-danger/10 text-danger border border-danger/30 animate-pulse"
-                : "bg-surface-muted text-text border border-border-subtle",
+              "flex items-center gap-2 rounded-lg border px-3 py-1.5 font-mono text-sm font-bold sm:text-base",
+              remaining < 120
+                ? "border-danger/30 bg-danger/10 text-danger"
+                : "border-border-subtle bg-surface-muted text-text",
             )}
-            title={t("exam.runner.remainingTime", "Time Remaining")}
+            role="timer"
+            aria-label={t("exam.runner.timeLeft")}
           >
-            <Clock className="h-4 w-4 shrink-0" />
-            <span>{formatTimer(remainingSeconds)}</span>
+            <Clock className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span>{formatClock(remaining)}</span>
           </div>
-
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setShowSubmitModal(true)}
-            className="min-h-[44px] text-xs sm:text-sm font-semibold border-primary text-primary hover:bg-primary/10"
-          >
-            <Send className="h-4 w-4 mr-1.5" />
-            <span>{t("exam.runner.finishExam", "Submit Exam")}</span>
+          <Button type="button" variant="outline" onClick={() => setConfirmOpen(true)}>
+            <Send className="h-4 w-4" aria-hidden="true" />
+            <span>{t("exam.runner.submit")}</span>
           </Button>
         </div>
       </header>
 
-      {/* Save Error Alert */}
-      {saveError && (
-        <div className="bg-danger/10 text-danger px-4 py-2 text-xs flex items-center justify-between border-b border-danger/20">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 shrink-0" />
-            <span>{saveError}</span>
-          </div>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            onClick={() => void saveCurrentDrafts()}
-            className="text-xs text-danger underline min-h-[32px]"
-          >
-            {t("common.retry", "Retry save")}
+      {saveState === "failed" && (
+        <div
+          role="alert"
+          className="flex flex-wrap items-center justify-between gap-2 border-b border-danger/20 bg-danger/10 px-4 py-2 text-xs text-danger"
+        >
+          <span className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+            {t("exam.runner.saveFailed")}
+          </span>
+          <Button type="button" size="sm" variant="ghost" onClick={() => void save()}>
+            {t("exam.runner.retrySave")}
           </Button>
         </div>
       )}
 
-      {/* Main Section Content Area */}
-      <main className="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 md:p-8 space-y-6">
-        {/* Section Title Banner */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
-          <div>
-            <div className="text-xs uppercase font-bold tracking-wider text-primary">
-              {t("exam.runner.sectionLabel", { num: currentSectionNum, defaultValue: `Section ${currentSectionNum} of 4` })}
+      <main className="mx-auto w-full max-w-5xl flex-1 space-y-6 p-4 sm:p-6 md:p-8">
+        {section && (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-primary">
+                {t("exam.runner.sectionOf", {
+                  num: section.section_position,
+                  total: SECTION_COUNT,
+                })}
+              </p>
+              <h2 className="text-xl font-bold text-text sm:text-2xl">
+                {sectionLabels[section.skill]}
+              </h2>
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-text capitalize">
-              {currentSection?.skill}
-            </h2>
-          </div>
-
-          <div className="flex items-center gap-2 text-xs text-text-muted">
-            {isAutoSaving ? (
-              <span className="flex items-center gap-1.5 text-primary">
-                <Save className="h-3.5 w-3.5 animate-spin" />
-                {t("exam.runner.saving", "Saving answers...")}
+            <div className="flex flex-col items-end gap-1 text-xs text-text-muted">
+              {isExamMode && sectionRemaining !== undefined && (
+                <span className="font-mono">
+                  {t("exam.runner.sectionEndsIn", {
+                    time: formatClock(sectionRemaining),
+                  })}
+                </span>
+              )}
+              <span
+                className={cn(
+                  "flex items-center gap-1.5",
+                  saveState === "saving" ? "text-primary" : "text-success",
+                )}
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+                {saveState === "saving"
+                  ? t("exam.runner.saving")
+                  : t("exam.runner.saved")}
               </span>
-            ) : (
-              <span className="flex items-center gap-1.5 text-success">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                {t("exam.runner.saved", "All answers saved")}
-              </span>
-            )}
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Section Activities List */}
         <div className="space-y-8">
-          {currentSection?.activities?.map((act, index) => (
+          {section?.activities.map((activity, index) => (
             <SittingActivityCard
-              key={act.id}
-              activity={act}
+              key={activity.id}
+              activity={activity}
               index={index + 1}
-              attemptId={attempt.id}
+              sittingId={attempt.id}
               mode={attempt.mode}
-              draftAnswer={draftAnswers[act.id]}
-              onUpdateAnswer={(ans) => handleUpdateActivityAnswer(act.id, ans)}
+              answer={answers[activity.id]}
+              onChange={(answer) => updateAnswer(activity.id, answer)}
+              onRecorded={(key) => handleRecorded(activity.id, key)}
             />
           ))}
         </div>
 
-        {/* Section Navigation Footer */}
-        <div className="pt-8 border-t border-border flex flex-wrap items-center justify-between gap-4">
-          <div className="text-xs text-text-muted">
-            {isExamMode ? (
-              <span>
-                {t(
-                  "exam.runner.forwardOnlyNotice",
-                  "Note: Advancing will permanently lock this section in Exam Mode.",
-                )}
-              </span>
-            ) : (
-              <span>{t("exam.runner.practiceNavNotice", "You can freely revisit sections in Practice Mode.")}</span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-3">
-            {currentSectionNum < 4 ? (
-              <Button
-                type="button"
-                onClick={handleNextSection}
-                className="bg-primary text-white hover:bg-primary/90 font-semibold min-h-[44px] px-6 gap-2"
-              >
-                <span>{t("exam.runner.nextSection", "Next Section")}</span>
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                onClick={() => setShowSubmitModal(true)}
-                className="bg-success text-white hover:bg-success/90 font-semibold min-h-[44px] px-6 gap-2"
-              >
-                <span>{t("exam.runner.finishAndSubmit", "Complete & Submit")}</span>
-                <CheckCircle2 className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
+        <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-8">
+          <p className="text-xs text-text-muted">
+            {isExamMode
+              ? t("exam.runner.forwardOnly")
+              : t("exam.runner.practiceNav")}
+          </p>
+          {currentSection < SECTION_COUNT ? (
+            <Button type="button" onClick={() => void handleNext()}>
+              <span>{t("exam.runner.nextSection")}</span>
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          ) : (
+            <Button type="button" onClick={() => setConfirmOpen(true)}>
+              <span>{t("exam.runner.finish")}</span>
+              <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          )}
         </div>
       </main>
 
-      {/* Submit Confirmation Dialog */}
-      {showSubmitModal && (
+      {confirmOpen && (
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150"
+          aria-labelledby="submit-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
         >
-          <div className="max-w-md w-full rounded-2xl bg-card border border-border p-6 shadow-2xl space-y-4">
-            <h3 className="text-lg font-bold text-text">
-              {t("exam.runner.submitConfirmTitle", "Ready to submit your exam?")}
+          <div className="w-full max-w-md space-y-4 rounded-2xl border border-border bg-card p-6 shadow-2xl">
+            <h3 id="submit-title" className="text-lg font-bold text-text">
+              {t("exam.runner.submitTitle")}
             </h3>
-
-            <div className="bg-surface-muted/60 p-4 rounded-xl space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-text-muted">{t("exam.runner.answeredQuestions", "Answered Questions:")}</span>
-                <span className="font-semibold text-text">
-                  {answeredActivitiesCount} / {totalActivitiesCount}
-                </span>
-              </div>
-              {answeredActivitiesCount < totalActivitiesCount && (
-                <p className="text-xs text-warning font-medium">
-                  {t(
-                    "exam.runner.unansweredWarning",
-                    "You have unanswered items. Unanswered questions score 0 points.",
-                  )}
-                </p>
-              )}
-            </div>
-
-            <p className="text-xs text-text-muted leading-relaxed">
-              {t(
-                "exam.runner.submitNotice",
-                "Once submitted, your answers will be graded and your score report will be generated. You cannot change your responses after submitting.",
-              )}
+            <p className="text-sm text-text">
+              {t("exam.runner.answered", { answered, total })}
             </p>
-
-            <div className="flex justify-end gap-3 pt-2">
+            {answered < total && (
+              <p className="text-xs font-medium text-warning">
+                {t("exam.runner.unanswered")}
+              </p>
+            )}
+            <p className="text-xs leading-relaxed text-text-muted">
+              {t("exam.runner.submitBody")}
+            </p>
+            <div className="flex justify-end gap-3">
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setShowSubmitModal(false)}
+                onClick={() => setConfirmOpen(false)}
                 disabled={isSubmitting}
-                className="min-h-[44px]"
               >
-                {t("common.cancel", "Cancel")}
+                {t("exam.runner.cancel")}
               </Button>
               <Button
                 type="button"
-                onClick={handleSubmitExam}
+                onClick={() => void handleSubmit()}
                 disabled={isSubmitting}
-                className="bg-primary text-white hover:bg-primary/90 font-semibold min-h-[44px] px-5"
               >
                 {isSubmitting
-                  ? t("exam.runner.submitting", "Submitting...")
-                  : t("exam.runner.confirmSubmit", "Confirm & Submit")}
+                  ? t("exam.runner.submitting")
+                  : t("exam.runner.confirmSubmit")}
               </Button>
             </div>
           </div>
@@ -589,303 +575,198 @@ export const ExamSittingRunner: React.FC<ExamSittingRunnerProps> = ({
 };
 
 // ---------------------------------------------------------------------------
-// Activity Renderer Card
-// ---------------------------------------------------------------------------
+
+interface ChoiceQuestionsProps {
+  questions: ChoiceQuestion[];
+  selected: Record<string, string>;
+  onSelect: (questionId: string, optionId: string) => void;
+}
+
+const ChoiceQuestions: React.FC<ChoiceQuestionsProps> = ({
+  questions,
+  selected,
+  onSelect,
+}) => (
+  <div className="space-y-6 pt-2">
+    {questions.map((question, qIndex) => (
+      <fieldset
+        key={question.id}
+        className="space-y-3 rounded-xl border border-border-subtle bg-surface-muted/30 p-4"
+      >
+        <legend className="text-sm font-semibold text-text">
+          {qIndex + 1}. {question.prompt}
+        </legend>
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+          {(question.options ?? []).map((option) => {
+            const isSelected = selected[question.id] === option.id;
+            return (
+              <button
+                key={option.id}
+                type="button"
+                aria-pressed={isSelected}
+                onClick={() => onSelect(question.id, option.id)}
+                className={cn(
+                  "flex min-h-[44px] items-center gap-3 rounded-lg border p-3 text-left text-sm",
+                  isSelected
+                    ? "border-primary bg-primary/10 font-medium text-primary"
+                    : "border-border bg-card text-text hover:bg-surface-muted",
+                )}
+              >
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border-subtle text-xs font-bold">
+                  {option.id}
+                </span>
+                <span className="min-w-0 flex-1">{option.text}</span>
+              </button>
+            );
+          })}
+        </div>
+      </fieldset>
+    ))}
+  </div>
+);
+
 interface SittingActivityCardProps {
   activity: SittingActivity;
   index: number;
-  attemptId: string;
-  mode: "exam" | "practice";
-  draftAnswer: any;
-  onUpdateAnswer: (answer: any) => void;
+  sittingId: string;
+  mode: ExamMode;
+  answer: SittingAnswer | undefined;
+  onChange: (answer: SittingAnswer) => void;
+  onRecorded: (objectKey: string) => void;
 }
 
 const SittingActivityCard: React.FC<SittingActivityCardProps> = ({
   activity,
   index,
-  attemptId,
+  sittingId,
   mode,
-  draftAnswer,
-  onUpdateAnswer,
+  answer,
+  onChange,
+  onRecorded,
 }) => {
   const { t } = useTranslation();
-  const config = activity.config || {};
+  const config = activity.config ?? {};
+  const cardClass =
+    "space-y-4 rounded-2xl border border-border bg-card p-5 shadow-xs sm:p-7";
 
-  // -------------------------------------------------------------------------
-  // 1. Listening Comprehension
-  // -------------------------------------------------------------------------
-  if (activity.kind === "listening_comprehension") {
-    const questions = config.questions || [];
-    const currentAnswers = draftAnswer?.answers || {};
+  const heading = (title: string) => (
+    <div className="flex items-center gap-2">
+      <Badge variant="outline">#{index}</Badge>
+      <h3 className="text-base font-bold text-text">{title}</h3>
+    </div>
+  );
 
-    const handleOptionSelect = (qId: string, optId: string) => {
-      onUpdateAnswer({
-        answers: {
-          ...currentAnswers,
-          [qId]: optId,
-        },
-      });
-    };
-
+  if (
+    activity.kind === "listening_comprehension" ||
+    activity.kind === "reading_comprehension"
+  ) {
+    const selected = answer && "answers" in answer ? answer.answers : {};
+    const select = (questionId: string, optionId: string) =>
+      onChange({ answers: { ...selected, [questionId]: optionId } });
+    const isListening = activity.kind === "listening_comprehension";
     return (
-      <div className="rounded-2xl border border-border bg-card p-5 sm:p-7 shadow-xs space-y-6">
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-xs px-2.5 py-0.5 font-bold">
-            #{index}
-          </Badge>
-          <h3 className="font-bold text-base text-text">
-            {config.title || t("exam.listening.audioClip", "Audio Clip")}
-          </h3>
-        </div>
-
-        {/* Audio Player */}
-        <ListeningPlayer
-          versionId={activity.content_version_id}
-          contextId={attemptId}
-          title={config.title}
-        />
-
-        {/* Multi-Questions List */}
-        <div className="space-y-6 pt-2">
-          {questions.map((q: any, qIdx: number) => (
-            <div key={q.id || qIdx} className="space-y-3 bg-surface-muted/30 p-4 rounded-xl border border-border-subtle">
-              <p className="text-sm font-semibold text-text">
-                {qIdx + 1}. {q.prompt}
-              </p>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {(q.options || []).map((opt: any) => {
-                  const isSelected = currentAnswers[q.id] === opt.id;
-                  return (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => handleOptionSelect(q.id, opt.id)}
-                      className={cn(
-                        "flex items-center gap-3 p-3 rounded-lg border text-left text-sm transition-all min-h-[44px]",
-                        isSelected
-                          ? "border-primary bg-primary/10 text-primary font-medium shadow-xs"
-                          : "border-border bg-card text-text hover:bg-surface-muted",
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold border",
-                          isSelected
-                            ? "bg-primary text-white border-primary"
-                            : "border-border-subtle bg-surface-muted text-text-muted",
-                        )}
-                      >
-                        {opt.id}
-                      </span>
-                      <span className="min-w-0 flex-1">{opt.text}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  // -------------------------------------------------------------------------
-  // 2. Reading Comprehension
-  // -------------------------------------------------------------------------
-  if (activity.kind === "reading_comprehension") {
-    const questions = config.questions || [];
-    const currentAnswers = draftAnswer?.answers || {};
-
-    const handleOptionSelect = (qId: string, optId: string) => {
-      onUpdateAnswer({
-        answers: {
-          ...currentAnswers,
-          [qId]: optId,
-        },
-      });
-    };
-
-    return (
-      <div className="rounded-2xl border border-border bg-card p-5 sm:p-7 shadow-xs space-y-6">
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-xs px-2.5 py-0.5 font-bold">
-            #{index}
-          </Badge>
-          <h3 className="font-bold text-base text-text">
-            {config.title || t("exam.reading.passageTitle", "Reading Passage")}
-          </h3>
-        </div>
-
-        {/* Passage Box */}
-        <div className="rounded-xl bg-surface-muted/60 p-5 border border-border-subtle max-h-96 overflow-y-auto leading-relaxed text-sm sm:text-base text-text select-none">
-          <p className="whitespace-pre-line">{config.passage}</p>
-        </div>
-
-        {/* Questions List */}
-        <div className="space-y-6 pt-2">
-          {questions.map((q: any, qIdx: number) => (
-            <div key={q.id || qIdx} className="space-y-3 bg-surface-muted/30 p-4 rounded-xl border border-border-subtle">
-              <p className="text-sm font-semibold text-text">
-                {qIdx + 1}. {q.prompt}
-              </p>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {(q.options || []).map((opt: any) => {
-                  const isSelected = currentAnswers[q.id] === opt.id;
-                  return (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => handleOptionSelect(q.id, opt.id)}
-                      className={cn(
-                        "flex items-center gap-3 p-3 rounded-lg border text-left text-sm transition-all min-h-[44px]",
-                        isSelected
-                          ? "border-primary bg-primary/10 text-primary font-medium shadow-xs"
-                          : "border-border bg-card text-text hover:bg-surface-muted",
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold border",
-                          isSelected
-                            ? "bg-primary text-white border-primary"
-                            : "border-border-subtle bg-surface-muted text-text-muted",
-                        )}
-                      >
-                        {opt.id}
-                      </span>
-                      <span className="min-w-0 flex-1">{opt.text}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  // -------------------------------------------------------------------------
-  // 3. Writing: Essay Prompt
-  // -------------------------------------------------------------------------
-  if (activity.kind === "writing_prompt") {
-    const submissionText = draftAnswer?.submission || "";
-    const minWords = config.min_words || 150;
-    const currentWordCount = submissionText.trim()
-      ? submissionText.trim().split(/\s+/).length
-      : 0;
-
-    return (
-      <div className="rounded-2xl border border-border bg-card p-5 sm:p-7 shadow-xs space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-xs px-2.5 py-0.5 font-bold">
-              #{index}
-            </Badge>
-            <h3 className="font-bold text-base text-text">
-              {config.topic || t("exam.writing.essayPrompt", "Essay Writing Task")}
-            </h3>
+      <div className={cardClass}>
+        {heading(
+          config.title ||
+            (isListening
+              ? t("exam.listening.audioClip")
+              : t("exam.reading.passage")),
+        )}
+        {isListening ? (
+          <ListeningPlayer
+            versionId={activity.content_version_id}
+            sittingId={sittingId}
+            title={config.title}
+          />
+        ) : (
+          <div className="max-h-96 overflow-y-auto rounded-xl border border-border-subtle bg-surface-muted/60 p-5 text-sm leading-relaxed text-text sm:text-base">
+            <p className="whitespace-pre-line">{config.passage}</p>
           </div>
-
-          <Badge
-            variant={currentWordCount >= minWords ? "success" : "outline"}
-            className="text-xs font-mono px-3 py-1"
-          >
-            {currentWordCount} / {minWords} {t("exam.writing.words", "words")}
-          </Badge>
-        </div>
-
-        <div className="rounded-xl bg-surface-muted p-4 border border-border-subtle">
-          <p className="text-sm sm:text-base font-medium text-text leading-relaxed">
-            {config.prompt}
-          </p>
-        </div>
-
-        <div className="space-y-1.5">
-          <textarea
-            rows={10}
-            value={submissionText}
-            onChange={(e) => onUpdateAnswer({ submission: e.target.value })}
-            placeholder={t(
-              "exam.writing.placeholder",
-              "Write your essay here. Support your argument with clear reasons and relevant examples...",
-            )}
-            className="w-full rounded-xl border border-border bg-card p-4 text-sm sm:text-base leading-relaxed text-text placeholder:text-text-muted focus:outline-hidden focus:ring-2 focus:ring-primary transition-all resize-y min-h-[220px]"
-          />
-        </div>
+        )}
+        <ChoiceQuestions
+          questions={config.questions ?? []}
+          selected={selected}
+          onSelect={select}
+        />
       </div>
     );
   }
 
-  // -------------------------------------------------------------------------
-  // 4. Writing: Sentence Transform / Rewrite
-  // -------------------------------------------------------------------------
-  if (activity.kind === "grammar_sentence_transform") {
-    const currentAnswer = draftAnswer?.answer || "";
-
+  if (activity.kind === "writing_prompt") {
+    const text = answer && "text_answer" in answer ? answer.text_answer : "";
+    const minWords = config.min_words ?? 150;
+    const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+    const inputId = `essay-${activity.id}`;
     return (
-      <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-xs space-y-4">
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-xs px-2.5 py-0.5 font-bold">
-            #{index}
+      <div className={cardClass}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {heading(config.topic || t("exam.writing.essay"))}
+          <Badge variant={words >= minWords ? "success" : "outline"}>
+            {t("exam.writing.words", { count: words, min: minWords })}
           </Badge>
-          <h3 className="font-bold text-base text-text">
-            {t("exam.writing.sentenceTransform", "Sentence Transformation")}
-          </h3>
         </div>
-
-        <div className="rounded-xl bg-surface-muted p-4 border border-border-subtle">
-          <p className="text-sm sm:text-base font-medium text-text leading-relaxed">
-            {config.prompt}
-          </p>
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-text-muted">
-            {t("exam.writing.yourAnswer", "Your Rewritten Sentence:")}
-          </label>
-          <input
-            type="text"
-            value={currentAnswer}
-            onChange={(e) => onUpdateAnswer({ answer: e.target.value })}
-            placeholder={t("exam.writing.transformPlaceholder", "Type rewritten sentence here...")}
-            className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-text placeholder:text-text-muted focus:outline-hidden focus:ring-2 focus:ring-primary min-h-[44px]"
-          />
-        </div>
+        <p className="rounded-xl border border-border-subtle bg-surface-muted p-4 text-sm font-medium leading-relaxed text-text sm:text-base">
+          {config.prompt}
+        </p>
+        <label htmlFor={inputId} className="sr-only">
+          {t("exam.writing.essay")}
+        </label>
+        <textarea
+          id={inputId}
+          rows={10}
+          value={text}
+          onChange={(e) => onChange({ text_answer: e.target.value })}
+          placeholder={t("exam.writing.essayPlaceholder")}
+          className="min-h-[220px] w-full resize-y rounded-xl border border-border bg-card p-4 text-base leading-relaxed text-text placeholder:text-text-muted focus:outline-hidden focus:ring-2 focus:ring-primary"
+        />
       </div>
     );
   }
 
-  // -------------------------------------------------------------------------
-  // 5. Speaking Task (Read Aloud or Respond)
-  // -------------------------------------------------------------------------
+  if (activity.kind === "grammar_sentence_transform") {
+    const value = answer && "answer" in answer ? answer.answer : "";
+    const inputId = `rewrite-${activity.id}`;
+    return (
+      <div className={cardClass}>
+        {heading(t("exam.writing.rewrite"))}
+        <p className="rounded-xl border border-border-subtle bg-surface-muted p-4 text-sm font-medium leading-relaxed text-text sm:text-base">
+          {config.prompt}
+        </p>
+        <label htmlFor={inputId} className="text-xs font-medium text-text-muted">
+          {t("exam.writing.rewriteLabel")}
+        </label>
+        <input
+          id={inputId}
+          type="text"
+          value={value}
+          onChange={(e) => onChange({ answer: e.target.value })}
+          className="min-h-[44px] w-full rounded-xl border border-border bg-card px-4 py-3 text-base text-text focus:outline-hidden focus:ring-2 focus:ring-primary"
+        />
+      </div>
+    );
+  }
+
   if (activity.kind === "speaking_task") {
     const taskType = config.task_type === "read_aloud" ? "read_aloud" : "respond";
-    const recordingKey = draftAnswer?.recording_key;
-
+    const key =
+      answer && "audio_object_key" in answer ? answer.audio_object_key : undefined;
     return (
       <div className="space-y-2">
-        <div className="flex items-center gap-2 mb-2">
-          <Badge variant="outline" className="text-xs px-2.5 py-0.5 font-bold">
-            #{index}
-          </Badge>
-          <h3 className="font-bold text-base text-text">
-            {taskType === "read_aloud"
-              ? t("exam.speaking.taskReadAloud", "Speaking: Read Aloud")
-              : t("exam.speaking.taskRespond", "Speaking: Spoken Response")}
-          </h3>
-        </div>
-
+        {heading(
+          taskType === "read_aloud"
+            ? t("exam.speaking.readAloudTitle")
+            : t("exam.speaking.respondTitle"),
+        )}
         <SpeakingRecorder
           taskType={taskType}
           promptText={config.prompt}
           referenceText={config.reference_text}
-          speakingTimeSeconds={config.speaking_time_seconds || 45}
+          speakingTimeSeconds={
+            config.speaking_time_seconds ?? DEFAULT_SPEAKING_SECONDS
+          }
           mode={mode}
-          currentRecordingKey={recordingKey}
-          onRecordingComplete={(key) => onUpdateAnswer({ recording_key: key })}
+          currentRecordingKey={key}
+          onRecordingComplete={onRecorded}
         />
       </div>
     );

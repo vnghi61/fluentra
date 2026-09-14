@@ -152,14 +152,18 @@ func NewGrader(deps GraderDeps) *Grader {
 
 func (g *Grader) loadBody(ctx context.Context, versionID uuid.UUID) (speakingTaskBody, error) {
 	if g.content == nil {
-		return speakingTaskBody{}, apperr.New(apperr.Internal, "CONTENT_READER_REQUIRED", "speaking grader requires a content reader")
+		return speakingTaskBody{}, apperr.New(
+			apperr.Internal, "CONTENT_READER_REQUIRED", "speaking grader requires a content reader",
+		)
 	}
 	version, err := g.content.GetVersion(ctx, versionID)
 	if err != nil {
 		return speakingTaskBody{}, fmt.Errorf("load speaking version: %w", err)
 	}
 	if version == nil {
-		return speakingTaskBody{}, apperr.New(apperr.NotFound, "CONTENT_VERSION_NOT_FOUND", "speaking content version not found")
+		return speakingTaskBody{}, apperr.New(
+			apperr.NotFound, "CONTENT_VERSION_NOT_FOUND", "speaking content version not found",
+		)
 	}
 
 	var body speakingTaskBody
@@ -193,6 +197,15 @@ func (g *Grader) Grade(ctx context.Context, req learningcontract.GradeRequest) (
 	// Validate recording key ownership and format
 	if !domain.ValidateRecordingKey(recordingKey, req.UserID) {
 		return learningcontract.GradeResult{}, domain.ErrInvalidRecordingKey
+	}
+
+	// The attempt's response is only a key the client wrote; the object behind it
+	// must exist before the attempt is accepted (work order 12 §3.5).
+	if g.storage == nil {
+		return learningcontract.GradeResult{}, domain.ErrSpeakingQueueUnavailable
+	}
+	if _, err := g.storage.Stat(ctx, g.bucket, recordingKey); err != nil {
+		return learningcontract.GradeResult{}, domain.ErrRecordingNotFound
 	}
 
 	// Rate limit check
@@ -259,128 +272,68 @@ func (g *Grader) GradeSubmission(ctx context.Context, attemptID uuid.UUID, final
 		return nil
 	}
 
-	body, err := g.loadBody(ctx, attempt.ContentVersionID)
+	fb, gradeResult, err := g.evaluate(ctx, attempt)
 	if err != nil {
 		g.failIfFinal(ctx, attemptID, finalAttempt, err)
-		return fmt.Errorf("load speaking body for attempt %s: %w", attemptID, err)
+		return err
+	}
+
+	if g.feedback != nil {
+		if err := g.feedback.InsertFeedback(ctx, fb); err != nil {
+			return fmt.Errorf("insert speaking feedback: %w", err)
+		}
+	}
+
+	if _, err := g.completer.CompleteAsyncGrading(ctx, attemptID, gradeResult); err != nil {
+		return fmt.Errorf("complete async grading: %w", err)
+	}
+	return nil
+}
+
+// evaluate transcribes the recording, scores the transcript, and returns the
+// feedback to store and the grade to complete the attempt with.
+func (g *Grader) evaluate(
+	ctx context.Context, attempt *learningcontract.AttemptDetail,
+) (*contract.SpeakingFeedback, learningcontract.GradeResult, error) {
+	body, err := g.loadBody(ctx, attempt.ContentVersionID)
+	if err != nil {
+		return nil, learningcontract.GradeResult{}, fmt.Errorf("load speaking body for attempt %s: %w", attempt.ID, err)
 	}
 
 	recordingKey := extractRecordingKey(attempt.Response)
 	if recordingKey == "" {
-		err := fmt.Errorf("empty recording key in attempt %s", attemptID)
-		g.failIfFinal(ctx, attemptID, finalAttempt, err)
-		return err
+		return nil, learningcontract.GradeResult{}, fmt.Errorf("empty recording key in attempt %s", attempt.ID)
 	}
 
-	// 1. Download audio from storage
-	if g.storage == nil {
-		err := fmt.Errorf("storage is required to fetch recording")
-		g.failIfFinal(ctx, attemptID, finalAttempt, err)
-		return err
-	}
-
-	audioReader, err := g.storage.Get(ctx, g.bucket, recordingKey)
+	transcript, err := g.transcribe(ctx, recordingKey)
 	if err != nil {
-		g.failIfFinal(ctx, attemptID, finalAttempt, err)
-		return fmt.Errorf("fetch recording %s: %w", recordingKey, err)
-	}
-	defer audioReader.Close()
-
-	// 2. Transcribe audio
-	if g.transcriber == nil {
-		err := fmt.Errorf("transcriber is required for speaking evaluation")
-		g.failIfFinal(ctx, attemptID, finalAttempt, err)
-		return err
+		return nil, learningcontract.GradeResult{}, err
 	}
 
-	filename := path.Base(recordingKey)
-	transcribeRes, err := g.transcriber.Transcribe(ctx, audioReader, filename)
+	readAloudAcc, wordsPerMinute := speechMetrics(body, transcript)
+
+	out, modelName, err := g.judge(ctx, body, transcript.Text)
 	if err != nil {
-		g.failIfFinal(ctx, attemptID, finalAttempt, err)
-		return fmt.Errorf("transcribe recording %s: %w", recordingKey, err)
+		return nil, learningcontract.GradeResult{}, err
 	}
 
-	// 3. Compute metrics in Go
-	var readAloudAcc *float64
-	if body.TaskType == contract.TypeReadAloud || body.ReferenceText != "" {
-		acc := domain.ComputeReadAloudAccuracy(body.ReferenceText, transcribeRes.Text)
-		readAloudAcc = &acc
-	}
-
-	var wordsPerMinute *int
-	wordCount := len(domain.TokenizeWords(transcribeRes.Text))
-	if transcribeRes.Duration > 0 {
-		wpm := domain.ComputeWordsPerMinute(wordCount, transcribeRes.Duration)
-		wordsPerMinute = &wpm
-	}
-
-	// 4. Evaluate with AI prompt (transcript only)
-	promptText := body.Prompt
-	if promptText == "" && body.ReferenceText != "" {
-		promptText = "Read aloud: " + body.ReferenceText
-	}
-
-	taskType := body.TaskType
-	if taskType == "" {
-		taskType = contract.TypeRespond
-	}
-
-	vars := map[string]any{
-		"TaskType":   taskType,
-		"Prompt":     promptText,
-		"Transcript": transcribeRes.Text,
-	}
-
-	var out aiSpeakingGradeOutput
-	var modelName string
-	if g.ai != nil {
-		aiResp, evalErr := ai.CompleteJSONWithResponse(ctx, g.ai, ai.Request{
-			Task: ai.TaskGradeSpeaking,
-			Vars: vars,
-		}, &out)
-		if evalErr != nil {
-			g.failIfFinal(ctx, attemptID, finalAttempt, evalErr)
-			return fmt.Errorf("ai evaluate speaking: %w", evalErr)
-		}
-		modelName = aiResp.Model
-	} else {
-		// Fallback for mock/test without AI client
-		out = aiSpeakingGradeOutput{
-			OverallBand: 6.0,
-			Score:       70,
-			Correct:     true,
-			FeedbackEn:  "Speaking submission evaluated.",
-			FeedbackVi:  "Bài nói đã được đánh giá.",
-		}
-	}
-
-	if out.FeedbackEn == "" {
-		out.FeedbackEn = out.Feedback
-	}
-
-	// For read-aloud, combine AI score with word accuracy computed in Go
+	// For read-aloud, the word accuracy computed in Go carries most of the score.
 	finalScore := out.Score
 	if readAloudAcc != nil {
 		finalScore = int(float64(out.Score)*0.3 + (*readAloudAcc)*0.7)
 	}
 	isCorrect := finalScore >= 60
 
-	// 5. Store speaking feedback
 	criteria := make([]contract.SpeakingCriterion, 0, len(out.Criteria))
 	for _, c := range out.Criteria {
-		criteria = append(criteria, contract.SpeakingCriterion{
-			Name:      c.Name,
-			Band:      c.Band,
-			CommentEn: c.CommentEn,
-			CommentVi: c.CommentVi,
-		})
+		criteria = append(criteria, contract.SpeakingCriterion(c))
 	}
 
 	fb := &contract.SpeakingFeedback{
-		AttemptID:         attemptID,
+		AttemptID:         attempt.ID,
 		UserID:            attempt.UserID,
 		RecordingKey:      recordingKey,
-		Transcript:        transcribeRes.Text,
+		Transcript:        transcript.Text,
 		Criteria:          criteria,
 		ReadAloudAccuracy: readAloudAcc,
 		WordsPerMinute:    wordsPerMinute,
@@ -391,18 +344,11 @@ func (g *Grader) GradeSubmission(ctx context.Context, attemptID uuid.UUID, final
 		ASRModel:          g.asrModel,
 	}
 
-	if g.feedback != nil {
-		if err := g.feedback.InsertFeedback(ctx, fb); err != nil {
-			return fmt.Errorf("insert speaking feedback: %w", err)
-		}
-	}
-
 	initialGrade := "again"
 	if isCorrect {
 		initialGrade = "good"
 	}
-
-	gradeResult := learningcontract.GradeResult{
+	result := learningcontract.GradeResult{
 		Score:    finalScore,
 		MaxScore: 100,
 		Correct:  isCorrect,
@@ -412,19 +358,85 @@ func (g *Grader) GradeSubmission(ctx context.Context, attemptID uuid.UUID, final
 			TextVi: out.FeedbackVi,
 		},
 		ReviewItems: []learningcontract.ReviewItem{
-			{
-				ContentVersionID: attempt.ContentVersionID,
-				Skill:            "speaking",
-				InitialGrade:     initialGrade,
-			},
+			{ContentVersionID: attempt.ContentVersionID, Skill: "speaking", InitialGrade: initialGrade},
 		},
 	}
+	return fb, result, nil
+}
 
-	if _, err := g.completer.CompleteAsyncGrading(ctx, attemptID, gradeResult); err != nil {
-		return fmt.Errorf("complete async grading: %w", err)
+// transcribe fetches the recording from storage and sends it to the transcriber.
+func (g *Grader) transcribe(ctx context.Context, recordingKey string) (*media.TranscribeResult, error) {
+	if g.storage == nil {
+		return nil, fmt.Errorf("storage is required to fetch recording")
+	}
+	if g.transcriber == nil {
+		return nil, fmt.Errorf("transcriber is required for speaking evaluation")
+	}
+	audioReader, err := g.storage.Get(ctx, g.bucket, recordingKey)
+	if err != nil {
+		return nil, fmt.Errorf("fetch recording %s: %w", recordingKey, err)
+	}
+	defer func() { _ = audioReader.Close() }()
+
+	result, err := g.transcriber.Transcribe(ctx, audioReader, path.Base(recordingKey))
+	if err != nil {
+		return nil, fmt.Errorf("transcribe recording %s: %w", recordingKey, err)
+	}
+	return result, nil
+}
+
+// speechMetrics computes read-aloud accuracy and speaking rate in Go, not by asking the model.
+func speechMetrics(body speakingTaskBody, transcript *media.TranscribeResult) (*float64, *int) {
+	var readAloudAcc *float64
+	if body.TaskType == contract.TypeReadAloud || body.ReferenceText != "" {
+		acc := domain.ComputeReadAloudAccuracy(body.ReferenceText, transcript.Text)
+		readAloudAcc = &acc
+	}
+	var wordsPerMinute *int
+	if transcript.Duration > 0 {
+		wpm := domain.ComputeWordsPerMinute(len(domain.TokenizeWords(transcript.Text)), transcript.Duration)
+		wordsPerMinute = &wpm
+	}
+	return readAloudAcc, wordsPerMinute
+}
+
+// judge asks the model to score the transcript. The model never receives audio.
+func (g *Grader) judge(
+	ctx context.Context, body speakingTaskBody, transcript string,
+) (aiSpeakingGradeOutput, string, error) {
+	promptText := body.Prompt
+	if promptText == "" && body.ReferenceText != "" {
+		promptText = "Read aloud: " + body.ReferenceText
+	}
+	taskType := body.TaskType
+	if taskType == "" {
+		taskType = contract.TypeRespond
 	}
 
-	return nil
+	var out aiSpeakingGradeOutput
+	if g.ai == nil {
+		// Fallback for tests without an AI client.
+		out = aiSpeakingGradeOutput{
+			OverallBand: 6.0,
+			Score:       70,
+			Correct:     true,
+			FeedbackEn:  "Speaking submission evaluated.",
+			FeedbackVi:  "Bài nói đã được đánh giá.",
+		}
+		return out, "", nil
+	}
+
+	resp, err := ai.CompleteJSONWithResponse(ctx, g.ai, ai.Request{
+		Task: ai.TaskGradeSpeaking,
+		Vars: map[string]any{"TaskType": taskType, "Prompt": promptText, "Transcript": transcript},
+	}, &out)
+	if err != nil {
+		return out, "", fmt.Errorf("ai evaluate speaking: %w", err)
+	}
+	if out.FeedbackEn == "" {
+		out.FeedbackEn = out.Feedback
+	}
+	return out, resp.Model, nil
 }
 
 func (g *Grader) failIfFinal(ctx context.Context, attemptID uuid.UUID, finalAttempt bool, err error) {

@@ -18,13 +18,18 @@ import (
 )
 
 type mockStorageStore struct {
-	presignPutFn func(ctx context.Context, bucket, key, contentType string, maxBytes int64, expiry time.Duration) (storage.UploadIntent, error)
-	deleteFn     func(ctx context.Context, bucket, key string) error
-	getFn        func(ctx context.Context, bucket, key string) (io.ReadCloser, error)
-	deletedKeys  []string
+	presignPutFn func(
+		ctx context.Context, bucket, key, contentType string, maxBytes int64, expiry time.Duration,
+	) (storage.UploadIntent, error)
+	deleteFn    func(ctx context.Context, bucket, key string) error
+	getFn       func(ctx context.Context, bucket, key string) (io.ReadCloser, error)
+	statErr     error
+	deletedKeys []string
 }
 
-func (m *mockStorageStore) PresignPut(ctx context.Context, bucket, key, contentType string, maxBytes int64, expiry time.Duration) (storage.UploadIntent, error) {
+func (m *mockStorageStore) PresignPut(
+	ctx context.Context, bucket, key, contentType string, maxBytes int64, expiry time.Duration,
+) (storage.UploadIntent, error) {
 	if m.presignPutFn != nil {
 		return m.presignPutFn(ctx, bucket, key, contentType, maxBytes, expiry)
 	}
@@ -39,8 +44,11 @@ func (m *mockStorageStore) PresignGet(_ context.Context, _, _ string, _ time.Dur
 	return "", nil
 }
 
-func (m *mockStorageStore) Stat(_ context.Context, _, _ string) (storage.ObjectStat, error) {
-	return storage.ObjectStat{}, nil
+func (m *mockStorageStore) Stat(_ context.Context, _, key string) (storage.ObjectStat, error) {
+	if m.statErr != nil {
+		return storage.ObjectStat{}, m.statErr
+	}
+	return storage.ObjectStat{Key: key, Size: 1}, nil
 }
 
 func (m *mockStorageStore) Get(ctx context.Context, bucket, key string) (io.ReadCloser, error) {
@@ -58,10 +66,10 @@ func (m *mockStorageStore) Copy(_ context.Context, _, _, _, _ string) error {
 	return nil
 }
 
-func (m *mockStorageStore) Delete(_ context.Context, bucket, key string) error {
+func (m *mockStorageStore) Delete(ctx context.Context, bucket, key string) error {
 	m.deletedKeys = append(m.deletedKeys, key)
 	if m.deleteFn != nil {
-		return m.deleteFn(context.Background(), bucket, key)
+		return m.deleteFn(ctx, bucket, key)
 	}
 	return nil
 }
@@ -75,7 +83,9 @@ type fakeAttemptCounter struct {
 	err   error
 }
 
-func (f *fakeAttemptCounter) CountAttemptsTowardLimitSince(_ context.Context, _ uuid.UUID, _ string, _ time.Time) (int, error) {
+func (f *fakeAttemptCounter) CountAttemptsTowardLimitSince(
+	_ context.Context, _ uuid.UUID, _ string, _ time.Time,
+) (int, error) {
 	return f.count, f.err
 }
 

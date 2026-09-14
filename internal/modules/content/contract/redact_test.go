@@ -206,15 +206,17 @@ func TestRedactForLearner_ListeningComprehension(t *testing.T) {
 
 	redacted := string(contract.RedactForLearner(body))
 
-	for _, leaked := range []string{"script", "transcript", "correct_option_id", "correct_answer", "acceptable", "London"} {
+	leakable := []string{"script", "transcript", "correct_option_id", "correct_answer", "acceptable", "London"}
+	for _, leaked := range leakable {
 		if strings.Contains(redacted, leaked) {
 			t.Errorf("%q survived redaction of listening comprehension body: %s", leaked, redacted)
 		}
 	}
 
 	// Audio key and prompt must survive so the player knows what audio file to stream
-	if !strings.Contains(redacted, "media/audio/flight-101.opus") || !strings.Contains(redacted, "Which flight is boarding?") {
+	if !strings.Contains(
+		redacted, "media/audio/flight-101.opus",
+	) || !strings.Contains(redacted, "Which flight is boarding?") {
 		t.Errorf("audio_key or prompt did not survive: %s", redacted)
 	}
 }
-

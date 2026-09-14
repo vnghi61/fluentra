@@ -112,7 +112,9 @@ func gradeListeningQuestionSet(
 		initialGrade = gradeGood
 	}
 
-	feedback := fmt.Sprintf("You scored %d%% (%d/%d questions correct).", qResult.Score, qResult.CorrectCount, qResult.TotalCount)
+	feedback := fmt.Sprintf(
+		"You scored %d%% (%d/%d questions correct).", qResult.Score, qResult.CorrectCount, qResult.TotalCount,
+	)
 	if qResult.AllCorrect {
 		feedback = "All answers correct! Excellent listening comprehension."
 	}

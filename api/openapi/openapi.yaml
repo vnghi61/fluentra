@@ -5226,7 +5226,10 @@ paths:
       operationId: recordListeningPlay
       summary: Checks the play policy, records the play, and returns a short-lived presigned audio GET URL.
       description: >-
-        Enforces server-side play limits (exam mode allows 1 play, practice mode allows 3).
+        Enforces server-side play limits: a learning attempt allows 3 plays, an exam sitting 1 in
+        exam mode and 3 in practice mode. The context must be the caller's own attempt at this item,
+        or the caller's open sitting holding it (in exam mode, in the section open now); anything
+        else is 403 LISTENING_PLAY_NOT_ALLOWED. 409 AUDIO_NOT_READY until the clip is rendered.
         Returns a short-lived presigned audio download URL valid for the clip length plus one minute.
       x-permission: self
       parameters:
@@ -5261,6 +5264,7 @@ paths:
               $ref: '#/components/headers/X-Request-Id'
           content:
             application/json:
+              example: {"audio_url": "https://media.example.com/tts/en_US-lessac-medium/3f9a.wav?X-Amz-Expires=105", "plays_used": 1, "plays_allowed": 1, "expires_at": "2026-09-14T09:16:45Z"}
               schema:
                 type: object
                 required: [audio_url, plays_used, plays_allowed, expires_at]
@@ -5283,6 +5287,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
         '500':
           $ref: '#/components/responses/InternalServerError'
   /listening/items/{versionId}/transcript:
@@ -5317,6 +5323,7 @@ paths:
               $ref: '#/components/headers/X-Request-Id'
           content:
             application/json:
+              example: {"script": "Good morning. The 9:15 train to Hue now leaves from platform 3."}
               schema:
                 type: object
                 required: [script]
@@ -5360,6 +5367,7 @@ paths:
               $ref: '#/components/headers/X-Request-Id'
           content:
             application/json:
+              example: {"upload_url": "https://media.example.com/recordings/00000000-0000-0000-0000-000000000001/0b6c.webm?X-Amz-Expires=900", "object_key": "recordings/00000000-0000-0000-0000-000000000001/0b6c.webm", "expires_at": "2026-09-14T09:30:00Z", "daily_recordings_used": 2, "daily_recordings_limit": 30}
               schema:
                 type: object
                 required: [upload_url, object_key, expires_at, daily_recordings_used, daily_recordings_limit]
@@ -5415,6 +5423,42 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /speaking/attempts/{id}/feedback:
+    get:
+      tags: [speaking]
+      operationId: getSpeakingFeedback
+      summary: Read feedback on a graded speaking attempt.
+      description: >-
+        Returns the transcript, criteria and bilingual feedback for a graded speaking attempt
+        owned by the caller. Pronunciation is not assessed.
+      x-permission: self
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID of the speaking attempt.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Feedback for the attempt.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              example: {"id": "88888888-8888-8888-8888-888888888888", "attempt_id": "77777777-7777-7777-7777-777777777777", "user_id": "00000000-0000-0000-0000-000000000001", "recording_key": "recordings/00000000-0000-0000-0000-000000000001/0b6c.webm", "transcript": "I usually take the bus to work because it is cheaper.", "criteria": [{"name": "fluency", "band": 6.0, "comment_en": "Steady pace.", "comment_vi": "Tốc độ ổn định."}], "words_per_minute": 118, "feedback_en": "Clear answer with simple structures.", "feedback_vi": "Câu trả lời rõ ràng với cấu trúc đơn giản.", "prompt_version": "speaking_grade.v1", "model": "llama-3.3-70b", "asr_model": "whisper-large-v3", "created_at": "2026-09-14T10:20:00Z", "updated_at": "2026-09-14T10:20:00Z"}
+              schema:
+                $ref: '#/components/schemas/SpeakingFeedback'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /exams:
     get:
       tags: [exam]
@@ -5430,6 +5474,7 @@ paths:
               $ref: '#/components/headers/X-Request-Id'
           content:
             application/json:
+              example: [{"id": "10000000-0000-0000-0000-0000000000b1", "slug": "mock-toeic-b1", "title_en": "TOEIC Mock Exam (B1)", "title_vi": "Bài thi thử TOEIC (B1)", "description_en": "Full 4-skill mock examination at CEFR B1 level", "description_vi": "Bài thi thử đầy đủ 4 kỹ năng ở trình độ CEFR B1", "level": "B1", "format": "mock_toeic", "total_minutes": 75}]
               schema:
                 type: array
                 items:
@@ -5464,7 +5509,12 @@ paths:
       tags: [exam]
       operationId: startExamAttempt
       summary: Start a sitting
-      description: Starts an exam sitting in exam mode or practice mode.
+      description: >-
+        Starts a sitting in exam mode (75 minutes, fixed) or practice mode (10–180 minutes, clamped
+        on the server), drawing its items from the exam pool and marking them seen in the same
+        transaction. 404 EXAM_POOL_EMPTY means the pool does not
+        yet hold a sitting's worth at this level. The sixth sitting in a day is 429
+        EXAM_DAILY_LIMIT_REACHED.
       x-permission: self
       parameters:
         - name: id
@@ -5491,71 +5541,47 @@ paths:
                   maximum: 180
       responses:
         '201':
-          description: Exam sitting successfully started.
+          description: Sitting started.
           headers:
             X-Request-Id:
               $ref: '#/components/headers/X-Request-Id'
           content:
             application/json:
+              example: {"id": "44444444-4444-4444-4444-444444444444", "exam_id": "10000000-0000-0000-0000-0000000000b1", "exam_slug": "mock-toeic-b1", "exam_title": "TOEIC Mock Exam (B1)", "level": "B1", "mode": "exam", "chosen_duration_minutes": 75, "started_at": "2026-09-14T09:00:00Z", "deadline_at": "2026-09-14T10:15:00Z", "remaining_seconds": 3600, "current_section": 1, "section_deadline_at": "2026-09-14T09:20:00Z", "section_remaining_seconds": 300, "status": "in_progress", "section_activities": [{"section_position": 1, "skill": "listening", "activities": [{"id": "55555555-5555-5555-5555-555555555555", "kind": "listening_comprehension", "content_version_id": "66666666-6666-6666-6666-666666666666", "weight": 1, "config": {"title": "Platform announcement", "questions": [{"id": "q1", "prompt": "Which platform?", "options": [{"id": "A", "text": "3"}, {"id": "B", "text": "5"}]}]}}]}], "draft_answers": {"55555555-5555-5555-5555-555555555555": {"answers": {"q1": "A"}}}, "server_time": "2026-09-14T09:15:00Z"}
               schema:
-                type: object
-                required: [id, exam_id, mode, started_at, deadline_at, remaining_seconds, current_section, status]
-                properties:
-                  id:
-                    type: string
-                    format: uuid
-                  exam_id:
-                    type: string
-                    format: uuid
-                  mode:
-                    type: string
-                  started_at:
-                    type: string
-                    format: date-time
-                  deadline_at:
-                    type: string
-                    format: date-time
-                  remaining_seconds:
-                    type: integer
-                  current_section:
-                    type: integer
-                  status:
-                    type: string
-                  section_activities:
-                    type: array
-                    items:
-                      type: object
+                $ref: '#/components/schemas/ExamAttempt'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
-        '429':
-          $ref: '#/components/responses/TooManyRequests'
         '500':
           $ref: '#/components/responses/InternalServerError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
   /exam-attempts:
     get:
       tags: [exam]
       operationId: listExamAttempts
       summary: List past sittings for current user
-      description: Returns a paginated list of past exam sittings for the caller.
+      description: Returns the caller's sittings, newest first, with the total and today's sitting count.
       x-permission: self
       parameters:
         - name: limit
           in: query
           schema:
             type: integer
+            minimum: 1
+            maximum: 100
             default: 20
         - name: offset
           in: query
           schema:
             type: integer
+            minimum: 0
             default: 0
       responses:
         '200':
@@ -5565,16 +5591,9 @@ paths:
               $ref: '#/components/headers/X-Request-Id'
           content:
             application/json:
+              example: {"items": [{"id": "44444444-4444-4444-4444-444444444444", "exam_id": "10000000-0000-0000-0000-0000000000b1", "exam_slug": "mock-toeic-b1", "exam_title": "TOEIC Mock Exam (B1)", "level": "B1", "mode": "exam", "chosen_duration_minutes": 75, "started_at": "2026-09-14T09:00:00Z", "deadline_at": "2026-09-14T10:15:00Z", "remaining_seconds": 3600, "current_section": 1, "section_deadline_at": "2026-09-14T09:20:00Z", "section_remaining_seconds": 300, "status": "in_progress", "server_time": "2026-09-14T09:15:00Z"}], "total": 1, "sittings_today": 1, "daily_limit": 5}
               schema:
-                type: object
-                required: [items, total]
-                properties:
-                  items:
-                    type: array
-                    items:
-                      type: object
-                  total:
-                    type: integer
+                $ref: '#/components/schemas/ExamAttemptList'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '500':
@@ -5584,57 +5603,29 @@ paths:
       tags: [exam]
       operationId: getExamAttempt
       summary: Current state with server time remaining
-      description: Returns current attempt status, remaining time, draft answers, and activities.
+      description: >-
+        Returns the sitting with remaining time computed on the server. Reading a sitting past its
+        deadline submits it first.
       x-permission: self
       parameters:
         - name: id
           in: path
           required: true
-          description: Sitting attempt ID.
+          description: Sitting ID.
           schema:
             type: string
             format: uuid
       responses:
         '200':
-          description: Current exam attempt details.
+          description: The sitting.
           headers:
             X-Request-Id:
               $ref: '#/components/headers/X-Request-Id'
           content:
             application/json:
+              example: {"id": "44444444-4444-4444-4444-444444444444", "exam_id": "10000000-0000-0000-0000-0000000000b1", "exam_slug": "mock-toeic-b1", "exam_title": "TOEIC Mock Exam (B1)", "level": "B1", "mode": "exam", "chosen_duration_minutes": 75, "started_at": "2026-09-14T09:00:00Z", "deadline_at": "2026-09-14T10:15:00Z", "remaining_seconds": 3600, "current_section": 1, "section_deadline_at": "2026-09-14T09:20:00Z", "section_remaining_seconds": 300, "status": "in_progress", "section_activities": [{"section_position": 1, "skill": "listening", "activities": [{"id": "55555555-5555-5555-5555-555555555555", "kind": "listening_comprehension", "content_version_id": "66666666-6666-6666-6666-666666666666", "weight": 1, "config": {"title": "Platform announcement", "questions": [{"id": "q1", "prompt": "Which platform?", "options": [{"id": "A", "text": "3"}, {"id": "B", "text": "5"}]}]}}]}], "draft_answers": {"55555555-5555-5555-5555-555555555555": {"answers": {"q1": "A"}}}, "server_time": "2026-09-14T09:15:00Z"}
               schema:
-                type: object
-                required: [id, exam_id, mode, started_at, deadline_at, remaining_seconds, current_section, status]
-                properties:
-                  id:
-                    type: string
-                    format: uuid
-                  exam_id:
-                    type: string
-                    format: uuid
-                  mode:
-                    type: string
-                  started_at:
-                    type: string
-                    format: date-time
-                  deadline_at:
-                    type: string
-                    format: date-time
-                  remaining_seconds:
-                    type: integer
-                  current_section:
-                    type: integer
-                  status:
-                    type: string
-                  section_activities:
-                    type: array
-                    items:
-                      type: object
-                  draft_answers:
-                    type: object
-                  server_time:
-                    type: string
-                    format: date-time
+                $ref: '#/components/schemas/ExamAttempt'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -5646,13 +5637,18 @@ paths:
       tags: [exam]
       operationId: saveExamDraftAnswers
       summary: Save answers (autosave)
-      description: Saves draft answers and integrity events for an ongoing attempt before its deadline.
+      description: >-
+        Saves draft answers and integrity signals while the sitting is open. Refused past the deadline
+        (409 ATTEMPT_EXPIRED), for an item the sitting does not hold (400 EXAM_ITEM_NOT_IN_SITTING), for
+        an answer over 32 KiB (400 EXAM_ANSWER_TOO_LARGE), and in exam mode for an item outside the
+        current section (400 SECTION_ALREADY_COMPLETED or INVALID_SECTION_PROGRESSION). Signals are
+        recorded at server time.
       x-permission: self
       parameters:
         - name: id
           in: path
           required: true
-          description: Sitting attempt ID.
+          description: Sitting ID.
           schema:
             type: string
             format: uuid
@@ -5661,39 +5657,18 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                answers:
-                  type: object
-                integrity_events:
-                  type: array
-                  items:
-                    type: object
-                    required: [kind, occurred_at]
-                    properties:
-                      kind:
-                        type: string
-                      occurred_at:
-                        type: string
-                        format: date-time
-                      metadata:
-                        type: object
+              $ref: '#/components/schemas/SaveExamAnswersRequest'
       responses:
         '200':
-          description: Answers autosaved successfully.
+          description: Answers saved.
           headers:
             X-Request-Id:
               $ref: '#/components/headers/X-Request-Id'
           content:
             application/json:
+              example: {"saved": true, "remaining_seconds": 3600, "current_section": 1, "section_remaining_seconds": 300}
               schema:
-                type: object
-                required: [saved, remaining_seconds]
-                properties:
-                  saved:
-                    type: boolean
-                  remaining_seconds:
-                    type: integer
+                $ref: '#/components/schemas/SaveExamAnswersResult'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -5709,13 +5684,15 @@ paths:
       tags: [exam]
       operationId: completeExamSection
       summary: Finish a section
-      description: Advances the sitting to the next section or concludes the final section.
+      description: >-
+        Closes a section and moves on; completing section 4 submits the sitting. In exam mode,
+        completing a section whose time already ran out returns the current section rather than an error.
       x-permission: self
       parameters:
         - name: id
           in: path
           required: true
-          description: Sitting attempt ID.
+          description: Sitting ID.
           schema:
             type: string
             format: uuid
@@ -5725,22 +5702,19 @@ paths:
           description: 1-indexed section position being completed.
           schema:
             type: integer
+            minimum: 1
+            maximum: 4
       responses:
         '200':
-          description: Section completed; advanced to next section.
+          description: Section closed.
           headers:
             X-Request-Id:
               $ref: '#/components/headers/X-Request-Id'
           content:
             application/json:
+              example: {"current_section": 2, "remaining_seconds": 3600, "section_remaining_seconds": 1500, "submitted": false}
               schema:
-                type: object
-                required: [current_section, remaining_seconds]
-                properties:
-                  current_section:
-                    type: integer
-                  remaining_seconds:
-                    type: integer
+                $ref: '#/components/schemas/CompleteExamSectionResult'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -5756,24 +5730,28 @@ paths:
       tags: [exam]
       operationId: submitExamAttempt
       summary: Submit the whole exam
-      description: Concludes the sitting, grading all answered items and initializing the score report.
+      description: >-
+        Submits the caller's sitting: each saved answer becomes a learning attempt, and the report is
+        created pending until asynchronous grades settle. A submission past the deadline is recorded
+        as the expiry's. Idempotent.
       x-permission: self
       parameters:
         - name: id
           in: path
           required: true
-          description: Sitting attempt ID.
+          description: Sitting ID.
           schema:
             type: string
             format: uuid
       responses:
         '202':
-          description: Exam submitted; grading in progress.
+          description: Sitting submitted.
           headers:
             X-Request-Id:
               $ref: '#/components/headers/X-Request-Id'
           content:
             application/json:
+              example: {"attempt_id": "44444444-4444-4444-4444-444444444444", "status": "completed", "report_status": "pending"}
               schema:
                 type: object
                 required: [attempt_id, status, report_status]
@@ -5783,8 +5761,10 @@ paths:
                     format: uuid
                   status:
                     type: string
+                    enum: [completed, expired]
                   report_status:
                     type: string
+                    enum: [pending, ready, partial]
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -5800,13 +5780,16 @@ paths:
       tags: [exam]
       operationId: getExamScoreReport
       summary: Score report when ready
-      description: Returns the stored score report for a completed sitting.
+      description: >-
+        Returns the stored report for a submitted sitting, bringing a pending report up to date first.
+        A report still pending an hour after submission becomes partial, its waiting items not scored.
+        404 REPORT_NOT_READY while the sitting is open.
       x-permission: self
       parameters:
         - name: id
           in: path
           required: true
-          description: Sitting attempt ID.
+          description: Sitting ID.
           schema:
             type: string
             format: uuid
@@ -5818,31 +5801,9 @@ paths:
               $ref: '#/components/headers/X-Request-Id'
           content:
             application/json:
+              example: {"attempt_id": "44444444-4444-4444-4444-444444444444", "mode": "exam", "submitted_by": "learner", "status": "partial", "overall_score": 72, "overall_band": "B1", "per_section": [{"position": 1, "skill": "listening", "status": "scored", "score": 80, "max_score": 100, "items": [{"activity_id": "55555555-5555-5555-5555-555555555555", "content_version_id": "66666666-6666-6666-6666-666666666666", "kind": "listening_comprehension", "attempt_id": "77777777-7777-7777-7777-777777777777", "status": "graded", "score": 4, "max_score": 5, "item_results": [{"id": "q1", "correct": true}]}]}, {"position": 4, "skill": "speaking", "status": "not_scored", "max_score": 100, "items": [{"activity_id": "55555555-5555-5555-5555-555555555555", "content_version_id": "66666666-6666-6666-6666-666666666666", "kind": "speaking_task", "status": "failed", "score": 0, "max_score": 0}]}], "integrity_signals": [{"kind": "tab_hidden", "count": 2}], "disclaimer": "Not an official TOEIC score. Pronunciation not assessed."}
               schema:
-                type: object
-                required: [attempt_id, status, overall_score, overall_band, per_section]
-                properties:
-                  attempt_id:
-                    type: string
-                    format: uuid
-                  status:
-                    type: string
-                  overall_score:
-                    type: number
-                  overall_band:
-                    type: string
-                  per_section:
-                    type: array
-                    items:
-                      type: object
-                  feedback:
-                    type: object
-                  integrity_signals:
-                    type: array
-                    items:
-                      type: object
-                  disclaimer:
-                    type: string
+                $ref: '#/components/schemas/ExamScoreReport'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -6192,6 +6153,32 @@ components:
       $ref: ./components/writing.yaml#/WritingSubmissionSummary
     WritingSubmissionList:
       $ref: ./components/writing.yaml#/WritingSubmissionList
+    ExamSittingActivity:
+      $ref: ./components/exam.yaml#/ExamSittingActivity
+    ExamSittingSection:
+      $ref: ./components/exam.yaml#/ExamSittingSection
+    ExamAttempt:
+      $ref: ./components/exam.yaml#/ExamAttempt
+    ExamAttemptList:
+      $ref: ./components/exam.yaml#/ExamAttemptList
+    SaveExamAnswersRequest:
+      $ref: ./components/exam.yaml#/SaveExamAnswersRequest
+    SaveExamAnswersResult:
+      $ref: ./components/exam.yaml#/SaveExamAnswersResult
+    CompleteExamSectionResult:
+      $ref: ./components/exam.yaml#/CompleteExamSectionResult
+    ExamItemOutcome:
+      $ref: ./components/exam.yaml#/ExamItemOutcome
+    ExamSectionOutcome:
+      $ref: ./components/exam.yaml#/ExamSectionOutcome
+    ExamIntegritySignal:
+      $ref: ./components/exam.yaml#/ExamIntegritySignal
+    ExamScoreReport:
+      $ref: ./components/exam.yaml#/ExamScoreReport
+    SpeakingCriterion:
+      $ref: ./components/speaking.yaml#/SpeakingCriterion
+    SpeakingFeedback:
+      $ref: ./components/speaking.yaml#/SpeakingFeedback
   headers:
     X-Request-Id:
       $ref: ./components/headers.yaml#/X-Request-Id

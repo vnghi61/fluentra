@@ -21,18 +21,24 @@ import (
 )
 
 type fakeListeningService struct {
-	recordPlayFn    func(ctx context.Context, userID, versionID uuid.UUID, contextType string, contextID uuid.UUID) (*domain.PlayResult, error)
+	recordPlayFn func(
+		ctx context.Context, userID, versionID uuid.UUID, contextType string, contextID uuid.UUID,
+	) (*domain.PlayResult, error)
 	getTranscriptFn func(ctx context.Context, userID, versionID, attemptID uuid.UUID) (string, error)
 }
 
-func (f *fakeListeningService) RecordPlay(ctx context.Context, userID, versionID uuid.UUID, contextType string, contextID uuid.UUID) (*domain.PlayResult, error) {
+func (f *fakeListeningService) RecordPlay(
+	ctx context.Context, userID, versionID uuid.UUID, contextType string, contextID uuid.UUID,
+) (*domain.PlayResult, error) {
 	if f.recordPlayFn != nil {
 		return f.recordPlayFn(ctx, userID, versionID, contextType, contextID)
 	}
 	return nil, apperr.New(apperr.Internal, "NOT_IMPLEMENTED", "not implemented")
 }
 
-func (f *fakeListeningService) GetTranscript(ctx context.Context, userID, versionID, attemptID uuid.UUID) (string, error) {
+func (f *fakeListeningService) GetTranscript(
+	ctx context.Context, userID, versionID, attemptID uuid.UUID,
+) (string, error) {
 	if f.getTranscriptFn != nil {
 		return f.getTranscriptFn(ctx, userID, versionID, attemptID)
 	}
@@ -61,7 +67,7 @@ func TestRecordPlay_Success(t *testing.T) {
 	expiresAt := time.Now().Add(5 * time.Minute)
 
 	svc := &fakeListeningService{
-		recordPlayFn: func(ctx context.Context, uID, vID uuid.UUID, cType string, cID uuid.UUID) (*domain.PlayResult, error) {
+		recordPlayFn: func(_ context.Context, uID, vID uuid.UUID, cType string, cID uuid.UUID) (*domain.PlayResult, error) {
 			assert.Equal(t, userID, uID)
 			assert.Equal(t, versionID, vID)
 			assert.Equal(t, "exam", cType)
@@ -126,7 +132,7 @@ func TestGetTranscript_Success(t *testing.T) {
 	attemptID := uuid.New()
 
 	svc := &fakeListeningService{
-		getTranscriptFn: func(ctx context.Context, uID, vID, aID uuid.UUID) (string, error) {
+		getTranscriptFn: func(_ context.Context, uID, vID, aID uuid.UUID) (string, error) {
 			assert.Equal(t, userID, uID)
 			assert.Equal(t, versionID, vID)
 			assert.Equal(t, attemptID, aID)
@@ -136,7 +142,9 @@ func TestGetTranscript_Success(t *testing.T) {
 
 	router := setupRouter(svc)
 
-	req := httptest.NewRequest(http.MethodGet, "/listening/items/"+versionID.String()+"/transcript?attempt_id="+attemptID.String(), nil)
+	req := httptest.NewRequest(
+		http.MethodGet, "/listening/items/"+versionID.String()+"/transcript?attempt_id="+attemptID.String(), nil,
+	)
 	req = withActor(req, userID)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)

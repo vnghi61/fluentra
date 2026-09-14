@@ -32,6 +32,7 @@ type SittingActivityDTO = service.SittingActivityDTO
 type Deps struct {
 	Pool         *pgxpool.Pool
 	Learning     learningcontract.SittingAnswerSubmitter
+	Attempts     learningcontract.AttemptOutcomeReader
 	Exposures    learningcontract.ItemExposureRecorder
 	Lesson       lessoncontract.Reader
 	Drawer       PoolDrawer
@@ -55,6 +56,7 @@ func New(deps Deps) *Module {
 		Pool:       deps.Pool,
 		Repo:       repo,
 		Learning:   deps.Learning,
+		Attempts:   deps.Attempts,
 		Exposures:  deps.Exposures,
 		Lesson:     deps.Lesson,
 		Drawer:     deps.Drawer,

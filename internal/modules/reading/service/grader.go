@@ -33,10 +33,8 @@ const (
 )
 
 type (
-	readingOption     = contentcontract.QuestionOption
-	readingQuestion   = contentcontract.QuestionItem
-	readingAnswerItem = contentcontract.AnswerItem
-	readingResponse   = contentcontract.ComprehensionResponse
+	readingOption   = contentcontract.QuestionOption
+	readingQuestion = contentcontract.QuestionItem
 )
 
 type readingQuizBody struct {
@@ -150,7 +148,9 @@ func gradeQuestionSet(
 		initialGrade = gradeGood
 	}
 
-	feedback := fmt.Sprintf("You scored %d%% (%d/%d questions correct).", qResult.Score, qResult.CorrectCount, qResult.TotalCount)
+	feedback := fmt.Sprintf(
+		"You scored %d%% (%d/%d questions correct).", qResult.Score, qResult.CorrectCount, qResult.TotalCount,
+	)
 	if qResult.AllCorrect {
 		feedback = "All answers correct! Excellent reading comprehension."
 	}

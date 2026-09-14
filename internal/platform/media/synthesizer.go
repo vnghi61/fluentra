@@ -61,7 +61,7 @@ func (s *CachedSynthesiser) Synthesise(ctx context.Context, text, voice string) 
 		return "", fmt.Errorf("render tts: %w", err)
 	}
 
-	objectKey := fmt.Sprintf("tts/%s/%s.mp3", voice, textHash)
+	objectKey := ObjectKey(voice, textHash, mimeType)
 
 	if s.storage != nil {
 		if err := s.storage.Put(ctx, s.bucket, objectKey, bytes.NewReader(data), int64(len(data)), mimeType); err != nil {
@@ -74,6 +74,37 @@ func (s *CachedSynthesiser) Synthesise(ctx context.Context, text, voice string) 
 	}
 
 	return objectKey, nil
+}
+
+// DefaultVoice is the voice a script without one is rendered in.
+const DefaultVoice = "en_US-lessac-medium"
+
+// EngineMock names the offline engine and synthesiser used in development and tests.
+const EngineMock = "mock"
+
+// CacheLocator finds rendered clips in the TTS cache.
+//
+// cmd/tts renders listening scripts offline and records each clip in the cache,
+// not in the published item, which is append-only. Everything that needs a
+// clip — drawing a sitting, issuing a play URL — looks here.
+type CacheLocator struct {
+	cache TTSCache
+}
+
+// NewCacheLocator builds a locator over the TTS cache.
+func NewCacheLocator(cache TTSCache) *CacheLocator {
+	return &CacheLocator{cache: cache}
+}
+
+// AudioKey returns the object key of the clip rendered for script in voice.
+func (l *CacheLocator) AudioKey(ctx context.Context, script, voice string) (string, bool, error) {
+	if l == nil || l.cache == nil {
+		return "", false, nil
+	}
+	if voice == "" {
+		voice = DefaultVoice
+	}
+	return l.cache.Get(ctx, HashText(script), voice)
 }
 
 // MockSynthesiser provides a deterministic synthesiser for local dev and tests.
@@ -103,7 +134,7 @@ func (m *MockSynthesiserEngine) EngineName() string {
 	if m.Name != "" {
 		return m.Name
 	}
-	return "mock"
+	return EngineMock
 }
 
 // EngineVersion returns the mock engine version.

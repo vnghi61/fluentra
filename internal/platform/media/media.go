@@ -20,7 +20,6 @@ var (
 	ErrEmptyAudio = apperr.New(apperr.BadRequest, "EMPTY_AUDIO", "empty audio stream provided")
 )
 
-
 // WordTiming represents word-level timestamp information from transcription.
 type WordTiming struct {
 	Word  string  `json:"word"`

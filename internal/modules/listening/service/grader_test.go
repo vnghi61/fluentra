@@ -12,6 +12,8 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/listening/domain"
 )
 
+const optLondon = "opt_london"
+
 func TestGrader_QuestionSet_AllCorrect(t *testing.T) {
 	versionID := uuid.New()
 	body := listeningBody{
@@ -22,9 +24,9 @@ func TestGrader_QuestionSet_AllCorrect(t *testing.T) {
 			{
 				ID:              "q1",
 				Prompt:          "Where is the speaker welcoming you to?",
-				CorrectOptionID: "opt_london",
+				CorrectOptionID: optLondon,
 				Options: []contentcontract.QuestionOption{
-					{ID: "opt_london", Text: "London"},
+					{ID: optLondon, Text: "London"},
 					{ID: "opt_paris", Text: "Paris"},
 				},
 			},
@@ -50,7 +52,7 @@ func TestGrader_QuestionSet_AllCorrect(t *testing.T) {
 
 	respJSON, _ := json.Marshal(map[string]any{
 		"answers": map[string]string{
-			"q1": "opt_london",
+			"q1": optLondon,
 			"q2": "the gap",
 		},
 	})
@@ -156,7 +158,8 @@ func TestRedactForLearner_ListeningScriptHidden(t *testing.T) {
 }
 
 func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(substr) == 0 || (len(s) > 0 && len(substr) > 0 && jsonSubstring(s, substr)))
+	return len(s) >= len(substr) &&
+		(s == substr || len(substr) == 0 || (len(s) > 0 && len(substr) > 0 && jsonSubstring(s, substr)))
 }
 
 func jsonSubstring(s, substr string) bool {

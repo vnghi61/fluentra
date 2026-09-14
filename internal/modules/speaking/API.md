@@ -29,6 +29,7 @@ Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR
 |---|---|---|---|
 | `POST` | `/api/v1/speaking/upload-intent` | `self` | Presigned PUT URL for recording upload to storage |
 | `DELETE` | `/api/v1/speaking/attempts/{id}/recording` | `self` | Purges the recording object while keeping scores and feedback |
+| `GET` | `/api/v1/speaking/attempts/{id}/feedback` | `self` | Read feedback on a graded speaking attempt |
 <!-- END GENERATED: api-summary -->
 
 ## Endpoint detail
@@ -53,6 +54,16 @@ Purges the recording object while keeping scores and feedback
 | Permission | `self` |
 | Success | 204 |
 | Errors | standard set |
+
+### `GET /api/v1/speaking/attempts/{id}/feedback`
+
+Read feedback on a graded speaking attempt
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | `FEEDBACK_NOT_FOUND` |
 
 <!-- END GENERATED: api-detail -->
 

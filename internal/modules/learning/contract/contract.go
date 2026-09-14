@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 // Aggregate is the outbox aggregate name every event below is written under.
@@ -228,8 +229,12 @@ type SittingAnswerSubmitter interface {
 }
 
 // ItemExposureRecorder records and lists exposed items for a user.
+//
+// RecordItemExposures takes the caller's transaction: a sitting that fails to
+// start must mark nothing as seen, so the exposures commit with the sitting or
+// not at all. A nil tx writes outside any transaction.
 type ItemExposureRecorder interface {
-	RecordItemExposures(ctx context.Context, userID uuid.UUID, activityIDs []uuid.UUID) error
+	RecordItemExposures(ctx context.Context, tx pgx.Tx, userID uuid.UUID, activityIDs []uuid.UUID) error
 	ListItemExposures(ctx context.Context, userID uuid.UUID, activityIDs []uuid.UUID) (map[uuid.UUID]time.Time, error)
 }
 
@@ -259,4 +264,23 @@ type AuthorResolver interface {
 	FirstHolderOf(ctx context.Context, role string) (uuid.UUID, error)
 }
 
+// AttemptOutcome is where an attempt's grading stands.
+type AttemptOutcome struct {
+	AttemptID uuid.UUID
+	Status    string
+	Score     *int
+	MaxScore  int
+}
 
+// AttemptOutcomeReader reads where an attempt's grading stands. The exam report
+// uses it to settle the items that were graded asynchronously.
+type AttemptOutcomeReader interface {
+	GetAttemptOutcome(ctx context.Context, attemptID uuid.UUID) (*AttemptOutcome, error)
+}
+
+// AudioLocator finds the rendered audio for a listening script, if there is any.
+// Audio is rendered offline after an item is published, so an item's body may
+// carry no object key while the clip exists in the TTS cache.
+type AudioLocator interface {
+	AudioKey(ctx context.Context, script, voice string) (objectKey string, found bool, err error)
+}

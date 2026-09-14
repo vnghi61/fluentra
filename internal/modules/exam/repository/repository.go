@@ -1,3 +1,4 @@
+// Package repository stores exam templates, sittings, reports and integrity signals.
 package repository
 
 import (
@@ -27,6 +28,7 @@ func New(pool *pgxpool.Pool) *Repository {
 	}
 }
 
+// ListExams returns every exam template.
 func (r *Repository) ListExams(ctx context.Context) ([]sqlc.AssessExam, error) {
 	if r.queries == nil {
 		return nil, nil
@@ -34,6 +36,7 @@ func (r *Repository) ListExams(ctx context.Context) ([]sqlc.AssessExam, error) {
 	return r.queries.ListExams(ctx)
 }
 
+// GetExamByID returns one exam template.
 func (r *Repository) GetExamByID(ctx context.Context, id uuid.UUID) (*sqlc.AssessExam, error) {
 	if r.queries == nil {
 		return nil, nil
@@ -45,6 +48,7 @@ func (r *Repository) GetExamByID(ctx context.Context, id uuid.UUID) (*sqlc.Asses
 	return &exam, nil
 }
 
+// GetExamBySlug returns the exam template with this slug.
 func (r *Repository) GetExamBySlug(ctx context.Context, slug string) (*sqlc.AssessExam, error) {
 	if r.queries == nil {
 		return nil, nil
@@ -56,6 +60,7 @@ func (r *Repository) GetExamBySlug(ctx context.Context, slug string) (*sqlc.Asse
 	return &exam, nil
 }
 
+// ListExamSections returns a template's sections in order.
 func (r *Repository) ListExamSections(ctx context.Context, examID uuid.UUID) ([]sqlc.AssessExamSection, error) {
 	if r.queries == nil {
 		return nil, nil
@@ -63,7 +68,10 @@ func (r *Repository) ListExamSections(ctx context.Context, examID uuid.UUID) ([]
 	return r.queries.ListExamSections(ctx, examID)
 }
 
-func (r *Repository) CreateExamAttempt(ctx context.Context, arg sqlc.CreateExamAttemptParams) (*sqlc.AssessExamAttempt, error) {
+// CreateExamAttempt inserts a sitting.
+func (r *Repository) CreateExamAttempt(
+	ctx context.Context, arg sqlc.CreateExamAttemptParams,
+) (*sqlc.AssessExamAttempt, error) {
 	if r.queries == nil {
 		return nil, nil
 	}
@@ -74,6 +82,7 @@ func (r *Repository) CreateExamAttempt(ctx context.Context, arg sqlc.CreateExamA
 	return &attempt, nil
 }
 
+// GetExamAttemptByID returns a sitting whoever owns it; for jobs, not for requests.
 func (r *Repository) GetExamAttemptByID(ctx context.Context, id uuid.UUID) (*sqlc.AssessExamAttempt, error) {
 	if r.queries == nil {
 		return nil, nil
@@ -85,6 +94,7 @@ func (r *Repository) GetExamAttemptByID(ctx context.Context, id uuid.UUID) (*sql
 	return &attempt, nil
 }
 
+// GetExamAttemptForUser returns a sitting only if it belongs to userID.
 func (r *Repository) GetExamAttemptForUser(ctx context.Context, id, userID uuid.UUID) (*sqlc.AssessExamAttempt, error) {
 	if r.queries == nil {
 		return nil, nil
@@ -99,7 +109,10 @@ func (r *Repository) GetExamAttemptForUser(ctx context.Context, id, userID uuid.
 	return &attempt, nil
 }
 
-func (r *Repository) ListUserExamAttempts(ctx context.Context, userID uuid.UUID, limit, offset int32) ([]sqlc.AssessExamAttempt, error) {
+// ListUserExamAttempts returns a learner's sittings, newest first.
+func (r *Repository) ListUserExamAttempts(
+	ctx context.Context, userID uuid.UUID, limit, offset int32,
+) ([]sqlc.AssessExamAttempt, error) {
 	if r.queries == nil {
 		return nil, nil
 	}
@@ -110,6 +123,7 @@ func (r *Repository) ListUserExamAttempts(ctx context.Context, userID uuid.UUID,
 	})
 }
 
+// CountUserExamAttempts counts a learner's sittings.
 func (r *Repository) CountUserExamAttempts(ctx context.Context, userID uuid.UUID) (int64, error) {
 	if r.queries == nil {
 		return 0, nil
@@ -117,6 +131,7 @@ func (r *Repository) CountUserExamAttempts(ctx context.Context, userID uuid.UUID
 	return r.queries.CountUserExamAttempts(ctx, userID)
 }
 
+// CountUserActiveAttempts counts a learner's sittings still in progress.
 func (r *Repository) CountUserActiveAttempts(ctx context.Context, userID uuid.UUID) (int64, error) {
 	if r.queries == nil {
 		return 0, nil
@@ -124,18 +139,24 @@ func (r *Repository) CountUserActiveAttempts(ctx context.Context, userID uuid.UU
 	return r.queries.CountUserActiveAttempts(ctx, userID)
 }
 
-func (r *Repository) CountUserAttemptsToday(ctx context.Context, userID uuid.UUID, start, end time.Time) (int64, error) {
+// CountUserAttemptsToday counts the sittings a learner started in [start, end).
+func (r *Repository) CountUserAttemptsToday(
+	ctx context.Context, userID uuid.UUID, start, end time.Time,
+) (int64, error) {
 	if r.queries == nil {
 		return 0, nil
 	}
 	return r.queries.CountUserAttemptsToday(ctx, sqlc.CountUserAttemptsTodayParams{
-		UserID:    userID,
-		StartedAt: start,
+		UserID:      userID,
+		StartedAt:   start,
 		StartedAt_2: end,
 	})
 }
 
-func (r *Repository) UpdateDraftAnswers(ctx context.Context, id uuid.UUID, draftAnswers []byte, updatedAt time.Time) (*sqlc.AssessExamAttempt, error) {
+// UpdateDraftAnswers stores a sitting's draft answers while it is in progress.
+func (r *Repository) UpdateDraftAnswers(
+	ctx context.Context, id uuid.UUID, draftAnswers []byte, updatedAt time.Time,
+) (*sqlc.AssessExamAttempt, error) {
 	if r.queries == nil {
 		return nil, nil
 	}
@@ -150,7 +171,10 @@ func (r *Repository) UpdateDraftAnswers(ctx context.Context, id uuid.UUID, draft
 	return &attempt, nil
 }
 
-func (r *Repository) UpdateCurrentSection(ctx context.Context, id uuid.UUID, section int32, updatedAt time.Time) (*sqlc.AssessExamAttempt, error) {
+// UpdateCurrentSection moves an in-progress sitting to another section.
+func (r *Repository) UpdateCurrentSection(
+	ctx context.Context, id uuid.UUID, section int32, updatedAt time.Time,
+) (*sqlc.AssessExamAttempt, error) {
 	if r.queries == nil {
 		return nil, nil
 	}
@@ -165,7 +189,10 @@ func (r *Repository) UpdateCurrentSection(ctx context.Context, id uuid.UUID, sec
 	return &attempt, nil
 }
 
-func (r *Repository) MarkAttemptCompleted(ctx context.Context, id uuid.UUID, submittedAt time.Time, submittedBy string) (*sqlc.AssessExamAttempt, error) {
+// MarkAttemptCompleted submits a sitting still in progress; pgx.ErrNoRows if it was not.
+func (r *Repository) MarkAttemptCompleted(
+	ctx context.Context, id uuid.UUID, submittedAt time.Time, submittedBy string,
+) (*sqlc.AssessExamAttempt, error) {
 	if r.queries == nil {
 		return nil, nil
 	}
@@ -180,7 +207,10 @@ func (r *Repository) MarkAttemptCompleted(ctx context.Context, id uuid.UUID, sub
 	return &attempt, nil
 }
 
-func (r *Repository) MarkAttemptExpired(ctx context.Context, id uuid.UUID, submittedAt time.Time) (*sqlc.AssessExamAttempt, error) {
+// MarkAttemptExpired expires a sitting still in progress; pgx.ErrNoRows if it was not.
+func (r *Repository) MarkAttemptExpired(
+	ctx context.Context, id uuid.UUID, submittedAt time.Time,
+) (*sqlc.AssessExamAttempt, error) {
 	if r.queries == nil {
 		return nil, nil
 	}
@@ -194,14 +224,20 @@ func (r *Repository) MarkAttemptExpired(ctx context.Context, id uuid.UUID, submi
 	return &attempt, nil
 }
 
-func (r *Repository) ListExpiredInProgressAttempts(ctx context.Context, now time.Time) ([]sqlc.AssessExamAttempt, error) {
+// ListExpiredInProgressAttempts returns sittings in progress whose deadline is at or before now.
+func (r *Repository) ListExpiredInProgressAttempts(
+	ctx context.Context, now time.Time,
+) ([]sqlc.AssessExamAttempt, error) {
 	if r.queries == nil {
 		return nil, nil
 	}
 	return r.queries.ListExpiredInProgressAttempts(ctx, now)
 }
 
-func (r *Repository) CreateScoreReport(ctx context.Context, arg sqlc.CreateScoreReportParams) (*sqlc.AssessScoreReport, error) {
+// CreateScoreReport inserts a sitting's report; attempt_id is unique.
+func (r *Repository) CreateScoreReport(
+	ctx context.Context, arg sqlc.CreateScoreReportParams,
+) (*sqlc.AssessScoreReport, error) {
 	if r.queries == nil {
 		return nil, nil
 	}
@@ -212,7 +248,10 @@ func (r *Repository) CreateScoreReport(ctx context.Context, arg sqlc.CreateScore
 	return &report, nil
 }
 
-func (r *Repository) GetScoreReportByAttemptID(ctx context.Context, attemptID uuid.UUID) (*sqlc.AssessScoreReport, error) {
+// GetScoreReportByAttemptID returns a sitting's report.
+func (r *Repository) GetScoreReportByAttemptID(
+	ctx context.Context, attemptID uuid.UUID,
+) (*sqlc.AssessScoreReport, error) {
 	if r.queries == nil {
 		return nil, nil
 	}
@@ -223,7 +262,18 @@ func (r *Repository) GetScoreReportByAttemptID(ctx context.Context, attemptID uu
 	return &report, nil
 }
 
-func (r *Repository) UpdateScoreReport(ctx context.Context, arg sqlc.UpdateScoreReportParams) (*sqlc.AssessScoreReport, error) {
+// ListPendingScoreReports returns reports still waiting for grades, oldest first.
+func (r *Repository) ListPendingScoreReports(ctx context.Context) ([]sqlc.AssessScoreReport, error) {
+	if r.queries == nil {
+		return nil, nil
+	}
+	return r.queries.ListPendingScoreReports(ctx)
+}
+
+// UpdateScoreReport rewrites a sitting's report.
+func (r *Repository) UpdateScoreReport(
+	ctx context.Context, arg sqlc.UpdateScoreReportParams,
+) (*sqlc.AssessScoreReport, error) {
 	if r.queries == nil {
 		return nil, nil
 	}
@@ -234,6 +284,7 @@ func (r *Repository) UpdateScoreReport(ctx context.Context, arg sqlc.UpdateScore
 	return &report, nil
 }
 
+// RecordIntegrityEvent stores one integrity signal.
 func (r *Repository) RecordIntegrityEvent(ctx context.Context, arg sqlc.RecordIntegrityEventParams) error {
 	if r.queries == nil {
 		return nil
@@ -241,7 +292,10 @@ func (r *Repository) RecordIntegrityEvent(ctx context.Context, arg sqlc.RecordIn
 	return r.queries.RecordIntegrityEvent(ctx, arg)
 }
 
-func (r *Repository) ListIntegrityEvents(ctx context.Context, attemptID uuid.UUID) ([]sqlc.AssessIntegrityEvent, error) {
+// ListIntegrityEvents returns a sitting's integrity signals in order.
+func (r *Repository) ListIntegrityEvents(
+	ctx context.Context, attemptID uuid.UUID,
+) ([]sqlc.AssessIntegrityEvent, error) {
 	if r.queries == nil {
 		return nil, nil
 	}

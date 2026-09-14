@@ -159,7 +159,7 @@ func TestHTTPTranscriber_Success_WithWords(t *testing.T) {
 
 		resp := openAITranscribeResponse{
 			Text:     "Hello world",
-			Language: "english",
+			Language: mockTranscriptLanguage,
 			Duration: 2.5,
 			Words: []openAIWord{
 				{Word: "Hello", Start: 0.0, End: 0.8},
@@ -176,7 +176,9 @@ func TestHTTPTranscriber_Success_WithWords(t *testing.T) {
 		APIKey:  "test-api-key",
 	})
 
-	result, err := transcriber.Transcribe(context.Background(), bytes.NewReader([]byte("FAKE_WEBM_DATA")), "recording.webm")
+	result, err := transcriber.Transcribe(
+		context.Background(), bytes.NewReader([]byte("FAKE_WEBM_DATA")), "recording.webm",
+	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -193,10 +195,10 @@ func TestHTTPTranscriber_Success_WithWords(t *testing.T) {
 }
 
 func TestHTTPTranscriber_Success_WithSegmentsFallback(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		resp := openAITranscribeResponse{
 			Text:     "Good morning",
-			Language: "english",
+			Language: mockTranscriptLanguage,
 			Duration: 1.8,
 			Segments: []openAISegment{
 				{
@@ -269,7 +271,7 @@ func TestMockTranscriber(t *testing.T) {
 
 func TestModule_New(t *testing.T) {
 	mod := New(Config{
-		TTSEngine:            "mock",
+		TTSEngine:            EngineMock,
 		ASRBaseURL:           "",
 		DailyRecordingsLimit: 25,
 	})

@@ -70,9 +70,9 @@ type practiceLesson struct {
 }
 
 var practiceLessons = []practiceLesson{
-	{position: 1, kind: kindReadingComprehension, title: "Reading Comprehension", skillFocus: "reading"},
-	{position: 2, kind: kindGrammarTenseChoice, title: "Grammar Tense Choice", skillFocus: "grammar"},
-	{position: 3, kind: kindGrammarSentenceTransform, title: "Grammar Sentence Transform", skillFocus: "grammar"},
+	{position: 1, kind: kindReadingComprehension, title: "Reading Comprehension", skillFocus: skillReading},
+	{position: 2, kind: kindGrammarTenseChoice, title: "Grammar Tense Choice", skillFocus: skillGrammar},
+	{position: 3, kind: kindGrammarSentenceTransform, title: "Grammar Sentence Transform", skillFocus: skillGrammar},
 }
 
 // dailySetComposition is what one day's set draws from each slot at a level.
@@ -288,7 +288,7 @@ func (s *Service) tryGenerateAndVerify(
 	var body json.RawMessage
 	if err := ai.CompleteJSON(ctx, s.ai, ai.Request{
 		Task: ai.TaskPracticeGenerate,
-		Vars: map[string]any{"Kind": kind, "CEFRLevel": level},
+		Vars: map[string]any{varKind: kind, varCEFRLevel: level},
 	}, &body); err != nil {
 		return nil, fmt.Errorf("ai generate call failed: %w", err)
 	}
@@ -540,7 +540,7 @@ func buildOwnAnswerPayload(kind string, raw []byte) (json.RawMessage, error) {
 		for _, q := range body.Questions {
 			answers[q.ID] = q.CorrectOptionID
 		}
-		return json.Marshal(map[string]any{"answers": answers})
+		return json.Marshal(map[string]any{keyAnswers: answers})
 	case kindGrammarTenseChoice:
 		var body grammarTenseChoiceCand
 		if err := json.Unmarshal(raw, &body); err != nil {
@@ -638,7 +638,7 @@ func parseBlindSolvePayload(kind string, raw []byte) (json.RawMessage, error) {
 		if len(resp.Answers) == 0 {
 			return nil, errors.New("empty blind solve answers")
 		}
-		return json.Marshal(map[string]any{"answers": resp.Answers})
+		return json.Marshal(map[string]any{keyAnswers: resp.Answers})
 	case kindGrammarTenseChoice:
 		var resp struct {
 			SelectedOptionID string `json:"selected_option_id"`

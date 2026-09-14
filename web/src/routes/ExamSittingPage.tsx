@@ -1,7 +1,7 @@
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { AlertCircle, ArrowLeft, Loader2 } from "lucide-react";
+import { AlertCircle, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useExamAttempt } from "@/features/exam";
@@ -10,57 +10,44 @@ import { ExamSittingRunner } from "@/features/exam/components/ExamSittingRunner"
 export function ExamSittingPage(): React.JSX.Element {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const params = useParams({ strict: false }) as { attemptId?: string };
-  const attemptId = params.attemptId || "";
+  const params: Record<string, string | undefined> = useParams({ strict: false });
+  const attemptId = params.attemptId ?? "";
 
-  const { data: attempt, isLoading, error, refetch } = useExamAttempt(attemptId);
+  const { data: attempt, isLoading, isError, refetch } = useExamAttempt(attemptId);
 
-  // If already completed or expired, navigate to report view
+  const toReport = useCallback(() => {
+    void navigate({ to: "/exams/$attemptId/report", params: { attemptId } });
+  }, [attemptId, navigate]);
+
+  // A sitting already submitted — by the learner, the job or its own read — shows its result.
   useEffect(() => {
-    if (attempt && (attempt.status === "completed" || attempt.status === "expired")) {
-      void navigate({
-        to: "/exams/$attemptId/report",
-        params: { attemptId },
-      });
-    }
-  }, [attempt, attemptId, navigate]);
+    if (attempt && attempt.status !== "in_progress") toReport();
+  }, [attempt, toReport]);
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
-        <Loader2 className="h-10 w-10 animate-spin text-primary mb-3" />
-        <p className="text-sm text-text-muted font-medium">
-          {t("exam.runner.loadingSitting", "Preparing your exam sitting...")}
-        </p>
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
+        <Loader2 className="mb-3 h-10 w-10 animate-spin text-primary" aria-hidden="true" />
+        <p className="text-sm font-medium text-text-muted">{t("exam.runner.loading")}</p>
       </div>
     );
   }
 
-  if (error || !attempt) {
+  if (isError || !attempt) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background">
-        <div className="max-w-md w-full rounded-2xl border border-danger/30 bg-danger/10 p-6 text-center space-y-4">
-          <AlertCircle className="h-10 w-10 text-danger mx-auto" />
-          <h2 className="text-lg font-bold text-danger">
-            {t("exam.runner.loadSittingFailed", "Unable to load exam sitting")}
-          </h2>
-          <p className="text-xs text-danger/80">
-            {error instanceof Error ? error.message : t("common.unknownError", "An unexpected error occurred.")}
-          </p>
-          <div className="pt-2 flex justify-center gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => void refetch()}
-              className="min-h-[44px]"
-            >
-              {t("common.retry", "Retry")}
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background p-6">
+        <div role="alert" className="w-full max-w-md space-y-4 rounded-2xl border border-danger/30 bg-danger/10 p-6 text-center">
+          <AlertCircle className="mx-auto h-10 w-10 text-danger" aria-hidden="true" />
+          <h2 className="text-lg font-bold text-danger">{t("exam.runner.loadFailed")}</h2>
+          <div className="flex justify-center gap-3 pt-2">
+            <Button type="button" variant="outline" onClick={() => void refetch()}>
+              {t("exam.runner.retry")}
             </Button>
-            <Link to="/exams">
-              <Button type="button" className="min-h-[44px] bg-primary text-white">
-                <ArrowLeft className="h-4 w-4 mr-1.5" />
-                {t("exam.report.returnToExams", "Back to Exams")}
-              </Button>
+            <Link
+              to="/exams"
+              className="inline-flex min-h-[44px] items-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-fg"
+            >
+              {t("exam.report.back")}
             </Link>
           </div>
         </div>
@@ -68,17 +55,13 @@ export function ExamSittingPage(): React.JSX.Element {
     );
   }
 
-  return (
-    <div className="w-full">
-      <ExamSittingRunner
-        attempt={attempt}
-        onSubmitted={() => {
-          void navigate({
-            to: "/exams/$attemptId/report",
-            params: { attemptId },
-          });
-        }}
-      />
-    </div>
-  );
+  if (attempt.status !== "in_progress") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" aria-hidden="true" />
+      </div>
+    );
+  }
+
+  return <ExamSittingRunner attempt={attempt} onSubmitted={toReport} />;
 }

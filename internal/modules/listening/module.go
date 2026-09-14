@@ -20,6 +20,8 @@ type Deps struct {
 	Content  contentcontract.Reader
 	Learning learningcontract.AttemptReader
 	Storage  storage.Store
+	Sittings service.SittingPlayPolicy
+	Audio    service.AudioLocator
 	Clock    clock.Clock
 }
 
@@ -43,6 +45,8 @@ func New(deps Deps) *Module {
 		Content:  deps.Content,
 		Learning: deps.Learning,
 		Storage:  deps.Storage,
+		Sittings: deps.Sittings,
+		Audio:    deps.Audio,
 		Clock:    timekeeper,
 	})
 

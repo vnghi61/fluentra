@@ -1,77 +1,72 @@
+import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  RouterProvider,
+} from "@tanstack/react-router";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { I18nextProvider } from "react-i18next";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import React from "react";
 import i18n, { initI18n } from "@/i18n";
 import { ExamList } from "@/features/exam/components/ExamList";
 import { ExamReport } from "@/features/exam/components/ExamReport";
 import { ExamSittingRunner } from "@/features/exam/components/ExamSittingRunner";
-import type { ExamAttempt, ExamTemplate, ScoreReport } from "@/features/exam/types";
+import type {
+  ExamAttempt,
+  ExamTemplate,
+  ScoreReport,
+} from "@/features/exam/types";
 import { server } from "./msw-server";
 
-const mockExam: ExamTemplate = {
-  id: "33333333-3333-3333-3333-333333333333",
-  slug: "b1-standard-exam",
-  title_en: "B1 Standard Mock Exam",
-  title_vi: "Đề thi thử chuẩn B1",
-  description_en: "Full 4-skill mock examination at B1 level.",
-  description_vi: "Kỳ thi thử 4 kỹ năng chuẩn CEFR B1.",
+const EXAM_ID = "10000000-0000-0000-0000-0000000000b1";
+const SITTING_ID = "44444444-4444-4444-4444-444444444444";
+const LISTENING_ID = "55555555-5555-5555-5555-555555555501";
+const READING_ID = "55555555-5555-5555-5555-555555555502";
+
+const exam: ExamTemplate = {
+  id: EXAM_ID,
+  slug: "mock-toeic-b1",
+  title_en: "TOEIC Mock Exam (B1)",
+  title_vi: "Bài thi thử TOEIC (B1)",
   level: "B1",
-  format: "standard",
+  format: "mock_toeic",
   total_minutes: 75,
-  sections: [
-    {
-      id: "sec-1",
-      exam_id: "33333333-3333-3333-3333-333333333333",
-      position: 1,
-      skill: "listening",
-      exam_duration_minutes: 20,
-      item_count: 3,
-      item_kinds: ["listening_comprehension"],
-    },
-    {
-      id: "sec-2",
-      exam_id: "33333333-3333-3333-3333-333333333333",
-      position: 2,
-      skill: "reading",
-      exam_duration_minutes: 25,
-      item_count: 2,
-      item_kinds: ["reading_comprehension"],
-    },
-  ],
 };
 
-const mockAttempt: ExamAttempt = {
-  id: "44444444-4444-4444-4444-444444444444",
-  exam_id: mockExam.id,
-  exam_title: mockExam.title_en,
+const attempt: ExamAttempt = {
+  id: SITTING_ID,
+  exam_id: EXAM_ID,
+  exam_title: exam.title_en,
   mode: "exam",
   chosen_duration_minutes: 75,
-  started_at: new Date().toISOString(),
-  deadline_at: new Date(Date.now() + 75 * 60 * 1000).toISOString(),
+  started_at: "2026-09-14T09:00:00Z",
+  deadline_at: "2026-09-14T10:15:00Z",
   remaining_seconds: 4500,
   current_section: 1,
+  section_remaining_seconds: 1200,
   status: "in_progress",
-  server_time: new Date().toISOString(),
+  server_time: "2026-09-14T09:00:00Z",
   section_activities: [
     {
       section_position: 1,
       skill: "listening",
       activities: [
         {
-          id: "act-1",
+          id: LISTENING_ID,
           kind: "listening_comprehension",
-          content_version_id: "55555555-5555-5555-5555-555555555555",
+          content_version_id: "66666666-6666-6666-6666-666666666601",
           weight: 1,
           config: {
-            title: "Airport Announcement",
+            title: "Airport announcement",
             questions: [
               {
                 id: "q1",
-                prompt: "What is the destination?",
+                prompt: "Where is the flight going?",
                 options: [
                   { id: "A", text: "Tokyo" },
                   { id: "B", text: "Seoul" },
@@ -87,223 +82,174 @@ const mockAttempt: ExamAttempt = {
       skill: "reading",
       activities: [
         {
-          id: "act-2",
+          id: READING_ID,
           kind: "reading_comprehension",
-          content_version_id: "66666666-6666-6666-6666-666666666666",
+          content_version_id: "66666666-6666-6666-6666-666666666602",
           weight: 1,
-          config: {
-            title: "City Library Notice",
-            passage: "The city library will be closed this Friday for maintenance.",
-            questions: [
-              {
-                id: "q2",
-                prompt: "Why is the library closed?",
-                options: [
-                  { id: "A", text: "Maintenance" },
-                  { id: "B", text: "Holiday" },
-                ],
-              },
-            ],
-          },
-        },
-      ],
-    },
-    {
-      section_position: 3,
-      skill: "writing",
-      activities: [
-        {
-          id: "act-3",
-          kind: "writing_prompt",
-          content_version_id: "77777777-7777-7777-7777-777777777777",
-          weight: 1,
-          config: {
-            topic: "Urban Transport",
-            prompt: "Write about the benefits of public transportation.",
-            min_words: 100,
-          },
-        },
-      ],
-    },
-    {
-      section_position: 4,
-      skill: "speaking",
-      activities: [
-        {
-          id: "act-4",
-          kind: "speaking_task",
-          content_version_id: "88888888-8888-8888-8888-888888888888",
-          weight: 1,
-          config: {
-            task_type: "read_aloud",
-            prompt: "Read the text aloud clearly.",
-            reference_text: "Welcome to the conference. Please turn off your mobile devices.",
-            speaking_time_seconds: 45,
-          },
+          config: { passage: "The library is closed on Friday.", questions: [] },
         },
       ],
     },
   ],
 };
 
-const mockReport: ScoreReport = {
-  attempt_id: mockAttempt.id,
-  status: "ready",
+const report: ScoreReport = {
+  attempt_id: SITTING_ID,
+  mode: "exam",
+  status: "partial",
   overall_score: 82.5,
-  overall_band: "B1",
+  overall_band: "B2",
   disclaimer: "Not an official TOEIC score. Pronunciation not assessed.",
   per_section: [
     {
+      position: 1,
       skill: "listening",
+      status: "scored",
       score: 85,
       max_score: 100,
-      band: "B1",
-      status: "scored",
-      item_results: [
+      items: [
         {
-          id: "q1",
-          prompt: "What is the destination?",
-          correct: true,
-          explanation: { explanation_en: "The destination is Tokyo." },
+          activity_id: LISTENING_ID,
+          content_version_id: "66666666-6666-6666-6666-666666666601",
+          kind: "listening_comprehension",
+          status: "graded",
+          score: 4,
+          max_score: 5,
+          item_results: [
+            { id: "q1", correct: true },
+            { id: "q2", correct: false },
+          ],
         },
       ],
     },
     {
-      skill: "reading",
-      score: 80,
-      max_score: 100,
-      band: "B1",
-      status: "scored",
-    },
-    {
-      skill: "writing",
-      score: 85,
-      max_score: 100,
-      band: "B1",
-      status: "scored",
-    },
-    {
+      position: 4,
       skill: "speaking",
-      score: 80,
+      status: "not_scored",
       max_score: 100,
-      band: "B1",
-      status: "scored",
+      items: [
+        {
+          activity_id: "55555555-5555-5555-5555-555555555504",
+          content_version_id: "66666666-6666-6666-6666-666666666604",
+          kind: "speaking_task",
+          status: "failed",
+          score: 0,
+          max_score: 0,
+        },
+      ],
     },
   ],
-  integrity_signals: [
-    { kind: "tab_hidden", count: 1 },
-  ],
+  integrity_signals: [{ kind: "tab_hidden", count: 2 }],
 };
-
-import {
-  createMemoryHistory,
-  createRootRoute,
-  createRoute,
-  createRouter,
-  RouterProvider,
-} from "@tanstack/react-router";
 
 async function renderWithProviders(ui: React.ReactElement) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-
   const rootRoute = createRootRoute();
-  const testRoute = createRoute({
+  const route = createRoute({
     getParentRoute: () => rootRoute,
     path: "/",
     component: () => (
       <QueryClientProvider client={queryClient}>
-        <I18nextProvider i18n={i18n}>
-          <React.Suspense fallback={<div>Loading...</div>}>
-            {ui}
-          </React.Suspense>
-        </I18nextProvider>
+        <I18nextProvider i18n={i18n}>{ui}</I18nextProvider>
       </QueryClientProvider>
     ),
   });
-
   const router = createRouter({
-    routeTree: rootRoute.addChildren([testRoute]),
+    routeTree: rootRoute.addChildren([route]),
     history: createMemoryHistory({ initialEntries: ["/"] }),
   });
   await router.load();
   return render(<RouterProvider router={router} />);
 }
 
-describe("Exam Frontend Screens", () => {
+describe("exam screens", () => {
   beforeEach(async () => {
     await initI18n("en");
     server.use(
-      http.get("/api/v1/exams", () => HttpResponse.json([mockExam])),
+      http.get("/api/v1/exams", () => HttpResponse.json([exam])),
       http.get("/api/v1/exam-attempts", () =>
-        HttpResponse.json({ attempts: [], total: 0 }),
+        HttpResponse.json({ items: [], total: 0, sittings_today: 1, daily_limit: 5 }),
       ),
     );
   });
 
-  it("ExamList renders CEFR level switcher and available exam cards", async () => {
+  it("lists the exam at the learner's practice level with today's sittings left", async () => {
     await renderWithProviders(<ExamList userPracticeLevel="B1" />);
 
-    // Check header and tabs
-    expect(await screen.findByText("Standardized Exam Simulation")).toBeInTheDocument();
-    expect(await screen.findByText("B1 Standard Mock Exam")).toBeInTheDocument();
-
-    // Check daily sittings tracker
-    expect(screen.getByText("5 / 5")).toBeInTheDocument();
-
-    // Check mode buttons
-    expect(screen.getByText("Exam Mode (75 min)")).toBeInTheDocument();
-    expect(screen.getByText("Practice Mode (Custom)")).toBeInTheDocument();
+    expect(await screen.findByText("TOEIC Mock Exam (B1)")).toBeInTheDocument();
+    expect(await screen.findByText("4 of 5 sittings left today")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /B1/ })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("Exam mode · 75 min")).toBeInTheDocument();
   });
 
-  it("ExamList shows empty pool state when level has no exams", async () => {
-    server.use(http.get("/api/v1/exams", () => HttpResponse.json([])));
-    await renderWithProviders(<ExamList userPracticeLevel="A2" />);
+  it("shows an empty pool as not available yet, not as an error", async () => {
+    server.use(
+      http.post(`/api/v1/exams/${EXAM_ID}/attempts`, () =>
+        HttpResponse.json(
+          { type: "about:blank", title: "Not Found", status: 404, code: "EXAM_POOL_EMPTY" },
+          { status: 404, headers: { "Content-Type": "application/problem+json" } },
+        ),
+      ),
+    );
+    await renderWithProviders(<ExamList userPracticeLevel="B1" />);
 
-    await waitFor(() => {
-      expect(
-        screen.getByText("Exams not available yet at this level"),
-      ).toBeInTheDocument();
-    });
+    fireEvent.click(await screen.findByText("Exam mode · 75 min"));
+
+    expect(
+      await screen.findByText("Exams are not available at this level yet"),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("ExamReport displays overall score and official TOEIC disclaimers", async () => {
-    await renderWithProviders(<ExamReport report={mockReport} />);
+  it("reports a failed section as not scored, never as zero, with the disclaimers", async () => {
+    await renderWithProviders(<ExamReport report={report} />);
 
-    // Score & CEFR band
-    expect(await screen.findByText("83")).toBeInTheDocument(); // Math.round(82.5)
-    expect(screen.getByText("B1")).toBeInTheDocument();
-
-    // Disclaimers (§8 requirement)
+    expect(await screen.findByText("83")).toBeInTheDocument();
+    expect(screen.getByText("B2")).toBeInTheDocument();
     expect(screen.getByText("Not an official TOEIC score.")).toBeInTheDocument();
-    expect(
-      screen.getByText(/Pronunciation is not assessed/i),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/uniquely drawn from our verified question pool/i),
-    ).toBeInTheDocument();
-
-    // Section performance breakdown
-    expect(screen.getByText("listening")).toBeInTheDocument();
-    expect(screen.getByText("reading")).toBeInTheDocument();
-    expect(screen.getByText("writing")).toBeInTheDocument();
-    expect(screen.getByText("speaking")).toBeInTheDocument();
+    expect(screen.getByText(/Pronunciation not assessed/)).toBeInTheDocument();
+    expect(screen.getByText(/two sittings hold different items/)).toBeInTheDocument();
+    expect(screen.getAllByText("Not scored").length).toBeGreaterThan(0);
+    expect(screen.getByText("1 of 2 questions correct")).toBeInTheDocument();
+    expect(screen.getByText("Tab hidden: 2")).toBeInTheDocument();
   });
 
-  it("ExamSittingRunner displays server timer and section navigation", async () => {
-    await renderWithProviders(<ExamSittingRunner attempt={mockAttempt} />);
+  it("saves only the open section's answers and moves on through the server", async () => {
+    const saved = vi.fn();
+    server.use(
+      http.put(`/api/v1/exam-attempts/${SITTING_ID}/answers`, async ({ request }) => {
+        saved(await request.json());
+        return HttpResponse.json({
+          saved: true,
+          remaining_seconds: 4400,
+          current_section: 1,
+          section_remaining_seconds: 1100,
+        });
+      }),
+      http.post(`/api/v1/exam-attempts/${SITTING_ID}/sections/1/complete`, () =>
+        HttpResponse.json({
+          current_section: 2,
+          remaining_seconds: 4400,
+          section_remaining_seconds: 1500,
+          submitted: false,
+        }),
+      ),
+    );
+    await renderWithProviders(
+      <ExamSittingRunner attempt={attempt} onSubmitted={() => undefined} />,
+    );
 
-    // Header title and mode
-    expect(await screen.findByText("B1 Standard Mock Exam")).toBeInTheDocument();
-    expect(screen.getByText("Exam Mode")).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: /Tokyo/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Next section" }));
 
-    // Section 1: Listening
-    expect(screen.getAllByText("Airport Announcement").length).toBeGreaterThan(0);
-    expect(screen.getByText("Tokyo")).toBeInTheDocument();
-    expect(screen.getByText("Seoul")).toBeInTheDocument();
-
-    // Action button
-    expect(screen.getByText("Next Section")).toBeInTheDocument();
+    await waitFor(() => expect(saved).toHaveBeenCalled());
+    expect(saved.mock.calls[0]?.[0]).toEqual({
+      answers: { [LISTENING_ID]: { answers: { q1: "A" } } },
+      integrity_events: [],
+      section_number: 1,
+    });
+    expect(await screen.findByText("The library is closed on Friday.")).toBeInTheDocument();
   });
 });

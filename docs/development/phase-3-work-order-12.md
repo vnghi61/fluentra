@@ -574,3 +574,44 @@ or the suite fails.
 registry before the code.
 
 Everything in work order 11 §8 still applies.
+
+---
+
+## 10. Review of the implementation, 2026-09-14
+
+Every item below passed its unit tests before the review.
+
+- **Answers never reached the graders.** The runner saved an essay as `submission` and a
+  recording as `recording_key`; the graders read `text_answer` and `audio_object_key`. The upload
+  intent's `object_key` was read as `key`. Every essay and recording scored as unanswered.
+- **A report never left `pending`.** Nothing read the asynchronous grades back. A report now keeps
+  each item's attempt, settles on read and in the minute sweep, and becomes partial after an hour.
+- **A section whose time ran out locked the sitting.** Finishing it was refused, and it stayed the
+  current section. The current section is now the later of the one reached and the first whose
+  time has not run out.
+- **No going back was the client's word.** Autosave took an answer to any item. It now takes only
+  items the sitting holds, in exam mode only the open section's, each at most 32 KiB, and records
+  integrity signals at the server's time.
+- **The play limit counted a context the client chose.** A new `context_id` was a new set of plays.
+  The context must be the caller's own attempt or open sitting holding the clip. Practice-mode
+  sittings get three plays.
+- **No listening item could ever be drawn.** Offline audio goes to `content.tts_cache`, never into
+  the append-only body, and the draw read only the body. The draw and the play route now look in
+  the cache. `cmd/tts` wrote placeholder bytes under both engine names; it now runs Piper
+  (`-engine piper -piper <bin> -models <dir>`) and refuses the mock outside development.
+- **The worker could not grade what it expired.** It had no writing or speaking grader, so an
+  expired sitting dropped its essay and recordings. Recordings are now deleted on `user.deleted`,
+  and a submitted key must exist in storage.
+- **Smaller gaps.** Exposures were written outside the sitting's transaction, the API ignored
+  `EXAM_DAILY_SITTINGS_LIMIT`, any learner could submit another's sitting by ID, a crash between
+  submitting and scoring left no report, and exam pool items rolled up into course progress.
+- **CI would have failed.** 213 golangci-lint findings (its default output shows at most three per
+  rule), 12 Spectral errors, 191 ESLint errors, stale generated code, and a route missing from
+  `speaking/API.md`.
+- **The integration test §3.7 asks for did not exist.**
+  `TestTopUpExamPool_AppendsAnActivityAgainstTheRealDatabase` runs a top-up against Postgres with
+  the real content and lesson authors and a model that answers in a fence.
+
+**Not verified in the review:** the 320 px end-to-end suite, a worker run with a real model, Piper
+with a real voice, and R2 CORS for the recording upload. Lock `1_700_000_215` is now taken by
+`speaking.purge_recordings`.

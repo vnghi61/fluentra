@@ -204,7 +204,8 @@ func MatchQuestion(submitted string, q QuestionItem) bool {
 	if q.CorrectOptionID != "" && normSubmitted == NormaliseText(q.CorrectOptionID) {
 		return true
 	}
-	if q.Answer != "" && (normSubmitted == NormaliseText(q.Answer) || SentenceWords(submitted) == SentenceWords(q.Answer)) {
+	if q.Answer != "" &&
+		(normSubmitted == NormaliseText(q.Answer) || SentenceWords(submitted) == SentenceWords(q.Answer)) {
 		return true
 	}
 	if q.CorrectAnswer != "" &&

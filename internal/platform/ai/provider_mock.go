@@ -425,7 +425,7 @@ func (p *MockProvider) practiceSolve(req Request) (Response, error) {
 
 func (p *MockProvider) listeningGenerate(_ Request) (Response, error) {
 	payload, err := json.Marshal(map[string]any{
-		"title": "Flight Announcement at International Airport",
+		"title":  "Flight Announcement at International Airport",
 		"script": "Attention all passengers on flight 402 to Tokyo. Due to adverse weather conditions along the flight route, boarding will be delayed by approximately forty-five minutes. Please remain near gate 14 for further announcements.",
 		"voice":  "en-US-Standard-C",
 		"questions": []map[string]any{
@@ -500,4 +500,3 @@ func (p *MockProvider) listeningGenerate(_ Request) (Response, error) {
 	}
 	return Response{Text: string(payload), Model: MockModelName}, nil
 }
-

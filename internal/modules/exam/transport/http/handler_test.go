@@ -20,14 +20,24 @@ import (
 )
 
 type fakeExamService struct {
-	listExamsFn       func(ctx context.Context) ([]service.ExamDTO, error)
-	startSittingFn    func(ctx context.Context, userID, examID uuid.UUID, req service.StartAttemptRequest) (*service.ExamAttemptDTO, error)
-	getAttemptFn      func(ctx context.Context, userID, attemptID uuid.UUID) (*service.ExamAttemptDTO, error)
-	autosaveFn        func(ctx context.Context, userID, attemptID uuid.UUID, req service.SaveAnswersRequest) (*service.SaveAnswersResult, error)
-	completeSectionFn func(ctx context.Context, userID, attemptID uuid.UUID, sectionNum int) (*service.CompleteSectionResult, error)
-	submitExamFn      func(ctx context.Context, userID, attemptID uuid.UUID, submittedBy string) (*service.SubmitExamResult, error)
-	getReportFn       func(ctx context.Context, userID, attemptID uuid.UUID) (*service.ScoreReportDTO, error)
-	listAttemptsFn    func(ctx context.Context, userID uuid.UUID, limit, offset int32) ([]service.ExamAttemptDTO, int64, error)
+	listExamsFn    func(ctx context.Context) ([]service.ExamDTO, error)
+	startSittingFn func(
+		ctx context.Context, userID, examID uuid.UUID, req service.StartAttemptRequest,
+	) (*service.ExamAttemptDTO, error)
+	getAttemptFn func(ctx context.Context, userID, attemptID uuid.UUID) (*service.ExamAttemptDTO, error)
+	autosaveFn   func(
+		ctx context.Context, userID, attemptID uuid.UUID, req service.SaveAnswersRequest,
+	) (*service.SaveAnswersResult, error)
+	completeSectionFn func(
+		ctx context.Context, userID, attemptID uuid.UUID, sectionNum int,
+	) (*service.CompleteSectionResult, error)
+	submitExamFn func(
+		ctx context.Context, userID, attemptID uuid.UUID, submittedBy string,
+	) (*service.SubmitExamResult, error)
+	getReportFn    func(ctx context.Context, userID, attemptID uuid.UUID) (*service.ScoreReportDTO, error)
+	listAttemptsFn func(
+		ctx context.Context, userID uuid.UUID, limit, offset int32,
+	) ([]service.ExamAttemptDTO, int64, error)
 }
 
 func (f *fakeExamService) ListExams(ctx context.Context) ([]service.ExamDTO, error) {
@@ -37,53 +47,71 @@ func (f *fakeExamService) ListExams(ctx context.Context) ([]service.ExamDTO, err
 	return nil, nil
 }
 
-func (f *fakeExamService) StartSitting(ctx context.Context, userID, examID uuid.UUID, req service.StartAttemptRequest) (*service.ExamAttemptDTO, error) {
+func (f *fakeExamService) StartSitting(
+	ctx context.Context, userID, examID uuid.UUID, req service.StartAttemptRequest,
+) (*service.ExamAttemptDTO, error) {
 	if f.startSittingFn != nil {
 		return f.startSittingFn(ctx, userID, examID, req)
 	}
 	return nil, apperr.New(apperr.Internal, "NOT_IMPLEMENTED", "not implemented")
 }
 
-func (f *fakeExamService) GetExamAttempt(ctx context.Context, userID, attemptID uuid.UUID) (*service.ExamAttemptDTO, error) {
+func (f *fakeExamService) GetExamAttempt(
+	ctx context.Context, userID, attemptID uuid.UUID,
+) (*service.ExamAttemptDTO, error) {
 	if f.getAttemptFn != nil {
 		return f.getAttemptFn(ctx, userID, attemptID)
 	}
 	return nil, apperr.New(apperr.Internal, "NOT_IMPLEMENTED", "not implemented")
 }
 
-func (f *fakeExamService) AutosaveAnswers(ctx context.Context, userID, attemptID uuid.UUID, req service.SaveAnswersRequest) (*service.SaveAnswersResult, error) {
+func (f *fakeExamService) AutosaveAnswers(
+	ctx context.Context, userID, attemptID uuid.UUID, req service.SaveAnswersRequest,
+) (*service.SaveAnswersResult, error) {
 	if f.autosaveFn != nil {
 		return f.autosaveFn(ctx, userID, attemptID, req)
 	}
 	return nil, apperr.New(apperr.Internal, "NOT_IMPLEMENTED", "not implemented")
 }
 
-func (f *fakeExamService) CompleteSection(ctx context.Context, userID, attemptID uuid.UUID, sectionNum int) (*service.CompleteSectionResult, error) {
+func (f *fakeExamService) CompleteSection(
+	ctx context.Context, userID, attemptID uuid.UUID, sectionNum int,
+) (*service.CompleteSectionResult, error) {
 	if f.completeSectionFn != nil {
 		return f.completeSectionFn(ctx, userID, attemptID, sectionNum)
 	}
 	return nil, apperr.New(apperr.Internal, "NOT_IMPLEMENTED", "not implemented")
 }
 
-func (f *fakeExamService) SubmitExam(ctx context.Context, userID, attemptID uuid.UUID, submittedBy string) (*service.SubmitExamResult, error) {
+func (f *fakeExamService) SubmitExam(
+	ctx context.Context, userID, attemptID uuid.UUID, submittedBy string,
+) (*service.SubmitExamResult, error) {
 	if f.submitExamFn != nil {
 		return f.submitExamFn(ctx, userID, attemptID, submittedBy)
 	}
 	return nil, apperr.New(apperr.Internal, "NOT_IMPLEMENTED", "not implemented")
 }
 
-func (f *fakeExamService) GetScoreReport(ctx context.Context, userID, attemptID uuid.UUID) (*service.ScoreReportDTO, error) {
+func (f *fakeExamService) GetScoreReport(
+	ctx context.Context, userID, attemptID uuid.UUID,
+) (*service.ScoreReportDTO, error) {
 	if f.getReportFn != nil {
 		return f.getReportFn(ctx, userID, attemptID)
 	}
 	return nil, apperr.New(apperr.Internal, "NOT_IMPLEMENTED", "not implemented")
 }
 
-func (f *fakeExamService) ListUserAttempts(ctx context.Context, userID uuid.UUID, limit, offset int32) ([]service.ExamAttemptDTO, int64, error) {
+func (f *fakeExamService) ListUserAttempts(
+	ctx context.Context, userID uuid.UUID, limit, offset int32,
+) ([]service.ExamAttemptDTO, int64, error) {
 	if f.listAttemptsFn != nil {
 		return f.listAttemptsFn(ctx, userID, limit, offset)
 	}
 	return nil, 0, nil
+}
+
+func (f *fakeExamService) SittingsToday(_ context.Context, _ uuid.UUID) (service.SittingsToday, error) {
+	return service.SittingsToday{Used: 1, Limit: 5}, nil
 }
 
 func withActor(r *http.Request, userID uuid.UUID) *http.Request {
@@ -146,7 +174,9 @@ func TestStartSitting_Success(t *testing.T) {
 	attemptID := uuid.New()
 
 	svc := &fakeExamService{
-		startSittingFn: func(_ context.Context, uID, eID uuid.UUID, _ service.StartAttemptRequest) (*service.ExamAttemptDTO, error) {
+		startSittingFn: func(
+			_ context.Context, uID, eID uuid.UUID, _ service.StartAttemptRequest,
+		) (*service.ExamAttemptDTO, error) {
 			assert.Equal(t, userID, uID)
 			assert.Equal(t, examID, eID)
 			return &service.ExamAttemptDTO{
@@ -181,7 +211,9 @@ func TestAutosaveAnswers(t *testing.T) {
 	attemptID := uuid.New()
 
 	svc := &fakeExamService{
-		autosaveFn: func(_ context.Context, uID, aID uuid.UUID, req service.SaveAnswersRequest) (*service.SaveAnswersResult, error) {
+		autosaveFn: func(
+			_ context.Context, uID, aID uuid.UUID, req service.SaveAnswersRequest,
+		) (*service.SaveAnswersResult, error) {
 			assert.Equal(t, userID, uID)
 			assert.Equal(t, attemptID, aID)
 			assert.Equal(t, 1, req.SectionNumber)
@@ -194,7 +226,9 @@ func TestAutosaveAnswers(t *testing.T) {
 
 	router := setupExamRouter(svc)
 	body := `{"section_number":1,"answers":{"q1":"val"}}`
-	req := httptest.NewRequest(http.MethodPut, "/exam-attempts/"+attemptID.String()+"/answers", bytes.NewBufferString(body))
+	req := httptest.NewRequest(
+		http.MethodPut, "/exam-attempts/"+attemptID.String()+"/answers", bytes.NewBufferString(body),
+	)
 	req.Header.Set("Content-Type", "application/json")
 	req = withActor(req, userID)
 	rec := httptest.NewRecorder()
@@ -240,7 +274,7 @@ func TestSubmitExam(t *testing.T) {
 	attemptID := uuid.New()
 
 	svc := &fakeExamService{
-		submitExamFn: func(_ context.Context, uID, aID uuid.UUID, submittedBy string) (*service.SubmitExamResult, error) {
+		submitExamFn: func(_ context.Context, uID, aID uuid.UUID, _ string) (*service.SubmitExamResult, error) {
 			assert.Equal(t, userID, uID)
 			assert.Equal(t, attemptID, aID)
 			return &service.SubmitExamResult{

@@ -1,3 +1,4 @@
+// Package job holds the exam module's scheduled expiry job and its sweep.
 package job
 
 import (

@@ -26,6 +26,7 @@ import (
 // 1 essay prompt + 3 sentence transforms, 2 read-alouds + 2 responses.
 
 const (
+	// ExamPoolCourseSlug is the course that holds the exam pool's slot lessons.
 	ExamPoolCourseSlug = "pool-exam"
 
 	examPoolCourseTitle = "Exam Pool"
@@ -37,6 +38,18 @@ const (
 
 	subTypeReadAloud = "read_aloud"
 	subTypeRespond   = "respond"
+
+	defaultSpeakingSeconds = 45
+
+	skillListening = "listening"
+	skillReading   = "reading"
+	skillGrammar   = "grammar"
+	skillWriting   = "writing"
+	skillSpeaking  = "speaking"
+
+	varKind      = "Kind"
+	varCEFRLevel = "CEFRLevel"
+	keyAnswers   = "answers"
 )
 
 var examLevels = []string{"A2", "B1", "B2"}
@@ -51,12 +64,50 @@ type examSlotSpec struct {
 }
 
 var examSlots = []examSlotSpec{
-	{position: 1, kind: kindListeningComprehension, slotName: "listening-comprehension", title: "Listening Comprehension", skillFocus: "listening"},
-	{position: 2, kind: kindReadingComprehension, slotName: "reading-comprehension", title: "Reading Comprehension", skillFocus: "reading"},
-	{position: 3, kind: kindGrammarSentenceTransform, slotName: "grammar-sentence-transform", title: "Grammar Sentence Transform", skillFocus: "grammar"},
-	{position: 4, kind: kindWritingPrompt, slotName: "writing-prompt", title: "Writing Prompt", skillFocus: "writing"},
-	{position: 5, kind: kindSpeakingTask, taskType: subTypeReadAloud, slotName: "speaking-task-read-aloud", title: "Speaking Read Aloud", skillFocus: "speaking"},
-	{position: 6, kind: kindSpeakingTask, taskType: subTypeRespond, slotName: "speaking-task-respond", title: "Speaking Respond", skillFocus: "speaking"},
+	{
+		position:   1,
+		kind:       kindListeningComprehension,
+		slotName:   "listening-comprehension",
+		title:      "Listening Comprehension",
+		skillFocus: skillListening,
+	},
+	{
+		position:   2,
+		kind:       kindReadingComprehension,
+		slotName:   "reading-comprehension",
+		title:      "Reading Comprehension",
+		skillFocus: skillReading,
+	},
+	{
+		position:   3,
+		kind:       kindGrammarSentenceTransform,
+		slotName:   "grammar-sentence-transform",
+		title:      "Grammar Sentence Transform",
+		skillFocus: skillGrammar,
+	},
+	{
+		position:   4,
+		kind:       kindWritingPrompt,
+		slotName:   "writing-prompt",
+		title:      "Writing Prompt",
+		skillFocus: skillWriting,
+	},
+	{
+		position:   5,
+		kind:       kindSpeakingTask,
+		taskType:   subTypeReadAloud,
+		slotName:   "speaking-task-read-aloud",
+		title:      "Speaking Read Aloud",
+		skillFocus: skillSpeaking,
+	},
+	{
+		position:   6,
+		kind:       kindSpeakingTask,
+		taskType:   subTypeRespond,
+		slotName:   "speaking-task-respond",
+		title:      "Speaking Respond",
+		skillFocus: skillSpeaking,
+	},
 }
 
 type examSlotKey struct {
@@ -251,12 +302,13 @@ func (s *Service) tryGenerateAndVerifyExamItem(
 ) (json.RawMessage, error) {
 	var body json.RawMessage
 	task := ai.TaskPracticeGenerate
-	vars := map[string]any{"Kind": slot.kind, "CEFRLevel": level}
+	vars := map[string]any{varKind: slot.kind, varCEFRLevel: level}
 
-	if slot.kind == kindListeningComprehension {
+	switch slot.kind {
+	case kindListeningComprehension:
 		task = ai.TaskListeningGenerate
-		vars = map[string]any{"CEFRLevel": level}
-	} else if slot.kind == kindSpeakingTask {
+		vars = map[string]any{varCEFRLevel: level}
+	case kindSpeakingTask:
 		vars["TaskType"] = slot.taskType
 	}
 
@@ -315,21 +367,9 @@ type listeningCand struct {
 func (s *Service) checkAndPrepareListening(
 	ctx context.Context, level string, raw json.RawMessage, existing []lessoncontract.Activity,
 ) (json.RawMessage, error) {
-	var cand listeningCand
-	if err := json.Unmarshal(raw, &cand); err != nil {
-		return nil, fmt.Errorf("check 1 (parse) failed: %w", err)
-	}
-	if strings.TrimSpace(cand.Title) == "" {
-		return nil, errors.New("check 1 failed: listening title is empty")
-	}
-	if strings.TrimSpace(cand.Script) == "" {
-		return nil, errors.New("check 1 failed: listening script is empty")
-	}
-	if len(cand.Questions) < 4 {
-		return nil, fmt.Errorf("check 1 failed: listening must have at least 4 questions, got %d", len(cand.Questions))
-	}
-	if cand.Voice == "" {
-		cand.Voice = "en-US-Standard-C"
+	cand, err := parseListeningCandidate(raw)
+	if err != nil {
+		return nil, err
 	}
 
 	grader, ok := s.graders.Get(kindListeningComprehension)
@@ -342,30 +382,9 @@ func (s *Service) checkAndPrepareListening(
 		ID: versionID, Kind: kindListeningComprehension, Body: raw, CEFRLevel: level, Status: "published",
 	})
 
-	// Check 2: Own answer scores full marks
-	ownAnswers := make(map[string]string, len(cand.Questions))
-	for _, q := range cand.Questions {
-		if q.CorrectOptionID == "" {
-			return nil, fmt.Errorf("question %s missing correct_option_id", q.ID)
-		}
-		ownAnswers[q.ID] = q.CorrectOptionID
-	}
-	ownPayload, err := json.Marshal(map[string]any{"answers": ownAnswers})
-	if err != nil {
-		return nil, fmt.Errorf("build own answer payload: %w", err)
-	}
-	if err := gradesFullMarks(gradeCtx, grader, versionID, ownPayload); err != nil {
-		return nil, fmt.Errorf("check 2 (own answer scores full marks) failed: %w", err)
-	}
-
-	// Check 3: Structure
-	for _, q := range cand.Questions {
-		if err := checkOptions(q.Options, q.CorrectOptionID); err != nil {
-			return nil, fmt.Errorf("check 3 (structure) failed for question %s: %w", q.ID, err)
-		}
-		if q.Explanation == nil || strings.TrimSpace(q.Explanation.Vi()) == "" {
-			return nil, fmt.Errorf("check 3 (structure) failed: question %s missing explanation_vi", q.ID)
-		}
+	// Checks 2 and 3: the item's own answers score full marks, and its questions are well formed.
+	if err := checkListeningQuestions(gradeCtx, grader, versionID, cand); err != nil {
+		return nil, err
 	}
 
 	// Check 4: Blind solve
@@ -373,34 +392,16 @@ func (s *Service) checkAndPrepareListening(
 		return nil, fmt.Errorf("check 4 (blind solve) failed: %w", err)
 	}
 
-	// Check 5: Deduplication
-	normScript := normaliseText(cand.Script)
-	for _, act := range existing {
-		var old listeningCand
-		if err := json.Unmarshal(act.Config, &old); err == nil && old.Script != "" {
-			if normaliseText(old.Script) == normScript {
-				return nil, errors.New("check 5 (deduplication) failed: script matches existing item")
-			}
-		}
+	// Checks 5 and 6: not a duplicate, and nothing answer-bearing survives redaction.
+	if err := checkListeningNovelAndRedacted(raw, cand, existing); err != nil {
+		return nil, err
 	}
 
-	// Check 6: Redaction verification
-	redacted := contentcontract.RedactForLearner(raw)
-	if err := verifyRedaction(redacted); err != nil {
-		return nil, fmt.Errorf("check 6 (redaction) failed: %w", err)
-	}
-	var redactedCheck map[string]any
-	if err := json.Unmarshal(redacted, &redactedCheck); err == nil {
-		if _, leaked := redactedCheck["script"]; leaked {
-			return nil, errors.New("check 6 failed: script leaked in redacted body")
-		}
-	}
-
-	// Synthesise audio if synthesiser is configured
+	// Audio is rendered offline (§4); a clip already in the cache is attached now.
 	if s.synthesiser != nil {
 		audioKey, err := s.synthesiser.Synthesise(ctx, cand.Script, cand.Voice)
 		if err != nil {
-			slog.WarnContext(ctx, "could not pre-render audio for listening item; audio_object_key left empty", "error", err)
+			slog.WarnContext(ctx, "listening item published without audio; cmd/tts renders it", "error", err)
 		} else {
 			cand.AudioObjectKey = audioKey
 		}
@@ -411,6 +412,83 @@ func (s *Service) checkAndPrepareListening(
 		return nil, fmt.Errorf("serialize prepared listening item: %w", err)
 	}
 	return preparedRaw, nil
+}
+
+// parseListeningCandidate is check 1: the reply parses and has a title, a script and at least four questions.
+func parseListeningCandidate(raw json.RawMessage) (listeningCand, error) {
+	var cand listeningCand
+	if err := json.Unmarshal(raw, &cand); err != nil {
+		return cand, fmt.Errorf("check 1 (parse) failed: %w", err)
+	}
+	if strings.TrimSpace(cand.Title) == "" {
+		return cand, errors.New("check 1 failed: listening title is empty")
+	}
+	if strings.TrimSpace(cand.Script) == "" {
+		return cand, errors.New("check 1 failed: listening script is empty")
+	}
+	if len(cand.Questions) < 4 {
+		return cand, fmt.Errorf("check 1 failed: listening must have at least 4 questions, got %d", len(cand.Questions))
+	}
+	if cand.Voice == "" {
+		cand.Voice = "en-US-Standard-C"
+	}
+	return cand, nil
+}
+
+// checkListeningQuestions runs checks 2 and 3.
+func checkListeningQuestions(
+	ctx context.Context, grader learningcontract.ExerciseGrader, versionID uuid.UUID, cand listeningCand,
+) error {
+	ownAnswers := make(map[string]string, len(cand.Questions))
+	for _, q := range cand.Questions {
+		if q.CorrectOptionID == "" {
+			return fmt.Errorf("question %s missing correct_option_id", q.ID)
+		}
+		ownAnswers[q.ID] = q.CorrectOptionID
+	}
+	ownPayload, err := json.Marshal(map[string]any{keyAnswers: ownAnswers})
+	if err != nil {
+		return fmt.Errorf("build own answer payload: %w", err)
+	}
+	if err := gradesFullMarks(ctx, grader, versionID, ownPayload); err != nil {
+		return fmt.Errorf("check 2 (own answer scores full marks) failed: %w", err)
+	}
+
+	for _, q := range cand.Questions {
+		if err := checkOptions(q.Options, q.CorrectOptionID); err != nil {
+			return fmt.Errorf("check 3 (structure) failed for question %s: %w", q.ID, err)
+		}
+		if q.Explanation == nil || strings.TrimSpace(q.Explanation.Vi()) == "" {
+			return fmt.Errorf("check 3 (structure) failed: question %s missing explanation_vi", q.ID)
+		}
+	}
+	return nil
+}
+
+// checkListeningNovelAndRedacted runs checks 5 and 6.
+func checkListeningNovelAndRedacted(raw json.RawMessage, cand listeningCand, existing []lessoncontract.Activity) error {
+	normScript := normaliseText(cand.Script)
+	for _, act := range existing {
+		var old listeningCand
+		if err := json.Unmarshal(act.Config, &old); err != nil || old.Script == "" {
+			continue
+		}
+		if normaliseText(old.Script) == normScript {
+			return errors.New("check 5 (deduplication) failed: script matches existing item")
+		}
+	}
+
+	redacted := contentcontract.RedactForLearner(raw)
+	if err := verifyRedaction(redacted); err != nil {
+		return fmt.Errorf("check 6 (redaction) failed: %w", err)
+	}
+	var redactedCheck map[string]any
+	if err := json.Unmarshal(redacted, &redactedCheck); err == nil {
+		if _, leaked := redactedCheck["script"]; leaked {
+			return errors.New("check 6 failed: script leaked in redacted body")
+		}
+	}
+	return nil
 }
 
 func (s *Service) blindSolveListening(
@@ -528,50 +606,73 @@ func (s *Service) checkSpeakingTask(
 		return nil, fmt.Errorf("check 1 (parse) failed: %w", err)
 	}
 	if cand.SpeakingTimeSeconds <= 0 {
-		cand.SpeakingTimeSeconds = 45
+		cand.SpeakingTimeSeconds = defaultSpeakingSeconds
 	}
 	if cand.TaskType == "" {
 		cand.TaskType = taskType
 	}
-
-	// Check 3: Structure
-	if taskType == subTypeReadAloud {
-		if strings.TrimSpace(cand.ReferenceText) == "" {
-			return nil, errors.New("check 1 failed: reference_text is empty for read_aloud")
-		}
-		words := len(strings.Fields(cand.ReferenceText))
-		if words < 15 || words > 100 {
-			return nil, fmt.Errorf("check 3 failed: reference_text word count (%d) out of range 15-100", words)
-		}
-		normRef := normaliseText(cand.ReferenceText)
-		for _, act := range existing {
-			var old speakingTaskCand
-			if err := json.Unmarshal(act.Config, &old); err == nil && old.ReferenceText != "" {
-				if normaliseText(old.ReferenceText) == normRef {
-					return nil, errors.New("check 5 (deduplication) failed: reference_text matches existing item")
-				}
-			}
-		}
-	} else {
-		if strings.TrimSpace(cand.Prompt) == "" {
-			return nil, errors.New("check 1 failed: prompt is empty for respond task")
-		}
-		words := len(strings.Fields(cand.Prompt))
-		if words < 8 {
-			return nil, fmt.Errorf("check 3 failed: respond prompt too short (%d words)", words)
-		}
-		normPrompt := normaliseText(cand.Prompt)
-		for _, act := range existing {
-			var old speakingTaskCand
-			if err := json.Unmarshal(act.Config, &old); err == nil && old.Prompt != "" {
-				if normaliseText(old.Prompt) == normPrompt {
-					return nil, errors.New("check 5 (deduplication) failed: prompt matches existing item")
-				}
-			}
-		}
+	if cand.TaskType != taskType {
+		return nil, fmt.Errorf("check 1 failed: task_type %q in the %s slot", cand.TaskType, taskType)
 	}
 
-	return raw, nil
+	// Checks 3 and 5: structure and duplicates, on the text that defines the task.
+	checkTask := checkRespondTask
+	if taskType == subTypeReadAloud {
+		checkTask = checkReadAloudTask
+	}
+	if err := checkTask(cand, existing); err != nil {
+		return nil, err
+	}
+
+	// The body published is the checked one, defaults included: the runner reads
+	// task_type and speaking_time_seconds, and the model may have omitted both.
+	prepared, err := json.Marshal(cand)
+	if err != nil {
+		return nil, fmt.Errorf("serialize prepared speaking task: %w", err)
+	}
+	return prepared, nil
+}
+
+func checkReadAloudTask(cand speakingTaskCand, existing []lessoncontract.Activity) error {
+	if strings.TrimSpace(cand.ReferenceText) == "" {
+		return errors.New("check 1 failed: reference_text is empty for read_aloud")
+	}
+	words := len(strings.Fields(cand.ReferenceText))
+	if words < 15 || words > 100 {
+		return fmt.Errorf("check 3 failed: reference_text word count (%d) out of range 15-100", words)
+	}
+	if speakingDuplicate(existing, cand.ReferenceText, func(old speakingTaskCand) string { return old.ReferenceText }) {
+		return errors.New("check 5 (deduplication) failed: reference_text matches existing item")
+	}
+	return nil
+}
+
+func checkRespondTask(cand speakingTaskCand, existing []lessoncontract.Activity) error {
+	if strings.TrimSpace(cand.Prompt) == "" {
+		return errors.New("check 1 failed: prompt is empty for respond task")
+	}
+	if words := len(strings.Fields(cand.Prompt)); words < 8 {
+		return fmt.Errorf("check 3 failed: respond prompt too short (%d words)", words)
+	}
+	if speakingDuplicate(existing, cand.Prompt, func(old speakingTaskCand) string { return old.Prompt }) {
+		return errors.New("check 5 (deduplication) failed: prompt matches existing item")
+	}
+	return nil
+}
+
+// speakingDuplicate reports whether an existing task already has this text.
+func speakingDuplicate(existing []lessoncontract.Activity, text string, field func(speakingTaskCand) string) bool {
+	norm := normaliseText(text)
+	for _, act := range existing {
+		var old speakingTaskCand
+		if err := json.Unmarshal(act.Config, &old); err != nil {
+			continue
+		}
+		if value := field(old); value != "" && normaliseText(value) == norm {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Service) publishExamCandidate(
@@ -618,108 +719,75 @@ func (s *Service) DrawExamSitting(
 		return nil, fmt.Errorf("load exam pool layout: %w", err)
 	}
 
-	// Section 1: Listening (3 clips with pre-rendered audio)
-	listeningActs, err := s.examSlotActivities(ctx, layout, normLevel, "listening-comprehension")
-	if err != nil {
-		return nil, err
-	}
-	eligibleListening := filterListeningWithAudio(listeningActs)
-	if len(eligibleListening) < 3 {
-		return nil, apperr.New(apperr.NotFound, "EXAM_POOL_EMPTY", "exam pool has insufficient listening items with audio")
-	}
-	drawnListening, err := s.drawItemsFromPool(ctx, userID, eligibleListening, 3)
-	if err != nil {
-		return nil, err
-	}
-
-	// Section 2: Reading (2 passages)
-	readingActs, err := s.examSlotActivities(ctx, layout, normLevel, "reading-comprehension")
-	if err != nil {
-		return nil, err
-	}
-	if len(readingActs) < 2 {
-		return nil, apperr.New(apperr.NotFound, "EXAM_POOL_EMPTY", "exam pool has insufficient reading items")
-	}
-	drawnReading, err := s.drawItemsFromPool(ctx, userID, readingActs, 2)
-	if err != nil {
-		return nil, err
+	// Every slot is checked before anything is drawn: a sitting is never short,
+	// and a pool that cannot fill one is reported as empty.
+	pools := make(map[string][]lessoncontract.Activity)
+	for _, section := range examSittingPlan {
+		for _, draw := range section.draws {
+			activities, err := s.examSlotActivities(ctx, layout, normLevel, draw.slot)
+			if err != nil {
+				return nil, err
+			}
+			if draw.slot == slotListening {
+				// A listening item without audio is never drawn.
+				activities = s.listeningWithAudio(ctx, activities)
+			}
+			if len(activities) < draw.count {
+				return nil, apperr.New(apperr.NotFound, "EXAM_POOL_EMPTY", "exam pool has insufficient "+draw.what)
+			}
+			pools[draw.slot] = activities
+		}
 	}
 
-	// Section 3: Writing (1 essay prompt + 3 sentence transforms)
-	writingPromptActs, err := s.examSlotActivities(ctx, layout, normLevel, "writing-prompt")
-	if err != nil {
-		return nil, err
-	}
-	if len(writingPromptActs) < 1 {
-		return nil, apperr.New(apperr.NotFound, "EXAM_POOL_EMPTY", "exam pool has insufficient writing prompts")
-	}
-	transformActs, err := s.examSlotActivities(ctx, layout, normLevel, "grammar-sentence-transform")
-	if err != nil {
-		return nil, err
-	}
-	if len(transformActs) < 3 {
-		return nil, apperr.New(apperr.NotFound, "EXAM_POOL_EMPTY", "exam pool has insufficient sentence transform items")
-	}
-
-	drawnEssay, err := s.drawItemsFromPool(ctx, userID, writingPromptActs, 1)
-	if err != nil {
-		return nil, err
-	}
-	drawnTransforms, err := s.drawItemsFromPool(ctx, userID, transformActs, 3)
-	if err != nil {
-		return nil, err
-	}
-	drawnWriting := append(drawnEssay, drawnTransforms...)
-
-	// Section 4: Speaking (2 read-aloud + 2 responses)
-	readAloudActs, err := s.examSlotActivities(ctx, layout, normLevel, "speaking-task-read-aloud")
-	if err != nil {
-		return nil, err
-	}
-	if len(readAloudActs) < 2 {
-		return nil, apperr.New(apperr.NotFound, "EXAM_POOL_EMPTY", "exam pool has insufficient speaking read-aloud items")
-	}
-	respondActs, err := s.examSlotActivities(ctx, layout, normLevel, "speaking-task-respond")
-	if err != nil {
-		return nil, err
-	}
-	if len(respondActs) < 2 {
-		return nil, apperr.New(apperr.NotFound, "EXAM_POOL_EMPTY", "exam pool has insufficient speaking respond items")
-	}
-
-	drawnReadAloud, err := s.drawItemsFromPool(ctx, userID, readAloudActs, 2)
-	if err != nil {
-		return nil, err
-	}
-	drawnRespond, err := s.drawItemsFromPool(ctx, userID, respondActs, 2)
-	if err != nil {
-		return nil, err
-	}
-	drawnSpeaking := append(drawnReadAloud, drawnRespond...)
-
-	sections := []learningcontract.ExamSectionActivities{
-		{
-			SectionPosition: 1,
-			Skill:           "listening",
-			Activities:      s.toExamActivities(drawnListening),
-		},
-		{
-			SectionPosition: 2,
-			Skill:           "reading",
-			Activities:      s.toExamActivities(drawnReading),
-		},
-		{
-			SectionPosition: 3,
-			Skill:           "writing",
-			Activities:      s.toExamActivities(drawnWriting),
-		},
-		{
-			SectionPosition: 4,
-			Skill:           "speaking",
-			Activities:      s.toExamActivities(drawnSpeaking),
-		},
+	sections := make([]learningcontract.ExamSectionActivities, 0, len(examSittingPlan))
+	for _, section := range examSittingPlan {
+		var drawn []lessoncontract.Activity
+		for _, draw := range section.draws {
+			picked, err := s.drawItemsFromPool(ctx, userID, pools[draw.slot], draw.count)
+			if err != nil {
+				return nil, err
+			}
+			drawn = append(drawn, picked...)
+		}
+		sections = append(sections, learningcontract.ExamSectionActivities{
+			SectionPosition: section.position,
+			Skill:           section.skill,
+			Activities:      s.toExamActivities(drawn),
+		})
 	}
 	return sections, nil
+}
+
+const slotListening = "listening-comprehension"
+
+type examDraw struct {
+	slot  string
+	count int
+	what  string
+}
+
+type examSectionPlan struct {
+	position int
+	skill    string
+	draws    []examDraw
+}
+
+// examSittingPlan is the composition of every sitting, in both modes (§3.7).
+var examSittingPlan = []examSectionPlan{
+	{position: 1, skill: skillListening, draws: []examDraw{
+		{slot: slotListening, count: 3, what: "listening items with audio"},
+	}},
+	{position: 2, skill: skillReading, draws: []examDraw{
+		{slot: "reading-comprehension", count: 2, what: "reading items"},
+	}},
+	{position: 3, skill: skillWriting, draws: []examDraw{
+		{slot: "writing-prompt", count: 1, what: "writing prompts"},
+		{slot: "grammar-sentence-transform", count: 3, what: "sentence transform items"},
+	}},
+	{position: 4, skill: skillSpeaking, draws: []examDraw{
+		{slot: "speaking-task-read-aloud", count: 2, what: "speaking read-aloud items"},
+		{slot: "speaking-task-respond", count: 2, what: "speaking respond items"},
+	}},
 }
 
 func (s *Service) toExamActivities(acts []lessoncontract.Activity) []learningcontract.ExamActivity {
@@ -737,14 +805,36 @@ func (s *Service) toExamActivities(acts []lessoncontract.Activity) []learningcon
 	return out
 }
 
-func filterListeningWithAudio(acts []lessoncontract.Activity) []lessoncontract.Activity {
+// listeningWithAudio keeps the listening items whose clip exists.
+//
+// A clip exists when the body names its object, or when the TTS cache holds a
+// render of its script. The second is the usual case: audio is rendered offline
+// by cmd/tts after the item is published, and a pool lesson is append-only, so
+// the body never learns the key. Reading only the body left every item the
+// top-up wrote undrawable, and no sitting could ever start.
+func (s *Service) listeningWithAudio(ctx context.Context, acts []lessoncontract.Activity) []lessoncontract.Activity {
 	eligible := make([]lessoncontract.Activity, 0, len(acts))
 	for _, act := range acts {
 		if len(act.Config) == 0 {
 			continue
 		}
 		var cand listeningCand
-		if err := json.Unmarshal(act.Config, &cand); err == nil && strings.TrimSpace(cand.AudioObjectKey) != "" {
+		if err := json.Unmarshal(act.Config, &cand); err != nil {
+			continue
+		}
+		if strings.TrimSpace(cand.AudioObjectKey) != "" {
+			eligible = append(eligible, act)
+			continue
+		}
+		if s.audio == nil || strings.TrimSpace(cand.Script) == "" {
+			continue
+		}
+		_, found, err := s.audio.AudioKey(ctx, cand.Script, cand.Voice)
+		if err != nil {
+			slog.WarnContext(ctx, "could not look up listening audio", "activity_id", act.ID, "error", err)
+			continue
+		}
+		if found {
 			eligible = append(eligible, act)
 		}
 	}

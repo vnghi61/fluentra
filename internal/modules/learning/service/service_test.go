@@ -138,7 +138,8 @@ func (f *fakeLearningRepo) GetAttemptByUserActivityIdempotencyKey(
 
 	keyStr := idempotencyKey.String()
 	for _, att := range f.attempts {
-		if att.UserID == userID && att.ActivityID == activityID && att.IdempotencyKey != nil && *att.IdempotencyKey == keyStr {
+		if att.UserID == userID && att.ActivityID == activityID &&
+			att.IdempotencyKey != nil && *att.IdempotencyKey == keyStr {
 			return cloneAttempt(att), nil
 		}
 	}

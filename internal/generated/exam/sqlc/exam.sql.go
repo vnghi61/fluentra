@@ -473,6 +473,49 @@ func (q *Queries) ListIntegrityEvents(ctx context.Context, attemptID uuid.UUID) 
 	return items, nil
 }
 
+const listPendingScoreReports = `-- name: ListPendingScoreReports :many
+SELECT id, attempt_id, user_id, exam_id, overall_score, overall_band, status, per_section, feedback, integrity_signals, created_at, updated_at
+FROM assess.score_reports
+WHERE status = 'pending'
+ORDER BY created_at ASC
+LIMIT 50
+`
+
+// ListPendingScoreReports feeds the sweep that settles reports whose sittings
+// held asynchronously graded items.
+func (q *Queries) ListPendingScoreReports(ctx context.Context) ([]AssessScoreReport, error) {
+	rows, err := q.db.Query(ctx, listPendingScoreReports)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AssessScoreReport
+	for rows.Next() {
+		var i AssessScoreReport
+		if err := rows.Scan(
+			&i.ID,
+			&i.AttemptID,
+			&i.UserID,
+			&i.ExamID,
+			&i.OverallScore,
+			&i.OverallBand,
+			&i.Status,
+			&i.PerSection,
+			&i.Feedback,
+			&i.IntegritySignals,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUserExamAttempts = `-- name: ListUserExamAttempts :many
 SELECT id, user_id, exam_id, mode, chosen_duration_minutes, started_at, deadline_at, current_section, status, section_activities, draft_answers, submitted_at, submitted_by, created_at, updated_at
 FROM assess.exam_attempts

@@ -16,7 +16,9 @@ import (
 
 // ListeningService defines the service operations required by the HTTP handler.
 type ListeningService interface {
-	RecordPlay(ctx context.Context, userID, versionID uuid.UUID, contextType string, contextID uuid.UUID) (*domain.PlayResult, error)
+	RecordPlay(
+		ctx context.Context, userID, versionID uuid.UUID, contextType string, contextID uuid.UUID,
+	) (*domain.PlayResult, error)
 	GetTranscript(ctx context.Context, userID, versionID, attemptID uuid.UUID) (string, error)
 }
 
@@ -93,7 +95,9 @@ func (h *Handler) getTranscript(w http.ResponseWriter, r *http.Request) {
 
 	attemptIDStr := r.URL.Query().Get("attempt_id")
 	if attemptIDStr == "" {
-		httpx.WriteProblem(w, r, apperr.New(apperr.BadRequest, "ATTEMPT_ID_REQUIRED", "attempt_id query parameter is required"))
+		httpx.WriteProblem(
+			w, r, apperr.New(apperr.BadRequest, "ATTEMPT_ID_REQUIRED", "attempt_id query parameter is required"),
+		)
 		return
 	}
 	attemptID, err := uuid.Parse(attemptIDStr)
