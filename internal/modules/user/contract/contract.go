@@ -189,16 +189,42 @@ type AdminManager interface {
 // because a consumer in another module matches on the wire value, and a typed
 // constant it cannot import would not help it.
 const (
-	EventProfileUpdated     = "user.profile_updated"
-	EventPreferencesUpdated = "user.preferences_updated"
-	EventDeletionRequested  = "user.deletion_requested"
-	EventDeleted            = "user.deleted"
-	EventSuspended          = "user.suspended"
-	EventReinstated         = "user.reinstated"
+	EventProfileUpdated         = "user.profile_updated"
+	EventLearningProfileUpdated = "user.learning_profile_updated"
+	EventPreferencesUpdated     = "user.preferences_updated"
+	EventDeletionRequested      = "user.deletion_requested"
+	EventDeleted                = "user.deleted"
+	EventSuspended              = "user.suspended"
+	EventReinstated             = "user.reinstated"
 )
 
 // Aggregate is the outbox aggregate name every event above is written under.
 const Aggregate = "user"
+
+// LearningProfileDTO is what other modules read when sizing a learner's study plan or path.
+type LearningProfileDTO struct {
+	UserID            uuid.UUID `json:"user_id"`
+	DeclaredLevel     *string   `json:"declared_level,omitempty"`
+	TargetLevel       *string   `json:"target_level,omitempty"`
+	TargetExam        string    `json:"target_exam"`
+	WeeklyMinutesGoal *int      `json:"weekly_minutes_goal,omitempty"`
+	Motivations       []string  `json:"motivations"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
+}
+
+// LearningProfileReader reads learning goals and profiles without returning an error when not found.
+type LearningProfileReader interface {
+	GetLearningProfile(ctx context.Context, userID uuid.UUID) (LearningProfileDTO, bool, error)
+}
+
+// LearningProfileUpdated is published when a learner replaces their learning profile.
+type LearningProfileUpdated struct {
+	UserID        uuid.UUID `json:"user_id"`
+	ChangedFields []string  `json:"changed_fields"`
+	ActorID       uuid.UUID `json:"actor_id"`
+	OccurredAt    time.Time `json:"occurred_at"`
+}
 
 // ProfileUpdated is published when a learner changes their own profile.
 //

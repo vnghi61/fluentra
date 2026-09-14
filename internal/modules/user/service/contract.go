@@ -26,6 +26,44 @@ var (
 	_ contract.Exportable = (*Service)(nil)
 )
 
+// LearningProfileReader returns a contract.LearningProfileReader backed by this service.
+func (s *Service) LearningProfileReader() contract.LearningProfileReader {
+	return learningProfileReaderAdapter{s: s}
+}
+
+type learningProfileReaderAdapter struct {
+	s *Service
+}
+
+var _ contract.LearningProfileReader = (*learningProfileReaderAdapter)(nil)
+
+// GetLearningProfile reads a learner's learning profile DTO. If none exists, found is false.
+func (a learningProfileReaderAdapter) GetLearningProfile(
+	ctx context.Context, userID uuid.UUID,
+) (contract.LearningProfileDTO, bool, error) {
+	profile, err := a.s.repo.GetLearningProfile(ctx, userID)
+	if err != nil {
+		if errors.Is(err, domain.ErrLearningProfileNotFound) {
+			return contract.LearningProfileDTO{}, false, nil
+		}
+		return contract.LearningProfileDTO{}, false, err
+	}
+	return toContractLearningProfile(profile), true, nil
+}
+
+func toContractLearningProfile(profile domain.LearningProfile) contract.LearningProfileDTO {
+	return contract.LearningProfileDTO{
+		UserID:            profile.UserID,
+		DeclaredLevel:     profile.DeclaredLevel,
+		TargetLevel:       profile.TargetLevel,
+		TargetExam:        string(profile.TargetExam),
+		WeeklyMinutesGoal: profile.WeeklyMinutesGoal,
+		Motivations:       profile.Motivations,
+		CreatedAt:         profile.CreatedAt,
+		UpdatedAt:         profile.UpdatedAt,
+	}
+}
+
 // GetByID returns one rendering summary.
 func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (contract.Summary, error) {
 	summary, err := s.repo.GetSummary(ctx, id)
@@ -231,6 +269,17 @@ func (s *Service) ExportUserData(ctx context.Context, userIDStr string) (map[str
 			"notification_channels": channels,
 			"quiet_hours":           quietHours,
 			"ai_processing_opt_out": preferences.AIProcessingOptOut,
+		}
+	}
+
+	lp, err := s.repo.GetLearningProfile(ctx, userID)
+	if err == nil {
+		data["learning_profile"] = map[string]interface{}{
+			"declared_level":      lp.DeclaredLevel,
+			"target_level":        lp.TargetLevel,
+			"target_exam":         string(lp.TargetExam),
+			"weekly_minutes_goal": lp.WeeklyMinutesGoal,
+			"motivations":         lp.Motivations,
 		}
 	}
 

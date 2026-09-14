@@ -33,12 +33,14 @@ const testRequestID = "01KZGA1FXY6VAHQABK3EBKDN57"
 // seenActor: every assertion about "you cannot read somebody else" comes down
 // to which id the handler passed down.
 type fakeAccounts struct {
-	seenActor       uuid.UUID
-	seenChange      domain.ProfileChange
-	seenWanted      domain.Preferences
-	seenContentType string
-	seenObjectKey   string
-	err             error
+	seenActor           uuid.UUID
+	seenChange          domain.ProfileChange
+	seenWanted          domain.Preferences
+	seenLearningProfile domain.LearningProfile
+	learningProfile     *domain.LearningProfile
+	seenContentType     string
+	seenObjectKey       string
+	err                 error
 }
 
 func (f *fakeAccounts) GetAccount(_ context.Context, actorID uuid.UUID) (service.Account, error) {
@@ -78,6 +80,47 @@ func (f *fakeAccounts) ReplacePreferences(
 	}
 	wanted.UpdatedAt = fixedAt
 	return wanted, nil
+}
+
+func (f *fakeAccounts) GetLearningProfile(_ context.Context, actorID uuid.UUID) (domain.LearningProfile, error) {
+	f.seenActor = actorID
+	if f.err != nil {
+		return domain.LearningProfile{}, f.err
+	}
+	if f.learningProfile != nil {
+		return *f.learningProfile, nil
+	}
+	return testLearningProfile(actorID), nil
+}
+
+func (f *fakeAccounts) ReplaceLearningProfile(
+	_ context.Context, actorID uuid.UUID, wanted domain.LearningProfile,
+) (domain.LearningProfile, error) {
+	f.seenActor = actorID
+	f.seenLearningProfile = wanted
+	if f.err != nil {
+		return domain.LearningProfile{}, f.err
+	}
+	wanted.UserID = actorID
+	wanted.UpdatedAt = fixedAt
+	return wanted, nil
+}
+
+func testLearningProfile(actorID uuid.UUID) domain.LearningProfile {
+	decl := "B1"
+	tgt := "B2"
+	goal := 120
+	return domain.LearningProfile{
+		ID:                uuid.MustParse("0199a1c2-3d4e-7f80-9abc-def777777777"),
+		UserID:            actorID,
+		DeclaredLevel:     &decl,
+		TargetLevel:       &tgt,
+		TargetExam:        domain.TargetExamIELTS,
+		WeeklyMinutesGoal: &goal,
+		Motivations:       []string{"career", "travel"},
+		CreatedAt:         fixedAt,
+		UpdatedAt:         fixedAt,
+	}
 }
 
 func (f *fakeAccounts) RequestAvatarUploadIntent(

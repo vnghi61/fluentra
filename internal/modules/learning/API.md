@@ -37,6 +37,13 @@ Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR
 | `GET` | `/api/v1/practice/daily` | `self` | Fetch today's practice set |
 | `POST` | `/api/v1/me/sessions` | `self` | Start a study session |
 | `POST` | `/api/v1/me/sessions/{id}/complete` | `self` | End a session |
+| `GET` | `/api/v1/me/placement` | `self` | Current placement status, active session, retake availability |
+| `POST` | `/api/v1/me/placement` | `self` | Start an adaptive placement test session |
+| `GET` | `/api/v1/me/placement/sessions/{id}` | `self` | Read current placement test question and remaining time |
+| `POST` | `/api/v1/me/placement/sessions/{id}/answers` | `self` | Submit an answer for the current placement question |
+| `POST` | `/api/v1/me/placement/sessions/{id}/productive` | `self` | Submit or skip the productive writing/speaking placement part |
+| `GET` | `/api/v1/me/path` | `self` | Recommended courses and starting lessons based on placement |
+| `GET` | `/api/v1/me/weekly-plan` | `self` | Fetch or build the learner's weekly study plan |
 <!-- END GENERATED: api-summary -->
 
 ## Endpoint detail

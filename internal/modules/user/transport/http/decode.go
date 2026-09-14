@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/fluentra/fluentra/internal/modules/user/domain"
 	"github.com/fluentra/fluentra/internal/shared/apperr"
 )
 
@@ -149,3 +150,61 @@ func requireFields(source body, fields []string) error {
 func validationFailed() *apperr.Error {
 	return apperr.New(apperr.Validation, "VALIDATION_FAILED", "One or more request fields are invalid.")
 }
+
+var learningProfileFields = []string{
+	"declared_level",
+	"target_level",
+	"target_exam",
+	"weekly_minutes_goal",
+	"motivations",
+}
+
+func decodeLearningProfile(request *http.Request) (domain.LearningProfile, error) {
+	fields, err := decodeBody(request, learningProfileFields)
+	if err != nil {
+		return domain.LearningProfile{}, err
+	}
+	if err := requireFields(fields, []string{"target_exam", "motivations"}); err != nil {
+		return domain.LearningProfile{}, err
+	}
+	if err := rejectNulls(fields, []string{"target_exam", "motivations"}); err != nil {
+		return domain.LearningProfile{}, err
+	}
+
+	var profile domain.LearningProfile
+	if fields.present("declared_level") && !fields.isNull("declared_level") {
+		var dl string
+		if err := readInto(fields, "declared_level", &dl); err != nil {
+			return domain.LearningProfile{}, err
+		}
+		profile.DeclaredLevel = &dl
+	}
+	if fields.present("target_level") && !fields.isNull("target_level") {
+		var tl string
+		if err := readInto(fields, "target_level", &tl); err != nil {
+			return domain.LearningProfile{}, err
+		}
+		profile.TargetLevel = &tl
+	}
+	if fields.present("weekly_minutes_goal") && !fields.isNull("weekly_minutes_goal") {
+		var goal int
+		if err := readInto(fields, "weekly_minutes_goal", &goal); err != nil {
+			return domain.LearningProfile{}, err
+		}
+		profile.WeeklyMinutesGoal = &goal
+	}
+	var exam string
+	if err := readInto(fields, "target_exam", &exam); err != nil {
+		return domain.LearningProfile{}, err
+	}
+	profile.TargetExam = domain.TargetExam(exam)
+
+	var motivations []string
+	if err := readInto(fields, "motivations", &motivations); err != nil {
+		return domain.LearningProfile{}, err
+	}
+	profile.Motivations = motivations
+
+	return profile, nil
+}
+

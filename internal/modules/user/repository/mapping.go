@@ -160,3 +160,33 @@ func toDomainDeletion(row sqlcuser.CoreUserDeletion) domain.DeletionRequest {
 		UpdatedAt:    row.UpdatedAt,
 	}
 }
+
+func toDomainLearningProfile(row sqlcuser.CoreLearningProfile) domain.LearningProfile {
+	var declaredLevel *string
+	if row.DeclaredLevel != nil {
+		dl := strings.ToUpper(string(*row.DeclaredLevel))
+		declaredLevel = &dl
+	}
+	var targetLevel *string
+	if row.TargetLevel != nil {
+		tl := strings.ToUpper(string(*row.TargetLevel))
+		targetLevel = &tl
+	}
+	var weeklyGoal *int
+	if row.WeeklyMinutesGoal != nil {
+		g := int(*row.WeeklyMinutesGoal)
+		weeklyGoal = &g
+	}
+	return domain.LearningProfile{
+		ID:                row.ID,
+		UserID:            row.UserID,
+		DeclaredLevel:     declaredLevel,
+		TargetLevel:       targetLevel,
+		TargetExam:        domain.TargetExam(row.TargetExam),
+		WeeklyMinutesGoal: weeklyGoal,
+		Motivations:       row.Motivations,
+		CreatedAt:         row.CreatedAt,
+		UpdatedAt:         row.UpdatedAt,
+	}
+}
+

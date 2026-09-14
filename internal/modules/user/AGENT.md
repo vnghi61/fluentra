@@ -77,7 +77,9 @@ Other modules may import **only** `internal/modules/user/contract`.
 |---|---|---|
 | interface | `user.Reader` | `GetByID`, `GetManyByIDs`, `Exists` — batched to avoid N+1 across modules |
 | interface | `user.Creator` | `CreateUser` — used only by `auth` during registration |
+| interface | `user.LearningProfileReader` | `GetLearningProfile` — used by `learning` to size weekly plans and paths |
 | struct | `user.Summary` | `{ID, DisplayName, AvatarURL, Locale, Timezone, Status}` — the shape other modules render |
+| struct | `user.LearningProfileDTO` | `{UserID, DeclaredLevel, TargetLevel, TargetExam, WeeklyMinutesGoal, Motivations}` |
 | event | `user.DeletionRequested` | Every module holding personal data reacts to this |
 
 ### Events
@@ -85,6 +87,7 @@ Other modules may import **only** `internal/modules/user/contract`.
 | Event | Direction | Payload summary |
 |---|---|---|
 | `user.profile_updated` | publishes | `{user_id, changed_fields}` |
+| `user.learning_profile_updated` | publishes | `{user_id, changed_fields}` |
 | `user.deletion_requested` | publishes | `{user_id, execute_after}` |
 | `user.deleted` | publishes | `{user_id}` — modules must purge or anonymise their data |
 | `user.suspended` | publishes | `{user_id, reason, actor_id}` |

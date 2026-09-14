@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -230,6 +231,76 @@ func (r *Repository) ReplacePreferences(ctx context.Context, preferences domain.
 		return domain.Preferences{}, fmt.Errorf("replace user preferences: %w", err)
 	}
 	return toDomainPreferences(row)
+}
+
+// GetLearningProfile reads the learner's self-declared profile.
+func (r *Repository) GetLearningProfile(ctx context.Context, userID uuid.UUID) (domain.LearningProfile, error) {
+	row, err := r.queries.GetLearningProfileByUserID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.LearningProfile{}, domain.ErrLearningProfileNotFound
+		}
+		return domain.LearningProfile{}, fmt.Errorf("get learning profile: %w", err)
+	}
+	return toDomainLearningProfile(row), nil
+}
+
+// ReplaceLearningProfile updates or inserts the learner's learning profile.
+func (r *Repository) ReplaceLearningProfile(ctx context.Context, profile domain.LearningProfile) (
+	domain.LearningProfile, error,
+) {
+	var declLevel *sqlcuser.CoreCefrLevel
+	if profile.DeclaredLevel != nil {
+		l := sqlcuser.CoreCefrLevel(strings.ToLower(*profile.DeclaredLevel))
+		declLevel = &l
+	}
+	var tgtLevel *sqlcuser.CoreCefrLevel
+	if profile.TargetLevel != nil {
+		l := sqlcuser.CoreCefrLevel(strings.ToLower(*profile.TargetLevel))
+		tgtLevel = &l
+	}
+	var weeklyGoal *int32
+	if profile.WeeklyMinutesGoal != nil {
+		g := int32(*profile.WeeklyMinutesGoal)
+		weeklyGoal = &g
+	}
+	motivations := profile.Motivations
+	if motivations == nil {
+		motivations = []string{}
+	}
+
+	row, err := r.queries.ReplaceLearningProfile(ctx, sqlcuser.ReplaceLearningProfileParams{
+		UserID:            profile.UserID,
+		DeclaredLevel:     declLevel,
+		TargetLevel:       tgtLevel,
+		TargetExam:        sqlcuser.CoreTargetExam(profile.TargetExam),
+		WeeklyMinutesGoal: weeklyGoal,
+		Motivations:       motivations,
+	})
+	if err == nil {
+		return toDomainLearningProfile(row), nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return domain.LearningProfile{}, fmt.Errorf("replace learning profile: %w", err)
+	}
+
+	profileID := profile.ID
+	if profileID == uuid.Nil {
+		profileID = uuid.New()
+	}
+	createdRow, err := r.queries.CreateLearningProfile(ctx, sqlcuser.CreateLearningProfileParams{
+		ID:                profileID,
+		UserID:            profile.UserID,
+		DeclaredLevel:     declLevel,
+		TargetLevel:       tgtLevel,
+		TargetExam:        sqlcuser.CoreTargetExam(profile.TargetExam),
+		WeeklyMinutesGoal: weeklyGoal,
+		Motivations:       motivations,
+	})
+	if err != nil {
+		return domain.LearningProfile{}, fmt.Errorf("create learning profile: %w", err)
+	}
+	return toDomainLearningProfile(createdRow), nil
 }
 
 // GetSummary reads one rendering summary.

@@ -60,6 +60,8 @@ check, and there is a test that fails if a user-id route ever appears.
 | `GET` | `/api/v1/me/deletion/{id}` | `self` | Get status of an account deletion request |
 | `GET` | `/api/v1/admin/users` | `user.list` | Search and list users |
 | `GET` | `/api/v1/admin/users/{id}` | `user.read` | Read one user |
+| `GET` | `/api/v1/me/learning-profile` | `self` | Read caller's learning profile |
+| `PUT` | `/api/v1/me/learning-profile` | `self` | Create or replace caller's learning profile |
 | `POST` | `/api/v1/admin/users/{id}/suspend` | `user.suspend` | Suspend an account |
 | `POST` | `/api/v1/admin/users/{id}/reinstate` | `user.reinstate` | Reinstate a suspended account |
 <!-- END GENERATED: api-summary -->

@@ -95,7 +95,7 @@ Migrations: `db/migrations/lesson/` · Queries: `db/queries/lesson/`
 |---|---|---|
 | `learn.courses` | Top-level container | `slug` UNIQUE, `cefr_from`, `cefr_to`, `status`, `estimated_hours` |
 | `learn.course_units` | Group of lessons | `course_id`, `position`, `title` |
-| `learn.lessons` | Schedulable learning unit | `unit_id`, `position`, `skill_focus`, `estimated_minutes`, `status` |
+| `learn.lessons` | Schedulable learning unit | `unit_id`, `position`, `skill_focus`, `estimated_minutes`, `status`, `cefr_level` |
 | `learn.activities` | One thing the learner does | `lesson_id`, `position`, `kind`, `content_version_id`, `config` jsonb, `weight` |
 | `learn.lesson_prerequisites` | Unlocking graph | `lesson_id`, `requires_lesson_id`, `min_score` |
 

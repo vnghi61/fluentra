@@ -6,8 +6,8 @@ status: DONE
 phase: 2
 owner: "@learning-team"
 schema: learn
-tables: [enrollments, progress, attempts, learning_sessions, placement_results, skill_mastery, answer_explanations, item_exposures, daily_sets]
-depends_on: [lesson, content, srs, cache, job]
+tables: [enrollments, progress, attempts, learning_sessions, placement_results, placement_sessions, skill_mastery, answer_explanations, item_exposures, daily_sets, weekly_plans]
+depends_on: [lesson, content, srs, user, admin, cache, job]
 depended_on_by: [gamification, analytics, admin, exam, vocabulary, grammar, reading, listening, speaking, writing]
 spec_version: 1.0.0
 last_verified: 2026-08-25
@@ -114,6 +114,8 @@ Migrations: `db/migrations/learning/` · Queries: `db/queries/learning/`
 | `learn.answer_explanations` | Cached AI answer explanations | `content_version_id`, `user_answer` unique, `text`, `text_vi`, `is_correct` |
 | `learn.item_exposures` | Learner item exposure log | `user_id`, `activity_id`, `first_served_at`. Primary key (user_id, activity_id). |
 | `learn.daily_sets` | Daily practice set cache | `user_id`, `local_date`, `activity_ids`. Unique on (user_id, local_date). |
+| `learn.placement_sessions` | Adaptive placement test session | `user_id`, `status`, `started_at`, `deadline_at`, `stage`, `estimate`, `served_items`, `productive_status`, `result_id` |
+| `learn.weekly_plans` | Weekly study plan per learner | `user_id`, `week_start`, `minutes_goal`, `items`. Unique on (user_id, week_start). |
 
 **Indexes of note**
 

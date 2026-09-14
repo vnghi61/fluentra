@@ -182,3 +182,31 @@ func toDeletionResponse(req domain.DeletionRequest) deletionResponse {
 		CancelledAt: req.CancelledAt,
 	}
 }
+
+// learningProfileResponse mirrors the LearningProfile schema in OpenAPI.
+type learningProfileResponse struct {
+	DeclaredLevel     *string   `json:"declared_level"`
+	TargetLevel       *string   `json:"target_level"`
+	TargetExam        string    `json:"target_exam"`
+	WeeklyMinutesGoal *int      `json:"weekly_minutes_goal"`
+	Motivations       []string  `json:"motivations"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
+}
+
+func toLearningProfileResponse(lp domain.LearningProfile) learningProfileResponse {
+	motivations := lp.Motivations
+	if motivations == nil {
+		motivations = []string{}
+	}
+	return learningProfileResponse{
+		DeclaredLevel:     lp.DeclaredLevel,
+		TargetLevel:       lp.TargetLevel,
+		TargetExam:        string(lp.TargetExam),
+		WeeklyMinutesGoal: lp.WeeklyMinutesGoal,
+		Motivations:       motivations,
+		CreatedAt:         lp.CreatedAt,
+		UpdatedAt:         lp.UpdatedAt,
+	}
+}
+
