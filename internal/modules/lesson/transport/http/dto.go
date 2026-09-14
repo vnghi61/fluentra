@@ -36,6 +36,7 @@ type LessonSummaryResponse struct {
 	SkillFocus       string    `json:"skill_focus"`
 	EstimatedMinutes int       `json:"estimated_minutes"`
 	Status           string    `json:"status"`
+	CEFRLevel        *string   `json:"cefr_level,omitempty"`
 	Locked           bool      `json:"locked"`
 	LockReason       *string   `json:"lock_reason"`
 	Completed        bool      `json:"completed"`
@@ -85,6 +86,7 @@ type LessonDetailResponse struct {
 	SkillFocus       string                   `json:"skill_focus"`
 	EstimatedMinutes int                      `json:"estimated_minutes"`
 	Status           string                   `json:"status"`
+	CEFRLevel        *string                  `json:"cefr_level,omitempty"`
 	Activities       []LessonActivityResponse `json:"activities"`
 }
 
@@ -143,6 +145,7 @@ func toCourseDetailResponse(dto *service.CourseDetailDTO) CourseDetailResponse {
 				SkillFocus:       l.SkillFocus,
 				EstimatedMinutes: l.EstimatedMinutes,
 				Status:           l.Status,
+				CEFRLevel:        l.CEFRLevel,
 				Locked:           l.Locked,
 				LockReason:       l.LockReason,
 				Completed:        l.Completed,
@@ -194,6 +197,7 @@ func toLessonDetailResponse(dto *service.LessonDetailDTO) LessonDetailResponse {
 		SkillFocus:       dto.SkillFocus,
 		EstimatedMinutes: dto.EstimatedMinutes,
 		Status:           dto.Status,
+		CEFRLevel:        dto.CEFRLevel,
 		Activities:       acts,
 	}
 }

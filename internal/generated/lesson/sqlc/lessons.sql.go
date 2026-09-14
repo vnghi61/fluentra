@@ -18,10 +18,11 @@ INSERT INTO learn.lessons (
     title,
     skill_focus,
     estimated_minutes,
-    status
+    status,
+    cefr_level
 ) VALUES (
-    $1, $2, $3, $4, $5, $6
-) RETURNING id, unit_id, position, title, skill_focus, estimated_minutes, status, created_at, updated_at
+    $1, $2, $3, $4, $5, $6, $7
+) RETURNING id, unit_id, position, title, skill_focus, estimated_minutes, status, created_at, updated_at, cefr_level
 `
 
 type CreateLessonParams struct {
@@ -31,6 +32,7 @@ type CreateLessonParams struct {
 	SkillFocus       string
 	EstimatedMinutes int32
 	Status           string
+	CefrLevel        *CoreCefrLevel
 }
 
 func (q *Queries) CreateLesson(ctx context.Context, arg CreateLessonParams) (LearnLesson, error) {
@@ -41,6 +43,7 @@ func (q *Queries) CreateLesson(ctx context.Context, arg CreateLessonParams) (Lea
 		arg.SkillFocus,
 		arg.EstimatedMinutes,
 		arg.Status,
+		arg.CefrLevel,
 	)
 	var i LearnLesson
 	err := row.Scan(
@@ -53,12 +56,13 @@ func (q *Queries) CreateLesson(ctx context.Context, arg CreateLessonParams) (Lea
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CefrLevel,
 	)
 	return i, err
 }
 
 const getLessonByID = `-- name: GetLessonByID :one
-SELECT id, unit_id, position, title, skill_focus, estimated_minutes, status, created_at, updated_at
+SELECT id, unit_id, position, title, skill_focus, estimated_minutes, status, created_at, updated_at, cefr_level
 FROM learn.lessons
 WHERE id = $1
 LIMIT 1
@@ -78,12 +82,13 @@ func (q *Queries) GetLessonByID(ctx context.Context, id uuid.UUID) (LearnLesson,
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CefrLevel,
 	)
 	return i, err
 }
 
 const getNextPublishedLesson = `-- name: GetNextPublishedLesson :one
-SELECT l.id, l.unit_id, l.position, l.title, l.skill_focus, l.estimated_minutes, l.status, l.created_at, l.updated_at
+SELECT l.id, l.unit_id, l.position, l.title, l.skill_focus, l.estimated_minutes, l.status, l.created_at, l.updated_at, l.cefr_level
 FROM learn.lessons l
 JOIN learn.course_units u ON u.id = l.unit_id
 WHERE l.status = 'published'
@@ -126,19 +131,20 @@ func (q *Queries) GetNextPublishedLesson(ctx context.Context, arg GetNextPublish
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CefrLevel,
 	)
 	return i, err
 }
 
 const getPublishedLessonByID = `-- name: GetPublishedLessonByID :one
-SELECT l.id, l.unit_id, l.position, l.title, l.skill_focus, l.estimated_minutes, l.status, l.created_at, l.updated_at
+SELECT l.id, l.unit_id, l.position, l.title, l.skill_focus, l.estimated_minutes, l.status, l.created_at, l.updated_at, l.cefr_level
 FROM learn.lessons l
 JOIN learn.course_units u ON u.id = l.unit_id
 JOIN learn.courses c ON c.id = u.course_id
 WHERE l.id = $1
   AND l.status = 'published'
   AND c.status = 'published'
-  AND c.slug != 'pool-exam'
+  AND c.slug NOT IN ('pool-exam', 'pool-placement')
 LIMIT 1
 `
 
@@ -159,12 +165,13 @@ func (q *Queries) GetPublishedLessonByID(ctx context.Context, id uuid.UUID) (Lea
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CefrLevel,
 	)
 	return i, err
 }
 
 const listLessonsByCourseID = `-- name: ListLessonsByCourseID :many
-SELECT l.id, l.unit_id, l.position, l.title, l.skill_focus, l.estimated_minutes, l.status, l.created_at, l.updated_at
+SELECT l.id, l.unit_id, l.position, l.title, l.skill_focus, l.estimated_minutes, l.status, l.created_at, l.updated_at, l.cefr_level
 FROM learn.lessons l
 JOIN learn.course_units u ON u.id = l.unit_id
 WHERE u.course_id = $1
@@ -190,6 +197,7 @@ func (q *Queries) ListLessonsByCourseID(ctx context.Context, courseID uuid.UUID)
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.CefrLevel,
 		); err != nil {
 			return nil, err
 		}
@@ -202,7 +210,7 @@ func (q *Queries) ListLessonsByCourseID(ctx context.Context, courseID uuid.UUID)
 }
 
 const listLessonsByUnitID = `-- name: ListLessonsByUnitID :many
-SELECT id, unit_id, position, title, skill_focus, estimated_minutes, status, created_at, updated_at
+SELECT id, unit_id, position, title, skill_focus, estimated_minutes, status, created_at, updated_at, cefr_level
 FROM learn.lessons
 WHERE unit_id = $1
 ORDER BY position ASC
@@ -227,6 +235,7 @@ func (q *Queries) ListLessonsByUnitID(ctx context.Context, unitID uuid.UUID) ([]
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.CefrLevel,
 		); err != nil {
 			return nil, err
 		}
@@ -239,7 +248,7 @@ func (q *Queries) ListLessonsByUnitID(ctx context.Context, unitID uuid.UUID) ([]
 }
 
 const listPublishedLessonsByCourseID = `-- name: ListPublishedLessonsByCourseID :many
-SELECT l.id, l.unit_id, l.position, l.title, l.skill_focus, l.estimated_minutes, l.status, l.created_at, l.updated_at
+SELECT l.id, l.unit_id, l.position, l.title, l.skill_focus, l.estimated_minutes, l.status, l.created_at, l.updated_at, l.cefr_level
 FROM learn.lessons l
 JOIN learn.course_units u ON u.id = l.unit_id
 WHERE u.course_id = $1
@@ -266,6 +275,7 @@ func (q *Queries) ListPublishedLessonsByCourseID(ctx context.Context, courseID u
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.CefrLevel,
 		); err != nil {
 			return nil, err
 		}
@@ -283,9 +293,10 @@ SET title = $2,
     skill_focus = $3,
     estimated_minutes = $4,
     status = $5,
+    cefr_level = $6,
     updated_at = now()
 WHERE id = $1
-RETURNING id, unit_id, position, title, skill_focus, estimated_minutes, status, created_at, updated_at
+RETURNING id, unit_id, position, title, skill_focus, estimated_minutes, status, created_at, updated_at, cefr_level
 `
 
 type UpdateLessonParams struct {
@@ -294,6 +305,7 @@ type UpdateLessonParams struct {
 	SkillFocus       string
 	EstimatedMinutes int32
 	Status           string
+	CefrLevel        *CoreCefrLevel
 }
 
 func (q *Queries) UpdateLesson(ctx context.Context, arg UpdateLessonParams) (LearnLesson, error) {
@@ -303,6 +315,7 @@ func (q *Queries) UpdateLesson(ctx context.Context, arg UpdateLessonParams) (Lea
 		arg.SkillFocus,
 		arg.EstimatedMinutes,
 		arg.Status,
+		arg.CefrLevel,
 	)
 	var i LearnLesson
 	err := row.Scan(
@@ -315,6 +328,7 @@ func (q *Queries) UpdateLesson(ctx context.Context, arg UpdateLessonParams) (Lea
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CefrLevel,
 	)
 	return i, err
 }
@@ -324,7 +338,7 @@ UPDATE learn.lessons
 SET estimated_minutes = $2,
     updated_at = now()
 WHERE id = $1
-RETURNING id, unit_id, position, title, skill_focus, estimated_minutes, status, created_at, updated_at
+RETURNING id, unit_id, position, title, skill_focus, estimated_minutes, status, created_at, updated_at, cefr_level
 `
 
 type UpdateLessonDurationParams struct {
@@ -345,6 +359,7 @@ func (q *Queries) UpdateLessonDuration(ctx context.Context, arg UpdateLessonDura
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CefrLevel,
 	)
 	return i, err
 }
@@ -354,7 +369,7 @@ UPDATE learn.lessons
 SET status = $2,
     updated_at = now()
 WHERE id = $1
-RETURNING id, unit_id, position, title, skill_focus, estimated_minutes, status, created_at, updated_at
+RETURNING id, unit_id, position, title, skill_focus, estimated_minutes, status, created_at, updated_at, cefr_level
 `
 
 type UpdateLessonStatusParams struct {
@@ -375,20 +390,22 @@ func (q *Queries) UpdateLessonStatus(ctx context.Context, arg UpdateLessonStatus
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CefrLevel,
 	)
 	return i, err
 }
 
 const upsertLesson = `-- name: UpsertLesson :one
-INSERT INTO learn.lessons (unit_id, position, title, skill_focus, estimated_minutes, status)
-VALUES ($1, $2, $3, $4, $5, 'published')
+INSERT INTO learn.lessons (unit_id, position, title, skill_focus, estimated_minutes, status, cefr_level)
+VALUES ($1, $2, $3, $4, $5, 'published', $6)
 ON CONFLICT (unit_id, position) DO UPDATE
 SET title             = EXCLUDED.title,
     skill_focus       = EXCLUDED.skill_focus,
     estimated_minutes = EXCLUDED.estimated_minutes,
     status            = 'published',
+    cefr_level        = EXCLUDED.cefr_level,
     updated_at        = now()
-RETURNING id, unit_id, position, title, skill_focus, estimated_minutes, status, created_at, updated_at
+RETURNING id, unit_id, position, title, skill_focus, estimated_minutes, status, created_at, updated_at, cefr_level
 `
 
 type UpsertLessonParams struct {
@@ -397,6 +414,7 @@ type UpsertLessonParams struct {
 	Title            string
 	SkillFocus       string
 	EstimatedMinutes int32
+	CefrLevel        *CoreCefrLevel
 }
 
 // Keyed on (unit_id, position), for the same reason UpsertUnit is keyed on
@@ -408,6 +426,7 @@ func (q *Queries) UpsertLesson(ctx context.Context, arg UpsertLessonParams) (Lea
 		arg.Title,
 		arg.SkillFocus,
 		arg.EstimatedMinutes,
+		arg.CefrLevel,
 	)
 	var i LearnLesson
 	err := row.Scan(
@@ -420,6 +439,7 @@ func (q *Queries) UpsertLesson(ctx context.Context, arg UpsertLessonParams) (Lea
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CefrLevel,
 	)
 	return i, err
 }

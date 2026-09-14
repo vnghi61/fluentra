@@ -124,18 +124,20 @@ func seedCourseData(ctx context.Context, pool *pgxpool.Pool, adminID uuid.UUID, 
 
 		for _, lesson := range unit.Lessons {
 			var lessonID uuid.UUID
+			lessonCEFR := determineLessonCEFR(c, unit, lesson)
 			const upsertLesson = `
-				INSERT INTO learn.lessons (unit_id, position, title, skill_focus, estimated_minutes, status, updated_at)
-				VALUES ($1, $2, $3, $4, $5, 'published', now())
+				INSERT INTO learn.lessons (unit_id, position, title, skill_focus, estimated_minutes, status, cefr_level, updated_at)
+				VALUES ($1, $2, $3, $4, $5, 'published', $6, now())
 				ON CONFLICT (unit_id, position) DO UPDATE
 				SET title = EXCLUDED.title,
 				    skill_focus = EXCLUDED.skill_focus,
 				    estimated_minutes = EXCLUDED.estimated_minutes,
 				    status = 'published',
+				    cefr_level = EXCLUDED.cefr_level,
 				    updated_at = now()
 				RETURNING id`
 			err := pool.QueryRow(ctx, upsertLesson,
-				unitID, lesson.Position, lesson.Title, lesson.SkillFocus, lesson.EstimatedMinutes,
+				unitID, lesson.Position, lesson.Title, lesson.SkillFocus, lesson.EstimatedMinutes, lessonCEFR,
 			).Scan(&lessonID)
 			if err != nil {
 				return fmt.Errorf("upsert lesson %s pos %d: %w", lesson.Title, lesson.Position, err)
@@ -418,3 +420,43 @@ func seedVocabularyWords(
 func pgxIsNoRows(err error) bool {
 	return errors.Is(err, pgx.ErrNoRows)
 }
+
+func determineLessonCEFR(c seedCourse, unit seedUnit, lesson seedLesson) string {
+	if lesson.CEFRLevel != "" {
+		return strings.ToLower(lesson.CEFRLevel)
+	}
+	// Extract from unit title if present (e.g. "(A2)", "(B1)", "(B2)")
+	for _, lvl := range []string{"A1", "A2", "B1", "B2", "C1", "C2"} {
+		if strings.Contains(unit.Title, "("+lvl) {
+			return strings.ToLower(lvl)
+		}
+	}
+	// Otherwise linear interpolation across units from c.CEFRFrom to c.CEFRTo
+	levels := []string{"a1", "a2", "b1", "b2", "c1", "c2"}
+	fromIdx := -1
+	toIdx := -1
+	for i, l := range levels {
+		if strings.EqualFold(l, c.CEFRFrom) {
+			fromIdx = i
+		}
+		if strings.EqualFold(l, c.CEFRTo) {
+			toIdx = i
+		}
+	}
+	if fromIdx != -1 && toIdx != -1 && len(c.Units) > 1 {
+		uPos := unit.Position - 1
+		if uPos < 0 {
+			uPos = 0
+		}
+		if uPos >= len(c.Units) {
+			uPos = len(c.Units) - 1
+		}
+		idx := fromIdx + (toIdx-fromIdx)*uPos/(len(c.Units)-1)
+		return levels[idx]
+	}
+	if fromIdx != -1 {
+		return levels[fromIdx]
+	}
+	return "a2"
+}
+

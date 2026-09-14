@@ -57,6 +57,7 @@ type Lesson struct {
 	SkillFocus       string     `json:"skill_focus"`
 	EstimatedMinutes int        `json:"estimated_minutes"`
 	Status           string     `json:"status"`
+	CEFRLevel        *string    `json:"cefr_level,omitempty"`
 	Activities       []Activity `json:"activities,omitempty"`
 }
 
@@ -123,6 +124,7 @@ type LessonSpec struct {
 	Title            string
 	SkillFocus       string
 	EstimatedMinutes int
+	CEFRLevel        *string
 }
 
 // ActivitySpec is one exercise. Activities are replaced wholesale rather than

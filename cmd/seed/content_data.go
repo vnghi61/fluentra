@@ -22,6 +22,7 @@ type seedLesson struct {
 	Title            string
 	SkillFocus       string
 	EstimatedMinutes int
+	CEFRLevel        string
 	Activities       []seedActivity
 }
 

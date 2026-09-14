@@ -45,6 +45,7 @@ type CreateLessonParams struct {
 	SkillFocus       string
 	EstimatedMinutes int
 	Status           string
+	CEFRLevel        *string
 }
 
 // UpdateLessonParams holds the parameters to update a lesson.
@@ -54,6 +55,15 @@ type UpdateLessonParams struct {
 	SkillFocus       string
 	EstimatedMinutes int
 	Status           string
+	CEFRLevel        *string
+}
+
+func toSqlcCefrLevel(lvl *string) *sqlc.CoreCefrLevel {
+	if lvl == nil || *lvl == "" {
+		return nil
+	}
+	c := sqlc.CoreCefrLevel(*lvl)
+	return &c
 }
 
 // PrerequisiteItem carries a lesson prerequisite with the required lesson's title.
@@ -186,6 +196,7 @@ func (r *Repository) UpsertLesson(
 		Title:            params.Title,
 		SkillFocus:       params.SkillFocus,
 		EstimatedMinutes: int32(params.EstimatedMinutes), //nolint:gosec // bounded by the caller
+		CefrLevel:        toSqlcCefrLevel(params.CEFRLevel),
 	})
 	if err != nil {
 		return nil, mapPgError(err)
@@ -359,6 +370,7 @@ func (r *Repository) CreateLesson(ctx context.Context, params CreateLessonParams
 		SkillFocus:       params.SkillFocus,
 		EstimatedMinutes: int32(params.EstimatedMinutes), //nolint:gosec // bounded integer
 		Status:           params.Status,
+		CefrLevel:        toSqlcCefrLevel(params.CEFRLevel),
 	})
 	if err != nil {
 		return nil, mapPgError(err)
@@ -374,6 +386,7 @@ func (r *Repository) UpdateLesson(ctx context.Context, params UpdateLessonParams
 		SkillFocus:       params.SkillFocus,
 		EstimatedMinutes: int32(params.EstimatedMinutes), //nolint:gosec // bounded integer
 		Status:           params.Status,
+		CefrLevel:        toSqlcCefrLevel(params.CEFRLevel),
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

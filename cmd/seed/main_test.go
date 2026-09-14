@@ -170,6 +170,27 @@ func TestCourseSeedData_Integrity(t *testing.T) {
 	}
 }
 
+// TestCurriculumLessonsHaveCEFRLevel asserts that every curriculum lesson resolves
+// to a valid CEFR level (A1..C2) in lowercase for the core.cefr_level enum.
+func TestCurriculumLessonsHaveCEFRLevel(t *testing.T) {
+	courses := []seedCourse{courseSeedData, readingCourseSeedData, writingCourseSeedData}
+	validLevels := map[string]bool{
+		"a1": true, "a2": true, "b1": true, "b2": true, "c1": true, "c2": true,
+	}
+
+	for _, c := range courses {
+		for _, unit := range c.Units {
+			for _, lesson := range unit.Lessons {
+				lvl := determineLessonCEFR(c, unit, lesson)
+				if !validLevels[lvl] {
+					t.Errorf("course %s unit %s lesson %s determined level %q is invalid",
+						c.Slug, unit.Title, lesson.Title, lvl)
+				}
+			}
+		}
+	}
+}
+
 // assertActivityIsGradable checks the half of the contract a kind list cannot:
 // the authored body has to answer the question the config asks, in the form the
 // runner submits.

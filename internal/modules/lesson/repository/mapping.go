@@ -83,6 +83,12 @@ func ToContractActivities(rows []sqlc.LearnActivity) []contract.Activity {
 
 // ToContractLesson maps an sqlc LearnLesson row and its activities to a contract.Lesson domain object.
 func ToContractLesson(l sqlc.LearnLesson, activities []contract.Activity) *contract.Lesson {
+	var cefrLevel *string
+	if l.CefrLevel != nil {
+		lvl := string(*l.CefrLevel)
+		cefrLevel = &lvl
+	}
+
 	return &contract.Lesson{
 		ID:               l.ID,
 		UnitID:           l.UnitID,
@@ -91,6 +97,7 @@ func ToContractLesson(l sqlc.LearnLesson, activities []contract.Activity) *contr
 		SkillFocus:       l.SkillFocus,
 		EstimatedMinutes: int(l.EstimatedMinutes),
 		Status:           l.Status,
+		CEFRLevel:        cefrLevel,
 		Activities:       activities,
 	}
 }

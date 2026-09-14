@@ -534,6 +534,7 @@ type LearnLesson struct {
 	Status           string
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
+	CefrLevel        *CoreCefrLevel
 }
 
 type LearnLessonPrerequisite struct {

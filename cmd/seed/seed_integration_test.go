@@ -340,3 +340,44 @@ func TestSeededWordSensesCarryWhatTheFlashcardRenders(t *testing.T) {
 		t.Errorf("%d of %d senses resolve no content version", senses-withContent, senses)
 	}
 }
+
+// TestSeededCurriculumLessonsHaveCEFRLevel asserts that every curriculum lesson
+// seeded has a non-null cefr_level, while pool lessons keep it null.
+func TestSeededCurriculumLessonsHaveCEFRLevel(t *testing.T) {
+	ctx := context.Background()
+	runSeed(ctx, t)
+
+	var totalCurriculum, withLevel int
+	const query = `
+		SELECT count(*),
+		       count(*) FILTER (WHERE l.cefr_level IS NOT NULL)
+		FROM learn.lessons l
+		JOIN learn.course_units u ON u.id = l.unit_id
+		JOIN learn.courses c ON c.id = u.course_id
+		WHERE c.origin = 'curriculum'`
+	if err := seedPool.QueryRow(ctx, query).Scan(&totalCurriculum, &withLevel); err != nil {
+		t.Fatalf("inspect seeded lessons: %v", err)
+	}
+
+	if totalCurriculum == 0 {
+		t.Fatal("no curriculum lessons seeded")
+	}
+	if withLevel != totalCurriculum {
+		t.Errorf("%d of %d curriculum lessons have no CEFR level", totalCurriculum-withLevel, totalCurriculum)
+	}
+
+	var poolWithLevel int
+	const poolQuery = `
+		SELECT count(*)
+		FROM learn.lessons l
+		JOIN learn.course_units u ON u.id = l.unit_id
+		JOIN learn.courses c ON c.id = u.course_id
+		WHERE c.origin != 'curriculum' AND l.cefr_level IS NOT NULL`
+	if err := seedPool.QueryRow(ctx, poolQuery).Scan(&poolWithLevel); err != nil {
+		t.Fatalf("inspect pool lessons: %v", err)
+	}
+	if poolWithLevel > 0 {
+		t.Errorf("found %d pool lessons with cefr_level, want 0", poolWithLevel)
+	}
+}
+
