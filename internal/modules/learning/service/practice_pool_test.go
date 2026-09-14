@@ -154,6 +154,7 @@ type fakePoolLessons struct {
 	courseSlug map[uuid.UUID]string
 	unitCourse map[uuid.UUID]uuid.UUID
 	unitTitles map[uuid.UUID]string
+	lessonUnit map[uuid.UUID]uuid.UUID
 	slotLesson map[string]uuid.UUID
 	activities map[uuid.UUID][]lessoncontract.Activity
 	byID       map[uuid.UUID]lessoncontract.Activity
@@ -166,6 +167,7 @@ func newFakePoolLessons() *fakePoolLessons {
 		courseSlug: map[uuid.UUID]string{},
 		unitCourse: map[uuid.UUID]uuid.UUID{},
 		unitTitles: map[uuid.UUID]string{},
+		lessonUnit: map[uuid.UUID]uuid.UUID{},
 		slotLesson: map[string]uuid.UUID{},
 		activities: map[uuid.UUID][]lessoncontract.Activity{},
 		byID:       map[uuid.UUID]lessoncontract.Activity{},
@@ -207,6 +209,7 @@ func (l *fakePoolLessons) EnsureLesson(_ context.Context, spec lessoncontract.Le
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	id := l.stableID(fmt.Sprintf("lesson/%s/%d", spec.UnitID, spec.Position))
+	l.lessonUnit[id] = spec.UnitID
 	if slug := l.courseSlug[l.unitCourse[spec.UnitID]]; slug != "" {
 		l.slotLesson[slug+"/"+l.unitTitles[spec.UnitID]+"/"+spec.Title] = id
 	}
@@ -291,9 +294,15 @@ func (l *fakePoolLessons) ResolveActivity(_ context.Context, id uuid.UUID) (*les
 	if !ok {
 		return nil, fmt.Errorf("activity %s not found", id)
 	}
+	unitID := l.lessonUnit[activity.LessonID]
+	courseID := l.unitCourse[unitID]
+	courseSlug := l.courseSlug[courseID]
 	return &lessoncontract.ActivityHierarchy{
 		ActivityID:       activity.ID,
 		LessonID:         activity.LessonID,
+		UnitID:           unitID,
+		CourseID:         courseID,
+		CourseSlug:       courseSlug,
 		Kind:             activity.Kind,
 		ContentVersionID: activity.ContentVersionID,
 		Config:           activity.Config,
@@ -301,12 +310,36 @@ func (l *fakePoolLessons) ResolveActivity(_ context.Context, id uuid.UUID) (*les
 	}, nil
 }
 
-func (l *fakePoolLessons) ListLessons(context.Context, uuid.UUID) ([]*lessoncontract.Lesson, error) {
-	return nil, nil
+func (l *fakePoolLessons) ListLessons(_ context.Context, unitID uuid.UUID) ([]*lessoncontract.Lesson, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	var lessons []*lessoncontract.Lesson
+	for id, uID := range l.lessonUnit {
+		if uID == unitID {
+			lessons = append(lessons, &lessoncontract.Lesson{
+				ID:         id,
+				UnitID:     unitID,
+				Activities: append([]lessoncontract.Activity(nil), l.activities[id]...),
+			})
+		}
+	}
+	return lessons, nil
 }
 
-func (l *fakePoolLessons) ListUnitsByCourseID(context.Context, uuid.UUID) ([]*lessoncontract.Unit, error) {
-	return nil, nil
+func (l *fakePoolLessons) ListUnitsByCourseID(_ context.Context, courseID uuid.UUID) ([]*lessoncontract.Unit, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	var units []*lessoncontract.Unit
+	for id, cID := range l.unitCourse {
+		if cID == courseID {
+			units = append(units, &lessoncontract.Unit{
+				ID:       id,
+				CourseID: courseID,
+				Title:    l.unitTitles[id],
+			})
+		}
+	}
+	return units, nil
 }
 
 func (l *fakePoolLessons) ListPrerequisitesForLessons(

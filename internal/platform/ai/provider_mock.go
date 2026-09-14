@@ -67,6 +67,10 @@ func (p *MockProvider) Complete(_ context.Context, req Request) (Response, error
 		return p.practiceSolve(req)
 	case TaskListeningGenerate:
 		return p.listeningGenerate(req)
+	case TaskPlacementGenerate:
+		return p.placementGenerate(req)
+	case TaskPlacementSolve:
+		return p.placementSolve(req)
 	default:
 		return Response{}, fmt.Errorf("ai: mock provider has no answer for task %q", req.Task)
 	}
@@ -497,6 +501,214 @@ func (p *MockProvider) listeningGenerate(_ Request) (Response, error) {
 	})
 	if err != nil {
 		return Response{}, fmt.Errorf("ai: encode mock listening generation: %w", err)
+	}
+	return Response{Text: string(payload), Model: MockModelName}, nil
+}
+
+func (p *MockProvider) placementGenerate(req Request) (Response, error) {
+	kind := stringVar(req.Vars, "Kind")
+	var payload []byte
+	var err error
+
+	switch kind {
+	case "vocabulary":
+		payload, err = json.Marshal(map[string]any{
+			"prompt": "Choose the word that best completes the sentence: The committee decided to ___ the proposal.",
+			"options": []map[string]any{
+				{"id": "A", "text": "adopt"},
+				{"id": "B", "text": "dissolve"},
+				{"id": "C", "text": "vanish"},
+				{"id": "D", "text": "evaporate"},
+			},
+			"correct_option_id": "A",
+			"explanation": map[string]string{
+				"explanation_en": "'Adopt' means to accept or approve a proposal.",
+				"explanation_vi": "'Adopt' có nghĩa là thông qua hoặc chấp thuận đề xuất.",
+			},
+		})
+	case "grammar_tense_choice":
+		payload, err = json.Marshal(map[string]any{
+			"prompt": "She ___ in London since 2015.",
+			"options": []map[string]any{
+				{"id": "A", "text": "has lived"},
+				{"id": "B", "text": "is living"},
+				{"id": "C", "text": "will live"},
+				{"id": "D", "text": "lived"},
+			},
+			"correct_option_id": "A",
+			"explanation": map[string]string{
+				"explanation_en": "Present perfect is used with 'since' for actions continuing to the present.",
+				"explanation_vi": "Hiện tại hoàn thành dùng với 'since' cho hành động tiếp diễn đến hiện tại.",
+			},
+		})
+	case "reading_comprehension":
+		payload, err = json.Marshal(map[string]any{
+			"passage_title": "City Parks and Wellbeing",
+			"passage":       "City parks offer a quiet haven from busy streets. Studies indicate that spending just twenty minutes in nature lowers stress and boosts mood. Many municipalities are now investing in accessible green corridors.",
+			"questions": []map[string]any{
+				{
+					"id":     "q1",
+					"type":   "multiple_choice",
+					"prompt": "What do city parks provide?",
+					"options": []map[string]any{
+						{"id": "A", "text": "A quiet haven from busy streets"},
+						{"id": "B", "text": "Industrial workshops"},
+						{"id": "C", "text": "Highway bypasses"},
+						{"id": "D", "text": "Underground parking"},
+					},
+					"correct_option_id": "A",
+					"explanation": map[string]string{
+						"explanation_en": "The first sentence says city parks offer a quiet haven.",
+						"explanation_vi": "Câu đầu tiên nêu rõ công viên thành phố mang lại chốn bình yên.",
+					},
+				},
+				{
+					"id":     "q2",
+					"type":   "multiple_choice",
+					"prompt": "How long in nature is needed to lower stress?",
+					"options": []map[string]any{
+						{"id": "A", "text": "Twenty minutes"},
+						{"id": "B", "text": "Three hours"},
+						{"id": "C", "text": "Two days"},
+						{"id": "D", "text": "Ten seconds"},
+					},
+					"correct_option_id": "A",
+					"explanation": map[string]string{
+						"explanation_en": "Studies show 20 minutes in nature lowers stress.",
+						"explanation_vi": "Các nghiên cứu chỉ ra 20 phút ở không gian tự nhiên giúp giảm căng thẳng.",
+					},
+				},
+				{
+					"id":     "q3",
+					"type":   "multiple_choice",
+					"prompt": "What are municipalities investing in?",
+					"options": []map[string]any{
+						{"id": "A", "text": "Accessible green corridors"},
+						{"id": "B", "text": "More office towers"},
+						{"id": "C", "text": "Airports"},
+						{"id": "D", "text": "Coal plants"},
+					},
+					"correct_option_id": "A",
+					"explanation": map[string]string{
+						"explanation_en": "Municipalities are investing in green corridors.",
+						"explanation_vi": "Chính quyền thành phố đang đầu tư vào các hành lang xanh.",
+					},
+				},
+			},
+		})
+	case "listening_comprehension":
+		payload, err = json.Marshal(map[string]any{
+			"title":  "Library Orientation",
+			"script": "Welcome to the central library. Books may be borrowed for up to three weeks. Digital audiobooks are accessible 24/7 on our portal.",
+			"voice":  "en-US-Standard-C",
+			"questions": []map[string]any{
+				{
+					"id":     "q1",
+					"type":   "multiple_choice",
+					"prompt": "How long may books be borrowed?",
+					"options": []map[string]any{
+						{"id": "A", "text": "Three weeks"},
+						{"id": "B", "text": "One day"},
+						{"id": "C", "text": "One year"},
+						{"id": "D", "text": "Two hours"},
+					},
+					"correct_option_id": "A",
+					"explanation": map[string]string{
+						"explanation_en": "The speaker says books may be borrowed for three weeks.",
+						"explanation_vi": "Người nói cho biết sách có thể mượn trong 3 tuần.",
+					},
+				},
+				{
+					"id":     "q2",
+					"type":   "multiple_choice",
+					"prompt": "Where can digital audiobooks be accessed?",
+					"options": []map[string]any{
+						{"id": "A", "text": "On the online portal"},
+						{"id": "B", "text": "Only at the information desk"},
+						{"id": "C", "text": "By mailing a letter"},
+						{"id": "D", "text": "At a newsstand"},
+					},
+					"correct_option_id": "A",
+					"explanation": map[string]string{
+						"explanation_en": "Digital audiobooks are available 24/7 on the portal.",
+						"explanation_vi": "Sách nói kỹ thuật số có sẵn 24/7 trên cổng thông tin.",
+					},
+				},
+				{
+					"id":     "q3",
+					"type":   "multiple_choice",
+					"prompt": "When is the digital portal accessible?",
+					"options": []map[string]any{
+						{"id": "A", "text": "24 hours a day, 7 days a week"},
+						{"id": "B", "text": "Only on weekends"},
+						{"id": "C", "text": "Monday mornings only"},
+						{"id": "D", "text": "During holidays only"},
+					},
+					"correct_option_id": "A",
+					"explanation": map[string]string{
+						"explanation_en": "The portal is accessible 24/7.",
+						"explanation_vi": "Cổng thông tin hoạt động 24/7.",
+					},
+				},
+			},
+		})
+	case "writing_prompt":
+		payload, err = json.Marshal(map[string]any{
+			"prompt":             "Write a brief email to a colleague introducing yourself and describing your role in the new project.",
+			"model_answer":       "Hi Jordan,\n\nI hope you are doing well. My name is Sam, and I recently joined the team as a frontend engineer. I look forward to collaborating with you on the upcoming redesign project.\n\nBest regards,\nSam",
+			"min_words":          60,
+			"time_limit_minutes": 15,
+			"explanation": map[string]string{
+				"explanation_en": "A clear, professional self-introduction covering role and enthusiasm.",
+				"explanation_vi": "Email giới thiệu bản thân ngắn gọn, chuyên nghiệp nêu vai trò và tinh thần hợp tác.",
+			},
+		})
+	case "speaking_task":
+		payload, err = json.Marshal(map[string]any{
+			"task_type":             "respond",
+			"prompt":                "Talk about a hobby you enjoy. Explain when you started it and why you find it enjoyable.",
+			"speaking_time_seconds": 45,
+			"explanation": map[string]string{
+				"explanation_en": "Good balance of personal experience, timeline, and descriptive language.",
+				"explanation_vi": "Cân bằng tốt giữa trải nghiệm cá nhân, thời điểm và ngôn từ miêu tả.",
+			},
+		})
+	default:
+		return Response{}, fmt.Errorf("ai: mock provider placementGenerate unsupported kind %q", kind)
+	}
+
+	if err != nil {
+		return Response{}, fmt.Errorf("ai: encode mock placement generate: %w", err)
+	}
+	return Response{Text: string(payload), Model: MockModelName}, nil
+}
+
+func (p *MockProvider) placementSolve(req Request) (Response, error) {
+	kind := stringVar(req.Vars, "Kind")
+	var payload []byte
+	var err error
+
+	switch kind {
+	case "reading_comprehension", "listening_comprehension":
+		payload, err = json.Marshal(map[string]any{
+			"answers": map[string]string{
+				"q1": "A",
+				"q2": "A",
+				"q3": "A",
+			},
+		})
+	case "vocabulary", "grammar_tense_choice":
+		payload, err = json.Marshal(map[string]any{
+			"selected_option_id": "A",
+		})
+	default:
+		payload, err = json.Marshal(map[string]any{
+			"answers": map[string]string{"q1": "A"},
+		})
+	}
+
+	if err != nil {
+		return Response{}, fmt.Errorf("ai: encode mock placement solve: %w", err)
 	}
 	return Response{Text: string(payload), Model: MockModelName}, nil
 }

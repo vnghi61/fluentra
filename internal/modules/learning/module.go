@@ -224,6 +224,9 @@ const sweepStuckGradingLockID int64 = 1_700_000_212
 // Advisory lock id for exam pool top-up job (work order 12 §3.7).
 const topUpExamPoolLockID int64 = 1_700_000_213
 
+// Advisory lock id for placement pool top-up job (work order 13 §5).
+const topUpPlacementPoolLockID int64 = 1_700_000_216
+
 // CronJobs returns the scheduled partition maintenance, grading sweep, and pool jobs.
 func (m *Module) CronJobs() []job.CronJob {
 	return []job.CronJob{
@@ -251,6 +254,12 @@ func (m *Module) CronJobs() []job.CronJob {
 			Interval: 1 * time.Hour,
 			Task:     m.TopUpExamPool,
 		},
+		{
+			Name:     "learning.top_up_placement_pool",
+			LockID:   topUpPlacementPoolLockID,
+			Interval: 1 * time.Hour,
+			Task:     m.TopUpPlacementPool,
+		},
 	}
 }
 
@@ -262,6 +271,11 @@ func (m *Module) TopUpPracticePool(ctx context.Context) error {
 // TopUpExamPool generates and adds verified exercises to the exam pool.
 func (m *Module) TopUpExamPool(ctx context.Context) error {
 	return m.service.TopUpExamPool(ctx)
+}
+
+// TopUpPlacementPool generates and adds verified exercises to the placement pool.
+func (m *Module) TopUpPlacementPool(ctx context.Context) error {
+	return m.service.TopUpPlacementPool(ctx)
 }
 
 // ExamPoolDrawer returns the service implementing contract.ExamPoolDrawer.

@@ -251,6 +251,10 @@ type Service struct {
 	// examPoolMu guards examPoolLayout, the exam pool's course and slot lessons.
 	examPoolMu     sync.Mutex
 	examPoolLayout *examPoolLayout
+
+	// placementPoolMu guards placementPoolLayout, the placement pool's course and slot lessons.
+	placementPoolMu     sync.Mutex
+	placementPoolLayout *placementPoolLayout
 }
 
 // New constructs a new Service.
@@ -299,8 +303,8 @@ func (s *Service) StartAttempt(ctx context.Context, userID, activityID uuid.UUID
 		return nil, err
 	}
 
-	// Anti-leak guard: exam pool activities cannot be started as standalone lesson attempts (WO12 §3.6)
-	if activity.CourseSlug == ExamPoolCourseSlug {
+	// Anti-leak guard: exam and placement pool activities cannot be started as standalone lesson attempts
+	if activity.CourseSlug == ExamPoolCourseSlug || activity.CourseSlug == PlacementPoolCourseSlug {
 		return nil, domain.ErrUnauthorizedAttemptAccess
 	}
 
@@ -386,8 +390,8 @@ func (s *Service) SubmitAttempt(
 		return nil, err
 	}
 
-	// Anti-leak guard: exam pool activities cannot be submitted via standalone attempt submit (WO12 §3.6)
-	if activity.CourseSlug == ExamPoolCourseSlug {
+	// Anti-leak guard: exam and placement pool activities cannot be submitted via standalone attempt submit
+	if activity.CourseSlug == ExamPoolCourseSlug || activity.CourseSlug == PlacementPoolCourseSlug {
 		return nil, domain.ErrUnauthorizedAttemptAccess
 	}
 
@@ -703,8 +707,8 @@ func (s *Service) GradePreview(
 		return nil, err
 	}
 
-	// Anti-leak guard: exam pool activities cannot be preview graded (WO12 §3.6)
-	if activity.CourseSlug == ExamPoolCourseSlug {
+	// Anti-leak guard: exam and placement pool activities cannot be preview graded
+	if activity.CourseSlug == ExamPoolCourseSlug || activity.CourseSlug == PlacementPoolCourseSlug {
 		return nil, domain.ErrActivityNotFound
 	}
 
@@ -1039,9 +1043,9 @@ func (s *Service) executeRollupSteps(
 		return err
 	}
 
-	// An exam pool item is not course material: it counts toward no lesson, unit
-	// or course progress and appears in no "continue learning" (work order 12 §3.6).
-	if activity.CourseSlug == ExamPoolCourseSlug {
+	// An exam or placement pool item is not course material: it counts toward no lesson, unit
+	// or course progress and appears in no "continue learning".
+	if activity.CourseSlug == ExamPoolCourseSlug || activity.CourseSlug == PlacementPoolCourseSlug {
 		return nil
 	}
 

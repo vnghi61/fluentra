@@ -51,6 +51,10 @@ const (
 	TaskPracticeSolve Task = "practice_solve"
 	// TaskListeningGenerate writes an audio script and comprehension questions for listening exercises.
 	TaskListeningGenerate Task = "listening_generate"
+	// TaskPlacementGenerate writes one placement exercise item for the placement pool.
+	TaskPlacementGenerate Task = "placement_generate"
+	// TaskPlacementSolve blind-solves a placement exercise item without answers.
+	TaskPlacementSolve Task = "placement_solve"
 )
 
 // Request is one unit of work.
