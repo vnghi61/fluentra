@@ -30,8 +30,8 @@ const (
 type fakeRepo struct {
 	mu sync.Mutex
 
-	users       map[uuid.UUID]domain.User
-	profiles    map[uuid.UUID]domain.Profile
+	users            map[uuid.UUID]domain.User
+	profiles         map[uuid.UUID]domain.Profile
 	preferences      map[uuid.UUID]domain.Preferences
 	learningProfiles map[uuid.UUID]domain.LearningProfile
 	summaries        map[uuid.UUID]domain.Summary

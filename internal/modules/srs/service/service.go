@@ -608,6 +608,23 @@ func (s *Service) sessionMinutes(ctx context.Context, userID uuid.UUID, since ti
 	return int(totalMs / int64(time.Minute/time.Millisecond))
 }
 
+// The answers a learner's review pace is measured over.
+const (
+	reviewPaceWindow = 30 * 24 * time.Hour
+	reviewPaceSample = 200
+)
+
+// AverageReviewSeconds implements contract.ReviewPaceReader: the learner's
+// average time per answer over their recent reviews, zero with none.
+func (s *Service) AverageReviewSeconds(ctx context.Context, userID uuid.UUID) (float64, error) {
+	since := s.clock.Now().UTC().Add(-reviewPaceWindow)
+	averageMs, err := s.repo.AverageRecentReviewElapsedMs(ctx, userID, since, reviewPaceSample)
+	if err != nil {
+		return 0, fmt.Errorf("average review time: %w", err)
+	}
+	return averageMs / 1000, nil
+}
+
 // CompleteSession closes the review session and records daily statistics.
 func (s *Service) CompleteSession(ctx context.Context, userID uuid.UUID, reviewed, correct int) (SessionResult, error) {
 	if reviewed < 0 {

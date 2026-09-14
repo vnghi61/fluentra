@@ -209,4 +209,3 @@ func toLearningProfileResponse(lp domain.LearningProfile) learningProfileRespons
 		UpdatedAt:         lp.UpdatedAt,
 	}
 }
-

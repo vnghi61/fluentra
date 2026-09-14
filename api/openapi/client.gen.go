@@ -1237,12 +1237,101 @@ type ClientInterface interface {
 	// Corresponds with PUT /me/leaderboard-opt-in (the `SetLeaderboardOptIn` operationId).
 	SetLeaderboardOptIn(ctx context.Context, body SetLeaderboardOptInJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// UserGetMyLearningProfile Read the caller's learning profile.
+	//
+	// Returns self-declared learning goals and parameters, or 404 when none exists.
+	//
+	// Corresponds with GET /me/learning-profile (the `UserGetMyLearningProfile` operationId).
+	UserGetMyLearningProfile(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UserReplaceMyLearningProfileWithBody Replace the caller's learning profile.
+	//
+	// Creates or replaces the caller's learning profile.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /me/learning-profile (the `UserReplaceMyLearningProfile` operationId).
+	UserReplaceMyLearningProfileWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UserReplaceMyLearningProfile Replace the caller's learning profile.
+	//
+	// Creates or replaces the caller's learning profile.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /me/learning-profile (the `UserReplaceMyLearningProfile` operationId).
+	UserReplaceMyLearningProfile(ctx context.Context, body UserReplaceMyLearningProfileJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetMyStartingPath Recommended courses and the lesson to start at in each.
+	//
+	// The level is the current placement result; failing that the declared level; failing that A2. Courses are the curriculum courses whose range contains the level, or the nearest below it; the start lesson is the first lesson at or above the level (work order 13 §3.6).
+	//
+	// Corresponds with GET /me/path (the `GetMyStartingPath` operationId).
+	GetMyStartingPath(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// RbacGetMyPermissions Read the caller's own effective permissions.
 	//
 	// Resolves the caller's roles to the flat set of named permissions they grant. Advisory only: it exists so the interface can hide actions that would fail, and every server call re-checks regardless of what the client believes.
 	//
 	// Corresponds with GET /me/permissions (the `RbacGetMyPermissions` operationId).
 	RbacGetMyPermissions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetMyPlacement Read the caller's placement result, session and invitation.
+	//
+	// The current result, a session in progress, when a retake becomes available, and whether to invite the learner. A session past its deadline is finished by this read, so it is never reported as active (work order 13 §3.5).
+	//
+	// Corresponds with GET /me/placement (the `GetMyPlacement` operationId).
+	GetMyPlacement(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StartPlacement Start an adaptive placement test.
+	//
+	// Starts a 20-minute session and serves its first item, redacted. 409 PLACEMENT_IN_PROGRESS names the session in progress in meta.session_id; 409 PLACEMENT_RETAKE_TOO_SOON names meta.retake_available_at; 409 PLACEMENT_UNAVAILABLE means a band of the pool cannot serve a full test.
+	//
+	// Corresponds with POST /me/placement (the `StartPlacement` operationId).
+	StartPlacement(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetPlacementSession Read one of the caller's placement sessions.
+	//
+	// The current item, redacted, with the server's remaining seconds and the stage; or, once the adaptive part is over, the result and the writing and speaking part. Another learner's session is not found.
+	//
+	// Corresponds with GET /me/placement/sessions/{id} (the `GetPlacementSession` operationId).
+	GetPlacementSession(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AnswerPlacementItemWithBody Answer the current placement item.
+	//
+	// Every answer is a learn.attempts row graded by the kind's grader (ADR-0015); the same Idempotency-Key grades once. Returns the session with the next item or the result. An answer after deadline_at plus five seconds is refused with 409 PLACEMENT_SESSION_EXPIRED; an item that is not the current one with 409 PLACEMENT_NOT_CURRENT_ITEM. After the result, the same route answers the writing and speaking items.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /me/placement/sessions/{id}/answers (the `AnswerPlacementItem` operationId).
+	AnswerPlacementItemWithBody(ctx context.Context, id openapi_types.UUID, params *AnswerPlacementItemParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AnswerPlacementItem Answer the current placement item.
+	//
+	// Every answer is a learn.attempts row graded by the kind's grader (ADR-0015); the same Idempotency-Key grades once. Returns the session with the next item or the result. An answer after deadline_at plus five seconds is refused with 409 PLACEMENT_SESSION_EXPIRED; an item that is not the current one with 409 PLACEMENT_NOT_CURRENT_ITEM. After the result, the same route answers the writing and speaking items.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /me/placement/sessions/{id}/answers (the `AnswerPlacementItem` operationId).
+	AnswerPlacementItem(ctx context.Context, id openapi_types.UUID, params *AnswerPlacementItemParams, body AnswerPlacementItemJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StartPlacementProductiveWithBody Start or skip the writing and speaking part.
+	//
+	// Offered after the result, never before it (409 PLACEMENT_PRODUCTIVE_UNAVAILABLE). Starting serves one 60–100 word writing task and one 45-second spoken response at the placed level, with eight minutes; skip true skips them, and they can still be started later. Each is graded asynchronously and joins per_skill on the same result.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /me/placement/sessions/{id}/productive (the `StartPlacementProductive` operationId).
+	StartPlacementProductiveWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StartPlacementProductive Start or skip the writing and speaking part.
+	//
+	// Offered after the result, never before it (409 PLACEMENT_PRODUCTIVE_UNAVAILABLE). Starting serves one 60–100 word writing task and one 45-second spoken response at the placed level, with eight minutes; skip true skips them, and they can still be started later. Each is graded asynchronously and joins per_skill on the same result.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /me/placement/sessions/{id}/productive (the `StartPlacementProductive` operationId).
+	StartPlacementProductive(ctx context.Context, id openapi_types.UUID, body StartPlacementProductiveJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UserGetMyPreferences Read the caller's preferences.
 	//
@@ -1357,6 +1446,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /me/vocabulary/uploads/{id} (the `GetVocabUpload` operationId).
 	GetVocabUpload(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetMyWeeklyPlan This week's plan and its progress.
+	//
+	// Built on the first request of a week starting Monday in Asia/Ho_Chi_Minh and fixed for that week: 40% the next lessons, 30% daily practice sets, 20% due reviews at the learner's pace, 10% one writing or speaking task, with one extra item for the weakest skill. Progress is read at request time (work order 13 §3.7).
+	//
+	// Corresponds with GET /me/weekly-plan (the `GetMyWeeklyPlan` operationId).
+	GetMyWeeklyPlan(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SystemPing Check API dependency connectivity.
 	//
@@ -3981,6 +4077,78 @@ func (c *Client) SetLeaderboardOptIn(ctx context.Context, body SetLeaderboardOpt
 	return c.Client.Do(req)
 }
 
+// UserGetMyLearningProfile Read the caller's learning profile.
+//
+// Returns self-declared learning goals and parameters, or 404 when none exists.
+//
+// Corresponds with GET /me/learning-profile (the `UserGetMyLearningProfile` operationId).
+func (c *Client) UserGetMyLearningProfile(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserGetMyLearningProfileRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UserReplaceMyLearningProfileWithBody Replace the caller's learning profile.
+//
+// Creates or replaces the caller's learning profile.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /me/learning-profile (the `UserReplaceMyLearningProfile` operationId).
+func (c *Client) UserReplaceMyLearningProfileWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserReplaceMyLearningProfileRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UserReplaceMyLearningProfile Replace the caller's learning profile.
+//
+// Creates or replaces the caller's learning profile.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /me/learning-profile (the `UserReplaceMyLearningProfile` operationId).
+func (c *Client) UserReplaceMyLearningProfile(ctx context.Context, body UserReplaceMyLearningProfileJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserReplaceMyLearningProfileRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetMyStartingPath Recommended courses and the lesson to start at in each.
+//
+// The level is the current placement result; failing that the declared level; failing that A2. Courses are the curriculum courses whose range contains the level, or the nearest below it; the start lesson is the first lesson at or above the level (work order 13 §3.6).
+//
+// Corresponds with GET /me/path (the `GetMyStartingPath` operationId).
+func (c *Client) GetMyStartingPath(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetMyStartingPathRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // RbacGetMyPermissions Read the caller's own effective permissions.
 //
 // Resolves the caller's roles to the flat set of named permissions they grant. Advisory only: it exists so the interface can hide actions that would fail, and every server call re-checks regardless of what the client believes.
@@ -3988,6 +4156,133 @@ func (c *Client) SetLeaderboardOptIn(ctx context.Context, body SetLeaderboardOpt
 // Corresponds with GET /me/permissions (the `RbacGetMyPermissions` operationId).
 func (c *Client) RbacGetMyPermissions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRbacGetMyPermissionsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetMyPlacement Read the caller's placement result, session and invitation.
+//
+// The current result, a session in progress, when a retake becomes available, and whether to invite the learner. A session past its deadline is finished by this read, so it is never reported as active (work order 13 §3.5).
+//
+// Corresponds with GET /me/placement (the `GetMyPlacement` operationId).
+func (c *Client) GetMyPlacement(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetMyPlacementRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StartPlacement Start an adaptive placement test.
+//
+// Starts a 20-minute session and serves its first item, redacted. 409 PLACEMENT_IN_PROGRESS names the session in progress in meta.session_id; 409 PLACEMENT_RETAKE_TOO_SOON names meta.retake_available_at; 409 PLACEMENT_UNAVAILABLE means a band of the pool cannot serve a full test.
+//
+// Corresponds with POST /me/placement (the `StartPlacement` operationId).
+func (c *Client) StartPlacement(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStartPlacementRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetPlacementSession Read one of the caller's placement sessions.
+//
+// The current item, redacted, with the server's remaining seconds and the stage; or, once the adaptive part is over, the result and the writing and speaking part. Another learner's session is not found.
+//
+// Corresponds with GET /me/placement/sessions/{id} (the `GetPlacementSession` operationId).
+func (c *Client) GetPlacementSession(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetPlacementSessionRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AnswerPlacementItemWithBody Answer the current placement item.
+//
+// Every answer is a learn.attempts row graded by the kind's grader (ADR-0015); the same Idempotency-Key grades once. Returns the session with the next item or the result. An answer after deadline_at plus five seconds is refused with 409 PLACEMENT_SESSION_EXPIRED; an item that is not the current one with 409 PLACEMENT_NOT_CURRENT_ITEM. After the result, the same route answers the writing and speaking items.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /me/placement/sessions/{id}/answers (the `AnswerPlacementItem` operationId).
+func (c *Client) AnswerPlacementItemWithBody(ctx context.Context, id openapi_types.UUID, params *AnswerPlacementItemParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAnswerPlacementItemRequestWithBody(c.Server, id, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AnswerPlacementItem Answer the current placement item.
+//
+// Every answer is a learn.attempts row graded by the kind's grader (ADR-0015); the same Idempotency-Key grades once. Returns the session with the next item or the result. An answer after deadline_at plus five seconds is refused with 409 PLACEMENT_SESSION_EXPIRED; an item that is not the current one with 409 PLACEMENT_NOT_CURRENT_ITEM. After the result, the same route answers the writing and speaking items.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /me/placement/sessions/{id}/answers (the `AnswerPlacementItem` operationId).
+func (c *Client) AnswerPlacementItem(ctx context.Context, id openapi_types.UUID, params *AnswerPlacementItemParams, body AnswerPlacementItemJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAnswerPlacementItemRequest(c.Server, id, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StartPlacementProductiveWithBody Start or skip the writing and speaking part.
+//
+// Offered after the result, never before it (409 PLACEMENT_PRODUCTIVE_UNAVAILABLE). Starting serves one 60–100 word writing task and one 45-second spoken response at the placed level, with eight minutes; skip true skips them, and they can still be started later. Each is graded asynchronously and joins per_skill on the same result.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /me/placement/sessions/{id}/productive (the `StartPlacementProductive` operationId).
+func (c *Client) StartPlacementProductiveWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStartPlacementProductiveRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StartPlacementProductive Start or skip the writing and speaking part.
+//
+// Offered after the result, never before it (409 PLACEMENT_PRODUCTIVE_UNAVAILABLE). Starting serves one 60–100 word writing task and one 45-second spoken response at the placed level, with eight minutes; skip true skips them, and they can still be started later. Each is graded asynchronously and joins per_skill on the same result.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /me/placement/sessions/{id}/productive (the `StartPlacementProductive` operationId).
+func (c *Client) StartPlacementProductive(ctx context.Context, id openapi_types.UUID, body StartPlacementProductiveJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStartPlacementProductiveRequest(c.Server, id, body)
 	if err != nil {
 		return nil, err
 	}
@@ -4242,6 +4537,23 @@ func (c *Client) SubmitVocabUpload(ctx context.Context, body SubmitVocabUploadJS
 // Corresponds with GET /me/vocabulary/uploads/{id} (the `GetVocabUpload` operationId).
 func (c *Client) GetVocabUpload(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetVocabUploadRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetMyWeeklyPlan This week's plan and its progress.
+//
+// Built on the first request of a week starting Monday in Asia/Ho_Chi_Minh and fixed for that week: 40% the next lessons, 30% daily practice sets, 20% due reviews at the learner's pace, 10% one writing or speaking task, with one extra item for the weakest skill. Progress is read at request time (work order 13 §3.7).
+//
+// Corresponds with GET /me/weekly-plan (the `GetMyWeeklyPlan` operationId).
+func (c *Client) GetMyWeeklyPlan(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetMyWeeklyPlanRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -8753,6 +9065,100 @@ func NewSetLeaderboardOptInRequestWithBody(server string, contentType string, bo
 	return req, nil
 }
 
+// NewUserGetMyLearningProfileRequest constructs an http.Request for the UserGetMyLearningProfile method
+func NewUserGetMyLearningProfileRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/learning-profile")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUserReplaceMyLearningProfileRequest calls the generic UserReplaceMyLearningProfile builder with application/json body
+func NewUserReplaceMyLearningProfileRequest(server string, body UserReplaceMyLearningProfileJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUserReplaceMyLearningProfileRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewUserReplaceMyLearningProfileRequestWithBody constructs an http.Request for the UserReplaceMyLearningProfile method, with any body, and a specified content type
+func NewUserReplaceMyLearningProfileRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/learning-profile")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetMyStartingPathRequest constructs an http.Request for the GetMyStartingPath method
+func NewGetMyStartingPathRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/path")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewRbacGetMyPermissionsRequest constructs an http.Request for the RbacGetMyPermissions method
 func NewRbacGetMyPermissionsRequest(server string) (*http.Request, error) {
 	var err error
@@ -8776,6 +9182,201 @@ func NewRbacGetMyPermissionsRequest(server string) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewGetMyPlacementRequest constructs an http.Request for the GetMyPlacement method
+func NewGetMyPlacementRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/placement")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewStartPlacementRequest constructs an http.Request for the StartPlacement method
+func NewStartPlacementRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/placement")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetPlacementSessionRequest constructs an http.Request for the GetPlacementSession method
+func NewGetPlacementSessionRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/placement/sessions/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAnswerPlacementItemRequest calls the generic AnswerPlacementItem builder with application/json body
+func NewAnswerPlacementItemRequest(server string, id openapi_types.UUID, params *AnswerPlacementItemParams, body AnswerPlacementItemJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAnswerPlacementItemRequestWithBody(server, id, params, "application/json", bodyReader)
+}
+
+// NewAnswerPlacementItemRequestWithBody constructs an http.Request for the AnswerPlacementItem method, with any body, and a specified content type
+func NewAnswerPlacementItemRequestWithBody(server string, id openapi_types.UUID, params *AnswerPlacementItemParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/placement/sessions/%s/answers", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: "uuid"})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("Idempotency-Key", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewStartPlacementProductiveRequest calls the generic StartPlacementProductive builder with application/json body
+func NewStartPlacementProductiveRequest(server string, id openapi_types.UUID, body StartPlacementProductiveJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewStartPlacementProductiveRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewStartPlacementProductiveRequestWithBody constructs an http.Request for the StartPlacementProductive method, with any body, and a specified content type
+func NewStartPlacementProductiveRequestWithBody(server string, id openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/placement/sessions/%s/productive", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -9126,6 +9727,33 @@ func NewGetVocabUploadRequest(server string, id openapi_types.UUID) (*http.Reque
 	}
 
 	operationPath := fmt.Sprintf("/me/vocabulary/uploads/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetMyWeeklyPlanRequest constructs an http.Request for the GetMyWeeklyPlan method
+func NewGetMyWeeklyPlanRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/weekly-plan")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -11492,6 +12120,42 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with PUT /me/leaderboard-opt-in (the `SetLeaderboardOptIn` operationId).
 	SetLeaderboardOptInWithResponse(ctx context.Context, body SetLeaderboardOptInJSONRequestBody, reqEditors ...RequestEditorFn) (*SetLeaderboardOptInResponse, error)
 
+	// UserGetMyLearningProfileWithResponse Read the caller's learning profile.
+	//
+	// Returns self-declared learning goals and parameters, or 404 when none exists.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /me/learning-profile (the `UserGetMyLearningProfile` operationId).
+	UserGetMyLearningProfileWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*UserGetMyLearningProfileResponse, error)
+
+	// UserReplaceMyLearningProfileWithBodyWithResponse Replace the caller's learning profile.
+	//
+	// Creates or replaces the caller's learning profile.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /me/learning-profile (the `UserReplaceMyLearningProfile` operationId).
+	UserReplaceMyLearningProfileWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UserReplaceMyLearningProfileResponse, error)
+
+	// UserReplaceMyLearningProfileWithResponse Replace the caller's learning profile.
+	//
+	// Creates or replaces the caller's learning profile.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /me/learning-profile (the `UserReplaceMyLearningProfile` operationId).
+	UserReplaceMyLearningProfileWithResponse(ctx context.Context, body UserReplaceMyLearningProfileJSONRequestBody, reqEditors ...RequestEditorFn) (*UserReplaceMyLearningProfileResponse, error)
+
+	// GetMyStartingPathWithResponse Recommended courses and the lesson to start at in each.
+	//
+	// The level is the current placement result; failing that the declared level; failing that A2. Courses are the curriculum courses whose range contains the level, or the nearest below it; the start lesson is the first lesson at or above the level (work order 13 §3.6).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /me/path (the `GetMyStartingPath` operationId).
+	GetMyStartingPathWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetMyStartingPathResponse, error)
+
 	// RbacGetMyPermissionsWithResponse Read the caller's own effective permissions.
 	//
 	// Resolves the caller's roles to the flat set of named permissions they grant. Advisory only: it exists so the interface can hide actions that would fail, and every server call re-checks regardless of what the client believes.
@@ -11500,6 +12164,69 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /me/permissions (the `RbacGetMyPermissions` operationId).
 	RbacGetMyPermissionsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*RbacGetMyPermissionsResponse, error)
+
+	// GetMyPlacementWithResponse Read the caller's placement result, session and invitation.
+	//
+	// The current result, a session in progress, when a retake becomes available, and whether to invite the learner. A session past its deadline is finished by this read, so it is never reported as active (work order 13 §3.5).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /me/placement (the `GetMyPlacement` operationId).
+	GetMyPlacementWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetMyPlacementResponse, error)
+
+	// StartPlacementWithResponse Start an adaptive placement test.
+	//
+	// Starts a 20-minute session and serves its first item, redacted. 409 PLACEMENT_IN_PROGRESS names the session in progress in meta.session_id; 409 PLACEMENT_RETAKE_TOO_SOON names meta.retake_available_at; 409 PLACEMENT_UNAVAILABLE means a band of the pool cannot serve a full test.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /me/placement (the `StartPlacement` operationId).
+	StartPlacementWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*StartPlacementResponse, error)
+
+	// GetPlacementSessionWithResponse Read one of the caller's placement sessions.
+	//
+	// The current item, redacted, with the server's remaining seconds and the stage; or, once the adaptive part is over, the result and the writing and speaking part. Another learner's session is not found.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /me/placement/sessions/{id} (the `GetPlacementSession` operationId).
+	GetPlacementSessionWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetPlacementSessionResponse, error)
+
+	// AnswerPlacementItemWithBodyWithResponse Answer the current placement item.
+	//
+	// Every answer is a learn.attempts row graded by the kind's grader (ADR-0015); the same Idempotency-Key grades once. Returns the session with the next item or the result. An answer after deadline_at plus five seconds is refused with 409 PLACEMENT_SESSION_EXPIRED; an item that is not the current one with 409 PLACEMENT_NOT_CURRENT_ITEM. After the result, the same route answers the writing and speaking items.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /me/placement/sessions/{id}/answers (the `AnswerPlacementItem` operationId).
+	AnswerPlacementItemWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, params *AnswerPlacementItemParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AnswerPlacementItemResponse, error)
+
+	// AnswerPlacementItemWithResponse Answer the current placement item.
+	//
+	// Every answer is a learn.attempts row graded by the kind's grader (ADR-0015); the same Idempotency-Key grades once. Returns the session with the next item or the result. An answer after deadline_at plus five seconds is refused with 409 PLACEMENT_SESSION_EXPIRED; an item that is not the current one with 409 PLACEMENT_NOT_CURRENT_ITEM. After the result, the same route answers the writing and speaking items.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /me/placement/sessions/{id}/answers (the `AnswerPlacementItem` operationId).
+	AnswerPlacementItemWithResponse(ctx context.Context, id openapi_types.UUID, params *AnswerPlacementItemParams, body AnswerPlacementItemJSONRequestBody, reqEditors ...RequestEditorFn) (*AnswerPlacementItemResponse, error)
+
+	// StartPlacementProductiveWithBodyWithResponse Start or skip the writing and speaking part.
+	//
+	// Offered after the result, never before it (409 PLACEMENT_PRODUCTIVE_UNAVAILABLE). Starting serves one 60–100 word writing task and one 45-second spoken response at the placed level, with eight minutes; skip true skips them, and they can still be started later. Each is graded asynchronously and joins per_skill on the same result.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /me/placement/sessions/{id}/productive (the `StartPlacementProductive` operationId).
+	StartPlacementProductiveWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StartPlacementProductiveResponse, error)
+
+	// StartPlacementProductiveWithResponse Start or skip the writing and speaking part.
+	//
+	// Offered after the result, never before it (409 PLACEMENT_PRODUCTIVE_UNAVAILABLE). Starting serves one 60–100 word writing task and one 45-second spoken response at the placed level, with eight minutes; skip true skips them, and they can still be started later. Each is graded asynchronously and joins per_skill on the same result.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /me/placement/sessions/{id}/productive (the `StartPlacementProductive` operationId).
+	StartPlacementProductiveWithResponse(ctx context.Context, id openapi_types.UUID, body StartPlacementProductiveJSONRequestBody, reqEditors ...RequestEditorFn) (*StartPlacementProductiveResponse, error)
 
 	// UserGetMyPreferencesWithResponse Read the caller's preferences.
 	//
@@ -11626,6 +12353,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /me/vocabulary/uploads/{id} (the `GetVocabUpload` operationId).
 	GetVocabUploadWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetVocabUploadResponse, error)
+
+	// GetMyWeeklyPlanWithResponse This week's plan and its progress.
+	//
+	// Built on the first request of a week starting Monday in Asia/Ho_Chi_Minh and fixed for that week: 40% the next lessons, 30% daily practice sets, 20% due reviews at the learner's pace, 10% one writing or speaking task, with one extra item for the weakest skill. Progress is read at request time (work order 13 §3.7).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /me/weekly-plan (the `GetMyWeeklyPlan` operationId).
+	GetMyWeeklyPlanWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetMyWeeklyPlanResponse, error)
 
 	// SystemPingWithResponse Check API dependency connectivity.
 	//
@@ -18542,6 +19278,192 @@ func (r SetLeaderboardOptInResponse) ContentType() string {
 	return ""
 }
 
+// UserGetMyLearningProfileResponse200Headers the declared response headers of an HTTP 200 response for UserGetMyLearningProfile
+type UserGetMyLearningProfileResponse200Headers struct {
+	XRequestId *string
+}
+
+type UserGetMyLearningProfileResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *LearningProfile
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *UserGetMyLearningProfileResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UserGetMyLearningProfileResponse) GetJSON200() *LearningProfile {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r UserGetMyLearningProfileResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r UserGetMyLearningProfileResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r UserGetMyLearningProfileResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UserGetMyLearningProfileResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UserGetMyLearningProfileResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UserGetMyLearningProfileResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// UserReplaceMyLearningProfileResponse200Headers the declared response headers of an HTTP 200 response for UserReplaceMyLearningProfile
+type UserReplaceMyLearningProfileResponse200Headers struct {
+	XRequestId *string
+}
+
+type UserReplaceMyLearningProfileResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *LearningProfile
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *UserReplaceMyLearningProfileResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UserReplaceMyLearningProfileResponse) GetJSON200() *LearningProfile {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r UserReplaceMyLearningProfileResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r UserReplaceMyLearningProfileResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r UserReplaceMyLearningProfileResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r UserReplaceMyLearningProfileResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UserReplaceMyLearningProfileResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UserReplaceMyLearningProfileResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UserReplaceMyLearningProfileResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GetMyStartingPathResponse200Headers the declared response headers of an HTTP 200 response for GetMyStartingPath
+type GetMyStartingPathResponse200Headers struct {
+	XRequestId *string
+}
+
+type GetMyStartingPathResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *StartingPath
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetMyStartingPathResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetMyStartingPathResponse) GetJSON200() *StartingPath {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetMyStartingPathResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetBody returns the raw response body bytes
+func (r GetMyStartingPathResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetMyStartingPathResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetMyStartingPathResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetMyStartingPathResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // RbacGetMyPermissionsResponse200Headers the declared response headers of an HTTP 200 response for RbacGetMyPermissions
 type RbacGetMyPermissionsResponse200Headers struct {
 	XRequestId *string
@@ -18591,6 +19513,337 @@ func (r RbacGetMyPermissionsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r RbacGetMyPermissionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GetMyPlacementResponse200Headers the declared response headers of an HTTP 200 response for GetMyPlacement
+type GetMyPlacementResponse200Headers struct {
+	XRequestId *string
+}
+
+type GetMyPlacementResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PlacementOverview
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetMyPlacementResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetMyPlacementResponse) GetJSON200() *PlacementOverview {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetMyPlacementResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetBody returns the raw response body bytes
+func (r GetMyPlacementResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetMyPlacementResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetMyPlacementResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetMyPlacementResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// StartPlacementResponse201Headers the declared response headers of an HTTP 201 response for StartPlacement
+type StartPlacementResponse201Headers struct {
+	XRequestId *string
+}
+
+type StartPlacementResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *PlacementSession
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *StartPlacementResponse201Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r StartPlacementResponse) GetJSON201() *PlacementSession {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r StartPlacementResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r StartPlacementResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r StartPlacementResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StartPlacementResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StartPlacementResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StartPlacementResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GetPlacementSessionResponse200Headers the declared response headers of an HTTP 200 response for GetPlacementSession
+type GetPlacementSessionResponse200Headers struct {
+	XRequestId *string
+}
+
+type GetPlacementSessionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PlacementSession
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetPlacementSessionResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetPlacementSessionResponse) GetJSON200() *PlacementSession {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetPlacementSessionResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GetPlacementSessionResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetPlacementSessionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetPlacementSessionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetPlacementSessionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetPlacementSessionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AnswerPlacementItemResponse200Headers the declared response headers of an HTTP 200 response for AnswerPlacementItem
+type AnswerPlacementItemResponse200Headers struct {
+	XRequestId *string
+}
+
+type AnswerPlacementItemResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PlacementSession
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AnswerPlacementItemResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AnswerPlacementItemResponse) GetJSON200() *PlacementSession {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r AnswerPlacementItemResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AnswerPlacementItemResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AnswerPlacementItemResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AnswerPlacementItemResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AnswerPlacementItemResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetBody returns the raw response body bytes
+func (r AnswerPlacementItemResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AnswerPlacementItemResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AnswerPlacementItemResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AnswerPlacementItemResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// StartPlacementProductiveResponse200Headers the declared response headers of an HTTP 200 response for StartPlacementProductive
+type StartPlacementProductiveResponse200Headers struct {
+	XRequestId *string
+}
+
+type StartPlacementProductiveResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PlacementSession
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *StartPlacementProductiveResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r StartPlacementProductiveResponse) GetJSON200() *PlacementSession {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r StartPlacementProductiveResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r StartPlacementProductiveResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r StartPlacementProductiveResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r StartPlacementProductiveResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StartPlacementProductiveResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StartPlacementProductiveResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StartPlacementProductiveResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -19281,6 +20534,61 @@ func (r GetVocabUploadResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetVocabUploadResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GetMyWeeklyPlanResponse200Headers the declared response headers of an HTTP 200 response for GetMyWeeklyPlan
+type GetMyWeeklyPlanResponse200Headers struct {
+	XRequestId *string
+}
+
+type GetMyWeeklyPlanResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WeeklyPlan
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetMyWeeklyPlanResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetMyWeeklyPlanResponse) GetJSON200() *WeeklyPlan {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetMyWeeklyPlanResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetBody returns the raw response body bytes
+func (r GetMyWeeklyPlanResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetMyWeeklyPlanResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetMyWeeklyPlanResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetMyWeeklyPlanResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -22958,6 +24266,66 @@ func (c *ClientWithResponses) SetLeaderboardOptInWithResponse(ctx context.Contex
 	return ParseSetLeaderboardOptInResponse(rsp)
 }
 
+// UserGetMyLearningProfileWithResponse Read the caller's learning profile.
+//
+// Returns self-declared learning goals and parameters, or 404 when none exists.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /me/learning-profile (the `UserGetMyLearningProfile` operationId).
+func (c *ClientWithResponses) UserGetMyLearningProfileWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*UserGetMyLearningProfileResponse, error) {
+	rsp, err := c.UserGetMyLearningProfile(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserGetMyLearningProfileResponse(rsp)
+}
+
+// UserReplaceMyLearningProfileWithBodyWithResponse Replace the caller's learning profile.
+//
+// Creates or replaces the caller's learning profile.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /me/learning-profile (the `UserReplaceMyLearningProfile` operationId).
+func (c *ClientWithResponses) UserReplaceMyLearningProfileWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UserReplaceMyLearningProfileResponse, error) {
+	rsp, err := c.UserReplaceMyLearningProfileWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserReplaceMyLearningProfileResponse(rsp)
+}
+
+// UserReplaceMyLearningProfileWithResponse Replace the caller's learning profile.
+//
+// Creates or replaces the caller's learning profile.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /me/learning-profile (the `UserReplaceMyLearningProfile` operationId).
+func (c *ClientWithResponses) UserReplaceMyLearningProfileWithResponse(ctx context.Context, body UserReplaceMyLearningProfileJSONRequestBody, reqEditors ...RequestEditorFn) (*UserReplaceMyLearningProfileResponse, error) {
+	rsp, err := c.UserReplaceMyLearningProfile(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserReplaceMyLearningProfileResponse(rsp)
+}
+
+// GetMyStartingPathWithResponse Recommended courses and the lesson to start at in each.
+//
+// The level is the current placement result; failing that the declared level; failing that A2. Courses are the curriculum courses whose range contains the level, or the nearest below it; the start lesson is the first lesson at or above the level (work order 13 §3.6).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /me/path (the `GetMyStartingPath` operationId).
+func (c *ClientWithResponses) GetMyStartingPathWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetMyStartingPathResponse, error) {
+	rsp, err := c.GetMyStartingPath(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetMyStartingPathResponse(rsp)
+}
+
 // RbacGetMyPermissionsWithResponse Read the caller's own effective permissions.
 //
 // Resolves the caller's roles to the flat set of named permissions they grant. Advisory only: it exists so the interface can hide actions that would fail, and every server call re-checks regardless of what the client believes.
@@ -22971,6 +24339,111 @@ func (c *ClientWithResponses) RbacGetMyPermissionsWithResponse(ctx context.Conte
 		return nil, err
 	}
 	return ParseRbacGetMyPermissionsResponse(rsp)
+}
+
+// GetMyPlacementWithResponse Read the caller's placement result, session and invitation.
+//
+// The current result, a session in progress, when a retake becomes available, and whether to invite the learner. A session past its deadline is finished by this read, so it is never reported as active (work order 13 §3.5).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /me/placement (the `GetMyPlacement` operationId).
+func (c *ClientWithResponses) GetMyPlacementWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetMyPlacementResponse, error) {
+	rsp, err := c.GetMyPlacement(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetMyPlacementResponse(rsp)
+}
+
+// StartPlacementWithResponse Start an adaptive placement test.
+//
+// Starts a 20-minute session and serves its first item, redacted. 409 PLACEMENT_IN_PROGRESS names the session in progress in meta.session_id; 409 PLACEMENT_RETAKE_TOO_SOON names meta.retake_available_at; 409 PLACEMENT_UNAVAILABLE means a band of the pool cannot serve a full test.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /me/placement (the `StartPlacement` operationId).
+func (c *ClientWithResponses) StartPlacementWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*StartPlacementResponse, error) {
+	rsp, err := c.StartPlacement(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStartPlacementResponse(rsp)
+}
+
+// GetPlacementSessionWithResponse Read one of the caller's placement sessions.
+//
+// The current item, redacted, with the server's remaining seconds and the stage; or, once the adaptive part is over, the result and the writing and speaking part. Another learner's session is not found.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /me/placement/sessions/{id} (the `GetPlacementSession` operationId).
+func (c *ClientWithResponses) GetPlacementSessionWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetPlacementSessionResponse, error) {
+	rsp, err := c.GetPlacementSession(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetPlacementSessionResponse(rsp)
+}
+
+// AnswerPlacementItemWithBodyWithResponse Answer the current placement item.
+//
+// Every answer is a learn.attempts row graded by the kind's grader (ADR-0015); the same Idempotency-Key grades once. Returns the session with the next item or the result. An answer after deadline_at plus five seconds is refused with 409 PLACEMENT_SESSION_EXPIRED; an item that is not the current one with 409 PLACEMENT_NOT_CURRENT_ITEM. After the result, the same route answers the writing and speaking items.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /me/placement/sessions/{id}/answers (the `AnswerPlacementItem` operationId).
+func (c *ClientWithResponses) AnswerPlacementItemWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, params *AnswerPlacementItemParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AnswerPlacementItemResponse, error) {
+	rsp, err := c.AnswerPlacementItemWithBody(ctx, id, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAnswerPlacementItemResponse(rsp)
+}
+
+// AnswerPlacementItemWithResponse Answer the current placement item.
+//
+// Every answer is a learn.attempts row graded by the kind's grader (ADR-0015); the same Idempotency-Key grades once. Returns the session with the next item or the result. An answer after deadline_at plus five seconds is refused with 409 PLACEMENT_SESSION_EXPIRED; an item that is not the current one with 409 PLACEMENT_NOT_CURRENT_ITEM. After the result, the same route answers the writing and speaking items.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /me/placement/sessions/{id}/answers (the `AnswerPlacementItem` operationId).
+func (c *ClientWithResponses) AnswerPlacementItemWithResponse(ctx context.Context, id openapi_types.UUID, params *AnswerPlacementItemParams, body AnswerPlacementItemJSONRequestBody, reqEditors ...RequestEditorFn) (*AnswerPlacementItemResponse, error) {
+	rsp, err := c.AnswerPlacementItem(ctx, id, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAnswerPlacementItemResponse(rsp)
+}
+
+// StartPlacementProductiveWithBodyWithResponse Start or skip the writing and speaking part.
+//
+// Offered after the result, never before it (409 PLACEMENT_PRODUCTIVE_UNAVAILABLE). Starting serves one 60–100 word writing task and one 45-second spoken response at the placed level, with eight minutes; skip true skips them, and they can still be started later. Each is graded asynchronously and joins per_skill on the same result.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /me/placement/sessions/{id}/productive (the `StartPlacementProductive` operationId).
+func (c *ClientWithResponses) StartPlacementProductiveWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StartPlacementProductiveResponse, error) {
+	rsp, err := c.StartPlacementProductiveWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStartPlacementProductiveResponse(rsp)
+}
+
+// StartPlacementProductiveWithResponse Start or skip the writing and speaking part.
+//
+// Offered after the result, never before it (409 PLACEMENT_PRODUCTIVE_UNAVAILABLE). Starting serves one 60–100 word writing task and one 45-second spoken response at the placed level, with eight minutes; skip true skips them, and they can still be started later. Each is graded asynchronously and joins per_skill on the same result.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /me/placement/sessions/{id}/productive (the `StartPlacementProductive` operationId).
+func (c *ClientWithResponses) StartPlacementProductiveWithResponse(ctx context.Context, id openapi_types.UUID, body StartPlacementProductiveJSONRequestBody, reqEditors ...RequestEditorFn) (*StartPlacementProductiveResponse, error) {
+	rsp, err := c.StartPlacementProductive(ctx, id, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStartPlacementProductiveResponse(rsp)
 }
 
 // UserGetMyPreferencesWithResponse Read the caller's preferences.
@@ -23181,6 +24654,21 @@ func (c *ClientWithResponses) GetVocabUploadWithResponse(ctx context.Context, id
 		return nil, err
 	}
 	return ParseGetVocabUploadResponse(rsp)
+}
+
+// GetMyWeeklyPlanWithResponse This week's plan and its progress.
+//
+// Built on the first request of a week starting Monday in Asia/Ho_Chi_Minh and fixed for that week: 40% the next lessons, 30% daily practice sets, 20% due reviews at the learner's pace, 10% one writing or speaking task, with one extra item for the weakest skill. Progress is read at request time (work order 13 §3.7).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /me/weekly-plan (the `GetMyWeeklyPlan` operationId).
+func (c *ClientWithResponses) GetMyWeeklyPlanWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetMyWeeklyPlanResponse, error) {
+	rsp, err := c.GetMyWeeklyPlan(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetMyWeeklyPlanResponse(rsp)
 }
 
 // SystemPingWithResponse Check API dependency connectivity.
@@ -29899,6 +31387,165 @@ func ParseSetLeaderboardOptInResponse(rsp *http.Response) (*SetLeaderboardOptInR
 	return response, nil
 }
 
+// ParseUserGetMyLearningProfileResponse parses an HTTP response from a UserGetMyLearningProfileWithResponse call
+func ParseUserGetMyLearningProfileResponse(rsp *http.Response) (*UserGetMyLearningProfileResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UserGetMyLearningProfileResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LearningProfile
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers UserGetMyLearningProfileResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseUserReplaceMyLearningProfileResponse parses an HTTP response from a UserReplaceMyLearningProfileWithResponse call
+func ParseUserReplaceMyLearningProfileResponse(rsp *http.Response) (*UserReplaceMyLearningProfileResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UserReplaceMyLearningProfileResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LearningProfile
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers UserReplaceMyLearningProfileResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGetMyStartingPathResponse parses an HTTP response from a GetMyStartingPathWithResponse call
+func ParseGetMyStartingPathResponse(rsp *http.Response) (*GetMyStartingPathResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetMyStartingPathResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest StartingPath
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetMyStartingPathResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseRbacGetMyPermissionsResponse parses an HTTP response from a RbacGetMyPermissionsWithResponse call
 func ParseRbacGetMyPermissionsResponse(rsp *http.Response) (*RbacGetMyPermissionsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -29932,6 +31579,292 @@ func ParseRbacGetMyPermissionsResponse(rsp *http.Response) (*RbacGetMyPermission
 	switch {
 	case rsp.StatusCode == 200:
 		var headers RbacGetMyPermissionsResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGetMyPlacementResponse parses an HTTP response from a GetMyPlacementWithResponse call
+func ParseGetMyPlacementResponse(rsp *http.Response) (*GetMyPlacementResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetMyPlacementResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PlacementOverview
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetMyPlacementResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseStartPlacementResponse parses an HTTP response from a StartPlacementWithResponse call
+func ParseStartPlacementResponse(rsp *http.Response) (*StartPlacementResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StartPlacementResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest PlacementSession
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers StartPlacementResponse201Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers201 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGetPlacementSessionResponse parses an HTTP response from a GetPlacementSessionWithResponse call
+func ParseGetPlacementSessionResponse(rsp *http.Response) (*GetPlacementSessionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetPlacementSessionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PlacementSession
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetPlacementSessionResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAnswerPlacementItemResponse parses an HTTP response from a AnswerPlacementItemWithResponse call
+func ParseAnswerPlacementItemResponse(rsp *http.Response) (*AnswerPlacementItemResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AnswerPlacementItemResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PlacementSession
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AnswerPlacementItemResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseStartPlacementProductiveResponse parses an HTTP response from a StartPlacementProductiveWithResponse call
+func ParseStartPlacementProductiveResponse(rsp *http.Response) (*StartPlacementProductiveResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StartPlacementProductiveResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PlacementSession
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers StartPlacementProductiveResponse200Headers
 		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
 			var value string
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
@@ -30532,6 +32465,52 @@ func ParseGetVocabUploadResponse(rsp *http.Response) (*GetVocabUploadResponse, e
 	switch {
 	case rsp.StatusCode == 200:
 		var headers GetVocabUploadResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGetMyWeeklyPlanResponse parses an HTTP response from a GetMyWeeklyPlanWithResponse call
+func ParseGetMyWeeklyPlanResponse(rsp *http.Response) (*GetMyWeeklyPlanResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetMyWeeklyPlanResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WeeklyPlan
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetMyWeeklyPlanResponse200Headers
 		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
 			var value string
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {

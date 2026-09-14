@@ -5,7 +5,10 @@ JOIN learn.lessons l ON l.id = lp.requires_lesson_id
 WHERE lp.lesson_id = $1;
 
 -- name: ListPrerequisitesForLessons :many
-SELECT lp.lesson_id, lp.requires_lesson_id, lp.min_score, l.title AS requires_lesson_title
+-- requires_lesson_level lets learning open a lesson whose prerequisites are all
+-- below the learner's placed level (work order 13 §3.6) without a read per lesson.
+SELECT lp.lesson_id, lp.requires_lesson_id, lp.min_score, l.title AS requires_lesson_title,
+       l.cefr_level AS requires_lesson_level
 FROM learn.lesson_prerequisites lp
 JOIN learn.lessons l ON l.id = lp.requires_lesson_id
 WHERE lp.lesson_id = ANY($1::uuid[]);

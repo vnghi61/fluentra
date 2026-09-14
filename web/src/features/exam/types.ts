@@ -88,10 +88,7 @@ export interface RecordingAnswer {
   audio_object_key: string;
 }
 export type SittingAnswer =
-  | ChoiceAnswer
-  | EssayAnswer
-  | RewriteAnswer
-  | RecordingAnswer;
+  ChoiceAnswer | EssayAnswer | RewriteAnswer | RecordingAnswer;
 export type DraftAnswers = Record<string, SittingAnswer>;
 
 export interface ExamAttempt {

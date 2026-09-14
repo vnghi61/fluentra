@@ -81,6 +81,16 @@ type PrerequisiteItem struct {
 	RequiresLessonID    uuid.UUID `json:"requires_lesson_id"`
 	MinScore            int       `json:"min_score"`
 	RequiresLessonTitle string    `json:"requires_lesson_title"`
+	// RequiresLessonLevel is the required lesson's CEFR level, when it has one.
+	// A placement opens a lesson whose prerequisites are all below the placed level.
+	RequiresLessonLevel *string `json:"requires_lesson_level,omitempty"`
+}
+
+// CourseCatalog lists the curriculum for a learner's starting path.
+type CourseCatalog interface {
+	// ListCurriculumCourses returns the published curriculum courses whose range
+	// contains level, or all of them when level is nil.
+	ListCurriculumCourses(ctx context.Context, level *string) ([]*Course, error)
 }
 
 // Reader provides access to course hierarchy and lesson activities.

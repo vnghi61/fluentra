@@ -342,6 +342,26 @@ func (f *fakeRepo) ListReviewLogsByCard(
 	return result, nil
 }
 
+func (f *fakeRepo) AverageRecentReviewElapsedMs(
+	ctx context.Context, userID uuid.UUID, since time.Time, limit int32,
+) (float64, error) {
+	total, err := f.SumRecentReviewElapsedMs(ctx, userID, since, limit)
+	if err != nil || limit <= 0 {
+		return 0, err
+	}
+	count := 0
+	for _, entry := range f.logs {
+		if entry.UserID == userID && !entry.ReviewedAt.Before(since) {
+			count++
+		}
+	}
+	count = min(count, int(limit))
+	if count == 0 {
+		return 0, nil
+	}
+	return float64(total) / float64(count), nil
+}
+
 func (f *fakeRepo) SumRecentReviewElapsedMs(
 	_ context.Context, userID uuid.UUID, since time.Time, limit int32,
 ) (int64, error) {

@@ -5,6 +5,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -317,16 +318,31 @@ func (s *Service) ReplaceLearningProfile(
 	var stored domain.LearningProfile
 	err := dbx.InTx(ctx, s.pool, func(ctx context.Context, tx pgx.Tx) error {
 		repo := s.repo.WithTx(tx)
+		var before *domain.LearningProfile
+		existing, readErr := repo.GetLearningProfile(ctx, actorID)
+		switch {
+		case readErr == nil:
+			before = &existing
+		case !errors.Is(readErr, domain.ErrLearningProfileNotFound):
+			return readErr
+		}
+
 		replaced, replaceErr := repo.ReplaceLearningProfile(ctx, wanted)
 		if replaceErr != nil {
 			return replaceErr
 		}
 		stored = replaced
 
+		// The event names what changed, never the values; a replacement that
+		// changes nothing is not an event.
+		changed := domain.ChangedLearningProfileFields(before, wanted)
+		if len(changed) == 0 {
+			return nil
+		}
 		_, eventErr := s.events.Write(ctx, tx, contract.Aggregate, contract.EventLearningProfileUpdated,
 			contract.LearningProfileUpdated{
 				UserID:        actorID,
-				ChangedFields: wanted.ChangedFields(),
+				ChangedFields: changed,
 				ActorID:       actorID,
 				OccurredAt:    s.clock.Now(),
 			})

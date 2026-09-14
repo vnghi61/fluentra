@@ -380,4 +380,3 @@ func TestSeededCurriculumLessonsHaveCEFRLevel(t *testing.T) {
 		t.Errorf("found %d pool lessons with cefr_level, want 0", poolWithLevel)
 	}
 }
-

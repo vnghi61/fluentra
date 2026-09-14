@@ -47,9 +47,16 @@ const (
 	skillWriting   = "writing"
 	skillSpeaking  = "speaking"
 
-	varKind      = "Kind"
-	varCEFRLevel = "CEFRLevel"
-	keyAnswers   = "answers"
+	varKind         = "Kind"
+	varCEFRLevel    = "CEFRLevel"
+	varRedactedBody = "RedactedBody"
+	keyAnswers      = "answers"
+
+	// Slot lessons the pools share by name.
+	slotReadingComprehension  = "reading-comprehension"
+	slotWritingPrompt         = "writing-prompt"
+	slotSpeakingRespond       = "speaking-task-respond"
+	titleReadingComprehension = "Reading Comprehension"
 )
 
 var examLevels = []string{"A2", "B1", "B2"}
@@ -74,8 +81,8 @@ var examSlots = []examSlotSpec{
 	{
 		position:   2,
 		kind:       kindReadingComprehension,
-		slotName:   "reading-comprehension",
-		title:      "Reading Comprehension",
+		slotName:   slotReadingComprehension,
+		title:      titleReadingComprehension,
 		skillFocus: skillReading,
 	},
 	{
@@ -88,7 +95,7 @@ var examSlots = []examSlotSpec{
 	{
 		position:   4,
 		kind:       kindWritingPrompt,
-		slotName:   "writing-prompt",
+		slotName:   slotWritingPrompt,
 		title:      "Writing Prompt",
 		skillFocus: skillWriting,
 	},
@@ -104,7 +111,7 @@ var examSlots = []examSlotSpec{
 		position:   6,
 		kind:       kindSpeakingTask,
 		taskType:   subTypeRespond,
-		slotName:   "speaking-task-respond",
+		slotName:   slotSpeakingRespond,
 		title:      "Speaking Respond",
 		skillFocus: skillSpeaking,
 	},
@@ -520,7 +527,7 @@ func (s *Service) blindSolveListening(
 	var reply json.RawMessage
 	if err := ai.CompleteJSON(ctx, s.ai, ai.Request{
 		Task: ai.TaskPracticeSolve,
-		Vars: map[string]any{"Kind": kindListeningComprehension, "RedactedBody": string(redactedBody)},
+		Vars: map[string]any{"Kind": kindListeningComprehension, varRedactedBody: string(redactedBody)},
 	}, &reply); err != nil {
 		return fmt.Errorf("ai blind solve call failed: %w", err)
 	}
@@ -778,15 +785,15 @@ var examSittingPlan = []examSectionPlan{
 		{slot: slotListening, count: 3, what: "listening items with audio"},
 	}},
 	{position: 2, skill: skillReading, draws: []examDraw{
-		{slot: "reading-comprehension", count: 2, what: "reading items"},
+		{slot: slotReadingComprehension, count: 2, what: "reading items"},
 	}},
 	{position: 3, skill: skillWriting, draws: []examDraw{
-		{slot: "writing-prompt", count: 1, what: "writing prompts"},
+		{slot: slotWritingPrompt, count: 1, what: "writing prompts"},
 		{slot: "grammar-sentence-transform", count: 3, what: "sentence transform items"},
 	}},
 	{position: 4, skill: skillSpeaking, draws: []examDraw{
 		{slot: "speaking-task-read-aloud", count: 2, what: "speaking read-aloud items"},
-		{slot: "speaking-task-respond", count: 2, what: "speaking respond items"},
+		{slot: slotSpeakingRespond, count: 2, what: "speaking respond items"},
 	}},
 }
 

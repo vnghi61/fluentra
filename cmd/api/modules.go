@@ -305,12 +305,13 @@ func newIdentity(deps identityDeps) *identity {
 	})
 
 	assembled.listening = listening.New(listening.Deps{
-		Pool:     deps.Pool,
-		Content:  assembled.content.Reader(),
-		Learning: lazyAttemptReader{of: assembled},
-		Storage:  deps.Storage,
-		Sittings: lazyListeningSittings{of: assembled},
-		Audio:    media.NewCacheLocator(assembled.content.TTSCache()),
+		Pool:      deps.Pool,
+		Content:   assembled.content.Reader(),
+		Learning:  lazyAttemptReader{of: assembled},
+		Storage:   deps.Storage,
+		Sittings:  lazyListeningSittings{of: assembled},
+		Placement: lazyPlacementPlays{of: assembled},
+		Audio:     media.NewCacheLocator(assembled.content.TTSCache()),
 	})
 
 	assembled.speaking = speaking.New(speaking.Deps{
@@ -364,6 +365,9 @@ func newIdentity(deps identityDeps) *identity {
 		Env:           deps.Env,
 		AI:            deps.AI,
 		User:          assembled.user.LearningProfileReader(),
+		Flags:         assembled.admin.FlagReader(),
+		Courses:       assembled.lesson.Catalog(),
+		SRSPace:       assembled.srs.ReviewPace(),
 	})
 
 	return assembled
@@ -712,6 +716,19 @@ func (l lazyListeningSittings) ListeningPlayPolicy(
 		return 0, fmt.Errorf("exam module is not assembled")
 	}
 	return l.of.exam.Service().ListeningPlayPolicy(ctx, userID, sittingID, versionID)
+}
+
+// lazyPlacementPlays answers listening's play limit for a placement clip with the
+// learning module, which is assembled after listening.
+type lazyPlacementPlays struct{ of *identity }
+
+func (l lazyPlacementPlays) PlacementListeningPlays(
+	ctx context.Context, userID, sessionID, versionID uuid.UUID,
+) (int, error) {
+	if l.of.learning == nil {
+		return 0, fmt.Errorf("learning module is not assembled")
+	}
+	return l.of.learning.PlacementListeningPolicy().PlacementListeningPlays(ctx, userID, sessionID, versionID)
 }
 
 type lazyExamPoolDrawer struct{ of *identity }

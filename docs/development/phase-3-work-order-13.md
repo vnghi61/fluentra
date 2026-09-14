@@ -353,6 +353,11 @@ Lock ids: `1_700_000_215` for the placement pool top-up and `1_700_000_701` for 
 and gives `speaking.purge_recordings` "the next free number", which may be 215. Take the next free one
 and write it here.
 
+**Taken (2026-09-14):** 215 went to `speaking.purge_recordings`, so the placement pool top-up
+(`learning.top_up_placement_pool`) runs on `1_700_000_216`, and the expiry sweep
+(`learning.expire_placement_sessions`, every minute) on `1_700_000_701`. Migrations `1700000700`
+(lesson level) and `1700000710` (placement sessions, the result link and weekly plans).
+
 ---
 
 ## 6. Not in this order
@@ -405,3 +410,30 @@ lessons early.
 it never comes back.
 
 Everything in work order 11 §8 and work order 12 §9 still applies.
+
+---
+
+## 10. Review of the implementation, 2026-09-14
+
+The first implementation passed its unit tests and did not do what this order asks. What was found,
+and what replaced it:
+
+| Area | Found | Now |
+|---|---|---|
+| Answers | Graded in the session with no `learn.attempts` row and no `Idempotency-Key` (ADR-0015) | Every answer goes through `SubmitSittingAnswer`; the same key grades once |
+| Recording answers | `SubmitSittingAnswer` wrote an empty attempt status, which the status CHECK refuses — no exam or placement answer could be recorded against Postgres | Created `in_progress`; an integration test records one |
+| Placement effects | Attempts rolled up into activity progress, published `activity.completed` (XP) and made review cards | Placement completes nothing: no progress, no event, no card, no explanation call |
+| The engine | Prior centred on the declared level; next band from the mode, not the mean; writing and speaking inside the adaptive part, skipped at A1–A2; no per-skill estimate; a simulation seeded from the clock with no exact-band or determinism test | §3.4 as written; 1,000 simulated learners per band placed within one band in 99.6–100% and exactly in 81–92%, with fixed seeds |
+| Items | Vocabulary published as kind `vocabulary`, which has no grader; no level lengths, three-question, four-option, 60–100 word or 45-second checks; listening drawn without audio; a seen item served again when a band ran dry | Tense-choice shape in a vocabulary slot; every §3.3 check; audio required; the nearer band, then further, and a skill with nothing left is skipped |
+| The session | 60-minute limit, no grace, no one-session index, no read-time expiry; the sweep expired sessions without a result; no `skill_mastery`; `placement.completed` outside the transaction with a made-up payload | 20 minutes plus 5 seconds, a partial unique index, expiry by sweep every minute and by any read, a result with eight or more responses, mastery at 0.40 where lower, the event in the same transaction |
+| Writing and speaking | Served before the result; a skip finished the test; graded bands never reached the result | Offered after the result, skippable and startable later; each grade adds its band to `per_skill` and mastery, and publishes nothing |
+| The path | A slug made up from the level (`general-english-b1`); B1 default; `IsUnlocked` opened the lesson itself when its level was at or below the placed one, one read per lesson; declared level used | Curriculum courses containing the level, or the nearest below; the first lesson at or above it; a prerequisite below the placed level is met, from the batched prerequisite read; only a placement opens anything |
+| The weekly plan | Seven daily targets of 20 minutes each, no goal, no reviews, no progress | §3.7: minutes from the profile or 90, the 40/30/20/10 composition in whole items, reviews at the learner's measured pace (new `srs.ReviewPaceReader`), the weakest skill's extra item, progress read at request time |
+| Also | Unspecified `/placement/...` alias routes; the invitation ignored `placement.invite`; lesson levels returned lower case; the learning-profile event listed every set field as changed; placement listening clips had no play context | Aliases removed; the flag read through `admin`; levels A1–C2; only changed fields, and no event when nothing changed; `listening` accepts `context_type: placement`, one play, checked by `learning` |
+| Web | Answers sent as option indexes, the writing prompt hard-coded, a fake audio player, the client's clock, the invitation shown without the flag | Rewritten on the new API: server clock, option ids, the WO12 listening player and recorder, the result with writing and speaking, the path and the plan |
+
+**Not verified:** a top-up against a real model; the whole flow in a browser at 320 px; Piper audio
+for placement clips; the owner's steps in §7.
+
+**Not in the spec, so not built:** admin lesson create and update routes (§3.2) — only the activities
+and publish routes exist. The seed sets every curriculum lesson's level.

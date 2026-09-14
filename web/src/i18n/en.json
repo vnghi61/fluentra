@@ -574,6 +574,7 @@
     "featureFlags": "Feature Flags",
     "learnerManagement": "Learner Management",
     "learningPreferences": "Learning Preferences",
+    "learningProfile": "Learning Profile",
     "loadingYourSettings": "Loading your settings...",
     "missingAuthenticationParametersInCallback": "Missing authentication parameters in callback URL.",
     "platformAdministration": "Platform Administration",
@@ -1069,5 +1070,176 @@
       "loading": "Loading your result…",
       "loadFailed": "The result could not be loaded."
     }
+  },
+  "placement": {
+    "loading": "Loading your placement test…",
+    "loadFailed": "The placement test could not be loaded.",
+    "retry": "Try again",
+    "invite": {
+      "title": "Find your level",
+      "description": "A 15-minute adaptive test of vocabulary, grammar, reading and listening places you between A1 and C1 and picks where your lessons start.",
+      "action": "Take the placement test"
+    },
+    "intro": {
+      "title": "Placement test",
+      "subtitle": "The questions follow your answers, so each one is about as hard as your English. It places you between A1 and C1.",
+      "time": "About 15 minutes, 20 at most. The clock is on the server.",
+      "questions": "Vocabulary, grammar, a reading passage and a listening clip — up to 25 answers.",
+      "noGoingBack": "One item at a time. An answer cannot be changed once it is sent.",
+      "productive": "After your result, a short writing task and a spoken answer, if you want them.",
+      "start": "Start the test",
+      "starting": "Starting…",
+      "notNow": "Not now",
+      "unavailable": "The placement test is not available yet. Choose a starting level in Settings instead.",
+      "retakeTooSoon": "You can take the test again on {{date}}.",
+      "startFailed": "The test could not be started. Try again.",
+      "tooFewAnswers": "Your last test ended before there were enough answers to place you. You can start again now."
+    },
+    "stage": {
+      "vocabularyGrammar": "Vocabulary and grammar",
+      "readingListening": "Reading and listening",
+      "refine": "A few more questions",
+      "done": "Finished"
+    },
+    "runner": {
+      "progress": "Test progress",
+      "timeLeft": "Time left",
+      "noGoingBack": "You cannot go back to an answered item.",
+      "next": "Next",
+      "submitting": "Sending…",
+      "answerFailed": "Your answer could not be sent. Try again."
+    },
+    "item": {
+      "question": "Question {{number}}."
+    },
+    "timeUp": {
+      "title": "Time's up",
+      "description": "Your answers so far are enough to work out your result.",
+      "action": "See your result"
+    },
+    "levels": {
+      "A1": "Beginner",
+      "A2": "Elementary",
+      "B1": "Intermediate",
+      "B2": "Upper intermediate",
+      "C1": "Advanced"
+    },
+    "result": {
+      "eyebrow": "Your level",
+      "notMeasured": "Not measured yet",
+      "toDashboard": "Go to the dashboard",
+      "retake": "Take the test again",
+      "retakeOn": "You can take the test again on {{date}}.",
+      "retakeFailed": "The test could not be started. Try again."
+    },
+    "productive": {
+      "title": "Writing and speaking",
+      "description": "Answer each task before the time runs out.",
+      "notMeasured": "Writing and speaking are not measured yet. Take them now or later.",
+      "skipped": "You can take the writing and speaking part whenever you are ready.",
+      "grading": "Your answers are being graded. The result updates when they are ready.",
+      "takeNow": "Take them now",
+      "later": "Later",
+      "refresh": "Check again",
+      "failed": "That did not work. Try again.",
+      "timeLeft": "Time left: {{time}}",
+      "timeUp": "Time's up — see where things stand",
+      "writingTitle": "Writing",
+      "writingLabel": "Your answer",
+      "wordCount": "{{words}} words",
+      "wordTarget": "Aim for {{min}}–100 words",
+      "submitWriting": "Send my writing",
+      "speakingTitle": "Speaking",
+      "itemGrading": "Being graded",
+      "itemFailed": "Could not be graded",
+      "itemBand": "Level {{band}}",
+      "answerFailed": "Your answer could not be sent. Try again."
+    },
+    "path": {
+      "title": "Where to start",
+      "fromPlacement": "Chosen for your placed level, {{level}}.",
+      "fromDeclared": "Chosen for the level you gave, {{level}}. A placement test opens lessons below your level.",
+      "fromDefault": "Chosen for level {{level}} until you take the placement test.",
+      "range": "Levels {{from}} to {{to}}",
+      "startAt": "Start with: {{lesson}}",
+      "start": "Start this lesson",
+      "browse": "Browse the course"
+    },
+    "settings": {
+      "title": "Placement",
+      "placedOn": "Placed on {{date}}",
+      "noResult": "You have not taken the placement test.",
+      "declared": "Starting level you chose: {{level}}",
+      "resume": "Continue the test",
+      "retake": "Retake placement",
+      "retakeOn": "You can retake the test on {{date}}.",
+      "start": "Take the placement test"
+    }
+  },
+  "welcome": {
+    "step": "Step {{current}} of {{total}}",
+    "goalTitle": "What are you learning English for?",
+    "examLabel": "Your goal",
+    "exam": {
+      "none": "General English",
+      "ielts": "IELTS",
+      "toeic": "TOEIC"
+    },
+    "targetLabel": "The level you want to reach",
+    "minutesTitle": "How much time do you have each week?",
+    "minutesSubtitle": "Your weekly plan is sized to it. You can change it later in Settings.",
+    "minutesOption": "{{minutes}} minutes",
+    "placementTitle": "Where should you start?",
+    "placementSubtitle": "Take a 15-minute test to find your level, or choose one yourself.",
+    "takeTest": "Take the placement test",
+    "starting": "Starting…",
+    "chooseInstead": "Choose my level instead",
+    "chooseTitle": "Your starting level",
+    "chooseSubtitle": "Pick the level that feels right. You can take the test later.",
+    "notOpen": "The placement test is not open yet. Pick the level that feels right for now.",
+    "finish": "Save and go to the dashboard",
+    "saving": "Saving…",
+    "continue": "Continue",
+    "back": "Back",
+    "startFailed": "The test could not be started. You can choose your level instead.",
+    "saveFailed": "Your answers could not be saved. Try again."
+  },
+  "weeklyPlan": {
+    "title": "This week's plan",
+    "weekOf": "Week of {{date}}",
+    "minutes": "{{done}} of {{goal}} minutes",
+    "itemsDone": "{{done}} of {{total}} done",
+    "progressLabel": "Minutes studied this week",
+    "done": "Done",
+    "focus": "Focus",
+    "itemMinutes": "{{minutes}} min",
+    "reviews": "{{reviews}} reviews",
+    "kind": {
+      "lesson": "Lesson",
+      "dailyPractice": "Daily practice",
+      "reviews": "Reviews",
+      "writing": "Writing task",
+      "speaking": "Speaking task"
+    }
+  },
+  "profile": {
+    "title": "Learning goals",
+    "subtitle": "Your goal and weekly minutes shape your weekly plan.",
+    "examLabel": "Your goal",
+    "targetLabel": "The level you want to reach",
+    "minutesLabel": "Minutes a week",
+    "minutesPreset": "{{minutes}} min",
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "Saved.",
+    "saveFailed": "Your changes could not be saved. Try again."
+  },
+  "skills": {
+    "vocabulary": "Vocabulary",
+    "grammar": "Grammar",
+    "reading": "Reading",
+    "listening": "Listening",
+    "writing": "Writing",
+    "speaking": "Speaking"
   }
 }

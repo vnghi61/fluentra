@@ -1110,6 +1110,15 @@ func (s *Service) ListPrerequisitesForLessons(
 	return s.repo.ListPrerequisitesForLessons(ctx, lessonIDs)
 }
 
+// curriculumCatalogLimit bounds the courses a starting path chooses from.
+const curriculumCatalogLimit int32 = 100
+
+// ListCurriculumCourses implements contract.CourseCatalog: the published
+// curriculum courses whose range contains level, or all of them.
+func (s *Service) ListCurriculumCourses(ctx context.Context, level *string) ([]*contract.Course, error) {
+	return s.repo.ListPublishedCourses(ctx, level, curriculumCatalogLimit, 0)
+}
+
 // ListUnitsByCourseID implements contract.Reader.
 func (s *Service) ListUnitsByCourseID(
 	ctx context.Context, courseID uuid.UUID,

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -62,16 +63,18 @@ func toSqlcCefrLevel(lvl *string) *sqlc.CoreCefrLevel {
 	if lvl == nil || *lvl == "" {
 		return nil
 	}
-	c := sqlc.CoreCefrLevel(*lvl)
+	// core.cefr_level is lower case; the API and the contract use A1–C2.
+	c := sqlc.CoreCefrLevel(strings.ToLower(*lvl))
 	return &c
 }
 
-// PrerequisiteItem carries a lesson prerequisite with the required lesson's title.
+// PrerequisiteItem carries a lesson prerequisite with the required lesson's title and level.
 type PrerequisiteItem struct {
 	LessonID            uuid.UUID
 	RequiresLessonID    uuid.UUID
 	MinScore            int
 	RequiresLessonTitle string
+	RequiresLessonLevel *string
 }
 
 // Repository handles database operations for the lesson module.
@@ -582,6 +585,7 @@ func (r *Repository) ListPrerequisitesForLessons(
 			RequiresLessonID:    row.RequiresLessonID,
 			MinScore:            int(row.MinScore),
 			RequiresLessonTitle: row.RequiresLessonTitle,
+			RequiresLessonLevel: fromSqlcCefrLevel(row.RequiresLessonLevel),
 		}
 	}
 	return items, nil

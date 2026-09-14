@@ -86,7 +86,10 @@ const attempt: ExamAttempt = {
           kind: "reading_comprehension",
           content_version_id: "66666666-6666-6666-6666-666666666602",
           weight: 1,
-          config: { passage: "The library is closed on Friday.", questions: [] },
+          config: {
+            passage: "The library is closed on Friday.",
+            questions: [],
+          },
         },
       ],
     },
@@ -170,7 +173,12 @@ describe("exam screens", () => {
     server.use(
       http.get("/api/v1/exams", () => HttpResponse.json([exam])),
       http.get("/api/v1/exam-attempts", () =>
-        HttpResponse.json({ items: [], total: 0, sittings_today: 1, daily_limit: 5 }),
+        HttpResponse.json({
+          items: [],
+          total: 0,
+          sittings_today: 1,
+          daily_limit: 5,
+        }),
       ),
     );
   });
@@ -179,8 +187,13 @@ describe("exam screens", () => {
     await renderWithProviders(<ExamList userPracticeLevel="B1" />);
 
     expect(await screen.findByText("TOEIC Mock Exam (B1)")).toBeInTheDocument();
-    expect(await screen.findByText("4 of 5 sittings left today")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /B1/ })).toHaveAttribute("aria-pressed", "true");
+    expect(
+      await screen.findByText("4 of 5 sittings left today"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /B1/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
     expect(screen.getByText("Exam mode · 75 min")).toBeInTheDocument();
   });
 
@@ -188,8 +201,16 @@ describe("exam screens", () => {
     server.use(
       http.post(`/api/v1/exams/${EXAM_ID}/attempts`, () =>
         HttpResponse.json(
-          { type: "about:blank", title: "Not Found", status: 404, code: "EXAM_POOL_EMPTY" },
-          { status: 404, headers: { "Content-Type": "application/problem+json" } },
+          {
+            type: "about:blank",
+            title: "Not Found",
+            status: 404,
+            code: "EXAM_POOL_EMPTY",
+          },
+          {
+            status: 404,
+            headers: { "Content-Type": "application/problem+json" },
+          },
         ),
       ),
     );
@@ -208,9 +229,13 @@ describe("exam screens", () => {
 
     expect(await screen.findByText("83")).toBeInTheDocument();
     expect(screen.getByText("B2")).toBeInTheDocument();
-    expect(screen.getByText("Not an official TOEIC score.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Not an official TOEIC score."),
+    ).toBeInTheDocument();
     expect(screen.getByText(/Pronunciation not assessed/)).toBeInTheDocument();
-    expect(screen.getByText(/two sittings hold different items/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/two sittings hold different items/),
+    ).toBeInTheDocument();
     expect(screen.getAllByText("Not scored").length).toBeGreaterThan(0);
     expect(screen.getByText("1 of 2 questions correct")).toBeInTheDocument();
     expect(screen.getByText("Tab hidden: 2")).toBeInTheDocument();
@@ -219,15 +244,18 @@ describe("exam screens", () => {
   it("saves only the open section's answers and moves on through the server", async () => {
     const saved = vi.fn();
     server.use(
-      http.put(`/api/v1/exam-attempts/${SITTING_ID}/answers`, async ({ request }) => {
-        saved(await request.json());
-        return HttpResponse.json({
-          saved: true,
-          remaining_seconds: 4400,
-          current_section: 1,
-          section_remaining_seconds: 1100,
-        });
-      }),
+      http.put(
+        `/api/v1/exam-attempts/${SITTING_ID}/answers`,
+        async ({ request }) => {
+          saved(await request.json());
+          return HttpResponse.json({
+            saved: true,
+            remaining_seconds: 4400,
+            current_section: 1,
+            section_remaining_seconds: 1100,
+          });
+        },
+      ),
       http.post(`/api/v1/exam-attempts/${SITTING_ID}/sections/1/complete`, () =>
         HttpResponse.json({
           current_section: 2,
@@ -250,6 +278,8 @@ describe("exam screens", () => {
       integrity_events: [],
       section_number: 1,
     });
-    expect(await screen.findByText("The library is closed on Friday.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("The library is closed on Friday."),
+    ).toBeInTheDocument();
   });
 });

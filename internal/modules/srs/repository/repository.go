@@ -43,6 +43,9 @@ type Repository interface {
 		ctx context.Context, cardID, userID uuid.UUID, limit int32,
 	) ([]sqlc.LearnReviewLog, error)
 	SumRecentReviewElapsedMs(ctx context.Context, userID uuid.UUID, since time.Time, limit int32) (int64, error)
+	AverageRecentReviewElapsedMs(
+		ctx context.Context, userID uuid.UUID, since time.Time, limit int32,
+	) (float64, error)
 	UpsertReviewDailyStats(
 		ctx context.Context, arg sqlc.UpsertReviewDailyStatsParams,
 	) (sqlc.LearnReviewDailyStat, error)
@@ -196,6 +199,16 @@ func (r *pgxRepository) SumRecentReviewElapsedMs(
 	ctx context.Context, userID uuid.UUID, since time.Time, limit int32,
 ) (int64, error) {
 	return r.q.SumRecentReviewElapsedMs(ctx, sqlc.SumRecentReviewElapsedMsParams{
+		UserID:     userID,
+		ReviewedAt: since,
+		Limit:      limit,
+	})
+}
+
+func (r *pgxRepository) AverageRecentReviewElapsedMs(
+	ctx context.Context, userID uuid.UUID, since time.Time, limit int32,
+) (float64, error) {
+	return r.q.AverageRecentReviewElapsedMs(ctx, sqlc.AverageRecentReviewElapsedMsParams{
 		UserID:     userID,
 		ReviewedAt: since,
 		Limit:      limit,

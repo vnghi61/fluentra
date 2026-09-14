@@ -619,23 +619,21 @@ type LearnPlacementResult struct {
 }
 
 type LearnPlacementSession struct {
-	ID                uuid.UUID
-	UserID            uuid.UUID
-	Status            string
-	Stage             string
-	ThetaEstimate     pgtype.Numeric
-	PlacedLevel       *string
-	Confidence        pgtype.Numeric
-	CurrentActivityID *uuid.UUID
-	CurrentItemKind   *string
-	CurrentItemLevel  *string
-	Responses         []byte
-	AdaptiveState     []byte
-	StartedAt         time.Time
-	CompletedAt       *time.Time
-	ExpiresAt         time.Time
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
+	ID                   uuid.UUID
+	UserID               uuid.UUID
+	Status               string
+	Stage                string
+	StartedAt            time.Time
+	DeadlineAt           time.Time
+	Estimate             []byte
+	Items                []byte
+	Version              int32
+	ProductiveStatus     string
+	ProductiveDeadlineAt *time.Time
+	ResultID             *uuid.UUID
+	CompletedAt          *time.Time
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
 }
 
 type LearnProgress struct {
@@ -714,15 +712,11 @@ type LearnSrsParam struct {
 }
 
 type LearnWeeklyPlan struct {
-	ID               uuid.UUID
-	UserID           uuid.UUID
-	WeekStartDate    pgtype.Date
-	PlacedLevel      string
-	WeakestSkill     string
-	TimeDistribution []byte
-	DailyTargets     []byte
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
+	UserID      uuid.UUID
+	WeekStart   pgtype.Date
+	MinutesGoal int32
+	Items       []byte
+	CreatedAt   time.Time
 }
 
 type SkillDeck struct {

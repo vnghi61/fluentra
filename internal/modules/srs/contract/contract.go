@@ -92,6 +92,14 @@ type QueueReader interface {
 	DueCards(ctx context.Context, userID uuid.UUID, limit int32) ([]ReviewCardSummary, error)
 }
 
+// ReviewPaceReader reports how long a learner takes per review, measured from
+// the time they spent on their recent answers. learning sizes the reviews in a
+// weekly plan with it.
+type ReviewPaceReader interface {
+	// AverageReviewSeconds is zero when the learner has no recent reviews.
+	AverageReviewSeconds(ctx context.Context, userID uuid.UUID) (float64, error)
+}
+
 // CardAnswered payload for review.card_answered event.
 type CardAnswered struct {
 	UserID       uuid.UUID `json:"user_id"`

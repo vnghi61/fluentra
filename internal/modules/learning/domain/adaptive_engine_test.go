@@ -1,10 +1,8 @@
 package domain_test
 
 import (
-	"math"
 	"math/rand"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -12,175 +10,185 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/learning/domain"
 )
 
-func TestInitialPrior(t *testing.T) {
-	// Uniform prior when undeclared
-	pUniform := domain.InitialPrior("")
-	for i := 0; i < 5; i++ {
-		assert.InDelta(t, 0.20, pUniform[i], 1e-6)
-	}
+// responder answers one question at a band, the way a simulated learner would.
+type responder func(band string) bool
 
-	// Centered prior when declared level is B1 (index 2)
-	pB1 := domain.InitialPrior("B1")
-	var sum float64
-	for _, p := range pB1 {
-		sum += p
-	}
-	assert.InDelta(t, 1.0, sum, 1e-6)
-	assert.True(t, pB1[2] > pB1[1], "declared level B1 should have highest prior")
-	assert.True(t, pB1[1] > pB1[0], "adjacent level A2 should have higher prior than distant A1")
-	assert.InDelta(t, pB1[1], pB1[3], 1e-6, "adjacent A2 and B2 should have equal prior")
-}
+// emptyBands names the skill-and-band slots a simulated pool has nothing in.
+type emptyBands map[string]bool
 
-func TestProbabilityCorrect3PL(t *testing.T) {
-	// If theta == difficulty:
-	// z = 0 => sigmoid(0) = 0.5
-	// P = c + (1-c)*0.5 = 0.25 + 0.75*0.5 = 0.625
-	p := domain.ProbabilityCorrect3PL(0.0, 0.0, 0.25)
-	assert.InDelta(t, 0.625, p, 1e-4)
+func slotKey(skill, band string) string { return skill + "/" + band }
 
-	// High ability theta >> difficulty => P approaches 1.0
-	pHigh := domain.ProbabilityCorrect3PL(5.0, 0.0, 0.25)
-	assert.InDelta(t, 1.0, pHigh, 1e-3)
+func difficulty(band string) float64 { return float64(domain.BandIndex(band) - 2) }
 
-	// Low ability theta << difficulty => P approaches guessing parameter c = 0.25
-	pLow := domain.ProbabilityCorrect3PL(-5.0, 0.0, 0.25)
-	assert.InDelta(t, 0.25, pLow, 1e-3)
-
-	// Open-ended task: guessing c = 0.0 => P approaches 0.0
-	pOpenLow := domain.ProbabilityCorrect3PL(-5.0, 0.0, 0.0)
-	assert.InDelta(t, 0.0, pOpenLow, 1e-3)
-}
-
-func TestBayesianUpdateDirectionality(t *testing.T) {
-	state := domain.NewAdaptiveState("")
-	initialTheta := state.ThetaEstimate
-	assert.InDelta(t, 0.0, initialTheta, 1e-6)
-
-	// Series of correct answers on B1 (d=0.0)
-	for i := 0; i < 4; i++ {
-		err := state.RecordResponse("vocabulary", "B1", 1.0)
-		require.NoError(t, err)
-	}
-	assert.True(t, state.ThetaEstimate > initialTheta, "correct answers must increase theta estimate")
-
-	// Shift with wrong answers
-	highTheta := state.ThetaEstimate
-	for i := 0; i < 4; i++ {
-		err := state.RecordResponse("grammar_tense_choice", "B2", 0.0)
-		require.NoError(t, err)
-	}
-	assert.True(t, state.ThetaEstimate < highTheta, "incorrect answers must decrease theta estimate")
-}
-
-func TestAdaptiveEngine_StageLifecycle(t *testing.T) {
-	state := domain.NewAdaptiveState("")
-	assert.Equal(t, domain.StageFastConvergence, state.Stage)
-
-	// Run Stage 1 (alternates vocab and grammar)
-	for state.Stage == domain.StageFastConvergence {
-		next := state.NextItem()
-		assert.False(t, next.Finished)
-		assert.Contains(t, []string{"vocabulary", "grammar_tense_choice"}, next.Kind)
-		err := state.RecordResponse(next.Kind, next.Level, 1.0)
-		require.NoError(t, err)
-	}
-
-	assert.Equal(t, domain.StageReceptive, state.Stage)
-
-	// Stage 2: 1 reading and 1 listening
-	next1 := state.NextItem()
-	assert.Equal(t, "reading_comprehension", next1.Kind)
-	require.NoError(t, state.RecordResponse(next1.Kind, next1.Level, 1.0))
-
-	next2 := state.NextItem()
-	assert.Equal(t, "listening_comprehension", next2.Kind)
-	require.NoError(t, state.RecordResponse(next2.Kind, next2.Level, 1.0))
-
-	// Stage 3 or Completed
-	if state.Stage == domain.StageProductive {
-		next3 := state.NextItem()
-		assert.Equal(t, "writing_prompt", next3.Kind)
-		require.NoError(t, state.RecordResponse(next3.Kind, next3.Level, 0.9))
-
-		next4 := state.NextItem()
-		assert.Equal(t, "speaking_task", next4.Kind)
-		require.NoError(t, state.RecordResponse(next4.Kind, next4.Level, 0.85))
-	}
-
-	assert.Equal(t, domain.StageCompleted, state.Stage)
-	finalItem := state.NextItem()
-	assert.True(t, finalItem.Finished)
-	assert.NotEmpty(t, state.PlacedLevel)
-	assert.True(t, state.Confidence > 0.5)
-}
-
-// TestAdaptiveEngine_MonteCarloSimulation runs 1,000 simulated learners for each of
-// the 5 CEFR bands (5,000 learners total) and asserts that at least 95% of learners
-// are placed within +/- 1 CEFR band of their true ability (WO13 §3.4).
-func TestAdaptiveEngine_MonteCarloSimulation(t *testing.T) {
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	numLearnersPerBand := 1000
-
-	for bandIdx, trueBand := range domain.CEFRBands {
-		trueBaseTheta := domain.BandThetas[bandIdx]
-		withinToleranceCount := 0
-
-		for sim := 0; sim < numLearnersPerBand; sim++ {
-			// Add slight normal noise to true ability
-			thetaTrue := trueBaseTheta + rng.NormFloat64()*0.15
-
-			// Start session with uniform prior (no prior knowledge)
-			state := domain.NewAdaptiveState("")
-
-			for !state.NextItem().Finished {
-				item := state.NextItem()
-				difficulty := domain.LevelToDifficulty(item.Level)
-				guessing := 0.25
-				if item.Kind == "writing_prompt" || item.Kind == "speaking_task" {
-					guessing = 0.0
-				}
-
-				pCorrect := domain.ProbabilityCorrect3PL(thetaTrue, difficulty, guessing)
-
-				// Simulate learner response
-				var score float64
-				if guessing == 0.0 {
-					// Continuous score for productive tasks
-					score = math.Min(1.0, math.Max(0.0, pCorrect+rng.NormFloat64()*0.1))
-				} else {
-					// Binary score for multiple choice
-					if rng.Float64() < pCorrect {
-						score = 1.0
-					} else {
-						score = 0.0
-					}
-				}
-
-				err := state.RecordResponse(item.Kind, item.Level, score)
-				require.NoError(t, err)
-			}
-
-			// Evaluate accuracy: placed level index vs true band index
-			placedIdx := -1
-			for i, b := range domain.CEFRBands {
-				if b == state.PlacedLevel {
-					placedIdx = i
-					break
-				}
-			}
-
-			diff := math.Abs(float64(placedIdx - bandIdx))
-			if diff <= 1.0 {
-				withinToleranceCount++
+// runPlacement drives the engine to the end the way the service does: ask for a
+// step, find a band that has an item, record every question as an observation.
+// It fails the test when the engine asks for more than it can ever be served.
+func runPlacement(t *testing.T, answer responder, empty emptyBands) domain.PlacementEstimate {
+	t.Helper()
+	estimate := domain.NewPlacementEstimate()
+	var progress domain.PlacementProgress
+	for turn := 0; turn < 60; turn++ {
+		step := domain.NextPlacementStep(estimate, progress, false)
+		if step.Done {
+			return estimate
+		}
+		band := ""
+		for _, candidate := range domain.BandSearchOrder(step.Band, estimate.Mean()) {
+			if !empty[slotKey(step.Skill, candidate)] {
+				band = candidate
+				break
 			}
 		}
-
-		accuracy := float64(withinToleranceCount) / float64(numLearnersPerBand)
-		t.Logf("Monte Carlo Band %s: %d/%d placed within +/- 1 band (%.2f%%)",
-			trueBand, withinToleranceCount, numLearnersPerBand, accuracy*100)
-
-		// Assert at least 95% placed within +/- 1 band
-		assert.GreaterOrEqual(t, accuracy, 0.95,
-			"Band %s placement accuracy must be >= 95%% within +/- 1 band", trueBand)
+		if band == "" {
+			estimate.MarkExhausted(step.Skill)
+			continue
+		}
+		questions := 1
+		switch step.Skill {
+		case domain.SkillVocabulary:
+			progress.Vocabulary++
+		case domain.SkillGrammar:
+			progress.Grammar++
+		case domain.SkillReading:
+			progress.Reading++
+			questions = 3
+		case domain.SkillListening:
+			progress.Listening++
+			questions = 3
+		}
+		for q := 0; q < questions; q++ {
+			estimate.Observe(domain.Observation{Skill: step.Skill, Band: band, Correct: answer(band), Options: 4})
+		}
 	}
+	t.Fatal("the engine never finished")
+	return estimate
+}
+
+func TestPlacement_SimulatedLearnersArePlacedAccurately(t *testing.T) {
+	const learners = 1000
+	for index, trueBand := range domain.PlacementBands {
+		t.Run(trueBand, func(t *testing.T) {
+			//nolint:gosec // a seeded generator is the point: the simulation has to be reproducible
+			rng := rand.New(rand.NewSource(int64(20260913 + index)))
+			theta := difficulty(trueBand)
+			within, exact := 0, 0
+			for i := 0; i < learners; i++ {
+				estimate := runPlacement(t, func(band string) bool {
+					return rng.Float64() < domain.ProbabilityCorrect(theta, difficulty(band), 4)
+				}, nil)
+
+				require.LessOrEqual(t, estimate.Responses(), domain.PlacementMaxResponses,
+					"a test stops within the budget")
+				distance := domain.BandIndex(estimate.Level()) - index
+				if distance == 0 {
+					exact++
+				}
+				if distance >= -1 && distance <= 1 {
+					within++
+				}
+			}
+			t.Logf("%s: within one band %d/%d, exact %d/%d", trueBand, within, learners, exact, learners)
+			assert.GreaterOrEqual(t, within, learners*95/100, "placed within one band in at least 95%%")
+			assert.GreaterOrEqual(t, exact, learners*70/100, "placed exactly in at least 70%%")
+		})
+	}
+}
+
+func TestPlacement_EverythingRightIsC1AndEverythingWrongIsA1(t *testing.T) {
+	right := runPlacement(t, func(string) bool { return true }, nil)
+	assert.Equal(t, domain.LevelC1, right.Level())
+
+	wrong := runPlacement(t, func(string) bool { return false }, nil)
+	assert.Equal(t, domain.LevelA1, wrong.Level())
+}
+
+func TestPlacement_AnEmptyBandNeverStallsTheEngine(t *testing.T) {
+	empty := emptyBands{}
+	for _, skill := range []string{domain.SkillVocabulary, domain.SkillGrammar, domain.SkillReading} {
+		empty[slotKey(skill, domain.LevelB1)] = true
+	}
+	for _, band := range domain.PlacementBands {
+		empty[slotKey(domain.SkillListening, band)] = true
+	}
+	rng := rand.New(rand.NewSource(7)) //nolint:gosec // seeded for a reproducible simulation
+	estimate := runPlacement(t, func(band string) bool {
+		return rng.Float64() < domain.ProbabilityCorrect(0, difficulty(band), 4)
+	}, empty)
+
+	assert.LessOrEqual(t, estimate.Responses(), domain.PlacementMaxResponses)
+	assert.Contains(t, estimate.Exhausted, domain.SkillListening)
+	for _, obs := range estimate.Observations {
+		assert.NotEqual(t, domain.SkillListening, obs.Skill, "no listening item existed to observe")
+		if obs.Skill != domain.SkillListening {
+			assert.False(t, empty[slotKey(obs.Skill, obs.Band)], "an item was served from an empty slot")
+		}
+	}
+}
+
+func TestPlacement_TheSameResponsesGiveTheSameEstimate(t *testing.T) {
+	observations := []domain.Observation{
+		{Skill: domain.SkillVocabulary, Band: domain.LevelB1, Correct: true, Options: 4},
+		{Skill: domain.SkillGrammar, Band: domain.LevelB2, Correct: false, Options: 4},
+		{Skill: domain.SkillReading, Band: domain.LevelB1, Correct: true, Options: 4},
+		{Skill: domain.SkillListening, Band: domain.LevelA2, Correct: true, Options: 3},
+	}
+	first, second := domain.NewPlacementEstimate(), domain.NewPlacementEstimate()
+	for _, obs := range observations {
+		first.Observe(obs)
+		second.Observe(obs)
+	}
+	assert.Equal(t, first.Posterior, second.Posterior)
+	assert.Equal(t, first.Level(), second.Level())
+	assert.Equal(t, first.PerSkill(), second.PerSkill())
+}
+
+func TestPlacement_StagesRunInOrder(t *testing.T) {
+	estimate := domain.NewPlacementEstimate()
+	var progress domain.PlacementProgress
+
+	first := domain.NextPlacementStep(estimate, progress, false)
+	assert.Equal(t, domain.SkillVocabulary, first.Skill)
+	assert.Equal(t, domain.LevelB1, first.Band, "a uniform estimate starts in the middle")
+	assert.Equal(t, domain.PlacementStageVocabularyGrammar, first.Stage)
+
+	progress.Vocabulary = 1
+	estimate.Observe(domain.Observation{Skill: domain.SkillVocabulary, Band: domain.LevelB1, Correct: true, Options: 4})
+	assert.Equal(t, domain.SkillGrammar, domain.NextPlacementStep(estimate, progress, false).Skill)
+
+	for estimate.Responses() < domain.PlacementStageOneMax {
+		estimate.Observe(domain.Observation{Skill: domain.SkillGrammar, Band: domain.LevelB1, Correct: true, Options: 4})
+	}
+	progress = domain.PlacementProgress{Vocabulary: 7, Grammar: 7}
+	reading := domain.NextPlacementStep(estimate, progress, false)
+	assert.Equal(t, domain.SkillReading, reading.Skill)
+	assert.Equal(t, domain.PlacementStageReadingListening, reading.Stage)
+
+	progress.Reading = 1
+	assert.Equal(t, domain.SkillListening, domain.NextPlacementStep(estimate, progress, false).Skill)
+
+	assert.True(t, domain.NextPlacementStep(estimate, progress, true).Done, "time up ends the adaptive part")
+}
+
+func TestPlacement_PerSkillLeavesOutASkillWithNoResponses(t *testing.T) {
+	estimate := domain.NewPlacementEstimate()
+	estimate.Observe(domain.Observation{Skill: domain.SkillVocabulary, Band: domain.LevelB1, Correct: true, Options: 4})
+
+	perSkill := estimate.PerSkill()
+	assert.Contains(t, perSkill, domain.SkillVocabulary)
+	assert.NotContains(t, perSkill, domain.SkillListening)
+	assert.Equal(t, 1, perSkill[domain.SkillVocabulary].Responses)
+}
+
+func TestBandSearchOrder_TriesTheNearerNeighbourFirst(t *testing.T) {
+	assert.Equal(t, []string{"B1", "B2", "A2", "C1", "A1"}, domain.BandSearchOrder("B1", 0.3))
+	assert.Equal(t, []string{"B1", "A2", "B2", "A1", "C1"}, domain.BandSearchOrder("B1", -0.3))
+	assert.Equal(t, []string{"C1", "B2", "B1", "A2", "A1"}, domain.BandSearchOrder("C1", 2))
+}
+
+func TestProductiveBand(t *testing.T) {
+	cases := map[int]string{0: "A1", 29: "A1", 30: "A2", 50: "B1", 70: "B2", 85: "C1", 100: "C1"}
+	for score, want := range cases {
+		assert.Equal(t, want, domain.ProductiveBand(score, 100), "score %d", score)
+	}
+	assert.Equal(t, "A1", domain.ProductiveBand(5, 0))
 }

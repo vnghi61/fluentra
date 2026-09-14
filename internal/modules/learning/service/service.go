@@ -19,6 +19,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	admincontract "github.com/fluentra/fluentra/internal/modules/admin/contract"
 	contentcontract "github.com/fluentra/fluentra/internal/modules/content/contract"
 	"github.com/fluentra/fluentra/internal/modules/learning/contract"
 	"github.com/fluentra/fluentra/internal/modules/learning/domain"
@@ -122,42 +123,42 @@ type Repository interface {
 	HasActiveLearnerRunningLow(
 		ctx context.Context, activityIDs []uuid.UUID, threshold int,
 	) (bool, error)
-	GetActivePlacementSessionByUser(
-		ctx context.Context, userID uuid.UUID,
-	) (*domain.PlacementSession, error)
-	GetPlacementSessionByID(
-		ctx context.Context, id uuid.UUID,
-	) (*domain.PlacementSession, error)
-	GetLatestCompletedPlacementSession(
-		ctx context.Context, userID uuid.UUID,
-	) (*domain.PlacementSession, error)
-	CreatePlacementSession(
-		ctx context.Context, session *domain.PlacementSession,
-	) (*domain.PlacementSession, error)
-	UpdatePlacementSessionProgress(
-		ctx context.Context, session *domain.PlacementSession,
-	) (*domain.PlacementSession, error)
-	CompletePlacementSession(
-		ctx context.Context, session *domain.PlacementSession,
-	) (*domain.PlacementSession, error)
-	ExpireStalePlacementSessions(
-		ctx context.Context,
-	) (int64, error)
-	CreatePlacementResult(
-		ctx context.Context, result *domain.PlacementResult,
-	) (*domain.PlacementResult, error)
-	GetWeeklyPlanByUserAndDate(
-		ctx context.Context, userID uuid.UUID, weekStartDate time.Time,
-	) (*domain.WeeklyPlan, error)
-	UpsertWeeklyPlan(
-		ctx context.Context, plan *domain.WeeklyPlan,
-	) (*domain.WeeklyPlan, error)
+	PlacementRepository
 	// WithTx returns this repository bound to tx. It returns the interface, not
 	// the concrete struct: returning *repository.Repository dropped every
 	// decorator the service had been given the moment the grading transaction
 	// opened, so a test repository that fails on purpose inside the rollup
 	// could not exist. `lesson`'s repositoryAdapter is the same shape.
 	WithTx(tx pgx.Tx) Repository
+}
+
+// PlacementRepository is the placement test's, the result's and the weekly
+// plan's storage (work order 13).
+type PlacementRepository interface {
+	CreatePlacementSession(ctx context.Context, session *domain.PlacementSession) (*domain.PlacementSession, error)
+	GetPlacementSession(ctx context.Context, id uuid.UUID) (*domain.PlacementSession, error)
+	GetOpenPlacementSession(ctx context.Context, userID uuid.UUID) (*domain.PlacementSession, error)
+	GetLatestCompletedPlacementSession(ctx context.Context, userID uuid.UUID) (*domain.PlacementSession, error)
+	FindPlacementSessionByAttempt(ctx context.Context, userID, attemptID uuid.UUID) (*domain.PlacementSession, error)
+	SavePlacementProgress(ctx context.Context, session *domain.PlacementSession) (*domain.PlacementSession, error)
+	FinishPlacementSession(ctx context.Context, session *domain.PlacementSession) (*domain.PlacementSession, error)
+	SavePlacementProductive(ctx context.Context, session *domain.PlacementSession) (*domain.PlacementSession, error)
+	ListOverduePlacementSessions(ctx context.Context, cutoff time.Time) ([]uuid.UUID, error)
+	CreatePlacementResult(ctx context.Context, result *domain.PlacementResult) (*domain.PlacementResult, error)
+	GetPlacementResult(ctx context.Context, id uuid.UUID) (*domain.PlacementResult, error)
+	GetCurrentPlacementResult(ctx context.Context, userID uuid.UUID) (*domain.PlacementResult, error)
+	UpdatePlacementResultPerSkill(
+		ctx context.Context, id uuid.UUID, perSkill map[string]domain.SkillEstimate,
+	) (*domain.PlacementResult, error)
+	GetWeeklyPlan(ctx context.Context, userID uuid.UUID, weekStart time.Time) (*domain.WeeklyPlan, error)
+	CreateWeeklyPlan(ctx context.Context, plan *domain.WeeklyPlan) (*domain.WeeklyPlan, error)
+	SumLearningMinutesBetween(ctx context.Context, userID uuid.UUID, from, to time.Time) (int, error)
+	CountPracticedDailySetsBetween(
+		ctx context.Context, userID uuid.UUID, fromDate, toDate, fromTime time.Time,
+	) (int, error)
+	CountAttemptsByGradersBetween(
+		ctx context.Context, userID uuid.UUID, graders []string, from, to time.Time,
+	) (int, error)
 }
 
 // OutboxTx matches the database transaction interface needed for outbox writes.
@@ -243,8 +244,15 @@ type Deps struct {
 	Synthesiser AudioSynthesiser
 	// Audio finds a listening item's rendered clip when its body carries no key.
 	Audio contract.AudioLocator
-	// User reads user learning profiles for placement test personalization.
+	// User reads the learner's learning profile: the declared level, the target
+	// level and the weekly minutes.
 	User usercontract.LearningProfileReader
+	// Flags reads the placement.invite switch.
+	Flags admincontract.FlagReader
+	// Courses lists curriculum courses for the starting path.
+	Courses lessoncontract.CourseCatalog
+	// SRSPace reads how long the learner takes per review, for the weekly plan.
+	SRSPace srscontract.ReviewPaceReader
 }
 
 // AudioSynthesiser produces pre-rendered audio for listening exercises.
@@ -271,6 +279,9 @@ type Service struct {
 	env           string
 	ai            ai.Client
 	user          usercontract.LearningProfileReader
+	flags         admincontract.FlagReader
+	courses       lessoncontract.CourseCatalog
+	srsPace       srscontract.ReviewPaceReader
 
 	generatorAuthor uuid.UUID
 	authorResolver  contract.AuthorResolver
@@ -321,6 +332,9 @@ func New(deps Deps) *Service {
 		env:           deps.Env,
 		ai:            deps.AI,
 		user:          deps.User,
+		flags:         deps.Flags,
+		courses:       deps.Courses,
+		srsPace:       deps.SRSPace,
 
 		generatorAuthor: deps.GeneratorAuthorID,
 		authorResolver:  deps.AuthorResolver,
@@ -339,7 +353,7 @@ func (s *Service) StartAttempt(ctx context.Context, userID, activityID uuid.UUID
 	}
 
 	// Anti-leak guard: exam and placement pool activities cannot be started as standalone lesson attempts
-	if activity.CourseSlug == ExamPoolCourseSlug || activity.CourseSlug == PlacementPoolCourseSlug {
+	if isPoolItem(activity) {
 		return nil, domain.ErrUnauthorizedAttemptAccess
 	}
 
@@ -426,7 +440,7 @@ func (s *Service) SubmitAttempt(
 	}
 
 	// Anti-leak guard: exam and placement pool activities cannot be submitted via standalone attempt submit
-	if activity.CourseSlug == ExamPoolCourseSlug || activity.CourseSlug == PlacementPoolCourseSlug {
+	if isPoolItem(activity) {
 		return nil, domain.ErrUnauthorizedAttemptAccess
 	}
 
@@ -659,7 +673,9 @@ func (s *Service) completeSynchronousGrading(
 		}
 	}
 
-	if s.srsCards != nil && len(gradeResult.ReviewItems) > 0 {
+	// A placement item never becomes a review card: it would come back as a due
+	// review, and it is an item a retake must not have seen.
+	if s.srsCards != nil && len(gradeResult.ReviewItems) > 0 && !isPlacementActivity(activity) {
 		if err := s.srsCards.UpsertCards(ctx, userID, gradeResult.ReviewItems); err != nil {
 			slog.WarnContext(ctx, "failed to upsert srs review cards after grading", "user_id", userID, "error", err)
 		}
@@ -690,7 +706,7 @@ func (s *Service) completeSynchronousGrading(
 	}
 	if gradeResult.Explanation != nil {
 		result.Explanation = gradeResult.Explanation
-	} else {
+	} else if !isPlacementActivity(activity) {
 		userAnswer := extractUserAnswer(response)
 		if userAnswer == "" && len(attempt.Response) > 0 {
 			userAnswer = extractUserAnswer(attempt.Response)
@@ -743,7 +759,7 @@ func (s *Service) GradePreview(
 	}
 
 	// Anti-leak guard: exam and placement pool activities cannot be preview graded
-	if activity.CourseSlug == ExamPoolCourseSlug || activity.CourseSlug == PlacementPoolCourseSlug {
+	if isPoolItem(activity) {
 		return nil, domain.ErrActivityNotFound
 	}
 
@@ -1042,6 +1058,13 @@ func (s *Service) executeRollupSteps(
 	scoreInt, durationMs int32,
 	now time.Time,
 ) error {
+	// Placement completes nothing: no progress row, no activity.completed and so
+	// no XP, and no mastery estimate beyond the one the placement itself writes
+	// (work order 13 §4). The attempt row is the whole record.
+	if isPlacementActivity(activity) {
+		return nil
+	}
+
 	// 1. Rollup Activity Progress
 	_, err := repo.UpsertProgress(ctx, repository.UpsertProgressParams{
 		UserID:      userID,
@@ -1078,9 +1101,9 @@ func (s *Service) executeRollupSteps(
 		return err
 	}
 
-	// An exam or placement pool item is not course material: it counts toward no lesson, unit
-	// or course progress and appears in no "continue learning".
-	if activity.CourseSlug == ExamPoolCourseSlug || activity.CourseSlug == PlacementPoolCourseSlug {
+	// An exam pool item is not course material: it counts toward no lesson, unit
+	// or course progress and appears in no "continue learning" (work order 12 §3.6).
+	if activity.CourseSlug == ExamPoolCourseSlug {
 		return nil
 	}
 
@@ -1463,11 +1486,11 @@ func (s *Service) IsUnlocked(
 		}
 	}
 
-	// Unlocking lessons at or below placed level (WO13 §2 & §3.6).
-	var userCEFRRank int
-	if userID != uuid.Nil {
-		if latest, err := s.repo.GetLatestCompletedPlacementSession(ctx, userID); err == nil && latest != nil && latest.PlacedLevel != nil {
-			userCEFRRank = cefrRank(*latest.PlacedLevel)
+	// A placement opens lessons below the placed level (work order 13 §3.6).
+	placed := 0
+	if len(prereqs) > 0 {
+		if placed, err = s.placedOrdinal(ctx, userID); err != nil {
+			return nil, err
 		}
 	}
 
@@ -1480,49 +1503,28 @@ func (s *Service) IsUnlocked(
 		case userID == uuid.Nil:
 			result[id] = false
 		default:
-			if prerequisitesMet(reqs, progressMap) {
-				result[id] = true
-			} else if userCEFRRank > 0 {
-				if lesson, err := s.lesson.GetLesson(ctx, id); err == nil && lesson != nil && lesson.CEFRLevel != nil {
-					lessonRank := cefrRank(*lesson.CEFRLevel)
-					if lessonRank > 0 && lessonRank <= userCEFRRank {
-						result[id] = true
-					}
-				}
-			}
+			result[id] = prerequisitesMet(reqs, progressMap, placed)
 		}
 	}
 
 	return result, nil
 }
 
-func cefrRank(level string) int {
-	switch strings.ToUpper(strings.TrimSpace(level)) {
-	case "A1":
-		return 1
-	case "A2":
-		return 2
-	case "B1":
-		return 3
-	case "B2":
-		return 4
-	case "C1":
-		return 5
-	case "C2":
-		return 6
-	default:
-		return 0
-	}
-}
-
 // prerequisitesMet reports whether every prerequisite is complete and scored at
 // or above its min_score. The score half is not optional: a prerequisite carries
 // a threshold, and a checker that reads only the status unlocks a lesson for a
 // learner who failed the one before it.
+//
+// A prerequisite whose lesson is below the learner's placed level is met without
+// being done: it opens the lesson and writes nothing, so no course percentage
+// moves (work order 13 §3.6).
 func prerequisitesMet(
-	reqs []lessoncontract.PrerequisiteItem, progress map[uuid.UUID]repository.ProgressDTO,
+	reqs []lessoncontract.PrerequisiteItem, progress map[uuid.UUID]repository.ProgressDTO, placed int,
 ) bool {
 	for _, req := range reqs {
+		if openedByPlacement(req, placed) {
+			continue
+		}
 		prog, ok := progress[req.RequiresLessonID]
 		if !ok || prog.Status != domain.ProgressCompleted {
 			return false
@@ -1606,11 +1608,18 @@ func (s *Service) NextActivity(ctx context.Context, userID uuid.UUID) (*domain.N
 		return nil, err
 	}
 
-	var target *lessoncontract.Lesson
+	// A placed learner who has not begun the course starts at the start lesson,
+	// not the course's first lesson (work order 13 §3.6).
+	target, err := s.placementStartLesson(ctx, userID, lessons, completedLessons)
+	if err != nil {
+		return nil, err
+	}
 	for _, l := range lessons {
+		if target != nil {
+			break
+		}
 		if l != nil && !completedLessons[l.ID] {
 			target = l
-			break
 		}
 	}
 	if target == nil {
@@ -2226,15 +2235,29 @@ func (s *Service) CompleteAsyncGrading(
 		return false, nil
 	}
 
+	s.afterAsyncGrade(ctx, attempt, activity, gradeResult)
+	s.invalidateLearningCaches(ctx, attempt.UserID)
+	return true, nil
+}
+
+// afterAsyncGrade does what follows a committed asynchronous grade: a placement
+// item's band goes to the placement that served it, and anything else becomes
+// review cards.
+func (s *Service) afterAsyncGrade(
+	ctx context.Context, attempt *domain.Attempt, activity *lessoncontract.ActivityHierarchy,
+	gradeResult contract.GradeResult,
+) {
+	if isPlacementActivity(activity) {
+		score := gradeResult.Score
+		s.recordPlacementGrade(ctx, attempt.UserID, attempt.ID, domain.StatusGraded, &score, gradeResult.MaxScore)
+		return
+	}
 	if s.srsCards != nil && len(gradeResult.ReviewItems) > 0 {
 		if err := s.srsCards.UpsertCards(ctx, attempt.UserID, gradeResult.ReviewItems); err != nil {
 			slog.WarnContext(ctx, "failed to upsert srs review cards after async grading",
 				"user_id", attempt.UserID, "error", err)
 		}
 	}
-
-	s.invalidateLearningCaches(ctx, attempt.UserID)
-	return true, nil
 }
 
 // FailAsyncGrading transitions an attempt from grading to failed.
@@ -2258,6 +2281,8 @@ func (s *Service) FailAsyncGrading(
 	if rows > 0 {
 		slog.InfoContext(ctx, "failed async grading attempt",
 			"attempt_id", attemptID, "reason", reason)
+		// A failed writing or speaking grade settles that item of a placement.
+		s.recordPlacementGrade(ctx, attempt.UserID, attempt.ID, productiveFailed, nil, 0)
 	}
 	return rows > 0, nil
 }
@@ -2356,12 +2381,17 @@ func (s *Service) SubmitSittingAnswer(
 	}
 
 	now := s.clock.Now().UTC()
+	// Created in progress, as StartAttempt creates one: CreateAttempt names every
+	// column, so an empty status was written as '' and refused by the status CHECK,
+	// and no exam or placement answer could be recorded against a real database.
 	attempt, err := s.repo.CreateAttempt(ctx, repository.CreateAttemptParams{
 		ID:         attemptID,
 		CreatedAt:  now,
 		UserID:     req.UserID,
 		ActivityID: req.ActivityID,
 		Response:   req.Response,
+		MaxScore:   100,
+		Status:     domain.StatusInProgress,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create sitting attempt: %w", err)

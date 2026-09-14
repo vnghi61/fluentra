@@ -5,331 +5,383 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
+	"math"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/fluentra/fluentra/internal/generated/learning/sqlc"
 	"github.com/fluentra/fluentra/internal/modules/learning/domain"
 )
 
-// GetActivePlacementSessionByUser returns the currently active placement test session, if any.
-func (r *Repository) GetActivePlacementSessionByUser(
+// overdueSweepBatch bounds how many overdue sessions one sweep reads.
+const overdueSweepBatch int32 = 100
+
+const constraintOneOpenPlacement = "uq_placement_sessions_one_in_progress"
+
+// CreatePlacementSession stores a new session. A second session in progress for
+// the same learner is ErrPlacementInProgress, from the partial unique index.
+func (r *Repository) CreatePlacementSession(
+	ctx context.Context, session *domain.PlacementSession,
+) (*domain.PlacementSession, error) {
+	estimate, items, err := encodeSessionState(session)
+	if err != nil {
+		return nil, err
+	}
+	row, err := r.queries.CreatePlacementSession(ctx, sqlc.CreatePlacementSessionParams{
+		ID:         session.ID,
+		UserID:     session.UserID,
+		Stage:      session.Stage,
+		StartedAt:  session.StartedAt,
+		DeadlineAt: session.DeadlineAt,
+		Estimate:   estimate,
+		Items:      items,
+	})
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.ConstraintName == constraintOneOpenPlacement {
+			return nil, domain.ErrPlacementInProgress
+		}
+		return nil, mapPgError(err)
+	}
+	return toDomainPlacementSession(row)
+}
+
+// GetPlacementSession returns a session by id, or nil.
+func (r *Repository) GetPlacementSession(ctx context.Context, id uuid.UUID) (*domain.PlacementSession, error) {
+	return optionalSession(r.queries.GetPlacementSession(ctx, id))
+}
+
+// GetOpenPlacementSession returns the learner's session in progress, or nil.
+func (r *Repository) GetOpenPlacementSession(
 	ctx context.Context, userID uuid.UUID,
 ) (*domain.PlacementSession, error) {
-	row, err := r.queries.GetActivePlacementSessionByUser(ctx, userID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, mapPgError(err)
-	}
-	return toDomainPlacementSession(row), nil
+	return optionalSession(r.queries.GetOpenPlacementSession(ctx, userID))
 }
 
-// GetPlacementSessionByID finds a placement session by its ID.
-func (r *Repository) GetPlacementSessionByID(
-	ctx context.Context, id uuid.UUID,
-) (*domain.PlacementSession, error) {
-	row, err := r.queries.GetPlacementSessionByID(ctx, id)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, mapPgError(err)
-	}
-	return toDomainPlacementSession(row), nil
-}
-
-// GetLatestCompletedPlacementSession returns the most recently completed placement test session for a user.
+// GetLatestCompletedPlacementSession returns the learner's last completed session, or nil.
 func (r *Repository) GetLatestCompletedPlacementSession(
 	ctx context.Context, userID uuid.UUID,
 ) (*domain.PlacementSession, error) {
-	row, err := r.queries.GetLatestCompletedPlacementSession(ctx, userID)
+	return optionalSession(r.queries.GetLatestCompletedPlacementSession(ctx, userID))
+}
+
+// FindPlacementSessionByAttempt returns the session that served an attempt, or nil.
+func (r *Repository) FindPlacementSessionByAttempt(
+	ctx context.Context, userID, attemptID uuid.UUID,
+) (*domain.PlacementSession, error) {
+	return optionalSession(r.queries.FindPlacementSessionByAttempt(ctx, sqlc.FindPlacementSessionByAttemptParams{
+		UserID:    userID,
+		AttemptID: attemptID.String(),
+	}))
+}
+
+// SavePlacementProgress writes the estimate, items and stage of a session still
+// in progress. It returns ErrPlacementConflict when the version moved.
+func (r *Repository) SavePlacementProgress(
+	ctx context.Context, session *domain.PlacementSession,
+) (*domain.PlacementSession, error) {
+	estimate, items, err := encodeSessionState(session)
+	if err != nil {
+		return nil, err
+	}
+	return versionedSession(r.queries.SavePlacementProgress(ctx, sqlc.SavePlacementProgressParams{
+		Stage:    session.Stage,
+		Estimate: estimate,
+		Items:    items,
+		ID:       session.ID,
+		Version:  clampInt32(session.Version),
+	}))
+}
+
+// FinishPlacementSession closes a session in progress as completed or expired.
+func (r *Repository) FinishPlacementSession(
+	ctx context.Context, session *domain.PlacementSession,
+) (*domain.PlacementSession, error) {
+	estimate, items, err := encodeSessionState(session)
+	if err != nil {
+		return nil, err
+	}
+	return versionedSession(r.queries.FinishPlacementSession(ctx, sqlc.FinishPlacementSessionParams{
+		Status:      session.Status,
+		Estimate:    estimate,
+		Items:       items,
+		ResultID:    session.ResultID,
+		CompletedAt: session.CompletedAt,
+		ID:          session.ID,
+		Version:     clampInt32(session.Version),
+	}))
+}
+
+// SavePlacementProductive writes the writing and speaking part's state.
+func (r *Repository) SavePlacementProductive(
+	ctx context.Context, session *domain.PlacementSession,
+) (*domain.PlacementSession, error) {
+	_, items, err := encodeSessionState(session)
+	if err != nil {
+		return nil, err
+	}
+	return versionedSession(r.queries.SavePlacementProductive(ctx, sqlc.SavePlacementProductiveParams{
+		Items:                items,
+		ProductiveStatus:     session.ProductiveStatus,
+		ProductiveDeadlineAt: session.ProductiveDeadlineAt,
+		ID:                   session.ID,
+		Version:              clampInt32(session.Version),
+	}))
+}
+
+// ListOverduePlacementSessions lists sessions in progress whose deadline is before cutoff.
+func (r *Repository) ListOverduePlacementSessions(ctx context.Context, cutoff time.Time) ([]uuid.UUID, error) {
+	ids, err := r.queries.ListOverduePlacementSessions(ctx, sqlc.ListOverduePlacementSessionsParams{
+		Cutoff:  cutoff,
+		MaxRows: overdueSweepBatch,
+	})
+	if err != nil {
+		return nil, mapPgError(err)
+	}
+	return ids, nil
+}
+
+// CreatePlacementResult stores a placement result for a session.
+func (r *Repository) CreatePlacementResult(
+	ctx context.Context, result *domain.PlacementResult,
+) (*domain.PlacementResult, error) {
+	perSkill, err := json.Marshal(result.PerSkill)
+	if err != nil {
+		return nil, fmt.Errorf("encode per_skill: %w", err)
+	}
+	row, err := r.queries.CreateSessionPlacementResult(ctx, sqlc.CreateSessionPlacementResultParams{
+		UserID:         result.UserID,
+		EstimatedLevel: result.Level,
+		PerSkill:       perSkill,
+		SessionID:      result.SessionID,
+		TakenAt:        result.TakenAt,
+	})
+	if err != nil {
+		return nil, mapPgError(err)
+	}
+	return toDomainPlacementResult(row)
+}
+
+// GetPlacementResult returns a result by id, or nil.
+func (r *Repository) GetPlacementResult(ctx context.Context, id uuid.UUID) (*domain.PlacementResult, error) {
+	return optionalResult(r.queries.GetPlacementResult(ctx, id))
+}
+
+// GetCurrentPlacementResult returns the learner's most recent result, or nil.
+func (r *Repository) GetCurrentPlacementResult(
+	ctx context.Context, userID uuid.UUID,
+) (*domain.PlacementResult, error) {
+	return optionalResult(r.queries.GetCurrentPlacementResult(ctx, userID))
+}
+
+// UpdatePlacementResultPerSkill replaces a result's per-skill bands.
+func (r *Repository) UpdatePlacementResultPerSkill(
+	ctx context.Context, id uuid.UUID, perSkill map[string]domain.SkillEstimate,
+) (*domain.PlacementResult, error) {
+	encoded, err := json.Marshal(perSkill)
+	if err != nil {
+		return nil, fmt.Errorf("encode per_skill: %w", err)
+	}
+	row, err := r.queries.UpdatePlacementResultPerSkill(ctx, sqlc.UpdatePlacementResultPerSkillParams{
+		PerSkill: encoded,
+		ID:       id,
+	})
+	if err != nil {
+		return nil, mapPgError(err)
+	}
+	return toDomainPlacementResult(row)
+}
+
+// GetWeeklyPlan returns the learner's plan for a week, or nil.
+func (r *Repository) GetWeeklyPlan(
+	ctx context.Context, userID uuid.UUID, weekStart time.Time,
+) (*domain.WeeklyPlan, error) {
+	row, err := r.queries.GetWeeklyPlan(ctx, sqlc.GetWeeklyPlanParams{
+		UserID:    userID,
+		WeekStart: pgtype.Date{Time: weekStart, Valid: true},
+	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, mapPgError(err)
 	}
-	return toDomainPlacementSession(row), nil
+	return toDomainWeeklyPlan(row)
 }
 
-// CreatePlacementSession records a newly started adaptive placement test session.
-func (r *Repository) CreatePlacementSession(
-	ctx context.Context, s *domain.PlacementSession,
-) (*domain.PlacementSession, error) {
-	var thetaNum pgtype.Numeric
-	_ = thetaNum.Scan(strconv.FormatFloat(s.ThetaEstimate, 'f', 2, 64))
-
-	var confNum pgtype.Numeric
-	_ = confNum.Scan(strconv.FormatFloat(s.Confidence, 'f', 3, 64))
-
-	respBytes, err := json.Marshal(s.Responses)
-	if err != nil {
-		return nil, fmt.Errorf("marshal responses: %w", err)
+// CreateWeeklyPlan stores a week's plan. It returns nil when another request
+// stored that week's plan first.
+func (r *Repository) CreateWeeklyPlan(ctx context.Context, plan *domain.WeeklyPlan) (*domain.WeeklyPlan, error) {
+	planItems := plan.Items
+	if planItems == nil {
+		// A nil slice encodes as null, which ck_weekly_plans_items_array refuses.
+		planItems = []domain.WeeklyPlanItem{}
 	}
-	stateBytes, err := json.Marshal(s.AdaptiveState)
+	items, err := json.Marshal(planItems)
 	if err != nil {
-		return nil, fmt.Errorf("marshal adaptive state: %w", err)
+		return nil, fmt.Errorf("encode weekly plan items: %w", err)
 	}
-
-	row, err := r.queries.CreatePlacementSession(ctx, sqlc.CreatePlacementSessionParams{
-		UserID:             s.UserID,
-		Status:             s.Status,
-		Stage:              s.Stage,
-		ThetaEstimate:      thetaNum,
-		PlacedLevel:        s.PlacedLevel,
-		Confidence:         confNum,
-		CurrentActivityID:  s.CurrentActivityID,
-		CurrentItemKind:    s.CurrentItemKind,
-		CurrentItemLevel:   s.CurrentItemLevel,
-		Responses:          respBytes,
-		AdaptiveState:      stateBytes,
-		StartedAt:          s.StartedAt,
-		ExpiresAt:          s.ExpiresAt,
+	row, err := r.queries.CreateWeeklyPlan(ctx, sqlc.CreateWeeklyPlanParams{
+		UserID:      plan.UserID,
+		WeekStart:   pgtype.Date{Time: plan.WeekStart, Valid: true},
+		MinutesGoal: clampInt32(plan.MinutesGoal),
+		Items:       items,
 	})
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
 		return nil, mapPgError(err)
 	}
-	return toDomainPlacementSession(row), nil
+	return toDomainWeeklyPlan(row)
 }
 
-// UpdatePlacementSessionProgress updates intermediate progress of an active placement test.
-func (r *Repository) UpdatePlacementSessionProgress(
-	ctx context.Context, s *domain.PlacementSession,
-) (*domain.PlacementSession, error) {
-	var thetaNum pgtype.Numeric
-	_ = thetaNum.Scan(strconv.FormatFloat(s.ThetaEstimate, 'f', 2, 64))
-
-	var confNum pgtype.Numeric
-	_ = confNum.Scan(strconv.FormatFloat(s.Confidence, 'f', 3, 64))
-
-	respBytes, err := json.Marshal(s.Responses)
-	if err != nil {
-		return nil, fmt.Errorf("marshal responses: %w", err)
-	}
-	stateBytes, err := json.Marshal(s.AdaptiveState)
-	if err != nil {
-		return nil, fmt.Errorf("marshal adaptive state: %w", err)
-	}
-
-	row, err := r.queries.UpdatePlacementSessionProgress(ctx, sqlc.UpdatePlacementSessionProgressParams{
-		ID:                 s.ID,
-		Stage:              s.Stage,
-		ThetaEstimate:      thetaNum,
-		PlacedLevel:        s.PlacedLevel,
-		Confidence:         confNum,
-		CurrentActivityID:  s.CurrentActivityID,
-		CurrentItemKind:    s.CurrentItemKind,
-		CurrentItemLevel:   s.CurrentItemLevel,
-		Responses:          respBytes,
-		AdaptiveState:      stateBytes,
+// SumLearningMinutesBetween totals the learner's session minutes started in [from, to).
+func (r *Repository) SumLearningMinutesBetween(
+	ctx context.Context, userID uuid.UUID, from, to time.Time,
+) (int, error) {
+	minutes, err := r.queries.SumLearningMinutesBetween(ctx, sqlc.SumLearningMinutesBetweenParams{
+		UserID: userID, FromTime: from, ToTime: to,
 	})
-	if err != nil {
-		return nil, mapPgError(err)
-	}
-	return toDomainPlacementSession(row), nil
-}
-
-// CompletePlacementSession marks a placement test session as completed.
-func (r *Repository) CompletePlacementSession(
-	ctx context.Context, s *domain.PlacementSession,
-) (*domain.PlacementSession, error) {
-	var thetaNum pgtype.Numeric
-	_ = thetaNum.Scan(strconv.FormatFloat(s.ThetaEstimate, 'f', 2, 64))
-
-	var confNum pgtype.Numeric
-	_ = confNum.Scan(strconv.FormatFloat(s.Confidence, 'f', 3, 64))
-
-	respBytes, err := json.Marshal(s.Responses)
-	if err != nil {
-		return nil, fmt.Errorf("marshal responses: %w", err)
-	}
-	stateBytes, err := json.Marshal(s.AdaptiveState)
-	if err != nil {
-		return nil, fmt.Errorf("marshal adaptive state: %w", err)
-	}
-
-	row, err := r.queries.CompletePlacementSession(ctx, sqlc.CompletePlacementSessionParams{
-		ID:            s.ID,
-		ThetaEstimate: thetaNum,
-		PlacedLevel:   s.PlacedLevel,
-		Confidence:    confNum,
-		Responses:     respBytes,
-		AdaptiveState: stateBytes,
-	})
-	if err != nil {
-		return nil, mapPgError(err)
-	}
-	return toDomainPlacementSession(row), nil
-}
-
-// ExpireStalePlacementSessions sweeps expired in-progress placement sessions.
-func (r *Repository) ExpireStalePlacementSessions(ctx context.Context) (int64, error) {
-	n, err := r.queries.ExpireStalePlacementSessions(ctx)
 	if err != nil {
 		return 0, mapPgError(err)
 	}
-	return n, nil
+	return int(minutes), nil
 }
 
-// CreatePlacementResult saves placement test result and links it to the session.
-func (r *Repository) CreatePlacementResult(
-	ctx context.Context, res *domain.PlacementResult,
-) (*domain.PlacementResult, error) {
-	perSkillBytes, err := json.Marshal(res.PerSkill)
-	if err != nil {
-		return nil, fmt.Errorf("marshal per_skill: %w", err)
-	}
-
-	row, err := r.queries.CreatePlacementResultWithSession(ctx, sqlc.CreatePlacementResultWithSessionParams{
-		UserID:         res.UserID,
-		EstimatedLevel: res.EstimatedLevel,
-		PerSkill:       perSkillBytes,
-		SessionID:      res.SessionID,
-		TakenAt:        res.TakenAt,
+// CountPracticedDailySetsBetween counts the daily sets in [fromDate, toDate) with a graded attempt.
+func (r *Repository) CountPracticedDailySetsBetween(
+	ctx context.Context, userID uuid.UUID, fromDate, toDate, fromTime time.Time,
+) (int, error) {
+	count, err := r.queries.CountPracticedDailySetsBetween(ctx, sqlc.CountPracticedDailySetsBetweenParams{
+		UserID:   userID,
+		FromDate: pgtype.Date{Time: fromDate, Valid: true},
+		ToDate:   pgtype.Date{Time: toDate, Valid: true},
+		FromTime: fromTime,
 	})
 	if err != nil {
-		return nil, mapPgError(err)
+		return 0, mapPgError(err)
 	}
-
-	return toDomainPlacementResult(
-		row.ID, row.UserID, row.EstimatedLevel, row.PerSkill, row.SessionID, row.TakenAt, row.CreatedAt, row.UpdatedAt,
-	), nil
+	return int(count), nil
 }
 
-// GetWeeklyPlanByUserAndDate retrieves a cached weekly study plan.
-func (r *Repository) GetWeeklyPlanByUserAndDate(
-	ctx context.Context, userID uuid.UUID, weekStartDate time.Time,
-) (*domain.WeeklyPlan, error) {
-	var d pgtype.Date
-	_ = d.Scan(weekStartDate.Format("2006-01-02"))
-
-	row, err := r.queries.GetWeeklyPlanByUserAndDate(ctx, sqlc.GetWeeklyPlanByUserAndDateParams{
-		UserID:        userID,
-		WeekStartDate: d,
+// CountAttemptsByGradersBetween counts graded or grading attempts by grader in [from, to).
+func (r *Repository) CountAttemptsByGradersBetween(
+	ctx context.Context, userID uuid.UUID, graders []string, from, to time.Time,
+) (int, error) {
+	count, err := r.queries.CountAttemptsByGradersBetween(ctx, sqlc.CountAttemptsByGradersBetweenParams{
+		UserID: userID, Graders: graders, FromTime: from, ToTime: to,
 	})
+	if err != nil {
+		return 0, mapPgError(err)
+	}
+	return int(count), nil
+}
+
+func clampInt32(n int) int32 {
+	return int32(max(math.MinInt32, min(math.MaxInt32, n))) //nolint:gosec // bounded on the line itself
+}
+
+func encodeSessionState(session *domain.PlacementSession) (estimate, items []byte, err error) {
+	estimate, err = json.Marshal(session.Estimate)
+	if err != nil {
+		return nil, nil, fmt.Errorf("encode placement estimate: %w", err)
+	}
+	if session.Items == nil {
+		session.Items = []domain.PlacementItem{}
+	}
+	items, err = json.Marshal(session.Items)
+	if err != nil {
+		return nil, nil, fmt.Errorf("encode placement items: %w", err)
+	}
+	return estimate, items, nil
+}
+
+func optionalSession(row sqlc.LearnPlacementSession, err error) (*domain.PlacementSession, error) {
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, mapPgError(err)
 	}
-	return toDomainWeeklyPlan(row), nil
+	return toDomainPlacementSession(row)
 }
 
-// UpsertWeeklyPlan stores or updates a personalized weekly plan.
-func (r *Repository) UpsertWeeklyPlan(
-	ctx context.Context, plan *domain.WeeklyPlan,
-) (*domain.WeeklyPlan, error) {
-	var d pgtype.Date
-	_ = d.Scan(plan.WeekStartDate.Format("2006-01-02"))
-
-	distBytes, err := json.Marshal(plan.TimeDistribution)
+// versionedSession maps a guarded update: no row means another request moved
+// the session first.
+func versionedSession(row sqlc.LearnPlacementSession, err error) (*domain.PlacementSession, error) {
 	if err != nil {
-		return nil, fmt.Errorf("marshal time distribution: %w", err)
-	}
-	targetsBytes, err := json.Marshal(plan.DailyTargets)
-	if err != nil {
-		return nil, fmt.Errorf("marshal daily targets: %w", err)
-	}
-
-	row, err := r.queries.UpsertWeeklyPlan(ctx, sqlc.UpsertWeeklyPlanParams{
-		UserID:           plan.UserID,
-		WeekStartDate:    d,
-		PlacedLevel:      plan.PlacedLevel,
-		WeakestSkill:     plan.WeakestSkill,
-		TimeDistribution: distBytes,
-		DailyTargets:     targetsBytes,
-	})
-	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrPlacementConflict
+		}
 		return nil, mapPgError(err)
 	}
-	return toDomainWeeklyPlan(row), nil
+	return toDomainPlacementSession(row)
 }
 
-func toDomainPlacementSession(row sqlc.LearnPlacementSession) *domain.PlacementSession {
-	var theta float64
-	if f, err := row.ThetaEstimate.Float64Value(); err == nil && f.Valid {
-		theta = f.Float64
+func optionalResult(row sqlc.LearnPlacementResult, err error) (*domain.PlacementResult, error) {
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, mapPgError(err)
 	}
-	var conf float64
-	if f, err := row.Confidence.Float64Value(); err == nil && f.Valid {
-		conf = f.Float64
-	}
-	var responses []domain.PlacementResponseRecord
-	if len(row.Responses) > 0 {
-		_ = json.Unmarshal(row.Responses, &responses)
-	}
-	var adaptiveState domain.AdaptiveState
-	if len(row.AdaptiveState) > 0 {
-		_ = json.Unmarshal(row.AdaptiveState, &adaptiveState)
-	}
-
-	return &domain.PlacementSession{
-		ID:                row.ID,
-		UserID:            row.UserID,
-		Status:            row.Status,
-		Stage:             row.Stage,
-		ThetaEstimate:     theta,
-		PlacedLevel:       row.PlacedLevel,
-		Confidence:        conf,
-		CurrentActivityID: row.CurrentActivityID,
-		CurrentItemKind:   row.CurrentItemKind,
-		CurrentItemLevel:  row.CurrentItemLevel,
-		Responses:         responses,
-		AdaptiveState:     adaptiveState,
-		StartedAt:         row.StartedAt,
-		CompletedAt:       row.CompletedAt,
-		ExpiresAt:         row.ExpiresAt,
-		CreatedAt:         row.CreatedAt,
-		UpdatedAt:         row.UpdatedAt,
-	}
+	return toDomainPlacementResult(row)
 }
 
-func toDomainWeeklyPlan(row sqlc.LearnWeeklyPlan) *domain.WeeklyPlan {
-	var timeDist map[string]float64
-	if len(row.TimeDistribution) > 0 {
-		_ = json.Unmarshal(row.TimeDistribution, &timeDist)
+func toDomainPlacementSession(row sqlc.LearnPlacementSession) (*domain.PlacementSession, error) {
+	session := &domain.PlacementSession{
+		ID:                   row.ID,
+		UserID:               row.UserID,
+		Status:               row.Status,
+		Stage:                row.Stage,
+		StartedAt:            row.StartedAt,
+		DeadlineAt:           row.DeadlineAt,
+		Version:              int(row.Version),
+		ProductiveStatus:     row.ProductiveStatus,
+		ProductiveDeadlineAt: row.ProductiveDeadlineAt,
+		ResultID:             row.ResultID,
+		CompletedAt:          row.CompletedAt,
 	}
-	var dailyTargets []domain.DailyPlanTarget
-	if len(row.DailyTargets) > 0 {
-		_ = json.Unmarshal(row.DailyTargets, &dailyTargets)
+	if err := json.Unmarshal(row.Estimate, &session.Estimate); err != nil {
+		return nil, fmt.Errorf("decode placement estimate of %s: %w", row.ID, err)
 	}
-
-	return &domain.WeeklyPlan{
-		ID:               row.ID,
-		UserID:           row.UserID,
-		WeekStartDate:    row.WeekStartDate.Time,
-		PlacedLevel:      row.PlacedLevel,
-		WeakestSkill:     row.WeakestSkill,
-		TimeDistribution: timeDist,
-		DailyTargets:     dailyTargets,
-		CreatedAt:        row.CreatedAt,
-		UpdatedAt:        row.UpdatedAt,
+	if err := json.Unmarshal(row.Items, &session.Items); err != nil {
+		return nil, fmt.Errorf("decode placement items of %s: %w", row.ID, err)
 	}
+	return session, nil
 }
 
-func toDomainPlacementResult(
-	id, userID uuid.UUID, level string, perSkillRaw []byte, sessionID *uuid.UUID,
-	takenAt, createdAt, updatedAt time.Time,
-) *domain.PlacementResult {
-	var perSkill map[string]float64
-	if len(perSkillRaw) > 0 {
-		_ = json.Unmarshal(perSkillRaw, &perSkill)
+func toDomainPlacementResult(row sqlc.LearnPlacementResult) (*domain.PlacementResult, error) {
+	result := &domain.PlacementResult{
+		ID:        row.ID,
+		UserID:    row.UserID,
+		SessionID: row.SessionID,
+		Level:     row.EstimatedLevel,
+		TakenAt:   row.TakenAt,
+		PerSkill:  map[string]domain.SkillEstimate{},
 	}
-	return &domain.PlacementResult{
-		ID:             id,
-		UserID:         userID,
-		EstimatedLevel: level,
-		PerSkill:       perSkill,
-		SessionID:      sessionID,
-		TakenAt:        takenAt,
-		CreatedAt:      createdAt,
-		UpdatedAt:      updatedAt,
+	if len(row.PerSkill) > 0 {
+		if err := json.Unmarshal(row.PerSkill, &result.PerSkill); err != nil {
+			return nil, fmt.Errorf("decode per_skill of %s: %w", row.ID, err)
+		}
 	}
+	return result, nil
+}
+
+func toDomainWeeklyPlan(row sqlc.LearnWeeklyPlan) (*domain.WeeklyPlan, error) {
+	plan := &domain.WeeklyPlan{
+		UserID:      row.UserID,
+		WeekStart:   row.WeekStart.Time,
+		MinutesGoal: int(row.MinutesGoal),
+		CreatedAt:   row.CreatedAt,
+	}
+	if err := json.Unmarshal(row.Items, &plan.Items); err != nil {
+		return nil, fmt.Errorf("decode weekly plan items: %w", err)
+	}
+	return plan, nil
 }

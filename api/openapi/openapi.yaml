@@ -1284,6 +1284,71 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+  /me/learning-profile:
+    get:
+      tags: [user]
+      operationId: userGetMyLearningProfile
+      summary: Read the caller's learning profile.
+      description: Returns self-declared learning goals and parameters, or 404 when none exists.
+      x-permission: self
+      responses:
+        '200':
+          description: The caller's learning profile.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LearningProfile'
+              example:
+                declared_level: B1
+                target_level: B2
+                target_exam: ielts
+                weekly_minutes_goal: 90
+                motivations: [career, travel]
+                created_at: '2026-09-14T09:00:00Z'
+                updated_at: '2026-09-14T09:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [user]
+      operationId: userReplaceMyLearningProfile
+      summary: Replace the caller's learning profile.
+      description: Creates or replaces the caller's learning profile.
+      x-permission: self
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LearningProfileRequest'
+      responses:
+        '200':
+          description: The stored learning profile.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LearningProfile'
+              example:
+                declared_level: B1
+                target_level: B2
+                target_exam: ielts
+                weekly_minutes_goal: 90
+                motivations: [career, travel]
+                created_at: '2026-09-14T09:00:00Z'
+                updated_at: '2026-09-14T09:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
   /me/avatar/upload-intent:
     post:
       tags: [user]
@@ -3831,6 +3896,374 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+  /me/placement:
+    get:
+      tags: [learning]
+      operationId: getMyPlacement
+      summary: Read the caller's placement result, session and invitation.
+      description: >-
+        The current result, a session in progress, when a retake becomes
+        available, and whether to invite the learner. A session past its deadline
+        is finished by this read, so it is never reported as active (work order 13
+        §3.5).
+      x-permission: self
+      responses:
+        '200':
+          description: The caller's placement state.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlacementOverview'
+              example:
+                result: null
+                active_session: null
+                retake_available_at: null
+                invite_available: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [learning]
+      operationId: startPlacement
+      summary: Start an adaptive placement test.
+      description: >-
+        Starts a 20-minute session and serves its first item, redacted. 409
+        PLACEMENT_IN_PROGRESS names the session in progress in meta.session_id;
+        409 PLACEMENT_RETAKE_TOO_SOON names meta.retake_available_at; 409
+        PLACEMENT_UNAVAILABLE means a band of the pool cannot serve a full test.
+      x-permission: self
+      responses:
+        '201':
+          description: The session, with its first item.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlacementSession'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def012345684
+                status: in_progress
+                stage: vocabulary_grammar
+                started_at: '2026-09-14T03:00:00Z'
+                deadline_at: '2026-09-14T03:20:00Z'
+                remaining_seconds: 1200
+                responses: 0
+                max_responses: 25
+                current_item:
+                  activity_id: 0199a1c2-3d4e-7f80-9abc-def01234567b
+                  content_version_id: 0199a1c2-3d4e-7f80-9abc-def01234567c
+                  kind: grammar_tense_choice
+                  skill: vocabulary
+                  config:
+                    prompt: Choose the word that completes the sentence.
+                    options:
+                      - { id: A, text: borrow }
+                      - { id: B, text: lend }
+                      - { id: C, text: owe }
+                      - { id: D, text: spend }
+                productive_status: offered
+                productive_deadline_at: null
+                productive_remaining_seconds: 0
+                productive_items: []
+                result: null
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /me/placement/sessions/{id}:
+    get:
+      tags: [learning]
+      operationId: getPlacementSession
+      summary: Read one of the caller's placement sessions.
+      description: >-
+        The current item, redacted, with the server's remaining seconds and the
+        stage; or, once the adaptive part is over, the result and the writing and
+        speaking part. Another learner's session is not found.
+      x-permission: self
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The session.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlacementSession'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def012345684
+                status: completed
+                stage: done
+                started_at: '2026-09-14T03:00:00Z'
+                deadline_at: '2026-09-14T03:20:00Z'
+                remaining_seconds: 0
+                responses: 20
+                max_responses: 25
+                current_item: null
+                productive_status: offered
+                productive_deadline_at: null
+                productive_remaining_seconds: 0
+                productive_items: []
+                result:
+                  id: 0199a1c2-3d4e-7f80-9abc-def012345690
+                  session_id: 0199a1c2-3d4e-7f80-9abc-def012345684
+                  level: B1
+                  per_skill:
+                    vocabulary: { band: B1, responses: 7 }
+                    grammar: { band: B1, responses: 7 }
+                    reading: { band: A2, responses: 3 }
+                    listening: { band: B1, responses: 3 }
+                  taken_at: '2026-09-14T03:16:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /me/placement/sessions/{id}/answers:
+    post:
+      tags: [learning]
+      operationId: answerPlacementItem
+      summary: Answer the current placement item.
+      description: >-
+        Every answer is a learn.attempts row graded by the kind's grader
+        (ADR-0015); the same Idempotency-Key grades once. Returns the session with
+        the next item or the result. An answer after deadline_at plus five seconds
+        is refused with 409 PLACEMENT_SESSION_EXPIRED; an item that is not the
+        current one with 409 PLACEMENT_NOT_CURRENT_ITEM. After the result, the
+        same route answers the writing and speaking items.
+      x-permission: self
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlacementAnswerRequest'
+            example:
+              activity_id: 0199a1c2-3d4e-7f80-9abc-def01234567b
+              response:
+                selected_option_id: B
+      responses:
+        '200':
+          description: The session after the answer.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlacementSession'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def012345684
+                status: in_progress
+                stage: vocabulary_grammar
+                started_at: '2026-09-14T03:00:00Z'
+                deadline_at: '2026-09-14T03:20:00Z'
+                remaining_seconds: 1140
+                responses: 1
+                max_responses: 25
+                current_item:
+                  activity_id: 0199a1c2-3d4e-7f80-9abc-def01234567d
+                  content_version_id: 0199a1c2-3d4e-7f80-9abc-def01234567e
+                  kind: grammar_tense_choice
+                  skill: grammar
+                  config:
+                    prompt: She ___ in Hanoi since 2020.
+                    options:
+                      - { id: A, text: has lived }
+                      - { id: B, text: lives }
+                      - { id: C, text: lived }
+                      - { id: D, text: is living }
+                productive_status: offered
+                productive_deadline_at: null
+                productive_remaining_seconds: 0
+                productive_items: []
+                result: null
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /me/placement/sessions/{id}/productive:
+    post:
+      tags: [learning]
+      operationId: startPlacementProductive
+      summary: Start or skip the writing and speaking part.
+      description: >-
+        Offered after the result, never before it (409
+        PLACEMENT_PRODUCTIVE_UNAVAILABLE). Starting serves one 60–100 word writing
+        task and one 45-second spoken response at the placed level, with eight
+        minutes; skip true skips them, and they can still be started later. Each
+        is graded asynchronously and joins per_skill on the same result.
+      x-permission: self
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlacementProductiveRequest'
+            example:
+              skip: false
+      responses:
+        '200':
+          description: The session with the writing and speaking part.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlacementSession'
+              example:
+                id: 0199a1c2-3d4e-7f80-9abc-def012345684
+                status: completed
+                stage: done
+                started_at: '2026-09-14T03:00:00Z'
+                deadline_at: '2026-09-14T03:20:00Z'
+                remaining_seconds: 0
+                responses: 20
+                max_responses: 25
+                current_item: null
+                productive_status: in_progress
+                productive_deadline_at: '2026-09-14T03:26:00Z'
+                productive_remaining_seconds: 480
+                productive_items:
+                  - activity_id: 0199a1c2-3d4e-7f80-9abc-def012345691
+                    content_version_id: 0199a1c2-3d4e-7f80-9abc-def012345692
+                    kind: writing_prompt
+                    skill: writing
+                    config:
+                      prompt: Write to a friend about your last holiday.
+                      min_words: 60
+                    status: not_answered
+                    band: null
+                result:
+                  id: 0199a1c2-3d4e-7f80-9abc-def012345690
+                  level: B1
+                  per_skill:
+                    vocabulary: { band: B1, responses: 7 }
+                  taken_at: '2026-09-14T03:16:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /me/path:
+    get:
+      tags: [learning]
+      operationId: getMyStartingPath
+      summary: Recommended courses and the lesson to start at in each.
+      description: >-
+        The level is the current placement result; failing that the declared
+        level; failing that A2. Courses are the curriculum courses whose range
+        contains the level, or the nearest below it; the start lesson is the first
+        lesson at or above the level (work order 13 §3.6).
+      x-permission: self
+      responses:
+        '200':
+          description: The starting path.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StartingPath'
+              example:
+                level: B1
+                level_source: placement
+                courses:
+                  - id: 0199a1c2-3d4e-7f80-9abc-def012345678
+                    slug: everyday-english-a2-b1
+                    title: Everyday English
+                    cefr_from: A2
+                    cefr_to: B1
+                    start_lesson:
+                      id: 0199a1c2-3d4e-7f80-9abc-def01234567a
+                      title: Making plans
+                      cefr_level: B1
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /me/weekly-plan:
+    get:
+      tags: [learning]
+      operationId: getMyWeeklyPlan
+      summary: This week's plan and its progress.
+      description: >-
+        Built on the first request of a week starting Monday in Asia/Ho_Chi_Minh
+        and fixed for that week: 40% the next lessons, 30% daily practice sets,
+        20% due reviews at the learner's pace, 10% one writing or speaking task,
+        with one extra item for the weakest skill. Progress is read at request
+        time (work order 13 §3.7).
+      x-permission: self
+      responses:
+        '200':
+          description: The weekly plan.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeeklyPlan'
+              example:
+                week_start: '2026-09-14'
+                minutes_goal: 90
+                items:
+                  - kind: lesson
+                    minutes: 10
+                    lesson_id: 0199a1c2-3d4e-7f80-9abc-def01234567a
+                    course_id: 0199a1c2-3d4e-7f80-9abc-def012345678
+                    title: Making plans
+                    skill: grammar
+                    done: true
+                  - kind: daily_practice
+                    minutes: 10
+                    done: false
+                  - kind: reviews
+                    minutes: 5
+                    reviews: 15
+                    done: false
+                  - kind: writing
+                    minutes: 15
+                    skill: writing
+                    done: false
+                progress:
+                  minutes: 25
+                  items_done: 1
+                  items_total: 4
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /reviews/session:
     get:
       tags: [srs]
@@ -5250,12 +5683,15 @@ paths:
               properties:
                 context_type:
                   type: string
-                  enum: [attempt, exam]
-                  description: Context of the play ('attempt' for learning, 'exam' for mock exam sitting).
+                  enum: [attempt, exam, placement]
+                  description: >-
+                    Context of the play: 'attempt' for learning, 'exam' for a mock
+                    exam sitting, 'placement' for a placement session, where a clip
+                    is played once and only while it is the current item.
                 context_id:
                   type: string
                   format: uuid
-                  description: ID of the attempt or exam sitting.
+                  description: ID of the attempt, exam sitting or placement session.
       responses:
         '200':
           description: Play recorded and presigned audio URL issued.
@@ -6179,6 +6615,40 @@ components:
       $ref: ./components/speaking.yaml#/SpeakingCriterion
     SpeakingFeedback:
       $ref: ./components/speaking.yaml#/SpeakingFeedback
+    LearningProfile:
+      $ref: ./components/user.yaml#/LearningProfile
+    LearningProfileRequest:
+      $ref: ./components/user.yaml#/LearningProfileRequest
+    PlacementSkillEstimate:
+      $ref: ./components/learning.yaml#/PlacementSkillEstimate
+    PlacementResult:
+      $ref: ./components/learning.yaml#/PlacementResult
+    PlacementActiveSession:
+      $ref: ./components/learning.yaml#/PlacementActiveSession
+    PlacementOverview:
+      $ref: ./components/learning.yaml#/PlacementOverview
+    PlacementItem:
+      $ref: ./components/learning.yaml#/PlacementItem
+    PlacementProductiveItem:
+      $ref: ./components/learning.yaml#/PlacementProductiveItem
+    PlacementSession:
+      $ref: ./components/learning.yaml#/PlacementSession
+    PlacementAnswerRequest:
+      $ref: ./components/learning.yaml#/PlacementAnswerRequest
+    PlacementProductiveRequest:
+      $ref: ./components/learning.yaml#/PlacementProductiveRequest
+    StartingPathLesson:
+      $ref: ./components/learning.yaml#/StartingPathLesson
+    StartingPathCourse:
+      $ref: ./components/learning.yaml#/StartingPathCourse
+    StartingPath:
+      $ref: ./components/learning.yaml#/StartingPath
+    WeeklyPlanItem:
+      $ref: ./components/learning.yaml#/WeeklyPlanItem
+    WeeklyPlanProgress:
+      $ref: ./components/learning.yaml#/WeeklyPlanProgress
+    WeeklyPlan:
+      $ref: ./components/learning.yaml#/WeeklyPlan
   headers:
     X-Request-Id:
       $ref: ./components/headers.yaml#/X-Request-Id

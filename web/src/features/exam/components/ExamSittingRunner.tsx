@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   AlertCircle,
   ArrowRight,
@@ -389,7 +395,10 @@ export const ExamSittingRunner: React.FC<ExamSittingRunnerProps> = ({
           </div>
         </div>
 
-        <nav aria-label={t("exam.runner.sectionsNav")} className="flex items-center gap-1 sm:gap-2">
+        <nav
+          aria-label={t("exam.runner.sectionsNav")}
+          className="flex items-center gap-1 sm:gap-2"
+        >
           {sections.map((s) => {
             const Icon = SECTION_ICONS[s.skill];
             const isCurrent = s.section_position === currentSection;
@@ -412,7 +421,9 @@ export const ExamSittingRunner: React.FC<ExamSittingRunnerProps> = ({
                 )}
               >
                 <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                <span className="hidden md:inline">{sectionLabels[s.skill]}</span>
+                <span className="hidden md:inline">
+                  {sectionLabels[s.skill]}
+                </span>
               </button>
             );
           })}
@@ -432,7 +443,11 @@ export const ExamSittingRunner: React.FC<ExamSittingRunnerProps> = ({
             <Clock className="h-4 w-4 shrink-0" aria-hidden="true" />
             <span>{formatClock(remaining)}</span>
           </div>
-          <Button type="button" variant="outline" onClick={() => setConfirmOpen(true)}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setConfirmOpen(true)}
+          >
             <Send className="h-4 w-4" aria-hidden="true" />
             <span>{t("exam.runner.submit")}</span>
           </Button>
@@ -448,7 +463,12 @@ export const ExamSittingRunner: React.FC<ExamSittingRunnerProps> = ({
             <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
             {t("exam.runner.saveFailed")}
           </span>
-          <Button type="button" size="sm" variant="ghost" onClick={() => void save()}>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={() => void save()}
+          >
             {t("exam.runner.retrySave")}
           </Button>
         </div>
@@ -732,7 +752,10 @@ const SittingActivityCard: React.FC<SittingActivityCardProps> = ({
         <p className="rounded-xl border border-border-subtle bg-surface-muted p-4 text-sm font-medium leading-relaxed text-text sm:text-base">
           {config.prompt}
         </p>
-        <label htmlFor={inputId} className="text-xs font-medium text-text-muted">
+        <label
+          htmlFor={inputId}
+          className="text-xs font-medium text-text-muted"
+        >
           {t("exam.writing.rewriteLabel")}
         </label>
         <input
@@ -747,9 +770,12 @@ const SittingActivityCard: React.FC<SittingActivityCardProps> = ({
   }
 
   if (activity.kind === "speaking_task") {
-    const taskType = config.task_type === "read_aloud" ? "read_aloud" : "respond";
+    const taskType =
+      config.task_type === "read_aloud" ? "read_aloud" : "respond";
     const key =
-      answer && "audio_object_key" in answer ? answer.audio_object_key : undefined;
+      answer && "audio_object_key" in answer
+        ? answer.audio_object_key
+        : undefined;
     return (
       <div className="space-y-2">
         {heading(

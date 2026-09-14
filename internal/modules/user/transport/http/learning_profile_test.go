@@ -8,6 +8,9 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/user/domain"
 )
 
+// responseUpdatedAt is the timestamp every stored profile is returned with.
+const responseUpdatedAt = "updated_at"
+
 const validLearningProfileBody = `{
 	"declared_level": "B1",
 	"target_level": "B2",
@@ -61,7 +64,7 @@ func TestGetLearningProfile_Success(t *testing.T) {
 	}
 	for _, field := range []string{
 		"declared_level", "target_level", "target_exam",
-		"weekly_minutes_goal", "motivations", "created_at", "updated_at",
+		"weekly_minutes_goal", "motivations", "created_at", responseUpdatedAt,
 	} {
 		if _, present := body[field]; !present {
 			t.Errorf("response is missing %q", field)

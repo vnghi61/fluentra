@@ -278,6 +278,14 @@ type AttemptOutcomeReader interface {
 	GetAttemptOutcome(ctx context.Context, attemptID uuid.UUID) (*AttemptOutcome, error)
 }
 
+// PlacementListeningPolicy answers how many times a clip may be played in a
+// placement test. listening asks it for a play whose context is a placement
+// session, so the context is the caller's open session serving that clip, not an
+// id the client chose.
+type PlacementListeningPolicy interface {
+	PlacementListeningPlays(ctx context.Context, userID, sessionID, versionID uuid.UUID) (int, error)
+}
+
 // AudioLocator finds the rendered audio for a listening script, if there is any.
 // Audio is rendered offline after an item is published, so an item's body may
 // carry no object key while the clip exists in the TTS cache.

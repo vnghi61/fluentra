@@ -10,10 +10,17 @@ import { ExamSittingRunner } from "@/features/exam/components/ExamSittingRunner"
 export function ExamSittingPage(): React.JSX.Element {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const params: Record<string, string | undefined> = useParams({ strict: false });
+  const params: Record<string, string | undefined> = useParams({
+    strict: false,
+  });
   const attemptId = params.attemptId ?? "";
 
-  const { data: attempt, isLoading, isError, refetch } = useExamAttempt(attemptId);
+  const {
+    data: attempt,
+    isLoading,
+    isError,
+    refetch,
+  } = useExamAttempt(attemptId);
 
   const toReport = useCallback(() => {
     void navigate({ to: "/exams/$attemptId/report", params: { attemptId } });
@@ -27,8 +34,13 @@ export function ExamSittingPage(): React.JSX.Element {
   if (isLoading) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
-        <Loader2 className="mb-3 h-10 w-10 animate-spin text-primary" aria-hidden="true" />
-        <p className="text-sm font-medium text-text-muted">{t("exam.runner.loading")}</p>
+        <Loader2
+          className="mb-3 h-10 w-10 animate-spin text-primary"
+          aria-hidden="true"
+        />
+        <p className="text-sm font-medium text-text-muted">
+          {t("exam.runner.loading")}
+        </p>
       </div>
     );
   }
@@ -36,11 +48,23 @@ export function ExamSittingPage(): React.JSX.Element {
   if (isError || !attempt) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background p-6">
-        <div role="alert" className="w-full max-w-md space-y-4 rounded-2xl border border-danger/30 bg-danger/10 p-6 text-center">
-          <AlertCircle className="mx-auto h-10 w-10 text-danger" aria-hidden="true" />
-          <h2 className="text-lg font-bold text-danger">{t("exam.runner.loadFailed")}</h2>
+        <div
+          role="alert"
+          className="w-full max-w-md space-y-4 rounded-2xl border border-danger/30 bg-danger/10 p-6 text-center"
+        >
+          <AlertCircle
+            className="mx-auto h-10 w-10 text-danger"
+            aria-hidden="true"
+          />
+          <h2 className="text-lg font-bold text-danger">
+            {t("exam.runner.loadFailed")}
+          </h2>
           <div className="flex justify-center gap-3 pt-2">
-            <Button type="button" variant="outline" onClick={() => void refetch()}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void refetch()}
+            >
               {t("exam.runner.retry")}
             </Button>
             <Link
@@ -58,7 +82,10 @@ export function ExamSittingPage(): React.JSX.Element {
   if (attempt.status !== "in_progress") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" aria-hidden="true" />
+        <Loader2
+          className="h-10 w-10 animate-spin text-primary"
+          aria-hidden="true"
+        />
       </div>
     );
   }

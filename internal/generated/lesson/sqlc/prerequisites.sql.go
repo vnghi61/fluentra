@@ -115,7 +115,8 @@ func (q *Queries) ListPrerequisitesByLessonID(ctx context.Context, lessonID uuid
 }
 
 const listPrerequisitesForLessons = `-- name: ListPrerequisitesForLessons :many
-SELECT lp.lesson_id, lp.requires_lesson_id, lp.min_score, l.title AS requires_lesson_title
+SELECT lp.lesson_id, lp.requires_lesson_id, lp.min_score, l.title AS requires_lesson_title,
+       l.cefr_level AS requires_lesson_level
 FROM learn.lesson_prerequisites lp
 JOIN learn.lessons l ON l.id = lp.requires_lesson_id
 WHERE lp.lesson_id = ANY($1::uuid[])
@@ -126,8 +127,11 @@ type ListPrerequisitesForLessonsRow struct {
 	RequiresLessonID    uuid.UUID
 	MinScore            int32
 	RequiresLessonTitle string
+	RequiresLessonLevel *CoreCefrLevel
 }
 
+// requires_lesson_level lets learning open a lesson whose prerequisites are all
+// below the learner's placed level (work order 13 §3.6) without a read per lesson.
 func (q *Queries) ListPrerequisitesForLessons(ctx context.Context, dollar_1 []uuid.UUID) ([]ListPrerequisitesForLessonsRow, error) {
 	rows, err := q.db.Query(ctx, listPrerequisitesForLessons, dollar_1)
 	if err != nil {
@@ -142,6 +146,7 @@ func (q *Queries) ListPrerequisitesForLessons(ctx context.Context, dollar_1 []uu
 			&i.RequiresLessonID,
 			&i.MinScore,
 			&i.RequiresLessonTitle,
+			&i.RequiresLessonLevel,
 		); err != nil {
 			return nil, err
 		}

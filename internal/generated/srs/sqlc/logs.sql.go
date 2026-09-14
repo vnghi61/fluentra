@@ -13,6 +13,34 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const averageRecentReviewElapsedMs = `-- name: AverageRecentReviewElapsedMs :one
+SELECT COALESCE(AVG(elapsed_ms), 0)::double precision AS average_ms
+FROM (
+    SELECT elapsed_ms
+    FROM learn.review_logs
+    WHERE user_id = $1
+      AND reviewed_at >= $2
+      AND elapsed_ms > 0
+    ORDER BY reviewed_at DESC
+    LIMIT $3
+) AS recent
+`
+
+type AverageRecentReviewElapsedMsParams struct {
+	UserID     uuid.UUID
+	ReviewedAt time.Time
+	Limit      int32
+}
+
+// AverageRecentReviewElapsedMs is the learner's pace over their last `limit`
+// answers since `reviewed_at`, zero with none (work order 13 §3.7).
+func (q *Queries) AverageRecentReviewElapsedMs(ctx context.Context, arg AverageRecentReviewElapsedMsParams) (float64, error) {
+	row := q.db.QueryRow(ctx, averageRecentReviewElapsedMs, arg.UserID, arg.ReviewedAt, arg.Limit)
+	var average_ms float64
+	err := row.Scan(&average_ms)
+	return average_ms, err
+}
+
 const insertReviewLog = `-- name: InsertReviewLog :one
 INSERT INTO learn.review_logs (
     card_id, user_id, grade, elapsed_ms, stability_before, stability_after, difficulty_before, difficulty_after, scheduled_days, scheduler_version, reviewed_at

@@ -189,4 +189,3 @@ func toDomainLearningProfile(row sqlcuser.CoreLearningProfile) domain.LearningPr
 		UpdatedAt:         row.UpdatedAt,
 	}
 }
-

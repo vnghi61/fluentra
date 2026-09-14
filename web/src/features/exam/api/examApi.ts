@@ -77,16 +77,23 @@ export const examApi = {
     return apiFetch<ScoreReport>(`/api/v1/exam-attempts/${id}/report`);
   },
 
-  /** Record a play of a clip in a sitting and receive a short-lived audio URL. */
+  /**
+   * Record a play of a clip in a sitting or a placement session and receive a
+   * short-lived audio URL. The server checks the context is the caller's.
+   */
   async playListening(
     versionId: string,
-    sittingId: string,
+    contextId: string,
+    contextType: "exam" | "placement" = "exam",
   ): Promise<ListeningPlayResult> {
     return apiFetch<ListeningPlayResult>(
       `/api/v1/listening/items/${versionId}/plays`,
       {
         method: "POST",
-        body: JSON.stringify({ context_type: "exam", context_id: sittingId }),
+        body: JSON.stringify({
+          context_type: contextType,
+          context_id: contextId,
+        }),
       },
     );
   },

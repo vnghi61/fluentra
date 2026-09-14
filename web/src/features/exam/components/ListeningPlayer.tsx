@@ -9,7 +9,9 @@ import { examApi, problemCode } from "../api/examApi";
 
 export interface ListeningPlayerProps {
   versionId: string;
+  /** The exam sitting or placement session the plays are counted against. */
   sittingId: string;
+  contextType?: "exam" | "placement" | undefined;
   title?: string | undefined;
   className?: string | undefined;
 }
@@ -29,6 +31,7 @@ function formatTime(secs: number): string {
 export const ListeningPlayer: React.FC<ListeningPlayerProps> = ({
   versionId,
   sittingId,
+  contextType = "exam",
   title,
   className,
 }) => {
@@ -46,7 +49,11 @@ export const ListeningPlayer: React.FC<ListeningPlayerProps> = ({
   const startPlay = async () => {
     setIsLoading(true);
     try {
-      const res = await examApi.playListening(versionId, sittingId);
+      const res = await examApi.playListening(
+        versionId,
+        sittingId,
+        contextType,
+      );
       setPlaysLeft(Math.max(0, res.plays_allowed - res.plays_used));
       const audio = audioRef.current;
       if (audio) {
@@ -144,7 +151,9 @@ export const ListeningPlayer: React.FC<ListeningPlayerProps> = ({
           type="button"
           onClick={() => void handleToggle()}
           disabled={disabled}
-          aria-label={isPlaying ? t("exam.listening.pause") : t("exam.listening.play")}
+          aria-label={
+            isPlaying ? t("exam.listening.pause") : t("exam.listening.play")
+          }
           className="h-12 min-h-[44px] w-12 min-w-[44px] shrink-0 rounded-full"
         >
           {isLoading ? (

@@ -574,6 +574,7 @@
     "featureFlags": "Feature flag",
     "learnerManagement": "Quản lý người học",
     "learningPreferences": "Tuỳ chọn học tập",
+    "learningProfile": "Hồ sơ học tập",
     "loadingYourSettings": "Đang tải cài đặt của bạn...",
     "missingAuthenticationParametersInCallback": "Thiếu tham số xác thực trong URL callback.",
     "platformAdministration": "Quản trị nền tảng",
@@ -1069,5 +1070,176 @@
       "loading": "Đang tải kết quả…",
       "loadFailed": "Không tải được kết quả."
     }
+  },
+  "placement": {
+    "loading": "Đang tải bài kiểm tra xếp lớp…",
+    "loadFailed": "Không tải được bài kiểm tra xếp lớp.",
+    "retry": "Thử lại",
+    "invite": {
+      "title": "Tìm trình độ của bạn",
+      "description": "Bài kiểm tra thích ứng 15 phút về từ vựng, ngữ pháp, đọc và nghe xếp bạn từ A1 đến C1 và chọn bài học bắt đầu.",
+      "action": "Làm bài kiểm tra xếp lớp"
+    },
+    "intro": {
+      "title": "Bài kiểm tra xếp lớp",
+      "subtitle": "Câu hỏi thay đổi theo câu trả lời của bạn, nên mỗi câu vừa sức với trình độ tiếng Anh của bạn. Kết quả xếp bạn từ A1 đến C1.",
+      "time": "Khoảng 15 phút, tối đa 20 phút. Thời gian do máy chủ tính.",
+      "questions": "Từ vựng, ngữ pháp, một bài đọc và một đoạn nghe — tối đa 25 câu trả lời.",
+      "noGoingBack": "Mỗi lần một câu. Đã gửi thì không sửa được.",
+      "productive": "Sau khi có kết quả, bạn có thể làm thêm một bài viết ngắn và một câu trả lời nói.",
+      "start": "Bắt đầu",
+      "starting": "Đang bắt đầu…",
+      "notNow": "Để sau",
+      "unavailable": "Bài kiểm tra xếp lớp chưa mở. Bạn có thể chọn trình độ bắt đầu trong Cài đặt.",
+      "retakeTooSoon": "Bạn có thể làm lại bài kiểm tra vào ngày {{date}}.",
+      "startFailed": "Không bắt đầu được bài kiểm tra. Hãy thử lại.",
+      "tooFewAnswers": "Lần trước bài kiểm tra kết thúc khi chưa đủ câu trả lời để xếp lớp. Bạn có thể làm lại ngay."
+    },
+    "stage": {
+      "vocabularyGrammar": "Từ vựng và ngữ pháp",
+      "readingListening": "Đọc và nghe",
+      "refine": "Thêm vài câu nữa",
+      "done": "Đã xong"
+    },
+    "runner": {
+      "progress": "Tiến độ bài kiểm tra",
+      "timeLeft": "Thời gian còn lại",
+      "noGoingBack": "Bạn không thể quay lại câu đã trả lời.",
+      "next": "Tiếp",
+      "submitting": "Đang gửi…",
+      "answerFailed": "Không gửi được câu trả lời. Hãy thử lại."
+    },
+    "item": {
+      "question": "Câu {{number}}."
+    },
+    "timeUp": {
+      "title": "Hết giờ",
+      "description": "Những câu bạn đã trả lời đủ để tính kết quả.",
+      "action": "Xem kết quả"
+    },
+    "levels": {
+      "A1": "Sơ cấp",
+      "A2": "Cơ bản",
+      "B1": "Trung cấp",
+      "B2": "Trung cao cấp",
+      "C1": "Cao cấp"
+    },
+    "result": {
+      "eyebrow": "Trình độ của bạn",
+      "notMeasured": "Chưa đánh giá",
+      "toDashboard": "Về trang chính",
+      "retake": "Làm lại bài kiểm tra",
+      "retakeOn": "Bạn có thể làm lại bài kiểm tra vào ngày {{date}}.",
+      "retakeFailed": "Không bắt đầu được bài kiểm tra. Hãy thử lại."
+    },
+    "productive": {
+      "title": "Viết và nói",
+      "description": "Hãy trả lời từng bài trước khi hết giờ.",
+      "notMeasured": "Kỹ năng viết và nói chưa được đánh giá. Bạn có thể làm ngay hoặc để sau.",
+      "skipped": "Bạn có thể làm phần viết và nói bất cứ khi nào sẵn sàng.",
+      "grading": "Bài của bạn đang được chấm. Kết quả sẽ cập nhật khi có điểm.",
+      "takeNow": "Làm ngay",
+      "later": "Để sau",
+      "refresh": "Kiểm tra lại",
+      "failed": "Không thực hiện được. Hãy thử lại.",
+      "timeLeft": "Thời gian còn lại: {{time}}",
+      "timeUp": "Hết giờ — xem tình trạng bài làm",
+      "writingTitle": "Viết",
+      "writingLabel": "Bài viết của bạn",
+      "wordCount": "{{words}} từ",
+      "wordTarget": "Nên viết {{min}}–100 từ",
+      "submitWriting": "Gửi bài viết",
+      "speakingTitle": "Nói",
+      "itemGrading": "Đang chấm",
+      "itemFailed": "Không chấm được",
+      "itemBand": "Trình độ {{band}}",
+      "answerFailed": "Không gửi được câu trả lời. Hãy thử lại."
+    },
+    "path": {
+      "title": "Bắt đầu từ đâu",
+      "fromPlacement": "Chọn theo trình độ bạn được xếp: {{level}}.",
+      "fromDeclared": "Chọn theo trình độ bạn tự chọn: {{level}}. Bài kiểm tra xếp lớp sẽ mở các bài học dưới trình độ của bạn.",
+      "fromDefault": "Chọn theo trình độ {{level}} cho đến khi bạn làm bài kiểm tra xếp lớp.",
+      "range": "Trình độ {{from}} đến {{to}}",
+      "startAt": "Bắt đầu với: {{lesson}}",
+      "start": "Học bài này",
+      "browse": "Xem khóa học"
+    },
+    "settings": {
+      "title": "Xếp lớp",
+      "placedOn": "Xếp lớp ngày {{date}}",
+      "noResult": "Bạn chưa làm bài kiểm tra xếp lớp.",
+      "declared": "Trình độ bắt đầu bạn đã chọn: {{level}}",
+      "resume": "Tiếp tục bài kiểm tra",
+      "retake": "Làm lại bài xếp lớp",
+      "retakeOn": "Bạn có thể làm lại bài kiểm tra vào ngày {{date}}.",
+      "start": "Làm bài kiểm tra xếp lớp"
+    }
+  },
+  "welcome": {
+    "step": "Bước {{current}}/{{total}}",
+    "goalTitle": "Bạn học tiếng Anh để làm gì?",
+    "examLabel": "Mục tiêu của bạn",
+    "exam": {
+      "none": "Tiếng Anh tổng quát",
+      "ielts": "IELTS",
+      "toeic": "TOEIC"
+    },
+    "targetLabel": "Trình độ bạn muốn đạt",
+    "minutesTitle": "Mỗi tuần bạn có bao nhiêu thời gian?",
+    "minutesSubtitle": "Kế hoạch tuần sẽ theo thời gian này. Bạn có thể đổi sau trong Cài đặt.",
+    "minutesOption": "{{minutes}} phút",
+    "placementTitle": "Bạn nên bắt đầu từ đâu?",
+    "placementSubtitle": "Làm bài kiểm tra 15 phút để biết trình độ, hoặc tự chọn trình độ.",
+    "takeTest": "Làm bài kiểm tra xếp lớp",
+    "starting": "Đang bắt đầu…",
+    "chooseInstead": "Tự chọn trình độ",
+    "chooseTitle": "Trình độ bắt đầu",
+    "chooseSubtitle": "Chọn trình độ bạn thấy phù hợp. Bạn có thể làm bài kiểm tra sau.",
+    "notOpen": "Bài kiểm tra xếp lớp chưa mở. Tạm thời hãy chọn trình độ bạn thấy phù hợp.",
+    "finish": "Lưu và về trang chính",
+    "saving": "Đang lưu…",
+    "continue": "Tiếp tục",
+    "back": "Quay lại",
+    "startFailed": "Không bắt đầu được bài kiểm tra. Bạn có thể tự chọn trình độ.",
+    "saveFailed": "Không lưu được câu trả lời. Hãy thử lại."
+  },
+  "weeklyPlan": {
+    "title": "Kế hoạch tuần này",
+    "weekOf": "Tuần bắt đầu {{date}}",
+    "minutes": "{{done}}/{{goal}} phút",
+    "itemsDone": "Đã xong {{done}}/{{total}}",
+    "progressLabel": "Số phút đã học tuần này",
+    "done": "Đã xong",
+    "focus": "Trọng tâm",
+    "itemMinutes": "{{minutes}} phút",
+    "reviews": "{{reviews}} thẻ ôn tập",
+    "kind": {
+      "lesson": "Bài học",
+      "dailyPractice": "Luyện tập hằng ngày",
+      "reviews": "Ôn tập",
+      "writing": "Bài viết",
+      "speaking": "Bài nói"
+    }
+  },
+  "profile": {
+    "title": "Mục tiêu học tập",
+    "subtitle": "Mục tiêu và số phút mỗi tuần quyết định kế hoạch tuần của bạn.",
+    "examLabel": "Mục tiêu của bạn",
+    "targetLabel": "Trình độ bạn muốn đạt",
+    "minutesLabel": "Số phút mỗi tuần",
+    "minutesPreset": "{{minutes}} phút",
+    "save": "Lưu",
+    "saving": "Đang lưu…",
+    "saved": "Đã lưu.",
+    "saveFailed": "Không lưu được thay đổi. Hãy thử lại."
+  },
+  "skills": {
+    "vocabulary": "Từ vựng",
+    "grammar": "Ngữ pháp",
+    "reading": "Đọc",
+    "listening": "Nghe",
+    "writing": "Viết",
+    "speaking": "Nói"
   }
 }

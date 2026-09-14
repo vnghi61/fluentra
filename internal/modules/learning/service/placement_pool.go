@@ -11,93 +11,108 @@ import (
 	"github.com/google/uuid"
 
 	contentcontract "github.com/fluentra/fluentra/internal/modules/content/contract"
+	"github.com/fluentra/fluentra/internal/modules/learning/domain"
 	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
 	"github.com/fluentra/fluentra/internal/platform/ai"
 )
 
 // The placement pool — work order 13 §3.3.
 //
-// Slots: 30 — 6 kinds across A1, A2, B1, B2, and C1.
-// Top-up runs hourly on lock 1_700_000_216.
-// Course: pool-placement.
-// Append-only lessons, no items shared with pool-practice or pool-exam.
+// The same machinery as the practice and exam pools, pointed at a third course:
+// append-only slot lessons under pool-placement, one unit per level A1–C1, the
+// same checks and blind solve, and the same learn.item_exposures. No item is
+// shared with pool-practice or pool-exam: each pool generates into its own
+// lessons and draws only from them.
 
 const (
 	// PlacementPoolCourseSlug is the course that holds the placement pool's slot lessons.
 	PlacementPoolCourseSlug = "pool-placement"
 
 	placementPoolCourseTitle = "Placement Pool"
-	placementPoolDescription = "Auto-generated placement test items pool"
-
-	// Lock ID for placement pool top-up cron job (WO13 §5).
-	topUpPlacementPoolLockID int64 = 1_700_000_216
+	placementPoolDescription = "Auto-generated placement test items"
 
 	placementRunningLowThreshold = 5
 	maxPlacementItemsToAddPerRun = 5
+
+	// Placement item shapes (§3.3).
+	placementChoiceOptions    = 4
+	placementPassageQuestions = 3
+	placementWritingMinWords  = 60
+	placementWritingMaxWords  = 100
+	placementSpeakingSeconds  = 45
+
+	// promptKindVocabulary asks the generator for a vocabulary question. The item
+	// is published as grammar_tense_choice: see learning/DECISIONS.md.
+	promptKindVocabulary = "vocabulary"
 )
 
-var placementLevels = []string{"A1", "A2", "B1", "B2", "C1"}
-
 type placementSlotSpec struct {
-	position   int
-	kind       string
+	position int
+	// kind is the published activity kind, which picks the grader.
+	kind string
+	// promptKind is what the generator is asked for.
+	promptKind string
 	taskType   string
 	slotName   string
 	title      string
-	skillFocus string
+	skill      string
 	target     int
+	// minimum is what one full test can use at a band; the pool is ready when
+	// every band has it in every slot.
+	minimum int
 }
 
 var placementSlots = []placementSlotSpec{
 	{
-		position:   1,
-		kind:       "vocabulary",
-		slotName:   "vocabulary",
-		title:      "Vocabulary Multiple Choice",
-		skillFocus: "vocabulary",
-		target:     40,
+		position: 1, kind: kindGrammarTenseChoice, promptKind: promptKindVocabulary,
+		slotName: "vocabulary", title: "Vocabulary Multiple Choice", skill: domain.SkillVocabulary,
+		target: 40, minimum: domain.PlacementStageOneMax / 2,
 	},
 	{
-		position:   2,
-		kind:       kindGrammarTenseChoice,
-		slotName:   "grammar-tense-choice",
-		title:      "Grammar Tense Choice",
-		skillFocus: skillGrammar,
-		target:     40,
+		position: 2, kind: kindGrammarTenseChoice, promptKind: kindGrammarTenseChoice,
+		slotName: "grammar-tense-choice", title: "Grammar Tense Choice", skill: domain.SkillGrammar,
+		target: 40, minimum: domain.PlacementStageOneMax / 2,
 	},
 	{
-		position:   3,
-		kind:       kindReadingComprehension,
-		slotName:   "reading-comprehension",
-		title:      "Reading Comprehension",
-		skillFocus: skillReading,
-		target:     15,
+		position: 3, kind: kindReadingComprehension, promptKind: kindReadingComprehension,
+		slotName: slotReadingComprehension, title: titleReadingComprehension, skill: domain.SkillReading,
+		target: 15, minimum: 3,
 	},
 	{
-		position:   4,
-		kind:       kindListeningComprehension,
-		slotName:   "listening-comprehension",
-		title:      "Listening Comprehension",
-		skillFocus: skillListening,
-		target:     15,
+		position: 4, kind: kindListeningComprehension, promptKind: kindListeningComprehension,
+		slotName: slotListening, title: "Listening Comprehension", skill: domain.SkillListening,
+		target: 15, minimum: 3,
 	},
 	{
-		position:   5,
-		kind:       kindWritingPrompt,
-		slotName:   "writing-prompt",
-		title:      "Writing Prompt",
-		skillFocus: skillWriting,
-		target:     10,
+		position: 5, kind: kindWritingPrompt, promptKind: kindWritingPrompt,
+		slotName: slotWritingPrompt, title: "Writing Prompt", skill: domain.SkillWriting,
+		target: 10, minimum: 1,
 	},
 	{
-		position:   6,
-		kind:       kindSpeakingTask,
-		taskType:   subTypeRespond,
-		slotName:   "speaking-task-respond",
-		title:      "Speaking Task",
-		skillFocus: skillSpeaking,
-		target:     10,
+		position: 6, kind: kindSpeakingTask, promptKind: kindSpeakingTask, taskType: subTypeRespond,
+		slotName: slotSpeakingRespond, title: "Speaking Task", skill: domain.SkillSpeaking,
+		target: 10, minimum: 1,
 	},
+}
+
+// placementLengths are the word counts a passage and a clip's script may have at
+// each level: passages of 60–180 words, clips of 20–60 seconds at about 2.3 words
+// a second.
+var placementLengths = map[string]struct{ passageMin, passageMax, scriptMin, scriptMax int }{
+	domain.LevelA1: {passageMin: 60, passageMax: 90, scriptMin: 45, scriptMax: 70},
+	domain.LevelA2: {passageMin: 80, passageMax: 110, scriptMin: 55, scriptMax: 85},
+	domain.LevelB1: {passageMin: 100, passageMax: 140, scriptMin: 70, scriptMax: 105},
+	domain.LevelB2: {passageMin: 120, passageMax: 160, scriptMin: 85, scriptMax: 125},
+	domain.LevelC1: {passageMin: 140, passageMax: 180, scriptMin: 100, scriptMax: 140},
+}
+
+func placementSlotForSkill(skill string) (placementSlotSpec, bool) {
+	for _, slot := range placementSlots {
+		if slot.skill == skill {
+			return slot, true
+		}
+	}
+	return placementSlotSpec{}, false
 }
 
 type placementSlotKey struct {
@@ -110,7 +125,7 @@ type placementPoolLayout struct {
 	lessons  map[placementSlotKey]uuid.UUID
 }
 
-// EnsurePlacementPoolStructure ensures the placement pool course, units, and 30 slot lessons exist.
+// EnsurePlacementPoolStructure ensures the placement pool course, units and 30 slot lessons exist.
 func (s *Service) EnsurePlacementPoolStructure(ctx context.Context) error {
 	_, err := s.placementPool(ctx)
 	return err
@@ -138,16 +153,16 @@ func (s *Service) buildPlacementPool(ctx context.Context) (*placementPoolLayout,
 		Slug:           PlacementPoolCourseSlug,
 		Title:          placementPoolCourseTitle,
 		Description:    placementPoolDescription,
-		CEFRFrom:       "A1",
-		CEFRTo:         "C1",
-		EstimatedHours: 100,
+		CEFRFrom:       domain.LevelA1,
+		CEFRTo:         domain.LevelC1,
+		EstimatedHours: 1,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("ensure placement pool course: %w", err)
 	}
 
 	layout := &placementPoolLayout{courseID: courseID, lessons: make(map[placementSlotKey]uuid.UUID)}
-	for index, level := range placementLevels {
+	for index, level := range domain.PlacementBands {
 		unitID, err := s.lessonAuthor.EnsureUnit(ctx, lessoncontract.UnitSpec{
 			CourseID:    courseID,
 			Position:    index + 1,
@@ -158,12 +173,13 @@ func (s *Service) buildPlacementPool(ctx context.Context) (*placementPoolLayout,
 			return nil, fmt.Errorf("ensure placement pool unit %s: %w", level, err)
 		}
 		for _, slot := range placementSlots {
+			// A pool lesson keeps its level null: placement opens only curriculum lessons.
 			lessonID, err := s.lessonAuthor.EnsureLesson(ctx, lessoncontract.LessonSpec{
 				UnitID:           unitID,
 				Position:         slot.position,
 				Title:            slot.title,
-				SkillFocus:       slot.skillFocus,
-				EstimatedMinutes: 15,
+				SkillFocus:       slot.skill,
+				EstimatedMinutes: 1,
 			})
 			if err != nil {
 				return nil, fmt.Errorf("ensure placement pool lesson %s in %s: %w", slot.title, level, err)
@@ -194,6 +210,27 @@ func (s *Service) placementSlotActivities(
 	return lesson.Activities, nil
 }
 
+// placementPoolReady reports whether every band can serve a full test: a test
+// that runs out of unseen items at a band stops estimating and starts guessing,
+// so a thin pool is refused rather than quietly served (§3.3, §8).
+func (s *Service) placementPoolReady(ctx context.Context, layout *placementPoolLayout) (bool, error) {
+	for _, level := range domain.PlacementBands {
+		for _, slot := range placementSlots {
+			activities, err := s.placementSlotActivities(ctx, layout, level, slot.slotName)
+			if err != nil {
+				return false, err
+			}
+			if slot.kind == kindListeningComprehension {
+				activities = s.listeningWithAudio(ctx, activities)
+			}
+			if len(activities) < slot.minimum {
+				return false, nil
+			}
+		}
+	}
+	return true, nil
+}
+
 // --------------------------------------------------------------------------
 // Top-up
 // --------------------------------------------------------------------------
@@ -208,6 +245,7 @@ func (s *Service) TopUpPlacementPool(ctx context.Context) error {
 		return errors.New("content author and lesson author dependencies are required for placement pool top-up")
 	}
 
+	// The author is resolved when the job runs, not when the worker starts.
 	author := s.resolveGeneratorAuthor(ctx)
 	if author == uuid.Nil {
 		slog.WarnContext(ctx, "placement pool top-up skipped: no owner for generated content")
@@ -219,7 +257,7 @@ func (s *Service) TopUpPlacementPool(ctx context.Context) error {
 		return fmt.Errorf("ensure placement pool structure: %w", err)
 	}
 
-	for _, level := range placementLevels {
+	for _, level := range domain.PlacementBands {
 		for _, slot := range placementSlots {
 			s.topUpPlacementSlot(ctx, layout, level, slot, author)
 		}
@@ -237,7 +275,8 @@ func (s *Service) topUpPlacementSlot(
 	}
 	toAdd, err := s.placementItemsToAdd(ctx, activities, slot.target)
 	if err != nil {
-		slog.ErrorContext(ctx, "could not size placement pool top-up", "level", level, "slot", slot.slotName, "error", err)
+		slog.ErrorContext(ctx, "could not size placement pool top-up",
+			"level", level, "slot", slot.slotName, "error", err)
 		return
 	}
 
@@ -257,16 +296,15 @@ func (s *Service) topUpPlacementSlot(
 	}
 }
 
-func (s *Service) placementItemsToAdd(ctx context.Context, activities []lessoncontract.Activity, target int) (int, error) {
+// placementItemsToAdd is five per run until the target, then five only when a
+// learner active recently has fewer than five unseen items in the slot.
+func (s *Service) placementItemsToAdd(
+	ctx context.Context, activities []lessoncontract.Activity, target int,
+) (int, error) {
 	count := len(activities)
-	maxCeiling := target * 3
-	switch {
-	case count < target:
+	if count < target {
 		return min(maxPlacementItemsToAddPerRun, target-count), nil
-	case count >= maxCeiling:
-		return 0, nil
 	}
-
 	low, err := s.repo.HasActiveLearnerRunningLow(ctx, idsOf(activities), placementRunningLowThreshold)
 	if err != nil {
 		return 0, err
@@ -274,7 +312,7 @@ func (s *Service) placementItemsToAdd(ctx context.Context, activities []lessonco
 	if !low {
 		return 0, nil
 	}
-	return min(maxPlacementItemsToAddPerRun, maxCeiling-count), nil
+	return maxPlacementItemsToAddPerRun, nil
 }
 
 func (s *Service) generateAndVerifyPlacementItem(
@@ -298,247 +336,260 @@ func (s *Service) tryGenerateAndVerifyPlacementItem(
 	ctx context.Context, level string, slot placementSlotSpec, author uuid.UUID,
 	lessonID uuid.UUID, existing []lessoncontract.Activity,
 ) (json.RawMessage, error) {
-	var body json.RawMessage
-	task := ai.TaskPlacementGenerate
-	vars := map[string]any{varKind: slot.kind, varCEFRLevel: level}
-
+	var raw json.RawMessage
 	if err := ai.CompleteJSON(ctx, s.ai, ai.Request{
-		Task: task,
-		Vars: vars,
-	}, &body); err != nil {
+		Task: ai.TaskPlacementGenerate,
+		Vars: map[string]any{varKind: slot.promptKind, varCEFRLevel: level},
+	}, &raw); err != nil {
 		return nil, fmt.Errorf("ai generate call failed: %w", err)
 	}
 
-	body, err := s.checkAndPreparePlacementCandidate(ctx, level, slot, body, existing)
+	body, err := s.checkPlacementCandidate(ctx, level, slot, raw, existing)
 	if err != nil {
 		return nil, err
 	}
-
 	if err := s.publishPlacementCandidate(ctx, level, slot, author, lessonID, body); err != nil {
 		return nil, err
 	}
 	return body, nil
 }
 
-func (s *Service) checkAndPreparePlacementCandidate(
+func (s *Service) checkPlacementCandidate(
 	ctx context.Context, level string, slot placementSlotSpec,
 	raw json.RawMessage, existing []lessoncontract.Activity,
 ) (json.RawMessage, error) {
 	switch slot.kind {
-	case "vocabulary", kindGrammarTenseChoice:
-		return s.checkPlacementMultipleChoice(ctx, level, slot, raw, existing)
+	case kindGrammarTenseChoice:
+		return s.checkPlacementChoice(ctx, slot, raw, existing)
 	case kindReadingComprehension:
-		return s.checkPlacementReadingComprehension(ctx, level, slot, raw, existing)
+		return s.checkPlacementReading(ctx, level, raw, existing)
 	case kindListeningComprehension:
-		return s.checkPlacementListeningComprehension(ctx, level, slot, raw, existing)
+		return s.checkPlacementListening(ctx, level, raw, existing)
 	case kindWritingPrompt:
-		return s.checkWritingPrompt(ctx, raw, existing)
+		return s.checkPlacementWriting(ctx, raw, existing)
 	case kindSpeakingTask:
-		return s.checkSpeakingTask(ctx, slot.taskType, raw, existing)
+		return s.checkPlacementSpeaking(ctx, raw, existing)
 	default:
 		return nil, fmt.Errorf("unsupported placement slot kind: %s", slot.kind)
 	}
 }
 
-func (s *Service) checkPlacementMultipleChoice(
-	ctx context.Context, _ string, slot placementSlotSpec,
-	raw json.RawMessage, existing []lessoncontract.Activity,
+// checkPlacementChoice checks one question with four options, a Vietnamese
+// explanation, no duplicate, nothing answer-bearing after redaction, and a blind
+// solve that agrees with the key.
+func (s *Service) checkPlacementChoice(
+	ctx context.Context, slot placementSlotSpec, raw json.RawMessage, existing []lessoncontract.Activity,
 ) (json.RawMessage, error) {
 	var cand grammarTenseChoiceCand
 	if err := json.Unmarshal(raw, &cand); err != nil {
 		return nil, fmt.Errorf("check 1 (parse) failed: %w", err)
 	}
-	if strings.TrimSpace(cand.Prompt) == "" {
-		return nil, errors.New("check 1 failed: prompt is empty")
+	if strings.TrimSpace(cand.Prompt) == "" || cand.Explanation.Vi() == "" {
+		return nil, errors.New("check 1 failed: prompt or explanation_vi is empty")
 	}
-	if cand.Explanation.Vi() == "" {
-		return nil, errors.New("check 1 failed: explanation_vi is empty")
+	if len(cand.Options) != placementChoiceOptions {
+		return nil, fmt.Errorf("check 3 failed: %d options, want %d", len(cand.Options), placementChoiceOptions)
 	}
 	if err := checkOptions(cand.Options, cand.CorrectOptionID); err != nil {
 		return nil, fmt.Errorf("check 3 (structure) failed: %w", err)
 	}
-
-	// Check 5: Deduplication
-	normPrompt := normaliseText(cand.Prompt)
-	for _, act := range existing {
+	if duplicateText(existing, cand.Prompt, func(body json.RawMessage) string {
 		var old grammarTenseChoiceCand
-		if err := json.Unmarshal(act.Config, &old); err == nil && old.Prompt != "" {
-			if normaliseText(old.Prompt) == normPrompt {
-				return nil, errors.New("check 5 (deduplication) failed: prompt matches existing item")
-			}
-		}
+		_ = json.Unmarshal(body, &old)
+		return old.Prompt
+	}) {
+		return nil, errors.New("check 5 (deduplication) failed: prompt matches existing item")
 	}
-
-	// Check 6: Redaction
-	redacted := contentcontract.RedactForLearner(raw)
-	var check map[string]any
-	if err := json.Unmarshal(redacted, &check); err == nil {
-		if _, leaked := check["correct_option_id"]; leaked {
-			return nil, errors.New("check 6 failed: correct_option_id leaked in redacted body")
-		}
+	if err := verifyRedaction(contentcontract.RedactForLearner(raw)); err != nil {
+		return nil, fmt.Errorf("check 6 (redaction) failed: %w", err)
 	}
-
-	// Check 7: Blind solve
-	if err := s.blindSolvePlacementMultipleChoice(ctx, slot.kind, raw, cand.CorrectOptionID); err != nil {
+	if err := s.blindSolvePlacementChoice(ctx, slot.kind, raw, cand.CorrectOptionID); err != nil {
 		return nil, fmt.Errorf("check 7 (blind solve) failed: %w", err)
 	}
-
 	return raw, nil
 }
 
-func (s *Service) blindSolvePlacementMultipleChoice(
+func (s *Service) blindSolvePlacementChoice(
 	ctx context.Context, kind string, raw json.RawMessage, wantOptionID string,
 ) error {
-	redacted := contentcontract.RedactForLearner(raw)
-	var reply json.RawMessage
+	var reply struct {
+		SelectedOptionID string `json:"selected_option_id"`
+	}
 	if err := ai.CompleteJSON(ctx, s.ai, ai.Request{
 		Task: ai.TaskPlacementSolve,
-		Vars: map[string]any{"Kind": kind, "RedactedBody": string(redacted)},
+		Vars: map[string]any{varKind: kind, varRedactedBody: string(contentcontract.RedactForLearner(raw))},
 	}, &reply); err != nil {
 		return fmt.Errorf("ai blind solve call failed: %w", err)
 	}
-
-	var ans struct {
-		SelectedOptionID string `json:"selected_option_id"`
-	}
-	if err := json.Unmarshal(reply, &ans); err != nil {
-		return fmt.Errorf("unmarshal blind solve answer: %w", err)
-	}
-	if !strings.EqualFold(strings.TrimSpace(ans.SelectedOptionID), strings.TrimSpace(wantOptionID)) {
-		return fmt.Errorf("blind solve chose %q, want %q", ans.SelectedOptionID, wantOptionID)
+	if !strings.EqualFold(strings.TrimSpace(reply.SelectedOptionID), strings.TrimSpace(wantOptionID)) {
+		return fmt.Errorf("blind solve chose %q, want %q", reply.SelectedOptionID, wantOptionID)
 	}
 	return nil
 }
 
-func (s *Service) checkPlacementReadingComprehension(
-	ctx context.Context, _ string, _ placementSlotSpec,
-	raw json.RawMessage, existing []lessoncontract.Activity,
+func (s *Service) checkPlacementReading(
+	ctx context.Context, level string, raw json.RawMessage, existing []lessoncontract.Activity,
 ) (json.RawMessage, error) {
 	var cand readingComprehensionCand
 	if err := json.Unmarshal(raw, &cand); err != nil {
 		return nil, fmt.Errorf("check 1 (parse) failed: %w", err)
 	}
-	if strings.TrimSpace(cand.PassageTitle) == "" || strings.TrimSpace(cand.Passage) == "" {
-		return nil, errors.New("check 1 failed: passage_title or passage is empty")
+	if strings.TrimSpace(cand.Passage) == "" {
+		return nil, errors.New("check 1 failed: passage is empty")
 	}
-	if len(cand.Questions) < 3 {
-		return nil, fmt.Errorf("check 3 failed: expected at least 3 questions, got %d", len(cand.Questions))
+	bounds := placementLengths[level]
+	if words := len(strings.Fields(cand.Passage)); words < bounds.passageMin || words > bounds.passageMax {
+		return nil, fmt.Errorf("check 3 failed: passage has %d words, want %d–%d at %s",
+			words, bounds.passageMin, bounds.passageMax, level)
 	}
-	for i, q := range cand.Questions {
-		if q.Explanation.Vi() == "" {
-			return nil, fmt.Errorf("check 1 failed: question %d explanation_vi is empty", i)
-		}
-		if err := checkOptions(q.Options, q.CorrectOptionID); err != nil {
-			return nil, fmt.Errorf("check 3 (structure) failed for question %d: %w", i, err)
-		}
+	if err := checkPlacementQuestions(cand.Questions); err != nil {
+		return nil, err
 	}
-
-	normPassage := normaliseText(cand.Passage)
-	for _, act := range existing {
+	if duplicateText(existing, cand.Passage, func(body json.RawMessage) string {
 		var old readingComprehensionCand
-		if err := json.Unmarshal(act.Config, &old); err == nil && old.Passage != "" {
-			if normaliseText(old.Passage) == normPassage {
-				return nil, errors.New("check 5 (deduplication) failed: passage matches existing item")
-			}
-		}
+		_ = json.Unmarshal(body, &old)
+		return old.Passage
+	}) {
+		return nil, errors.New("check 5 (deduplication) failed: passage matches existing item")
 	}
-
-	// Blind solve
-	if err := s.blindSolvePlacementQuestions(ctx, kindReadingComprehension, cand.PassageTitle, cand.Passage, cand.Questions); err != nil {
+	if err := verifyRedaction(contentcontract.RedactForLearner(raw)); err != nil {
+		return nil, fmt.Errorf("check 6 (redaction) failed: %w", err)
+	}
+	if err := s.blindSolvePlacementQuestions(ctx, kindReadingComprehension, cand.Passage, cand.Questions); err != nil {
 		return nil, fmt.Errorf("check 7 (blind solve) failed: %w", err)
 	}
-
 	return raw, nil
 }
 
-func (s *Service) checkPlacementListeningComprehension(
-	ctx context.Context, _ string, _ placementSlotSpec,
-	raw json.RawMessage, existing []lessoncontract.Activity,
+func (s *Service) checkPlacementListening(
+	ctx context.Context, level string, raw json.RawMessage, existing []lessoncontract.Activity,
 ) (json.RawMessage, error) {
 	var cand listeningCand
 	if err := json.Unmarshal(raw, &cand); err != nil {
 		return nil, fmt.Errorf("check 1 (parse) failed: %w", err)
 	}
-	if strings.TrimSpace(cand.Title) == "" || strings.TrimSpace(cand.Script) == "" {
-		return nil, errors.New("check 1 failed: title or script is empty")
+	if strings.TrimSpace(cand.Script) == "" {
+		return nil, errors.New("check 1 failed: script is empty")
 	}
-	if len(cand.Questions) < 3 {
-		return nil, fmt.Errorf("check 3 failed: expected at least 3 questions, got %d", len(cand.Questions))
+	bounds := placementLengths[level]
+	if words := len(strings.Fields(cand.Script)); words < bounds.scriptMin || words > bounds.scriptMax {
+		return nil, fmt.Errorf("check 3 failed: script has %d words, want %d–%d at %s",
+			words, bounds.scriptMin, bounds.scriptMax, level)
 	}
-	for i, q := range cand.Questions {
-		if q.Explanation.Vi() == "" {
-			return nil, fmt.Errorf("check 1 failed: question %d explanation_vi is empty", i)
-		}
-		if err := checkOptions(q.Options, q.CorrectOptionID); err != nil {
-			return nil, fmt.Errorf("check 3 (structure) failed for question %d: %w", i, err)
-		}
+	if err := checkPlacementQuestions(cand.Questions); err != nil {
+		return nil, err
 	}
-
-	normScript := normaliseText(cand.Script)
-	for _, act := range existing {
+	if duplicateText(existing, cand.Script, func(body json.RawMessage) string {
 		var old listeningCand
-		if err := json.Unmarshal(act.Config, &old); err == nil && old.Script != "" {
-			if normaliseText(old.Script) == normScript {
-				return nil, errors.New("check 5 (deduplication) failed: script matches existing item")
-			}
-		}
+		_ = json.Unmarshal(body, &old)
+		return old.Script
+	}) {
+		return nil, errors.New("check 5 (deduplication) failed: script matches existing item")
 	}
-
-	// Blind solve
-	if err := s.blindSolvePlacementQuestions(ctx, kindListeningComprehension, cand.Title, cand.Script, cand.Questions); err != nil {
+	if err := verifyRedaction(contentcontract.RedactForLearner(raw)); err != nil {
+		return nil, fmt.Errorf("check 6 (redaction) failed: %w", err)
+	}
+	if err := s.blindSolvePlacementQuestions(ctx, kindListeningComprehension, cand.Script, cand.Questions); err != nil {
 		return nil, fmt.Errorf("check 7 (blind solve) failed: %w", err)
 	}
-
 	return raw, nil
 }
 
-func (s *Service) blindSolvePlacementQuestions(
-	ctx context.Context, kind, title, text string, questions []candQuestion,
-) error {
-	redactedQuestions := make([]map[string]any, 0, len(questions))
-	for _, q := range questions {
-		opts := make([]map[string]any, 0, len(q.Options))
-		for _, opt := range q.Options {
-			opts = append(opts, map[string]any{"id": opt.ID, "text": opt.Text})
-		}
-		redactedQuestions = append(redactedQuestions, map[string]any{
-			"id":      q.ID,
-			"type":    q.Type,
-			"prompt":  q.Prompt,
-			"options": opts,
-		})
+// checkPlacementQuestions checks a passage's or clip's three questions.
+func checkPlacementQuestions(questions []candQuestion) error {
+	if len(questions) != placementPassageQuestions {
+		return fmt.Errorf("check 3 failed: %d questions, want %d", len(questions), placementPassageQuestions)
 	}
-	redactedBody, err := json.Marshal(map[string]any{
-		"title":     title,
-		"passage":   text,
-		"questions": redactedQuestions,
-	})
+	for i, q := range questions {
+		if strings.TrimSpace(q.ID) == "" || strings.TrimSpace(q.Prompt) == "" {
+			return fmt.Errorf("check 1 failed: question %d has no id or prompt", i)
+		}
+		if q.Explanation.Vi() == "" {
+			return fmt.Errorf("check 1 failed: question %d explanation_vi is empty", i)
+		}
+		if err := checkOptions(q.Options, q.CorrectOptionID); err != nil {
+			return fmt.Errorf("check 3 (structure) failed for question %d: %w", i, err)
+		}
+	}
+	return nil
+}
+
+func (s *Service) blindSolvePlacementQuestions(
+	ctx context.Context, kind, text string, questions []candQuestion,
+) error {
+	redacted := make([]map[string]any, 0, len(questions))
+	for _, q := range questions {
+		options := make([]map[string]any, 0, len(q.Options))
+		for _, opt := range q.Options {
+			options = append(options, map[string]any{"id": opt.ID, "text": opt.Text})
+		}
+		redacted = append(redacted, map[string]any{"id": q.ID, "prompt": q.Prompt, "options": options})
+	}
+	body, err := json.Marshal(map[string]any{"passage": text, "questions": redacted})
 	if err != nil {
 		return err
 	}
 
-	var reply json.RawMessage
+	var reply struct {
+		Answers map[string]string `json:"answers"`
+	}
 	if err := ai.CompleteJSON(ctx, s.ai, ai.Request{
 		Task: ai.TaskPlacementSolve,
-		Vars: map[string]any{"Kind": kind, "RedactedBody": string(redactedBody)},
+		Vars: map[string]any{varKind: kind, varRedactedBody: string(body)},
 	}, &reply); err != nil {
 		return fmt.Errorf("ai blind solve call failed: %w", err)
 	}
-
-	var ans struct {
-		Answers map[string]string `json:"answers"`
-	}
-	if err := json.Unmarshal(reply, &ans); err != nil {
-		return fmt.Errorf("parse blind solve response: %w", err)
-	}
-
 	for _, q := range questions {
-		got, ok := ans.Answers[q.ID]
-		if !ok || !strings.EqualFold(strings.TrimSpace(got), strings.TrimSpace(q.CorrectOptionID)) {
+		got := reply.Answers[q.ID]
+		if !strings.EqualFold(strings.TrimSpace(got), strings.TrimSpace(q.CorrectOptionID)) {
 			return fmt.Errorf("question %s: blind solve chose %q, want %q", q.ID, got, q.CorrectOptionID)
 		}
 	}
 	return nil
+}
+
+// checkPlacementWriting checks a 60–100 word task.
+func (s *Service) checkPlacementWriting(
+	ctx context.Context, raw json.RawMessage, existing []lessoncontract.Activity,
+) (json.RawMessage, error) {
+	var cand writingPromptCand
+	if err := json.Unmarshal(raw, &cand); err != nil {
+		return nil, fmt.Errorf("check 1 (parse) failed: %w", err)
+	}
+	if cand.MinWords < placementWritingMinWords || cand.MinWords > placementWritingMaxWords {
+		return nil, fmt.Errorf("check 3 failed: min_words %d, want %d–%d",
+			cand.MinWords, placementWritingMinWords, placementWritingMaxWords)
+	}
+	if words := len(strings.Fields(cand.ModelAnswer)); words < placementWritingMinWords {
+		return nil, fmt.Errorf("check 3 failed: model_answer has %d words, want at least %d",
+			words, placementWritingMinWords)
+	}
+	return s.checkWritingPrompt(ctx, raw, existing)
+}
+
+// checkPlacementSpeaking checks a respond task of 45 seconds.
+func (s *Service) checkPlacementSpeaking(
+	ctx context.Context, raw json.RawMessage, existing []lessoncontract.Activity,
+) (json.RawMessage, error) {
+	var cand speakingTaskCand
+	if err := json.Unmarshal(raw, &cand); err != nil {
+		return nil, fmt.Errorf("check 1 (parse) failed: %w", err)
+	}
+	if cand.SpeakingTimeSeconds != 0 && cand.SpeakingTimeSeconds != placementSpeakingSeconds {
+		return nil, fmt.Errorf("check 3 failed: speaking_time_seconds %d, want %d",
+			cand.SpeakingTimeSeconds, placementSpeakingSeconds)
+	}
+	return s.checkSpeakingTask(ctx, subTypeRespond, raw, existing)
+}
+
+func duplicateText(existing []lessoncontract.Activity, text string, field func(json.RawMessage) string) bool {
+	norm := normaliseText(text)
+	for _, activity := range existing {
+		if old := field(activity.Config); old != "" && normaliseText(old) == norm {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Service) publishPlacementCandidate(
@@ -569,70 +620,4 @@ func (s *Service) publishPlacementCandidate(
 		return fmt.Errorf("append activity to placement pool lesson: %w", err)
 	}
 	return nil
-}
-
-// --------------------------------------------------------------------------
-// Placement Pool Inspection & Invitation Status
-// --------------------------------------------------------------------------
-
-// HasSufficientPlacementPool reports whether every band (A1..C1) has enough items
-// to serve complete placement tests (§3.3, §3.5).
-func (s *Service) HasSufficientPlacementPool(ctx context.Context) (bool, error) {
-	layout, err := s.placementPool(ctx)
-	if err != nil {
-		return false, fmt.Errorf("load placement pool layout: %w", err)
-	}
-
-	// Minimal threshold per slot required to conduct a test without exhausting unseen items.
-	// Vocab & Grammar: at least 14 items per level.
-	// Reading & Listening: at least 2 items per level.
-	for _, level := range placementLevels {
-		for _, slot := range placementSlots {
-			acts, err := s.placementSlotActivities(ctx, layout, level, slot.slotName)
-			if err != nil {
-				return false, err
-			}
-			minRequired := 2
-			if slot.kind == "vocabulary" || slot.kind == kindGrammarTenseChoice {
-				minRequired = 14
-			}
-			if len(acts) < minRequired {
-				return false, nil
-			}
-		}
-	}
-	return true, nil
-}
-
-// GetUnseenPlacementItems returns activities in the placement pool for a given level and kind
-// that the learner has not yet been exposed to.
-func (s *Service) GetUnseenPlacementItems(
-	ctx context.Context, userID uuid.UUID, level, slotName string,
-) ([]lessoncontract.Activity, error) {
-	layout, err := s.placementPool(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("load placement pool layout: %w", err)
-	}
-
-	activities, err := s.placementSlotActivities(ctx, layout, level, slotName)
-	if err != nil {
-		return nil, err
-	}
-	if len(activities) == 0 {
-		return nil, nil
-	}
-
-	ids := idsOf(activities)
-	exposures, err := s.repo.ListItemExposures(ctx, userID, ids)
-	if err != nil {
-		return nil, fmt.Errorf("list item exposures: %w", err)
-	}
-
-	unseen := make([]lessoncontract.Activity, 0, len(activities))
-	for _, act := range activities {
-		if _, served := exposures[act.ID]; !served {
-			unseen = append(unseen, act)
-		}
-	}
-	return unseen, nil
 }

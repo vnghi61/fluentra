@@ -459,4 +459,3 @@ func determineLessonCEFR(c seedCourse, unit seedUnit, lesson seedLesson) string 
 	}
 	return "a2"
 }
-

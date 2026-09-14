@@ -88,6 +88,9 @@ func (m *Module) Reader() contract.Reader {
 // or delete one somebody wrote by hand.
 func (m *Module) Author() contract.Author { return m.service }
 
+// Catalog lists curriculum courses for a learner's starting path.
+func (m *Module) Catalog() contract.CourseCatalog { return m.service }
+
 // Service returns the underlying service instance.
 func (m *Module) Service() *service.Service {
 	return m.service
@@ -179,6 +182,7 @@ func (a repositoryAdapter) ListPrerequisitesByLessonID(
 			RequiresLessonID:    it.RequiresLessonID,
 			MinScore:            it.MinScore,
 			RequiresLessonTitle: it.RequiresLessonTitle,
+			RequiresLessonLevel: it.RequiresLessonLevel,
 		}
 	}
 	return res, nil
@@ -198,6 +202,7 @@ func (a repositoryAdapter) ListPrerequisitesForLessons(
 			RequiresLessonID:    it.RequiresLessonID,
 			MinScore:            it.MinScore,
 			RequiresLessonTitle: it.RequiresLessonTitle,
+			RequiresLessonLevel: it.RequiresLessonLevel,
 		}
 	}
 	return res, nil

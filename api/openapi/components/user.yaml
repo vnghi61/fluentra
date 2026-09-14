@@ -351,5 +351,75 @@ DeletionResponse:
       type: string
       format: date-time
 
+LearningProfile:
+  type: object
+  description: Self-declared learning goals and background.
+  required:
+    - target_exam
+    - motivations
+    - created_at
+    - updated_at
+  properties:
+    declared_level:
+      type: [string, 'null']
+      enum: [A1, A2, B1, B2, C1, C2, null]
+      description: Self-declared CEFR level.
+      example: B1
+    target_level:
+      type: [string, 'null']
+      enum: [A1, A2, B1, B2, C1, C2, null]
+      description: Target CEFR level.
+      example: B2
+    target_exam:
+      type: string
+      enum: [ielts, toeic, none]
+      description: Target English proficiency examination.
+      example: ielts
+    weekly_minutes_goal:
+      type: [integer, 'null']
+      minimum: 15
+      maximum: 10080
+      description: Weekly study target in minutes.
+      example: 90
+    motivations:
+      type: array
+      items:
+        type: string
+      description: Learner motivations for studying English.
+      example: [career, travel]
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
 
-
+LearningProfileRequest:
+  type: object
+  description: Payload for replacing a learning profile.
+  required:
+    - target_exam
+    - motivations
+  properties:
+    declared_level:
+      type: [string, 'null']
+      enum: [A1, A2, B1, B2, C1, C2, null]
+      example: B1
+    target_level:
+      type: [string, 'null']
+      enum: [A1, A2, B1, B2, C1, C2, null]
+      example: B2
+    target_exam:
+      type: string
+      enum: [ielts, toeic, none]
+      example: ielts
+    weekly_minutes_goal:
+      type: [integer, 'null']
+      minimum: 15
+      maximum: 10080
+      example: 90
+    motivations:
+      type: array
+      items:
+        type: string
+      example: [career, travel]

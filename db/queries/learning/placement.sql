@@ -1,106 +1,137 @@
--- Placement test sessions and weekly plans: work order 13 §3.5, §3.6.
+-- Placement sessions, results and weekly plans: work order 13 §3.5–§3.7.
+--
+-- Every write to a session is guarded by its version, so two requests that read
+-- the same session cannot both advance it: the loser gets no row back.
 
--- name: GetActivePlacementSessionByUser :one
-SELECT id, user_id, status, stage, theta_estimate, placed_level, confidence,
-       current_activity_id, current_item_kind, current_item_level,
-       responses, adaptive_state, started_at, completed_at, expires_at, created_at, updated_at
-FROM learn.placement_sessions
-WHERE user_id = $1 AND status = 'in_progress';
+-- name: CreatePlacementSession :one
+INSERT INTO learn.placement_sessions (
+    id, user_id, status, stage, started_at, deadline_at, estimate, items
+) VALUES (
+    @id, @user_id, 'in_progress', @stage, @started_at, @deadline_at, @estimate, @items
+)
+RETURNING *;
 
--- name: GetPlacementSessionByID :one
-SELECT id, user_id, status, stage, theta_estimate, placed_level, confidence,
-       current_activity_id, current_item_kind, current_item_level,
-       responses, adaptive_state, started_at, completed_at, expires_at, created_at, updated_at
-FROM learn.placement_sessions
-WHERE id = $1;
+-- name: GetPlacementSession :one
+SELECT * FROM learn.placement_sessions WHERE id = $1;
+
+-- name: GetOpenPlacementSession :one
+SELECT * FROM learn.placement_sessions WHERE user_id = $1 AND status = 'in_progress';
 
 -- name: GetLatestCompletedPlacementSession :one
-SELECT id, user_id, status, stage, theta_estimate, placed_level, confidence,
-       current_activity_id, current_item_kind, current_item_level,
-       responses, adaptive_state, started_at, completed_at, expires_at, created_at, updated_at
+SELECT *
 FROM learn.placement_sessions
 WHERE user_id = $1 AND status = 'completed'
 ORDER BY completed_at DESC
 LIMIT 1;
 
--- name: CreatePlacementSession :one
-INSERT INTO learn.placement_sessions (
-    user_id, status, stage, theta_estimate, placed_level, confidence,
-    current_activity_id, current_item_kind, current_item_level,
-    responses, adaptive_state, started_at, expires_at
-) VALUES (
-    $1, $2, $3, $4, $5, $6,
-    $7, $8, $9,
-    $10, $11, $12, $13
-)
-RETURNING id, user_id, status, stage, theta_estimate, placed_level, confidence,
-          current_activity_id, current_item_kind, current_item_level,
-          responses, adaptive_state, started_at, completed_at, expires_at, created_at, updated_at;
-
--- name: UpdatePlacementSessionProgress :one
+-- name: SavePlacementProgress :one
 UPDATE learn.placement_sessions
-SET stage = $2,
-    theta_estimate = $3,
-    placed_level = $4,
-    confidence = $5,
-    current_activity_id = $6,
-    current_item_kind = $7,
-    current_item_level = $8,
-    responses = $9,
-    adaptive_state = $10,
+SET stage = @stage,
+    estimate = @estimate,
+    items = @items,
+    version = version + 1,
     updated_at = now()
-WHERE id = $1
-RETURNING id, user_id, status, stage, theta_estimate, placed_level, confidence,
-          current_activity_id, current_item_kind, current_item_level,
-          responses, adaptive_state, started_at, completed_at, expires_at, created_at, updated_at;
+WHERE id = @id AND version = @version AND status = 'in_progress'
+RETURNING *;
 
--- name: CompletePlacementSession :one
+-- name: FinishPlacementSession :one
 UPDATE learn.placement_sessions
-SET status = 'completed',
-    stage = 'completed',
-    theta_estimate = $2,
-    placed_level = $3,
-    confidence = $4,
-    current_activity_id = NULL,
-    current_item_kind = NULL,
-    current_item_level = NULL,
-    responses = $5,
-    adaptive_state = $6,
-    completed_at = now(),
+SET status = @status,
+    stage = 'done',
+    estimate = @estimate,
+    items = @items,
+    result_id = @result_id,
+    completed_at = @completed_at,
+    version = version + 1,
     updated_at = now()
-WHERE id = $1
-RETURNING id, user_id, status, stage, theta_estimate, placed_level, confidence,
-          current_activity_id, current_item_kind, current_item_level,
-          responses, adaptive_state, started_at, completed_at, expires_at, created_at, updated_at;
+WHERE id = @id AND version = @version AND status = 'in_progress'
+RETURNING *;
 
--- name: ExpireStalePlacementSessions :execrows
+-- name: SavePlacementProductive :one
 UPDATE learn.placement_sessions
-SET status = 'expired',
+SET items = @items,
+    productive_status = @productive_status,
+    productive_deadline_at = @productive_deadline_at,
+    version = version + 1,
     updated_at = now()
-WHERE status = 'in_progress' AND expires_at < now();
+WHERE id = @id AND version = @version
+RETURNING *;
 
--- name: CreatePlacementResultWithSession :one
-INSERT INTO learn.placement_results (
-    user_id, estimated_level, per_skill, session_id, taken_at
-) VALUES (
-    $1, $2, $3, $4, $5
-)
-RETURNING id, user_id, estimated_level, per_skill, session_id, taken_at, created_at, updated_at;
+-- name: ListOverduePlacementSessions :many
+SELECT id
+FROM learn.placement_sessions
+WHERE status = 'in_progress' AND deadline_at < @cutoff
+ORDER BY deadline_at
+LIMIT @max_rows;
 
--- name: GetWeeklyPlanByUserAndDate :one
-SELECT id, user_id, week_start_date, placed_level, weakest_skill, time_distribution, daily_targets, created_at, updated_at
-FROM learn.weekly_plans
-WHERE user_id = $1 AND week_start_date = $2;
+-- name: FindPlacementSessionByAttempt :one
+-- The writing and speaking attempts of a placement are graded asynchronously;
+-- when one is, this finds the session that served it.
+SELECT *
+FROM learn.placement_sessions
+WHERE user_id = @user_id
+  AND items @> jsonb_build_array(jsonb_build_object('attempt_id', @attempt_id::text))
+LIMIT 1;
 
--- name: UpsertWeeklyPlan :one
-INSERT INTO learn.weekly_plans (
-    user_id, week_start_date, placed_level, weakest_skill, time_distribution, daily_targets
-) VALUES (
-    $1, $2, $3, $4, $5, $6
-) ON CONFLICT (user_id, week_start_date) DO UPDATE
-SET placed_level = EXCLUDED.placed_level,
-    weakest_skill = EXCLUDED.weakest_skill,
-    time_distribution = EXCLUDED.time_distribution,
-    daily_targets = EXCLUDED.daily_targets,
+-- name: CreateSessionPlacementResult :one
+INSERT INTO learn.placement_results (user_id, estimated_level, per_skill, session_id, taken_at)
+VALUES (@user_id, @estimated_level, @per_skill, @session_id, @taken_at)
+RETURNING *;
+
+-- name: GetPlacementResult :one
+SELECT * FROM learn.placement_results WHERE id = $1;
+
+-- name: GetCurrentPlacementResult :one
+SELECT *
+FROM learn.placement_results
+WHERE user_id = $1
+ORDER BY taken_at DESC
+LIMIT 1;
+
+-- name: UpdatePlacementResultPerSkill :one
+UPDATE learn.placement_results
+SET per_skill = @per_skill,
     updated_at = now()
-RETURNING id, user_id, week_start_date, placed_level, weakest_skill, time_distribution, daily_targets, created_at, updated_at;
+WHERE id = @id
+RETURNING *;
+
+-- name: GetWeeklyPlan :one
+SELECT * FROM learn.weekly_plans WHERE user_id = $1 AND week_start = $2;
+
+-- name: CreateWeeklyPlan :one
+-- DO NOTHING: the first request of the week builds the plan, and a request that
+-- loses the race reads the one that won instead of replacing it.
+INSERT INTO learn.weekly_plans (user_id, week_start, minutes_goal, items)
+VALUES (@user_id, @week_start, @minutes_goal, @items)
+ON CONFLICT (user_id, week_start) DO NOTHING
+RETURNING *;
+
+-- name: SumLearningMinutesBetween :one
+SELECT COALESCE(SUM(minutes), 0)::int AS minutes
+FROM learn.learning_sessions
+WHERE user_id = @user_id AND started_at >= @from_time AND started_at < @to_time;
+
+-- name: CountPracticedDailySetsBetween :one
+-- A day's practice set counts as done once any of its activities was graded.
+SELECT count(*)::int AS practiced
+FROM learn.daily_sets d
+WHERE d.user_id = @user_id
+  AND d.local_date >= @from_date
+  AND d.local_date < @to_date
+  AND EXISTS (
+      SELECT 1
+      FROM learn.attempts a
+      WHERE a.user_id = d.user_id
+        AND a.activity_id = ANY(d.activity_ids)
+        AND a.status = 'graded'
+        AND a.created_at >= @from_time
+  );
+
+-- name: CountAttemptsByGradersBetween :one
+SELECT count(*)::int AS attempts
+FROM learn.attempts
+WHERE user_id = @user_id
+  AND grader = ANY(@graders::text[])
+  AND status IN ('graded', 'grading')
+  AND created_at >= @from_time
+  AND created_at < @to_time;

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
 import {
   FileText,
+  GraduationCap,
   Loader2,
   Lock,
   Settings as SettingsIcon,
@@ -15,6 +16,7 @@ import {
   type UserPreferences,
   type UserProfile,
   ProfileSettings,
+  LearningProfileSettings,
   PreferencesSettings,
   SecuritySettings,
   DataPrivacySettings,
@@ -22,7 +24,7 @@ import {
 import { authApi } from "@/features/auth";
 import { useAuthStore } from "@/stores/authStore";
 
-type TabKey = "profile" | "preferences" | "security" | "privacy";
+type TabKey = "profile" | "learning" | "preferences" | "security" | "privacy";
 
 export function AccountSettingsPage(): React.JSX.Element {
   const { t } = useTranslation();
@@ -117,6 +119,11 @@ export function AccountSettingsPage(): React.JSX.Element {
       icon: User,
     },
     {
+      key: "learning" as TabKey,
+      label: t("page.learningProfile", "Learning Profile"),
+      icon: GraduationCap,
+    },
+    {
       key: "preferences" as TabKey,
       label: t("page.learningPreferences", "Learning Preferences"),
       icon: Sliders,
@@ -181,6 +188,8 @@ export function AccountSettingsPage(): React.JSX.Element {
             onProfileUpdated={(updated) => setProfile(updated)}
           />
         )}
+
+        {activeTab === "learning" && <LearningProfileSettings />}
 
         {activeTab === "preferences" && (
           <PreferencesSettings

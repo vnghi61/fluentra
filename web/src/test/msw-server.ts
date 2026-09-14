@@ -33,6 +33,29 @@ export const handlers = [
       entries: [],
     });
   }),
+  http.get("/api/v1/me/placement", () => {
+    return HttpResponse.json({
+      result: null,
+      active_session: null,
+      retake_available_at: null,
+      invite_available: false,
+    });
+  }),
+  http.get("/api/v1/me/weekly-plan", () => {
+    return HttpResponse.json({
+      week_start: "2026-09-14",
+      minutes_goal: 90,
+      items: [],
+      progress: { minutes: 0, items_done: 0, items_total: 0 },
+    });
+  }),
+  http.get("/api/v1/me/path", () => {
+    return HttpResponse.json({
+      level: "A2",
+      level_source: "default",
+      courses: [],
+    });
+  }),
 ];
 
 export const server = setupServer(...handlers);

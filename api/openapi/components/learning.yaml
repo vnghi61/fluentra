@@ -384,3 +384,319 @@ DailyPracticeSet:
       items:
         $ref: './lesson.yaml#/LessonActivity'
 
+
+PlacementSkillEstimate:
+  type: object
+  description: One skill's placed band and how many scored responses it rests on.
+  required: [band, responses]
+  properties:
+    band:
+      type: string
+      enum: [A1, A2, B1, B2, C1]
+      example: B1
+    responses:
+      type: integer
+      minimum: 0
+      example: 7
+
+PlacementResult:
+  type: object
+  description: >-
+    A completed placement. per_skill holds vocabulary, grammar, reading and
+    listening from the adaptive part; writing and speaking join it once graded.
+    A skill with no responses is absent, never guessed.
+  required: [id, level, per_skill, taken_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+    session_id:
+      type: string
+      format: uuid
+    level:
+      type: string
+      enum: [A1, A2, B1, B2, C1]
+      example: B1
+    per_skill:
+      type: object
+      additionalProperties:
+        $ref: '#/PlacementSkillEstimate'
+    taken_at:
+      type: string
+      format: date-time
+
+PlacementActiveSession:
+  type: object
+  required: [id, stage, deadline_at, remaining_seconds]
+  properties:
+    id:
+      type: string
+      format: uuid
+    stage:
+      type: string
+      enum: [vocabulary_grammar, reading_listening, refine, done]
+    deadline_at:
+      type: string
+      format: date-time
+    remaining_seconds:
+      type: integer
+      minimum: 0
+
+PlacementOverview:
+  type: object
+  required: [result, active_session, retake_available_at, invite_available]
+  properties:
+    result:
+      description: The current placement result, the most recent one.
+      anyOf:
+        - $ref: '#/PlacementResult'
+        - type: 'null'
+    active_session:
+      anyOf:
+        - $ref: '#/PlacementActiveSession'
+        - type: 'null'
+    retake_available_at:
+      type: [string, 'null']
+      format: date-time
+      description: 30 days after the last completed test.
+    invite_available:
+      type: boolean
+      description: >-
+        The flag placement.invite is on, and the learner has no result and no
+        session in progress.
+
+PlacementItem:
+  type: object
+  required: [activity_id, content_version_id, kind, skill, config]
+  properties:
+    activity_id:
+      type: string
+      format: uuid
+    content_version_id:
+      type: string
+      format: uuid
+    kind:
+      type: string
+      example: grammar_tense_choice
+    skill:
+      type: string
+      enum: [vocabulary, grammar, reading, listening, writing, speaking]
+    config:
+      type: object
+      additionalProperties: true
+      description: The item's body with every answer removed (ADR-0025).
+
+PlacementProductiveItem:
+  allOf:
+    - $ref: '#/PlacementItem'
+    - type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [not_answered, grading, graded, failed]
+        band:
+          type: [string, 'null']
+          enum: [A1, A2, B1, B2, C1, null]
+
+PlacementSession:
+  type: object
+  required:
+    - id
+    - status
+    - stage
+    - started_at
+    - deadline_at
+    - remaining_seconds
+    - responses
+    - max_responses
+    - current_item
+    - productive_status
+    - productive_deadline_at
+    - productive_remaining_seconds
+    - productive_items
+    - result
+  properties:
+    id:
+      type: string
+      format: uuid
+    status:
+      type: string
+      enum: [in_progress, completed, expired]
+    stage:
+      type: string
+      enum: [vocabulary_grammar, reading_listening, refine, done]
+    started_at:
+      type: string
+      format: date-time
+    deadline_at:
+      type: string
+      format: date-time
+    remaining_seconds:
+      type: integer
+      minimum: 0
+      description: The server's clock. Zero once the adaptive part is over.
+    responses:
+      type: integer
+      minimum: 0
+    max_responses:
+      type: integer
+      example: 25
+    current_item:
+      description: The item to answer now, or null when the adaptive part is over.
+      anyOf:
+        - $ref: '#/PlacementItem'
+        - type: 'null'
+    productive_status:
+      type: string
+      enum: [offered, skipped, in_progress, submitted, graded]
+    productive_deadline_at:
+      type: [string, 'null']
+      format: date-time
+    productive_remaining_seconds:
+      type: integer
+      minimum: 0
+    productive_items:
+      type: array
+      items:
+        $ref: '#/PlacementProductiveItem'
+    result:
+      anyOf:
+        - $ref: '#/PlacementResult'
+        - type: 'null'
+
+PlacementAnswerRequest:
+  type: object
+  required: [activity_id, response]
+  properties:
+    activity_id:
+      type: string
+      format: uuid
+      description: The item being answered. Anything but the current item is refused.
+    response:
+      type: object
+      additionalProperties: true
+      description: What the kind's grader reads, as for POST /attempts/{id}/submit.
+
+PlacementProductiveRequest:
+  type: object
+  required: [skip]
+  properties:
+    skip:
+      type: boolean
+      description: True skips writing and speaking; they can still be started later.
+
+StartingPathLesson:
+  type: object
+  required: [id, title, cefr_level]
+  properties:
+    id:
+      type: string
+      format: uuid
+    title:
+      type: string
+    cefr_level:
+      type: [string, 'null']
+      enum: [A1, A2, B1, B2, C1, C2, null]
+
+StartingPathCourse:
+  type: object
+  required: [id, slug, title, cefr_from, cefr_to, start_lesson]
+  properties:
+    id:
+      type: string
+      format: uuid
+    slug:
+      type: string
+    title:
+      type: string
+    cefr_from:
+      type: string
+    cefr_to:
+      type: string
+    start_lesson:
+      description: The first lesson at or above the level.
+      anyOf:
+        - $ref: '#/StartingPathLesson'
+        - type: 'null'
+
+StartingPath:
+  type: object
+  required: [level, level_source, courses]
+  properties:
+    level:
+      type: string
+      enum: [A1, A2, B1, B2, C1, C2]
+    level_source:
+      type: string
+      enum: [placement, declared, default]
+      description: >-
+        The current placement result; failing that the declared level; failing
+        that A2. Only a placement opens lessons below the level.
+    courses:
+      type: array
+      items:
+        $ref: '#/StartingPathCourse'
+
+WeeklyPlanItem:
+  type: object
+  required: [kind, minutes, done]
+  properties:
+    kind:
+      type: string
+      enum: [lesson, daily_practice, reviews, writing, speaking]
+    minutes:
+      type: integer
+      minimum: 1
+    lesson_id:
+      type: string
+      format: uuid
+    course_id:
+      type: string
+      format: uuid
+    title:
+      type: string
+    skill:
+      type: string
+    reviews:
+      type: integer
+      description: How many due reviews a review item covers.
+    focus:
+      type: boolean
+      description: The extra item for the learner's weakest skill.
+    done:
+      type: boolean
+
+WeeklyPlanProgress:
+  type: object
+  required: [minutes, items_done, items_total]
+  properties:
+    minutes:
+      type: integer
+      minimum: 0
+      description: Minutes from learning sessions this week, read at request time.
+    items_done:
+      type: integer
+      minimum: 0
+    items_total:
+      type: integer
+      minimum: 0
+
+WeeklyPlan:
+  type: object
+  required: [week_start, minutes_goal, items, progress]
+  properties:
+    week_start:
+      type: string
+      format: date
+      description: Monday of this week in Asia/Ho_Chi_Minh.
+    minutes_goal:
+      type: integer
+      minimum: 1
+      description: The learner's weekly goal, or 90 until they set one.
+    items:
+      type: array
+      items:
+        $ref: '#/WeeklyPlanItem'
+    progress:
+      $ref: '#/WeeklyPlanProgress'

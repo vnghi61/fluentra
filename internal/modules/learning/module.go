@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/fluentra/fluentra/internal/generated/learning/sqlc"
+	admincontract "github.com/fluentra/fluentra/internal/modules/admin/contract"
 	contentcontract "github.com/fluentra/fluentra/internal/modules/content/contract"
 	"github.com/fluentra/fluentra/internal/modules/learning/contract"
 	"github.com/fluentra/fluentra/internal/modules/learning/domain"
@@ -49,7 +50,10 @@ type Deps struct {
 	ContentAuthor contentcontract.Author
 	SRSDue        srscontract.QueueReader
 	SRSCards      srscontract.CardWriter
+	SRSPace       srscontract.ReviewPaceReader
 	User          usercontract.LearningProfileReader
+	Flags         admincontract.FlagReader
+	Courses       lessoncontract.CourseCatalog
 	Graders       map[string]contract.ExerciseGrader
 	DeclaredKinds []string
 	Metrics       telemetry.Instruments
@@ -143,6 +147,9 @@ func New(deps Deps) *Module {
 		Synthesiser:       deps.Synthesiser,
 		Audio:             deps.Audio,
 		User:              deps.User,
+		Flags:             deps.Flags,
+		Courses:           deps.Courses,
+		SRSPace:           deps.SRSPace,
 	})
 
 	var handler *learninghttp.Handler
@@ -227,11 +234,15 @@ const sweepStuckGradingLockID int64 = 1_700_000_212
 // Advisory lock id for exam pool top-up job (work order 12 §3.7).
 const topUpExamPoolLockID int64 = 1_700_000_213
 
-// Advisory lock id for placement pool top-up job (work order 13 §5).
+// Advisory lock id for the placement pool top-up (work order 13 §5). 215 was taken
+// by speaking.purge_recordings in work order 12, so this is the next free id.
 const topUpPlacementPoolLockID int64 = 1_700_000_216
 
-// Advisory lock id for placement session expiry sweep job (work order 13 §5).
+// Advisory lock id for the placement session expiry sweep (work order 13 §5).
 const sweepPlacementSessionsLockID int64 = 1_700_000_701
+
+// sweepPlacementInterval is how often sessions past their deadline are finished.
+const sweepPlacementInterval = time.Minute
 
 // CronJobs returns the scheduled partition maintenance, grading sweep, and pool jobs.
 func (m *Module) CronJobs() []job.CronJob {
@@ -267,9 +278,9 @@ func (m *Module) CronJobs() []job.CronJob {
 			Task:     m.TopUpPlacementPool,
 		},
 		{
-			Name:     "learning.sweep_placement_sessions",
+			Name:     "learning.expire_placement_sessions",
 			LockID:   sweepPlacementSessionsLockID,
-			Interval: 15 * time.Minute,
+			Interval: sweepPlacementInterval,
 			Task:     m.SweepPlacementSessions,
 		},
 	}
@@ -290,10 +301,15 @@ func (m *Module) TopUpPlacementPool(ctx context.Context) error {
 	return m.service.TopUpPlacementPool(ctx)
 }
 
-// SweepPlacementSessions sweeps and expires stale in-progress placement sessions.
+// SweepPlacementSessions finishes placement sessions past their deadline.
 func (m *Module) SweepPlacementSessions(ctx context.Context) error {
 	_, err := m.service.SweepExpiredPlacementSessions(ctx)
 	return err
+}
+
+// PlacementListeningPolicy returns the play limit for a clip in a placement test.
+func (m *Module) PlacementListeningPolicy() contract.PlacementListeningPolicy {
+	return m.service
 }
 
 // ExamPoolDrawer returns the service implementing contract.ExamPoolDrawer.

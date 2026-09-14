@@ -1,123 +1,189 @@
 package domain
 
 import (
-	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/fluentra/fluentra/internal/shared/apperr"
 )
 
-// PlacementSessionStatus values
+// Placement session statuses.
 const (
-	PlacementSessionStatusInProgress = "in_progress"
-	PlacementSessionStatusCompleted  = "completed"
-	PlacementSessionStatusExpired    = "expired"
+	PlacementInProgress = "in_progress"
+	PlacementCompleted  = "completed"
+	PlacementExpired    = "expired"
 )
 
-// PlacementRetakeCooldown is 30 days between completed placement tests (WO13 §3.5).
-const PlacementRetakeCooldown = 30 * 24 * time.Hour
+// Where the optional writing and speaking part stands.
+const (
+	ProductiveOffered    = "offered"
+	ProductiveSkipped    = "skipped"
+	ProductiveInProgress = "in_progress"
+	ProductiveSubmitted  = "submitted"
+	ProductiveGraded     = "graded"
+)
 
-// PlacementSessionDuration is 60 minutes expiry for an adaptive test session.
-const PlacementSessionDuration = 60 * time.Minute
+// Which part of the test an item was served in.
+const (
+	PlacementPartAdaptive   = "adaptive"
+	PlacementPartProductive = "productive"
+)
 
-// PlacementResponseRecord records one item response during the placement test.
-type PlacementResponseRecord struct {
-	ActivityID uuid.UUID       `json:"activity_id"`
-	Kind       string          `json:"kind"`
-	Level      string          `json:"level"`
-	Score      float64         `json:"score"`
-	Response   json.RawMessage `json:"response"`
-	AnsweredAt time.Time       `json:"answered_at"`
+// Placement limits (work order 13 §2 and §3.5).
+const (
+	PlacementTimeLimit   = 20 * time.Minute
+	ProductiveTimeLimit  = 8 * time.Minute
+	PlacementAnswerGrace = 5 * time.Second
+	PlacementRetakeAfter = 30 * 24 * time.Hour
+	// PlacementMasteryConfidence is the confidence a placement writes into
+	// learn.skill_mastery, and only where the existing confidence is lower.
+	PlacementMasteryConfidence = 0.40
+	// PlacementListeningPlays is how many times a placement clip may be played.
+	PlacementListeningPlays = 1
+)
+
+// Placement errors.
+var (
+	ErrPlacementNotFound = apperr.New(apperr.NotFound, "PLACEMENT_SESSION_NOT_FOUND",
+		"Placement session not found.")
+	ErrPlacementInProgress = apperr.New(apperr.Conflict, "PLACEMENT_IN_PROGRESS",
+		"A placement test is already in progress.")
+	ErrPlacementRetakeTooSoon = apperr.New(apperr.Conflict, "PLACEMENT_RETAKE_TOO_SOON",
+		"A placement test can be retaken 30 days after the last one.")
+	ErrPlacementUnavailable = apperr.New(apperr.Conflict, "PLACEMENT_UNAVAILABLE",
+		"The placement test is not available yet.")
+	ErrPlacementExpired = apperr.New(apperr.Conflict, "PLACEMENT_SESSION_EXPIRED",
+		"The time for this placement test is up.")
+	ErrPlacementFinished = apperr.New(apperr.Conflict, "PLACEMENT_SESSION_FINISHED",
+		"This part of the placement test is finished.")
+	ErrPlacementNotCurrentItem = apperr.New(apperr.Conflict, "PLACEMENT_NOT_CURRENT_ITEM",
+		"That item is not the one being answered.")
+	ErrPlacementConflict = apperr.New(apperr.Conflict, "PLACEMENT_SESSION_CHANGED",
+		"The placement session changed while this answer was recorded. Reload it.")
+	ErrProductiveUnavailable = apperr.New(apperr.Conflict, "PLACEMENT_PRODUCTIVE_UNAVAILABLE",
+		"The writing and speaking part is not available for this session.")
+)
+
+// PlacementItem is one item served in a session, in order.
+type PlacementItem struct {
+	ActivityID uuid.UUID  `json:"activity_id"`
+	Kind       string     `json:"kind"`
+	Skill      string     `json:"skill"`
+	Band       string     `json:"band"`
+	Part       string     `json:"part"`
+	ServedAt   time.Time  `json:"served_at"`
+	AttemptID  *uuid.UUID `json:"attempt_id,omitempty"`
+	AnsweredAt *time.Time `json:"answered_at,omitempty"`
+	// Status is the attempt's grading state for a writing or speaking item.
+	Status   string `json:"status,omitempty"`
+	Score    *int   `json:"score,omitempty"`
+	MaxScore int    `json:"max_score,omitempty"`
 }
 
-// PlacementSession represents an adaptive placement test session.
+// Answered reports whether the item has an attempt.
+func (i PlacementItem) Answered() bool {
+	return i.AttemptID != nil
+}
+
+// PlacementSession is one adaptive placement test and its optional last part.
 type PlacementSession struct {
-	ID                uuid.UUID                 `json:"id"`
-	UserID            uuid.UUID                 `json:"user_id"`
-	Status            string                    `json:"status"`
-	Stage             string                    `json:"stage"`
-	ThetaEstimate     float64                   `json:"theta_estimate"`
-	PlacedLevel       *string                   `json:"placed_level,omitempty"`
-	Confidence        float64                   `json:"confidence"`
-	CurrentActivityID *uuid.UUID                `json:"current_activity_id,omitempty"`
-	CurrentItemKind   *string                   `json:"current_item_kind,omitempty"`
-	CurrentItemLevel  *string                   `json:"current_item_level,omitempty"`
-	Responses         []PlacementResponseRecord `json:"responses"`
-	AdaptiveState     AdaptiveState             `json:"adaptive_state"`
-	StartedAt         time.Time                 `json:"started_at"`
-	CompletedAt       *time.Time                `json:"completed_at,omitempty"`
-	ExpiresAt         time.Time                 `json:"expires_at"`
-	CreatedAt         time.Time                 `json:"created_at"`
-	UpdatedAt         time.Time                 `json:"updated_at"`
+	ID                   uuid.UUID
+	UserID               uuid.UUID
+	Status               string
+	Stage                string
+	StartedAt            time.Time
+	DeadlineAt           time.Time
+	Estimate             PlacementEstimate
+	Items                []PlacementItem
+	Version              int
+	ProductiveStatus     string
+	ProductiveDeadlineAt *time.Time
+	ResultID             *uuid.UUID
+	CompletedAt          *time.Time
 }
 
-// IsInProgress reports whether the session is currently active.
-func (s *PlacementSession) IsInProgress() bool {
-	return s.Status == PlacementSessionStatusInProgress
+// CurrentItem is the adaptive item waiting for an answer, if there is one.
+func (s *PlacementSession) CurrentItem() *PlacementItem {
+	for i := len(s.Items) - 1; i >= 0; i-- {
+		if s.Items[i].Part != PlacementPartAdaptive {
+			continue
+		}
+		if s.Items[i].Answered() {
+			return nil
+		}
+		return &s.Items[i]
+	}
+	return nil
 }
 
-// IsCompleted reports whether the session has finished.
-func (s *PlacementSession) IsCompleted() bool {
-	return s.Status == PlacementSessionStatusCompleted
+// LastAnswered is the most recently answered adaptive item.
+func (s *PlacementSession) LastAnswered() *PlacementItem {
+	for i := len(s.Items) - 1; i >= 0; i-- {
+		if s.Items[i].Part == PlacementPartAdaptive && s.Items[i].Answered() {
+			return &s.Items[i]
+		}
+	}
+	return nil
 }
 
-// IsExpired reports whether the session has expired.
-func (s *PlacementSession) IsExpired(now time.Time) bool {
-	return s.Status == PlacementSessionStatusExpired || (s.Status == PlacementSessionStatusInProgress && now.After(s.ExpiresAt))
+// Progress counts the adaptive items served, by skill.
+func (s *PlacementSession) Progress() PlacementProgress {
+	var p PlacementProgress
+	for _, item := range s.Items {
+		if item.Part != PlacementPartAdaptive {
+			continue
+		}
+		switch item.Skill {
+		case SkillVocabulary:
+			p.Vocabulary++
+		case SkillGrammar:
+			p.Grammar++
+		case SkillReading:
+			p.Reading++
+		case SkillListening:
+			p.Listening++
+		}
+	}
+	return p
 }
 
-// PlacementInvitationDTO summarizes a learner's placement status and eligibility to test.
-type PlacementInvitationDTO struct {
-	Eligible        bool             `json:"eligible"`
-	HasActiveTest   bool             `json:"has_active_test"`
-	ActiveSessionID *uuid.UUID       `json:"active_session_id,omitempty"`
-	CooldownUntil   *time.Time       `json:"cooldown_until,omitempty"`
-	LastResult      *PlacementResult `json:"last_result,omitempty"`
-	PoolSufficient  bool             `json:"pool_sufficient"`
+// ProductiveItems are the writing and speaking items, if the part was started.
+func (s *PlacementSession) ProductiveItems() []*PlacementItem {
+	var out []*PlacementItem
+	for i := range s.Items {
+		if s.Items[i].Part == PlacementPartProductive {
+			out = append(out, &s.Items[i])
+		}
+	}
+	return out
 }
 
-// PlacementResult models the outcome of a completed placement test.
+// Overdue reports whether the adaptive part's time, grace included, has run out.
+func (s *PlacementSession) Overdue(now time.Time) bool {
+	return now.After(s.DeadlineAt.Add(PlacementAnswerGrace))
+}
+
+// RemainingSeconds is the adaptive part's time left, never negative.
+func (s *PlacementSession) RemainingSeconds(now time.Time) int {
+	return max(0, int(s.DeadlineAt.Sub(now).Seconds()))
+}
+
+// PlacementResult is a completed placement. PerSkill holds the band of each
+// measured skill; writing and speaking join it when graded.
 type PlacementResult struct {
-	ID             uuid.UUID          `json:"id"`
-	UserID         uuid.UUID          `json:"user_id"`
-	EstimatedLevel string             `json:"estimated_level"`
-	PerSkill       map[string]float64 `json:"per_skill"`
-	SessionID      *uuid.UUID         `json:"session_id,omitempty"`
-	TakenAt        time.Time          `json:"taken_at"`
-	CreatedAt      time.Time          `json:"created_at"`
-	UpdatedAt      time.Time          `json:"updated_at"`
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	SessionID *uuid.UUID
+	Level     string
+	PerSkill  map[string]SkillEstimate
+	TakenAt   time.Time
 }
 
-// WeeklyPlan models a personalized weekly study plan.
-type WeeklyPlan struct {
-	ID               uuid.UUID          `json:"id"`
-	UserID           uuid.UUID          `json:"user_id"`
-	WeekStartDate    time.Time          `json:"week_start_date"`
-	PlacedLevel      string             `json:"placed_level"`
-	WeakestSkill     string             `json:"weakest_skill"`
-	TimeDistribution map[string]float64 `json:"time_distribution"`
-	DailyTargets     []DailyPlanTarget  `json:"daily_targets"`
-	CreatedAt        time.Time          `json:"created_at"`
-	UpdatedAt        time.Time          `json:"updated_at"`
-}
-
-// DailyPlanTarget models recommended daily study objectives.
-type DailyPlanTarget struct {
-	DayOfWeek       string     `json:"day_of_week"` // e.g. "Monday", "Tuesday"
-	TargetMinutes   int        `json:"target_minutes"`
-	PrimarySkill    string     `json:"primary_skill"`
-	RecommendedKind string     `json:"recommended_kind"`
-	LessonID        *uuid.UUID `json:"lesson_id,omitempty"`
-	LessonTitle     string     `json:"lesson_title,omitempty"`
-}
-
-// StartingPathDTO models the recommended course and starting lesson for a learner.
-type StartingPathDTO struct {
-	PlacedLevel              string     `json:"placed_level"`
-	DeclaredLevel            string     `json:"declared_level,omitempty"`
-	RecommendedCourseID      uuid.UUID  `json:"recommended_course_id"`
-	RecommendedCourseSlug    string     `json:"recommended_course_slug"`
-	RecommendedCourseTitle   string     `json:"recommended_course_title"`
-	FirstUnlockedLessonID    *uuid.UUID `json:"first_unlocked_lesson_id,omitempty"`
-	FirstUnlockedLessonTitle string     `json:"first_unlocked_lesson_title,omitempty"`
+// PlacementOverview is what GET /me/placement returns.
+type PlacementOverview struct {
+	Result            *PlacementResult
+	ActiveSession     *PlacementSession
+	RetakeAvailableAt *time.Time
+	InviteAvailable   bool
 }

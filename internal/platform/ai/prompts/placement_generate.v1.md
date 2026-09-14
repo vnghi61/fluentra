@@ -6,160 +6,142 @@ cache: false
 max_tokens: 2048
 temperature: 0.3
 description: >-
-  Generates a single English placement exercise item across A1 to C1 for vocabulary,
-  grammar_tense_choice, reading_comprehension, listening_comprehension, writing_prompt, or speaking_task.
+  Writes one English placement test item at a CEFR level from A1 to C1: a
+  vocabulary or grammar question, a reading passage or listening script with
+  three questions, a short writing task, or a 45-second speaking task.
 inputs:
-  - kind: vocabulary, grammar_tense_choice, reading_comprehension, listening_comprehension, writing_prompt, or speaking_task
-  - cefr_level: A1, A2, B1, B2, or C1
+  - Kind: vocabulary, grammar_tense_choice, reading_comprehension, listening_comprehension, writing_prompt or speaking_task
+  - CEFRLevel: A1, A2, B1, B2 or C1
 ---
 
-You generate a high-quality English placement test item for learners at CEFR level {{.CEFRLevel}}.
+You write one item for an English placement test that places Vietnamese learners
+between A1 and C1. The item is at CEFR level {{.CEFRLevel}}: a learner at that
+level should find it hard but manageable, a learner one level below should
+mostly fail it, and a learner one level above should mostly pass it.
 
-The activity kind is: {{.Kind}}.
+The kind of item is: {{.Kind}}.
 
-## Instructions by Kind
+Reply with one JSON object and nothing else. Every explanation has a non-empty
+"explanation_en" and "explanation_vi". Every multiple-choice question has exactly
+one correct option, and no option is a trick or a near-duplicate of another.
 
-### 1. If kind is "vocabulary":
-- Write a single multiple-choice question testing vocabulary knowledge appropriate for CEFR {{.CEFRLevel}}.
-- Output in the multiple-choice format with exactly 4 options ("A", "B", "C", "D").
-- Schema:
+## vocabulary
+
+One question testing a word or phrase a {{.CEFRLevel}} learner should know, with
+exactly four options "A" to "D". Use this shape; it is graded as a single choice.
+
 ```json
 {
-  "prompt": "Choose the word that best completes the sentence: The company needs to ___ costs to remain profitable.",
+  "prompt": "I can't pay for lunch today. Could you ___ me some money?",
   "options": [
-    {"id": "A", "text": "curtail"},
-    {"id": "B", "text": "expand"},
-    {"id": "C", "text": "prolong"},
-    {"id": "D", "text": "elevate"}
+    {"id": "A", "text": "lend"},
+    {"id": "B", "text": "borrow"},
+    {"id": "C", "text": "owe"},
+    {"id": "D", "text": "spend"}
   ],
   "correct_option_id": "A",
   "explanation": {
-    "explanation_en": "'Curtail' means to reduce or restrict, fitting the business context of saving money.",
-    "explanation_vi": "'Curtail' nghĩa là cắt giảm hoặc hạn chế, phù hợp với ngữ cảnh doanh nghiệp tiết kiệm chi phí."
+    "explanation_en": "You lend money to someone; you borrow it from someone.",
+    "explanation_vi": "Lend là cho ai mượn; borrow là mượn của ai."
   }
 }
 ```
 
-### 2. If kind is "grammar_tense_choice":
-- Write a single multiple-choice question testing grammatical structures appropriate for CEFR {{.CEFRLevel}}.
-- Output with exactly 4 options ("A", "B", "C", "D").
-- Schema:
-```json
-{
-  "prompt": "If she ___ the train on time, she would have arrived before noon.",
-  "options": [
-    {"id": "A", "text": "had caught"},
-    {"id": "B", "text": "caught"},
-    {"id": "C", "text": "has caught"},
-    {"id": "D", "text": "catches"}
-  ],
-  "correct_option_id": "A",
-  "explanation": {
-    "explanation_en": "Third conditional requires past perfect ('had caught') in the if-clause.",
-    "explanation_vi": "Câu điều kiện loại 3 dùng quá khứ hoàn thành ('had caught') trong mệnh đề if."
-  }
-}
-```
+## grammar_tense_choice
 
-### 3. If kind is "reading_comprehension":
-- Write an original passage of 60–180 words suited for CEFR {{.CEFRLevel}}.
-- Write exactly 3 multiple-choice questions testing comprehension.
-- Each question must have:
-  - "id": "q1", "q2", "q3"
-  - "type": "multiple_choice"
-  - "prompt": question text
-  - "options": 4 options with IDs "A", "B", "C", "D"
-  - "correct_option_id": correct option ID
-  - "explanation": with "explanation_en" and non-empty "explanation_vi"
-- Schema:
+One question testing a grammatical structure of {{.CEFRLevel}}, with exactly four
+options "A" to "D", in the same shape as vocabulary.
+
+## reading_comprehension
+
+An original passage and exactly three questions about it, each with three or
+four options. The passage length depends on the level:
+
+| Level | Words |
+|---|---|
+| A1 | 60–90 |
+| A2 | 80–110 |
+| B1 | 100–140 |
+| B2 | 120–160 |
+| C1 | 140–180 |
+
 ```json
 {
-  "passage_title": "Urban Greening Projects",
-  "passage": "Across major cities, urban greening initiatives are transforming concrete spaces into micro-parks...",
+  "passage_title": "A new library",
+  "passage": "…",
   "questions": [
     {
       "id": "q1",
       "type": "multiple_choice",
-      "prompt": "What is the primary objective of urban greening?",
+      "prompt": "Why did the town build a new library?",
       "options": [
-        {"id": "A", "text": "To increase real estate taxes"},
-        {"id": "B", "text": "To reduce urban heat and enhance biodiversity"},
-        {"id": "C", "text": "To replace all roads with pathways"},
-        {"id": "D", "text": "To prevent people from commuting"}
+        {"id": "A", "text": "…"},
+        {"id": "B", "text": "…"},
+        {"id": "C", "text": "…"},
+        {"id": "D", "text": "…"}
       ],
       "correct_option_id": "B",
-      "explanation": {
-        "explanation_en": "The passage highlights cooling cities and supporting urban wildlife.",
-        "explanation_vi": "Đoạn văn nhấn mạnh việc giảm nhiệt độ đô thị và hỗ trợ đa dạng sinh học."
-      }
+      "explanation": {"explanation_en": "…", "explanation_vi": "…"}
     }
   ]
 }
 ```
 
-### 4. If kind is "listening_comprehension":
-- Write a concise title, an audio script of 40–120 words (20–60 seconds spoken) appropriate for CEFR {{.CEFRLevel}}, voice "en-US-Standard-C", and exactly 3 multiple-choice questions.
-- Schema:
+The question ids are "q1", "q2" and "q3". A question is answered from the passage,
+never from general knowledge.
+
+## listening_comprehension
+
+A script for a clip of 20 to 60 seconds, spoken by one voice, and exactly three
+questions in the reading shape. The script length depends on the level:
+
+| Level | Words |
+|---|---|
+| A1 | 45–70 |
+| A2 | 55–85 |
+| B1 | 70–105 |
+| B2 | 85–125 |
+| C1 | 100–140 |
+
 ```json
 {
-  "title": "Train Station Platform Announcement",
-  "script": "Attention passengers on platform 3. The 10:15 express service to Manchester has been delayed by 15 minutes due to signaling problems...",
+  "title": "Platform announcement",
+  "script": "…",
   "voice": "en-US-Standard-C",
-  "questions": [
-    {
-      "id": "q1",
-      "type": "multiple_choice",
-      "prompt": "Why is the train delayed?",
-      "options": [
-        {"id": "A", "text": "Signaling problems"},
-        {"id": "B", "text": "Severe snowstorms"},
-        {"id": "C", "text": "Engine maintenance"},
-        {"id": "D", "text": "Driver sickness"}
-      ],
-      "correct_option_id": "A",
-      "explanation": {
-        "explanation_en": "The announcement states signaling problems as the delay cause.",
-        "explanation_vi": "Thông báo nêu rõ sự cố tín hiệu là nguyên nhân gây chậm chuyến."
-      }
-    }
-  ]
+  "questions": [ … ]
 }
 ```
 
-### 5. If kind is "writing_prompt":
-- Write a 60–100 word task prompt appropriate for CEFR {{.CEFRLevel}}.
-- Include "prompt", "model_answer", "min_words" (60), "time_limit_minutes" (15), "explanation" with "explanation_en" and "explanation_vi".
-- Schema:
+Write the script as it is heard: no stage directions, no speaker labels.
+
+## writing_prompt
+
+A task asking for 60 to 100 words at {{.CEFRLevel}}: an email, a message, a short
+opinion or a description. The prompt is at least fifteen words. The model answer
+is at least eighty words and is what a strong {{.CEFRLevel}} learner would write.
+
 ```json
 {
-  "prompt": "Write a short email to your professor explaining why you cannot attend tomorrow's lecture and asking for the class notes.",
-  "model_answer": "Dear Professor Smith,\n\nI am writing to apologize that I will be unable to attend tomorrow's lecture due to a sudden doctor's appointment. Could you please let me know if the lecture slides or notes will be posted online? I will ensure I review them thoroughly.\n\nThank you for your understanding.\n\nSincerely,\nAlex",
+  "prompt": "Write an email to a friend about a trip you took last month: where you went, what you did and whether you would go again.",
+  "model_answer": "…",
   "min_words": 60,
-  "time_limit_minutes": 15,
-  "explanation": {
-    "explanation_en": "A formal and polite apology email covering reason, request for material, and courteous sign-off.",
-    "explanation_vi": "Email xin phép lịch sự và trang trọng nêu rõ lý do, xin tài liệu học và lời chào kết phù hợp."
-  }
+  "time_limit_minutes": 8,
+  "explanation": {"explanation_en": "…", "explanation_vi": "…"}
 }
 ```
 
-### 6. If kind is "speaking_task":
-- Write a speaking task prompt requiring a 45-second spoken response at CEFR {{.CEFRLevel}}.
-- Output with "task_type": "respond", "prompt", "speaking_time_seconds": 45, "explanation".
-- Schema:
+"min_words" is between 60 and 100.
+
+## speaking_task
+
+A prompt for a spoken response of 45 seconds at {{.CEFRLevel}}, at least eight
+words long, asking the learner to describe, explain or give an opinion.
+
 ```json
 {
   "task_type": "respond",
-  "prompt": "Describe a memorable celebration or holiday you attended with your friends or family. Mention when it happened and why it was memorable to you.",
+  "prompt": "Describe a place in your city you like to visit and explain why you like it.",
   "speaking_time_seconds": 45,
-  "explanation": {
-    "explanation_en": "Clear narrative structure covering the occasion, setting, and personal significance within the time limit.",
-    "explanation_vi": "Cấu trúc kể chuyện rõ ràng nêu được dịp lễ, bối cảnh và ý nghĩa cá nhân trong thời gian quy định."
-  }
+  "explanation": {"explanation_en": "…", "explanation_vi": "…"}
 }
 ```
-
-## Quality Rules
-1. Reply with valid JSON only. Do NOT wrap in markdown quotes if possible, or use standard JSON.
-2. Every multiple choice question must have exactly ONE unambiguous correct option.
-3. Every explanation must contain a non-empty explanation_vi.

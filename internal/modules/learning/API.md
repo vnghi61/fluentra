@@ -6,8 +6,8 @@ status: DONE
 phase: 2
 owner: "@learning-team"
 schema: learn
-tables: [enrollments, progress, attempts, learning_sessions, placement_results, skill_mastery, answer_explanations, item_exposures, daily_sets]
-depends_on: [lesson, content, srs, cache, job]
+tables: [enrollments, progress, attempts, learning_sessions, placement_results, skill_mastery, answer_explanations, item_exposures, daily_sets, placement_sessions, weekly_plans]
+depends_on: [lesson, content, srs, user, admin, cache, job]
 depended_on_by: [gamification, analytics, admin, exam, vocabulary, grammar, reading, listening, speaking, writing]
 spec_version: 1.0.0
 last_verified: 2026-08-06
@@ -37,13 +37,13 @@ Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR
 | `GET` | `/api/v1/practice/daily` | `self` | Fetch today's practice set |
 | `POST` | `/api/v1/me/sessions` | `self` | Start a study session |
 | `POST` | `/api/v1/me/sessions/{id}/complete` | `self` | End a session |
-| `GET` | `/api/v1/me/placement` | `self` | Current placement status, active session, retake availability |
-| `POST` | `/api/v1/me/placement` | `self` | Start an adaptive placement test session |
-| `GET` | `/api/v1/me/placement/sessions/{id}` | `self` | Read current placement test question and remaining time |
-| `POST` | `/api/v1/me/placement/sessions/{id}/answers` | `self` | Submit an answer for the current placement question |
-| `POST` | `/api/v1/me/placement/sessions/{id}/productive` | `self` | Submit or skip the productive writing/speaking placement part |
-| `GET` | `/api/v1/me/path` | `self` | Recommended courses and starting lessons based on placement |
-| `GET` | `/api/v1/me/weekly-plan` | `self` | Fetch or build the learner's weekly study plan |
+| `GET` | `/api/v1/me/placement` | `self` | The current placement result, a session in progress, when a retake is available, and whether to invite |
+| `POST` | `/api/v1/me/placement` | `self` | Start a 20-minute adaptive placement test |
+| `GET` | `/api/v1/me/placement/sessions/{id}` | `self` | A session: the current item redacted, the server's remaining seconds, the stage, or the result |
+| `POST` | `/api/v1/me/placement/sessions/{id}/answers` | `self` | Answer the current item; returns the next item or the result |
+| `POST` | `/api/v1/me/placement/sessions/{id}/productive` | `self` | Start or skip the writing and speaking part |
+| `GET` | `/api/v1/me/path` | `self` | Recommended courses for the learner's level and the lesson to start at in each |
+| `GET` | `/api/v1/me/weekly-plan` | `self` | This week's plan, built on the first request of the week, with progress read now |
 <!-- END GENERATED: api-summary -->
 
 ## Endpoint detail
@@ -150,6 +150,78 @@ End a session
 | Permission | `self` |
 | Success | 200 |
 | Errors | `SESSION_NOT_FOUND`, `INVALID_ACTIVITY_COUNT` |
+
+### `GET /api/v1/me/placement`
+
+The current placement result, a session in progress, when a retake is available, and whether to invite
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+| Notes | A session past its deadline is finished by the read. `invite_available` needs the flag `placement.invite`. |
+
+### `POST /api/v1/me/placement`
+
+Start a 20-minute adaptive placement test
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 201 |
+| Errors | `PLACEMENT_IN_PROGRESS`, `PLACEMENT_RETAKE_TOO_SOON`, `PLACEMENT_UNAVAILABLE` |
+
+### `GET /api/v1/me/placement/sessions/{id}`
+
+A session: the current item redacted, the server's remaining seconds, the stage, or the result
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | `PLACEMENT_SESSION_NOT_FOUND` |
+
+### `POST /api/v1/me/placement/sessions/{id}/answers`
+
+Answer the current item; returns the next item or the result
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | `PLACEMENT_SESSION_EXPIRED`, `PLACEMENT_NOT_CURRENT_ITEM`, `PLACEMENT_SESSION_CHANGED` |
+| Notes | Requires an `Idempotency-Key`. Every answer is a `learn.attempts` row. After the result the same route answers the writing and speaking items. |
+
+### `POST /api/v1/me/placement/sessions/{id}/productive`
+
+Start or skip the writing and speaking part
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | `PLACEMENT_PRODUCTIVE_UNAVAILABLE` |
+
+### `GET /api/v1/me/path`
+
+Recommended courses for the learner's level and the lesson to start at in each
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+### `GET /api/v1/me/weekly-plan`
+
+This week's plan, built on the first request of the week, with progress read now
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
 
 <!-- END GENERATED: api-detail -->
 

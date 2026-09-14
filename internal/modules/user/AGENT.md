@@ -77,17 +77,16 @@ Other modules may import **only** `internal/modules/user/contract`.
 |---|---|---|
 | interface | `user.Reader` | `GetByID`, `GetManyByIDs`, `Exists` — batched to avoid N+1 across modules |
 | interface | `user.Creator` | `CreateUser` — used only by `auth` during registration |
-| interface | `user.LearningProfileReader` | `GetLearningProfile` — used by `learning` to size weekly plans and paths |
 | struct | `user.Summary` | `{ID, DisplayName, AvatarURL, Locale, Timezone, Status}` — the shape other modules render |
-| struct | `user.LearningProfileDTO` | `{UserID, DeclaredLevel, TargetLevel, TargetExam, WeeklyMinutesGoal, Motivations}` |
 | event | `user.DeletionRequested` | Every module holding personal data reacts to this |
+| interface | `user.LearningProfileReader` | `GetLearningProfile(ctx, userID)` returning `found=false` rather than an error — used by `learning` for the declared level, target level and weekly minutes |
 
 ### Events
 
 | Event | Direction | Payload summary |
 |---|---|---|
 | `user.profile_updated` | publishes | `{user_id, changed_fields}` |
-| `user.learning_profile_updated` | publishes | `{user_id, changed_fields}` |
+| `user.learning_profile_updated` | publishes | `{user_id, changed_fields, actor_id}` — the names of what changed, never the values; nothing when nothing changed |
 | `user.deletion_requested` | publishes | `{user_id, execute_after}` |
 | `user.deleted` | publishes | `{user_id}` — modules must purge or anonymise their data |
 | `user.suspended` | publishes | `{user_id, reason, actor_id}` |
@@ -148,6 +147,8 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | `PATCH` | `/api/v1/me` | `self` | Update profile fields |
 | `GET` | `/api/v1/me/preferences` | `self` | Read preferences |
 | `PUT` | `/api/v1/me/preferences` | `self` | Replace preferences |
+| `GET` | `/api/v1/me/learning-profile` | `self` | Read the caller's learning profile |
+| `PUT` | `/api/v1/me/learning-profile` | `self` | Replace the caller's learning profile |
 | `POST` | `/api/v1/me/avatar/upload-intent` | `self` | Get a presigned URL for an avatar upload |
 | `PUT` | `/api/v1/me/avatar` | `self` | Confirm the uploaded avatar |
 | `GET` | `/api/v1/storage/avatars/{assetId}` | `authenticated` | Serve a stored avatar image |

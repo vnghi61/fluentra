@@ -261,7 +261,7 @@ func (r *Repository) ReplaceLearningProfile(ctx context.Context, profile domain.
 	}
 	var weeklyGoal *int32
 	if profile.WeeklyMinutesGoal != nil {
-		g := int32(*profile.WeeklyMinutesGoal)
+		g := int32(*profile.WeeklyMinutesGoal) //nolint:gosec // bounded to 15–10080 by LearningProfile.Validate
 		weeklyGoal = &g
 	}
 	motivations := profile.Motivations

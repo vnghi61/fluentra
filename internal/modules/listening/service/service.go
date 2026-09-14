@@ -44,6 +44,12 @@ type SittingPlayPolicy interface {
 	ListeningPlayPolicy(ctx context.Context, userID, sittingID, versionID uuid.UUID) (int, error)
 }
 
+// PlacementPlayPolicy answers the play limit for a clip in a placement test:
+// the context must be the caller's open placement session serving that clip.
+type PlacementPlayPolicy interface {
+	PlacementListeningPlays(ctx context.Context, userID, sessionID, versionID uuid.UUID) (int, error)
+}
+
 // AudioLocator finds the rendered clip for a script in the TTS cache.
 type AudioLocator interface {
 	AudioKey(ctx context.Context, script, voice string) (objectKey string, found bool, err error)
@@ -56,24 +62,26 @@ type StorageSigner interface {
 
 // Deps holds the dependencies required to construct a listening Service.
 type Deps struct {
-	Repo     Repository
-	Content  ContentReader
-	Learning AttemptReader
-	Storage  StorageSigner
-	Sittings SittingPlayPolicy
-	Audio    AudioLocator
-	Clock    clock.Clock
+	Repo      Repository
+	Content   ContentReader
+	Learning  AttemptReader
+	Storage   StorageSigner
+	Sittings  SittingPlayPolicy
+	Placement PlacementPlayPolicy
+	Audio     AudioLocator
+	Clock     clock.Clock
 }
 
 // Service orchestrates play limits, presigned playback URLs, and transcript access.
 type Service struct {
-	repo     Repository
-	content  ContentReader
-	learning AttemptReader
-	storage  StorageSigner
-	sittings SittingPlayPolicy
-	audio    AudioLocator
-	clock    clock.Clock
+	repo      Repository
+	content   ContentReader
+	learning  AttemptReader
+	storage   StorageSigner
+	sittings  SittingPlayPolicy
+	placement PlacementPlayPolicy
+	audio     AudioLocator
+	clock     clock.Clock
 }
 
 // New constructs a listening Service.
@@ -83,13 +91,14 @@ func New(deps Deps) *Service {
 		timekeeper = clock.Real{}
 	}
 	return &Service{
-		repo:     deps.Repo,
-		content:  deps.Content,
-		learning: deps.Learning,
-		storage:  deps.Storage,
-		sittings: deps.Sittings,
-		audio:    deps.Audio,
-		clock:    timekeeper,
+		repo:      deps.Repo,
+		content:   deps.Content,
+		learning:  deps.Learning,
+		storage:   deps.Storage,
+		sittings:  deps.Sittings,
+		placement: deps.Placement,
+		audio:     deps.Audio,
+		clock:     timekeeper,
 	}
 }
 
@@ -113,7 +122,9 @@ func (s *Service) RecordPlay(
 	contextType string,
 	contextID uuid.UUID,
 ) (*domain.PlayResult, error) {
-	if contextType != domain.ContextTypeAttempt && contextType != domain.ContextTypeExam {
+	switch contextType {
+	case domain.ContextTypeAttempt, domain.ContextTypeExam, domain.ContextTypePlacement:
+	default:
 		return nil, domain.ErrInvalidContext
 	}
 
@@ -209,11 +220,21 @@ func (s *Service) audioKey(ctx context.Context, body listeningBody) (string, err
 func (s *Service) playsAllowed(
 	ctx context.Context, userID, versionID uuid.UUID, contextType string, contextID uuid.UUID,
 ) (int, error) {
-	if contextType == domain.ContextTypeExam {
+	switch contextType {
+	case domain.ContextTypeExam:
 		if s.sittings == nil {
 			return 0, domain.ErrPlayNotAllowed
 		}
 		return s.sittings.ListeningPlayPolicy(ctx, userID, contextID, versionID)
+	case domain.ContextTypePlacement:
+		if s.placement == nil {
+			return 0, domain.ErrPlayNotAllowed
+		}
+		plays, err := s.placement.PlacementListeningPlays(ctx, userID, contextID, versionID)
+		if err != nil {
+			return 0, domain.ErrPlayNotAllowed
+		}
+		return plays, nil
 	}
 
 	if s.learning == nil {

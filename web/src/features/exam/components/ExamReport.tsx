@@ -43,7 +43,10 @@ const SECTION_ICONS: Record<ExamSkill, typeof Headphones> = {
   speaking: Mic,
 };
 
-export const ExamReport: React.FC<ExamReportProps> = ({ report, className }) => {
+export const ExamReport: React.FC<ExamReportProps> = ({
+  report,
+  className,
+}) => {
   const { t } = useTranslation();
   const [reportVersionId, setReportVersionId] = useState<string | null>(null);
 
@@ -60,21 +63,36 @@ export const ExamReport: React.FC<ExamReportProps> = ({ report, className }) => 
   };
 
   return (
-    <div className={cn("mx-auto max-w-4xl space-y-8 p-4 sm:p-6 md:p-8", className)}>
+    <div
+      className={cn("mx-auto max-w-4xl space-y-8 p-4 sm:p-6 md:p-8", className)}
+    >
       {report.status === "pending" && (
-        <div role="status" className="flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/10 p-4 text-primary">
-          <Loader2 className="h-5 w-5 shrink-0 animate-spin" aria-hidden="true" />
+        <div
+          role="status"
+          className="flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/10 p-4 text-primary"
+        >
+          <Loader2
+            className="h-5 w-5 shrink-0 animate-spin"
+            aria-hidden="true"
+          />
           <div>
-            <h2 className="text-sm font-semibold">{t("exam.report.pendingTitle")}</h2>
+            <h2 className="text-sm font-semibold">
+              {t("exam.report.pendingTitle")}
+            </h2>
             <p className="text-xs">{t("exam.report.pendingBody")}</p>
           </div>
         </div>
       )}
       {report.status === "partial" && (
-        <div role="status" className="flex items-center gap-3 rounded-xl border border-warning/30 bg-warning/10 p-4 text-warning">
+        <div
+          role="status"
+          className="flex items-center gap-3 rounded-xl border border-warning/30 bg-warning/10 p-4 text-warning"
+        >
           <AlertTriangle className="h-5 w-5 shrink-0" aria-hidden="true" />
           <div>
-            <h2 className="text-sm font-semibold">{t("exam.report.partialTitle")}</h2>
+            <h2 className="text-sm font-semibold">
+              {t("exam.report.partialTitle")}
+            </h2>
             <p className="text-xs">{t("exam.report.partialBody")}</p>
           </div>
         </div>
@@ -85,7 +103,9 @@ export const ExamReport: React.FC<ExamReportProps> = ({ report, className }) => 
           {t("exam.report.heading")}
         </h1>
         {report.submitted_by === "expiry" && (
-          <p className="text-xs text-text-muted">{t("exam.report.submittedByExpiry")}</p>
+          <p className="text-xs text-text-muted">
+            {t("exam.report.submittedByExpiry")}
+          </p>
         )}
         <div className="flex flex-wrap items-center justify-center gap-6 py-2 sm:gap-12">
           <div className="flex flex-col items-center">
@@ -108,7 +128,10 @@ export const ExamReport: React.FC<ExamReportProps> = ({ report, className }) => 
         </div>
         <ul className="space-y-1 rounded-2xl border border-border-subtle bg-surface-muted/70 p-4 text-left text-xs leading-relaxed text-text-muted sm:p-5">
           <li className="flex gap-2 font-semibold text-text">
-            <Info className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+            <Info
+              className="h-4 w-4 shrink-0 text-primary"
+              aria-hidden="true"
+            />
             {t("exam.report.notOfficial")}
           </li>
           <li>{t("exam.report.pronunciation")}</li>
@@ -117,7 +140,9 @@ export const ExamReport: React.FC<ExamReportProps> = ({ report, className }) => 
       </div>
 
       <section className="space-y-4">
-        <h2 className="text-lg font-bold text-text">{t("exam.report.bySection")}</h2>
+        <h2 className="text-lg font-bold text-text">
+          {t("exam.report.bySection")}
+        </h2>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {report.per_section.map((section) => (
             <SectionCard
@@ -130,10 +155,14 @@ export const ExamReport: React.FC<ExamReportProps> = ({ report, className }) => 
       </section>
 
       <section className="space-y-4 rounded-2xl border border-border bg-card p-4 sm:p-6">
-        <h2 className="text-lg font-bold text-text">{t("exam.report.itemReview")}</h2>
+        <h2 className="text-lg font-bold text-text">
+          {t("exam.report.itemReview")}
+        </h2>
         {report.per_section.map((section) => (
           <div key={section.position} className="space-y-3">
-            <h3 className="text-sm font-semibold text-text">{sectionLabels[section.skill]}</h3>
+            <h3 className="text-sm font-semibold text-text">
+              {sectionLabels[section.skill]}
+            </h3>
             <ol className="space-y-3">
               {section.items.map((item, index) => (
                 <ItemRow
@@ -154,7 +183,9 @@ export const ExamReport: React.FC<ExamReportProps> = ({ report, className }) => 
             <ShieldAlert className="h-4 w-4 text-warning" aria-hidden="true" />
             {t("exam.report.integrityTitle")}
           </h2>
-          <p className="text-xs text-text-muted">{t("exam.report.integrityBody")}</p>
+          <p className="text-xs text-text-muted">
+            {t("exam.report.integrityBody")}
+          </p>
           <ul className="flex flex-wrap gap-3">
             {report.integrity_signals.map((signal) => (
               <li key={signal.kind}>
@@ -203,7 +234,9 @@ const SectionCard: React.FC<{ section: ExamSectionOutcome; label: string }> = ({
         {section.status === "scored" && section.score !== undefined ? (
           <p className="font-mono text-2xl font-bold text-text">
             {section.score}
-            <span className="text-xs font-normal text-text-muted">/{section.max_score}</span>
+            <span className="text-xs font-normal text-text-muted">
+              /{section.max_score}
+            </span>
           </p>
         ) : (
           <Badge variant="outline">
@@ -215,7 +248,10 @@ const SectionCard: React.FC<{ section: ExamSectionOutcome; label: string }> = ({
       </div>
       {section.status === "scored" && section.score !== undefined && (
         <div className="h-2 w-full overflow-hidden rounded-full bg-border-subtle">
-          <div className="h-full rounded-full bg-primary" style={{ width: `${section.score}%` }} />
+          <div
+            className="h-full rounded-full bg-primary"
+            style={{ width: `${section.score}%` }}
+          />
         </div>
       )}
     </div>
@@ -250,36 +286,59 @@ const ItemRow: React.FC<{
     item.status === "graded" &&
     item.attempt_id !== undefined &&
     (item.kind === "writing_prompt" || item.kind === "speaking_task");
-  const fullMarks = item.status === "graded" && item.max_score > 0 && item.score === item.max_score;
+  const fullMarks =
+    item.status === "graded" &&
+    item.max_score > 0 &&
+    item.score === item.max_score;
 
   return (
     <li className="space-y-2 rounded-xl border border-border-subtle bg-surface-muted/30 p-4 text-xs">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           {fullMarks ? (
-            <CheckCircle2 className="h-4 w-4 shrink-0 text-success" aria-hidden="true" />
+            <CheckCircle2
+              className="h-4 w-4 shrink-0 text-success"
+              aria-hidden="true"
+            />
           ) : (
-            <XCircle className="h-4 w-4 shrink-0 text-text-muted" aria-hidden="true" />
+            <XCircle
+              className="h-4 w-4 shrink-0 text-text-muted"
+              aria-hidden="true"
+            />
           )}
           <span className="font-semibold text-text">
-            {t("exam.report.item", { num: index })} · {kindLabels[item.kind] ?? item.kind}
+            {t("exam.report.item", { num: index })} ·{" "}
+            {kindLabels[item.kind] ?? item.kind}
           </span>
         </div>
         <span className="text-text-muted">
           {item.status === "graded"
-            ? t("exam.report.itemScore", { score: item.score, max: item.max_score })
+            ? t("exam.report.itemScore", {
+                score: item.score,
+                max: item.max_score,
+              })
             : statusLabels[item.status]}
         </span>
       </div>
       {questions.length > 0 && (
         <p className="text-text-muted">
-          {t("exam.report.questionsCorrect", { correct, total: questions.length })}
+          {t("exam.report.questionsCorrect", {
+            correct,
+            total: questions.length,
+          })}
         </p>
       )}
       <div className="flex flex-wrap gap-2">
         {hasFeedback && (
-          <Button type="button" size="sm" variant="outline" onClick={() => setShowFeedback((v) => !v)}>
-            {showFeedback ? t("exam.report.hideFeedback") : t("exam.report.showFeedback")}
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => setShowFeedback((v) => !v)}
+          >
+            {showFeedback
+              ? t("exam.report.hideFeedback")
+              : t("exam.report.showFeedback")}
           </Button>
         )}
         <Button type="button" size="sm" variant="ghost" onClick={onReport}>
@@ -297,14 +356,22 @@ const ItemRow: React.FC<{
   );
 };
 
-const WritingFeedbackPanel: React.FC<{ attemptId: string }> = ({ attemptId }) => {
+const WritingFeedbackPanel: React.FC<{ attemptId: string }> = ({
+  attemptId,
+}) => {
   const { t, i18n } = useTranslation();
   const { data, isLoading, isError } = useWritingFeedback(attemptId);
-  if (isLoading) return <p className="text-text-muted">{t("exam.report.feedbackLoading")}</p>;
-  if (isError || !data) return <p className="text-danger">{t("exam.report.feedbackFailed")}</p>;
+  if (isLoading)
+    return (
+      <p className="text-text-muted">{t("exam.report.feedbackLoading")}</p>
+    );
+  if (isError || !data)
+    return <p className="text-danger">{t("exam.report.feedbackFailed")}</p>;
   return (
     <div className="space-y-1 rounded-lg bg-card p-3 text-text">
-      <p className="font-semibold">{t("exam.report.writingBand", { band: data.overall_band })}</p>
+      <p className="font-semibold">
+        {t("exam.report.writingBand", { band: data.overall_band })}
+      </p>
       <p className="leading-relaxed">
         {i18n.language.startsWith("vi") ? data.feedback_vi : data.feedback_en}
       </p>
@@ -312,15 +379,24 @@ const WritingFeedbackPanel: React.FC<{ attemptId: string }> = ({ attemptId }) =>
   );
 };
 
-const SpeakingFeedbackPanel: React.FC<{ attemptId: string }> = ({ attemptId }) => {
+const SpeakingFeedbackPanel: React.FC<{ attemptId: string }> = ({
+  attemptId,
+}) => {
   const { t, i18n } = useTranslation();
   const { data, isLoading, isError } = useSpeakingFeedback(attemptId);
-  const [deleteState, setDeleteState] = useState<"idle" | "confirm" | "deleting" | "deleted" | "failed">("idle");
+  const [deleteState, setDeleteState] = useState<
+    "idle" | "confirm" | "deleting" | "deleted" | "failed"
+  >("idle");
 
-  if (isLoading) return <p className="text-text-muted">{t("exam.report.feedbackLoading")}</p>;
-  if (isError || !data) return <p className="text-danger">{t("exam.report.feedbackFailed")}</p>;
+  if (isLoading)
+    return (
+      <p className="text-text-muted">{t("exam.report.feedbackLoading")}</p>
+    );
+  if (isError || !data)
+    return <p className="text-danger">{t("exam.report.feedbackFailed")}</p>;
 
-  const deleted = deleteState === "deleted" || data.recording_deleted_at !== undefined;
+  const deleted =
+    deleteState === "deleted" || data.recording_deleted_at !== undefined;
 
   const deleteRecording = async () => {
     setDeleteState("deleting");
@@ -339,7 +415,11 @@ const SpeakingFeedbackPanel: React.FC<{ attemptId: string }> = ({ attemptId }) =
         {data.transcript}
       </p>
       {data.read_aloud_accuracy !== undefined && (
-        <p>{t("exam.report.readAloudAccuracy", { value: Math.round(data.read_aloud_accuracy) })}</p>
+        <p>
+          {t("exam.report.readAloudAccuracy", {
+            value: Math.round(data.read_aloud_accuracy),
+          })}
+        </p>
       )}
       <p className="leading-relaxed">
         {i18n.language.startsWith("vi") ? data.feedback_vi : data.feedback_en}
@@ -358,18 +438,30 @@ const SpeakingFeedbackPanel: React.FC<{ attemptId: string }> = ({ attemptId }) =
           >
             {t("exam.report.deleteRecording")}
           </Button>
-          <Button type="button" size="sm" variant="outline" onClick={() => setDeleteState("idle")}>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => setDeleteState("idle")}
+          >
             {t("exam.report.keepRecording")}
           </Button>
         </div>
       ) : (
         <>
-          <Button type="button" size="sm" variant="ghost" onClick={() => setDeleteState("confirm")}>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={() => setDeleteState("confirm")}
+          >
             <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
             {t("exam.report.deleteRecording")}
           </Button>
           {deleteState === "failed" && (
-            <p role="alert" className="text-danger">{t("exam.report.deleteFailed")}</p>
+            <p role="alert" className="text-danger">
+              {t("exam.report.deleteFailed")}
+            </p>
           )}
         </>
       )}

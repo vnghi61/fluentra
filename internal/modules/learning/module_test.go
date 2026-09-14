@@ -54,8 +54,11 @@ func TestModule_New_DefaultGraders(t *testing.T) {
 	if cronJobs[4].Name != "learning.top_up_placement_pool" {
 		t.Errorf("got job name %s, want learning.top_up_placement_pool", cronJobs[4].Name)
 	}
-	if cronJobs[5].Name != "learning.sweep_placement_sessions" {
-		t.Errorf("got job name %s, want learning.sweep_placement_sessions", cronJobs[5].Name)
+	if cronJobs[5].Name != "learning.expire_placement_sessions" {
+		t.Errorf("got job name %s, want learning.expire_placement_sessions", cronJobs[5].Name)
+	}
+	if cronJobs[5].Interval != time.Minute {
+		t.Errorf("placement sessions are expired every %s, want every minute", cronJobs[5].Interval)
 	}
 
 	r := chi.NewRouter()

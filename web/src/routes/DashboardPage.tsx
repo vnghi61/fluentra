@@ -1,6 +1,8 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "@tanstack/react-router";
 
+import { useLearningProfile } from "@/features/account";
 import {
   GamificationSummarySection,
   useGamificationSummary,
@@ -10,15 +12,26 @@ import {
   DailyPracticeCard,
   DashboardError,
   DashboardSkeleton,
+  PlacementInviteCard,
   ReviewsDueCard,
   SkillProgressCard,
   useDashboard,
+  WeeklyPlanCard,
 } from "@/features/learning";
 
 export function DashboardPage(): React.JSX.Element {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { data, isLoading, isError, error, refetch } = useDashboard();
   const { data: gamificationData } = useGamificationSummary();
+  const { data: profile, isLoading: isProfileLoading } = useLearningProfile();
+
+  useEffect(() => {
+    // If user has no learning profile yet, redirect to onboarding wizard (WO13 §8)
+    if (!isProfileLoading && profile === null) {
+      void navigate({ to: "/welcome" });
+    }
+  }, [isProfileLoading, profile, navigate]);
 
   if (isLoading) {
     return <DashboardSkeleton />;
@@ -52,6 +65,11 @@ export function DashboardPage(): React.JSX.Element {
         </section>
       )}
 
+      {/* Placement Test Invitation Card (When eligible and unplaced) */}
+      <section aria-label={t("placement.invite.title")}>
+        <PlacementInviteCard />
+      </section>
+
       {/* Today's Practice (Daily Set) */}
       <section aria-label={t("practice.daily.title", "Today's Practice Set")}>
         <DailyPracticeCard />
@@ -60,6 +78,11 @@ export function DashboardPage(): React.JSX.Element {
       {/* Hero Card: 1. Continue Learning */}
       <section aria-label={t("dashboard.continue.title", "Continue Learning")}>
         <ContinueLearningCard dashboard={data} />
+      </section>
+
+      {/* Personalized Weekly Plan */}
+      <section aria-label={t("weeklyPlan.title")}>
+        <WeeklyPlanCard />
       </section>
 
       {/* Two-Column Grid: 2. Reviews Due & 3. Skill Progress */}

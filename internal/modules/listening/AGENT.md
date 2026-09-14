@@ -90,7 +90,7 @@ Migrations: `db/migrations/listening/` · Queries: `db/queries/listening/`
 
 | Table | Purpose | Key columns / notes |
 |---|---|---|
-| `skill.listening_plays` | Play log enforcing play limits per attempt or exam sitting | `user_id`, `content_version_id`, `context_type`, `context_id`, `played_at` |
+| `skill.listening_plays` | Play log enforcing play limits per attempt, exam sitting or placement session | `user_id`, `content_version_id`, `context_type`, `context_id`, `played_at` |
 
 <!-- END GENERATED: schema -->
 

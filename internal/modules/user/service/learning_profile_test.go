@@ -2,104 +2,112 @@ package service_test
 
 import (
 	"context"
+	"errors"
+	"slices"
 	"testing"
 
 	"github.com/fluentra/fluentra/internal/modules/user/contract"
 	"github.com/fluentra/fluentra/internal/modules/user/domain"
 )
 
-func TestService_LearningProfileLifecycle(t *testing.T) {
-	t.Parallel()
+func learningProfileWithGoal(goal int) domain.LearningProfile {
+	declared, target := "B1", "B2"
+	return domain.LearningProfile{
+		DeclaredLevel:     &declared,
+		TargetLevel:       &target,
+		TargetExam:        domain.TargetExamIELTS,
+		WeeklyMinutesGoal: &goal,
+		Motivations:       []string{"career", "travel"},
+	}
+}
 
+func TestService_ALearningProfileIsNotFoundBeforeItIsSaved(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	ctx := context.Background()
 
-	strPtr := func(s string) *string { return &s }
-	intPtr := func(i int) *int { return &i }
-
-	// 1. Initial read: no profile exists yet
-	_, err := h.service.GetLearningProfile(ctx, h.actor)
-	if err == nil || err != domain.ErrLearningProfileNotFound {
+	if _, err := h.service.GetLearningProfile(ctx, h.actor); !errors.Is(err, domain.ErrLearningProfileNotFound) {
 		t.Fatalf("expected ErrLearningProfileNotFound, got: %v", err)
 	}
-
 	dto, found, err := h.service.LearningProfileReader().GetLearningProfile(ctx, h.actor)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if found {
-		t.Fatalf("expected found=false for new user, got: %+v", dto)
+		t.Fatalf("the reader reports found=false rather than an error, got: %+v", dto)
 	}
+}
 
-	// 2. Replace (create) learning profile
-	wanted := domain.LearningProfile{
-		DeclaredLevel:     strPtr("B1"),
-		TargetLevel:       strPtr("B2"),
-		TargetExam:        domain.TargetExamIELTS,
-		WeeklyMinutesGoal: intPtr(120),
-		Motivations:       []string{"career", "travel"},
-	}
+func TestService_ReplacingALearningProfileStoresItAndNamesEveryField(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	ctx := context.Background()
 
-	saved, err := h.service.ReplaceLearningProfile(ctx, h.actor, wanted)
+	saved, err := h.service.ReplaceLearningProfile(ctx, h.actor, learningProfileWithGoal(120))
 	if err != nil {
 		t.Fatalf("ReplaceLearningProfile failed: %v", err)
 	}
-	if saved.UserID != h.actor {
-		t.Errorf("saved.UserID = %v, want %v", saved.UserID, h.actor)
-	}
-	if saved.TargetExam != domain.TargetExamIELTS {
-		t.Errorf("saved.TargetExam = %v, want %v", saved.TargetExam, domain.TargetExamIELTS)
+	if saved.UserID != h.actor || saved.TargetExam != domain.TargetExamIELTS {
+		t.Errorf("saved = %+v, want the caller's IELTS profile", saved)
 	}
 
-	// Verify event emitted
-	if len(h.events.written) != 1 {
-		t.Fatalf("events written = %d, want 1", len(h.events.written))
+	if len(h.events.written) != 1 || h.events.written[0].Event != contract.EventLearningProfileUpdated {
+		t.Fatalf("events = %+v, want one %s", h.events.written, contract.EventLearningProfileUpdated)
 	}
-	evt := h.events.written[0]
-	if evt.Event != contract.EventLearningProfileUpdated {
-		t.Errorf("event name = %q, want %q", evt.Event, contract.EventLearningProfileUpdated)
-	}
-	payload, ok := evt.Payload.(contract.LearningProfileUpdated)
+	payload, ok := h.events.written[0].Payload.(contract.LearningProfileUpdated)
 	if !ok {
-		t.Fatalf("event payload type = %T, want LearningProfileUpdated", evt.Payload)
+		t.Fatalf("event payload type = %T, want LearningProfileUpdated", h.events.written[0].Payload)
 	}
-	if payload.UserID != h.actor {
-		t.Errorf("payload.UserID = %v, want %v", payload.UserID, h.actor)
-	}
-
-	// 3. Read profile after creation
-	domProfile, err := h.service.GetLearningProfile(ctx, h.actor)
-	if err != nil {
-		t.Fatalf("GetLearningProfile failed: %v", err)
-	}
-	if domProfile.TargetExam != domain.TargetExamIELTS {
-		t.Errorf("domProfile.TargetExam = %v, want ielts", domProfile.TargetExam)
+	if payload.UserID != h.actor || len(payload.ChangedFields) != 5 {
+		t.Errorf("payload = %+v, want the caller and every field for a new profile", payload)
 	}
 
-	dto, found, err = h.service.LearningProfileReader().GetLearningProfile(ctx, h.actor)
-	if err != nil {
-		t.Fatalf("GetLearningProfile failed: %v", err)
+	dto, found, err := h.service.LearningProfileReader().GetLearningProfile(ctx, h.actor)
+	if err != nil || !found {
+		t.Fatalf("reader after save: found=%v err=%v", found, err)
 	}
-	if !found {
-		t.Fatal("expected found=true after replacement")
+	if dto.TargetExam != "ielts" || dto.DeclaredLevel == nil || *dto.DeclaredLevel != "B1" {
+		t.Errorf("dto = %+v, want ielts and B1", dto)
 	}
-	if dto.TargetExam != "ielts" {
-		t.Errorf("dto.TargetExam = %v, want ielts", dto.TargetExam)
+}
+
+func TestService_AReplacementNamesOnlyWhatChangedAndNothingWhenNothingDid(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	ctx := context.Background()
+
+	if _, err := h.service.ReplaceLearningProfile(ctx, h.actor, learningProfileWithGoal(120)); err != nil {
+		t.Fatalf("first replace: %v", err)
 	}
-	if dto.DeclaredLevel == nil || *dto.DeclaredLevel != "B1" {
-		t.Errorf("dto.DeclaredLevel = %v, want B1", dto.DeclaredLevel)
+	if _, err := h.service.ReplaceLearningProfile(ctx, h.actor, learningProfileWithGoal(150)); err != nil {
+		t.Fatalf("second replace: %v", err)
+	}
+	if len(h.events.written) != 2 {
+		t.Fatalf("events written = %d, want 2", len(h.events.written))
+	}
+	second, _ := h.events.written[1].Payload.(contract.LearningProfileUpdated)
+	if !slices.Equal(second.ChangedFields, []string{"weekly_minutes_goal"}) {
+		t.Errorf("changed fields = %v, want [weekly_minutes_goal]", second.ChangedFields)
 	}
 
-	// 4. Suspended user cannot update learning profile
-	suspendedUser := h.repo.users[h.actor]
-	suspendedUser.Status = domain.StatusSuspended
-	h.repo.users[h.actor] = suspendedUser
-
-	_, err = h.service.ReplaceLearningProfile(ctx, h.actor, wanted)
-	if err == nil {
-		t.Fatal("expected error for suspended user, got nil")
+	if _, err := h.service.ReplaceLearningProfile(ctx, h.actor, learningProfileWithGoal(150)); err != nil {
+		t.Fatalf("third replace: %v", err)
 	}
-	if err != domain.ErrAccountNotUsable {
+	if len(h.events.written) != 2 {
+		t.Errorf("an unchanged profile published an event")
+	}
+}
+
+func TestService_ASuspendedLearnerCannotReplaceTheirLearningProfile(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+
+	suspended := h.repo.users[h.actor]
+	suspended.Status = domain.StatusSuspended
+	h.repo.users[h.actor] = suspended
+
+	_, err := h.service.ReplaceLearningProfile(context.Background(), h.actor, learningProfileWithGoal(120))
+	if !errors.Is(err, domain.ErrAccountNotUsable) {
 		t.Errorf("err = %v, want ErrAccountNotUsable", err)
 	}
 }

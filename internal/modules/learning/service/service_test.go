@@ -48,6 +48,8 @@ type fakeLearningRepo struct {
 	// afterGet lets a test order itself against the reads the service makes,
 	// rather than against how fast a goroutine happens to run. Called under mu.
 	afterGet func(*domain.Attempt)
+	// placements holds the placement sessions, results and weekly plans.
+	placements *placementStore
 }
 
 func newFakeRepo() *fakeLearningRepo {
@@ -661,46 +663,6 @@ func (f *fakeLearningRepo) ListItemExposures(
 
 func (f *fakeLearningRepo) HasActiveLearnerRunningLow(_ context.Context, _ []uuid.UUID, _ int) (bool, error) {
 	return false, nil
-}
-
-func (f *fakeLearningRepo) GetActivePlacementSessionByUser(_ context.Context, _ uuid.UUID) (*domain.PlacementSession, error) {
-	return nil, nil
-}
-
-func (f *fakeLearningRepo) GetPlacementSessionByID(_ context.Context, _ uuid.UUID) (*domain.PlacementSession, error) {
-	return nil, nil
-}
-
-func (f *fakeLearningRepo) GetLatestCompletedPlacementSession(_ context.Context, _ uuid.UUID) (*domain.PlacementSession, error) {
-	return nil, nil
-}
-
-func (f *fakeLearningRepo) CreatePlacementSession(_ context.Context, session *domain.PlacementSession) (*domain.PlacementSession, error) {
-	return session, nil
-}
-
-func (f *fakeLearningRepo) UpdatePlacementSessionProgress(_ context.Context, session *domain.PlacementSession) (*domain.PlacementSession, error) {
-	return session, nil
-}
-
-func (f *fakeLearningRepo) CompletePlacementSession(_ context.Context, session *domain.PlacementSession) (*domain.PlacementSession, error) {
-	return session, nil
-}
-
-func (f *fakeLearningRepo) ExpireStalePlacementSessions(_ context.Context) (int64, error) {
-	return 0, nil
-}
-
-func (f *fakeLearningRepo) CreatePlacementResult(_ context.Context, result *domain.PlacementResult) (*domain.PlacementResult, error) {
-	return result, nil
-}
-
-func (f *fakeLearningRepo) GetWeeklyPlanByUserAndDate(_ context.Context, _ uuid.UUID, _ time.Time) (*domain.WeeklyPlan, error) {
-	return nil, nil
-}
-
-func (f *fakeLearningRepo) UpsertWeeklyPlan(_ context.Context, plan *domain.WeeklyPlan) (*domain.WeeklyPlan, error) {
-	return plan, nil
 }
 
 type fakeLessonReader struct {

@@ -16,7 +16,6 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/learning/domain"
 	"github.com/fluentra/fluentra/internal/modules/learning/service"
 	learninghttp "github.com/fluentra/fluentra/internal/modules/learning/transport/http"
-	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
 	"github.com/fluentra/fluentra/internal/shared/apperr"
 	"github.com/fluentra/fluentra/internal/shared/httpx"
 )
@@ -55,22 +54,16 @@ type fakeLearningService struct {
 	// handler read the path parameter rather than a hard-coded id.
 	seenPreviewActivity uuid.UUID
 
-	placementInvDTO      *domain.PlacementInvitationDTO
-	placementInvErr      error
-	startPlacementSess   *domain.PlacementSession
-	startPlacementAct    *lessoncontract.ActivityHierarchy
-	startPlacementErr    error
-	getPlacementSess     *domain.PlacementSession
-	getPlacementAct      *lessoncontract.ActivityHierarchy
-	getPlacementErr      error
-	submitPlacementSess  *domain.PlacementSession
-	submitPlacementAct   *lessoncontract.ActivityHierarchy
-	submitPlacementDone  bool
-	submitPlacementErr   error
-	pathDTO              *domain.StartingPathDTO
-	pathErr              error
-	planDTO              *domain.WeeklyPlan
-	planErr              error
+	overviewDTO  *service.PlacementOverviewDTO
+	placementDTO *service.PlacementSessionDTO
+	placementErr error
+	pathDTO      *service.StartingPathDTO
+	planDTO      *service.WeeklyPlanDTO
+	// What the answer and productive routes passed through.
+	seenActivity uuid.UUID
+	seenKey      uuid.UUID
+	seenResponse json.RawMessage
+	seenSkip     *bool
 }
 
 func (f *fakeLearningService) StartAttempt(_ context.Context, _, _ uuid.UUID) (*service.StartAttemptDTO, error) {
@@ -122,28 +115,42 @@ func (f *fakeLearningService) GetDailySet(_ context.Context, _ uuid.UUID, _ stri
 	return nil, nil
 }
 
-func (f *fakeLearningService) GetPlacementInvitation(_ context.Context, _ uuid.UUID) (*domain.PlacementInvitationDTO, error) {
-	return f.placementInvDTO, f.placementInvErr
+func (f *fakeLearningService) GetPlacementOverview(
+	context.Context, uuid.UUID,
+) (*service.PlacementOverviewDTO, error) {
+	return f.overviewDTO, f.placementErr
 }
 
-func (f *fakeLearningService) StartPlacementSession(_ context.Context, _ uuid.UUID) (*domain.PlacementSession, *lessoncontract.ActivityHierarchy, error) {
-	return f.startPlacementSess, f.startPlacementAct, f.startPlacementErr
+func (f *fakeLearningService) StartPlacement(context.Context, uuid.UUID) (*service.PlacementSessionDTO, error) {
+	return f.placementDTO, f.placementErr
 }
 
-func (f *fakeLearningService) GetPlacementSession(_ context.Context, _, _ uuid.UUID) (*domain.PlacementSession, *lessoncontract.ActivityHierarchy, error) {
-	return f.getPlacementSess, f.getPlacementAct, f.getPlacementErr
+func (f *fakeLearningService) GetPlacementSession(
+	context.Context, uuid.UUID, uuid.UUID,
+) (*service.PlacementSessionDTO, error) {
+	return f.placementDTO, f.placementErr
 }
 
-func (f *fakeLearningService) SubmitPlacementAnswer(_ context.Context, _, _ uuid.UUID, _ json.RawMessage) (*domain.PlacementSession, *lessoncontract.ActivityHierarchy, bool, error) {
-	return f.submitPlacementSess, f.submitPlacementAct, f.submitPlacementDone, f.submitPlacementErr
+func (f *fakeLearningService) SubmitPlacementAnswer(
+	_ context.Context, _, _, activityID, key uuid.UUID, response json.RawMessage,
+) (*service.PlacementSessionDTO, error) {
+	f.seenActivity, f.seenKey, f.seenResponse = activityID, key, response
+	return f.placementDTO, f.placementErr
 }
 
-func (f *fakeLearningService) GetStartingPath(_ context.Context, _ uuid.UUID) (*domain.StartingPathDTO, error) {
-	return f.pathDTO, f.pathErr
+func (f *fakeLearningService) StartPlacementProductive(
+	_ context.Context, _, _ uuid.UUID, skip bool,
+) (*service.PlacementSessionDTO, error) {
+	f.seenSkip = &skip
+	return f.placementDTO, f.placementErr
 }
 
-func (f *fakeLearningService) GetWeeklyPlan(_ context.Context, _ uuid.UUID) (*domain.WeeklyPlan, error) {
-	return f.planDTO, f.planErr
+func (f *fakeLearningService) GetStartingPath(context.Context, uuid.UUID) (*service.StartingPathDTO, error) {
+	return f.pathDTO, f.placementErr
+}
+
+func (f *fakeLearningService) GetWeeklyPlan(context.Context, uuid.UUID) (*service.WeeklyPlanDTO, error) {
+	return f.planDTO, f.placementErr
 }
 
 const (

@@ -98,6 +98,49 @@ func (f fakeSittings) ListeningPlayPolicy(_ context.Context, _, sittingID, _ uui
 	return f.plays, nil
 }
 
+type fakePlacementPlays struct {
+	sessionID uuid.UUID
+}
+
+func (f fakePlacementPlays) PlacementListeningPlays(_ context.Context, _, sessionID, _ uuid.UUID) (int, error) {
+	if sessionID != f.sessionID {
+		return 0, errors.New("not the caller's open placement session")
+	}
+	return 1, nil
+}
+
+func TestRecordPlay_PlacementPolicy_OnePlayInTheCallersSession(t *testing.T) {
+	userID := uuid.New()
+	versionID := uuid.New()
+	sessionID := uuid.New()
+	bodyJSON, _ := json.Marshal(listeningBody{AudioObjectKey: "tts/v/clip.wav"})
+	svc := New(Deps{
+		Repo: newFakeRepo(),
+		Content: &fakeContentReader{versions: map[uuid.UUID]*contentcontract.Version{
+			versionID: {ID: versionID, Kind: domain.KindListeningComprehension, Body: bodyJSON},
+		}},
+		Storage:   &fakeStorageSigner{},
+		Placement: fakePlacementPlays{sessionID: sessionID},
+	})
+	ctx := context.Background()
+
+	first, err := svc.RecordPlay(ctx, userID, versionID, domain.ContextTypePlacement, sessionID)
+	if err != nil {
+		t.Fatalf("first placement play: %v", err)
+	}
+	if first.PlaysAllowed != 1 {
+		t.Fatalf("a placement clip allows %d plays, want 1", first.PlaysAllowed)
+	}
+	if _, err := svc.RecordPlay(ctx, userID, versionID, domain.ContextTypePlacement, sessionID); !errors.Is(
+		err, domain.ErrPlayLimitReached) {
+		t.Fatalf("expected ErrPlayLimitReached on the second play, got %v", err)
+	}
+	if _, err := svc.RecordPlay(ctx, userID, versionID, domain.ContextTypePlacement, uuid.New()); !errors.Is(
+		err, domain.ErrPlayNotAllowed) {
+		t.Fatalf("expected ErrPlayNotAllowed for a session that is not the caller's, got %v", err)
+	}
+}
+
 type fakeAudio struct{}
 
 func (fakeAudio) AudioKey(_ context.Context, script, voice string) (string, bool, error) {

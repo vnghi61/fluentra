@@ -13,43 +13,104 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const completePlacementSession = `-- name: CompletePlacementSession :one
-UPDATE learn.placement_sessions
-SET status = 'completed',
-    stage = 'completed',
-    theta_estimate = $2,
-    placed_level = $3,
-    confidence = $4,
-    current_activity_id = NULL,
-    current_item_kind = NULL,
-    current_item_level = NULL,
-    responses = $5,
-    adaptive_state = $6,
-    completed_at = now(),
-    updated_at = now()
-WHERE id = $1
-RETURNING id, user_id, status, stage, theta_estimate, placed_level, confidence,
-          current_activity_id, current_item_kind, current_item_level,
-          responses, adaptive_state, started_at, completed_at, expires_at, created_at, updated_at
+const countAttemptsByGradersBetween = `-- name: CountAttemptsByGradersBetween :one
+SELECT count(*)::int AS attempts
+FROM learn.attempts
+WHERE user_id = $1
+  AND grader = ANY($2::text[])
+  AND status IN ('graded', 'grading')
+  AND created_at >= $3
+  AND created_at < $4
 `
 
-type CompletePlacementSessionParams struct {
-	ID            uuid.UUID
-	ThetaEstimate pgtype.Numeric
-	PlacedLevel   *string
-	Confidence    pgtype.Numeric
-	Responses     []byte
-	AdaptiveState []byte
+type CountAttemptsByGradersBetweenParams struct {
+	UserID   uuid.UUID
+	Graders  []string
+	FromTime time.Time
+	ToTime   time.Time
 }
 
-func (q *Queries) CompletePlacementSession(ctx context.Context, arg CompletePlacementSessionParams) (LearnPlacementSession, error) {
-	row := q.db.QueryRow(ctx, completePlacementSession,
+func (q *Queries) CountAttemptsByGradersBetween(ctx context.Context, arg CountAttemptsByGradersBetweenParams) (int32, error) {
+	row := q.db.QueryRow(ctx, countAttemptsByGradersBetween,
+		arg.UserID,
+		arg.Graders,
+		arg.FromTime,
+		arg.ToTime,
+	)
+	var attempts int32
+	err := row.Scan(&attempts)
+	return attempts, err
+}
+
+const countPracticedDailySetsBetween = `-- name: CountPracticedDailySetsBetween :one
+SELECT count(*)::int AS practiced
+FROM learn.daily_sets d
+WHERE d.user_id = $1
+  AND d.local_date >= $2
+  AND d.local_date < $3
+  AND EXISTS (
+      SELECT 1
+      FROM learn.attempts a
+      WHERE a.user_id = d.user_id
+        AND a.activity_id = ANY(d.activity_ids)
+        AND a.status = 'graded'
+        AND a.created_at >= $4
+  )
+`
+
+type CountPracticedDailySetsBetweenParams struct {
+	UserID   uuid.UUID
+	FromDate pgtype.Date
+	ToDate   pgtype.Date
+	FromTime time.Time
+}
+
+// A day's practice set counts as done once any of its activities was graded.
+func (q *Queries) CountPracticedDailySetsBetween(ctx context.Context, arg CountPracticedDailySetsBetweenParams) (int32, error) {
+	row := q.db.QueryRow(ctx, countPracticedDailySetsBetween,
+		arg.UserID,
+		arg.FromDate,
+		arg.ToDate,
+		arg.FromTime,
+	)
+	var practiced int32
+	err := row.Scan(&practiced)
+	return practiced, err
+}
+
+const createPlacementSession = `-- name: CreatePlacementSession :one
+
+INSERT INTO learn.placement_sessions (
+    id, user_id, status, stage, started_at, deadline_at, estimate, items
+) VALUES (
+    $1, $2, 'in_progress', $3, $4, $5, $6, $7
+)
+RETURNING id, user_id, status, stage, started_at, deadline_at, estimate, items, version, productive_status, productive_deadline_at, result_id, completed_at, created_at, updated_at
+`
+
+type CreatePlacementSessionParams struct {
+	ID         uuid.UUID
+	UserID     uuid.UUID
+	Stage      string
+	StartedAt  time.Time
+	DeadlineAt time.Time
+	Estimate   []byte
+	Items      []byte
+}
+
+// Placement sessions, results and weekly plans: work order 13 §3.5–§3.7.
+//
+// Every write to a session is guarded by its version, so two requests that read
+// the same session cannot both advance it: the loser gets no row back.
+func (q *Queries) CreatePlacementSession(ctx context.Context, arg CreatePlacementSessionParams) (LearnPlacementSession, error) {
+	row := q.db.QueryRow(ctx, createPlacementSession,
 		arg.ID,
-		arg.ThetaEstimate,
-		arg.PlacedLevel,
-		arg.Confidence,
-		arg.Responses,
-		arg.AdaptiveState,
+		arg.UserID,
+		arg.Stage,
+		arg.StartedAt,
+		arg.DeadlineAt,
+		arg.Estimate,
+		arg.Items,
 	)
 	var i LearnPlacementSession
 	err := row.Scan(
@@ -57,33 +118,28 @@ func (q *Queries) CompletePlacementSession(ctx context.Context, arg CompletePlac
 		&i.UserID,
 		&i.Status,
 		&i.Stage,
-		&i.ThetaEstimate,
-		&i.PlacedLevel,
-		&i.Confidence,
-		&i.CurrentActivityID,
-		&i.CurrentItemKind,
-		&i.CurrentItemLevel,
-		&i.Responses,
-		&i.AdaptiveState,
 		&i.StartedAt,
+		&i.DeadlineAt,
+		&i.Estimate,
+		&i.Items,
+		&i.Version,
+		&i.ProductiveStatus,
+		&i.ProductiveDeadlineAt,
+		&i.ResultID,
 		&i.CompletedAt,
-		&i.ExpiresAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
 }
 
-const createPlacementResultWithSession = `-- name: CreatePlacementResultWithSession :one
-INSERT INTO learn.placement_results (
-    user_id, estimated_level, per_skill, session_id, taken_at
-) VALUES (
-    $1, $2, $3, $4, $5
-)
-RETURNING id, user_id, estimated_level, per_skill, session_id, taken_at, created_at, updated_at
+const createSessionPlacementResult = `-- name: CreateSessionPlacementResult :one
+INSERT INTO learn.placement_results (user_id, estimated_level, per_skill, session_id, taken_at)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, user_id, estimated_level, per_skill, taken_at, created_at, updated_at, session_id
 `
 
-type CreatePlacementResultWithSessionParams struct {
+type CreateSessionPlacementResultParams struct {
 	UserID         uuid.UUID
 	EstimatedLevel string
 	PerSkill       []byte
@@ -91,163 +147,181 @@ type CreatePlacementResultWithSessionParams struct {
 	TakenAt        time.Time
 }
 
-type CreatePlacementResultWithSessionRow struct {
-	ID             uuid.UUID
-	UserID         uuid.UUID
-	EstimatedLevel string
-	PerSkill       []byte
-	SessionID      *uuid.UUID
-	TakenAt        time.Time
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-}
-
-func (q *Queries) CreatePlacementResultWithSession(ctx context.Context, arg CreatePlacementResultWithSessionParams) (CreatePlacementResultWithSessionRow, error) {
-	row := q.db.QueryRow(ctx, createPlacementResultWithSession,
+func (q *Queries) CreateSessionPlacementResult(ctx context.Context, arg CreateSessionPlacementResultParams) (LearnPlacementResult, error) {
+	row := q.db.QueryRow(ctx, createSessionPlacementResult,
 		arg.UserID,
 		arg.EstimatedLevel,
 		arg.PerSkill,
 		arg.SessionID,
 		arg.TakenAt,
 	)
-	var i CreatePlacementResultWithSessionRow
+	var i LearnPlacementResult
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
 		&i.EstimatedLevel,
 		&i.PerSkill,
-		&i.SessionID,
 		&i.TakenAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SessionID,
 	)
 	return i, err
 }
 
-const createPlacementSession = `-- name: CreatePlacementSession :one
-INSERT INTO learn.placement_sessions (
-    user_id, status, stage, theta_estimate, placed_level, confidence,
-    current_activity_id, current_item_kind, current_item_level,
-    responses, adaptive_state, started_at, expires_at
-) VALUES (
-    $1, $2, $3, $4, $5, $6,
-    $7, $8, $9,
-    $10, $11, $12, $13
-)
-RETURNING id, user_id, status, stage, theta_estimate, placed_level, confidence,
-          current_activity_id, current_item_kind, current_item_level,
-          responses, adaptive_state, started_at, completed_at, expires_at, created_at, updated_at
+const createWeeklyPlan = `-- name: CreateWeeklyPlan :one
+INSERT INTO learn.weekly_plans (user_id, week_start, minutes_goal, items)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (user_id, week_start) DO NOTHING
+RETURNING user_id, week_start, minutes_goal, items, created_at
 `
 
-type CreatePlacementSessionParams struct {
-	UserID            uuid.UUID
-	Status            string
-	Stage             string
-	ThetaEstimate     pgtype.Numeric
-	PlacedLevel       *string
-	Confidence        pgtype.Numeric
-	CurrentActivityID *uuid.UUID
-	CurrentItemKind   *string
-	CurrentItemLevel  *string
-	Responses         []byte
-	AdaptiveState     []byte
-	StartedAt         time.Time
-	ExpiresAt         time.Time
+type CreateWeeklyPlanParams struct {
+	UserID      uuid.UUID
+	WeekStart   pgtype.Date
+	MinutesGoal int32
+	Items       []byte
 }
 
-func (q *Queries) CreatePlacementSession(ctx context.Context, arg CreatePlacementSessionParams) (LearnPlacementSession, error) {
-	row := q.db.QueryRow(ctx, createPlacementSession,
+// DO NOTHING: the first request of the week builds the plan, and a request that
+// loses the race reads the one that won instead of replacing it.
+func (q *Queries) CreateWeeklyPlan(ctx context.Context, arg CreateWeeklyPlanParams) (LearnWeeklyPlan, error) {
+	row := q.db.QueryRow(ctx, createWeeklyPlan,
 		arg.UserID,
-		arg.Status,
-		arg.Stage,
-		arg.ThetaEstimate,
-		arg.PlacedLevel,
-		arg.Confidence,
-		arg.CurrentActivityID,
-		arg.CurrentItemKind,
-		arg.CurrentItemLevel,
-		arg.Responses,
-		arg.AdaptiveState,
-		arg.StartedAt,
-		arg.ExpiresAt,
+		arg.WeekStart,
+		arg.MinutesGoal,
+		arg.Items,
 	)
+	var i LearnWeeklyPlan
+	err := row.Scan(
+		&i.UserID,
+		&i.WeekStart,
+		&i.MinutesGoal,
+		&i.Items,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const findPlacementSessionByAttempt = `-- name: FindPlacementSessionByAttempt :one
+SELECT id, user_id, status, stage, started_at, deadline_at, estimate, items, version, productive_status, productive_deadline_at, result_id, completed_at, created_at, updated_at
+FROM learn.placement_sessions
+WHERE user_id = $1
+  AND items @> jsonb_build_array(jsonb_build_object('attempt_id', $2::text))
+LIMIT 1
+`
+
+type FindPlacementSessionByAttemptParams struct {
+	UserID    uuid.UUID
+	AttemptID string
+}
+
+// The writing and speaking attempts of a placement are graded asynchronously;
+// when one is, this finds the session that served it.
+func (q *Queries) FindPlacementSessionByAttempt(ctx context.Context, arg FindPlacementSessionByAttemptParams) (LearnPlacementSession, error) {
+	row := q.db.QueryRow(ctx, findPlacementSessionByAttempt, arg.UserID, arg.AttemptID)
 	var i LearnPlacementSession
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
 		&i.Status,
 		&i.Stage,
-		&i.ThetaEstimate,
-		&i.PlacedLevel,
-		&i.Confidence,
-		&i.CurrentActivityID,
-		&i.CurrentItemKind,
-		&i.CurrentItemLevel,
-		&i.Responses,
-		&i.AdaptiveState,
 		&i.StartedAt,
+		&i.DeadlineAt,
+		&i.Estimate,
+		&i.Items,
+		&i.Version,
+		&i.ProductiveStatus,
+		&i.ProductiveDeadlineAt,
+		&i.ResultID,
 		&i.CompletedAt,
-		&i.ExpiresAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
 }
 
-const expireStalePlacementSessions = `-- name: ExpireStalePlacementSessions :execrows
+const finishPlacementSession = `-- name: FinishPlacementSession :one
 UPDATE learn.placement_sessions
-SET status = 'expired',
+SET status = $1,
+    stage = 'done',
+    estimate = $2,
+    items = $3,
+    result_id = $4,
+    completed_at = $5,
+    version = version + 1,
     updated_at = now()
-WHERE status = 'in_progress' AND expires_at < now()
+WHERE id = $6 AND version = $7 AND status = 'in_progress'
+RETURNING id, user_id, status, stage, started_at, deadline_at, estimate, items, version, productive_status, productive_deadline_at, result_id, completed_at, created_at, updated_at
 `
 
-func (q *Queries) ExpireStalePlacementSessions(ctx context.Context) (int64, error) {
-	result, err := q.db.Exec(ctx, expireStalePlacementSessions)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
+type FinishPlacementSessionParams struct {
+	Status      string
+	Estimate    []byte
+	Items       []byte
+	ResultID    *uuid.UUID
+	CompletedAt *time.Time
+	ID          uuid.UUID
+	Version     int32
 }
 
-const getActivePlacementSessionByUser = `-- name: GetActivePlacementSessionByUser :one
-
-SELECT id, user_id, status, stage, theta_estimate, placed_level, confidence,
-       current_activity_id, current_item_kind, current_item_level,
-       responses, adaptive_state, started_at, completed_at, expires_at, created_at, updated_at
-FROM learn.placement_sessions
-WHERE user_id = $1 AND status = 'in_progress'
-`
-
-// Placement test sessions and weekly plans: work order 13 §3.5, §3.6.
-func (q *Queries) GetActivePlacementSessionByUser(ctx context.Context, userID uuid.UUID) (LearnPlacementSession, error) {
-	row := q.db.QueryRow(ctx, getActivePlacementSessionByUser, userID)
+func (q *Queries) FinishPlacementSession(ctx context.Context, arg FinishPlacementSessionParams) (LearnPlacementSession, error) {
+	row := q.db.QueryRow(ctx, finishPlacementSession,
+		arg.Status,
+		arg.Estimate,
+		arg.Items,
+		arg.ResultID,
+		arg.CompletedAt,
+		arg.ID,
+		arg.Version,
+	)
 	var i LearnPlacementSession
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
 		&i.Status,
 		&i.Stage,
-		&i.ThetaEstimate,
-		&i.PlacedLevel,
-		&i.Confidence,
-		&i.CurrentActivityID,
-		&i.CurrentItemKind,
-		&i.CurrentItemLevel,
-		&i.Responses,
-		&i.AdaptiveState,
 		&i.StartedAt,
+		&i.DeadlineAt,
+		&i.Estimate,
+		&i.Items,
+		&i.Version,
+		&i.ProductiveStatus,
+		&i.ProductiveDeadlineAt,
+		&i.ResultID,
 		&i.CompletedAt,
-		&i.ExpiresAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getCurrentPlacementResult = `-- name: GetCurrentPlacementResult :one
+SELECT id, user_id, estimated_level, per_skill, taken_at, created_at, updated_at, session_id
+FROM learn.placement_results
+WHERE user_id = $1
+ORDER BY taken_at DESC
+LIMIT 1
+`
+
+func (q *Queries) GetCurrentPlacementResult(ctx context.Context, userID uuid.UUID) (LearnPlacementResult, error) {
+	row := q.db.QueryRow(ctx, getCurrentPlacementResult, userID)
+	var i LearnPlacementResult
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.EstimatedLevel,
+		&i.PerSkill,
+		&i.TakenAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.SessionID,
 	)
 	return i, err
 }
 
 const getLatestCompletedPlacementSession = `-- name: GetLatestCompletedPlacementSession :one
-SELECT id, user_id, status, stage, theta_estimate, placed_level, confidence,
-       current_activity_id, current_item_kind, current_item_level,
-       responses, adaptive_state, started_at, completed_at, expires_at, created_at, updated_at
+SELECT id, user_id, status, stage, started_at, deadline_at, estimate, items, version, productive_status, productive_deadline_at, result_id, completed_at, created_at, updated_at
 FROM learn.placement_sessions
 WHERE user_id = $1 AND status = 'completed'
 ORDER BY completed_at DESC
@@ -262,127 +336,176 @@ func (q *Queries) GetLatestCompletedPlacementSession(ctx context.Context, userID
 		&i.UserID,
 		&i.Status,
 		&i.Stage,
-		&i.ThetaEstimate,
-		&i.PlacedLevel,
-		&i.Confidence,
-		&i.CurrentActivityID,
-		&i.CurrentItemKind,
-		&i.CurrentItemLevel,
-		&i.Responses,
-		&i.AdaptiveState,
 		&i.StartedAt,
+		&i.DeadlineAt,
+		&i.Estimate,
+		&i.Items,
+		&i.Version,
+		&i.ProductiveStatus,
+		&i.ProductiveDeadlineAt,
+		&i.ResultID,
 		&i.CompletedAt,
-		&i.ExpiresAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
 }
 
-const getPlacementSessionByID = `-- name: GetPlacementSessionByID :one
-SELECT id, user_id, status, stage, theta_estimate, placed_level, confidence,
-       current_activity_id, current_item_kind, current_item_level,
-       responses, adaptive_state, started_at, completed_at, expires_at, created_at, updated_at
+const getOpenPlacementSession = `-- name: GetOpenPlacementSession :one
+SELECT id, user_id, status, stage, started_at, deadline_at, estimate, items, version, productive_status, productive_deadline_at, result_id, completed_at, created_at, updated_at FROM learn.placement_sessions WHERE user_id = $1 AND status = 'in_progress'
+`
+
+func (q *Queries) GetOpenPlacementSession(ctx context.Context, userID uuid.UUID) (LearnPlacementSession, error) {
+	row := q.db.QueryRow(ctx, getOpenPlacementSession, userID)
+	var i LearnPlacementSession
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Status,
+		&i.Stage,
+		&i.StartedAt,
+		&i.DeadlineAt,
+		&i.Estimate,
+		&i.Items,
+		&i.Version,
+		&i.ProductiveStatus,
+		&i.ProductiveDeadlineAt,
+		&i.ResultID,
+		&i.CompletedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getPlacementResult = `-- name: GetPlacementResult :one
+SELECT id, user_id, estimated_level, per_skill, taken_at, created_at, updated_at, session_id FROM learn.placement_results WHERE id = $1
+`
+
+func (q *Queries) GetPlacementResult(ctx context.Context, id uuid.UUID) (LearnPlacementResult, error) {
+	row := q.db.QueryRow(ctx, getPlacementResult, id)
+	var i LearnPlacementResult
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.EstimatedLevel,
+		&i.PerSkill,
+		&i.TakenAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.SessionID,
+	)
+	return i, err
+}
+
+const getPlacementSession = `-- name: GetPlacementSession :one
+SELECT id, user_id, status, stage, started_at, deadline_at, estimate, items, version, productive_status, productive_deadline_at, result_id, completed_at, created_at, updated_at FROM learn.placement_sessions WHERE id = $1
+`
+
+func (q *Queries) GetPlacementSession(ctx context.Context, id uuid.UUID) (LearnPlacementSession, error) {
+	row := q.db.QueryRow(ctx, getPlacementSession, id)
+	var i LearnPlacementSession
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Status,
+		&i.Stage,
+		&i.StartedAt,
+		&i.DeadlineAt,
+		&i.Estimate,
+		&i.Items,
+		&i.Version,
+		&i.ProductiveStatus,
+		&i.ProductiveDeadlineAt,
+		&i.ResultID,
+		&i.CompletedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getWeeklyPlan = `-- name: GetWeeklyPlan :one
+SELECT user_id, week_start, minutes_goal, items, created_at FROM learn.weekly_plans WHERE user_id = $1 AND week_start = $2
+`
+
+type GetWeeklyPlanParams struct {
+	UserID    uuid.UUID
+	WeekStart pgtype.Date
+}
+
+func (q *Queries) GetWeeklyPlan(ctx context.Context, arg GetWeeklyPlanParams) (LearnWeeklyPlan, error) {
+	row := q.db.QueryRow(ctx, getWeeklyPlan, arg.UserID, arg.WeekStart)
+	var i LearnWeeklyPlan
+	err := row.Scan(
+		&i.UserID,
+		&i.WeekStart,
+		&i.MinutesGoal,
+		&i.Items,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const listOverduePlacementSessions = `-- name: ListOverduePlacementSessions :many
+SELECT id
 FROM learn.placement_sessions
-WHERE id = $1
+WHERE status = 'in_progress' AND deadline_at < $1
+ORDER BY deadline_at
+LIMIT $2
 `
 
-func (q *Queries) GetPlacementSessionByID(ctx context.Context, id uuid.UUID) (LearnPlacementSession, error) {
-	row := q.db.QueryRow(ctx, getPlacementSessionByID, id)
-	var i LearnPlacementSession
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.Status,
-		&i.Stage,
-		&i.ThetaEstimate,
-		&i.PlacedLevel,
-		&i.Confidence,
-		&i.CurrentActivityID,
-		&i.CurrentItemKind,
-		&i.CurrentItemLevel,
-		&i.Responses,
-		&i.AdaptiveState,
-		&i.StartedAt,
-		&i.CompletedAt,
-		&i.ExpiresAt,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
+type ListOverduePlacementSessionsParams struct {
+	Cutoff  time.Time
+	MaxRows int32
 }
 
-const getWeeklyPlanByUserAndDate = `-- name: GetWeeklyPlanByUserAndDate :one
-SELECT id, user_id, week_start_date, placed_level, weakest_skill, time_distribution, daily_targets, created_at, updated_at
-FROM learn.weekly_plans
-WHERE user_id = $1 AND week_start_date = $2
-`
-
-type GetWeeklyPlanByUserAndDateParams struct {
-	UserID        uuid.UUID
-	WeekStartDate pgtype.Date
+func (q *Queries) ListOverduePlacementSessions(ctx context.Context, arg ListOverduePlacementSessionsParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listOverduePlacementSessions, arg.Cutoff, arg.MaxRows)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
-func (q *Queries) GetWeeklyPlanByUserAndDate(ctx context.Context, arg GetWeeklyPlanByUserAndDateParams) (LearnWeeklyPlan, error) {
-	row := q.db.QueryRow(ctx, getWeeklyPlanByUserAndDate, arg.UserID, arg.WeekStartDate)
-	var i LearnWeeklyPlan
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.WeekStartDate,
-		&i.PlacedLevel,
-		&i.WeakestSkill,
-		&i.TimeDistribution,
-		&i.DailyTargets,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const updatePlacementSessionProgress = `-- name: UpdatePlacementSessionProgress :one
+const savePlacementProductive = `-- name: SavePlacementProductive :one
 UPDATE learn.placement_sessions
-SET stage = $2,
-    theta_estimate = $3,
-    placed_level = $4,
-    confidence = $5,
-    current_activity_id = $6,
-    current_item_kind = $7,
-    current_item_level = $8,
-    responses = $9,
-    adaptive_state = $10,
+SET items = $1,
+    productive_status = $2,
+    productive_deadline_at = $3,
+    version = version + 1,
     updated_at = now()
-WHERE id = $1
-RETURNING id, user_id, status, stage, theta_estimate, placed_level, confidence,
-          current_activity_id, current_item_kind, current_item_level,
-          responses, adaptive_state, started_at, completed_at, expires_at, created_at, updated_at
+WHERE id = $4 AND version = $5
+RETURNING id, user_id, status, stage, started_at, deadline_at, estimate, items, version, productive_status, productive_deadline_at, result_id, completed_at, created_at, updated_at
 `
 
-type UpdatePlacementSessionProgressParams struct {
-	ID                uuid.UUID
-	Stage             string
-	ThetaEstimate     pgtype.Numeric
-	PlacedLevel       *string
-	Confidence        pgtype.Numeric
-	CurrentActivityID *uuid.UUID
-	CurrentItemKind   *string
-	CurrentItemLevel  *string
-	Responses         []byte
-	AdaptiveState     []byte
+type SavePlacementProductiveParams struct {
+	Items                []byte
+	ProductiveStatus     string
+	ProductiveDeadlineAt *time.Time
+	ID                   uuid.UUID
+	Version              int32
 }
 
-func (q *Queries) UpdatePlacementSessionProgress(ctx context.Context, arg UpdatePlacementSessionProgressParams) (LearnPlacementSession, error) {
-	row := q.db.QueryRow(ctx, updatePlacementSessionProgress,
+func (q *Queries) SavePlacementProductive(ctx context.Context, arg SavePlacementProductiveParams) (LearnPlacementSession, error) {
+	row := q.db.QueryRow(ctx, savePlacementProductive,
+		arg.Items,
+		arg.ProductiveStatus,
+		arg.ProductiveDeadlineAt,
 		arg.ID,
-		arg.Stage,
-		arg.ThetaEstimate,
-		arg.PlacedLevel,
-		arg.Confidence,
-		arg.CurrentActivityID,
-		arg.CurrentItemKind,
-		arg.CurrentItemLevel,
-		arg.Responses,
-		arg.AdaptiveState,
+		arg.Version,
 	)
 	var i LearnPlacementSession
 	err := row.Scan(
@@ -390,66 +513,113 @@ func (q *Queries) UpdatePlacementSessionProgress(ctx context.Context, arg Update
 		&i.UserID,
 		&i.Status,
 		&i.Stage,
-		&i.ThetaEstimate,
-		&i.PlacedLevel,
-		&i.Confidence,
-		&i.CurrentActivityID,
-		&i.CurrentItemKind,
-		&i.CurrentItemLevel,
-		&i.Responses,
-		&i.AdaptiveState,
 		&i.StartedAt,
+		&i.DeadlineAt,
+		&i.Estimate,
+		&i.Items,
+		&i.Version,
+		&i.ProductiveStatus,
+		&i.ProductiveDeadlineAt,
+		&i.ResultID,
 		&i.CompletedAt,
-		&i.ExpiresAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
 }
 
-const upsertWeeklyPlan = `-- name: UpsertWeeklyPlan :one
-INSERT INTO learn.weekly_plans (
-    user_id, week_start_date, placed_level, weakest_skill, time_distribution, daily_targets
-) VALUES (
-    $1, $2, $3, $4, $5, $6
-) ON CONFLICT (user_id, week_start_date) DO UPDATE
-SET placed_level = EXCLUDED.placed_level,
-    weakest_skill = EXCLUDED.weakest_skill,
-    time_distribution = EXCLUDED.time_distribution,
-    daily_targets = EXCLUDED.daily_targets,
+const savePlacementProgress = `-- name: SavePlacementProgress :one
+UPDATE learn.placement_sessions
+SET stage = $1,
+    estimate = $2,
+    items = $3,
+    version = version + 1,
     updated_at = now()
-RETURNING id, user_id, week_start_date, placed_level, weakest_skill, time_distribution, daily_targets, created_at, updated_at
+WHERE id = $4 AND version = $5 AND status = 'in_progress'
+RETURNING id, user_id, status, stage, started_at, deadline_at, estimate, items, version, productive_status, productive_deadline_at, result_id, completed_at, created_at, updated_at
 `
 
-type UpsertWeeklyPlanParams struct {
-	UserID           uuid.UUID
-	WeekStartDate    pgtype.Date
-	PlacedLevel      string
-	WeakestSkill     string
-	TimeDistribution []byte
-	DailyTargets     []byte
+type SavePlacementProgressParams struct {
+	Stage    string
+	Estimate []byte
+	Items    []byte
+	ID       uuid.UUID
+	Version  int32
 }
 
-func (q *Queries) UpsertWeeklyPlan(ctx context.Context, arg UpsertWeeklyPlanParams) (LearnWeeklyPlan, error) {
-	row := q.db.QueryRow(ctx, upsertWeeklyPlan,
-		arg.UserID,
-		arg.WeekStartDate,
-		arg.PlacedLevel,
-		arg.WeakestSkill,
-		arg.TimeDistribution,
-		arg.DailyTargets,
+func (q *Queries) SavePlacementProgress(ctx context.Context, arg SavePlacementProgressParams) (LearnPlacementSession, error) {
+	row := q.db.QueryRow(ctx, savePlacementProgress,
+		arg.Stage,
+		arg.Estimate,
+		arg.Items,
+		arg.ID,
+		arg.Version,
 	)
-	var i LearnWeeklyPlan
+	var i LearnPlacementSession
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
-		&i.WeekStartDate,
-		&i.PlacedLevel,
-		&i.WeakestSkill,
-		&i.TimeDistribution,
-		&i.DailyTargets,
+		&i.Status,
+		&i.Stage,
+		&i.StartedAt,
+		&i.DeadlineAt,
+		&i.Estimate,
+		&i.Items,
+		&i.Version,
+		&i.ProductiveStatus,
+		&i.ProductiveDeadlineAt,
+		&i.ResultID,
+		&i.CompletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const sumLearningMinutesBetween = `-- name: SumLearningMinutesBetween :one
+SELECT COALESCE(SUM(minutes), 0)::int AS minutes
+FROM learn.learning_sessions
+WHERE user_id = $1 AND started_at >= $2 AND started_at < $3
+`
+
+type SumLearningMinutesBetweenParams struct {
+	UserID   uuid.UUID
+	FromTime time.Time
+	ToTime   time.Time
+}
+
+func (q *Queries) SumLearningMinutesBetween(ctx context.Context, arg SumLearningMinutesBetweenParams) (int32, error) {
+	row := q.db.QueryRow(ctx, sumLearningMinutesBetween, arg.UserID, arg.FromTime, arg.ToTime)
+	var minutes int32
+	err := row.Scan(&minutes)
+	return minutes, err
+}
+
+const updatePlacementResultPerSkill = `-- name: UpdatePlacementResultPerSkill :one
+UPDATE learn.placement_results
+SET per_skill = $1,
+    updated_at = now()
+WHERE id = $2
+RETURNING id, user_id, estimated_level, per_skill, taken_at, created_at, updated_at, session_id
+`
+
+type UpdatePlacementResultPerSkillParams struct {
+	PerSkill []byte
+	ID       uuid.UUID
+}
+
+func (q *Queries) UpdatePlacementResultPerSkill(ctx context.Context, arg UpdatePlacementResultPerSkillParams) (LearnPlacementResult, error) {
+	row := q.db.QueryRow(ctx, updatePlacementResultPerSkill, arg.PerSkill, arg.ID)
+	var i LearnPlacementResult
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.EstimatedLevel,
+		&i.PerSkill,
+		&i.TakenAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.SessionID,
 	)
 	return i, err
 }

@@ -11,6 +11,7 @@ import (
 // TargetExam represents standard exam goals.
 type TargetExam string
 
+// The exams a learner may aim for, matching core.target_exam.
 const (
 	TargetExamNone  TargetExam = "none"
 	TargetExamIELTS TargetExam = "ielts"
@@ -97,18 +98,36 @@ func (lp *LearningProfile) Validate() error {
 	return nil
 }
 
-// ChangedFields identifies field names for audit events.
-func (lp *LearningProfile) ChangedFields() []string {
-	fields := []string{"target_exam", "motivations"}
-	if lp.DeclaredLevel != nil {
+// ChangedLearningProfileFields lists the names of the fields a replacement
+// changes, in a stable order. It is what user.learning_profile_updated carries:
+// the names of what changed, never the values, the rule ProfileUpdated follows.
+// With no stored profile, every field is new.
+func ChangedLearningProfileFields(before *LearningProfile, after LearningProfile) []string {
+	if before == nil {
+		return []string{"declared_level", "motivations", "target_exam", "target_level", "weekly_minutes_goal"}
+	}
+	var fields []string
+	if !sameValue(before.DeclaredLevel, after.DeclaredLevel) {
 		fields = append(fields, "declared_level")
 	}
-	if lp.TargetLevel != nil {
+	if !slices.Equal(before.Motivations, after.Motivations) {
+		fields = append(fields, "motivations")
+	}
+	if before.TargetExam != after.TargetExam {
+		fields = append(fields, "target_exam")
+	}
+	if !sameValue(before.TargetLevel, after.TargetLevel) {
 		fields = append(fields, "target_level")
 	}
-	if lp.WeeklyMinutesGoal != nil {
+	if !sameValue(before.WeeklyMinutesGoal, after.WeeklyMinutesGoal) {
 		fields = append(fields, "weekly_minutes_goal")
 	}
-	slices.Sort(fields)
 	return fields
+}
+
+func sameValue[T comparable](a, b *T) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
 }

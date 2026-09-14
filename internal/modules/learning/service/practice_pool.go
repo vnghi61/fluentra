@@ -70,7 +70,7 @@ type practiceLesson struct {
 }
 
 var practiceLessons = []practiceLesson{
-	{position: 1, kind: kindReadingComprehension, title: "Reading Comprehension", skillFocus: skillReading},
+	{position: 1, kind: kindReadingComprehension, title: titleReadingComprehension, skillFocus: skillReading},
 	{position: 2, kind: kindGrammarTenseChoice, title: "Grammar Tense Choice", skillFocus: skillGrammar},
 	{position: 3, kind: kindGrammarSentenceTransform, title: "Grammar Sentence Transform", skillFocus: skillGrammar},
 }
@@ -355,7 +355,7 @@ func (s *Service) blindSolve(
 	var reply json.RawMessage
 	if err := ai.CompleteJSON(ctx, s.ai, ai.Request{
 		Task: ai.TaskPracticeSolve,
-		Vars: map[string]any{"Kind": kind, "RedactedBody": string(redacted)},
+		Vars: map[string]any{varKind: kind, varRedactedBody: string(redacted)},
 	}, &reply); err != nil {
 		return fmt.Errorf("ai blind solve call failed: %w", err)
 	}
@@ -735,6 +735,9 @@ func (s *Service) GetDailySet(
 	}
 	localDate := learnerLocalDate(s.clock.Now())
 	level := practiceLevel(levelOverride)
+	if levelOverride == "" {
+		level = s.defaultPracticeLevel(ctx, userID)
+	}
 
 	layout, err := s.practicePool(ctx)
 	if err != nil {

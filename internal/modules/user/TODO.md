@@ -41,12 +41,12 @@ ticked by hand — `make docs` would put them back. Completed work is recorded h
 | P3.2 | 2026-08-16 | GDPR User Data Export: `POST /api/v1/me/export` & `GET /api/v1/me/export/{id}`, River background export worker collecting data across modules (`user`, `auth`, `rbac`, `audit`), ZIP packaging with `metadata.json`, MinIO upload, 24h presigned URL email delivery, 7-day retention cleanup cron job |
 | P3.3 | 2026-08-16 | GDPR User Account Deletion: `DELETE /api/v1/me`, `POST /api/v1/me/deletion/cancel`, `GET /api/v1/me/deletion/{id}` with 30-day grace period, immediate session revocation (`user.deletion_requested`), daily `DeletionExecutor` cron job (`1_700_000_050`), user/profile anonymisation preserving aggregate stats, preferences/learning profile deletion, and event-driven data purge (`user.deleted`) across `auth` and `rbac`. |
 | WO11 §3.11 | 2026-09-12 | `core.user_preferences.practice_level` (migration `1700000530`; A2, B1, B2 or null): the level the daily practice set is drawn at, chosen once on the practice card and returned by `GET`/`PUT /me/preferences`, so it follows the learner between devices. A PUT that omits it stores null, so every web caller builds its body with `replacementFor`. `core.learning_profiles.declared_level` was not used: nothing writes it. |
+| WO13 §3.5 | 2026-09-14 | Learning profile lifecycle for onboarding & calibration: `GetLearningProfile` and `ReplaceLearningProfile` in service, `Reader.GetLearningProfile` in contract, HTTP endpoints `GET/PUT /api/v1/me/learning-profile`, validating target exam, CEFR levels, weekly minutes, and motivations. Drives `/welcome` wizard and Account Settings. |
 
 That closes the first three generated items, export (P3.2), deletion (P3.3), and the `user.deleted` fan-out. Still open in Phase 1: the
 admin user group (P4.1).
 
-Not started, and deliberately: `core.learning_profiles` has a table and queries but no service or
-endpoint. It gets one when onboarding needs it.
+Landed in WO13 §3.5: `core.learning_profiles` exposed through service, contract, and HTTP endpoints (`GET/PUT /api/v1/me/learning-profile`), wired to onboarding and settings.
 
 ## Deferred (deliberately not doing yet)
 

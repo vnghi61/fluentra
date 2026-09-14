@@ -38,7 +38,9 @@ export const ExamList: React.FC<ExamListProps> = ({
   const navigate = useNavigate();
   const vi = i18n.language.startsWith("vi");
 
-  const [level, setLevel] = useState<ExamLevel>(() => toLevel(userPracticeLevel));
+  const [level, setLevel] = useState<ExamLevel>(() =>
+    toLevel(userPracticeLevel),
+  );
   const [unavailable, setUnavailable] = useState<ReadonlySet<ExamLevel>>(
     () => new Set(),
   );
@@ -53,13 +55,16 @@ export const ExamList: React.FC<ExamListProps> = ({
   const sittingsToday = attempts.data?.sittings_today ?? 0;
   const dailyLimit = attempts.data?.daily_limit;
   const sittingsLeft =
-    dailyLimit === undefined ? undefined : Math.max(0, dailyLimit - sittingsToday);
+    dailyLimit === undefined
+      ? undefined
+      : Math.max(0, dailyLimit - sittingsToday);
   const hasOpenSitting = (attempts.data?.items ?? []).some(
     (a) => a.status === "in_progress",
   );
 
   const levelExams = (exams.data ?? []).filter((exam) => exam.level === level);
-  const levelUnavailable = unavailable.has(level) || (exams.isSuccess && levelExams.length === 0);
+  const levelUnavailable =
+    unavailable.has(level) || (exams.isSuccess && levelExams.length === 0);
 
   const start = async (exam: ExamTemplate, mode: "exam" | "practice") => {
     setIsStarting(true);
@@ -107,7 +112,12 @@ export const ExamList: React.FC<ExamListProps> = ({
   const startDisabled = isStarting || sittingsLeft === 0 || hasOpenSitting;
 
   return (
-    <div className={cn("mx-auto max-w-5xl space-y-10 p-4 sm:p-6 md:p-8", className)}>
+    <div
+      className={cn(
+        "mx-auto max-w-5xl space-y-10 p-4 sm:p-6 md:p-8",
+        className,
+      )}
+    >
       <div className="flex flex-col gap-6 border-b border-border pb-6 md:flex-row md:items-center md:justify-between">
         <div className="space-y-2">
           <h1 className="text-2xl font-extrabold tracking-tight text-text sm:text-4xl">
@@ -121,7 +131,10 @@ export const ExamList: React.FC<ExamListProps> = ({
           <div className="flex shrink-0 items-center gap-4 rounded-2xl border border-border bg-card p-4 sm:p-5">
             <Clock className="h-6 w-6 text-primary" aria-hidden="true" />
             <p className="text-sm font-medium text-text">
-              {t("exam.hub.sittingsLeft", { left: sittingsLeft, limit: dailyLimit })}
+              {t("exam.hub.sittingsLeft", {
+                left: sittingsLeft,
+                limit: dailyLimit,
+              })}
             </p>
           </div>
         )}
@@ -148,7 +161,11 @@ export const ExamList: React.FC<ExamListProps> = ({
             </span>
           )}
         </div>
-        <div className="grid max-w-md grid-cols-3 gap-3" role="group" aria-label={t("exam.hub.chooseLevel")}>
+        <div
+          className="grid max-w-md grid-cols-3 gap-3"
+          role="group"
+          aria-label={t("exam.hub.chooseLevel")}
+        >
           {EXAM_LEVELS.map((lvl) => (
             <button
               key={lvl}
@@ -175,12 +192,18 @@ export const ExamList: React.FC<ExamListProps> = ({
             {t("exam.hub.loading")}
           </p>
         ) : exams.isError ? (
-          <p role="alert" className="rounded-2xl border border-danger/20 bg-danger/10 p-6 text-center text-sm text-danger">
+          <p
+            role="alert"
+            className="rounded-2xl border border-danger/20 bg-danger/10 p-6 text-center text-sm text-danger"
+          >
             {t("exam.hub.loadFailed")}
           </p>
         ) : levelUnavailable ? (
           <div className="space-y-3 rounded-2xl border border-border-subtle bg-surface-muted/50 p-10 text-center">
-            <BookOpen className="mx-auto h-6 w-6 text-text-muted" aria-hidden="true" />
+            <BookOpen
+              className="mx-auto h-6 w-6 text-text-muted"
+              aria-hidden="true"
+            />
             <h2 className="text-base font-bold text-text">
               {t("exam.hub.notAvailableTitle")}
             </h2>
@@ -215,7 +238,9 @@ export const ExamList: React.FC<ExamListProps> = ({
                   onClick={() => void start(exam, "exam")}
                 >
                   <Play className="h-4 w-4" aria-hidden="true" />
-                  <span>{t("exam.hub.startExam", { count: exam.total_minutes })}</span>
+                  <span>
+                    {t("exam.hub.startExam", { count: exam.total_minutes })}
+                  </span>
                 </Button>
                 <Button
                   type="button"
@@ -260,12 +285,18 @@ export const ExamList: React.FC<ExamListProps> = ({
                       {att.exam_title || t("exam.title")}
                     </span>
                     <Badge variant="outline">
-                      {att.mode === "exam" ? t("exam.mode.exam") : t("exam.mode.practice")}
+                      {att.mode === "exam"
+                        ? t("exam.mode.exam")
+                        : t("exam.mode.practice")}
                     </Badge>
                   </div>
                   <div className="flex items-center gap-2 text-xs text-text-muted">
                     <Calendar className="h-3 w-3" aria-hidden="true" />
-                    <span>{new Date(att.started_at).toLocaleDateString(i18n.language)}</span>
+                    <span>
+                      {new Date(att.started_at).toLocaleDateString(
+                        i18n.language,
+                      )}
+                    </span>
                     <span aria-hidden="true">·</span>
                     <span>{statusLabels[att.status]}</span>
                   </div>

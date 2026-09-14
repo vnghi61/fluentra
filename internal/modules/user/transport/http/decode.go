@@ -151,12 +151,18 @@ func validationFailed() *apperr.Error {
 	return apperr.New(apperr.Validation, "VALIDATION_FAILED", "One or more request fields are invalid.")
 }
 
+// The learning profile's body fields that may not be absent or null.
+const (
+	fieldTargetExam  = "target_exam"
+	fieldMotivations = "motivations"
+)
+
 var learningProfileFields = []string{
 	"declared_level",
 	"target_level",
-	"target_exam",
+	fieldTargetExam,
 	"weekly_minutes_goal",
-	"motivations",
+	fieldMotivations,
 }
 
 func decodeLearningProfile(request *http.Request) (domain.LearningProfile, error) {
@@ -164,10 +170,11 @@ func decodeLearningProfile(request *http.Request) (domain.LearningProfile, error
 	if err != nil {
 		return domain.LearningProfile{}, err
 	}
-	if err := requireFields(fields, []string{"target_exam", "motivations"}); err != nil {
+	required := []string{fieldTargetExam, fieldMotivations}
+	if err := requireFields(fields, required); err != nil {
 		return domain.LearningProfile{}, err
 	}
-	if err := rejectNulls(fields, []string{"target_exam", "motivations"}); err != nil {
+	if err := rejectNulls(fields, required); err != nil {
 		return domain.LearningProfile{}, err
 	}
 
@@ -194,17 +201,16 @@ func decodeLearningProfile(request *http.Request) (domain.LearningProfile, error
 		profile.WeeklyMinutesGoal = &goal
 	}
 	var exam string
-	if err := readInto(fields, "target_exam", &exam); err != nil {
+	if err := readInto(fields, fieldTargetExam, &exam); err != nil {
 		return domain.LearningProfile{}, err
 	}
 	profile.TargetExam = domain.TargetExam(exam)
 
 	var motivations []string
-	if err := readInto(fields, "motivations", &motivations); err != nil {
+	if err := readInto(fields, fieldMotivations, &motivations); err != nil {
 		return domain.LearningProfile{}, err
 	}
 	profile.Motivations = motivations
 
 	return profile, nil
 }
-

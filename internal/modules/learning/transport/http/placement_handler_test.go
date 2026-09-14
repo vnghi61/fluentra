@@ -2,202 +2,111 @@ package http_test
 
 import (
 	"bytes"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
-	"github.com/fluentra/fluentra/internal/modules/learning/domain"
-	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
+	"github.com/fluentra/fluentra/internal/modules/learning/service"
 )
 
-func TestPlacementHandler_GetInvitation(t *testing.T) {
-	userID := uuid.New()
-	svc := &fakeLearningService{
-		placementInvDTO: &domain.PlacementInvitationDTO{
-			Eligible:       true,
-			PoolSufficient: true,
-		},
-	}
+func placementRequest(
+	t *testing.T, svc *fakeLearningService, method, path, body string, header http.Header,
+) *httptest.ResponseRecorder {
+	t.Helper()
 	router, err := setupTestRouter(svc)
-	require.NoError(t, err)
-
-	req := httptest.NewRequest(http.MethodGet, "/placement/invitation", nil)
-	req = withActor(req, userID)
+	if err != nil {
+		t.Fatalf("router: %v", err)
+	}
+	req := httptest.NewRequest(method, path, bytes.NewBufferString(body))
+	for key, values := range header {
+		req.Header[key] = values
+	}
+	req = withActor(req, uuid.New())
 	rec := httptest.NewRecorder()
-
 	router.ServeHTTP(rec, req)
-	assert.Equal(t, http.StatusOK, rec.Code)
-
-	var res domain.PlacementInvitationDTO
-	err = json.Unmarshal(rec.Body.Bytes(), &res)
-	require.NoError(t, err)
-	assert.True(t, res.Eligible)
-	assert.True(t, res.PoolSufficient)
+	return rec
 }
 
-func TestPlacementHandler_StartSession(t *testing.T) {
-	userID := uuid.New()
-	sessID := uuid.New()
-	actID := uuid.New()
-
+func TestPlacementRoutes_ReadAndStart(t *testing.T) {
+	sessionID := uuid.New()
 	svc := &fakeLearningService{
-		startPlacementSess: &domain.PlacementSession{
-			ID:                sessID,
-			UserID:            userID,
-			Status:            domain.PlacementSessionStatusInProgress,
-			Stage:             domain.StageFastConvergence,
-			CurrentActivityID: &actID,
-		},
-		startPlacementAct: &lessoncontract.ActivityHierarchy{
-			ActivityID: actID,
-			Kind:       "vocabulary",
-		},
+		overviewDTO:  &service.PlacementOverviewDTO{InviteAvailable: true},
+		placementDTO: &service.PlacementSessionDTO{ID: sessionID, Status: "in_progress"},
+		pathDTO:      &service.StartingPathDTO{Level: "B1"},
+		planDTO:      &service.WeeklyPlanDTO{MinutesGoal: 90},
 	}
-	router, err := setupTestRouter(svc)
-	require.NoError(t, err)
 
-	req := httptest.NewRequest(http.MethodPost, "/placement/sessions", nil)
-	req = withActor(req, userID)
-	rec := httptest.NewRecorder()
-
-	router.ServeHTTP(rec, req)
-	assert.Equal(t, http.StatusOK, rec.Code)
-
-	var body map[string]any
-	err = json.Unmarshal(rec.Body.Bytes(), &body)
-	require.NoError(t, err)
-	assert.NotNil(t, body["session"])
-	assert.NotNil(t, body["current_activity"])
+	cases := []struct {
+		method, path string
+		want         int
+	}{
+		{http.MethodGet, "/me/placement", http.StatusOK},
+		{http.MethodPost, "/me/placement", http.StatusCreated},
+		{http.MethodGet, "/me/placement/sessions/" + sessionID.String(), http.StatusOK},
+		{http.MethodGet, "/me/path", http.StatusOK},
+		{http.MethodGet, "/me/weekly-plan", http.StatusOK},
+	}
+	for _, tc := range cases {
+		rec := placementRequest(t, svc, tc.method, tc.path, "", nil)
+		if rec.Code != tc.want {
+			t.Errorf("%s %s = %d, want %d: %s", tc.method, tc.path, rec.Code, tc.want, rec.Body.String())
+		}
+	}
 }
 
-func TestPlacementHandler_GetSession(t *testing.T) {
-	userID := uuid.New()
-	sessID := uuid.New()
-	actID := uuid.New()
+func TestPlacementRoutes_AnAnswerNeedsAnIdempotencyKey(t *testing.T) {
+	svc := &fakeLearningService{placementDTO: &service.PlacementSessionDTO{}}
+	path := "/me/placement/sessions/" + uuid.NewString() + "/answers"
+	body := `{"activity_id": "` + uuid.NewString() + `", "response": {"selected_option_id": "A"}}`
 
-	svc := &fakeLearningService{
-		getPlacementSess: &domain.PlacementSession{
-			ID:                sessID,
-			UserID:            userID,
-			Status:            domain.PlacementSessionStatusInProgress,
-			Stage:             domain.StageFastConvergence,
-			CurrentActivityID: &actID,
-		},
-		getPlacementAct: &lessoncontract.ActivityHierarchy{
-			ActivityID: actID,
-			Kind:       "vocabulary",
-		},
+	rec := placementRequest(t, svc, http.MethodPost, path, body, nil)
+	if rec.Code < 400 || rec.Code >= 500 {
+		t.Fatalf("an answer without a key = %d, want a 4xx", rec.Code)
 	}
-	router, err := setupTestRouter(svc)
-	require.NoError(t, err)
+	if svc.seenActivity != uuid.Nil {
+		t.Fatal("the service was called without a key")
+	}
 
-	req := httptest.NewRequest(http.MethodGet, "/placement/sessions/"+sessID.String(), nil)
-	req = withActor(req, userID)
-	rec := httptest.NewRecorder()
-
-	router.ServeHTTP(rec, req)
-	assert.Equal(t, http.StatusOK, rec.Code)
-
-	var body map[string]any
-	err = json.Unmarshal(rec.Body.Bytes(), &body)
-	require.NoError(t, err)
-	assert.NotNil(t, body["session"])
-	assert.NotNil(t, body["current_activity"])
+	key := uuid.New()
+	rec = placementRequest(t, svc, http.MethodPost, path, body, http.Header{"Idempotency-Key": {key.String()}})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("an answer with a key = %d: %s", rec.Code, rec.Body.String())
+	}
+	if svc.seenKey != key || svc.seenActivity == uuid.Nil || len(svc.seenResponse) == 0 {
+		t.Fatalf("the handler did not pass the key, activity and response through")
+	}
 }
 
-func TestPlacementHandler_SubmitAnswer(t *testing.T) {
-	userID := uuid.New()
-	sessID := uuid.New()
-	level := "B1"
-
-	svc := &fakeLearningService{
-		submitPlacementSess: &domain.PlacementSession{
-			ID:          sessID,
-			UserID:      userID,
-			Status:      domain.PlacementSessionStatusCompleted,
-			PlacedLevel: &level,
-		},
-		submitPlacementAct:  nil,
-		submitPlacementDone: true,
+func TestPlacementRoutes_AnAnswerNeedsAnActivityAndAResponse(t *testing.T) {
+	svc := &fakeLearningService{placementDTO: &service.PlacementSessionDTO{}}
+	path := "/me/placement/sessions/" + uuid.NewString() + "/answers"
+	rec := placementRequest(t, svc, http.MethodPost, path, `{"response": {}}`,
+		http.Header{"Idempotency-Key": {uuid.NewString()}})
+	if rec.Code < 400 || rec.Code >= 500 {
+		t.Fatalf("an answer without activity_id = %d, want a 4xx", rec.Code)
 	}
-	router, err := setupTestRouter(svc)
-	require.NoError(t, err)
-
-	payload := []byte(`{"response":{"selected_option_id":"A"}}`)
-	req := httptest.NewRequest(http.MethodPost, "/placement/sessions/"+sessID.String()+"/answers", bytes.NewReader(payload))
-	req = withActor(req, userID)
-	rec := httptest.NewRecorder()
-
-	router.ServeHTTP(rec, req)
-	assert.Equal(t, http.StatusOK, rec.Code)
-
-	var body map[string]any
-	err = json.Unmarshal(rec.Body.Bytes(), &body)
-	require.NoError(t, err)
-	assert.Equal(t, true, body["finished"])
 }
 
-func TestPlacementHandler_GetStartingPath(t *testing.T) {
-	userID := uuid.New()
-	courseID := uuid.New()
-	svc := &fakeLearningService{
-		pathDTO: &domain.StartingPathDTO{
-			PlacedLevel:            "B1",
-			RecommendedCourseID:    courseID,
-			RecommendedCourseTitle: "Intermediate English",
-		},
+func TestPlacementRoutes_ProductivePassesTheSkip(t *testing.T) {
+	svc := &fakeLearningService{placementDTO: &service.PlacementSessionDTO{}}
+	path := "/me/placement/sessions/" + uuid.NewString() + "/productive"
+	rec := placementRequest(t, svc, http.MethodPost, path, `{"skip": true}`, nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("productive = %d: %s", rec.Code, rec.Body.String())
 	}
-	router, err := setupTestRouter(svc)
-	require.NoError(t, err)
-
-	req := httptest.NewRequest(http.MethodGet, "/me/path", nil)
-	req = withActor(req, userID)
-	rec := httptest.NewRecorder()
-
-	router.ServeHTTP(rec, req)
-	assert.Equal(t, http.StatusOK, rec.Code)
-
-	var res domain.StartingPathDTO
-	err = json.Unmarshal(rec.Body.Bytes(), &res)
-	require.NoError(t, err)
-	assert.Equal(t, "B1", res.PlacedLevel)
-	assert.Equal(t, courseID, res.RecommendedCourseID)
+	if svc.seenSkip == nil || !*svc.seenSkip {
+		t.Fatal("skip was not passed through")
+	}
 }
 
-func TestPlacementHandler_GetWeeklyPlan(t *testing.T) {
-	userID := uuid.New()
-	now := time.Now().UTC()
-	svc := &fakeLearningService{
-		planDTO: &domain.WeeklyPlan{
-			ID:            uuid.New(),
-			UserID:        userID,
-			WeekStartDate: now,
-			PlacedLevel:   "B1",
-			WeakestSkill:  "speaking",
-			DailyTargets: []domain.DailyPlanTarget{
-				{DayOfWeek: "Monday", TargetMinutes: 20, PrimarySkill: "speaking"},
-			},
-		},
+func TestPlacementRoutes_UnspecifiedAliasesAreNotMounted(t *testing.T) {
+	svc := &fakeLearningService{overviewDTO: &service.PlacementOverviewDTO{}}
+	for _, path := range []string{"/placement/invitation", "/placement/sessions"} {
+		rec := placementRequest(t, svc, http.MethodGet, path, "", nil)
+		if rec.Code == http.StatusOK {
+			t.Errorf("GET %s is served, but it is in no spec", path)
+		}
 	}
-	router, err := setupTestRouter(svc)
-	require.NoError(t, err)
-
-	req := httptest.NewRequest(http.MethodGet, "/me/weekly-plan", nil)
-	req = withActor(req, userID)
-	rec := httptest.NewRecorder()
-
-	router.ServeHTTP(rec, req)
-	assert.Equal(t, http.StatusOK, rec.Code)
-
-	var res domain.WeeklyPlan
-	err = json.Unmarshal(rec.Body.Bytes(), &res)
-	require.NoError(t, err)
-	assert.Equal(t, "B1", res.PlacedLevel)
-	assert.Equal(t, "speaking", res.WeakestSkill)
 }
