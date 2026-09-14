@@ -4,7 +4,9 @@
 CREATE TABLE IF NOT EXISTS skill.listening_plays (
     id                  uuid PRIMARY KEY,
     user_id             uuid NOT NULL REFERENCES core.users(id) ON DELETE CASCADE,
-    content_version_id  uuid NOT NULL REFERENCES content.content_versions(id),
+    -- No key to content.content_versions: DB4 allows `skill` to leave its schema only for
+    -- core.users. The service resolves the version through the content contract first.
+    content_version_id  uuid NOT NULL,
     context_type        varchar(32) NOT NULL,
     context_id          uuid NOT NULL,
     played_at           timestamptz NOT NULL DEFAULT clock_timestamp()

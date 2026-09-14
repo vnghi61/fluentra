@@ -36,12 +36,14 @@ func (m *fencedExamModel) Complete(_ context.Context, req ai.Request) (ai.Respon
 	m.calls++
 	n := m.calls
 	m.mu.Unlock()
+	prompt := fmt.Sprintf("Prompt %d: some people think cities should ban cars from their centres. "+
+		"Discuss both views and give your own opinion with reasons.", n)
 	body := fmt.Sprintf(`{
-		"prompt": "Prompt %d: some people think cities should ban cars from their centres. Discuss both views and give your own opinion with reasons.",
+		"prompt": "%s",
 		"model_answer": "%s",
 		"min_words": 150,
 		"topic": "Cities %d"
-	}`, n, modelAnswer(), n)
+	}`, prompt, modelAnswer(), n)
 	return ai.Response{Text: "```json\n" + body + "\n```", Model: "fenced-test"}, nil
 }
 
