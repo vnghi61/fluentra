@@ -244,6 +244,8 @@ type Deps struct {
 	Synthesiser AudioSynthesiser
 	// Audio finds a listening item's rendered clip when its body carries no key.
 	Audio contract.AudioLocator
+	// AudioRender asks for newly published listening items to be rendered now.
+	AudioRender AudioRenderRequester
 	// User reads the learner's learning profile: the declared level, the target
 	// level and the weekly minutes.
 	User usercontract.LearningProfileReader
@@ -287,6 +289,7 @@ type Service struct {
 	authorResolver  contract.AuthorResolver
 	synthesiser     AudioSynthesiser
 	audio           contract.AudioLocator
+	audioRender     AudioRenderRequester
 
 	// poolMu guards poolLayout, the practice pool's course and slot lessons,
 	// resolved once per process.
@@ -340,6 +343,7 @@ func New(deps Deps) *Service {
 		authorResolver:  deps.AuthorResolver,
 		synthesiser:     deps.Synthesiser,
 		audio:           deps.Audio,
+		audioRender:     deps.AudioRender,
 	}
 }
 

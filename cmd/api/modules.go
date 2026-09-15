@@ -152,6 +152,9 @@ type identityDeps struct {
 	// SpeechASRModel is the speech recognition model name.
 	SpeechASRModel string
 
+	// SpeechTTSVoice is the configured voice listening clips are looked up by.
+	SpeechTTSVoice string
+
 	// Transcriber is the audio transcription provider adapter.
 	Transcriber media.Transcriber
 
@@ -311,7 +314,7 @@ func newIdentity(deps identityDeps) *identity {
 		Storage:   deps.Storage,
 		Sittings:  lazyListeningSittings{of: assembled},
 		Placement: lazyPlacementPlays{of: assembled},
-		Audio:     media.NewCacheLocator(assembled.content.TTSCache()),
+		Audio:     media.NewCacheLocator(assembled.content.TTSCache()).WithVoice(deps.SpeechTTSVoice),
 	})
 
 	assembled.speaking = speaking.New(speaking.Deps{
@@ -361,7 +364,7 @@ func newIdentity(deps identityDeps) *identity {
 		),
 		Metrics:       deps.Instruments,
 		DeclaredKinds: buildDeclaredKinds(),
-		Audio:         media.NewCacheLocator(assembled.content.TTSCache()),
+		Audio:         media.NewCacheLocator(assembled.content.TTSCache()).WithVoice(deps.SpeechTTSVoice),
 		Env:           deps.Env,
 		AI:            deps.AI,
 		User:          assembled.user.LearningProfileReader(),

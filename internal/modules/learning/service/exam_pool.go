@@ -238,7 +238,10 @@ func (s *Service) TopUpExamPool(ctx context.Context) error {
 
 	for _, level := range examLevels {
 		for _, slot := range examSlots {
-			s.topUpExamSlot(ctx, layout, level, slot, author)
+			if stop := s.topUpExamSlot(ctx, layout, level, slot, author); stop {
+				slog.WarnContext(ctx, "exam pool top-up stopped: every AI provider is out of quota or unavailable")
+				return nil
+			}
 		}
 	}
 	return nil
@@ -256,18 +259,20 @@ func (s *Service) resolveGeneratorAuthor(ctx context.Context) uuid.UUID {
 	return uuid.Nil
 }
 
+// topUpExamSlot fills one slot, and reports true when every AI provider is
+// refusing so the run stops.
 func (s *Service) topUpExamSlot(
 	ctx context.Context, layout *examPoolLayout, level string, slot examSlotSpec, author uuid.UUID,
-) {
+) (stop bool) {
 	activities, err := s.examSlotActivities(ctx, layout, level, slot.slotName)
 	if err != nil {
 		slog.ErrorContext(ctx, "could not list exam pool slot", "level", level, "slot", slot.slotName, "error", err)
-		return
+		return false
 	}
 	toAdd, err := s.itemsToAdd(ctx, activities)
 	if err != nil {
 		slog.ErrorContext(ctx, "could not size exam pool top-up", "level", level, "slot", slot.slotName, "error", err)
-		return
+		return false
 	}
 
 	lessonID := layout.lessons[examSlotKey{level: level, slotName: slot.slotName}]
@@ -275,6 +280,9 @@ func (s *Service) topUpExamSlot(
 	for i := 0; i < toAdd; i++ {
 		body, err := s.generateAndVerifyExamItem(ctx, level, slot, author, lessonID, activities)
 		if err != nil {
+			if errors.Is(err, ai.ErrProvidersUnavailable) {
+				return true
+			}
 			slog.WarnContext(ctx, "exam pool item not added", "level", level, "slot", slot.slotName, "error", err)
 			continue
 		}
@@ -284,6 +292,10 @@ func (s *Service) topUpExamSlot(
 	if toAdd > 0 {
 		slog.InfoContext(ctx, "exam pool slot topped up", "level", level, "slot", slot.slotName, "added", added)
 	}
+	if slot.kind == kindListeningComprehension {
+		s.requestAudioRender(ctx, added)
+	}
+	return false
 }
 
 func (s *Service) generateAndVerifyExamItem(
@@ -436,9 +448,10 @@ func parseListeningCandidate(raw json.RawMessage) (listeningCand, error) {
 	if len(cand.Questions) < 4 {
 		return cand, fmt.Errorf("check 1 failed: listening must have at least 4 questions, got %d", len(cand.Questions))
 	}
-	if cand.Voice == "" {
-		cand.Voice = "en-US-Standard-C"
-	}
+	// The voice is configuration (media.ConfiguredVoice), not the model's to pick.
+	// The default written here was a cloud provider's voice name that no engine
+	// could render, so no clip for these items could ever be made or found.
+	cand.Voice = ""
 	return cand, nil
 }
 

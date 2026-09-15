@@ -259,25 +259,30 @@ func (s *Service) TopUpPlacementPool(ctx context.Context) error {
 
 	for _, level := range domain.PlacementBands {
 		for _, slot := range placementSlots {
-			s.topUpPlacementSlot(ctx, layout, level, slot, author)
+			if stop := s.topUpPlacementSlot(ctx, layout, level, slot, author); stop {
+				slog.WarnContext(ctx, "placement pool top-up stopped: every AI provider is out of quota or unavailable")
+				return nil
+			}
 		}
 	}
 	return nil
 }
 
+// topUpPlacementSlot fills one slot, and reports true when every AI provider is
+// refusing so the run stops.
 func (s *Service) topUpPlacementSlot(
 	ctx context.Context, layout *placementPoolLayout, level string, slot placementSlotSpec, author uuid.UUID,
-) {
+) (stop bool) {
 	activities, err := s.placementSlotActivities(ctx, layout, level, slot.slotName)
 	if err != nil {
 		slog.ErrorContext(ctx, "could not list placement pool slot", "level", level, "slot", slot.slotName, "error", err)
-		return
+		return false
 	}
 	toAdd, err := s.placementItemsToAdd(ctx, activities, slot.target)
 	if err != nil {
 		slog.ErrorContext(ctx, "could not size placement pool top-up",
 			"level", level, "slot", slot.slotName, "error", err)
-		return
+		return false
 	}
 
 	lessonID := layout.lessons[placementSlotKey{level: level, slotName: slot.slotName}]
@@ -285,6 +290,9 @@ func (s *Service) topUpPlacementSlot(
 	for i := 0; i < toAdd; i++ {
 		body, err := s.generateAndVerifyPlacementItem(ctx, level, slot, author, lessonID, activities)
 		if err != nil {
+			if errors.Is(err, ai.ErrProvidersUnavailable) {
+				return true
+			}
 			slog.WarnContext(ctx, "placement pool item not added", "level", level, "slot", slot.slotName, "error", err)
 			continue
 		}
@@ -294,6 +302,10 @@ func (s *Service) topUpPlacementSlot(
 	if toAdd > 0 {
 		slog.InfoContext(ctx, "placement pool slot topped up", "level", level, "slot", slot.slotName, "added", added)
 	}
+	if slot.kind == kindListeningComprehension {
+		s.requestAudioRender(ctx, added)
+	}
+	return false
 }
 
 // placementItemsToAdd is five per run until the target, then five only when a

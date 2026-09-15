@@ -125,14 +125,36 @@ func TestCachedSynthesiser_CacheMiss_WithEngine(t *testing.T) {
 }
 
 func TestMockSynthesiser(t *testing.T) {
-	synth := &MockSynthesiser{}
-	key, err := synth.Synthesise(context.Background(), "Hello", "voice-1")
+	synth := &MockSynthesiser{Voice: "voice-1"}
+	key, err := synth.Synthesise(context.Background(), "Hello", "the-items-own-voice")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	expected := "mock-tts/voice-1/" + HashText("Hello") + ".mp3"
 	if key != expected {
 		t.Fatalf("expected %q, got %q", expected, key)
+	}
+}
+
+// Every listening item generated so far says "en-US-Standard-C", a cloud voice
+// name no engine here has. The clip is rendered in the configured voice, so the
+// lookup has to use that voice too, or no rendered clip is ever found.
+func TestCacheLocator_FindsAClipByTheConfiguredVoiceWhateverTheItemSays(t *testing.T) {
+	cache := newFakeTTSCache()
+	script := "Attention all passengers on flight 402."
+	_ = cache.Put(context.Background(), HashText(script), DefaultVoice, "piper", "1.0", "tts/clip.wav")
+
+	key, found, err := NewCacheLocator(cache).AudioKey(context.Background(), script, "en-US-Standard-C")
+	if err != nil || !found || key != "tts/clip.wav" {
+		t.Fatalf("got key %q, found %v, err %v; want the clip rendered in the default voice", key, found, err)
+	}
+
+	configured := newFakeTTSCache()
+	_ = configured.Put(context.Background(), HashText(script), "en_GB-alan-medium", "piper", "1.0", "tts/gb.wav")
+	key, found, err = NewCacheLocator(configured).WithVoice("en_GB-alan-medium").
+		AudioKey(context.Background(), script, "en-US-Standard-C")
+	if err != nil || !found || key != "tts/gb.wav" {
+		t.Fatalf("got key %q, found %v, err %v; want the clip rendered in the configured voice", key, found, err)
 	}
 }
 

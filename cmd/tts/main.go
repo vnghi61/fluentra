@@ -227,7 +227,6 @@ func processItem(
 
 type listeningBody struct {
 	Script string `json:"script"`
-	Voice  string `json:"voice"`
 }
 
 func processAll(
@@ -263,12 +262,8 @@ func processAll(
 			continue
 		}
 
-		voice := body.Voice
-		if voice == "" {
-			voice = defaultVoice
-		}
-
-		key, err := processItem(ctx, db, uploader, engine, body.Script, voice)
+		// The configured voice, never the item's: see media.ConfiguredVoice.
+		key, err := processItem(ctx, db, uploader, engine, body.Script, media.ConfiguredVoice(defaultVoice))
 		if err != nil {
 			_, _ = fmt.Fprintf(out, "Warning: failed to synthesise item %s: %v\n", id, err)
 			continue

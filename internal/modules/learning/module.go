@@ -69,6 +69,8 @@ type Deps struct {
 	Synthesiser service.AudioSynthesiser
 	// Audio finds a listening item's rendered clip in the TTS cache.
 	Audio contract.AudioLocator
+	// AudioRender asks for newly published listening items to be rendered now.
+	AudioRender service.AudioRenderRequester
 }
 
 // Module represents the learning module, assembled.
@@ -146,6 +148,7 @@ func New(deps Deps) *Module {
 		AuthorResolver:    deps.AuthorResolver,
 		Synthesiser:       deps.Synthesiser,
 		Audio:             deps.Audio,
+		AudioRender:       deps.AudioRender,
 		User:              deps.User,
 		Flags:             deps.Flags,
 		Courses:           deps.Courses,
