@@ -18,6 +18,9 @@ inputs:
 You generate a high-quality English practice or exam item for learners at CEFR level {{.CEFRLevel}}.
 
 The activity kind is: {{.Kind}}.
+{{- if .TaskType}}
+The task type is: {{.TaskType}}.
+{{- end}}
 
 ## Instructions by Kind
 
