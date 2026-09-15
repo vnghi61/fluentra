@@ -31,6 +31,7 @@ import {
   type ReadingQuestionItem,
   ExerciseReorder,
   ExerciseWriting,
+  ExerciseSentenceTransform,
   ActivityUnavailable,
   ExitDialog,
   ReportDialog,
@@ -67,6 +68,10 @@ interface GapFillConfig {
   sentence_before?: string;
   sentence_after?: string;
   expected_answer?: string;
+}
+
+interface SentenceTransformConfig {
+  prompt?: string;
 }
 
 interface ListenTypeConfig {
@@ -617,6 +622,7 @@ export function LessonPage(): React.JSX.Element {
 
   const mcConfig = rawConfig as MultipleChoiceConfig;
   const gapConfig = rawConfig as GapFillConfig;
+  const transformConfig = rawConfig as SentenceTransformConfig;
   const fcConfig = rawConfig as FlashcardConfig;
   const listenConfig = rawConfig as ListenTypeConfig;
   const matchConfig = rawConfig as MatchConfig;
@@ -634,10 +640,21 @@ export function LessonPage(): React.JSX.Element {
     Array.isArray(mcConfig.options) &&
     mcConfig.options.length > 0;
 
+  // A curriculum sentence transform is authored as a gap fill: the instruction in
+  // `prompt`, the sentence around the blank in `sentence_before`/`sentence_after`.
+  // It keeps the gap-fill renderer, which shows that sentence.
   const canRenderGapFill =
     (kind === "vocab_gap_fill" || kind === "grammar_sentence_transform") &&
     typeof gapConfig.expected_answer === "string" &&
     gapConfig.expected_answer !== "";
+
+  // A generated one carries the whole task in `prompt` and nothing to fill in,
+  // so it is rewritten whole.
+  const canRenderSentenceTransform =
+    kind === "grammar_sentence_transform" &&
+    !canRenderGapFill &&
+    typeof transformConfig.prompt === "string" &&
+    transformConfig.prompt !== "";
 
   const canRenderFlashcard =
     kind === "vocab_flashcard" &&
@@ -748,6 +765,7 @@ export function LessonPage(): React.JSX.Element {
         {!(signedIn && attemptStartFailed) &&
           !canRenderMultipleChoice &&
           !canRenderGapFill &&
+          !canRenderSentenceTransform &&
           !canRenderFlashcard &&
           !canRenderListenType &&
           !canRenderMatch &&
@@ -788,6 +806,22 @@ export function LessonPage(): React.JSX.Element {
             sentenceBeforeBlank={gapConfig.sentence_before ?? ""}
             sentenceAfterBlank={gapConfig.sentence_after ?? ""}
             expectedAnswer={gapConfig.expected_answer ?? ""}
+            feedback={submissionResult?.feedback}
+            explanation={submissionResult?.explanation}
+            isSubmitted={isSubmitted}
+            isCorrect={submissionResult?.correct}
+            isLoading={isSubmitting || isAttemptPending}
+            onSubmit={(answerText) =>
+              void handleSubmit({ text_answer: answerText })
+            }
+            onContinue={handleContinue}
+          />
+        )}
+
+        {canRenderSentenceTransform && (
+          <ExerciseSentenceTransform
+            prompt={transformConfig.prompt ?? ""}
+            expectedAnswer={submissionResult?.correct_answer}
             feedback={submissionResult?.feedback}
             explanation={submissionResult?.explanation}
             isSubmitted={isSubmitted}

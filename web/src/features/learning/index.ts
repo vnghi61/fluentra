@@ -20,6 +20,7 @@ export * from "./components/Runner/ExerciseReorder";
 export * from "./components/Runner/ExerciseContextChoice";
 export * from "./components/Runner/ExerciseReading";
 export * from "./components/Runner/ExerciseWriting";
+export * from "./components/Runner/ExerciseSentenceTransform";
 export * from "./components/Runner/ActivityUnavailable";
 export * from "./components/GuestNotice";
 export * from "./components/Runner/ExitDialog";
