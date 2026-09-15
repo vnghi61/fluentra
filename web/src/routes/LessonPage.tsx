@@ -67,7 +67,6 @@ interface GapFillConfig {
   prompt?: string;
   sentence_before?: string;
   sentence_after?: string;
-  expected_answer?: string;
 }
 
 interface SentenceTransformConfig {
@@ -643,10 +642,14 @@ export function LessonPage(): React.JSX.Element {
   // A curriculum sentence transform is authored as a gap fill: the instruction in
   // `prompt`, the sentence around the blank in `sentence_before`/`sentence_after`.
   // It keeps the gap-fill renderer, which shows that sentence.
+  //
+  // Decided from the sentence, not from `expected_answer`: that is the answer,
+  // and the server now redacts it. The runner used to require it, which is why
+  // every visitor received the word for the blank before typing anything.
   const canRenderGapFill =
     (kind === "vocab_gap_fill" || kind === "grammar_sentence_transform") &&
-    typeof gapConfig.expected_answer === "string" &&
-    gapConfig.expected_answer !== "";
+    (Boolean(gapConfig.sentence_before?.trim()) ||
+      Boolean(gapConfig.sentence_after?.trim()));
 
   // A generated one carries the whole task in `prompt` and nothing to fill in,
   // so it is rewritten whole.
@@ -805,7 +808,7 @@ export function LessonPage(): React.JSX.Element {
             prompt={gapConfig.prompt ?? ""}
             sentenceBeforeBlank={gapConfig.sentence_before ?? ""}
             sentenceAfterBlank={gapConfig.sentence_after ?? ""}
-            expectedAnswer={gapConfig.expected_answer ?? ""}
+            expectedAnswer={submissionResult?.correct_answer}
             feedback={submissionResult?.feedback}
             explanation={submissionResult?.explanation}
             isSubmitted={isSubmitted}

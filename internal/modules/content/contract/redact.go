@@ -31,12 +31,17 @@ var answerKeys = map[string]struct{}{
 	// leak the rest of this list exists to close.
 	"correct_pairs": {},
 	"acceptable":    {},
-	"answer":        {},
-	"answers":       {},
-	"answer_key":    {},
-	"solution":      {},
-	"solutions":     {},
-	"rubric":        {},
+	// Gap fills and curriculum sentence transforms: the word that goes in the
+	// blank, written into the activity config by the seed and the vocabulary
+	// generator. The runner used it to decide it could draw a gap fill, so the
+	// answer reached anonymous visitors before they typed anything.
+	"expected_answer": {},
+	"answer":          {},
+	"answers":         {},
+	"answer_key":      {},
+	"solution":        {},
+	"solutions":       {},
+	"rubric":          {},
 	// Listening comprehension: the script/transcript is answer-bearing and turns
 	// listening into reading if leaked to the client before grading.
 	"script":     {},

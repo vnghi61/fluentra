@@ -90,13 +90,17 @@ func TestRedactForLearner_SeededKinds(t *testing.T) {
 			`{"prompt":"p","correct_answer":"habit","acceptable":["habit","routine"]}`),
 		"vocab_flashcard": json.RawMessage(
 			`{"prompt":"p","correct_answer":"habit","acceptable":["habit","good"]}`),
+		// The activity config of a gap fill or a curriculum sentence transform,
+		// which carried the word for the blank to every visitor.
+		"vocab_gap_fill config": json.RawMessage(
+			`{"prompt":"p","sentence_before":"I try to keep a daily","sentence_after":"of reading.","expected_answer":"habit"}`),
 	}
 
 	for kind, body := range cases {
 		t.Run(kind, func(t *testing.T) {
 			t.Parallel()
 			redacted := string(contract.RedactForLearner(body))
-			leaks := []string{keyCorrectAnswer, keyAcceptable, keyCorrectOptionID, `"habit"`, "routine"}
+			leaks := []string{keyCorrectAnswer, keyAcceptable, keyCorrectOptionID, "expected_answer", `"habit"`, "routine"}
 			for _, leaked := range leaks {
 				if strings.Contains(redacted, leaked) {
 					t.Errorf("%s leaked %q: %s", kind, leaked, redacted)

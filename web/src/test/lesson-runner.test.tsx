@@ -107,7 +107,6 @@ describe("LessonPage Runner (P10.3)", () => {
           prompt: "Complete the sentence with the target word",
           sentence_before: "She was very",
           sentence_after: "about recording all data.",
-          expected_answer: "meticulous",
         } as unknown as Record<string, never>,
       },
       {
@@ -494,7 +493,6 @@ describe("LessonPage Runner (P10.3)", () => {
             sentence_before:
               "She started painting at 9 AM and is still painting now. She",
             sentence_after: "since 9 AM.",
-            expected_answer: "has been painting",
           } as unknown as Record<string, never>,
         },
       ],
