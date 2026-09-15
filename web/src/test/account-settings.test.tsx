@@ -136,6 +136,35 @@ describe("Account Management Settings (P5.2)", () => {
       await user.click(option);
       expect(tzTrigger).toHaveTextContent(/Asia\/Ho Chi Minh/i);
     });
+
+    it("searches countries by name or code and saves the chosen code", async () => {
+      let patchedData: unknown = null;
+      server.use(
+        http.patch("/api/v1/me", async ({ request }) => {
+          patchedData = await request.json();
+          return HttpResponse.json({
+            ...mockProfile,
+            profile: { ...mockProfile.profile, ...(patchedData as object) },
+          });
+        }),
+      );
+      const user = userEvent.setup();
+      render(<ProfileSettings initialProfile={mockProfile} />);
+
+      const countryTrigger = screen.getByRole("combobox", { name: /Country/i });
+      expect(countryTrigger).toHaveTextContent(/Vietnam/i);
+      await user.click(countryTrigger);
+
+      const searchInput = screen.getByPlaceholderText(/Search country/i);
+      await user.type(searchInput, "JP");
+      await user.click(screen.getByRole("option", { name: /Japan/i }));
+      expect(countryTrigger).toHaveTextContent(/Japan/i);
+
+      await user.click(screen.getByRole("button", { name: /Save Changes/i }));
+      await waitFor(() => {
+        expect(patchedData).toMatchObject({ country: "JP" });
+      });
+    });
   });
 
   describe("Avatar Direct-to-Storage Upload", () => {

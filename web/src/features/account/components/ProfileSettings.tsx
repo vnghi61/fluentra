@@ -1,17 +1,14 @@
-import React, { useMemo, useRef, useState, useEffect } from "react";
+import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Camera,
-  Check,
   CheckCircle2,
-  ChevronDown,
   Clock,
   Globe,
   Loader2,
   Mail,
-  Search,
   User,
   AlertCircle,
 } from "lucide-react";
@@ -22,22 +19,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  SearchableSelect,
+  type SearchableSelectOption,
+} from "@/components/ui/searchable-select";
+import {
   countryOptions,
   timezoneOptions,
   getTimezoneInfo,
-  type TimezoneInfo,
 } from "@/lib/locales";
 
 interface ProfileSettingsProps {
   initialProfile: UserProfile;
   onProfileUpdated?: (profile: UserProfile) => void;
 }
-
-/** One class string for both selects, so they cannot drift apart. */
-const SELECT_CLASS =
-  "flex h-11 min-h-[44px] w-full rounded-lg border border-border-subtle " +
-  "bg-surface-card px-3 text-base text-text focus:outline-none " +
-  "focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50";
 
 export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
   initialProfile,
@@ -46,19 +40,34 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
   const { t, i18n } = useTranslation();
   const [profile, setProfile] = useState<UserProfile>(initialProfile);
 
-  // Memoised: the country list is ~200 Intl lookups plus a locale-aware sort,
+  // Memoised: the country list is ~250 Intl lookups plus a locale-aware sort,
   // and this form re-renders on every keystroke.
-  const countries = useMemo(
-    () => countryOptions(i18n.language),
-    [i18n.language],
+  //
+  // A searchable list, like the time zone, not a native select: ~250 countries
+  // is too many to scroll, and a native select cannot be searched by the
+  // English name or the code. The first entry clears the field.
+  const countries = useMemo<SearchableSelectOption[]>(
+    () => [
+      { value: "", label: t("account.countryUnset") },
+      ...countryOptions(i18n.language).map((c) => ({
+        value: c.code,
+        label: c.name,
+        searchTerms: c.searchTerms,
+      })),
+    ],
+    [i18n.language, t],
   );
-  const timezones = useMemo(
-    () => timezoneOptions(profile.profile.timezone).map(getTimezoneInfo),
+  const timezones = useMemo<SearchableSelectOption[]>(
+    () =>
+      timezoneOptions(profile.profile.timezone)
+        .map(getTimezoneInfo)
+        .map((tz) => ({
+          value: tz.id,
+          label: tz.label,
+          searchTerms: tz.searchTerms,
+        })),
     [profile.profile.timezone],
   );
-  const [isTzOpen, setIsTzOpen] = useState(false);
-  const [tzSearch, setTzSearch] = useState("");
-  const tzComboboxRef = useRef<HTMLDivElement>(null);
 
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -87,41 +96,8 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
     },
   });
 
+  const selectedCountry = watch("country") ?? "";
   const selectedTz = watch("timezone");
-  const selectedTzInfo = useMemo<TimezoneInfo>(
-    () =>
-      timezones.find((tz) => tz.id === selectedTz) ??
-      getTimezoneInfo(selectedTz || "UTC"),
-    [timezones, selectedTz],
-  );
-
-  const filteredTimezones = useMemo(() => {
-    const q = tzSearch.trim().toLowerCase();
-    if (!q) return timezones;
-    return timezones.filter((tz) => tz.searchTerms.includes(q));
-  }, [timezones, tzSearch]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        tzComboboxRef.current &&
-        !tzComboboxRef.current.contains(event.target as Node)
-      ) {
-        setIsTzOpen(false);
-      }
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setIsTzOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, []);
 
   const onSubmit = async (values: ProfileFormValues) => {
     setIsSaving(true);
@@ -319,19 +295,25 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
             {/* A list, not a text box. The server stores an ISO alpha-2 code and
                 validated only the length, so "US" and "XX" were equally
                 acceptable and "Viet Nam" was rejected for being too long. */}
-            <select
+            <input type="hidden" {...register("country")} />
+            <SearchableSelect
               id="country"
-              {...register("country")}
-              aria-invalid={!!errors.country}
-              className={SELECT_CLASS}
-            >
-              <option value="">{t("account.countryUnset")}</option>
-              {countries.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+              value={selectedCountry}
+              options={countries}
+              onChange={(code) =>
+                setValue("country", code, {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                })
+              }
+              placeholder={t("account.countryUnset", "Not set")}
+              searchPlaceholder={t(
+                "account.searchCountry",
+                "Search country or country code...",
+              )}
+              emptyText={t("account.noCountriesFound", "No countries found")}
+              invalid={!!errors.country}
+            />
             {errors.country && (
               <p className="text-xs text-danger-accent">
                 {errors.country.message}
@@ -339,98 +321,32 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
             )}
           </div>
 
-          {/* Timezone Combobox */}
-          <div className="space-y-2" ref={tzComboboxRef}>
+          {/* Timezone */}
+          <div className="space-y-2">
             <Label htmlFor="timezone" className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-text-muted" />
               {t("account.timezone")}
             </Label>
             <input type="hidden" {...register("timezone")} />
-            <div className="relative">
-              <button
-                id="timezone"
-                type="button"
-                role="combobox"
-                aria-haspopup="listbox"
-                aria-expanded={isTzOpen}
-                aria-controls="timezone-listbox"
-                onClick={() => {
-                  setIsTzOpen((prev) => !prev);
-                  setTzSearch("");
-                }}
-                className={
-                  "flex h-11 min-h-[44px] w-full items-center justify-between rounded-lg border border-border-subtle " +
-                  "bg-surface-card px-3 text-base text-text focus:outline-none " +
-                  "focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
-                }
-              >
-                <span className="truncate">{selectedTzInfo.label}</span>
-                <ChevronDown className="h-4 w-4 text-text-muted shrink-0 ml-2" />
-              </button>
-
-              {isTzOpen && (
-                <div className="absolute z-50 mt-1 max-h-64 w-full overflow-hidden rounded-lg border border-border-subtle bg-surface-card shadow-xl flex flex-col">
-                  <div className="p-2 border-b border-border-subtle bg-surface-card">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
-                      <input
-                        type="text"
-                        value={tzSearch}
-                        onChange={(e) => setTzSearch(e.target.value)}
-                        placeholder={t(
-                          "account.searchTimezone",
-                          "Search timezone, city, country, or UTC offset...",
-                        )}
-                        aria-label={t(
-                          "account.searchTimezone",
-                          "Search timezone",
-                        )}
-                        className="w-full pl-9 pr-3 py-2 text-base rounded-md border border-border-subtle bg-surface-muted text-text focus:outline-none focus:ring-2 focus:ring-primary min-h-[44px]"
-                        autoFocus
-                      />
-                    </div>
-                  </div>
-                  <ul
-                    id="timezone-listbox"
-                    role="listbox"
-                    className="overflow-y-auto max-h-48 p-1 divide-y divide-border-subtle/20"
-                  >
-                    {filteredTimezones.length === 0 ? (
-                      <li className="p-3 text-sm text-text-muted text-center">
-                        {t("account.noTimezonesFound", "No timezones found")}
-                      </li>
-                    ) : (
-                      filteredTimezones.map((tz) => (
-                        <li
-                          key={tz.id}
-                          role="option"
-                          aria-selected={tz.id === selectedTz}
-                          onClick={() => {
-                            setValue("timezone", tz.id, {
-                              shouldDirty: true,
-                              shouldValidate: true,
-                            });
-                            setIsTzOpen(false);
-                            setTzSearch("");
-                          }}
-                          className={
-                            "flex items-center justify-between px-3 py-2.5 min-h-[44px] text-base rounded-md cursor-pointer transition-colors hover:bg-surface-muted " +
-                            (tz.id === selectedTz
-                              ? "bg-primary/10 text-primary-accent font-medium"
-                              : "text-text")
-                          }
-                        >
-                          <span className="truncate">{tz.label}</span>
-                          {tz.id === selectedTz && (
-                            <Check className="h-4 w-4 text-primary-accent shrink-0 ml-2" />
-                          )}
-                        </li>
-                      ))
-                    )}
-                  </ul>
-                </div>
+            <SearchableSelect
+              id="timezone"
+              value={selectedTz}
+              options={timezones}
+              onChange={(zone) =>
+                setValue("timezone", zone, {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                })
+              }
+              // A zone the browser cannot enumerate still names itself.
+              placeholder={getTimezoneInfo(selectedTz || "UTC").label}
+              searchPlaceholder={t(
+                "account.searchTimezone",
+                "Search timezone, city, country, or UTC offset...",
               )}
-            </div>
+              emptyText={t("account.noTimezonesFound", "No timezones found")}
+              invalid={!!errors.timezone}
+            />
             {errors.timezone && (
               <p className="text-xs text-danger-accent">
                 {errors.timezone.message}
