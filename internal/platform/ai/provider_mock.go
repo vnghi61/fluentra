@@ -63,11 +63,11 @@ func (p *MockProvider) Complete(_ context.Context, req Request) (Response, error
 	case TaskGradeSpeaking:
 		return p.gradeSpeaking(req)
 	case TaskPracticeGenerate:
-		return p.practiceGenerate(req)
+		return distinctMockItem(p.practiceGenerate(req))
 	case TaskPracticeSolve:
 		return p.practiceSolve(req)
 	case TaskListeningGenerate:
-		return p.listeningGenerate(req)
+		return distinctMockItem(p.listeningGenerate(req))
 	case TaskPlacementGenerate:
 		return p.placementGenerate(req)
 	case TaskPlacementSolve:

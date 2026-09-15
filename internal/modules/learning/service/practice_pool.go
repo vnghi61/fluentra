@@ -207,22 +207,29 @@ func (s *Service) TopUpPracticePool(ctx context.Context) error {
 	}
 	for _, level := range practiceLevels {
 		for _, lesson := range practiceLessons {
-			s.topUpSlot(ctx, layout, level, lesson.kind, author)
+			if stop := s.topUpSlot(ctx, layout, level, lesson.kind, author); stop {
+				slog.WarnContext(ctx, "practice pool top-up stopped: every AI provider is out of quota or unavailable")
+				return nil
+			}
 		}
 	}
 	return nil
 }
 
-func (s *Service) topUpSlot(ctx context.Context, layout *practicePoolLayout, level, kind string, author uuid.UUID) {
+// topUpSlot fills one slot. It reports true when every AI provider is refusing,
+// so the run stops rather than sending each remaining slot into the same refusal.
+func (s *Service) topUpSlot(
+	ctx context.Context, layout *practicePoolLayout, level, kind string, author uuid.UUID,
+) (stop bool) {
 	activities, err := s.slotActivities(ctx, layout, level, kind)
 	if err != nil {
 		slog.ErrorContext(ctx, "could not list practice pool slot", "level", level, "kind", kind, "error", err)
-		return
+		return false
 	}
 	toAdd, err := s.itemsToAdd(ctx, activities)
 	if err != nil {
 		slog.ErrorContext(ctx, "could not size practice pool top-up", "level", level, "kind", kind, "error", err)
-		return
+		return false
 	}
 
 	lessonID := layout.lessons[slotKey{level: level, kind: kind}]
@@ -230,6 +237,9 @@ func (s *Service) topUpSlot(ctx context.Context, layout *practicePoolLayout, lev
 	for i := 0; i < toAdd; i++ {
 		body, err := s.generateAndVerifyItem(ctx, level, kind, author, lessonID, activities)
 		if err != nil {
+			if errors.Is(err, ai.ErrProvidersUnavailable) {
+				return true
+			}
 			slog.WarnContext(ctx, "practice pool item not added", "level", level, "kind", kind, "error", err)
 			continue
 		}
@@ -240,6 +250,7 @@ func (s *Service) topUpSlot(ctx context.Context, layout *practicePoolLayout, lev
 	if toAdd > 0 {
 		slog.InfoContext(ctx, "practice pool slot topped up", "level", level, "kind", kind, "added", added)
 	}
+	return false
 }
 
 // itemsToAdd is §3.11's rule: fill to the target five at a time, then grow only

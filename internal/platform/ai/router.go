@@ -207,6 +207,10 @@ func (r *Router) executeFallback(
 			ErrorMessage: primaryErr.Error(),
 			CreatedAt:    time.Now(),
 		})
+		if isUnavailable(primaryErr) {
+			return Response{}, fmt.Errorf("%w: provider %s failed for task %s: %w",
+				ErrProvidersUnavailable, primary.Name(), req.Task, primaryErr)
+		}
 		return Response{}, fmt.Errorf("ai: provider %s failed for task %s: %w", primary.Name(), req.Task, primaryErr)
 	}
 
@@ -214,6 +218,11 @@ func (r *Router) executeFallback(
 	// exhausted chain. One link whose check could not be answered makes the
 	// outcome unknown, and unknown must not be dressed up as ErrQuotaExhausted.
 	allExhausted := primaryVerdict == quotaExhausted
+	// allUnavailable is wider: every link refused with a quota, a rate limit or
+	// a payment demand. Such a chain will refuse the next request too, which is
+	// what a batch job needs to know to stop.
+	allUnavailable := primaryVerdict == quotaExhausted ||
+		(primaryVerdict == quotaAllowed && isUnavailable(primaryErr))
 	var errMsgs []string
 	if primaryErr != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("primary (%s): %v", primary.Name(), primaryErr))
@@ -233,6 +242,7 @@ func (r *Router) executeFallback(
 			// both. Testing the boolean first made this branch unreachable and
 			// reported a database outage as an exhausted budget.
 			allExhausted = false
+			allUnavailable = false
 			errMsgs = append(errMsgs,
 				fmt.Sprintf("fallback (%s) budget check failed: %v", fallback.Name(), fallbackBudgetErr))
 			continue
@@ -261,6 +271,9 @@ func (r *Router) executeFallback(
 		}
 
 		errMsgs = append(errMsgs, fmt.Sprintf("fallback (%s): %v", fallback.Name(), err))
+		if !isUnavailable(err) {
+			allUnavailable = false
+		}
 	}
 
 	if allExhausted {
@@ -285,6 +298,9 @@ func (r *Router) executeFallback(
 		ErrorMessage: fmt.Sprintf("all providers failed (%s)", combinedErr),
 		CreatedAt:    time.Now(),
 	})
+	if allUnavailable {
+		return Response{}, fmt.Errorf("%w: all providers failed (%s)", ErrProvidersUnavailable, combinedErr)
+	}
 	return Response{}, fmt.Errorf("ai: all providers failed (%s)", combinedErr)
 }
 

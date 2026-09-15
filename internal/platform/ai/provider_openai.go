@@ -167,8 +167,8 @@ func (p *OpenAICompatibleProvider) Complete(ctx context.Context, req Request) (R
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		// The body, truncated, because every provider explains a 400
 		// differently and the explanation is the only useful part.
-		return Response{}, fmt.Errorf("ai: %s returned %d: %.300s",
-			endpoint, response.StatusCode, payload)
+		// Typed, so a 429 or a 402 can be told apart from a malformed request.
+		return Response{}, &ProviderStatusError{Endpoint: endpoint, Status: response.StatusCode, Body: string(payload)}
 	}
 
 	var decoded chatResponse
