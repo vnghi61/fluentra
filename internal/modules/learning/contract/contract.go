@@ -3,6 +3,7 @@ package contract
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -119,6 +120,39 @@ type ItemResult struct {
 type AnswerExplanation struct {
 	Text   string `json:"text"`
 	TextVi string `json:"text_vi"`
+}
+
+// UnmarshalJSON reads both spellings an explanation is stored under.
+//
+// The generation prompts write "explanation_en" and "explanation_vi" into an
+// item body, while graders and the explanation cache use "text" and "text_vi".
+// Decoding a generated body with the second spelling only gave a non-nil but
+// empty explanation: the learner saw nothing, and because it was not nil the
+// AI fallback never ran either.
+func (e *AnswerExplanation) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		Text          string `json:"text"`
+		TextVi        string `json:"text_vi"`
+		ExplanationEn string `json:"explanation_en"`
+		ExplanationVi string `json:"explanation_vi"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	e.Text = raw.Text
+	if strings.TrimSpace(e.Text) == "" {
+		e.Text = raw.ExplanationEn
+	}
+	e.TextVi = raw.TextVi
+	if strings.TrimSpace(e.TextVi) == "" {
+		e.TextVi = raw.ExplanationVi
+	}
+	return nil
+}
+
+// Empty reports whether there is nothing to show in either language.
+func (e *AnswerExplanation) Empty() bool {
+	return e == nil || (strings.TrimSpace(e.Text) == "" && strings.TrimSpace(e.TextVi) == "")
 }
 
 // ExerciseGrader is implemented by every skill module to grade domain-specific exercises.

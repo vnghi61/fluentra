@@ -47,6 +47,33 @@ ReviewCard:
       nullable: true
     content:
       $ref: '#/ReviewCardContent'
+    next_due_by_grade:
+      $ref: '#/ReviewGradePreview'
+
+# When the card would next be due under each grade, scheduled by FSRS without
+# writing anything. The grade buttons show it, so a learner can see what a grade
+# does instead of reading a fixed "1 day / 3 days" that the schedule never used.
+# Present on the cards a review session returns.
+ReviewGradePreview:
+  type: object
+  required: [again, hard, good, easy]
+  properties:
+    again:
+      type: string
+      format: date-time
+      example: '2026-08-24T09:10:00Z'
+    hard:
+      type: string
+      format: date-time
+      example: '2026-08-25T09:00:00Z'
+    good:
+      type: string
+      format: date-time
+      example: '2026-08-27T09:00:00Z'
+    easy:
+      type: string
+      format: date-time
+      example: '2026-09-07T09:00:00Z'
 
 # srs schedules a content version and knows nothing about what it holds. A card
 # carrying only a schedule cannot be drawn as a flashcard, so the session resolves

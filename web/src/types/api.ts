@@ -4266,6 +4266,29 @@ export interface components {
             /** Format: date-time */
             suspended_at?: string | null;
             content?: components["schemas"]["ReviewCardContent"];
+            next_due_by_grade?: components["schemas"]["ReviewGradePreview"];
+        };
+        ReviewGradePreview: {
+            /**
+             * Format: date-time
+             * @example 2026-08-24T09:10:00Z
+             */
+            again: string;
+            /**
+             * Format: date-time
+             * @example 2026-08-25T09:00:00Z
+             */
+            hard: string;
+            /**
+             * Format: date-time
+             * @example 2026-08-27T09:00:00Z
+             */
+            good: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-07T09:00:00Z
+             */
+            easy: string;
         };
         ReviewCardContent: {
             /**

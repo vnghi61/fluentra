@@ -704,7 +704,7 @@ func (s *Service) completeSynchronousGrading(
 	if len(gradeResult.ItemResults) > 0 {
 		result.ItemResults = gradeResult.ItemResults
 	}
-	if gradeResult.Explanation != nil {
+	if !gradeResult.Explanation.Empty() {
 		result.Explanation = gradeResult.Explanation
 	} else if !isPlacementActivity(activity) {
 		userAnswer := extractUserAnswer(response)
@@ -801,7 +801,7 @@ func (s *Service) GradePreview(
 	if len(result.ItemResults) > 0 {
 		preview.ItemResults = result.ItemResults
 	}
-	if result.Explanation != nil {
+	if !result.Explanation.Empty() {
 		preview.Explanation = result.Explanation
 	} else {
 		userAnswer := extractUserAnswer(response)

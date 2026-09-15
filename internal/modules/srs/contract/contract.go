@@ -65,6 +65,18 @@ type ReviewCardSummary struct {
 	// An earlier version of this comment claimed archiving was handled here, and
 	// a work order was written against it.
 	Content *ReviewCardContent `json:"content,omitempty"`
+
+	// NextDueByGrade is when the card would come back under each grade, scheduled
+	// without writing anything. Set on the cards a review session returns.
+	NextDueByGrade *GradePreview `json:"next_due_by_grade,omitempty"`
+}
+
+// GradePreview is the due time each of the four grades would schedule.
+type GradePreview struct {
+	Again time.Time `json:"again"`
+	Hard  time.Time `json:"hard"`
+	Good  time.Time `json:"good"`
+	Easy  time.Time `json:"easy"`
 }
 
 // CardWriter allows upstream modules to create review cards and to take content

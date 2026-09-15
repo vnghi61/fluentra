@@ -6495,6 +6495,8 @@ components:
       $ref: ./components/srs.yaml#/ReviewGrade
     ReviewCard:
       $ref: ./components/srs.yaml#/ReviewCard
+    ReviewGradePreview:
+      $ref: ./components/srs.yaml#/ReviewGradePreview
     ReviewCardContent:
       $ref: ./components/srs.yaml#/ReviewCardContent
     DueCountResponse:

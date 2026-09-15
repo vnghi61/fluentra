@@ -865,6 +865,28 @@ func TestSRS_DueCardsResolveTheirContent(t *testing.T) {
 	assert.JSONEq(t, `{"word":"meticulous","ipa":"/məˈtɪkjələs/"}`, string(cards[0].Content.Body))
 }
 
+// The grade buttons say when a card comes back under each grade. They used to
+// show a fixed "1 day / 3 days / 7 days / 14 days" that no schedule produced.
+func TestSRS_DueCardsPreviewWhenEachGradeBringsTheCardBack(t *testing.T) {
+	now := time.Date(2026, 8, 25, 10, 0, 0, 0, time.UTC)
+	userID := uuid.New()
+
+	repo := newFakeRepo()
+	seedDueCard(t, repo, userID, uuid.New(), now.Add(-time.Hour))
+	svc := service.New(service.Deps{Repo: repo, Clock: clock.NewFake(now)})
+
+	cards, err := svc.DueCards(context.Background(), userID, 20)
+	require.NoError(t, err)
+	require.Len(t, cards, 1)
+	preview := cards[0].NextDueByGrade
+	require.NotNil(t, preview, "a session card must say what each grade does")
+
+	assert.True(t, preview.Again.After(now), "again: %v", preview.Again)
+	assert.True(t, preview.Again.Before(preview.Hard), "again must come back before hard")
+	assert.False(t, preview.Good.Before(preview.Hard), "good must not come back before hard")
+	assert.False(t, preview.Easy.Before(preview.Good), "easy must not come back before good")
+}
+
 // TestSRS_DueCardsResolveContentInOneRead: a review session is twenty cards, and
 // a per-card read is the N+1 the content contract exposes GetManyVersions to
 // prevent.

@@ -84,6 +84,14 @@ describe("ReviewPage SRS Session (P10.4)", () => {
         example_sentence: "She kept meticulous records of every transaction.",
       },
     },
+    // Relative to the test's clock, because the buttons show how far away each
+    // due time is.
+    next_due_by_grade: {
+      again: new Date(Date.now() + 10 * 60_000).toISOString(),
+      hard: new Date(Date.now() + 24 * 3_600_000).toISOString(),
+      good: new Date(Date.now() + 3 * 24 * 3_600_000).toISOString(),
+      easy: new Date(Date.now() + 15 * 24 * 3_600_000).toISOString(),
+    },
   };
 
   const mockSession: ReviewSessionResponse = {
@@ -212,10 +220,15 @@ describe("ReviewPage SRS Session (P10.4)", () => {
     await expectWordOnCard("meticulous");
     await user.click(screen.getByRole("button", { name: /meticulous/i }));
 
-    expect(await screen.findByText("L\u1ea1i")).toBeInTheDocument();
-    expect(screen.getByText("Kh\u00f3")).toBeInTheDocument();
-    expect(screen.getByText("T\u1ed1t")).toBeInTheDocument();
-    expect(screen.getByText("D\u1ec5")).toBeInTheDocument();
+    expect(await screen.findByText("Ch\u01b0a nh\u1edb")).toBeInTheDocument();
+    expect(screen.getByText("Nh\u1edb mang m\u00e1ng")).toBeInTheDocument();
+    expect(screen.getByText("\u0110\u00e3 nh\u1edb")).toBeInTheDocument();
+    expect(screen.getByText("Thu\u1ed9c l\u00f2ng")).toBeInTheDocument();
+    // What a grade does, from the schedule rather than a fixed label.
+    expect(screen.getByText("\u00d4n l\u1ea1i sau 10 ph\u00fat")).toBeInTheDocument();
+    expect(screen.getByText("\u00d4n l\u1ea1i sau 3 ng\u00e0y")).toBeInTheDocument();
+    // The Vietnamese meaning is labelled, so it does not read as a heading.
+    expect(screen.getAllByText("Ngh\u0129a ti\u1ebfng Vi\u1ec7t").length).toBeGreaterThan(0);
   });
 
   it("says so when a card arrives with no content, rather than inventing a word", async () => {
