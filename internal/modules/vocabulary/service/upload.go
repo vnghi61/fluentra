@@ -418,7 +418,7 @@ func (u *Uploads) VerifyPending(ctx context.Context) error {
 			// retried for ever.
 			slog.WarnContext(ctx, "upload item verification failed",
 				"term", item.Term, "error", err)
-			if recErr := u.repo.RecordUploadItemAttempt(ctx, item.ID, truncateReason(err.Error())); recErr != nil {
+			if recErr := u.repo.RecordUploadItemAttempt(ctx, item.ID, ""); recErr != nil {
 				slog.WarnContext(ctx, "could not record verification attempt",
 					"item_id", item.ID, "error", recErr)
 			}
@@ -460,7 +460,7 @@ func (u *Uploads) VerifyUpload(ctx context.Context, uploadID uuid.UUID) error {
 		if err != nil {
 			slog.WarnContext(ctx, "upload item verification failed",
 				"term", item.Term, "upload_id", uploadID, "error", err)
-			if recErr := u.repo.RecordUploadItemAttempt(ctx, item.ID, truncateReason(err.Error())); recErr != nil {
+			if recErr := u.repo.RecordUploadItemAttempt(ctx, item.ID, ""); recErr != nil {
 				slog.WarnContext(ctx, "could not record verification attempt",
 					"item_id", item.ID, "error", recErr)
 			}

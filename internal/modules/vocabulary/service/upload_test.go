@@ -555,6 +555,26 @@ func TestVerifyUpload_VerifiesPendingWordsForSpecificUpload(t *testing.T) {
 	require.Len(t, author.published, 1)
 }
 
+// A provider outage is not something the learner can act on. The attempt is
+// counted and the item stays pending, but the reason stays empty: the raw chain
+// ("ai: all providers failed (primary (groq): ... 404 model_not_found") used to
+// be shown under the word in the learner's list.
+func TestVerifyPending_KeepsProviderErrorsOutOfTheLearnersReason(t *testing.T) {
+	pending := item(wordLeisure, "thời gian rảnh")
+	repo := newUploadRepo(pending)
+	dict := &stubDictionary{entries: map[string]repository.DictionaryEntry{
+		wordLeisure: leisureEntry(),
+	}}
+	providerDown := &stubAI{err: assert.AnError}
+	uploads, _ := newPipeline(t, repo, dict, providerDown)
+
+	require.NoError(t, uploads.VerifyPending(context.Background()))
+
+	reason, recorded := repo.attempts[pending.ID]
+	require.True(t, recorded, "the failed attempt must still be counted")
+	assert.Empty(t, reason, "a provider error must not become the learner-facing reason")
+}
+
 // ------------------------------------------------------------ verifying
 
 func TestVerifyPending_AcceptsAWordTheDictionaryKnows(t *testing.T) {
