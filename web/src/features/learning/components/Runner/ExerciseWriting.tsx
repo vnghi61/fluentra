@@ -82,26 +82,34 @@ export const ExerciseWriting: React.FC<ExerciseWritingProps> = ({
   const { t, i18n } = useTranslation();
   const [fetchedFeedback, setFetchedFeedback] =
     useState<WritingFeedback | null>(null);
-  const [isFeedbackLoading, setIsFeedbackLoading] = useState(false);
+  // The attempt whose feedback request has settled, successfully or not.
+  // Loading is derived from it rather than stored: setting a loading flag
+  // synchronously in the effect body below is a cascading render, and the
+  // React Compiler lint rule rejects it.
+  const [settledAttemptId, setSettledAttemptId] = useState<string | null>(null);
+
+  const shouldFetchFeedback = Boolean(
+    isSubmitted && !isMarking && !writingFeedback && attemptId,
+  );
+  const isFeedbackLoading =
+    shouldFetchFeedback && settledAttemptId !== attemptId;
 
   useEffect(() => {
+    if (!shouldFetchFeedback || !attemptId) return;
     let isMounted = true;
-    if (isSubmitted && !isMarking && !writingFeedback && attemptId) {
-      setIsFeedbackLoading(true);
-      writingApi
-        .getFeedback(attemptId)
-        .then((fb) => {
-          if (isMounted) setFetchedFeedback(fb);
-        })
-        .catch(() => {})
-        .finally(() => {
-          if (isMounted) setIsFeedbackLoading(false);
-        });
-    }
+    writingApi
+      .getFeedback(attemptId)
+      .then((fb) => {
+        if (isMounted) setFetchedFeedback(fb);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (isMounted) setSettledAttemptId(attemptId);
+      });
     return () => {
       isMounted = false;
     };
-  }, [isSubmitted, isMarking, writingFeedback, attemptId]);
+  }, [shouldFetchFeedback, attemptId]);
 
   const activeFeedback = writingFeedback ?? fetchedFeedback ?? null;
   const [text, setText] = useState(() => {
@@ -328,7 +336,7 @@ export const ExerciseWriting: React.FC<ExerciseWritingProps> = ({
           {explanation && (
             <div className="space-y-1.5 pt-2 border-t border-border">
               <div className="text-xs font-semibold uppercase tracking-wider text-text-muted">
-                {t("runner.explanation", "Giải thích")}
+                {t("runner.explanationLabel", "Giải thích")}
               </div>
               <p className="text-sm text-text leading-relaxed bg-surface-muted/60 rounded-xl p-4 border border-border/60 whitespace-pre-line">
                 {Boolean(i18n?.language?.startsWith("vi")) && explanation.text_vi

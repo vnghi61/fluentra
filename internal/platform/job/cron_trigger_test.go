@@ -14,7 +14,7 @@ func TestCronScheduler_TriggerDueDebounces(t *testing.T) {
 		Name:     "test.hourly_job",
 		Interval: 1 * time.Hour,
 		LockID:   12345,
-		Task: func(ctx context.Context) error {
+		Task: func(_ context.Context) error {
 			return nil
 		},
 	})
