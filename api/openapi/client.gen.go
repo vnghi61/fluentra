@@ -17887,10 +17887,21 @@ type ListExamsResponse struct {
 		Format        string             `json:"format"`
 		Id            openapi_types.UUID `json:"id"`
 		Level         string             `json:"level"`
-		Slug          string             `json:"slug"`
-		TitleEn       string             `json:"title_en"`
-		TitleVi       string             `json:"title_vi"`
-		TotalMinutes  int                `json:"total_minutes"`
+
+		// Sections The exam's sections in order, with how many items each draws.
+		Sections *[]struct {
+			ExamDurationMinutes int                                       `json:"exam_duration_minutes"`
+			ExamId              openapi_types.UUID                        `json:"exam_id"`
+			Id                  openapi_types.UUID                        `json:"id"`
+			ItemCount           int                                       `json:"item_count"`
+			ItemKinds           []string                                  `json:"item_kinds"`
+			Position            int                                       `json:"position"`
+			Skill               ListExams200JSONResponseBodySectionsSkill `json:"skill"`
+		} `json:"sections,omitempty"`
+		Slug         string `json:"slug"`
+		TitleEn      string `json:"title_en"`
+		TitleVi      string `json:"title_vi"`
+		TotalMinutes int    `json:"total_minutes"`
 	}
 	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
 	ApplicationproblemJSON401 *Unauthorized
@@ -17907,10 +17918,21 @@ func (r ListExamsResponse) GetJSON200() *[]struct {
 	Format        string             `json:"format"`
 	Id            openapi_types.UUID `json:"id"`
 	Level         string             `json:"level"`
-	Slug          string             `json:"slug"`
-	TitleEn       string             `json:"title_en"`
-	TitleVi       string             `json:"title_vi"`
-	TotalMinutes  int                `json:"total_minutes"`
+
+	// Sections The exam's sections in order, with how many items each draws.
+	Sections *[]struct {
+		ExamDurationMinutes int                                       `json:"exam_duration_minutes"`
+		ExamId              openapi_types.UUID                        `json:"exam_id"`
+		Id                  openapi_types.UUID                        `json:"id"`
+		ItemCount           int                                       `json:"item_count"`
+		ItemKinds           []string                                  `json:"item_kinds"`
+		Position            int                                       `json:"position"`
+		Skill               ListExams200JSONResponseBodySectionsSkill `json:"skill"`
+	} `json:"sections,omitempty"`
+	Slug         string `json:"slug"`
+	TitleEn      string `json:"title_en"`
+	TitleVi      string `json:"title_vi"`
+	TotalMinutes int    `json:"total_minutes"`
 } {
 	return r.JSON200
 }
@@ -30154,10 +30176,21 @@ func ParseListExamsResponse(rsp *http.Response) (*ListExamsResponse, error) {
 			Format        string             `json:"format"`
 			Id            openapi_types.UUID `json:"id"`
 			Level         string             `json:"level"`
-			Slug          string             `json:"slug"`
-			TitleEn       string             `json:"title_en"`
-			TitleVi       string             `json:"title_vi"`
-			TotalMinutes  int                `json:"total_minutes"`
+
+			// Sections The exam's sections in order, with how many items each draws.
+			Sections *[]struct {
+				ExamDurationMinutes int                                       `json:"exam_duration_minutes"`
+				ExamId              openapi_types.UUID                        `json:"exam_id"`
+				Id                  openapi_types.UUID                        `json:"id"`
+				ItemCount           int                                       `json:"item_count"`
+				ItemKinds           []string                                  `json:"item_kinds"`
+				Position            int                                       `json:"position"`
+				Skill               ListExams200JSONResponseBodySectionsSkill `json:"skill"`
+			} `json:"sections,omitempty"`
+			Slug         string `json:"slug"`
+			TitleEn      string `json:"title_en"`
+			TitleVi      string `json:"title_vi"`
+			TotalMinutes int    `json:"total_minutes"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err

@@ -14,6 +14,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -40,6 +41,9 @@ type ttsCLIConfig struct {
 	} `koanf:"s3"`
 	Speech struct {
 		TTSVoice string `koanf:"tts_voice"`
+		// Where piper and its voice models are, so `make tts` needs no flags.
+		PiperBinary string `koanf:"piper_binary"`
+		PiperModels string `koanf:"piper_models"`
 	} `koanf:"speech"`
 }
 
@@ -55,8 +59,8 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	textFlag := flags.String("text", "", "Text to synthesise")
 	voiceFlag := flags.String("voice", "", "Voice name, the model file without .onnx (e.g. en_US-lessac-medium)")
 	engineFlag := flags.String("engine", media.EnginePiper, "TTS engine: piper, or mock for local development only")
-	piperFlag := flags.String("piper", media.EnginePiper, "Path to the piper binary")
-	modelsFlag := flags.String("models", "", "Directory holding the piper voice models")
+	piperFlag := flags.String("piper", "", "Path to the piper binary; SPEECH_PIPER_BINARY, or piper on PATH")
+	modelsFlag := flags.String("models", "", "Directory holding the piper voice models; SPEECH_PIPER_MODELS")
 	versionFlag := flags.String("engine-version", "", "Engine version recorded in the TTS cache")
 	allFlag := flags.Bool("all", false, "Render every listening_comprehension script that has no clip yet")
 
@@ -73,11 +77,18 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	engine, err := engineFor(*engineFlag, *piperFlag, *modelsFlag, *versionFlag, cfg.App.Environment)
+	piperBinary := firstNonEmpty(*piperFlag, cfg.Speech.PiperBinary, media.EnginePiper)
+	modelDir := firstNonEmpty(*modelsFlag, cfg.Speech.PiperModels)
+	engine, err := engineFor(*engineFlag, piperBinary, modelDir, *versionFlag, cfg.App.Environment)
 	if err != nil {
 		return err
 	}
 	voice := firstNonEmpty(*voiceFlag, cfg.Speech.TTSVoice, media.DefaultVoice)
+
+	// Said before anything is written. This reads .env like every other command,
+	// and a .env pointed at production renders into production.
+	_, _ = fmt.Fprintf(out, "Rendering with %s, voice %s, into %s; storage %s\n",
+		engine.EngineName(), media.ConfiguredVoice(voice), describeDatabase(cfg.Database.DSN), cfg.Storage.Endpoint)
 
 	db, err := sql.Open("pgx", cfg.Database.DSN)
 	if err != nil {
@@ -107,17 +118,28 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	return nil
 }
 
+// describeDatabase names the database a DSN points at, without its password.
+func describeDatabase(dsn string) string {
+	parsed, err := pgx.ParseConfig(dsn)
+	if err != nil {
+		return "an unparseable database DSN"
+	}
+	return fmt.Sprintf("database %s on %s", parsed.Database, parsed.Host)
+}
+
 func loadTTSConfig(ctx context.Context) (ttsCLIConfig, error) {
 	var cfg ttsCLIConfig
 	opts := config.Options{
 		Defaults: map[string]any{
-			"app.environment":  "development",
-			"speech.tts_voice": media.DefaultVoice,
-			"s3.endpoint":      "localhost:9000",
-			"s3.access_key":    "minioadmin",
-			"s3.secret_key":    "minioadmin",
-			"s3.region":        "us-east-1",
-			"s3.use_ssl":       false,
+			"app.environment":     "development",
+			"speech.tts_voice":    media.DefaultVoice,
+			"speech.piper_binary": "",
+			"speech.piper_models": "",
+			"s3.endpoint":         "localhost:9000",
+			"s3.access_key":       "minioadmin",
+			"s3.secret_key":       "minioadmin",
+			"s3.region":           "us-east-1",
+			"s3.use_ssl":          false,
 		},
 		EnvSections: []string{"SPEECH"},
 		Required: []config.RequiredKey{
@@ -137,7 +159,7 @@ func engineFor(name, piperBinary, modelDir, version, environment string) (media.
 	switch name {
 	case media.EnginePiper:
 		if modelDir == "" {
-			return nil, errors.New("-models is required: the directory holding the piper voice models")
+			return nil, errors.New("the piper voice models directory is required: -models or SPEECH_PIPER_MODELS")
 		}
 		return media.NewPiperEngine(piperBinary, modelDir, version), nil
 	case media.EngineMock:

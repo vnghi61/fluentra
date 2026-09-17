@@ -5936,6 +5936,34 @@ paths:
                       type: string
                     total_minutes:
                       type: integer
+                    sections:
+                      type: array
+                      description: The exam's sections in order, with how many items each draws.
+                      items:
+                        type: object
+                        required: [id, exam_id, position, skill, exam_duration_minutes, item_count, item_kinds]
+                        properties:
+                          id:
+                            type: string
+                            format: uuid
+                          exam_id:
+                            type: string
+                            format: uuid
+                          position:
+                            type: integer
+                            minimum: 1
+                            maximum: 4
+                          skill:
+                            type: string
+                            enum: [listening, reading, writing, speaking]
+                          exam_duration_minutes:
+                            type: integer
+                          item_count:
+                            type: integer
+                          item_kinds:
+                            type: array
+                            items:
+                              type: string
         '401':
           $ref: '#/components/responses/Unauthorized'
         '500':
@@ -5975,6 +6003,16 @@ paths:
                   type: integer
                   minimum: 10
                   maximum: 180
+                sections:
+                  type: array
+                  description: >-
+                    Practice mode only: the sections to sit, by position. Omitted or empty means
+                    all four. A position outside 1–4 or repeated is 400 EXAM_INVALID_SECTIONS.
+                  maxItems: 4
+                  items:
+                    type: integer
+                    minimum: 1
+                    maximum: 4
       responses:
         '201':
           description: Sitting started.

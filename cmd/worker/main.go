@@ -439,7 +439,12 @@ func run(ctx context.Context) error {
 	health := telemetry.NewHealthHandler(cfg.App.Version, readinessCheck(pool.Ping))
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", health.Health)
-	mux.HandleFunc("/ready", health.Ready)
+	mux.HandleFunc("/ready", func(w http.ResponseWriter, r *http.Request) {
+		health.Ready(w, r)
+		// Trigger overdue cron jobs in background detached from request context
+		// so pinging /ready (e.g. from API wakeup on cold start) catches up pool generation.
+		go cron.TriggerDue(context.WithoutCancel(ctx))
+	})
 
 	server := &http.Server{
 		Addr:              ":" + cfg.HTTP.Port,
@@ -941,12 +946,14 @@ func startPracticeGenerator(
 		cron.Register(scheduled)
 	}
 
-	// Once at start-up too, so a freshly seeded database has practice content
-	// without waiting twelve hours for the first interval.
-	if err := vocabularyModule.GenerateExercises(ctx); err != nil {
-		slog.ErrorContext(ctx, "could not generate practice exercises at start-up; "+
-			"the scheduled job will retry", "error", err)
-	}
+	// Once at start-up too in a goroutine, so the worker starts immediately
+	// without waiting for the practice generator before River and cron can run.
+	go func() {
+		if err := vocabularyModule.GenerateExercises(ctx); err != nil {
+			slog.ErrorContext(ctx, "could not generate practice exercises at start-up; "+
+				"the scheduled job will retry", "error", err)
+		}
+	}()
 }
 
 type gradingDeps struct {

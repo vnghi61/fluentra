@@ -193,6 +193,22 @@ ExamItemOutcome:
       items:
         type: object
         additionalProperties: true
+    feedback:
+      type: string
+      description: The grader's message for this item.
+    response:
+      type: object
+      additionalProperties: true
+      description: >-
+        What the learner answered, as saved in the sitting. Present on a submitted
+        sitting's report only.
+    content:
+      type: object
+      additionalProperties: true
+      description: >-
+        The item as authored — questions, options, the correct answers, the script
+        or passage, and explanations. Present on a submitted sitting's report only,
+        so no answer reaches the learner before grading.
 
 ExamSectionOutcome:
   type: object

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { reachableStorageUrl } from "@/lib/storage-url";
 import { cn } from "@/lib/utils";
 import { examApi, problemCode } from "../api/examApi";
 
@@ -57,7 +58,7 @@ export const ListeningPlayer: React.FC<ListeningPlayerProps> = ({
       setPlaysLeft(Math.max(0, res.plays_allowed - res.plays_used));
       const audio = audioRef.current;
       if (audio) {
-        audio.src = res.audio_url;
+        audio.src = reachableStorageUrl(res.audio_url);
         setHasSource(true);
         await audio.play();
         setIsPlaying(true);

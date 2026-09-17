@@ -1,4 +1,5 @@
 import { ApiError, apiFetch } from "@/api/client";
+import { reachableStorageUrl } from "@/lib/storage-url";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { components } from "@/types/api";
 
@@ -157,16 +158,8 @@ export const accountApi = {
     intent: AvatarUploadIntent,
     file: File,
   ): Promise<void> {
-    let uploadUrl = intent.upload_url;
-    // Map internal docker host to localhost if running in local dev browser
-    if (
-      typeof window !== "undefined" &&
-      (window.location.hostname === "localhost" ||
-        window.location.hostname === "127.0.0.1") &&
-      uploadUrl.includes("//minio:9000")
-    ) {
-      uploadUrl = uploadUrl.replace("//minio:9000", "//localhost:9000");
-    }
+    // A development store is reached through the dev server from other devices.
+    const uploadUrl = reachableStorageUrl(intent.upload_url);
 
     if (intent.method === "POST" && intent.form_data) {
       const formData = new FormData();

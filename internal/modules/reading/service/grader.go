@@ -140,6 +140,7 @@ func gradeQuestionSet(
 			ID:            r.ID,
 			Correct:       r.Correct,
 			CorrectAnswer: r.CorrectAnswer,
+			Explanation:   learningcontract.ExplanationFrom(r.Explanation),
 		}
 	}
 

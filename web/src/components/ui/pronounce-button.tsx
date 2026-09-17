@@ -3,6 +3,7 @@ import { Volume2, VolumeX } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
+import { reachableStorageUrl } from "@/lib/storage-url";
 import { cn } from "@/lib/utils";
 
 /**
@@ -48,6 +49,31 @@ function canSynthesise(): boolean {
   );
 }
 
+/**
+ * Errors that say this utterance was cut off, not that speech is unavailable.
+ * Chrome on Android reports the utterance it just queued as `interrupted` when
+ * `cancel()` ran a moment before; treating that as failure disabled the button
+ * on the first tap, which is why pronunciation "did not work" on phones.
+ */
+const TRANSIENT_ERRORS = new Set(["interrupted", "canceled", "not-allowed"]);
+
+/**
+ * An installed voice for the language. Android and iOS often have no voice
+ * picked for a bare `lang`, and speak nothing (or report an error) unless one
+ * is set. Voices load asynchronously, so an empty list just means "default".
+ */
+function voiceFor(lang: string): SpeechSynthesisVoice | undefined {
+  const voices = window.speechSynthesis.getVoices?.() ?? [];
+  const wanted = lang.toLowerCase().replace("_", "-");
+  const base = wanted.split("-")[0] ?? wanted;
+  const normalise = (voice: SpeechSynthesisVoice) =>
+    voice.lang.toLowerCase().replace("_", "-");
+  return (
+    voices.find((voice) => normalise(voice) === wanted) ??
+    voices.find((voice) => normalise(voice).startsWith(`${base}-`))
+  );
+}
+
 export const PronounceButton: React.FC<PronounceButtonProps> = ({
   text,
   audioUrl,
@@ -78,19 +104,30 @@ export const PronounceButton: React.FC<PronounceButtonProps> = ({
       return;
     }
     try {
-      // Cancel first: queued utterances otherwise pile up on repeated taps and
-      // play back-to-back long after the learner has moved on.
-      window.speechSynthesis.cancel();
+      const synth = window.speechSynthesis;
+      // Cancel only what is actually queued: queued utterances otherwise pile up
+      // on repeated taps, but an unconditional cancel() right before speak() is
+      // what makes Chrome on Android drop the new utterance.
+      if (synth.speaking || synth.pending) synth.cancel();
+      // Chrome on Android can leave synthesis paused after the tab was hidden,
+      // and a paused synthesiser queues silently forever.
+      synth.resume?.();
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = lang;
+      const voice = voiceFor(lang);
+      if (voice) utterance.voice = voice;
       utterance.rate = 0.9;
       utterance.onend = () => setIsPlaying(false);
-      utterance.onerror = () => {
-        setFailed(true);
+      utterance.onerror = (event?: SpeechSynthesisErrorEvent) => {
         setIsPlaying(false);
+        // Only a missing voice or engine is worth greying the button out for;
+        // an interrupted utterance plays again on the next tap.
+        if (!event?.error || !TRANSIENT_ERRORS.has(event.error)) {
+          setFailed(true);
+        }
       };
       setIsPlaying(true);
-      window.speechSynthesis.speak(utterance);
+      synth.speak(utterance);
     } catch {
       setFailed(true);
       setIsPlaying(false);
@@ -112,7 +149,7 @@ export const PronounceButton: React.FC<PronounceButtonProps> = ({
       }
 
       try {
-        const audio = new Audio(audioUrl);
+        const audio = new Audio(reachableStorageUrl(audioUrl));
         audioRef.current = audio;
         audio.onended = () => setIsPlaying(false);
         // A broken or missing asset falls through to synthesis rather than

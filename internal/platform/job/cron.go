@@ -41,6 +41,7 @@ type CronScheduler struct {
 	pool        *pgxpool.Pool
 	instruments telemetry.Instruments
 	jobs        []CronJob
+	lastRun     map[string]time.Time
 	mu          sync.Mutex
 	sem         chan struct{}
 }
@@ -51,8 +52,9 @@ type CronScheduler struct {
 // without a meter; a zero Instruments records nothing.
 func NewCronScheduler(pool *pgxpool.Pool) *CronScheduler {
 	return &CronScheduler{
-		pool: pool,
-		sem:  make(chan struct{}, defaultCronConcurrency),
+		pool:    pool,
+		sem:     make(chan struct{}, defaultCronConcurrency),
+		lastRun: make(map[string]time.Time),
 	}
 }
 
@@ -129,6 +131,10 @@ func (s *CronScheduler) executeWithLock(ctx context.Context, job CronJob) {
 		_, _ = conn.Exec(ctx, "SELECT pg_advisory_unlock($1)", job.LockID)
 	}()
 
+	s.mu.Lock()
+	s.lastRun[job.Name] = time.Now()
+	s.mu.Unlock()
+
 	slog.InfoContext(ctx, "executing cron job", "job", job.Name)
 	started := time.Now()
 	err = job.Task(ctx)
@@ -138,6 +144,36 @@ func (s *CronScheduler) executeWithLock(ctx context.Context, job CronJob) {
 		slog.ErrorContext(ctx, "cron job failed", "job", job.Name, "error", err)
 	}
 	s.record(ctx, job.Name, result, time.Since(started))
+}
+
+// TriggerDue checks if any registered jobs have not been executed within their
+// scheduled interval (or have never run), and triggers them concurrently.
+// A pre-marked lastRun timestamp debounces rapid successive triggers.
+func (s *CronScheduler) TriggerDue(ctx context.Context) {
+	s.mu.Lock()
+	jobs := append([]CronJob{}, s.jobs...)
+	now := time.Now()
+	var dueJobs []CronJob
+	for _, j := range jobs {
+		last, ran := s.lastRun[j.Name]
+		if !ran || now.Sub(last) >= j.Interval {
+			s.lastRun[j.Name] = now
+			dueJobs = append(dueJobs, j)
+		}
+	}
+	s.mu.Unlock()
+
+	for _, j := range dueJobs {
+		go s.executeWithLock(ctx, j)
+	}
+}
+
+// LastRun returns the timestamp when the job was last executed or triggered.
+func (s *CronScheduler) LastRun(name string) (time.Time, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	t, ok := s.lastRun[name]
+	return t, ok
 }
 
 // RecordForTest exposes record so the metric contract the alert depends on can

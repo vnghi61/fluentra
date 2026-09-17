@@ -114,6 +114,8 @@ type ItemResult struct {
 	ID            string  `json:"id"`
 	Correct       bool    `json:"correct"`
 	CorrectAnswer *string `json:"correct_answer,omitempty"`
+	// Explanation is why the correct answer is correct, shown once the set is graded.
+	Explanation *AnswerExplanation `json:"explanation,omitempty"`
 }
 
 // AnswerExplanation models an explanation in English and Vietnamese for an exercise answer.

@@ -149,6 +149,9 @@ func (p *OpenAICompatibleProvider) Complete(ctx context.Context, req Request) (R
 	if p.config.APIKey != "" {
 		request.Header.Set("Authorization", "Bearer "+p.config.APIKey)
 	}
+	if strings.Contains(strings.ToLower(p.config.BaseURL), "opencode") || strings.EqualFold(p.config.Name, "opencode") {
+		request.Header.Set("x-opencode-session", "fluentra")
+	}
 
 	response, err := p.client.Do(request)
 	if err != nil {

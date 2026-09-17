@@ -21,7 +21,8 @@ import { Button } from "@/components/ui/button";
 import { ReportDialog } from "@/features/learning/components/Runner/ReportDialog";
 import { useWritingFeedback } from "@/features/writing/api/writingApi";
 import { cn } from "@/lib/utils";
-import { examApi, useSpeakingFeedback } from "../api/examApi";
+import { examApi, problemCode, useSpeakingFeedback } from "../api/examApi";
+import { EXAM_PARTS, partOf, type PartKey } from "../parts";
 import type {
   ExamItemOutcome,
   ExamSectionOutcome,
@@ -30,6 +31,11 @@ import type {
   ItemStatus,
   ScoreReport,
 } from "../types";
+import {
+  ExamItemReview,
+  reviewStates,
+  type ReviewState,
+} from "./ExamItemReview";
 
 export interface ExamReportProps {
   report: ScoreReport;
@@ -42,6 +48,25 @@ const SECTION_ICONS: Record<ExamSkill, typeof Headphones> = {
   writing: PenTool,
   speaking: Mic,
 };
+
+interface NumberedItem {
+  item: ExamItemOutcome;
+  firstNumber: number;
+  states: ReviewState[];
+}
+
+/** Numbers every question across the report, in the order the sitting drew them. */
+function numberItems(report: ScoreReport): NumberedItem[][] {
+  let next = 1;
+  return report.per_section.map((section) =>
+    section.items.map((item) => {
+      const states = reviewStates(item);
+      const numbered = { item, firstNumber: next, states };
+      next += states.length;
+      return numbered;
+    }),
+  );
+}
 
 export const ExamReport: React.FC<ExamReportProps> = ({
   report,
@@ -61,6 +86,7 @@ export const ExamReport: React.FC<ExamReportProps> = ({
     window_blurred: t("exam.report.signalWindowBlurred"),
     paste: t("exam.report.signalPaste"),
   };
+  const numbered = numberItems(report);
 
   return (
     <div
@@ -69,7 +95,7 @@ export const ExamReport: React.FC<ExamReportProps> = ({
       {report.status === "pending" && (
         <div
           role="status"
-          className="flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/10 p-4 text-primary"
+          className="flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/10 p-4 text-primary-accent"
         >
           <Loader2
             className="h-5 w-5 shrink-0 animate-spin"
@@ -86,7 +112,7 @@ export const ExamReport: React.FC<ExamReportProps> = ({
       {report.status === "partial" && (
         <div
           role="status"
-          className="flex items-center gap-3 rounded-xl border border-warning/30 bg-warning/10 p-4 text-warning"
+          className="flex items-center gap-3 rounded-xl border border-warning/30 bg-warning/10 p-4 text-warning-accent"
         >
           <AlertTriangle className="h-5 w-5 shrink-0" aria-hidden="true" />
           <div>
@@ -98,7 +124,7 @@ export const ExamReport: React.FC<ExamReportProps> = ({
         </div>
       )}
 
-      <div className="space-y-6 rounded-3xl border border-border bg-card p-6 text-center sm:p-8">
+      <div className="space-y-6 rounded-3xl border border-border-subtle bg-surface-card p-6 text-center sm:p-8">
         <h1 className="text-2xl font-extrabold text-text sm:text-3xl">
           {t("exam.report.heading")}
         </h1>
@@ -109,7 +135,7 @@ export const ExamReport: React.FC<ExamReportProps> = ({
         )}
         <div className="flex flex-wrap items-center justify-center gap-6 py-2 sm:gap-12">
           <div className="flex flex-col items-center">
-            <p className="font-mono text-5xl font-extrabold text-primary sm:text-6xl">
+            <p className="font-mono text-5xl font-extrabold text-primary-accent sm:text-6xl">
               {Math.round(report.overall_score)}
               <span className="text-lg font-normal text-text-muted">/100</span>
             </p>
@@ -118,7 +144,7 @@ export const ExamReport: React.FC<ExamReportProps> = ({
             </span>
           </div>
           <div className="flex flex-col items-center">
-            <p className="font-mono text-5xl font-extrabold text-accent sm:text-6xl">
+            <p className="font-mono text-5xl font-extrabold text-brand sm:text-6xl">
               {report.overall_band || "—"}
             </p>
             <span className="mt-1 text-xs font-semibold uppercase tracking-wider text-text-muted">
@@ -129,7 +155,7 @@ export const ExamReport: React.FC<ExamReportProps> = ({
         <ul className="space-y-1 rounded-2xl border border-border-subtle bg-surface-muted/70 p-4 text-left text-xs leading-relaxed text-text-muted sm:p-5">
           <li className="flex gap-2 font-semibold text-text">
             <Info
-              className="h-4 w-4 shrink-0 text-primary"
+              className="h-4 w-4 shrink-0 text-primary-accent"
               aria-hidden="true"
             />
             {t("exam.report.notOfficial")}
@@ -154,22 +180,33 @@ export const ExamReport: React.FC<ExamReportProps> = ({
         </div>
       </section>
 
-      <section className="space-y-4 rounded-2xl border border-border bg-card p-4 sm:p-6">
+      <AnswerSheet
+        report={report}
+        numbered={numbered}
+        sectionLabels={sectionLabels}
+      />
+
+      <PartAnalysis report={report} numbered={numbered} />
+
+      <section className="space-y-4 rounded-2xl border border-border-subtle bg-surface-card p-4 sm:p-6">
         <h2 className="text-lg font-bold text-text">
           {t("exam.report.itemReview")}
         </h2>
-        {report.per_section.map((section) => (
+        {report.per_section.map((section, sectionIndex) => (
           <div key={section.position} className="space-y-3">
             <h3 className="text-sm font-semibold text-text">
               {sectionLabels[section.skill]}
             </h3>
             <ol className="space-y-3">
-              {section.items.map((item, index) => (
+              {(numbered[sectionIndex] ?? []).map((entry, index) => (
                 <ItemRow
-                  key={item.activity_id}
-                  item={item}
+                  key={entry.item.activity_id}
+                  item={entry.item}
                   index={index + 1}
-                  onReport={() => setReportVersionId(item.content_version_id)}
+                  firstNumber={entry.firstNumber}
+                  onReport={() =>
+                    setReportVersionId(entry.item.content_version_id)
+                  }
                 />
               ))}
             </ol>
@@ -178,9 +215,12 @@ export const ExamReport: React.FC<ExamReportProps> = ({
       </section>
 
       {report.integrity_signals.length > 0 && (
-        <section className="space-y-3 rounded-2xl border border-border bg-card p-6">
+        <section className="space-y-3 rounded-2xl border border-border-subtle bg-surface-card p-6">
           <h2 className="flex items-center gap-2 text-sm font-bold text-text">
-            <ShieldAlert className="h-4 w-4 text-warning" aria-hidden="true" />
+            <ShieldAlert
+              className="h-4 w-4 text-warning-accent"
+              aria-hidden="true"
+            />
             {t("exam.report.integrityTitle")}
           </h2>
           <p className="text-xs text-text-muted">
@@ -216,6 +256,209 @@ export const ExamReport: React.FC<ExamReportProps> = ({
   );
 };
 
+/** Every question as a numbered chip, coloured by result, like a paper answer sheet. */
+const AnswerSheet: React.FC<{
+  report: ScoreReport;
+  numbered: NumberedItem[][];
+  sectionLabels: Record<ExamSkill, string>;
+}> = ({ report, numbered, sectionLabels }) => {
+  const { t } = useTranslation();
+  return (
+    <section className="space-y-4 rounded-2xl border border-border-subtle bg-surface-card p-4 sm:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-lg font-bold text-text">
+          {t("exam.report.answerSheet")}
+        </h2>
+        <ul className="flex flex-wrap gap-3 text-xs text-text-muted">
+          <li className="flex items-center gap-1.5">
+            <span
+              className="h-3 w-3 rounded-sm bg-success"
+              aria-hidden="true"
+            />
+            {t("exam.report.legendCorrect")}
+          </li>
+          <li className="flex items-center gap-1.5">
+            <span className="h-3 w-3 rounded-sm bg-danger" aria-hidden="true" />
+            {t("exam.report.legendWrong")}
+          </li>
+          <li className="flex items-center gap-1.5">
+            <span
+              className="h-3 w-3 rounded-sm border border-border bg-surface-muted"
+              aria-hidden="true"
+            />
+            {t("exam.report.legendOther")}
+          </li>
+        </ul>
+      </div>
+      {report.per_section.map((section, sectionIndex) => (
+        <div key={section.position} className="space-y-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-text-muted">
+            {sectionLabels[section.skill]}
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {(numbered[sectionIndex] ?? []).flatMap((entry) =>
+              entry.states.map((state, offset) => {
+                const number = entry.firstNumber + offset;
+                return (
+                  <a
+                    key={number}
+                    href={`#review-q-${number}`}
+                    className={cn(
+                      "flex h-11 min-w-11 items-center justify-center rounded-lg border px-2 font-mono text-sm font-semibold",
+                      state === "correct" &&
+                        "border-success bg-success/20 text-success-accent",
+                      state === "wrong" &&
+                        "border-danger bg-danger/15 text-danger-accent",
+                      state === "other" &&
+                        "border-border-subtle bg-surface-muted text-text-muted",
+                    )}
+                  >
+                    {number}
+                  </a>
+                );
+              }),
+            )}
+          </div>
+        </div>
+      ))}
+    </section>
+  );
+};
+
+interface PartRow {
+  key: PartKey;
+  correct: number;
+  wrong: number;
+  other: number;
+  numbers: { number: number; state: ReviewState }[];
+}
+
+/** Tallies the answer sheet by question type, in the order the exam lists them. */
+function analyseParts(
+  report: ScoreReport,
+  numbered: NumberedItem[][],
+): PartRow[] {
+  const rows = new Map<PartKey, PartRow>();
+  report.per_section.forEach((_, sectionIndex) => {
+    for (const entry of numbered[sectionIndex] ?? []) {
+      const key = partOf(entry.item.kind, entry.item.content);
+      if (!key) continue;
+      const row = rows.get(key) ?? {
+        key,
+        correct: 0,
+        wrong: 0,
+        other: 0,
+        numbers: [],
+      };
+      entry.states.forEach((state, offset) => {
+        row[
+          state === "correct"
+            ? "correct"
+            : state === "wrong"
+              ? "wrong"
+              : "other"
+        ]++;
+        row.numbers.push({ number: entry.firstNumber + offset, state });
+      });
+      rows.set(key, row);
+    }
+  });
+  return EXAM_PARTS.flatMap((part) => {
+    const row = rows.get(part.key);
+    return row ? [row] : [];
+  });
+}
+
+/** Correct, wrong and skipped per question type, with the questions of each. */
+const PartAnalysis: React.FC<{
+  report: ScoreReport;
+  numbered: NumberedItem[][];
+}> = ({ report, numbered }) => {
+  const { t } = useTranslation();
+  const rows = analyseParts(report, numbered);
+  if (rows.length === 0) return null;
+  return (
+    <section className="space-y-4 rounded-2xl border border-border-subtle bg-surface-card p-4 sm:p-6">
+      <h2 className="text-lg font-bold text-text">
+        {t("exam.parts.analysisTitle")}
+      </h2>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[36rem] text-left text-sm">
+          <thead>
+            <tr className="border-b border-border text-xs uppercase tracking-wider text-text-muted">
+              <th scope="col" className="py-2 pr-3 font-semibold">
+                {t("exam.parts.colPart")}
+              </th>
+              <th scope="col" className="px-2 py-2 text-center font-semibold">
+                {t("exam.parts.colCorrect")}
+              </th>
+              <th scope="col" className="px-2 py-2 text-center font-semibold">
+                {t("exam.parts.colWrong")}
+              </th>
+              <th scope="col" className="px-2 py-2 text-center font-semibold">
+                {t("exam.parts.colOther")}
+              </th>
+              <th scope="col" className="px-2 py-2 text-center font-semibold">
+                {t("exam.parts.colAccuracy")}
+              </th>
+              <th scope="col" className="py-2 pl-3 font-semibold">
+                {t("exam.parts.colQuestions")}
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border-subtle">
+            {rows.map((row) => {
+              const marked = row.correct + row.wrong;
+              return (
+                <tr key={row.key} className="align-top">
+                  <th scope="row" className="py-3 pr-3 font-semibold text-text">
+                    #{t(`exam.parts.${row.key}`)}
+                  </th>
+                  <td className="px-2 py-3 text-center font-mono tabular-nums text-success-accent">
+                    {row.correct}
+                  </td>
+                  <td className="px-2 py-3 text-center font-mono tabular-nums text-danger-accent">
+                    {row.wrong}
+                  </td>
+                  <td className="px-2 py-3 text-center font-mono tabular-nums text-text-muted">
+                    {row.other}
+                  </td>
+                  <td className="px-2 py-3 text-center font-mono tabular-nums text-text">
+                    {marked > 0
+                      ? `${Math.round((row.correct / (marked + row.other)) * 100)}%`
+                      : "—"}
+                  </td>
+                  <td className="py-2 pl-3">
+                    <div className="flex flex-wrap gap-1.5">
+                      {row.numbers.map(({ number, state }) => (
+                        <a
+                          key={number}
+                          href={`#review-q-${number}`}
+                          className={cn(
+                            "flex h-11 min-w-11 items-center justify-center rounded-lg border px-2 font-mono text-xs font-semibold",
+                            state === "correct" &&
+                              "border-success bg-success/20 text-success-accent",
+                            state === "wrong" &&
+                              "border-danger bg-danger/15 text-danger-accent",
+                            state === "other" &&
+                              "border-border-subtle bg-surface-muted text-text-muted",
+                          )}
+                        >
+                          {number}
+                        </a>
+                      ))}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+};
+
 const SectionCard: React.FC<{ section: ExamSectionOutcome; label: string }> = ({
   section,
   label,
@@ -223,10 +466,10 @@ const SectionCard: React.FC<{ section: ExamSectionOutcome; label: string }> = ({
   const { t } = useTranslation();
   const Icon = SECTION_ICONS[section.skill];
   return (
-    <div className="space-y-3 rounded-2xl border border-border bg-card p-5">
+    <div className="space-y-3 rounded-2xl border border-border-subtle bg-surface-card p-5">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary-accent">
             <Icon className="h-5 w-5" aria-hidden="true" />
           </div>
           <h3 className="text-base font-bold text-text">{label}</h3>
@@ -261,8 +504,9 @@ const SectionCard: React.FC<{ section: ExamSectionOutcome; label: string }> = ({
 const ItemRow: React.FC<{
   item: ExamItemOutcome;
   index: number;
+  firstNumber: number;
   onReport: () => void;
-}> = ({ item, index, onReport }) => {
+}> = ({ item, index, firstNumber, onReport }) => {
   const { t } = useTranslation();
   const [showFeedback, setShowFeedback] = useState(false);
 
@@ -292,12 +536,12 @@ const ItemRow: React.FC<{
     item.score === item.max_score;
 
   return (
-    <li className="space-y-2 rounded-xl border border-border-subtle bg-surface-muted/30 p-4 text-xs">
+    <li className="space-y-3 rounded-xl border border-border-subtle bg-surface-muted/30 p-4 text-xs">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           {fullMarks ? (
             <CheckCircle2
-              className="h-4 w-4 shrink-0 text-success"
+              className="h-4 w-4 shrink-0 text-success-accent"
               aria-hidden="true"
             />
           ) : (
@@ -328,6 +572,9 @@ const ItemRow: React.FC<{
           })}
         </p>
       )}
+
+      <ExamItemReview item={item} firstNumber={firstNumber} />
+
       <div className="flex flex-wrap gap-2">
         {hasFeedback && (
           <Button
@@ -347,7 +594,10 @@ const ItemRow: React.FC<{
         </Button>
       </div>
       {showFeedback && item.attempt_id && item.kind === "writing_prompt" && (
-        <WritingFeedbackPanel attemptId={item.attempt_id} />
+        <WritingFeedbackPanel
+          attemptId={item.attempt_id}
+          graderFeedback={item.feedback}
+        />
       )}
       {showFeedback && item.attempt_id && item.kind === "speaking_task" && (
         <SpeakingFeedbackPanel attemptId={item.attempt_id} />
@@ -356,19 +606,34 @@ const ItemRow: React.FC<{
   );
 };
 
-const WritingFeedbackPanel: React.FC<{ attemptId: string }> = ({
-  attemptId,
-}) => {
+const WritingFeedbackPanel: React.FC<{
+  attemptId: string;
+  graderFeedback?: string | undefined;
+}> = ({ attemptId, graderFeedback }) => {
   const { t, i18n } = useTranslation();
-  const { data, isLoading, isError } = useWritingFeedback(attemptId);
+  const { data, isLoading, isError, error } = useWritingFeedback(attemptId);
   if (isLoading)
     return (
       <p className="text-text-muted">{t("exam.report.feedbackLoading")}</p>
     );
+  // An essay under its word count, or an empty one, is scored without a model
+  // call, so there is no AI feedback to fetch. That is not a failure to load.
+  if (isError && problemCode(error) === "FEEDBACK_NOT_FOUND") {
+    return (
+      <div className="space-y-1 rounded-lg bg-surface-card p-3 text-text">
+        <p className="font-semibold">{t("exam.report.noAiFeedback")}</p>
+        {graderFeedback && (
+          <p className="leading-relaxed text-text-muted">{graderFeedback}</p>
+        )}
+      </div>
+    );
+  }
   if (isError || !data)
-    return <p className="text-danger">{t("exam.report.feedbackFailed")}</p>;
+    return (
+      <p className="text-danger-accent">{t("exam.report.feedbackFailed")}</p>
+    );
   return (
-    <div className="space-y-1 rounded-lg bg-card p-3 text-text">
+    <div className="space-y-1 rounded-lg bg-surface-card p-3 text-text">
       <p className="font-semibold">
         {t("exam.report.writingBand", { band: data.overall_band })}
       </p>
@@ -393,7 +658,9 @@ const SpeakingFeedbackPanel: React.FC<{ attemptId: string }> = ({
       <p className="text-text-muted">{t("exam.report.feedbackLoading")}</p>
     );
   if (isError || !data)
-    return <p className="text-danger">{t("exam.report.feedbackFailed")}</p>;
+    return (
+      <p className="text-danger-accent">{t("exam.report.feedbackFailed")}</p>
+    );
 
   const deleted =
     deleteState === "deleted" || data.recording_deleted_at !== undefined;
@@ -409,7 +676,7 @@ const SpeakingFeedbackPanel: React.FC<{ attemptId: string }> = ({
   };
 
   return (
-    <div className="space-y-2 rounded-lg bg-card p-3 text-text">
+    <div className="space-y-2 rounded-lg bg-surface-card p-3 text-text">
       <p>
         <span className="font-semibold">{t("exam.report.transcript")}: </span>
         {data.transcript}
@@ -459,7 +726,7 @@ const SpeakingFeedbackPanel: React.FC<{ attemptId: string }> = ({
             {t("exam.report.deleteRecording")}
           </Button>
           {deleteState === "failed" && (
-            <p role="alert" className="text-danger">
+            <p role="alert" className="text-danger-accent">
               {t("exam.report.deleteFailed")}
             </p>
           )}

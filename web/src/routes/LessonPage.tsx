@@ -372,7 +372,7 @@ export function LessonPage(): React.JSX.Element {
                 status: "graded",
                 correct: isPassed,
                 score: fb.score,
-                feedback: fb.feedback_en,
+                feedback: fb.feedback_vi || fb.feedback_en,
               });
               if (isPassed) {
                 setScoreCount((prev) => prev + 1);
@@ -382,7 +382,7 @@ export function LessonPage(): React.JSX.Element {
             if (isMounted) {
               setSubmissionResult({
                 status: "graded",
-                correct: true,
+                correct: (attempt.score ?? 0) >= 60,
                 score: attempt.score ?? undefined,
                 feedback: attempt.feedback ?? undefined,
               });
@@ -463,6 +463,23 @@ export function LessonPage(): React.JSX.Element {
         setMarkingTimedOut(false);
         setPollingAttemptId(currentAttemptId);
         return;
+      }
+
+      if (
+        currentActivity.kind === "writing_prompt" &&
+        signedIn &&
+        currentAttemptId
+      ) {
+        try {
+          const fb = await writingApi.getFeedback(currentAttemptId);
+          setWritingFeedback(fb);
+          const isPassed = fb.overall_band >= 6.0;
+          result.correct = isPassed;
+          result.score = fb.score;
+          result.feedback = fb.feedback_vi || fb.feedback_en;
+        } catch {
+          // If feedback cannot be loaded directly, keep result
+        }
       }
 
       setIsSubmitted(true);
@@ -1022,6 +1039,7 @@ export function LessonPage(): React.JSX.Element {
             isMarking={isMarking}
             markingTimedOut={markingTimedOut}
             writingFeedback={writingFeedback}
+            attemptId={currentAttemptId ?? pollingAttemptId}
             userId={userId}
             activityId={currentActivity?.id}
             onNavigateToMyWriting={() => void navigate({ to: "/my-writing" })}

@@ -186,6 +186,9 @@ type ExamSectionDTO struct {
 type StartAttemptRequest struct {
 	Mode                  string `json:"mode"`
 	ChosenDurationMinutes int    `json:"chosen_duration_minutes,omitempty"`
+	// Sections limits a practice sitting to the sections chosen, by position.
+	// Empty means every section; exam mode always sits all four.
+	Sections []int `json:"sections,omitempty"`
 }
 
 // ExamAttemptDTO describes an exam sitting.
@@ -279,9 +282,16 @@ func (s *Service) ListExams(ctx context.Context) ([]ExamDTO, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Each exam carries its sections, so the list can say what a sitting holds
+	// and a practice sitting can choose among them. There are three exams.
 	exams := make([]ExamDTO, len(rows))
 	for i, r := range rows {
 		exams[i] = examDTO(&r)
+		sections, err := s.examSections(ctx, r.ID)
+		if err != nil {
+			return nil, err
+		}
+		exams[i].Sections = sections
 	}
 	return exams, nil
 }
@@ -295,16 +305,23 @@ func (s *Service) GetExam(ctx context.Context, id uuid.UUID) (*ExamDTO, error) {
 	if err != nil || exam == nil {
 		return nil, domain.ErrExamNotFound
 	}
-	secRows, err := s.repo.ListExamSections(ctx, id)
+	dto := examDTO(exam)
+	if dto.Sections, err = s.examSections(ctx, id); err != nil {
+		return nil, err
+	}
+	return &dto, nil
+}
+
+func (s *Service) examSections(ctx context.Context, examID uuid.UUID) ([]ExamSectionDTO, error) {
+	secRows, err := s.repo.ListExamSections(ctx, examID)
 	if err != nil {
 		return nil, err
 	}
-	dto := examDTO(exam)
-	dto.Sections = make([]ExamSectionDTO, len(secRows))
+	sections := make([]ExamSectionDTO, len(secRows))
 	for i, sec := range secRows {
 		var kinds []string
 		_ = json.Unmarshal(sec.ItemKinds, &kinds)
-		dto.Sections[i] = ExamSectionDTO{
+		sections[i] = ExamSectionDTO{
 			ID:                  sec.ID,
 			ExamID:              sec.ExamID,
 			Position:            int(sec.Position),
@@ -314,7 +331,22 @@ func (s *Service) GetExam(ctx context.Context, id uuid.UUID) (*ExamDTO, error) {
 			ItemKinds:           kinds,
 		}
 	}
-	return &dto, nil
+	return sections, nil
+}
+
+// keepSections returns the drawn sections whose positions were chosen, or all of
+// them when none were.
+func keepSections(drawn []SectionActivities, chosen map[int]bool) []SectionActivities {
+	if len(chosen) == 0 {
+		return drawn
+	}
+	kept := make([]SectionActivities, 0, len(chosen))
+	for _, section := range drawn {
+		if chosen[section.SectionPosition] {
+			kept = append(kept, section)
+		}
+	}
+	return kept
 }
 
 func examDTO(r *sqlc.AssessExam) ExamDTO {
@@ -344,6 +376,13 @@ func (s *Service) StartSitting(
 		return nil, domain.ErrExamNotFound
 	}
 
+	var chosen map[int]bool
+	if req.Mode == domain.ModePractice {
+		if chosen, err = domain.ChosenSections(req.Sections); err != nil {
+			return nil, err
+		}
+	}
+
 	now := s.clock.Now().UTC()
 	if err := s.checkCanStart(ctx, userID, now); err != nil {
 		return nil, err
@@ -356,6 +395,9 @@ func (s *Service) StartSitting(
 			return nil, err
 		}
 	}
+	// A practice sitting keeps only the sections chosen, before anything is
+	// marked seen: an item the learner never sits is not spent.
+	drawn = keepSections(drawn, chosen)
 	if len(drawn) == 0 {
 		return nil, domain.ErrInsufficientItems
 	}
@@ -388,7 +430,7 @@ func (s *Service) StartSitting(
 		ChosenDurationMinutes: clampInt32(duration),
 		StartedAt:             now,
 		DeadlineAt:            deadlineAt,
-		CurrentSection:        1,
+		CurrentSection:        clampInt32(drawn[0].SectionPosition),
 		Status:                domain.StatusInProgress,
 		SectionActivities:     drawnBytes,
 		DraftAnswers:          []byte("{}"),
@@ -833,6 +875,7 @@ func (s *Service) gradeItem(
 		status = learningStatusGrading
 	}
 	applyOutcome(item, status, &score, res.MaxScore)
+	item.Feedback = res.Feedback
 	if len(res.ItemResults) > 0 {
 		if b, mErr := json.Marshal(res.ItemResults); mErr == nil {
 			item.ItemResults = b
@@ -866,7 +909,7 @@ func applyOutcome(item *domain.ItemOutcome, status string, score *int, maxScore 
 func (s *Service) storeReport(
 	ctx context.Context, attempt *sqlc.AssessExamAttempt, report *sqlc.AssessScoreReport, sections []domain.SectionOutcome,
 ) (*sqlc.AssessScoreReport, error) {
-	score := domain.ScoreReport(sections)
+	score := domain.ScoreReport(sections, len(decodeSections(attempt)))
 	sectionBytes, err := json.Marshal(sections)
 	if err != nil {
 		return nil, fmt.Errorf("serialize report sections: %w", err)
@@ -1039,6 +1082,7 @@ func (s *Service) GetScoreReport(ctx context.Context, userID, attemptID uuid.UUI
 	if perSection == nil {
 		perSection = []domain.SectionOutcome{}
 	}
+	s.attachReview(ctx, attempt, perSection)
 	var signals []IntegritySignalDTO
 	_ = json.Unmarshal(report.IntegritySignals, &signals)
 	if signals == nil {

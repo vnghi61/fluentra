@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { AlertCircle, PenTool, Sparkles } from "lucide-react";
+import { AlertCircle, Loader2, PenTool, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
@@ -9,13 +9,13 @@ import {
   type WritingFeedback,
   WritingFeedbackView,
 } from "@/features/writing";
+import { writingApi } from "@/features/writing/api/writingApi";
 import { cn } from "@/lib/utils";
 
 import { GuestNotice } from "../GuestNotice";
 import {
   type AnswerExplanation,
   ExerciseActions,
-  ExerciseFeedback,
   ExercisePrompt,
 } from "./ExerciseShell";
 
@@ -36,6 +36,7 @@ export interface ExerciseWritingProps {
   isMarking?: boolean | undefined;
   markingTimedOut?: boolean | undefined;
   writingFeedback?: WritingFeedback | null | undefined;
+  attemptId?: string | null | undefined;
   userId?: string | undefined;
   activityId?: string | undefined;
   onNavigateToMyWriting?: (() => void) | undefined;
@@ -70,6 +71,7 @@ export const ExerciseWriting: React.FC<ExerciseWritingProps> = ({
   isMarking = false,
   markingTimedOut = false,
   writingFeedback,
+  attemptId,
   userId,
   activityId,
   onNavigateToMyWriting,
@@ -77,7 +79,31 @@ export const ExerciseWriting: React.FC<ExerciseWritingProps> = ({
   onSubmit,
   onContinue,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const [fetchedFeedback, setFetchedFeedback] =
+    useState<WritingFeedback | null>(null);
+  const [isFeedbackLoading, setIsFeedbackLoading] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (isSubmitted && !isMarking && !writingFeedback && attemptId) {
+      setIsFeedbackLoading(true);
+      writingApi
+        .getFeedback(attemptId)
+        .then((fb) => {
+          if (isMounted) setFetchedFeedback(fb);
+        })
+        .catch(() => {})
+        .finally(() => {
+          if (isMounted) setIsFeedbackLoading(false);
+        });
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [isSubmitted, isMarking, writingFeedback, attemptId]);
+
+  const activeFeedback = writingFeedback ?? fetchedFeedback ?? null;
   const [text, setText] = useState(() => {
     if (userId && activityId) {
       return getWritingDraft(userId, activityId);
@@ -253,28 +279,80 @@ export const ExerciseWriting: React.FC<ExerciseWritingProps> = ({
       )}
 
       {/* Detailed Writing Feedback View */}
-      {isSubmitted && !isMarking && !markingTimedOut && writingFeedback && (
+      {isSubmitted && !isMarking && !markingTimedOut && activeFeedback && (
         <WritingFeedbackView
-          feedback={writingFeedback}
+          feedback={activeFeedback}
           essayText={text}
           sampleAnswer={sampleAnswer}
           onContinue={onContinue}
         />
       )}
 
-      {/* Fallback Feedback Panel */}
-      {isSubmitted && !isMarking && !markingTimedOut && !writingFeedback && (
-        <ExerciseFeedback
-          isCorrect={isCorrect}
-          feedback={feedback}
-          expectedAnswer={!isCorrect ? sampleAnswer : undefined}
-          score={typeof score === "number" ? score : undefined}
-          explanation={explanation}
-        />
+      {/* Writing Assessment & Feedback Panel when full interactive view is loading or unavailable */}
+      {isSubmitted && !isMarking && !markingTimedOut && !activeFeedback && (
+        <div className="rounded-2xl border border-border bg-surface-card p-6 space-y-4 shadow-sm animate-in fade-in duration-200">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              <h3 className="text-base font-bold text-text">
+                {t("runner.writingAssessmentTitle", "Đánh giá bài viết")}
+              </h3>
+            </div>
+            {typeof score === "number" && (
+              <span className="font-mono text-sm font-bold px-3 py-1 rounded-lg border bg-primary/10 text-primary border-primary/30">
+                {t("writing.score", "Điểm")}: {score} / 100
+              </span>
+            )}
+          </div>
+
+          {isFeedbackLoading && (
+            <div className="flex items-center gap-2 text-sm text-text-muted">
+              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              <span>
+                {t("runner.loadingFeedback", "Đang tải chi tiết nhận xét...")}
+              </span>
+            </div>
+          )}
+
+          {feedback && (
+            <div className="space-y-1.5 pt-2 border-t border-border">
+              <div className="text-xs font-semibold uppercase tracking-wider text-text-muted">
+                {t("writing.summary", "Nhận xét của giám khảo AI")}
+              </div>
+              <p className="text-sm text-text leading-relaxed bg-surface-muted/60 rounded-xl p-4 border border-border/60 whitespace-pre-line">
+                {feedback}
+              </p>
+            </div>
+          )}
+
+          {explanation && (
+            <div className="space-y-1.5 pt-2 border-t border-border">
+              <div className="text-xs font-semibold uppercase tracking-wider text-text-muted">
+                {t("runner.explanation", "Giải thích")}
+              </div>
+              <p className="text-sm text-text leading-relaxed bg-surface-muted/60 rounded-xl p-4 border border-border/60 whitespace-pre-line">
+                {Boolean(i18n?.language?.startsWith("vi")) && explanation.text_vi
+                  ? explanation.text_vi
+                  : explanation.text}
+              </p>
+            </div>
+          )}
+
+          {sampleAnswer && (
+            <div className="space-y-1.5 pt-2 border-t border-border">
+              <div className="text-xs font-semibold uppercase tracking-wider text-text-muted">
+                {t("writing.modelAnswer", "Bài mẫu tham khảo")}
+              </div>
+              <div className="p-4 rounded-xl border border-border/80 bg-surface-muted/40 text-sm text-text leading-relaxed whitespace-pre-line">
+                {sampleAnswer}
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Action Bar (hidden when WritingFeedbackView or markingTimedOut renders its own continue button) */}
-      {!writingFeedback && !markingTimedOut && (
+      {!activeFeedback && !markingTimedOut && (
         <ExerciseActions
           isSubmitted={isSubmitted || isGuest}
           canSubmit={canSubmit}

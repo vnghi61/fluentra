@@ -4141,6 +4141,7 @@ export interface components {
             correct: boolean;
             /** @example opt_b */
             correct_answer?: string | null;
+            explanation?: components["schemas"]["AnswerExplanation"];
         };
         AnswerExplanation: {
             /**
@@ -5074,6 +5075,16 @@ export interface components {
             item_results?: {
                 [key: string]: unknown;
             }[];
+            /** @description The grader's message for this item. */
+            feedback?: string;
+            /** @description What the learner answered, as saved in the sitting. Present on a submitted sitting's report only. */
+            response?: {
+                [key: string]: unknown;
+            };
+            /** @description The item as authored — questions, options, the correct answers, the script or passage, and explanations. Present on a submitted sitting's report only, so no answer reaches the learner before grading. */
+            content?: {
+                [key: string]: unknown;
+            };
         };
         ExamSectionOutcome: {
             position: number;
@@ -11160,6 +11171,19 @@ export interface operations {
                         level: string;
                         format: string;
                         total_minutes: number;
+                        /** @description The exam's sections in order, with how many items each draws. */
+                        sections?: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            exam_id: string;
+                            position: number;
+                            /** @enum {string} */
+                            skill: "listening" | "reading" | "writing" | "speaking";
+                            exam_duration_minutes: number;
+                            item_count: number;
+                            item_kinds: string[];
+                        }[];
                     }[];
                 };
             };
@@ -11183,6 +11207,8 @@ export interface operations {
                     /** @enum {string} */
                     mode: "exam" | "practice";
                     chosen_duration_minutes?: number;
+                    /** @description Practice mode only: the sections to sit, by position. Omitted or empty means all four. A position outside 1–4 or repeated is 400 EXAM_INVALID_SECTIONS. */
+                    sections?: number[];
                 };
             };
         };

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -72,6 +72,24 @@ describe("PronounceButton", () => {
     // The click must not reach the card. Without stopPropagation, hearing the
     // word also turns the card over and gives away the answer.
     expect(onFlip).not.toHaveBeenCalled();
+  });
+
+  it("stays usable when a phone reports the utterance as interrupted", async () => {
+    // Chrome on Android fires `interrupted` on an utterance queued just after a
+    // cancel. That used to grey the button out for good on the first tap.
+    render(<PronounceButton text="delicious" />);
+    await userEvent.click(screen.getByRole("button"));
+
+    const utterance = speak.mock.calls[0]?.[0] as FakeUtterance;
+    act(() => {
+      (utterance.onerror as ((event: { error: string }) => void) | null)?.({
+        error: "interrupted",
+      });
+    });
+
+    expect(screen.getByRole("button")).toBeEnabled();
+    await userEvent.click(screen.getByRole("button"));
+    expect(speak).toHaveBeenCalledTimes(2);
   });
 
   it("is disabled when there is nothing to say", () => {

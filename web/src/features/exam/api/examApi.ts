@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { ApiError, apiFetch } from "@/api/client";
+import { reachableStorageUrl } from "@/lib/storage-url";
 import type {
   CompleteSectionResult,
   ExamAttempt,
@@ -112,7 +113,7 @@ export const examApi = {
 
   /** Upload a recording straight to storage with the presigned URL. */
   async uploadSpeakingAudio(uploadUrl: string, blob: Blob): Promise<void> {
-    const res = await fetch(uploadUrl, {
+    const res = await fetch(reachableStorageUrl(uploadUrl), {
       method: "PUT",
       body: blob,
       headers: { "Content-Type": blob.type || "audio/webm" },

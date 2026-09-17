@@ -263,6 +263,8 @@ ItemResult:
       type: string
       nullable: true
       example: opt_b
+    explanation:
+      $ref: '#/AnswerExplanation'
 
 AnswerExplanation:
   type: object
