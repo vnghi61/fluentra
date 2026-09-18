@@ -88,7 +88,8 @@ export async function enterOtp(page: Page, code: string): Promise<void> {
 
 /**
  * Registers a learner through the UI, reads the code out of Mailpit, verifies,
- * and leaves the browser signed in on the dashboard.
+ * walks the onboarding wizard, and leaves the browser signed in on the
+ * dashboard.
  *
  * It deliberately does not clear the mailbox. Every learner gets a unique
  * address, so matching on the recipient is enough — and a global clear would
@@ -129,6 +130,55 @@ export async function registerAndVerify(
   const message = await waitForEmail(learner.email);
   await enterOtp(page, extractOtpCode(message.Text || message.HTML || ""));
 
+  // Verification lands on the dashboard, which sends a learner with no learning
+  // profile straight on to /welcome. Which of the two a first poll sees is a
+  // race, so accept either here and let completeOnboarding settle it.
+  await page.waitForURL(/\/(welcome)?$/, { timeout: 15_000 });
+  await completeOnboarding(page);
+}
+
+/**
+ * Walks the onboarding wizard the dashboard sends a learner with no learning
+ * profile to: the goal, the minutes a week, then a declared starting level.
+ * Saving the profile is what ends it, so a learner who already has one never
+ * sees the wizard and this returns having done nothing.
+ *
+ * It waits for the URL, not for the wizard against the shell. The dashboard
+ * paints — Account button and all — while the profile query is still in flight
+ * and only then redirects, so "the shell is on screen" is true for a moment on
+ * the way to /welcome. Racing the two lets a journey walk off with a half-built
+ * learner and fail three steps later on the screen it was already looking at.
+ */
+export async function completeOnboarding(page: Page): Promise<void> {
+  try {
+    await page.waitForURL(/\/welcome$/, { timeout: 15_000 });
+  } catch {
+    // The learner already has a learning profile, so the wizard never appears.
+    return;
+  }
+
+  await page.getByRole("button", { name: /^Continue$/ }).click();
+  await page.getByRole("button", { name: /^Continue$/ }).click();
+
+  // The last step leads with the placement test whenever an invite is open, and
+  // falls back to the level picker while that query is still in flight — so the
+  // picker being on screen does not mean the offer is not coming. Waiting for
+  // the offer is what keeps the choice from being made against a half-loaded
+  // step. None of these journeys is about placement, and declaring a level is
+  // the branch that ends on the dashboard, so take it whenever it is offered.
+  const chooseInstead = page.getByRole("button", {
+    name: /Choose my level instead/i,
+  });
+  try {
+    await chooseInstead.waitFor({ state: "visible", timeout: 5_000 });
+    await chooseInstead.click();
+  } catch {
+    // No invite for this learner; the picker is already the whole step.
+  }
+
+  await page
+    .getByRole("button", { name: /Save and go to the dashboard/i })
+    .click();
   await expect(page).toHaveURL("/", { timeout: 15_000 });
 }
 

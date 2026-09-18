@@ -100,6 +100,10 @@ test.describe("Journey 2: OTP wrong 5× → burned → fresh code → success", 
     expect(freshCode).not.toBe(realCode);
 
     await enterOtp(page, freshCode);
-    await expect(page).toHaveURL("/", { timeout: 15_000 });
+    // The fresh code is accepted and the app leaves the OTP screen. Where it
+    // settles is the dashboard's business, not this journey's: a learner with no
+    // learning profile is sent straight on to the onboarding wizard, and which
+    // of the two a poll catches is a race this journey has no reason to lose.
+    await page.waitForURL(/\/(welcome)?$/, { timeout: 15_000 });
   });
 });
