@@ -50,6 +50,12 @@ function isBareRoute(pathname: string): boolean {
   if (pathname.startsWith("/exams/") && !pathname.endsWith("/report")) {
     return true;
   }
+  if (pathname === "/placement" || pathname.startsWith("/placement/")) {
+    return true;
+  }
+  if (pathname === "/welcome" || pathname.startsWith("/welcome/")) {
+    return true;
+  }
   return bareRoutes.some(
     (prefix) => pathname === prefix || pathname.startsWith(prefix),
   );
@@ -149,6 +155,16 @@ const ExamSittingPage = lazyRouteComponent(
 const ExamReportPage = lazyRouteComponent(
   () => import("@/routes/ExamReportPage"),
   "ExamReportPage",
+);
+
+const WelcomePage = lazyRouteComponent(
+  () => import("@/pages/WelcomePage"),
+  "WelcomePage",
+);
+
+const PlacementPage = lazyRouteComponent(
+  () => import("@/routes/PlacementPage"),
+  "PlacementPage",
 );
 
 function RootApp(): React.JSX.Element {
@@ -426,8 +442,34 @@ export const examReportRoute = createRoute({
   component: ExamReportPage,
 });
 
+export const welcomeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/welcome",
+  beforeLoad: () => {
+    const { status } = useAuthStore.getState();
+    if (status === "unauthenticated") {
+      throw redirect({ to: "/login" });
+    }
+  },
+  component: WelcomePage,
+});
+
+export const placementRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/placement",
+  beforeLoad: () => {
+    const { status } = useAuthStore.getState();
+    if (status === "unauthenticated") {
+      throw redirect({ to: "/login" });
+    }
+  },
+  component: PlacementPage,
+});
+
 export const routeTree = rootRoute.addChildren([
   homeRoute,
+  welcomeRoute,
+  placementRoute,
   learnRoute,
   lessonRoute,
   practiceRoute,

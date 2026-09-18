@@ -50,6 +50,8 @@ check, and there is a test that fails if a user-id route ever appears.
 | `PATCH` | `/api/v1/me` | `self` | Update profile fields |
 | `GET` | `/api/v1/me/preferences` | `self` | Read preferences |
 | `PUT` | `/api/v1/me/preferences` | `self` | Replace preferences |
+| `GET` | `/api/v1/me/learning-profile` | `self` | Read the caller's learning profile |
+| `PUT` | `/api/v1/me/learning-profile` | `self` | Replace the caller's learning profile |
 | `POST` | `/api/v1/me/avatar/upload-intent` | `self` | Get a presigned URL for an avatar upload |
 | `PUT` | `/api/v1/me/avatar` | `self` | Confirm the uploaded avatar |
 | `GET` | `/api/v1/storage/avatars/{assetId}` | `authenticated` | Serve a stored avatar image |
@@ -106,6 +108,26 @@ Replace preferences
 | Permission | `self` |
 | Success | 200 |
 | Errors | standard set |
+
+### `GET /api/v1/me/learning-profile`
+
+Read the caller's learning profile
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | `NOT_FOUND` |
+
+### `PUT /api/v1/me/learning-profile`
+
+Replace the caller's learning profile
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | `VALIDATION_FAILED` |
 
 ### `POST /api/v1/me/avatar/upload-intent`
 

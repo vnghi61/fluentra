@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/fluentra/fluentra/internal/modules/learning/contract"
 	"github.com/fluentra/fluentra/internal/modules/learning/domain"
 	"github.com/fluentra/fluentra/internal/modules/learning/service"
 )
@@ -33,6 +34,17 @@ type SubmitAttemptResponse struct {
 	Feedback      *string                    `json:"feedback"`
 	CorrectAnswer *string                    `json:"correct_answer,omitempty"`
 	Explanation   *AnswerExplanationResponse `json:"explanation,omitempty"`
+	// ItemResults is in the spec and was never sent: a reading set showed no
+	// per-question verdict and struck through every chosen option.
+	ItemResults []ItemResultResponse `json:"item_results,omitempty"`
+}
+
+// ItemResultResponse matches the OpenAPI schema for ItemResult.
+type ItemResultResponse struct {
+	ID            string                     `json:"id"`
+	Correct       bool                       `json:"correct"`
+	CorrectAnswer *string                    `json:"correct_answer,omitempty"`
+	Explanation   *AnswerExplanationResponse `json:"explanation,omitempty"`
 }
 
 // AnswerExplanationResponse matches the OpenAPI schema for AnswerExplanation.
@@ -51,6 +63,7 @@ type PreviewGradeResponse struct {
 	Feedback      string                     `json:"feedback"`
 	CorrectAnswer *string                    `json:"correct_answer,omitempty"`
 	Explanation   *AnswerExplanationResponse `json:"explanation,omitempty"`
+	ItemResults   []ItemResultResponse       `json:"item_results,omitempty"`
 	// Saved is always false. It is stated rather than implied because the whole
 	// contract of this endpoint is what it does not do, and a client that reads
 	// this field cannot mistake a preview for a recorded attempt.
@@ -72,6 +85,7 @@ func toPreviewGradeResponse(dto *service.PreviewGradeResultDTO) PreviewGradeResp
 		Feedback:      dto.Feedback,
 		CorrectAnswer: dto.CorrectAnswer,
 		Explanation:   explanation,
+		ItemResults:   toItemResultResponses(dto.ItemResults),
 		Saved:         false,
 	}
 }
@@ -117,7 +131,23 @@ func toSubmitAttemptResponse(dto *service.SubmitAttemptResultDTO) SubmitAttemptR
 		Feedback:      dto.Feedback,
 		CorrectAnswer: dto.CorrectAnswer,
 		Explanation:   explanation,
+		ItemResults:   toItemResultResponses(dto.ItemResults),
 	}
+}
+
+func toItemResultResponses(results []contract.ItemResult) []ItemResultResponse {
+	if len(results) == 0 {
+		return nil
+	}
+	out := make([]ItemResultResponse, 0, len(results))
+	for _, result := range results {
+		item := ItemResultResponse{ID: result.ID, Correct: result.Correct, CorrectAnswer: result.CorrectAnswer}
+		if result.Explanation != nil {
+			item.Explanation = &AnswerExplanationResponse{Text: result.Explanation.Text, TextVi: result.Explanation.TextVi}
+		}
+		out = append(out, item)
+	}
+	return out
 }
 
 func toAttemptDetailResponse(dto *service.AttemptDetailDTO) AttemptDetailResponse {

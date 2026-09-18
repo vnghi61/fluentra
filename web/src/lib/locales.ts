@@ -217,6 +217,8 @@ const COUNTRY_CODES = [
 export interface CountryOption {
   code: string;
   name: string;
+  /** The code and the English name, so "VN" and "Vietnam" find "Việt Nam". */
+  searchTerms: string;
 }
 
 /**
@@ -225,20 +227,33 @@ export interface CountryOption {
  * Sorted with `Intl.Collator` rather than by code point, because Vietnamese
  * names put Đ between D and E and a plain sort does not.
  */
-export function countryOptions(locale: string): CountryOption[] {
+export function countryOptions(locale: string | undefined): CountryOption[] {
+  // `i18n.language` is undefined until i18next has initialised, and
+  // `Intl.DisplayNames([undefined])` throws, which reduced every name to its code.
+  const displayLocale = locale || "en";
   let naming: Intl.DisplayNames | null = null;
   try {
-    naming = new Intl.DisplayNames([locale], { type: "region" });
+    naming = new Intl.DisplayNames([displayLocale], { type: "region" });
   } catch {
     // An unsupported locale is not a reason to lose the list; the codes still
     // identify the country, and the server only ever stores the code.
     naming = null;
   }
 
+  // English names are searchable whatever the display language: a Vietnamese
+  // learner is as likely to type "Japan" as "Nhật Bản".
+  let english: Intl.DisplayNames | null = null;
+  try {
+    english = new Intl.DisplayNames(["en"], { type: "region" });
+  } catch {
+    english = null;
+  }
+
   const collator = new Intl.Collator(locale);
   return COUNTRY_CODES.map((code) => ({
     code,
     name: naming?.of(code) ?? code,
+    searchTerms: `${code} ${english?.of(code) ?? ""}`.trim(),
   })).sort((a, b) => collator.compare(a.name, b.name));
 }
 

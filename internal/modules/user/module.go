@@ -132,6 +132,12 @@ func (m *Module) Registrar() contract.Registrar { return m.service }
 // Exportable is this module's GDPR export contract.
 func (m *Module) Exportable() contract.Exportable { return m.service }
 
+// LearningProfileReader is the read contract for a learner's goals: learning
+// uses it for the declared level, the target level and the weekly minutes.
+func (m *Module) LearningProfileReader() contract.LearningProfileReader {
+	return m.service.LearningProfileReader()
+}
+
 // AdminReader is this module's read contract for admin user management.
 func (m *Module) AdminReader() contract.AdminReader { return m.service }
 

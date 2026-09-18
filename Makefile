@@ -76,6 +76,9 @@ api: ## Run the API server on the host
 worker: ## Run the background worker on the host
 	go run ./cmd/worker
 
+tts: ## Render missing listening audio with Piper (reads .env; set SPEECH_PIPER_BINARY and SPEECH_PIPER_MODELS)
+	go run ./cmd/tts -all -engine piper
+
 web: ## Run the frontend dev server on the host
 	cd web && pnpm dev
 

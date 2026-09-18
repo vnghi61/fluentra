@@ -371,6 +371,7 @@ func run(ctx context.Context) error {
 	}
 
 	aiClient := initAIClient(ctx, cfg, pool)
+	workerNudger := newWorkerNudger(cfg.Worker.URL)
 
 	modules := newIdentity(identityDeps{
 		Pool:        pool,
@@ -413,10 +414,11 @@ func run(ctx context.Context) error {
 		// client but not the value type, and Cache[T] is generic per type.
 		Denylist:          cache.NewRedisCache[bool](redisClient),
 		Mailer:            newAPIMailSender(cfg, pool),
-		WorkerNudger:      newWorkerNudger(cfg.Worker.URL),
+		WorkerNudger:      workerNudger,
 		WritingDailyLimit: cfg.AI.WritingDailyLimit,
 		SpeechDailyLimit:  cfg.Speech.DailyRecordingsLimit,
 		SpeechASRModel:    cfg.Speech.ASRModel,
+		SpeechTTSVoice:    cfg.Speech.TTSVoice,
 		ExamDailyLimit:    cfg.Exam.DailySittingsLimit,
 		Transcriber:       mediaTranscriber,
 	})
@@ -449,6 +451,9 @@ func run(ctx context.Context) error {
 
 	serverErrors := make(chan error, 1)
 	go func() { serverErrors <- server.ListenAndServe() }()
+
+	// Wake the worker on API start-up (cold boot) so overdue jobs or un-rendered audio are processed.
+	workerNudger.Nudge(ctx)
 
 	select {
 	case <-ctx.Done():

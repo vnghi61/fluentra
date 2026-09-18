@@ -1,6 +1,7 @@
 export * from "./api/accountApi";
 export * from "./model/schemas";
 export * from "./components/ProfileSettings";
+export * from "./components/LearningProfileSettings";
 export * from "./components/PreferencesSettings";
 export * from "./components/AvatarUploadModal";
 export * from "./components/SecuritySettings";

@@ -30,13 +30,14 @@ const (
 type fakeRepo struct {
 	mu sync.Mutex
 
-	users       map[uuid.UUID]domain.User
-	profiles    map[uuid.UUID]domain.Profile
-	preferences map[uuid.UUID]domain.Preferences
-	summaries   map[uuid.UUID]domain.Summary
-	exports     map[uuid.UUID]domain.ExportRequest
-	deletions   map[uuid.UUID]domain.DeletionRequest
-	avatars     map[string]domain.AvatarAsset
+	users            map[uuid.UUID]domain.User
+	profiles         map[uuid.UUID]domain.Profile
+	preferences      map[uuid.UUID]domain.Preferences
+	learningProfiles map[uuid.UUID]domain.LearningProfile
+	summaries        map[uuid.UUID]domain.Summary
+	exports          map[uuid.UUID]domain.ExportRequest
+	deletions        map[uuid.UUID]domain.DeletionRequest
+	avatars          map[string]domain.AvatarAsset
 
 	// calls counts every repository method by name. A test asserting "one
 	// query for N ids" asserts on this.
@@ -47,15 +48,16 @@ type fakeRepo struct {
 
 func newFakeRepo() *fakeRepo {
 	return &fakeRepo{
-		users:       map[uuid.UUID]domain.User{},
-		profiles:    map[uuid.UUID]domain.Profile{},
-		preferences: map[uuid.UUID]domain.Preferences{},
-		summaries:   map[uuid.UUID]domain.Summary{},
-		exports:     map[uuid.UUID]domain.ExportRequest{},
-		avatars:     map[string]domain.AvatarAsset{},
-		deletions:   map[uuid.UUID]domain.DeletionRequest{},
-		calls:       map[string]int{},
-		failOn:      map[string]error{},
+		users:            map[uuid.UUID]domain.User{},
+		profiles:         map[uuid.UUID]domain.Profile{},
+		preferences:      map[uuid.UUID]domain.Preferences{},
+		learningProfiles: map[uuid.UUID]domain.LearningProfile{},
+		summaries:        map[uuid.UUID]domain.Summary{},
+		exports:          map[uuid.UUID]domain.ExportRequest{},
+		avatars:          map[string]domain.AvatarAsset{},
+		deletions:        map[uuid.UUID]domain.DeletionRequest{},
+		calls:            map[string]int{},
+		failOn:           map[string]error{},
 	}
 }
 
@@ -233,6 +235,34 @@ func (f *fakeRepo) ReplacePreferences(_ context.Context, preferences domain.Pref
 	preferences.ID = existing.ID
 	f.preferences[preferences.UserID] = preferences
 	return preferences, nil
+}
+
+func (f *fakeRepo) GetLearningProfile(_ context.Context, userID uuid.UUID) (domain.LearningProfile, error) {
+	if err := f.record("GetLearningProfile"); err != nil {
+		return domain.LearningProfile{}, err
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	profile, ok := f.learningProfiles[userID]
+	if !ok {
+		return domain.LearningProfile{}, domain.ErrLearningProfileNotFound
+	}
+	return profile, nil
+}
+
+func (f *fakeRepo) ReplaceLearningProfile(_ context.Context, profile domain.LearningProfile) (
+	domain.LearningProfile, error,
+) {
+	if err := f.record("ReplaceLearningProfile"); err != nil {
+		return domain.LearningProfile{}, err
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if profile.ID == uuid.Nil {
+		profile.ID = uuid.New()
+	}
+	f.learningProfiles[profile.UserID] = profile
+	return profile, nil
 }
 
 func (f *fakeRepo) GetSummary(_ context.Context, id uuid.UUID) (domain.Summary, error) {
@@ -702,10 +732,13 @@ func (f *fakeRepo) DeletePreferences(_ context.Context, userID uuid.UUID) error 
 	return nil
 }
 
-func (f *fakeRepo) DeleteLearningProfile(_ context.Context, _ uuid.UUID) error {
+func (f *fakeRepo) DeleteLearningProfile(_ context.Context, userID uuid.UUID) error {
 	if err := f.record("DeleteLearningProfile"); err != nil {
 		return err
 	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	delete(f.learningProfiles, userID)
 	return nil
 }
 

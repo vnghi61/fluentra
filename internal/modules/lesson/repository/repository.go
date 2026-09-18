@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -45,6 +46,7 @@ type CreateLessonParams struct {
 	SkillFocus       string
 	EstimatedMinutes int
 	Status           string
+	CEFRLevel        *string
 }
 
 // UpdateLessonParams holds the parameters to update a lesson.
@@ -54,14 +56,25 @@ type UpdateLessonParams struct {
 	SkillFocus       string
 	EstimatedMinutes int
 	Status           string
+	CEFRLevel        *string
 }
 
-// PrerequisiteItem carries a lesson prerequisite with the required lesson's title.
+func toSqlcCefrLevel(lvl *string) *sqlc.CoreCefrLevel {
+	if lvl == nil || *lvl == "" {
+		return nil
+	}
+	// core.cefr_level is lower case; the API and the contract use A1–C2.
+	c := sqlc.CoreCefrLevel(strings.ToLower(*lvl))
+	return &c
+}
+
+// PrerequisiteItem carries a lesson prerequisite with the required lesson's title and level.
 type PrerequisiteItem struct {
 	LessonID            uuid.UUID
 	RequiresLessonID    uuid.UUID
 	MinScore            int
 	RequiresLessonTitle string
+	RequiresLessonLevel *string
 }
 
 // Repository handles database operations for the lesson module.
@@ -186,6 +199,7 @@ func (r *Repository) UpsertLesson(
 		Title:            params.Title,
 		SkillFocus:       params.SkillFocus,
 		EstimatedMinutes: int32(params.EstimatedMinutes), //nolint:gosec // bounded by the caller
+		CefrLevel:        toSqlcCefrLevel(params.CEFRLevel),
 	})
 	if err != nil {
 		return nil, mapPgError(err)
@@ -359,6 +373,7 @@ func (r *Repository) CreateLesson(ctx context.Context, params CreateLessonParams
 		SkillFocus:       params.SkillFocus,
 		EstimatedMinutes: int32(params.EstimatedMinutes), //nolint:gosec // bounded integer
 		Status:           params.Status,
+		CefrLevel:        toSqlcCefrLevel(params.CEFRLevel),
 	})
 	if err != nil {
 		return nil, mapPgError(err)
@@ -374,6 +389,7 @@ func (r *Repository) UpdateLesson(ctx context.Context, params UpdateLessonParams
 		SkillFocus:       params.SkillFocus,
 		EstimatedMinutes: int32(params.EstimatedMinutes), //nolint:gosec // bounded integer
 		Status:           params.Status,
+		CefrLevel:        toSqlcCefrLevel(params.CEFRLevel),
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -569,6 +585,7 @@ func (r *Repository) ListPrerequisitesForLessons(
 			RequiresLessonID:    row.RequiresLessonID,
 			MinScore:            int(row.MinScore),
 			RequiresLessonTitle: row.RequiresLessonTitle,
+			RequiresLessonLevel: fromSqlcCefrLevel(row.RequiresLessonLevel),
 		}
 	}
 	return items, nil

@@ -65,6 +65,18 @@ type ReviewCardSummary struct {
 	// An earlier version of this comment claimed archiving was handled here, and
 	// a work order was written against it.
 	Content *ReviewCardContent `json:"content,omitempty"`
+
+	// NextDueByGrade is when the card would come back under each grade, scheduled
+	// without writing anything. Set on the cards a review session returns.
+	NextDueByGrade *GradePreview `json:"next_due_by_grade,omitempty"`
+}
+
+// GradePreview is the due time each of the four grades would schedule.
+type GradePreview struct {
+	Again time.Time `json:"again"`
+	Hard  time.Time `json:"hard"`
+	Good  time.Time `json:"good"`
+	Easy  time.Time `json:"easy"`
 }
 
 // CardWriter allows upstream modules to create review cards and to take content
@@ -90,6 +102,14 @@ type CardWriter interface {
 type QueueReader interface {
 	DueCount(ctx context.Context, userID uuid.UUID) (int, error)
 	DueCards(ctx context.Context, userID uuid.UUID, limit int32) ([]ReviewCardSummary, error)
+}
+
+// ReviewPaceReader reports how long a learner takes per review, measured from
+// the time they spent on their recent answers. learning sizes the reviews in a
+// weekly plan with it.
+type ReviewPaceReader interface {
+	// AverageReviewSeconds is zero when the learner has no recent reviews.
+	AverageReviewSeconds(ctx context.Context, userID uuid.UUID) (float64, error)
 }
 
 // CardAnswered payload for review.card_answered event.

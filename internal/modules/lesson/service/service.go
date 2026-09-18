@@ -202,6 +202,7 @@ type LessonSummaryDTO struct {
 	SkillFocus       string    `json:"skill_focus"`
 	EstimatedMinutes int       `json:"estimated_minutes"`
 	Status           string    `json:"status"`
+	CEFRLevel        *string   `json:"cefr_level,omitempty"`
 	Locked           bool      `json:"locked"`
 	LockReason       *string   `json:"lock_reason"`
 	// Completed is false for a signed-out visitor, which is correct: they have
@@ -241,6 +242,7 @@ type LessonTreeData struct {
 	SkillFocus       string             `json:"skill_focus"`
 	EstimatedMinutes int                `json:"estimated_minutes"`
 	Status           string             `json:"status"`
+	CEFRLevel        *string            `json:"cefr_level,omitempty"`
 	Prereqs          []PrerequisiteItem `json:"prereqs"`
 }
 
@@ -287,6 +289,7 @@ type LessonDetailDTO struct {
 	SkillFocus       string              `json:"skill_focus"`
 	EstimatedMinutes int                 `json:"estimated_minutes"`
 	Status           string              `json:"status"`
+	CEFRLevel        *string             `json:"cefr_level,omitempty"`
 	Activities       []LessonActivityDTO `json:"activities"`
 	// NextLessonID is the lesson that follows this one in the course, or nil
 	// when this is the last one.
@@ -499,6 +502,7 @@ func (s *Service) GetCourseDetail(ctx context.Context, slug string, userID uuid.
 				SkillFocus:       l.SkillFocus,
 				EstimatedMinutes: l.EstimatedMinutes,
 				Status:           l.Status,
+				CEFRLevel:        l.CEFRLevel,
 				Locked:           locked,
 				LockReason:       lockReason,
 				Completed:        completed[l.ID],
@@ -606,6 +610,7 @@ func (s *Service) assembleTreeData(
 			SkillFocus:       l.SkillFocus,
 			EstimatedMinutes: l.EstimatedMinutes,
 			Status:           l.Status,
+			CEFRLevel:        l.CEFRLevel,
 			Prereqs:          prereqMap[l.ID],
 		})
 	}
@@ -734,6 +739,7 @@ func (s *Service) loadLessonDetail(
 			SkillFocus:       lesson.SkillFocus,
 			EstimatedMinutes: lesson.EstimatedMinutes,
 			Status:           lesson.Status,
+			CEFRLevel:        lesson.CEFRLevel,
 			Activities:       actDTOs,
 		}
 
@@ -948,6 +954,7 @@ func (s *Service) buildPublishedLessonDetail(
 		SkillFocus:       lesson.SkillFocus,
 		EstimatedMinutes: lesson.EstimatedMinutes,
 		Status:           lesson.Status,
+		CEFRLevel:        lesson.CEFRLevel,
 		Activities:       actDTOs,
 	}, nil
 }
@@ -1101,6 +1108,15 @@ func (s *Service) ListPrerequisitesForLessons(
 	ctx context.Context, lessonIDs []uuid.UUID,
 ) ([]contract.PrerequisiteItem, error) {
 	return s.repo.ListPrerequisitesForLessons(ctx, lessonIDs)
+}
+
+// curriculumCatalogLimit bounds the courses a starting path chooses from.
+const curriculumCatalogLimit int32 = 100
+
+// ListCurriculumCourses implements contract.CourseCatalog: the published
+// curriculum courses whose range contains level, or all of them.
+func (s *Service) ListCurriculumCourses(ctx context.Context, level *string) ([]*contract.Course, error) {
+	return s.repo.ListPublishedCourses(ctx, level, curriculumCatalogLimit, 0)
 }
 
 // ListUnitsByCourseID implements contract.Reader.

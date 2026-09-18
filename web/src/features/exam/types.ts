@@ -88,10 +88,7 @@ export interface RecordingAnswer {
   audio_object_key: string;
 }
 export type SittingAnswer =
-  | ChoiceAnswer
-  | EssayAnswer
-  | RewriteAnswer
-  | RecordingAnswer;
+  ChoiceAnswer | EssayAnswer | RewriteAnswer | RecordingAnswer;
 export type DraftAnswers = Record<string, SittingAnswer>;
 
 export interface ExamAttempt {
@@ -125,6 +122,8 @@ export interface ExamAttemptListResponse {
 export interface StartSittingRequest {
   mode: ExamMode;
   chosen_duration_minutes?: number;
+  /** Practice mode only: the section positions to sit. Omitted means all. */
+  sections?: number[];
 }
 
 export type IntegrityKind = "tab_hidden" | "window_blurred" | "paste";
@@ -159,10 +158,16 @@ export interface SubmitExamResult {
   report_status: ReportStatus;
 }
 
+export interface AnswerExplanation {
+  text: string;
+  text_vi: string;
+}
+
 export interface QuestionResult {
   id: string;
   correct: boolean;
   correct_answer?: string;
+  explanation?: AnswerExplanation;
 }
 
 export type ItemStatus = "graded" | "pending" | "failed" | "unanswered";
@@ -177,6 +182,12 @@ export interface ExamItemOutcome {
   score: number;
   max_score: number;
   item_results?: QuestionResult[];
+  /** The grader's own message, e.g. an essay under its word count. */
+  feedback?: string;
+  /** What the learner answered. Present once the sitting is submitted. */
+  response?: Record<string, unknown>;
+  /** The item as authored, with answers and explanations. Submitted sittings only. */
+  content?: Record<string, unknown>;
 }
 
 export interface ExamSectionOutcome {

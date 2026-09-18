@@ -6,8 +6,8 @@ status: DONE
 phase: 2
 owner: "@learning-team"
 schema: learn
-tables: [enrollments, progress, attempts, learning_sessions, placement_results, skill_mastery, answer_explanations, item_exposures, daily_sets]
-depends_on: [lesson, content, srs, cache, job]
+tables: [enrollments, progress, attempts, learning_sessions, placement_results, skill_mastery, answer_explanations, item_exposures, daily_sets, placement_sessions, weekly_plans]
+depends_on: [lesson, content, srs, user, admin, cache, job]
 depended_on_by: [gamification, analytics, admin, exam, vocabulary, grammar, reading, listening, speaking, writing]
 spec_version: 1.0.0
 last_verified: 2026-08-25
@@ -81,7 +81,8 @@ Other modules may import **only** `internal/modules/learning/contract`.
 | interface | `learning.ExerciseGrader` | `Grade(ctx, GradeRequest) (GradeResult, error)` — **implemented by every skill module**, registered by activity kind |
 | struct | `learning.GradeResult` | `{Score, MaxScore, Correct, Feedback, Async, ReviewItems}` — `ReviewItem` is a `learning` type, not an `srs` one, so a grader in any skill module can return it |
 | interface | `learning.ProgressReader` | `ProgressOf(ctx, userID, scope)` — used by `gamification`, `admin`, `analytics` |
-| interface | `learning.UnlockChecker` | `IsUnlocked(ctx, userID, lessonIDs)` — used by `lesson` (batched to prevent N+1 queries) |
+| interface | `learning.UnlockChecker` | `IsUnlocked(ctx, userID, lessonIDs)` — used by `lesson` (batched to prevent N+1 queries). A prerequisite below the learner's placed level is met without being done |
+| interface | `learning.PlacementListeningPolicy` | `PlacementListeningPlays(ctx, userID, sessionID, versionID)` — used by `listening`: one play, only for the current item of the caller's open session |
 
 ### Events
 
@@ -114,6 +115,8 @@ Migrations: `db/migrations/learning/` · Queries: `db/queries/learning/`
 | `learn.answer_explanations` | Cached AI answer explanations | `content_version_id`, `user_answer` unique, `text`, `text_vi`, `is_correct` |
 | `learn.item_exposures` | Learner item exposure log | `user_id`, `activity_id`, `first_served_at`. Primary key (user_id, activity_id). |
 | `learn.daily_sets` | Daily practice set cache | `user_id`, `local_date`, `activity_ids`. Unique on (user_id, local_date). |
+| `learn.placement_sessions` | One adaptive placement test | `user_id`, `status`, `stage`, `started_at`, `deadline_at`, `estimate` jsonb, `items` jsonb (served items with their attempts), `version`, `productive_status`, `productive_deadline_at`, `result_id`, `completed_at` |
+| `learn.weekly_plans` | A learner's plan for one week | `user_id`, `week_start` (Monday, Asia/Ho_Chi_Minh), `minutes_goal`, `items` jsonb. Primary key (user_id, week_start); progress is read, not stored |
 
 **Indexes of note**
 
@@ -121,6 +124,8 @@ Migrations: `db/migrations/learning/` · Queries: `db/queries/learning/`
 - `idx_attempts_user_activity_time` — attempt history
 - `idx_attempts_activity_time` — item statistics for `questionbank`
 - `uq_answer_explanations` — unique on (content_version_id, user_answer) for lazy deduplication
+- `uq_placement_sessions_one_in_progress` — partial unique on (user_id) where the session is in progress
+- `idx_placement_sessions_open_deadline` — the expiry sweep
 <!-- END GENERATED: schema -->
 
 ## 6. HTTP endpoints
@@ -141,6 +146,13 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | `GET` | `/api/v1/practice/daily` | `self` | Fetch today's practice set |
 | `POST` | `/api/v1/me/sessions` | `self` | Start a study session |
 | `POST` | `/api/v1/me/sessions/{id}/complete` | `self` | End a session |
+| `GET` | `/api/v1/me/placement` | `self` | The current placement result, a session in progress, when a retake is available, and whether to invite |
+| `POST` | `/api/v1/me/placement` | `self` | Start a 20-minute adaptive placement test |
+| `GET` | `/api/v1/me/placement/sessions/{id}` | `self` | A session: the current item redacted, the server's remaining seconds, the stage, or the result |
+| `POST` | `/api/v1/me/placement/sessions/{id}/answers` | `self` | Answer the current item; returns the next item or the result |
+| `POST` | `/api/v1/me/placement/sessions/{id}/productive` | `self` | Start or skip the writing and speaking part |
+| `GET` | `/api/v1/me/path` | `self` | Recommended courses for the learner's level and the lesson to start at in each |
+| `GET` | `/api/v1/me/weekly-plan` | `self` | This week's plan, built on the first request of the week, with progress read now |
 <!-- END GENERATED: endpoints -->
 
 ## 7. Folder map
@@ -162,9 +174,11 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 <!-- BEGIN GENERATED: related -->
 | Module | Direction | Why |
 |---|---|---|
-| [`lesson`](../../modules/lesson/AGENT.md) | → depends on | Structure, activities, unlocking rules |
+| [`lesson`](../../modules/lesson/AGENT.md) | → depends on | Structure, activities, unlocking rules, the curriculum catalogue for the starting path |
 | [`content`](../../modules/content/AGENT.md) | → depends on | Rendering activity content |
-| [`srs`](../../modules/srs/AGENT.md) | → depends on | Push review items produced by a graded attempt |
+| [`srs`](../../modules/srs/AGENT.md) | → depends on | Push review items produced by a graded attempt; due reviews and review pace for the weekly plan |
+| [`user`](../../modules/user/AGENT.md) | → depends on | The learning profile: declared level, target level, weekly minutes |
+| [`admin`](../../modules/admin/AGENT.md) | → depends on | The `placement.invite` flag |
 | [`cache`](../../platform/cache/AGENT.md) | → depends on | Dashboard and progress reads |
 | [`job`](../../platform/job/AGENT.md) | → depends on | Asynchronous grading completion and rollups |
 | [`gamification`](../../modules/gamification/AGENT.md) | ← used by | consumes this module's contract |
@@ -196,6 +210,7 @@ and fails `go-arch-lint` in CI.
 8. **BR-LEARNING-08** — Attempts older than the activity's time limit are expired by a job and cannot be submitted.
 9. **BR-LEARNING-09** — Skill mastery is an exponentially weighted estimate over recent attempts, not a raw average — recent performance must dominate.
 10. **BR-LEARNING-10** — The placement test adapts: item difficulty follows the running estimate, and it stops when the confidence interval is narrow enough or the item budget is exhausted.
+11. **BR-LEARNING-11** — Placement completes nothing: no progress row, no `activity.completed`, no review card. A placement opens lessons below the placed level; a declared level opens nothing.
 <!-- END GENERATED: rules -->
 
 ## 10. Common tasks
@@ -286,7 +301,9 @@ go test -tags=integration ./internal/modules/learning/...  # integration (testco
 - Progress rollup correctness including optional activities
 - Unlock evaluation matches the prerequisite graph
 - Expiry job does not expire an attempt that was submitted a moment earlier
-- Placement adaptation terminates and produces a defensible level
+- Placement adaptation terminates and produces a defensible level: 1,000 simulated learners per band are placed within one band in 95% and exactly in 70%
+- A placement answer after the deadline plus five seconds is refused; an abandoned session is finished by the sweep and by a read
+- A placement item is never drawn into a daily set or an exam sitting, and neither pool's items into a placement
 <!-- END GENERATED: testing -->
 
 ## 14. Do NOT

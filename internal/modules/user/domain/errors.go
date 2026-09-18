@@ -20,6 +20,10 @@ var (
 	ErrPreferencesNotFound = apperr.New(
 		apperr.NotFound, "PREFERENCES_NOT_FOUND", "The preferences were not found.")
 
+	// ErrLearningProfileNotFound is returned when no learning profile row exists.
+	ErrLearningProfileNotFound = apperr.New(
+		apperr.NotFound, "LEARNING_PROFILE_NOT_FOUND", "The learning profile was not found.")
+
 	// ErrDisplayNameNotAllowed enforces BR-USER-02.
 	ErrDisplayNameNotAllowed = apperr.New(
 		apperr.Validation, "DISPLAY_NAME_NOT_ALLOWED", "That display name is not allowed.")

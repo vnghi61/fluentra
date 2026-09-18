@@ -118,6 +118,23 @@ type chatResponse struct {
 	} `json:"error"`
 }
 
+// setRequestHeaders applies the headers every call needs, plus the ones a
+// particular provider insists on. It lives outside Complete because the
+// provider-specific branches are the kind that keep being added, and each one
+// added inline costs Complete a point of cyclomatic complexity it has no room
+// for.
+func (p *OpenAICompatibleProvider) setRequestHeaders(request *http.Request) {
+	request.Header.Set("Content-Type", "application/json")
+	if p.config.APIKey != "" {
+		request.Header.Set("Authorization", "Bearer "+p.config.APIKey)
+	}
+	// OpenCode rejects a call without a session identifier; every other
+	// OpenAI-compatible endpoint ignores the header.
+	if strings.Contains(strings.ToLower(p.config.BaseURL), "opencode") || strings.EqualFold(p.config.Name, "opencode") {
+		request.Header.Set("x-opencode-session", "fluentra")
+	}
+}
+
 // Complete renders the task's template and asks the model.
 func (p *OpenAICompatibleProvider) Complete(ctx context.Context, req Request) (Response, error) {
 	tmpl, err := p.registry.Get(req.Task)
@@ -145,10 +162,7 @@ func (p *OpenAICompatibleProvider) Complete(ctx context.Context, req Request) (R
 	if err != nil {
 		return Response{}, fmt.Errorf("ai: build request: %w", err)
 	}
-	request.Header.Set("Content-Type", "application/json")
-	if p.config.APIKey != "" {
-		request.Header.Set("Authorization", "Bearer "+p.config.APIKey)
-	}
+	p.setRequestHeaders(request)
 
 	response, err := p.client.Do(request)
 	if err != nil {
@@ -167,8 +181,8 @@ func (p *OpenAICompatibleProvider) Complete(ctx context.Context, req Request) (R
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		// The body, truncated, because every provider explains a 400
 		// differently and the explanation is the only useful part.
-		return Response{}, fmt.Errorf("ai: %s returned %d: %.300s",
-			endpoint, response.StatusCode, payload)
+		// Typed, so a 429 or a 402 can be told apart from a malformed request.
+		return Response{}, &ProviderStatusError{Endpoint: endpoint, Status: response.StatusCode, Body: string(payload)}
 	}
 
 	var decoded chatResponse

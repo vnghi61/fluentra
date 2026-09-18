@@ -57,6 +57,7 @@ type Lesson struct {
 	SkillFocus       string     `json:"skill_focus"`
 	EstimatedMinutes int        `json:"estimated_minutes"`
 	Status           string     `json:"status"`
+	CEFRLevel        *string    `json:"cefr_level,omitempty"`
 	Activities       []Activity `json:"activities,omitempty"`
 }
 
@@ -80,6 +81,16 @@ type PrerequisiteItem struct {
 	RequiresLessonID    uuid.UUID `json:"requires_lesson_id"`
 	MinScore            int       `json:"min_score"`
 	RequiresLessonTitle string    `json:"requires_lesson_title"`
+	// RequiresLessonLevel is the required lesson's CEFR level, when it has one.
+	// A placement opens a lesson whose prerequisites are all below the placed level.
+	RequiresLessonLevel *string `json:"requires_lesson_level,omitempty"`
+}
+
+// CourseCatalog lists the curriculum for a learner's starting path.
+type CourseCatalog interface {
+	// ListCurriculumCourses returns the published curriculum courses whose range
+	// contains level, or all of them when level is nil.
+	ListCurriculumCourses(ctx context.Context, level *string) ([]*Course, error)
 }
 
 // Reader provides access to course hierarchy and lesson activities.
@@ -123,6 +134,7 @@ type LessonSpec struct {
 	Title            string
 	SkillFocus       string
 	EstimatedMinutes int
+	CEFRLevel        *string
 }
 
 // ActivitySpec is one exercise. Activities are replaced wholesale rather than

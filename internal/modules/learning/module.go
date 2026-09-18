@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/fluentra/fluentra/internal/generated/learning/sqlc"
+	admincontract "github.com/fluentra/fluentra/internal/modules/admin/contract"
 	contentcontract "github.com/fluentra/fluentra/internal/modules/content/contract"
 	"github.com/fluentra/fluentra/internal/modules/learning/contract"
 	"github.com/fluentra/fluentra/internal/modules/learning/domain"
@@ -20,6 +21,7 @@ import (
 	learninghttp "github.com/fluentra/fluentra/internal/modules/learning/transport/http"
 	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
 	srscontract "github.com/fluentra/fluentra/internal/modules/srs/contract"
+	usercontract "github.com/fluentra/fluentra/internal/modules/user/contract"
 	"github.com/fluentra/fluentra/internal/platform/ai"
 	"github.com/fluentra/fluentra/internal/platform/job"
 	"github.com/fluentra/fluentra/internal/platform/telemetry"
@@ -48,6 +50,10 @@ type Deps struct {
 	ContentAuthor contentcontract.Author
 	SRSDue        srscontract.QueueReader
 	SRSCards      srscontract.CardWriter
+	SRSPace       srscontract.ReviewPaceReader
+	User          usercontract.LearningProfileReader
+	Flags         admincontract.FlagReader
+	Courses       lessoncontract.CourseCatalog
 	Graders       map[string]contract.ExerciseGrader
 	DeclaredKinds []string
 	Metrics       telemetry.Instruments
@@ -63,6 +69,8 @@ type Deps struct {
 	Synthesiser service.AudioSynthesiser
 	// Audio finds a listening item's rendered clip in the TTS cache.
 	Audio contract.AudioLocator
+	// AudioRender asks for newly published listening items to be rendered now.
+	AudioRender service.AudioRenderRequester
 }
 
 // Module represents the learning module, assembled.
@@ -140,6 +148,11 @@ func New(deps Deps) *Module {
 		AuthorResolver:    deps.AuthorResolver,
 		Synthesiser:       deps.Synthesiser,
 		Audio:             deps.Audio,
+		AudioRender:       deps.AudioRender,
+		User:              deps.User,
+		Flags:             deps.Flags,
+		Courses:           deps.Courses,
+		SRSPace:           deps.SRSPace,
 	})
 
 	var handler *learninghttp.Handler
@@ -224,6 +237,16 @@ const sweepStuckGradingLockID int64 = 1_700_000_212
 // Advisory lock id for exam pool top-up job (work order 12 §3.7).
 const topUpExamPoolLockID int64 = 1_700_000_213
 
+// Advisory lock id for the placement pool top-up (work order 13 §5). 215 was taken
+// by speaking.purge_recordings in work order 12, so this is the next free id.
+const topUpPlacementPoolLockID int64 = 1_700_000_216
+
+// Advisory lock id for the placement session expiry sweep (work order 13 §5).
+const sweepPlacementSessionsLockID int64 = 1_700_000_701
+
+// sweepPlacementInterval is how often sessions past their deadline are finished.
+const sweepPlacementInterval = time.Minute
+
 // CronJobs returns the scheduled partition maintenance, grading sweep, and pool jobs.
 func (m *Module) CronJobs() []job.CronJob {
 	return []job.CronJob{
@@ -251,6 +274,18 @@ func (m *Module) CronJobs() []job.CronJob {
 			Interval: 1 * time.Hour,
 			Task:     m.TopUpExamPool,
 		},
+		{
+			Name:     "learning.top_up_placement_pool",
+			LockID:   topUpPlacementPoolLockID,
+			Interval: 1 * time.Hour,
+			Task:     m.TopUpPlacementPool,
+		},
+		{
+			Name:     "learning.expire_placement_sessions",
+			LockID:   sweepPlacementSessionsLockID,
+			Interval: sweepPlacementInterval,
+			Task:     m.SweepPlacementSessions,
+		},
 	}
 }
 
@@ -262,6 +297,22 @@ func (m *Module) TopUpPracticePool(ctx context.Context) error {
 // TopUpExamPool generates and adds verified exercises to the exam pool.
 func (m *Module) TopUpExamPool(ctx context.Context) error {
 	return m.service.TopUpExamPool(ctx)
+}
+
+// TopUpPlacementPool generates and adds verified exercises to the placement pool.
+func (m *Module) TopUpPlacementPool(ctx context.Context) error {
+	return m.service.TopUpPlacementPool(ctx)
+}
+
+// SweepPlacementSessions finishes placement sessions past their deadline.
+func (m *Module) SweepPlacementSessions(ctx context.Context) error {
+	_, err := m.service.SweepExpiredPlacementSessions(ctx)
+	return err
+}
+
+// PlacementListeningPolicy returns the play limit for a clip in a placement test.
+func (m *Module) PlacementListeningPolicy() contract.PlacementListeningPolicy {
+	return m.service
 }
 
 // ExamPoolDrawer returns the service implementing contract.ExamPoolDrawer.

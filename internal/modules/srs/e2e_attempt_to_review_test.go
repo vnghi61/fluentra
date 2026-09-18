@@ -324,6 +324,10 @@ func (f *fakeSRSRepo) ListReviewLogsByCard(
 	return result, nil
 }
 
+func (f *fakeSRSRepo) AverageRecentReviewElapsedMs(context.Context, uuid.UUID, time.Time, int32) (float64, error) {
+	return 0, nil
+}
+
 func (f *fakeSRSRepo) SumRecentReviewElapsedMs(
 	_ context.Context, userID uuid.UUID, since time.Time, limit int32,
 ) (int64, error) {

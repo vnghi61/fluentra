@@ -5,6 +5,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -43,6 +44,9 @@ type Repository interface {
 	GetPreferences(ctx context.Context, userID uuid.UUID) (domain.Preferences, error)
 	CreatePreferences(ctx context.Context, id, userID uuid.UUID) (domain.Preferences, error)
 	ReplacePreferences(ctx context.Context, preferences domain.Preferences) (domain.Preferences, error)
+
+	GetLearningProfile(ctx context.Context, userID uuid.UUID) (domain.LearningProfile, error)
+	ReplaceLearningProfile(ctx context.Context, profile domain.LearningProfile) (domain.LearningProfile, error)
 
 	GetSummary(ctx context.Context, id uuid.UUID) (domain.Summary, error)
 	ListSummaries(ctx context.Context, ids []uuid.UUID) ([]domain.Summary, error)
@@ -289,6 +293,63 @@ func (s *Service) ReplacePreferences(
 	})
 	if err != nil {
 		return domain.Preferences{}, err
+	}
+	return stored, nil
+}
+
+// GetLearningProfile reads the caller's own learning profile.
+func (s *Service) GetLearningProfile(ctx context.Context, actorID uuid.UUID) (domain.LearningProfile, error) {
+	return s.repo.GetLearningProfile(ctx, actorID)
+}
+
+// ReplaceLearningProfile writes the whole learning profile for the caller.
+func (s *Service) ReplaceLearningProfile(
+	ctx context.Context, actorID uuid.UUID, wanted domain.LearningProfile,
+) (domain.LearningProfile, error) {
+	wanted.UserID = actorID
+	if err := wanted.Validate(); err != nil {
+		return domain.LearningProfile{}, err
+	}
+
+	if _, err := s.requireUsableAccount(ctx, actorID); err != nil {
+		return domain.LearningProfile{}, err
+	}
+
+	var stored domain.LearningProfile
+	err := dbx.InTx(ctx, s.pool, func(ctx context.Context, tx pgx.Tx) error {
+		repo := s.repo.WithTx(tx)
+		var before *domain.LearningProfile
+		existing, readErr := repo.GetLearningProfile(ctx, actorID)
+		switch {
+		case readErr == nil:
+			before = &existing
+		case !errors.Is(readErr, domain.ErrLearningProfileNotFound):
+			return readErr
+		}
+
+		replaced, replaceErr := repo.ReplaceLearningProfile(ctx, wanted)
+		if replaceErr != nil {
+			return replaceErr
+		}
+		stored = replaced
+
+		// The event names what changed, never the values; a replacement that
+		// changes nothing is not an event.
+		changed := domain.ChangedLearningProfileFields(before, wanted)
+		if len(changed) == 0 {
+			return nil
+		}
+		_, eventErr := s.events.Write(ctx, tx, contract.Aggregate, contract.EventLearningProfileUpdated,
+			contract.LearningProfileUpdated{
+				UserID:        actorID,
+				ChangedFields: changed,
+				ActorID:       actorID,
+				OccurredAt:    s.clock.Now(),
+			})
+		return eventErr
+	})
+	if err != nil {
+		return domain.LearningProfile{}, err
 	}
 	return stored, nil
 }

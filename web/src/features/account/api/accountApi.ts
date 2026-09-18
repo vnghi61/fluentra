@@ -1,4 +1,6 @@
-import { apiFetch } from "@/api/client";
+import { ApiError, apiFetch } from "@/api/client";
+import { reachableStorageUrl } from "@/lib/storage-url";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { components } from "@/types/api";
 
 export type UserProfile = components["schemas"]["Me"];
@@ -21,6 +23,9 @@ export type GoogleLinkStatus = components["schemas"]["GoogleLinkStatus"];
 export type OAuthStart = components["schemas"]["OAuthStart"];
 export type ExportResponse = components["schemas"]["ExportResponse"];
 export type DeletionResponse = components["schemas"]["DeletionResponse"];
+export type LearningProfile = components["schemas"]["LearningProfile"];
+export type LearningProfileRequest =
+  components["schemas"]["LearningProfileRequest"];
 
 /**
  * The PUT body that stores `preferences` as they are, with `changes` applied.
@@ -153,16 +158,8 @@ export const accountApi = {
     intent: AvatarUploadIntent,
     file: File,
   ): Promise<void> {
-    let uploadUrl = intent.upload_url;
-    // Map internal docker host to localhost if running in local dev browser
-    if (
-      typeof window !== "undefined" &&
-      (window.location.hostname === "localhost" ||
-        window.location.hostname === "127.0.0.1") &&
-      uploadUrl.includes("//minio:9000")
-    ) {
-      uploadUrl = uploadUrl.replace("//minio:9000", "//localhost:9000");
-    }
+    // A development store is reached through the dev server from other devices.
+    const uploadUrl = reachableStorageUrl(intent.upload_url);
 
     if (intent.method === "POST" && intent.form_data) {
       const formData = new FormData();
@@ -315,4 +312,59 @@ export const accountApi = {
   async getDeletion(id: string): Promise<DeletionResponse> {
     return apiFetch<DeletionResponse>(`/api/v1/me/deletion/${id}`);
   },
+
+  /** Read caller's learning profile */
+  async getLearningProfile(): Promise<LearningProfile | null> {
+    try {
+      return await apiFetch<LearningProfile>("/api/v1/me/learning-profile");
+    } catch (err) {
+      if (err instanceof ApiError && err.problem.status === 404) {
+        return null;
+      }
+      throw err;
+    }
+  },
+
+  /** Replace caller's learning profile */
+  async replaceLearningProfile(
+    data: LearningProfileRequest,
+  ): Promise<LearningProfile> {
+    return apiFetch<LearningProfile>("/api/v1/me/learning-profile", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  },
 };
+
+/** React Query hook for the caller's learning profile */
+export function useLearningProfile(enabled = true) {
+  return useQuery({
+    queryKey: ["account", "learningProfile"] as const,
+    queryFn: () => accountApi.getLearningProfile(),
+    enabled,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/** React Query hook to create or update learning profile */
+export function useUpdateLearningProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: LearningProfileRequest) =>
+      accountApi.replaceLearningProfile(data),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["account", "learningProfile"],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["learning", "weeklyPlan"],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["learning", "startingPath"],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["learning", "placement"],
+      });
+    },
+  });
+}

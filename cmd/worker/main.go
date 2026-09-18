@@ -174,6 +174,12 @@ type workerConfig struct {
 		ASRAPIKey            string        `koanf:"asr_api_key"`
 		ASRTimeout           time.Duration `koanf:"asr_timeout"`
 		DailyRecordingsLimit int           `koanf:"daily_recordings_limit"`
+		// The tts-render GitHub workflow, dispatched when listening items are
+		// published. An empty token leaves its hourly schedule as the only trigger.
+		TTSDispatchRepository string `koanf:"tts_dispatch_repository"`
+		TTSDispatchWorkflow   string `koanf:"tts_dispatch_workflow"`
+		TTSDispatchRef        string `koanf:"tts_dispatch_ref"`
+		TTSDispatchToken      string `koanf:"tts_dispatch_token"`
 	} `koanf:"speech"`
 	Exam struct {
 		DailySittingsLimit int `koanf:"daily_sittings_limit"`
@@ -245,35 +251,39 @@ func configOptions() config.Options {
 			"mail.transport":                  "smtp",
 			"mail.from":                       "no-reply@fluentra.local",
 			// Four numbered provider slots. Slot 1 defaults to mock.
-			"ai.provider_1_name":            mockName,
-			"ai.provider_1_base_url":        "",
-			"ai.provider_1_model":           "",
-			"ai.provider_1_api_key":         "",
-			"ai.provider_1_timeout":         defaultAITimeout,
-			"ai.provider_2_name":            "",
-			"ai.provider_2_base_url":        "",
-			"ai.provider_2_model":           "",
-			"ai.provider_2_api_key":         "",
-			"ai.provider_2_timeout":         defaultAITimeout,
-			"ai.provider_3_name":            "",
-			"ai.provider_3_base_url":        "",
-			"ai.provider_3_model":           "",
-			"ai.provider_3_api_key":         "",
-			"ai.provider_3_timeout":         defaultAITimeout,
-			"ai.provider_4_name":            "",
-			"ai.provider_4_base_url":        "",
-			"ai.provider_4_model":           "",
-			"ai.provider_4_api_key":         "",
-			"ai.provider_4_timeout":         defaultAITimeout,
-			"ai.writing_daily_limit":        10,
-			"speech.tts_engine":             "offline",
-			"speech.tts_voice":              "en_US-lessac-medium",
-			"speech.asr_base_url":           "",
-			"speech.asr_model":              "whisper-large-v3",
-			"speech.asr_api_key":            "",
-			"speech.asr_timeout":            "60s",
-			"speech.daily_recordings_limit": 30,
-			"exam.daily_sittings_limit":     5,
+			"ai.provider_1_name":             mockName,
+			"ai.provider_1_base_url":         "",
+			"ai.provider_1_model":            "",
+			"ai.provider_1_api_key":          "",
+			"ai.provider_1_timeout":          defaultAITimeout,
+			"ai.provider_2_name":             "",
+			"ai.provider_2_base_url":         "",
+			"ai.provider_2_model":            "",
+			"ai.provider_2_api_key":          "",
+			"ai.provider_2_timeout":          defaultAITimeout,
+			"ai.provider_3_name":             "",
+			"ai.provider_3_base_url":         "",
+			"ai.provider_3_model":            "",
+			"ai.provider_3_api_key":          "",
+			"ai.provider_3_timeout":          defaultAITimeout,
+			"ai.provider_4_name":             "",
+			"ai.provider_4_base_url":         "",
+			"ai.provider_4_model":            "",
+			"ai.provider_4_api_key":          "",
+			"ai.provider_4_timeout":          defaultAITimeout,
+			"ai.writing_daily_limit":         10,
+			"speech.tts_engine":              "offline",
+			"speech.tts_voice":               "en_US-lessac-medium",
+			"speech.asr_base_url":            "",
+			"speech.asr_model":               "whisper-large-v3",
+			"speech.asr_api_key":             "",
+			"speech.asr_timeout":             "60s",
+			"speech.daily_recordings_limit":  30,
+			"speech.tts_dispatch_repository": "",
+			"speech.tts_dispatch_workflow":   "tts-render.yml",
+			"speech.tts_dispatch_ref":        "main",
+			"speech.tts_dispatch_token":      "",
+			"exam.daily_sittings_limit":      5,
 		},
 		EnvSections: []string{"SPEECH", "EXAM"},
 		Required: []config.RequiredKey{
@@ -429,7 +439,12 @@ func run(ctx context.Context) error {
 	health := telemetry.NewHealthHandler(cfg.App.Version, readinessCheck(pool.Ping))
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", health.Health)
-	mux.HandleFunc("/ready", health.Ready)
+	mux.HandleFunc("/ready", func(w http.ResponseWriter, r *http.Request) {
+		health.Ready(w, r)
+		// Trigger overdue cron jobs in background detached from request context
+		// so pinging /ready (e.g. from API wakeup on cold start) catches up pool generation.
+		go cron.TriggerDue(context.WithoutCancel(ctx))
+	})
 
 	server := &http.Server{
 		Addr:              ":" + cfg.HTTP.Port,
@@ -523,11 +538,12 @@ func startLearning(
 
 	var mediaSynthesiser media.Synthesiser
 	if cfg.Speech.TTSEngine == mockName || cfg.Speech.TTSEngine == "" {
-		mediaSynthesiser = &media.MockSynthesiser{}
+		mediaSynthesiser = &media.MockSynthesiser{Voice: cfg.Speech.TTSVoice}
 	} else {
 		// No engine runs in the worker (work order 12 §4): a script is rendered
 		// offline by cmd/tts, and the synthesiser only finds what is already cached.
-		mediaSynthesiser = media.NewCachedSynthesiser(contentModule.TTSCache(), nil, storageStore, "")
+		mediaSynthesiser = media.NewCachedSynthesiser(contentModule.TTSCache(), nil, storageStore, "").
+			WithVoice(cfg.Speech.TTSVoice)
 	}
 
 	learningModule := learning.New(learning.Deps{
@@ -542,7 +558,8 @@ func startLearning(
 		GeneratorAuthorID: generatorAuthor,
 		AuthorResolver:    roleAuthorResolver{members: rbacModule.RoleMembers()},
 		Synthesiser:       mediaSynthesiser,
-		Audio:             media.NewCacheLocator(contentModule.TTSCache()),
+		Audio:             media.NewCacheLocator(contentModule.TTSCache()).WithVoice(cfg.Speech.TTSVoice),
+		AudioRender:       newRenderDispatcher(ctx, cfg),
 	})
 
 	for _, scheduled := range learningModule.CronJobs() {
@@ -929,12 +946,14 @@ func startPracticeGenerator(
 		cron.Register(scheduled)
 	}
 
-	// Once at start-up too, so a freshly seeded database has practice content
-	// without waiting twelve hours for the first interval.
-	if err := vocabularyModule.GenerateExercises(ctx); err != nil {
-		slog.ErrorContext(ctx, "could not generate practice exercises at start-up; "+
-			"the scheduled job will retry", "error", err)
-	}
+	// Once at start-up too in a goroutine, so the worker starts immediately
+	// without waiting for the practice generator before River and cron can run.
+	go func() {
+		if err := vocabularyModule.GenerateExercises(ctx); err != nil {
+			slog.ErrorContext(ctx, "could not generate practice exercises at start-up; "+
+				"the scheduled job will retry", "error", err)
+		}
+	}()
 }
 
 type gradingDeps struct {

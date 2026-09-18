@@ -588,6 +588,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/learning-profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read the caller's learning profile.
+         * @description Returns self-declared learning goals and parameters, or 404 when none exists.
+         */
+        get: operations["userGetMyLearningProfile"];
+        /**
+         * Replace the caller's learning profile.
+         * @description Creates or replaces the caller's learning profile.
+         */
+        put: operations["userReplaceMyLearningProfile"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/me/avatar/upload-intent": {
         parameters: {
             query?: never;
@@ -1611,6 +1635,130 @@ export interface paths {
          * @description Closes an active study session and publishes the learning.session_completed event.
          */
         post: operations["completeLearningSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/placement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read the caller's placement result, session and invitation.
+         * @description The current result, a session in progress, when a retake becomes available, and whether to invite the learner. A session past its deadline is finished by this read, so it is never reported as active (work order 13 §3.5).
+         */
+        get: operations["getMyPlacement"];
+        put?: never;
+        /**
+         * Start an adaptive placement test.
+         * @description Starts a 20-minute session and serves its first item, redacted. 409 PLACEMENT_IN_PROGRESS names the session in progress in meta.session_id; 409 PLACEMENT_RETAKE_TOO_SOON names meta.retake_available_at; 409 PLACEMENT_UNAVAILABLE means a band of the pool cannot serve a full test.
+         */
+        post: operations["startPlacement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/placement/sessions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read one of the caller's placement sessions.
+         * @description The current item, redacted, with the server's remaining seconds and the stage; or, once the adaptive part is over, the result and the writing and speaking part. Another learner's session is not found.
+         */
+        get: operations["getPlacementSession"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/placement/sessions/{id}/answers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Answer the current placement item.
+         * @description Every answer is a learn.attempts row graded by the kind's grader (ADR-0015); the same Idempotency-Key grades once. Returns the session with the next item or the result. An answer after deadline_at plus five seconds is refused with 409 PLACEMENT_SESSION_EXPIRED; an item that is not the current one with 409 PLACEMENT_NOT_CURRENT_ITEM. After the result, the same route answers the writing and speaking items.
+         */
+        post: operations["answerPlacementItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/placement/sessions/{id}/productive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start or skip the writing and speaking part.
+         * @description Offered after the result, never before it (409 PLACEMENT_PRODUCTIVE_UNAVAILABLE). Starting serves one 60–100 word writing task and one 45-second spoken response at the placed level, with eight minutes; skip true skips them, and they can still be started later. Each is graded asynchronously and joins per_skill on the same result.
+         */
+        post: operations["startPlacementProductive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/path": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Recommended courses and the lesson to start at in each.
+         * @description The level is the current placement result; failing that the declared level; failing that A2. Courses are the curriculum courses whose range contains the level, or the nearest below it; the start lesson is the first lesson at or above the level (work order 13 §3.6).
+         */
+        get: operations["getMyStartingPath"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/weekly-plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * This week's plan and its progress.
+         * @description Built on the first request of a week starting Monday in Asia/Ho_Chi_Minh and fixed for that week: 40% the next lessons, 30% daily practice sets, 20% due reviews at the learner's pace, 10% one writing or speaking task, with one extra item for the weakest skill. Progress is read at request time (work order 13 §3.7).
+         */
+        get: operations["getMyWeeklyPlan"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3993,6 +4141,7 @@ export interface components {
             correct: boolean;
             /** @example opt_b */
             correct_answer?: string | null;
+            explanation?: components["schemas"]["AnswerExplanation"];
         };
         AnswerExplanation: {
             /**
@@ -4118,6 +4267,29 @@ export interface components {
             /** Format: date-time */
             suspended_at?: string | null;
             content?: components["schemas"]["ReviewCardContent"];
+            next_due_by_grade?: components["schemas"]["ReviewGradePreview"];
+        };
+        ReviewGradePreview: {
+            /**
+             * Format: date-time
+             * @example 2026-08-24T09:10:00Z
+             */
+            again: string;
+            /**
+             * Format: date-time
+             * @example 2026-08-25T09:00:00Z
+             */
+            hard: string;
+            /**
+             * Format: date-time
+             * @example 2026-08-27T09:00:00Z
+             */
+            good: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-07T09:00:00Z
+             */
+            easy: string;
         };
         ReviewCardContent: {
             /**
@@ -4903,6 +5075,16 @@ export interface components {
             item_results?: {
                 [key: string]: unknown;
             }[];
+            /** @description The grader's message for this item. */
+            feedback?: string;
+            /** @description What the learner answered, as saved in the sitting. Present on a submitted sitting's report only. */
+            response?: {
+                [key: string]: unknown;
+            };
+            /** @description The item as authored — questions, options, the correct answers, the script or passage, and explanations. Present on a submitted sitting's report only, so no answer reaches the learner before grading. */
+            content?: {
+                [key: string]: unknown;
+            };
         };
         ExamSectionOutcome: {
             position: number;
@@ -4970,6 +5152,240 @@ export interface components {
             created_at: string;
             /** Format: date-time */
             updated_at: string;
+        };
+        /** @description Self-declared learning goals and background. */
+        LearningProfile: {
+            /**
+             * @description Self-declared CEFR level.
+             * @example B1
+             * @enum {string|null}
+             */
+            declared_level?: "A1" | "A2" | "B1" | "B2" | "C1" | "C2" | null;
+            /**
+             * @description Target CEFR level.
+             * @example B2
+             * @enum {string|null}
+             */
+            target_level?: "A1" | "A2" | "B1" | "B2" | "C1" | "C2" | null;
+            /**
+             * @description Target English proficiency examination.
+             * @example ielts
+             * @enum {string}
+             */
+            target_exam: "ielts" | "toeic" | "none";
+            /**
+             * @description Weekly study target in minutes.
+             * @example 90
+             */
+            weekly_minutes_goal?: number | null;
+            /**
+             * @description Learner motivations for studying English.
+             * @example [
+             *       "career",
+             *       "travel"
+             *     ]
+             */
+            motivations: string[];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        /** @description Payload for replacing a learning profile. */
+        LearningProfileRequest: {
+            /**
+             * @example B1
+             * @enum {string|null}
+             */
+            declared_level?: "A1" | "A2" | "B1" | "B2" | "C1" | "C2" | null;
+            /**
+             * @example B2
+             * @enum {string|null}
+             */
+            target_level?: "A1" | "A2" | "B1" | "B2" | "C1" | "C2" | null;
+            /**
+             * @example ielts
+             * @enum {string}
+             */
+            target_exam: "ielts" | "toeic" | "none";
+            /** @example 90 */
+            weekly_minutes_goal?: number | null;
+            /**
+             * @example [
+             *       "career",
+             *       "travel"
+             *     ]
+             */
+            motivations: string[];
+        };
+        /** @description One skill's placed band and how many scored responses it rests on. */
+        PlacementSkillEstimate: {
+            /**
+             * @example B1
+             * @enum {string}
+             */
+            band: "A1" | "A2" | "B1" | "B2" | "C1";
+            /** @example 7 */
+            responses: number;
+        };
+        /** @description A completed placement. per_skill holds vocabulary, grammar, reading and listening from the adaptive part; writing and speaking join it once graded. A skill with no responses is absent, never guessed. */
+        PlacementResult: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            session_id?: string;
+            /**
+             * @example B1
+             * @enum {string}
+             */
+            level: "A1" | "A2" | "B1" | "B2" | "C1";
+            per_skill: {
+                [key: string]: components["schemas"]["PlacementSkillEstimate"];
+            };
+            /** Format: date-time */
+            taken_at: string;
+        };
+        PlacementActiveSession: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            stage: "vocabulary_grammar" | "reading_listening" | "refine" | "done";
+            /** Format: date-time */
+            deadline_at: string;
+            remaining_seconds: number;
+        };
+        PlacementOverview: {
+            /** @description The current placement result, the most recent one. */
+            result: components["schemas"]["PlacementResult"] | null;
+            active_session: components["schemas"]["PlacementActiveSession"] | null;
+            /**
+             * Format: date-time
+             * @description 30 days after the last completed test.
+             */
+            retake_available_at: string | null;
+            /** @description The flag placement.invite is on, and the learner has no result and no session in progress. */
+            invite_available: boolean;
+        };
+        PlacementItem: {
+            /** Format: uuid */
+            activity_id: string;
+            /** Format: uuid */
+            content_version_id: string;
+            /** @example grammar_tense_choice */
+            kind: string;
+            /** @enum {string} */
+            skill: "vocabulary" | "grammar" | "reading" | "listening" | "writing" | "speaking";
+            /** @description The item's body with every answer removed (ADR-0025). */
+            config: {
+                [key: string]: unknown;
+            };
+        };
+        PlacementProductiveItem: components["schemas"]["PlacementItem"] & {
+            /** @enum {string} */
+            status: "not_answered" | "grading" | "graded" | "failed";
+            /** @enum {string|null} */
+            band?: "A1" | "A2" | "B1" | "B2" | "C1" | null;
+        };
+        PlacementSession: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            status: "in_progress" | "completed" | "expired";
+            /** @enum {string} */
+            stage: "vocabulary_grammar" | "reading_listening" | "refine" | "done";
+            /** Format: date-time */
+            started_at: string;
+            /** Format: date-time */
+            deadline_at: string;
+            /** @description The server's clock. Zero once the adaptive part is over. */
+            remaining_seconds: number;
+            responses: number;
+            /** @example 25 */
+            max_responses: number;
+            /** @description The item to answer now, or null when the adaptive part is over. */
+            current_item: components["schemas"]["PlacementItem"] | null;
+            /** @enum {string} */
+            productive_status: "offered" | "skipped" | "in_progress" | "submitted" | "graded";
+            /** Format: date-time */
+            productive_deadline_at: string | null;
+            productive_remaining_seconds: number;
+            productive_items: components["schemas"]["PlacementProductiveItem"][];
+            result: components["schemas"]["PlacementResult"] | null;
+        };
+        PlacementAnswerRequest: {
+            /**
+             * Format: uuid
+             * @description The item being answered. Anything but the current item is refused.
+             */
+            activity_id: string;
+            /** @description What the kind's grader reads, as for POST /attempts/{id}/submit. */
+            response: {
+                [key: string]: unknown;
+            };
+        };
+        PlacementProductiveRequest: {
+            /** @description True skips writing and speaking; they can still be started later. */
+            skip: boolean;
+        };
+        StartingPathLesson: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            /** @enum {string|null} */
+            cefr_level: "A1" | "A2" | "B1" | "B2" | "C1" | "C2" | null;
+        };
+        StartingPathCourse: {
+            /** Format: uuid */
+            id: string;
+            slug: string;
+            title: string;
+            cefr_from: string;
+            cefr_to: string;
+            /** @description The first lesson at or above the level. */
+            start_lesson: components["schemas"]["StartingPathLesson"] | null;
+        };
+        StartingPath: {
+            /** @enum {string} */
+            level: "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
+            /**
+             * @description The current placement result; failing that the declared level; failing that A2. Only a placement opens lessons below the level.
+             * @enum {string}
+             */
+            level_source: "placement" | "declared" | "default";
+            courses: components["schemas"]["StartingPathCourse"][];
+        };
+        WeeklyPlanItem: {
+            /** @enum {string} */
+            kind: "lesson" | "daily_practice" | "reviews" | "writing" | "speaking";
+            minutes: number;
+            /** Format: uuid */
+            lesson_id?: string;
+            /** Format: uuid */
+            course_id?: string;
+            title?: string;
+            skill?: string;
+            /** @description How many due reviews a review item covers. */
+            reviews?: number;
+            /** @description The extra item for the learner's weakest skill. */
+            focus?: boolean;
+            done: boolean;
+        };
+        WeeklyPlanProgress: {
+            /** @description Minutes from learning sessions this week, read at request time. */
+            minutes: number;
+            items_done: number;
+            items_total: number;
+        };
+        WeeklyPlan: {
+            /**
+             * Format: date
+             * @description Monday of this week in Asia/Ho_Chi_Minh.
+             */
+            week_start: string;
+            /** @description The learner's weekly goal, or 90 until they set one. */
+            minutes_goal: number;
+            items: components["schemas"]["WeeklyPlanItem"][];
+            progress: components["schemas"]["WeeklyPlanProgress"];
         };
     };
     responses: {
@@ -6273,6 +6689,85 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    userGetMyLearningProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The caller's learning profile. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "declared_level": "B1",
+                     *       "target_level": "B2",
+                     *       "target_exam": "ielts",
+                     *       "weekly_minutes_goal": 90,
+                     *       "motivations": [
+                     *         "career",
+                     *         "travel"
+                     *       ],
+                     *       "created_at": "2026-09-14T09:00:00Z",
+                     *       "updated_at": "2026-09-14T09:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["LearningProfile"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    userReplaceMyLearningProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LearningProfileRequest"];
+            };
+        };
+        responses: {
+            /** @description The stored learning profile. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "declared_level": "B1",
+                     *       "target_level": "B2",
+                     *       "target_exam": "ielts",
+                     *       "weekly_minutes_goal": 90,
+                     *       "motivations": [
+                     *         "career",
+                     *         "travel"
+                     *       ],
+                     *       "created_at": "2026-09-14T09:00:00Z",
+                     *       "updated_at": "2026-09-14T09:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["LearningProfile"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
             422: components["responses"]["ValidationFailed"];
         };
     };
@@ -8604,6 +9099,438 @@ export interface operations {
             409: components["responses"]["Conflict"];
         };
     };
+    getMyPlacement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The caller's placement state. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "result": null,
+                     *       "active_session": null,
+                     *       "retake_available_at": null,
+                     *       "invite_available": true
+                     *     }
+                     */
+                    "application/json": components["schemas"]["PlacementOverview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    startPlacement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The session, with its first item. */
+            201: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345684",
+                     *       "status": "in_progress",
+                     *       "stage": "vocabulary_grammar",
+                     *       "started_at": "2026-09-14T03:00:00Z",
+                     *       "deadline_at": "2026-09-14T03:20:00Z",
+                     *       "remaining_seconds": 1200,
+                     *       "responses": 0,
+                     *       "max_responses": 25,
+                     *       "current_item": {
+                     *         "activity_id": "0199a1c2-3d4e-7f80-9abc-def01234567b",
+                     *         "content_version_id": "0199a1c2-3d4e-7f80-9abc-def01234567c",
+                     *         "kind": "grammar_tense_choice",
+                     *         "skill": "vocabulary",
+                     *         "config": {
+                     *           "prompt": "Choose the word that completes the sentence.",
+                     *           "options": [
+                     *             {
+                     *               "id": "A",
+                     *               "text": "borrow"
+                     *             },
+                     *             {
+                     *               "id": "B",
+                     *               "text": "lend"
+                     *             },
+                     *             {
+                     *               "id": "C",
+                     *               "text": "owe"
+                     *             },
+                     *             {
+                     *               "id": "D",
+                     *               "text": "spend"
+                     *             }
+                     *           ]
+                     *         }
+                     *       },
+                     *       "productive_status": "offered",
+                     *       "productive_deadline_at": null,
+                     *       "productive_remaining_seconds": 0,
+                     *       "productive_items": [],
+                     *       "result": null
+                     *     }
+                     */
+                    "application/json": components["schemas"]["PlacementSession"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getPlacementSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The session. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345684",
+                     *       "status": "completed",
+                     *       "stage": "done",
+                     *       "started_at": "2026-09-14T03:00:00Z",
+                     *       "deadline_at": "2026-09-14T03:20:00Z",
+                     *       "remaining_seconds": 0,
+                     *       "responses": 20,
+                     *       "max_responses": 25,
+                     *       "current_item": null,
+                     *       "productive_status": "offered",
+                     *       "productive_deadline_at": null,
+                     *       "productive_remaining_seconds": 0,
+                     *       "productive_items": [],
+                     *       "result": {
+                     *         "id": "0199a1c2-3d4e-7f80-9abc-def012345690",
+                     *         "session_id": "0199a1c2-3d4e-7f80-9abc-def012345684",
+                     *         "level": "B1",
+                     *         "per_skill": {
+                     *           "vocabulary": {
+                     *             "band": "B1",
+                     *             "responses": 7
+                     *           },
+                     *           "grammar": {
+                     *             "band": "B1",
+                     *             "responses": 7
+                     *           },
+                     *           "reading": {
+                     *             "band": "A2",
+                     *             "responses": 3
+                     *           },
+                     *           "listening": {
+                     *             "band": "B1",
+                     *             "responses": 3
+                     *           }
+                     *         },
+                     *         "taken_at": "2026-09-14T03:16:00Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["PlacementSession"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    answerPlacementItem: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description UUIDv7 idempotency key to prevent duplicate attempt submission.
+                 * @example 0199a1c2-3d4e-7f80-9abc-def012345683
+                 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "activity_id": "0199a1c2-3d4e-7f80-9abc-def01234567b",
+                 *       "response": {
+                 *         "selected_option_id": "B"
+                 *       }
+                 *     }
+                 */
+                "application/json": components["schemas"]["PlacementAnswerRequest"];
+            };
+        };
+        responses: {
+            /** @description The session after the answer. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345684",
+                     *       "status": "in_progress",
+                     *       "stage": "vocabulary_grammar",
+                     *       "started_at": "2026-09-14T03:00:00Z",
+                     *       "deadline_at": "2026-09-14T03:20:00Z",
+                     *       "remaining_seconds": 1140,
+                     *       "responses": 1,
+                     *       "max_responses": 25,
+                     *       "current_item": {
+                     *         "activity_id": "0199a1c2-3d4e-7f80-9abc-def01234567d",
+                     *         "content_version_id": "0199a1c2-3d4e-7f80-9abc-def01234567e",
+                     *         "kind": "grammar_tense_choice",
+                     *         "skill": "grammar",
+                     *         "config": {
+                     *           "prompt": "She ___ in Hanoi since 2020.",
+                     *           "options": [
+                     *             {
+                     *               "id": "A",
+                     *               "text": "has lived"
+                     *             },
+                     *             {
+                     *               "id": "B",
+                     *               "text": "lives"
+                     *             },
+                     *             {
+                     *               "id": "C",
+                     *               "text": "lived"
+                     *             },
+                     *             {
+                     *               "id": "D",
+                     *               "text": "is living"
+                     *             }
+                     *           ]
+                     *         }
+                     *       },
+                     *       "productive_status": "offered",
+                     *       "productive_deadline_at": null,
+                     *       "productive_remaining_seconds": 0,
+                     *       "productive_items": [],
+                     *       "result": null
+                     *     }
+                     */
+                    "application/json": components["schemas"]["PlacementSession"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    startPlacementProductive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "skip": false
+                 *     }
+                 */
+                "application/json": components["schemas"]["PlacementProductiveRequest"];
+            };
+        };
+        responses: {
+            /** @description The session with the writing and speaking part. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345684",
+                     *       "status": "completed",
+                     *       "stage": "done",
+                     *       "started_at": "2026-09-14T03:00:00Z",
+                     *       "deadline_at": "2026-09-14T03:20:00Z",
+                     *       "remaining_seconds": 0,
+                     *       "responses": 20,
+                     *       "max_responses": 25,
+                     *       "current_item": null,
+                     *       "productive_status": "in_progress",
+                     *       "productive_deadline_at": "2026-09-14T03:26:00Z",
+                     *       "productive_remaining_seconds": 480,
+                     *       "productive_items": [
+                     *         {
+                     *           "activity_id": "0199a1c2-3d4e-7f80-9abc-def012345691",
+                     *           "content_version_id": "0199a1c2-3d4e-7f80-9abc-def012345692",
+                     *           "kind": "writing_prompt",
+                     *           "skill": "writing",
+                     *           "config": {
+                     *             "prompt": "Write to a friend about your last holiday.",
+                     *             "min_words": 60
+                     *           },
+                     *           "status": "not_answered",
+                     *           "band": null
+                     *         }
+                     *       ],
+                     *       "result": {
+                     *         "id": "0199a1c2-3d4e-7f80-9abc-def012345690",
+                     *         "level": "B1",
+                     *         "per_skill": {
+                     *           "vocabulary": {
+                     *             "band": "B1",
+                     *             "responses": 7
+                     *           }
+                     *         },
+                     *         "taken_at": "2026-09-14T03:16:00Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["PlacementSession"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getMyStartingPath: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The starting path. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "level": "B1",
+                     *       "level_source": "placement",
+                     *       "courses": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *           "slug": "everyday-english-a2-b1",
+                     *           "title": "Everyday English",
+                     *           "cefr_from": "A2",
+                     *           "cefr_to": "B1",
+                     *           "start_lesson": {
+                     *             "id": "0199a1c2-3d4e-7f80-9abc-def01234567a",
+                     *             "title": "Making plans",
+                     *             "cefr_level": "B1"
+                     *           }
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["StartingPath"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    getMyWeeklyPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The weekly plan. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "week_start": "2026-09-14",
+                     *       "minutes_goal": 90,
+                     *       "items": [
+                     *         {
+                     *           "kind": "lesson",
+                     *           "minutes": 10,
+                     *           "lesson_id": "0199a1c2-3d4e-7f80-9abc-def01234567a",
+                     *           "course_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *           "title": "Making plans",
+                     *           "skill": "grammar",
+                     *           "done": true
+                     *         },
+                     *         {
+                     *           "kind": "daily_practice",
+                     *           "minutes": 10,
+                     *           "done": false
+                     *         },
+                     *         {
+                     *           "kind": "reviews",
+                     *           "minutes": 5,
+                     *           "reviews": 15,
+                     *           "done": false
+                     *         },
+                     *         {
+                     *           "kind": "writing",
+                     *           "minutes": 15,
+                     *           "skill": "writing",
+                     *           "done": false
+                     *         }
+                     *       ],
+                     *       "progress": {
+                     *         "minutes": 25,
+                     *         "items_done": 1,
+                     *         "items_total": 4
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["WeeklyPlan"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
     getReviewSession: {
         parameters: {
             query?: {
@@ -9989,13 +10916,13 @@ export interface operations {
             content: {
                 "application/json": {
                     /**
-                     * @description Context of the play ('attempt' for learning, 'exam' for mock exam sitting).
+                     * @description Context of the play: 'attempt' for learning, 'exam' for a mock exam sitting, 'placement' for a placement session, where a clip is played once and only while it is the current item.
                      * @enum {string}
                      */
-                    context_type: "attempt" | "exam";
+                    context_type: "attempt" | "exam" | "placement";
                     /**
                      * Format: uuid
-                     * @description ID of the attempt or exam sitting.
+                     * @description ID of the attempt, exam sitting or placement session.
                      */
                     context_id: string;
                 };
@@ -10244,6 +11171,19 @@ export interface operations {
                         level: string;
                         format: string;
                         total_minutes: number;
+                        /** @description The exam's sections in order, with how many items each draws. */
+                        sections?: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            exam_id: string;
+                            position: number;
+                            /** @enum {string} */
+                            skill: "listening" | "reading" | "writing" | "speaking";
+                            exam_duration_minutes: number;
+                            item_count: number;
+                            item_kinds: string[];
+                        }[];
                     }[];
                 };
             };
@@ -10267,6 +11207,8 @@ export interface operations {
                     /** @enum {string} */
                     mode: "exam" | "practice";
                     chosen_duration_minutes?: number;
+                    /** @description Practice mode only: the sections to sit, by position. Omitted or empty means all four. A position outside 1–4 or repeated is 400 EXAM_INVALID_SECTIONS. */
+                    sections?: number[];
                 };
             };
         };

@@ -25,6 +25,20 @@ FROM (
     LIMIT $3
 ) AS recent;
 
+-- AverageRecentReviewElapsedMs is the learner's pace over their last `limit`
+-- answers since `reviewed_at`, zero with none (work order 13 §3.7).
+-- name: AverageRecentReviewElapsedMs :one
+SELECT COALESCE(AVG(elapsed_ms), 0)::double precision AS average_ms
+FROM (
+    SELECT elapsed_ms
+    FROM learn.review_logs
+    WHERE user_id = $1
+      AND reviewed_at >= $2
+      AND elapsed_ms > 0
+    ORDER BY reviewed_at DESC
+    LIMIT $3
+) AS recent;
+
 -- name: UpsertReviewDailyStats :one
 INSERT INTO learn.review_daily_stats (
     user_id, stat_date, reviews_completed, new_cards_learned, total_minutes, updated_at

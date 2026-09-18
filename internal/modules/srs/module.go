@@ -124,6 +124,11 @@ func (m *Module) QueueReader() contract.QueueReader {
 	return m.service
 }
 
+// ReviewPace returns how long a learner takes per review, for learning's weekly plan.
+func (m *Module) ReviewPace() contract.ReviewPaceReader {
+	return m.service
+}
+
 // CronJobs returns the scheduled partition maintenance job.
 func (m *Module) CronJobs() []job.CronJob {
 	return []job.CronJob{

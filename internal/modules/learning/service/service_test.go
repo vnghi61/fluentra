@@ -48,6 +48,8 @@ type fakeLearningRepo struct {
 	// afterGet lets a test order itself against the reads the service makes,
 	// rather than against how fast a goroutine happens to run. Called under mu.
 	afterGet func(*domain.Attempt)
+	// placements holds the placement sessions, results and weekly plans.
+	placements *placementStore
 }
 
 func newFakeRepo() *fakeLearningRepo {

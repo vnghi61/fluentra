@@ -31,6 +31,7 @@ import {
   type ReadingQuestionItem,
   ExerciseReorder,
   ExerciseWriting,
+  ExerciseSentenceTransform,
   ActivityUnavailable,
   ExitDialog,
   ReportDialog,
@@ -66,7 +67,10 @@ interface GapFillConfig {
   prompt?: string;
   sentence_before?: string;
   sentence_after?: string;
-  expected_answer?: string;
+}
+
+interface SentenceTransformConfig {
+  prompt?: string;
 }
 
 interface ListenTypeConfig {
@@ -368,7 +372,7 @@ export function LessonPage(): React.JSX.Element {
                 status: "graded",
                 correct: isPassed,
                 score: fb.score,
-                feedback: fb.feedback_en,
+                feedback: fb.feedback_vi || fb.feedback_en,
               });
               if (isPassed) {
                 setScoreCount((prev) => prev + 1);
@@ -378,7 +382,7 @@ export function LessonPage(): React.JSX.Element {
             if (isMounted) {
               setSubmissionResult({
                 status: "graded",
-                correct: true,
+                correct: (attempt.score ?? 0) >= 60,
                 score: attempt.score ?? undefined,
                 feedback: attempt.feedback ?? undefined,
               });
@@ -459,6 +463,23 @@ export function LessonPage(): React.JSX.Element {
         setMarkingTimedOut(false);
         setPollingAttemptId(currentAttemptId);
         return;
+      }
+
+      if (
+        currentActivity.kind === "writing_prompt" &&
+        signedIn &&
+        currentAttemptId
+      ) {
+        try {
+          const fb = await writingApi.getFeedback(currentAttemptId);
+          setWritingFeedback(fb);
+          const isPassed = fb.overall_band >= 6.0;
+          result.correct = isPassed;
+          result.score = fb.score;
+          result.feedback = fb.feedback_vi || fb.feedback_en;
+        } catch {
+          // If feedback cannot be loaded directly, keep result
+        }
       }
 
       setIsSubmitted(true);
@@ -617,6 +638,7 @@ export function LessonPage(): React.JSX.Element {
 
   const mcConfig = rawConfig as MultipleChoiceConfig;
   const gapConfig = rawConfig as GapFillConfig;
+  const transformConfig = rawConfig as SentenceTransformConfig;
   const fcConfig = rawConfig as FlashcardConfig;
   const listenConfig = rawConfig as ListenTypeConfig;
   const matchConfig = rawConfig as MatchConfig;
@@ -634,10 +656,25 @@ export function LessonPage(): React.JSX.Element {
     Array.isArray(mcConfig.options) &&
     mcConfig.options.length > 0;
 
+  // A curriculum sentence transform is authored as a gap fill: the instruction in
+  // `prompt`, the sentence around the blank in `sentence_before`/`sentence_after`.
+  // It keeps the gap-fill renderer, which shows that sentence.
+  //
+  // Decided from the sentence, not from `expected_answer`: that is the answer,
+  // and the server now redacts it. The runner used to require it, which is why
+  // every visitor received the word for the blank before typing anything.
   const canRenderGapFill =
     (kind === "vocab_gap_fill" || kind === "grammar_sentence_transform") &&
-    typeof gapConfig.expected_answer === "string" &&
-    gapConfig.expected_answer !== "";
+    (Boolean(gapConfig.sentence_before?.trim()) ||
+      Boolean(gapConfig.sentence_after?.trim()));
+
+  // A generated one carries the whole task in `prompt` and nothing to fill in,
+  // so it is rewritten whole.
+  const canRenderSentenceTransform =
+    kind === "grammar_sentence_transform" &&
+    !canRenderGapFill &&
+    typeof transformConfig.prompt === "string" &&
+    transformConfig.prompt !== "";
 
   const canRenderFlashcard =
     kind === "vocab_flashcard" &&
@@ -748,6 +785,7 @@ export function LessonPage(): React.JSX.Element {
         {!(signedIn && attemptStartFailed) &&
           !canRenderMultipleChoice &&
           !canRenderGapFill &&
+          !canRenderSentenceTransform &&
           !canRenderFlashcard &&
           !canRenderListenType &&
           !canRenderMatch &&
@@ -787,7 +825,23 @@ export function LessonPage(): React.JSX.Element {
             prompt={gapConfig.prompt ?? ""}
             sentenceBeforeBlank={gapConfig.sentence_before ?? ""}
             sentenceAfterBlank={gapConfig.sentence_after ?? ""}
-            expectedAnswer={gapConfig.expected_answer ?? ""}
+            expectedAnswer={submissionResult?.correct_answer}
+            feedback={submissionResult?.feedback}
+            explanation={submissionResult?.explanation}
+            isSubmitted={isSubmitted}
+            isCorrect={submissionResult?.correct}
+            isLoading={isSubmitting || isAttemptPending}
+            onSubmit={(answerText) =>
+              void handleSubmit({ text_answer: answerText })
+            }
+            onContinue={handleContinue}
+          />
+        )}
+
+        {canRenderSentenceTransform && (
+          <ExerciseSentenceTransform
+            prompt={transformConfig.prompt ?? ""}
+            expectedAnswer={submissionResult?.correct_answer}
             feedback={submissionResult?.feedback}
             explanation={submissionResult?.explanation}
             isSubmitted={isSubmitted}
@@ -985,6 +1039,7 @@ export function LessonPage(): React.JSX.Element {
             isMarking={isMarking}
             markingTimedOut={markingTimedOut}
             writingFeedback={writingFeedback}
+            attemptId={currentAttemptId ?? pollingAttemptId}
             userId={userId}
             activityId={currentActivity?.id}
             onNavigateToMyWriting={() => void navigate({ to: "/my-writing" })}

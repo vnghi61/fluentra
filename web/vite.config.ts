@@ -1,8 +1,39 @@
+import { readFileSync } from 'node:fs';
 import { fileURLToPath, URL } from 'node:url';
 
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
+import type { ProxyOptions } from 'vite';
 import { defineConfig } from 'vitest/config';
+
+const apiProxy: ProxyOptions = {
+  target: process.env.VITE_API_TARGET || 'http://localhost:8080',
+  changeOrigin: true,
+};
+
+/**
+ * The object store, reached through the dev server from a phone on the LAN.
+ * See src/lib/storage-url.ts. `changeOrigin` sends the store the host the API
+ * signed the URL for, and the prefix is stripped so the signed path is intact.
+ */
+const storageProxy: ProxyOptions = {
+  target: process.env.VITE_STORAGE_TARGET || 'http://localhost:9000',
+  changeOrigin: true,
+  rewrite: (path) => path.replace(/^\/__storage/, ''),
+};
+
+/**
+ * HTTPS for testing on a phone. A browser opens the microphone only on a secure
+ * origin — https, or localhost — so over `http://192.168.x.x:5173` recording
+ * cannot start at all. Point these at a certificate for the LAN address (mkcert
+ * makes one) and the dev server serves HTTPS. Unset, it stays plain HTTP.
+ */
+function devHttps() {
+  const cert = process.env.VITE_DEV_HTTPS_CERT;
+  const key = process.env.VITE_DEV_HTTPS_KEY;
+  if (!cert || !key) return {};
+  return { https: { cert: readFileSync(cert), key: readFileSync(key) } };
+}
 
 /**
  * Warning threshold for a single minified chunk. This is advisory only — Vite
@@ -21,6 +52,7 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5173,
+    allowedHosts: true,
     // A bind-mounted source tree does not deliver inotify events to the
     // container on Windows or macOS, so Vite never learns a file changed and
     // keeps serving the module it transformed at startup. The app then looks
@@ -50,11 +82,10 @@ export default defineConfig({
           },
         }
       : {}),
+    ...devHttps(),
     proxy: {
-      '/api': {
-        target: process.env.VITE_API_TARGET || 'http://localhost:8080',
-        changeOrigin: true,
-      },
+      '/api': apiProxy,
+      '/__storage': storageProxy,
     },
   },
   // `vite preview` serves the built bundle, and it needs the same API proxy the
@@ -64,11 +95,10 @@ export default defineConfig({
   // timeout before the journey has done anything.
   preview: {
     host: '0.0.0.0',
+    ...devHttps(),
     proxy: {
-      '/api': {
-        target: process.env.VITE_API_TARGET || 'http://localhost:8080',
-        changeOrigin: true,
-      },
+      '/api': apiProxy,
+      '/__storage': storageProxy,
     },
   },
   build: {

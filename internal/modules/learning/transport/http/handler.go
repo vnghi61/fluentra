@@ -38,6 +38,22 @@ type LearningService interface {
 		ctx context.Context, activityID uuid.UUID, response json.RawMessage,
 	) (*service.PreviewGradeResultDTO, error)
 	GetDailySet(ctx context.Context, userID uuid.UUID, levelOverride string) (*domain.DailySetDTO, error)
+	PlacementService
+}
+
+// PlacementService is the placement test, the starting path and the weekly plan.
+type PlacementService interface {
+	GetPlacementOverview(ctx context.Context, userID uuid.UUID) (*service.PlacementOverviewDTO, error)
+	StartPlacement(ctx context.Context, userID uuid.UUID) (*service.PlacementSessionDTO, error)
+	GetPlacementSession(ctx context.Context, userID, sessionID uuid.UUID) (*service.PlacementSessionDTO, error)
+	SubmitPlacementAnswer(
+		ctx context.Context, userID, sessionID, activityID, idempotencyKey uuid.UUID, response json.RawMessage,
+	) (*service.PlacementSessionDTO, error)
+	StartPlacementProductive(
+		ctx context.Context, userID, sessionID uuid.UUID, skip bool,
+	) (*service.PlacementSessionDTO, error)
+	GetStartingPath(ctx context.Context, userID uuid.UUID) (*service.StartingPathDTO, error)
+	GetWeeklyPlan(ctx context.Context, userID uuid.UUID) (*service.WeeklyPlanDTO, error)
 }
 
 // Handler serves HTTP endpoints for attempts.
@@ -62,6 +78,14 @@ func (h *Handler) Routes(router chi.Router) {
 	router.Get("/me/dashboard", h.getDashboard)
 	router.Get("/me/progress", h.getProgress)
 	router.Get("/practice/daily", h.getDailyPractice)
+	router.Get("/me/path", h.getStartingPath)
+	router.Get("/me/weekly-plan", h.getWeeklyPlan)
+	router.Get("/me/placement", h.getPlacement)
+	router.Post("/me/placement", h.startPlacement)
+	router.Get("/me/placement/sessions/{id}", h.getPlacementSession)
+	router.Post("/me/placement/sessions/{id}/answers", h.answerPlacement)
+	router.Post("/me/placement/sessions/{id}/productive", h.placementProductive)
+
 	router.Post("/courses/{id}/enroll", h.enroll)
 	router.Post("/activities/{id}/attempts", h.startAttempt)
 	router.Post("/activities/{id}/grade", h.gradePreview)

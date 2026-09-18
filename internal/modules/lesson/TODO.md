@@ -42,6 +42,7 @@ Completed work is recorded here instead.
 | P8.4 | 2026-08-24 | `UnlockChecker` adopted in its batched form — the locally declared interface is now `IsUnlocked(ctx, userID, lessonIDs)`, `GetCourseDetail` asks once for every lesson in the tree instead of once per lesson, and `cmd/api` supplies `learning`’s implementation through a lazy adapter. `contract.Reader` grew `ListPrerequisitesForLessons` and `ListUnitsByCourseID` so `learning` can answer unlocking and course completion without reading this module’s tables. Landed with `learning` P8.4. |
 | P8.5 | 2026-08-25 | `contract.Reader` grew `ListActivitiesByCourseIDs`, one round trip for every activity id in a set of courses, so `learning` can answer `total_activities` on `/me/progress` without walking the tree or reading this module’s tables. Backed by `ListCourseActivityIDs` in the repository and covered by `course_activities_integration_test.go`. Landed with `learning` P8.5. |
 | WO11 §3.0 | 2026-09-11 | Practice generator attempt preservation: replace destructive `ReplaceActivities` with in-place `SyncActivities` by position; add `retired_at` to `learn.activities` with partial unique index; retire rather than delete activities with references; alter `learn.attempts.fk_attempts_activity` to `ON DELETE RESTRICT`. Proved by integration tests. |
+| WO13 §3.3 | 2026-09-14 | Placement pool & calibration support: placement course & lesson hierarchies authored and queried through contract; prerequisite unlocking below placed CEFR level verified without completing lessons. |
 
 ## Carried into P8.4 / P11.1
 

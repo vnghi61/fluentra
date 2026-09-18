@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { ApiError, apiFetch } from "@/api/client";
+import { reachableStorageUrl } from "@/lib/storage-url";
 import type {
   CompleteSectionResult,
   ExamAttempt,
@@ -77,16 +78,23 @@ export const examApi = {
     return apiFetch<ScoreReport>(`/api/v1/exam-attempts/${id}/report`);
   },
 
-  /** Record a play of a clip in a sitting and receive a short-lived audio URL. */
+  /**
+   * Record a play of a clip in a sitting or a placement session and receive a
+   * short-lived audio URL. The server checks the context is the caller's.
+   */
   async playListening(
     versionId: string,
-    sittingId: string,
+    contextId: string,
+    contextType: "exam" | "placement" = "exam",
   ): Promise<ListeningPlayResult> {
     return apiFetch<ListeningPlayResult>(
       `/api/v1/listening/items/${versionId}/plays`,
       {
         method: "POST",
-        body: JSON.stringify({ context_type: "exam", context_id: sittingId }),
+        body: JSON.stringify({
+          context_type: contextType,
+          context_id: contextId,
+        }),
       },
     );
   },
@@ -105,7 +113,7 @@ export const examApi = {
 
   /** Upload a recording straight to storage with the presigned URL. */
   async uploadSpeakingAudio(uploadUrl: string, blob: Blob): Promise<void> {
-    const res = await fetch(uploadUrl, {
+    const res = await fetch(reachableStorageUrl(uploadUrl), {
       method: "PUT",
       body: blob,
       headers: { "Content-Type": blob.type || "audio/webm" },

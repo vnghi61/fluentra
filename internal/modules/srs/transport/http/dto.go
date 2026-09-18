@@ -26,6 +26,17 @@ type ReviewCardResponse struct {
 	// Content is omitted when the version behind the card could not be resolved.
 	// The client renders that as an explicit state rather than a placeholder.
 	Content *ReviewCardContentResponse `json:"content,omitempty"`
+
+	// NextDueByGrade is when the card would come back under each grade.
+	NextDueByGrade *GradePreviewResponse `json:"next_due_by_grade,omitempty"`
+}
+
+// GradePreviewResponse is the due time each grade would schedule.
+type GradePreviewResponse struct {
+	Again time.Time `json:"again"`
+	Hard  time.Time `json:"hard"`
+	Good  time.Time `json:"good"`
+	Easy  time.Time `json:"easy"`
 }
 
 // ReviewCardContentResponse is the authored material a flashcard renders.
@@ -97,6 +108,19 @@ func mapCardResponse(c contract.ReviewCardSummary) ReviewCardResponse {
 		State:            c.State,
 		SuspendedAt:      c.SuspendedAt,
 		Content:          mapCardContent(c.Content),
+		NextDueByGrade:   mapGradePreview(c.NextDueByGrade),
+	}
+}
+
+func mapGradePreview(preview *contract.GradePreview) *GradePreviewResponse {
+	if preview == nil {
+		return nil
+	}
+	return &GradePreviewResponse{
+		Again: preview.Again,
+		Hard:  preview.Hard,
+		Good:  preview.Good,
+		Easy:  preview.Easy,
 	}
 }
 

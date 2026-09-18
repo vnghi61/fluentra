@@ -86,7 +86,10 @@ const attempt: ExamAttempt = {
           kind: "reading_comprehension",
           content_version_id: "66666666-6666-6666-6666-666666666602",
           weight: 1,
-          config: { passage: "The library is closed on Friday.", questions: [] },
+          config: {
+            passage: "The library is closed on Friday.",
+            questions: [],
+          },
         },
       ],
     },
@@ -170,7 +173,12 @@ describe("exam screens", () => {
     server.use(
       http.get("/api/v1/exams", () => HttpResponse.json([exam])),
       http.get("/api/v1/exam-attempts", () =>
-        HttpResponse.json({ items: [], total: 0, sittings_today: 1, daily_limit: 5 }),
+        HttpResponse.json({
+          items: [],
+          total: 0,
+          sittings_today: 1,
+          daily_limit: 5,
+        }),
       ),
     );
   });
@@ -179,8 +187,13 @@ describe("exam screens", () => {
     await renderWithProviders(<ExamList userPracticeLevel="B1" />);
 
     expect(await screen.findByText("TOEIC Mock Exam (B1)")).toBeInTheDocument();
-    expect(await screen.findByText("4 of 5 sittings left today")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /B1/ })).toHaveAttribute("aria-pressed", "true");
+    expect(
+      await screen.findByText("4 of 5 sittings left today"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /B1/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
     expect(screen.getByText("Exam mode · 75 min")).toBeInTheDocument();
   });
 
@@ -188,8 +201,16 @@ describe("exam screens", () => {
     server.use(
       http.post(`/api/v1/exams/${EXAM_ID}/attempts`, () =>
         HttpResponse.json(
-          { type: "about:blank", title: "Not Found", status: 404, code: "EXAM_POOL_EMPTY" },
-          { status: 404, headers: { "Content-Type": "application/problem+json" } },
+          {
+            type: "about:blank",
+            title: "Not Found",
+            status: 404,
+            code: "EXAM_POOL_EMPTY",
+          },
+          {
+            status: 404,
+            headers: { "Content-Type": "application/problem+json" },
+          },
         ),
       ),
     );
@@ -208,26 +229,160 @@ describe("exam screens", () => {
 
     expect(await screen.findByText("83")).toBeInTheDocument();
     expect(screen.getByText("B2")).toBeInTheDocument();
-    expect(screen.getByText("Not an official TOEIC score.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Not an official TOEIC score."),
+    ).toBeInTheDocument();
     expect(screen.getByText(/Pronunciation not assessed/)).toBeInTheDocument();
-    expect(screen.getByText(/two sittings hold different items/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/two sittings hold different items/),
+    ).toBeInTheDocument();
     expect(screen.getAllByText("Not scored").length).toBeGreaterThan(0);
     expect(screen.getByText("1 of 2 questions correct")).toBeInTheDocument();
     expect(screen.getByText("Tab hidden: 2")).toBeInTheDocument();
   });
 
+  it("reviews each question: what was chosen, the right answer and why", async () => {
+    const reviewed: ScoreReport = {
+      ...report,
+      status: "ready",
+      integrity_signals: [],
+      per_section: [
+        {
+          position: 2,
+          skill: "reading",
+          status: "scored",
+          score: 50,
+          max_score: 100,
+          items: [
+            {
+              activity_id: READING_ID,
+              content_version_id: "66666666-6666-6666-6666-666666666602",
+              kind: "reading_comprehension",
+              status: "graded",
+              score: 50,
+              max_score: 100,
+              item_results: [
+                { id: "q1", correct: false, correct_answer: "A" },
+                { id: "q2", correct: true, correct_answer: "B" },
+              ],
+              response: { answers: { q1: "B", q2: "B" } },
+              content: {
+                passage: "The library is closed on Friday.",
+                questions: [
+                  {
+                    id: "q1",
+                    prompt: "When is the library closed?",
+                    options: [
+                      { id: "A", text: "Friday" },
+                      { id: "B", text: "Monday" },
+                    ],
+                    correct_option_id: "A",
+                    explanation: {
+                      explanation_en:
+                        "The passage says it is closed on Friday.",
+                      explanation_vi: "Đoạn văn nói thư viện đóng cửa thứ Sáu.",
+                    },
+                  },
+                  {
+                    id: "q2",
+                    prompt: "What is closed?",
+                    options: [
+                      { id: "A", text: "The bank" },
+                      { id: "B", text: "The library" },
+                    ],
+                    correct_option_id: "B",
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    };
+    await renderWithProviders(<ExamReport report={reviewed} />);
+
+    expect(await screen.findByText("Answer sheet")).toBeInTheDocument();
+    expect(screen.getByText("When is the library closed?")).toBeInTheDocument();
+    expect(screen.getByText("B · Monday")).toBeInTheDocument();
+    expect(screen.getAllByText("A · Friday").length).toBeGreaterThan(0);
+    expect(
+      screen.getByText("The passage says it is closed on Friday."),
+    ).toBeInTheDocument();
+    // Question 1 is on the answer sheet and in its question type's row.
+    const links = screen.getAllByRole("link", { name: "1" });
+    expect(links).toHaveLength(2);
+    for (const link of links) {
+      expect(link).toHaveAttribute("href", "#review-q-1");
+    }
+    expect(screen.getByText("Results by question type")).toBeInTheDocument();
+    expect(screen.getByText("#Reading comprehension")).toBeInTheDocument();
+  });
+
+  it("starts a practice sitting of only the sections chosen", async () => {
+    let body: unknown;
+    server.use(
+      http.post(`/api/v1/exams/${EXAM_ID}/attempts`, async ({ request }) => {
+        body = await request.json();
+        return HttpResponse.json(attempt, { status: 201 });
+      }),
+    );
+    await renderWithProviders(<ExamList userPracticeLevel="B1" />);
+
+    fireEvent.click(await screen.findByText("Practice mode"));
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: /Section 1 · Listening/ }),
+    );
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: /Section 3 · Writing/ }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Start" }));
+
+    await waitFor(() =>
+      expect(body).toEqual({
+        mode: "practice",
+        chosen_duration_minutes: 60,
+        sections: [2, 4],
+      }),
+    );
+  });
+
+  it("numbers every question and jumps to one in another practice section", async () => {
+    // A practice sitting has no section clock.
+    const { section_remaining_seconds: _unused, ...rest } = attempt;
+    await renderWithProviders(
+      <ExamSittingRunner
+        attempt={{ ...rest, mode: "practice" }}
+        onSubmitted={vi.fn()}
+      />,
+    );
+
+    expect(
+      await screen.findByText("1. Where is the flight going?"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("0 of 2 answered")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Go to question 2" }));
+
+    expect(
+      await screen.findByText("The library is closed on Friday."),
+    ).toBeInTheDocument();
+  });
+
   it("saves only the open section's answers and moves on through the server", async () => {
     const saved = vi.fn();
     server.use(
-      http.put(`/api/v1/exam-attempts/${SITTING_ID}/answers`, async ({ request }) => {
-        saved(await request.json());
-        return HttpResponse.json({
-          saved: true,
-          remaining_seconds: 4400,
-          current_section: 1,
-          section_remaining_seconds: 1100,
-        });
-      }),
+      http.put(
+        `/api/v1/exam-attempts/${SITTING_ID}/answers`,
+        async ({ request }) => {
+          saved(await request.json());
+          return HttpResponse.json({
+            saved: true,
+            remaining_seconds: 4400,
+            current_section: 1,
+            section_remaining_seconds: 1100,
+          });
+        },
+      ),
       http.post(`/api/v1/exam-attempts/${SITTING_ID}/sections/1/complete`, () =>
         HttpResponse.json({
           current_section: 2,
@@ -250,6 +405,8 @@ describe("exam screens", () => {
       integrity_events: [],
       section_number: 1,
     });
-    expect(await screen.findByText("The library is closed on Friday.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("The library is closed on Friday."),
+    ).toBeInTheDocument();
   });
 });

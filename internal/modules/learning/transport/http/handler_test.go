@@ -53,6 +53,17 @@ type fakeLearningService struct {
 	// The activity id gradePreview passed through, so a test can assert the
 	// handler read the path parameter rather than a hard-coded id.
 	seenPreviewActivity uuid.UUID
+
+	overviewDTO  *service.PlacementOverviewDTO
+	placementDTO *service.PlacementSessionDTO
+	placementErr error
+	pathDTO      *service.StartingPathDTO
+	planDTO      *service.WeeklyPlanDTO
+	// What the answer and productive routes passed through.
+	seenActivity uuid.UUID
+	seenKey      uuid.UUID
+	seenResponse json.RawMessage
+	seenSkip     *bool
 }
 
 func (f *fakeLearningService) StartAttempt(_ context.Context, _, _ uuid.UUID) (*service.StartAttemptDTO, error) {
@@ -102,6 +113,44 @@ func (f *fakeLearningService) GradePreview(
 
 func (f *fakeLearningService) GetDailySet(_ context.Context, _ uuid.UUID, _ string) (*domain.DailySetDTO, error) {
 	return nil, nil
+}
+
+func (f *fakeLearningService) GetPlacementOverview(
+	context.Context, uuid.UUID,
+) (*service.PlacementOverviewDTO, error) {
+	return f.overviewDTO, f.placementErr
+}
+
+func (f *fakeLearningService) StartPlacement(context.Context, uuid.UUID) (*service.PlacementSessionDTO, error) {
+	return f.placementDTO, f.placementErr
+}
+
+func (f *fakeLearningService) GetPlacementSession(
+	context.Context, uuid.UUID, uuid.UUID,
+) (*service.PlacementSessionDTO, error) {
+	return f.placementDTO, f.placementErr
+}
+
+func (f *fakeLearningService) SubmitPlacementAnswer(
+	_ context.Context, _, _, activityID, key uuid.UUID, response json.RawMessage,
+) (*service.PlacementSessionDTO, error) {
+	f.seenActivity, f.seenKey, f.seenResponse = activityID, key, response
+	return f.placementDTO, f.placementErr
+}
+
+func (f *fakeLearningService) StartPlacementProductive(
+	_ context.Context, _, _ uuid.UUID, skip bool,
+) (*service.PlacementSessionDTO, error) {
+	f.seenSkip = &skip
+	return f.placementDTO, f.placementErr
+}
+
+func (f *fakeLearningService) GetStartingPath(context.Context, uuid.UUID) (*service.StartingPathDTO, error) {
+	return f.pathDTO, f.placementErr
+}
+
+func (f *fakeLearningService) GetWeeklyPlan(context.Context, uuid.UUID) (*service.WeeklyPlanDTO, error) {
+	return f.planDTO, f.placementErr
 }
 
 const (

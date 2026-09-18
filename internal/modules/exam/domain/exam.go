@@ -110,7 +110,26 @@ var (
 	ErrPlayNotAllowed = apperr.New(
 		apperr.Forbidden, "LISTENING_PLAY_NOT_ALLOWED", "this clip cannot be played in this sitting",
 	)
+	ErrInvalidSections = apperr.New(
+		apperr.BadRequest, "EXAM_INVALID_SECTIONS", "choose sections between 1 and 4, each at most once",
+	)
 )
+
+// ChosenSections validates the sections a practice sitting was asked for and
+// returns them as a set. None chosen means all of them.
+func ChosenSections(requested []int) (map[int]bool, error) {
+	if len(requested) == 0 {
+		return nil, nil
+	}
+	chosen := make(map[int]bool, len(requested))
+	for _, position := range requested {
+		if position < 1 || position > SectionCount || chosen[position] {
+			return nil, ErrInvalidSections
+		}
+		chosen[position] = true
+	}
+	return chosen, nil
+}
 
 // ClampPracticeDuration clamps duration in minutes between 10 and 180.
 func ClampPracticeDuration(d int) int {
@@ -225,6 +244,15 @@ type ItemOutcome struct {
 	Score            int             `json:"score"`
 	MaxScore         int             `json:"max_score"`
 	ItemResults      json.RawMessage `json:"item_results,omitempty"`
+	// Feedback is the grader's own message, kept for items graded without a
+	// model (an essay under its word count has no AI feedback to fetch).
+	Feedback string `json:"feedback,omitempty"`
+	// Response and Content are attached when the report is read, never stored:
+	// what the learner answered, and the item as authored with its answers and
+	// explanations. A report exists only for a submitted sitting, so nothing
+	// here reaches a learner before their answer is graded (ADR-0025).
+	Response json.RawMessage `json:"response,omitempty"`
+	Content  json.RawMessage `json:"content,omitempty"`
 }
 
 // SectionOutcome is one section of the stored report. Score is 0–100 and is
@@ -287,8 +315,10 @@ func ScoreSection(section *SectionOutcome) {
 
 // ScoreReport scores every section and adds the sections up: the overall score
 // is the mean of the scored sections, and the report is pending while any
-// section is, partial when any section is not scored, and ready otherwise.
-func ScoreReport(sections []SectionOutcome) ReportScore {
+// section is, partial when any section is not scored or fewer than expected are
+// present, and ready otherwise. expected is how many sections the sitting was
+// drawn with: four, or the ones a practice sitting chose.
+func ScoreReport(sections []SectionOutcome, expected int) ReportScore {
 	var total float64
 	scored := 0
 	pending, notScored := false, false
@@ -304,7 +334,7 @@ func ScoreReport(sections []SectionOutcome) ReportScore {
 			notScored = true
 		}
 	}
-	if len(sections) < SectionCount {
+	if len(sections) < expected {
 		notScored = true
 	}
 

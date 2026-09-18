@@ -26,7 +26,38 @@ export interface ItemResult {
   id: string;
   correct: boolean;
   correct_answer?: string | null | undefined;
+  /** Why the correct answer is correct, returned with the grade. */
+  explanation?: AnswerExplanation | null | undefined;
 }
+
+/** "B · 6 p.m." for a choice, the answer itself for anything typed. */
+function answerLabel(options: OptionItem[] | undefined, answer: string): string {
+  const index = options?.findIndex((option) => option.id === answer) ?? -1;
+  if (index < 0 || !options) return answer;
+  return `${String.fromCharCode(65 + index)} · ${options[index]?.text ?? ""}`;
+}
+
+const ItemExplanation: React.FC<{ explanation: AnswerExplanation }> = ({
+  explanation,
+}) => {
+  const { t, i18n } = useTranslation();
+  const vi = i18n.language.startsWith("vi");
+  const lead = vi
+    ? explanation.text_vi || explanation.text
+    : explanation.text || explanation.text_vi;
+  const second = vi ? explanation.text : explanation.text_vi;
+  return (
+    <div className="mt-3 space-y-1 rounded-md border border-border/40 bg-surface/60 p-3">
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+        {t("runner.explanationLabel", "Explanation")}
+      </p>
+      <p className="text-sm leading-relaxed text-text">{lead}</p>
+      {second && second !== lead && (
+        <p className="text-xs leading-relaxed text-text-muted">{second}</p>
+      )}
+    </div>
+  );
+};
 
 export type ReadingSubmissionPayload =
   | string
@@ -450,7 +481,8 @@ export const ExerciseReading: React.FC<ExerciseReadingProps> = ({
                     </div>
                   )}
 
-                  {/* Revealed Correct Answer on Failure */}
+                  {/* Revealed Correct Answer on Failure: the option's letter
+                      and text, not its id. */}
                   {hasItemVerdict &&
                     !isItemCorrect &&
                     itemResult?.correct_answer && (
@@ -458,11 +490,16 @@ export const ExerciseReading: React.FC<ExerciseReadingProps> = ({
                         <span className="font-semibold text-text">
                           {t("runner.correctAnswerLabel", "Correct answer")}:
                         </span>
-                        <span className="font-mono text-success font-bold">
-                          {itemResult.correct_answer}
+                        <span className="text-success-accent font-bold">
+                          {answerLabel(q.options, itemResult.correct_answer)}
                         </span>
                       </div>
                     )}
+
+                  {/* Why, for every graded question, right or wrong. */}
+                  {hasItemVerdict && itemResult?.explanation && (
+                    <ItemExplanation explanation={itemResult.explanation} />
+                  )}
                 </div>
               );
             })}

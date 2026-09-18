@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync/atomic"
 )
 
 // MockProvider answers without a network call.
@@ -62,11 +63,15 @@ func (p *MockProvider) Complete(_ context.Context, req Request) (Response, error
 	case TaskGradeSpeaking:
 		return p.gradeSpeaking(req)
 	case TaskPracticeGenerate:
-		return p.practiceGenerate(req)
+		return distinctMockItem(p.practiceGenerate(req))
 	case TaskPracticeSolve:
 		return p.practiceSolve(req)
 	case TaskListeningGenerate:
-		return p.listeningGenerate(req)
+		return distinctMockItem(p.listeningGenerate(req))
+	case TaskPlacementGenerate:
+		return p.placementGenerate(req)
+	case TaskPlacementSolve:
+		return p.placementSolve(req)
 	default:
 		return Response{}, fmt.Errorf("ai: mock provider has no answer for task %q", req.Task)
 	}
@@ -497,6 +502,134 @@ func (p *MockProvider) listeningGenerate(_ Request) (Response, error) {
 	})
 	if err != nil {
 		return Response{}, fmt.Errorf("ai: encode mock listening generation: %w", err)
+	}
+	return Response{Text: string(payload), Model: MockModelName}, nil
+}
+
+// placementMockWords are the word counts the mock writes for a passage and a
+// clip's script at each level, inside what the placement pool accepts.
+var placementMockWords = map[string][2]int{
+	"A1": {70, 55},
+	"A2": {90, 65},
+	"B1": {115, 85},
+	"B2": {135, 100},
+	"C1": {160, 115},
+}
+
+// placementGenerate writes a distinct item of the shape the placement pool
+// checks, at the requested level, so a development top-up fills every slot.
+func (p *MockProvider) placementGenerate(req Request) (Response, error) {
+	kind := stringVar(req.Vars, "Kind")
+	level := stringVar(req.Vars, "CEFRLevel")
+	n := placementMockSequence.Add(1)
+	words := placementMockWords[level]
+	if words[0] == 0 {
+		words = placementMockWords["B1"]
+	}
+
+	var body map[string]any
+	switch kind {
+	case "vocabulary", "grammar_tense_choice":
+		body = map[string]any{
+			"prompt":            fmt.Sprintf("Item %d (%s): choose the word that completes the sentence.", n, level),
+			"options":           mockOptions(),
+			"correct_option_id": "A",
+			"explanation":       mockExplanation(),
+		}
+	case "reading_comprehension":
+		body = map[string]any{
+			"passage_title": fmt.Sprintf("Passage %d", n),
+			"passage":       mockText(fmt.Sprintf("Passage %d at %s.", n, level), words[0]),
+			"questions":     mockQuestions(),
+		}
+	case "listening_comprehension":
+		body = map[string]any{
+			"title":     fmt.Sprintf("Clip %d", n),
+			"script":    mockText(fmt.Sprintf("Clip %d at %s.", n, level), words[1]),
+			"voice":     "en-US-Standard-C",
+			"questions": mockQuestions(),
+		}
+	case "writing_prompt":
+		body = map[string]any{
+			"prompt": fmt.Sprintf("Task %d (%s): write a short email to a friend about a place you visited "+
+				"recently, what you did there and why you would or would not go back.", n, level),
+			"model_answer":       mockText("Dear Minh, last month I visited Da Lat with my family.", 90),
+			"min_words":          60,
+			"time_limit_minutes": 15,
+			"explanation":        mockExplanation(),
+		}
+	case "speaking_task":
+		body = map[string]any{
+			"task_type": "respond",
+			"prompt": fmt.Sprintf("Talk %d (%s): describe a hobby you enjoy, when you started it "+
+				"and why you like it.", n, level),
+			"speaking_time_seconds": 45,
+			"explanation":           mockExplanation(),
+		}
+	default:
+		return Response{}, fmt.Errorf("ai: mock provider placementGenerate unsupported kind %q", kind)
+	}
+
+	payload, err := json.Marshal(body)
+	if err != nil {
+		return Response{}, fmt.Errorf("ai: encode mock placement generate: %w", err)
+	}
+	return Response{Text: string(payload), Model: MockModelName}, nil
+}
+
+// placementMockSequence makes every generated placement item distinct.
+var placementMockSequence atomic.Int64
+
+func mockOptions() []map[string]string {
+	return []map[string]string{
+		{"id": "A", "text": "borrow"},
+		{"id": "B", "text": "lend"},
+		{"id": "C", "text": "owe"},
+		{"id": "D", "text": "spend"},
+	}
+}
+
+func mockExplanation() map[string]string {
+	return map[string]string{
+		"explanation_en": "Option A is the only one that fits the sentence.",
+		"explanation_vi": "Chỉ phương án A phù hợp với câu.",
+	}
+}
+
+func mockQuestions() []map[string]any {
+	questions := make([]map[string]any, 0, 3)
+	for i := 1; i <= 3; i++ {
+		questions = append(questions, map[string]any{
+			"id":                fmt.Sprintf("q%d", i),
+			"type":              "multiple_choice",
+			"prompt":            fmt.Sprintf("Question %d about the text?", i),
+			"options":           mockOptions(),
+			"correct_option_id": "A",
+			"explanation":       mockExplanation(),
+		})
+	}
+	return questions
+}
+
+// mockText is a lead sentence padded to exactly the given number of words.
+func mockText(lead string, words int) string {
+	fields := strings.Fields(lead)
+	for len(fields) < words {
+		fields = append(fields, "word")
+	}
+	return strings.Join(fields[:words], " ")
+}
+
+func (p *MockProvider) placementSolve(req Request) (Response, error) {
+	var body map[string]any
+	if stringVar(req.Vars, "Kind") == "grammar_tense_choice" {
+		body = map[string]any{"selected_option_id": "A"}
+	} else {
+		body = map[string]any{"answers": map[string]string{"q1": "A", "q2": "A", "q3": "A"}}
+	}
+	payload, err := json.Marshal(body)
+	if err != nil {
+		return Response{}, fmt.Errorf("ai: encode mock placement solve: %w", err)
 	}
 	return Response{Text: string(payload), Model: MockModelName}, nil
 }

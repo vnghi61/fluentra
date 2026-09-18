@@ -23,6 +23,9 @@ type QuestionItem struct {
 	CorrectAnswer   string           `json:"correct_answer,omitempty"`
 	CorrectOptionID string           `json:"correct_option_id,omitempty"`
 	Acceptable      []string         `json:"acceptable,omitempty"`
+	// Explanation is authored per question, in either spelling; graders pass it
+	// back with the verdict. Raw, because its type belongs to learning.
+	Explanation json.RawMessage `json:"explanation,omitempty"`
 }
 
 // QuestionItemResult represents the graded outcome of one question in a question set.
@@ -30,6 +33,7 @@ type QuestionItemResult struct {
 	ID            string
 	Correct       bool
 	CorrectAnswer *string
+	Explanation   json.RawMessage
 }
 
 // QuestionSetGradeResult is the aggregated score and breakdown for a question set.
@@ -120,6 +124,7 @@ func GradeQuestionSet(questions []QuestionItem, answers map[string]string, maxSc
 			ID:            q.ID,
 			Correct:       isCorrect,
 			CorrectAnswer: ca,
+			Explanation:   q.Explanation,
 		}
 	}
 

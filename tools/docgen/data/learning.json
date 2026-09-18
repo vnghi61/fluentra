@@ -321,13 +321,17 @@
       { "name": "skill_mastery", "purpose": "Per-skill mastery estimate", "notes": "`user_id`, `skill`, `level`, `confidence`, `updated_at`" },
       { "name": "answer_explanations", "purpose": "Cached AI answer explanations", "notes": "`content_version_id`, `user_answer` unique, `text`, `text_vi`, `is_correct`" },
       { "name": "item_exposures", "purpose": "Learner item exposure log", "notes": "`user_id`, `activity_id`, `first_served_at`. Primary key (user_id, activity_id)." },
-      { "name": "daily_sets", "purpose": "Daily practice set cache", "notes": "`user_id`, `local_date`, `activity_ids`. Unique on (user_id, local_date)." }
+      { "name": "daily_sets", "purpose": "Daily practice set cache", "notes": "`user_id`, `local_date`, `activity_ids`. Unique on (user_id, local_date)." },
+      { "name": "placement_sessions", "purpose": "One adaptive placement test", "notes": "`user_id`, `status`, `stage`, `started_at`, `deadline_at`, `estimate` jsonb, `items` jsonb (served items with their attempts), `version`, `productive_status`, `productive_deadline_at`, `result_id`, `completed_at`" },
+      { "name": "weekly_plans", "purpose": "A learner's plan for one week", "notes": "`user_id`, `week_start` (Monday, Asia/Ho_Chi_Minh), `minutes_goal`, `items` jsonb. Primary key (user_id, week_start); progress is read, not stored" }
     ],
     "indexes": [
       "`uq_progress_user_scope` — the read path for every dashboard",
       "`idx_attempts_user_activity_time` — attempt history",
       "`idx_attempts_activity_time` — item statistics for `questionbank`",
-      "`uq_answer_explanations` — unique on (content_version_id, user_answer) for lazy deduplication"
+      "`uq_answer_explanations` — unique on (content_version_id, user_answer) for lazy deduplication",
+      "`uq_placement_sessions_one_in_progress` — partial unique on (user_id) where the session is in progress",
+      "`idx_placement_sessions_open_deadline` — the expiry sweep"
     ],
     "endpoints": [
       { "method": "POST", "path": "/api/v1/courses/{id}/enroll", "permission": "self", "purpose": "Enrol", "success": "201", "errors": ["ALREADY_ENROLLED", "COURSE_NOT_FOUND"] },
@@ -339,13 +343,21 @@
       { "method": "POST", "path": "/api/v1/activities/{id}/grade", "permission": "public", "purpose": "Grade a response without recording anything", "success": "200", "errors": ["VALIDATION_FAILED", "GRADER_NOT_REGISTERED"], "notes": "Public (ADR-0025). No attempt, no progress, no review card, no event; `saved` is always false. A signed-in learner uses the attempt flow instead." },
       { "method": "GET", "path": "/api/v1/practice/daily", "permission": "self", "purpose": "Fetch today's practice set", "success": "200" },
       { "method": "POST", "path": "/api/v1/me/sessions", "permission": "self", "purpose": "Start a study session", "success": "201" },
-      { "method": "POST", "path": "/api/v1/me/sessions/{id}/complete", "permission": "self", "purpose": "End a session", "success": "200", "errors": ["SESSION_NOT_FOUND", "INVALID_ACTIVITY_COUNT"] }
+      { "method": "POST", "path": "/api/v1/me/sessions/{id}/complete", "permission": "self", "purpose": "End a session", "success": "200", "errors": ["SESSION_NOT_FOUND", "INVALID_ACTIVITY_COUNT"] },
+      { "method": "GET", "path": "/api/v1/me/placement", "permission": "self", "purpose": "The current placement result, a session in progress, when a retake is available, and whether to invite", "success": "200", "notes": "A session past its deadline is finished by the read. `invite_available` needs the flag `placement.invite`." },
+      { "method": "POST", "path": "/api/v1/me/placement", "permission": "self", "purpose": "Start a 20-minute adaptive placement test", "success": "201", "errors": ["PLACEMENT_IN_PROGRESS", "PLACEMENT_RETAKE_TOO_SOON", "PLACEMENT_UNAVAILABLE"] },
+      { "method": "GET", "path": "/api/v1/me/placement/sessions/{id}", "permission": "self", "purpose": "A session: the current item redacted, the server's remaining seconds, the stage, or the result", "success": "200", "errors": ["PLACEMENT_SESSION_NOT_FOUND"] },
+      { "method": "POST", "path": "/api/v1/me/placement/sessions/{id}/answers", "permission": "self", "purpose": "Answer the current item; returns the next item or the result", "success": "200", "errors": ["PLACEMENT_SESSION_EXPIRED", "PLACEMENT_NOT_CURRENT_ITEM", "PLACEMENT_SESSION_CHANGED"], "notes": "Requires an `Idempotency-Key`. Every answer is a `learn.attempts` row. After the result the same route answers the writing and speaking items." },
+      { "method": "POST", "path": "/api/v1/me/placement/sessions/{id}/productive", "permission": "self", "purpose": "Start or skip the writing and speaking part", "success": "200", "errors": ["PLACEMENT_PRODUCTIVE_UNAVAILABLE"] },
+      { "method": "GET", "path": "/api/v1/me/path", "permission": "self", "purpose": "Recommended courses for the learner's level and the lesson to start at in each", "success": "200" },
+      { "method": "GET", "path": "/api/v1/me/weekly-plan", "permission": "self", "purpose": "This week's plan, built on the first request of the week, with progress read now", "success": "200" }
     ],
     "contract": [
       { "kind": "interface", "name": "learning.ExerciseGrader", "purpose": "`Grade(ctx, GradeRequest) (GradeResult, error)` — **implemented by every skill module**, registered by activity kind" },
       { "kind": "struct", "name": "learning.GradeResult", "purpose": "`{Score, MaxScore, Correct, Feedback, Async, ReviewItems}` — `ReviewItem` is a `learning` type, not an `srs` one, so a grader in any skill module can return it" },
       { "kind": "interface", "name": "learning.ProgressReader", "purpose": "`ProgressOf(ctx, userID, scope)` — used by `gamification`, `admin`, `analytics`" },
-      { "kind": "interface", "name": "learning.UnlockChecker", "purpose": "`IsUnlocked(ctx, userID, lessonIDs)` — used by `lesson` (batched to prevent N+1 queries)" }
+      { "kind": "interface", "name": "learning.UnlockChecker", "purpose": "`IsUnlocked(ctx, userID, lessonIDs)` — used by `lesson` (batched to prevent N+1 queries). A prerequisite below the learner's placed level is met without being done" },
+      { "kind": "interface", "name": "learning.PlacementListeningPolicy", "purpose": "`PlacementListeningPlays(ctx, userID, sessionID, versionID)` — used by `listening`: one play, only for the current item of the caller's open session" }
     ],
     "events": {
       "publishes": [
@@ -361,11 +373,13 @@
         { "name": "user.deleted", "reason": "Anonymise progress and attempts" }
       ]
     },
-    "dependsOn": ["lesson", "content", "srs", "cache", "job"],
+    "dependsOn": ["lesson", "content", "srs", "user", "admin", "cache", "job"],
     "dependsWhy": {
-      "lesson": "Structure, activities, unlocking rules",
+      "lesson": "Structure, activities, unlocking rules, the curriculum catalogue for the starting path",
       "content": "Rendering activity content",
-      "srs": "Push review items produced by a graded attempt",
+      "srs": "Push review items produced by a graded attempt; due reviews and review pace for the weekly plan",
+      "user": "The learning profile: declared level, target level, weekly minutes",
+      "admin": "The `placement.invite` flag",
       "cache": "Dashboard and progress reads",
       "job": "Asynchronous grading completion and rollups"
     },
@@ -380,7 +394,8 @@
       "A lesson is complete when every required activity is complete; optional activities do not block it.",
       "Attempts older than the activity's time limit are expired by a job and cannot be submitted.",
       "Skill mastery is an exponentially weighted estimate over recent attempts, not a raw average — recent performance must dominate.",
-      "The placement test adapts: item difficulty follows the running estimate, and it stops when the confidence interval is narrow enough or the item budget is exhausted."
+      "The placement test adapts: item difficulty follows the running estimate, and it stops when the confidence interval is narrow enough or the item budget is exhausted.",
+      "Placement completes nothing: no progress row, no `activity.completed`, no review card. A placement opens lessons below the placed level; a declared level opens nothing."
     ],
     "cache": [
       { "key": "fluentra:{env}:learning:dashboard:{user_id}:v1", "ttl": "2 min", "invalidation": "Any completion event" },
@@ -450,7 +465,9 @@
       "Progress rollup correctness including optional activities",
       "Unlock evaluation matches the prerequisite graph",
       "Expiry job does not expire an attempt that was submitted a moment earlier",
-      "Placement adaptation terminates and produces a defensible level"
+      "Placement adaptation terminates and produces a defensible level: 1,000 simulated learners per band are placed within one band in 95% and exactly in 70%",
+      "A placement answer after the deadline plus five seconds is refused; an abandoned session is finished by the sweep and by a read",
+      "A placement item is never drawn into a daily set or an exam sitting, and neither pool's items into a placement"
     ],
     "coverage": "85% service, 90% domain (the engine is the most reused code in the product)",
     "decisions": [
@@ -485,7 +502,15 @@
       { "question": "What does `due_reviews_count` return in Phase 2?", "choice": "A literal zero, with no `srs` dependency of any kind", "why": "`internal/modules/srs/contract` holds one file and no types; WP9 P9.1 writes them. The field is `required` in `DashboardResponse`, so it is present and zero rather than omitted, and `m_learning_service` still may not depend on `c_srs` — that edge belongs to WP9's diff, with WP9's test behind it (P8.5 Trap 4)" },
       { "question": "How are a course's progress status and percentage derived?", "choice": "Integer division truncating toward zero, and a status that is not the enrolment status", "why": "`percentage` is `completed * 100 / total`, truncating, and `0/0` is 0 rather than a panic or a 100. `CourseProgress.status` is one of `not_started`, `in_progress` and `completed` and is derived from the activity counts plus a completed enrolment — deliberately not the enrolment's own `active` / `completed`, which answers a different question (P8.5 Traps 1 and 5)" },
       { "question": "How are learning sessions timed, and who may complete one?", "choice": "The server computes the minutes; a session belonging to another learner is a 404", "why": "`CompleteSessionRequest` carries only `activities_completed`, so the duration is derived from `started_at` and the clock — a client-supplied duration is the same class of mistake as a client-supplied score (BR-LEARNING-01). A negative activity count is rejected as `INVALID_ACTIVITY_COUNT` before the CHECK constraint turns it into a 500, and `learning.session_completed` is written to the outbox inside the completing transaction (P8.4 Trap 6)" },
-      { "question": "Which score and duration does an exam report, and how is a time limit enforced?", "choice": "The server's, and a server-held deadline", "why": "CompletionScreen counts both in the browser, so a learner who closes the tab and returns has a client count of zero beside a server score that is right. learn.progress at lesson scope and learn.attempts.duration_ms already hold the authoritative record. A time limit has to be enforced where the learner cannot edit it, which makes the deadline a property of the lesson or the attempt rather than a setTimeout (work order 8 Part B)" }
+      { "question": "Which score and duration does an exam report, and how is a time limit enforced?", "choice": "The server's, and a server-held deadline", "why": "CompletionScreen counts both in the browser, so a learner who closes the tab and returns has a client count of zero beside a server score that is right. learn.progress at lesson scope and learn.attempts.duration_ms already hold the authoritative record. A time limit has to be enforced where the learner cannot edit it, which makes the deadline a property of the lesson or the attempt rather than a setTimeout (work order 8 Part B)" },
+      { "question": "Which activity kind carries a placement vocabulary question?", "choice": "`grammar_tense_choice`, in its own slot lesson with skill focus `vocabulary`", "why": "Every vocabulary grader reads a word sense from `skill.word_senses`, so a vocabulary kind is not self-contained and a generated question has no sense to point at. The tense-choice body is one question with four options and its key, graded synchronously by the grammar grader and blind-solvable. The slot, not the kind, says it measures vocabulary, and the estimate records the observation as `vocabulary` (work order 13 §3.3)" },
+      { "question": "How is placement estimated?", "choice": "A probability over five bands A1–C1 at θ = −2…2, updated by Bayes' rule with P(correct) = c + (1 − c)·σ(1.7(θ − d))", "why": "The result has to be a band, the items carry a band, and BR-LEARNING-10 asks for a stopping rule on confidence; a distribution over bands gives all three directly. c is 1/options for multiple choice and 0 otherwise, and each question of a passage or clip is one observation. The start is uniform: a declared level is a claim, and a prior built on it would bias the measurement it is meant to check. C2 is not placed (work order 13 §3.4)" },
+      { "question": "When does the adaptive part stop, and what comes next?", "choice": "The most probable band reaches 0.80 after at least eight responses, or 25 responses, or 20 minutes", "why": "Vocabulary and grammar alternate at the band nearest the mean until the rule would stop or 14 responses; then one passage and one clip at the provisional level; then, while the rule has not stopped and three more responses fit the budget, a passage or clip one band towards the side holding more probability. Items are drawn among the learner's unseen items, from the nearer neighbouring band when the asked band has none, and a skill with nothing left at any band is skipped. Simulated with fixed seeds: within one band 99.6–100%, exact 81–92% (work order 13 §3.4)" },
+      { "question": "Does placement complete lessons?", "choice": "No — it opens them. A prerequisite is met when its lesson's `cefr_level` is below the placed level", "why": "Marking a lesson done would award progress and XP the learner did not earn, and `learn.progress` is what every dashboard, streak and certificate reads. `IsUnlocked` skips such a prerequisite and writes nothing, so the course reads 0%. The required lesson's level comes with the prerequisite from `lesson` in the same batched read. A declared level opens nothing (work order 13 §3.6)" },
+      { "question": "How does a graded writing or speaking score become a placement band?", "choice": "From the grader's 0–100 score: below 30 A1, below 50 A2, below 70 B1, below 85 B2, otherwise C1", "why": "Both graders report a 0–100 rubric score in `GradeResult`; the IELTS-style band lives only in each module's feedback table, which `learning` may not read. The table follows `CEFRFromScore`, capped at C1 because C2 is not placed, so a skill mastery written from placement and one written from practice agree on what a score means (work order 13 §3.5)" },
+      { "question": "What does a placement write into skill mastery?", "choice": "Each measured skill's band at confidence 0.40, only where the existing confidence is lower", "why": "A placement is one short measurement; a learner whose practice has already raised confidence above 0.40 has better evidence than the test. Each skill's band is its own estimate, drawn towards the overall one in proportion to how few responses it had (n / (n + 5)), and a skill with no responses is not written (work order 13 §3.5)" },
+      { "question": "How many plays does a placement clip get?", "choice": "One, and only while it is the current item of the caller's open session", "why": "A placement is a test, so it takes the exam's rule rather than practice's three. The context is checked by `learning` through `PlacementListeningPolicy`: a client-chosen context id would be a fresh set of plays every time (work order 13 §3.5)" },
+      { "question": "How is the weekly plan composed?", "choice": "By estimated minutes: 40% next lessons, 30% daily sets of 10 minutes, 20% due reviews in 5-minute blocks at the learner's pace, one 15-minute writing or speaking task", "why": "Items are whole and the plan is trimmed from the share furthest over while it would still meet the goal, so it never exceeds the goal by more than one item; the productive task is never trimmed. The weakest skill — the lowest mastery band, as a gap below the target level when set — takes the least important item's place: a review block, else a practice set, else a lesson. Pace is the learner's average `elapsed_ms` over their last 200 answers in 30 days, 20 seconds with none (work order 13 §3.7)" }
     ],
     "adrs": [{ "id": "ADR-0015", "file": "ADR-0015-content-exercise-core.md", "title": "Shared content + exercise engine" }],
     "openQuestions": ["Do we move to item response theory for mastery in Phase 5, and what would it require from `questionbank`?"],
@@ -500,7 +525,7 @@
         "Unlock evaluation"
       ]},
       { "title": "Phase 3", "items": ["Asynchronous grading path for writing and speaking", "Skill mastery estimation and the skill radar", "Adaptive daily plan"] },
-      { "title": "Phase 4", "items": ["Adaptive placement test", "Personalised path generation from placement plus mastery"] }
+      { "title": "Phase 4", "items": ["Adaptive placement test (work order 13)", "Personalised path: starting point and weekly plan from placement plus mastery (work order 13)", "Recalibrate item difficulty from real placement responses"] }
     ],
     "deferred": [
       "A per-lesson unlock cache (`fluentra:{env}:learning:unlock:{user_id}:{lesson_id}:v1`). `IsUnlocked` is two batched reads for a whole course tree, so the cache would save less than the invalidation it needs: a lesson completion changes the verdict for every lesson downstream of it, and the keys are per lesson. Revisit if the course-detail page shows up in latency work (P8.5)"
@@ -1193,7 +1218,7 @@
     ],
     "notResponsibilities": ["Audio processing — that is `platform/media`", "Question authoring — that is `questionbank`"],
     "tables": [
-      { "name": "listening_plays", "purpose": "Play log enforcing play limits per attempt or exam sitting", "notes": "`user_id`, `content_version_id`, `context_type`, `context_id`, `played_at`" }
+      { "name": "listening_plays", "purpose": "Play log enforcing play limits per attempt, exam sitting or placement session", "notes": "`user_id`, `content_version_id`, `context_type`, `context_id`, `played_at`" }
     ],
     "endpoints": [
       { "method": "POST", "path": "/api/v1/listening/items/{versionId}/plays", "permission": "self", "purpose": "Checks the play policy, records the play, and returns a short-lived presigned audio GET URL", "success": "200", "errors": ["PLAY_LIMIT_REACHED"] },

@@ -29,10 +29,10 @@ func New(cfg Config) *Module {
 	var synth Synthesiser
 	switch cfg.TTSEngine {
 	case EngineMock:
-		synth = &MockSynthesiser{}
+		synth = &MockSynthesiser{Voice: cfg.TTSVoice}
 	default:
 		// Default to CachedSynthesiser (offline: cache hit returns key; cache miss returns ErrTTSNotFound)
-		synth = NewCachedSynthesiser(cfg.TTSCache, nil, cfg.Storage, "")
+		synth = NewCachedSynthesiser(cfg.TTSCache, nil, cfg.Storage, "").WithVoice(cfg.TTSVoice)
 	}
 
 	var transcriber Transcriber

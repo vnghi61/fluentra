@@ -13,8 +13,9 @@ import (
 const (
 	KindListeningComprehension = "listening_comprehension"
 
-	ContextTypeAttempt = "attempt"
-	ContextTypeExam    = "exam"
+	ContextTypeAttempt   = "attempt"
+	ContextTypeExam      = "exam"
+	ContextTypePlacement = "placement"
 
 	MaxExamPlays    = 1
 	MaxAttemptPlays = 3
@@ -31,8 +32,9 @@ var (
 	ErrTranscriptLocked = apperr.New(apperr.Forbidden, "TRANSCRIPT_LOCKED", "transcript not yet available")
 	// ErrAudioNotReady is returned when audio has not been synthesised or uploaded.
 	ErrAudioNotReady = apperr.New(apperr.Conflict, "AUDIO_NOT_READY", "media still processing")
-	// ErrInvalidContext is returned when context_type is not 'attempt' or 'exam'.
-	ErrInvalidContext = apperr.New(apperr.BadRequest, "INVALID_CONTEXT", "context_type must be attempt or exam")
+	// ErrInvalidContext is returned when context_type is not 'attempt', 'exam' or 'placement'.
+	ErrInvalidContext = apperr.New(apperr.BadRequest, "INVALID_CONTEXT",
+		"context_type must be attempt, exam or placement")
 	// ErrItemNotFound is returned when the listening content version does not exist.
 	ErrItemNotFound = apperr.New(apperr.NotFound, "ITEM_NOT_FOUND", "listening item not found")
 )

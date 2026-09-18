@@ -410,6 +410,8 @@
       { "method": "PATCH", "path": "/api/v1/me", "permission": "self", "purpose": "Update profile fields", "success": "200", "errors": ["VALIDATION_FAILED"] },
       { "method": "GET", "path": "/api/v1/me/preferences", "permission": "self", "purpose": "Read preferences", "success": "200" },
       { "method": "PUT", "path": "/api/v1/me/preferences", "permission": "self", "purpose": "Replace preferences", "success": "200" },
+      { "method": "GET", "path": "/api/v1/me/learning-profile", "permission": "self", "purpose": "Read the caller's learning profile", "success": "200", "errors": ["NOT_FOUND"] },
+      { "method": "PUT", "path": "/api/v1/me/learning-profile", "permission": "self", "purpose": "Replace the caller's learning profile", "success": "200", "errors": ["VALIDATION_FAILED"] },
       { "method": "POST", "path": "/api/v1/me/avatar/upload-intent", "permission": "self", "purpose": "Get a presigned URL for an avatar upload", "success": "200", "errors": ["UNSUPPORTED_MEDIA_TYPE", "TOO_LARGE"] },
       { "method": "PUT", "path": "/api/v1/me/avatar", "permission": "self", "purpose": "Confirm the uploaded avatar", "success": "200" },
       { "method": "GET", "path": "/api/v1/storage/avatars/{assetId}", "permission": "authenticated", "purpose": "Serve a stored avatar image", "success": "200", "errors": ["AVATAR_NOT_FOUND"] },
@@ -427,11 +429,13 @@
       { "kind": "interface", "name": "user.Reader", "purpose": "`GetByID`, `GetManyByIDs`, `Exists` — batched to avoid N+1 across modules" },
       { "kind": "interface", "name": "user.Creator", "purpose": "`CreateUser` — used only by `auth` during registration" },
       { "kind": "struct", "name": "user.Summary", "purpose": "`{ID, DisplayName, AvatarURL, Locale, Timezone, Status}` — the shape other modules render" },
-      { "kind": "event", "name": "user.DeletionRequested", "purpose": "Every module holding personal data reacts to this" }
+      { "kind": "event", "name": "user.DeletionRequested", "purpose": "Every module holding personal data reacts to this" },
+      { "kind": "interface", "name": "user.LearningProfileReader", "purpose": "`GetLearningProfile(ctx, userID)` returning `found=false` rather than an error — used by `learning` for the declared level, target level and weekly minutes" }
     ],
     "events": {
       "publishes": [
         { "name": "user.profile_updated", "payload": "`{user_id, changed_fields}`" },
+        { "name": "user.learning_profile_updated", "payload": "`{user_id, changed_fields, actor_id}` — the names of what changed, never the values; nothing when nothing changed" },
         { "name": "user.deletion_requested", "payload": "`{user_id, execute_after}`" },
         { "name": "user.deleted", "payload": "`{user_id}` — modules must purge or anonymise their data" },
         { "name": "user.suspended", "payload": "`{user_id, reason, actor_id}`" }

@@ -26,15 +26,35 @@ export const FlashcardBack: React.FC<FlashcardBackProps> = ({
   partOfSpeech,
   onReportSentence,
 }) => {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   // The learner's own language leads when they have chosen it, and the English
   // definition is never dropped — it is the thing being learned. `startsWith`
   // because a stored preference can be "vi-VN" as easily as "vi".
+  //
+  // Each is labelled. Unlabelled, a one-word Vietnamese gloss read as a heading
+  // and learners reported that the card had no Vietnamese meaning at all.
   const prefersVietnamese = i18n.language.toLowerCase().startsWith("vi");
   const gloss = definitionVi?.trim() ? definitionVi : undefined;
-  const lead = prefersVietnamese && gloss ? gloss : definition;
-  const second = prefersVietnamese && gloss ? definition : gloss;
+
+  const meaningBlock = gloss && (
+    <div className="space-y-1">
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+        {t("review.meaningVi")}
+      </p>
+      <p className="text-xl md:text-2xl font-bold text-text">{gloss}</p>
+    </div>
+  );
+  const definitionBlock = (
+    <div className="space-y-1">
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+        {t("review.definitionEn")}
+      </p>
+      <p className="text-base md:text-lg text-text/90 leading-relaxed">
+        {definition}
+      </p>
+    </div>
+  );
 
   // Shuffled once per card, not once per render: flipping the card back and
   // forth must not deal a new hand each time. Keyed on the word rather than on
@@ -68,16 +88,20 @@ export const FlashcardBack: React.FC<FlashcardBackProps> = ({
           <PronounceButton text={word} audioUrl={audioUrl} />
         </div>
 
-        {/* The definition in the language the learner is reading in. */}
-        <p className="text-lg md:text-xl font-medium text-text leading-relaxed pt-1">
-          {lead}
-        </p>
-
-        {second && (
-          <p className="text-base text-primary-accent font-semibold">
-            {second}
-          </p>
-        )}
+        {/* The meaning in the language the learner is reading in comes first. */}
+        <div className="space-y-4 pt-1">
+          {prefersVietnamese ? (
+            <>
+              {meaningBlock}
+              {definitionBlock}
+            </>
+          ) : (
+            <>
+              {definitionBlock}
+              {meaningBlock}
+            </>
+          )}
+        </div>
 
         {/* Three of however many the word has, shuffled per card. */}
         <ExampleSentences

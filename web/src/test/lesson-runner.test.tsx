@@ -107,7 +107,6 @@ describe("LessonPage Runner (P10.3)", () => {
           prompt: "Complete the sentence with the target word",
           sentence_before: "She was very",
           sentence_after: "about recording all data.",
-          expected_answer: "meticulous",
         } as unknown as Record<string, never>,
       },
       {
@@ -417,6 +416,100 @@ describe("LessonPage Runner (P10.3)", () => {
     // Clicking 'Keep Learning' cancels
     await user.click(screen.getByRole("button", { name: /Keep Learning/i }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("renders and submits grammar_sentence_transform activity without expected_answer", async () => {
+    const user = userEventDefault.setup();
+    const transformLesson: LessonDetail = {
+      ...mockLesson,
+      activities: [
+        {
+          id: "act-transform",
+          lesson_id: mockLesson.id,
+          position: 1,
+          kind: "grammar_sentence_transform",
+          content_version_id: "0199a1c2-3d4e-7f80-9abc-def01234567e",
+          weight: 1,
+          config: {
+            prompt: "Rewrite beginning with 'Although': He was tired, but he finished the report.",
+          } as unknown as Record<string, never>,
+        },
+      ],
+    };
+
+    server.use(
+      http.get("/api/v1/lessons/:id", () => HttpResponse.json(transformLesson)),
+    );
+
+    await renderLessonRunner();
+
+    // The activity is rendered properly and NOT ActivityUnavailable
+    expect(
+      await screen.findByText(
+        "Rewrite beginning with 'Although': He was tired, but he finished the report.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/The runner does not support this activity yet/i),
+    ).not.toBeInTheDocument();
+
+    // Type the rewritten sentence
+    const input = screen.getByLabelText("Your rewritten sentence");
+    await user.type(
+      input,
+      "Although he was tired, he finished the report.",
+    );
+
+    // Submit the answer
+    const checkBtn = screen.getByRole("button", { name: /Check Answer/i });
+    await user.click(checkBtn);
+
+    // Feedback shown and continue button available
+    expect(
+      (await screen.findAllByText("Correct! Well done.")).length,
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getByRole("button", { name: /Continue/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps a curriculum sentence transform as a gap fill, with its sentence", async () => {
+    // The seeded curriculum authors this kind as an instruction plus the
+    // sentence around a blank. Rendering only `prompt` showed the instruction
+    // with no sentence to transform.
+    const curriculumLesson: LessonDetail = {
+      ...mockLesson,
+      activities: [
+        {
+          id: "act-curriculum-transform",
+          lesson_id: mockLesson.id,
+          position: 1,
+          kind: "grammar_sentence_transform",
+          content_version_id: "0199a1c2-3d4e-7f80-9abc-def01234567f",
+          weight: 1,
+          config: {
+            prompt:
+              "Transform the sentence using the present perfect continuous form:",
+            sentence_before:
+              "She started painting at 9 AM and is still painting now. She",
+            sentence_after: "since 9 AM.",
+          } as unknown as Record<string, never>,
+        },
+      ],
+    };
+
+    server.use(
+      http.get("/api/v1/lessons/:id", () =>
+        HttpResponse.json(curriculumLesson),
+      ),
+    );
+
+    await renderLessonRunner();
+
+    expect(
+      await screen.findByText(/is still painting now/),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Your rewritten sentence")).toBeNull();
   });
 });
 

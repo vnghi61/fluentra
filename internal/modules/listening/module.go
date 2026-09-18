@@ -16,13 +16,14 @@ import (
 
 // Deps holds the dependencies for the listening module.
 type Deps struct {
-	Pool     *pgxpool.Pool
-	Content  contentcontract.Reader
-	Learning learningcontract.AttemptReader
-	Storage  storage.Store
-	Sittings service.SittingPlayPolicy
-	Audio    service.AudioLocator
-	Clock    clock.Clock
+	Pool      *pgxpool.Pool
+	Content   contentcontract.Reader
+	Learning  learningcontract.AttemptReader
+	Storage   storage.Store
+	Sittings  service.SittingPlayPolicy
+	Placement service.PlacementPlayPolicy
+	Audio     service.AudioLocator
+	Clock     clock.Clock
 }
 
 // Module encapsulates the listening service, grader, and HTTP handler.
@@ -41,13 +42,14 @@ func New(deps Deps) *Module {
 	}
 
 	svc := service.New(service.Deps{
-		Repo:     repo,
-		Content:  deps.Content,
-		Learning: deps.Learning,
-		Storage:  deps.Storage,
-		Sittings: deps.Sittings,
-		Audio:    deps.Audio,
-		Clock:    timekeeper,
+		Repo:      repo,
+		Content:   deps.Content,
+		Learning:  deps.Learning,
+		Storage:   deps.Storage,
+		Sittings:  deps.Sittings,
+		Placement: deps.Placement,
+		Audio:     deps.Audio,
+		Clock:     timekeeper,
 	})
 
 	grader := service.NewGrader(deps.Content)

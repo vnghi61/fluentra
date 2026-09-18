@@ -1,0 +1,97 @@
+name: tts-render
+
+# Renders listening scripts to audio with Piper, uploads the clips to R2 and
+# records them in content.tts_cache. Work order 12 §4: no speech engine fits the
+# Render free worker, so audio is rendered offline — here rather than on the
+# owner's machine. A listening item is drawn into a sitting only once its clip
+# exists, so this is what lets listening sections appear.
+#
+# Two triggers. The worker dispatches this workflow as soon as a pool top-up
+# publishes listening items (SPEECH_TTS_DISPATCH_* on the worker), so a clip
+# exists within minutes. The hourly schedule catches anything a dispatch missed.
+#
+# The repository is public, so this workflow never hands a secret to code that
+# did not come from main:
+#   - it runs on a schedule and by hand only. There is no pull_request trigger,
+#     so a fork cannot run it, and a scheduled run always uses main's copy;
+#   - its secrets live in the `tts-production` environment, which is restricted
+#     to the main branch in Settings → Environments;
+#   - the token can only read the repository, and checkout does not keep it;
+#   - nothing prints configuration. GitHub masks secret values in logs as well.
+#
+# Every `uses:` is pinned to a commit SHA, as in the other workflows.
+
+on:
+  schedule:
+    # Hourly, off the hour: GitHub delays or drops scheduled runs at :00 under
+    # load. The pool top-ups add listening items hourly too.
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  # One render at a time; a long run is never cancelled half way through an upload.
+  group: tts-render
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  PIPER_VERSION: 2023.11.14-2
+  # Must equal SPEECH_TTS_VOICE on the API and the worker (both default to this
+  # voice when unset): a clip is looked up by the voice it was rendered in.
+  # Changing it also means changing the download path in the step below.
+  PIPER_VOICE: en_US-lessac-medium
+
+jobs:
+  render:
+    name: Render missing listening audio
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: tts-production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Cache Piper and the voice model
+        id: piper-cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: .piper
+          key: piper-${{ env.PIPER_VERSION }}-${{ env.PIPER_VOICE }}
+
+      - name: Download Piper and the voice model
+        if: steps.piper-cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p .piper/voices
+          curl -fsSL "https://github.com/rhasspy/piper/releases/download/${PIPER_VERSION}/piper_linux_x86_64.tar.gz" \
+            | tar -xz -C .piper
+          voice_url="https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/lessac/medium"
+          curl -fsSL -o ".piper/voices/${PIPER_VOICE}.onnx" "${voice_url}/${PIPER_VOICE}.onnx"
+          curl -fsSL -o ".piper/voices/${PIPER_VOICE}.onnx.json" "${voice_url}/${PIPER_VOICE}.onnx.json"
+
+      - name: Render clips that are not in the cache yet
+        env:
+          APP_ENVIRONMENT: production
+          DB_DSN: ${{ secrets.DB_DSN }}
+          S3_ENDPOINT: ${{ secrets.S3_ENDPOINT }}
+          S3_ACCESS_KEY: ${{ secrets.S3_ACCESS_KEY }}
+          S3_SECRET_KEY: ${{ secrets.S3_SECRET_KEY }}
+          S3_REGION: auto
+          S3_USE_SSL: 'true'
+          SPEECH_TTS_VOICE: ${{ env.PIPER_VOICE }}
+        run: >-
+          go run ./cmd/tts -all -engine piper
+          -piper "${GITHUB_WORKSPACE}/.piper/piper/piper"
+          -models "${GITHUB_WORKSPACE}/.piper/voices"
+          -engine-version "${PIPER_VERSION}"

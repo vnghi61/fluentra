@@ -347,12 +347,34 @@ func (s *Service) DueCardsByDeck(
 		return nil, fmt.Errorf("failed to list due cards: %w", err)
 	}
 
+	params := domain.DefaultParameters()
 	result := make([]contract.ReviewCardSummary, 0, len(rows))
 	for _, row := range rows {
-		result = append(result, mapReviewCardSummary(row))
+		card := mapReviewCardSummary(row)
+		card.NextDueByGrade = previewGrades(cardStateOf(row), now, params)
+		result = append(result, card)
 	}
 	s.attachContent(ctx, result)
 	return result, nil
+}
+
+// previewGrades schedules the card under each grade and keeps nothing.
+//
+// The grade buttons show the answer. They used to show a fixed "1 day / 3 days
+// / 7 days / 14 days" that no schedule produced — `again` brings a card back in
+// ten minutes and the others grow with every review — so a learner could not
+// tell what a grade did. AnswerCard runs the same Schedule with the same
+// parameters, which is what keeps the preview and the outcome in agreement.
+func previewGrades(state domain.CardState, now time.Time, params domain.Parameters) *contract.GradePreview {
+	due := func(rating domain.Rating) time.Time {
+		return domain.Schedule(state, rating, now, params).DueAt
+	}
+	return &contract.GradePreview{
+		Again: due(domain.RatingAgain),
+		Hard:  due(domain.RatingHard),
+		Good:  due(domain.RatingGood),
+		Easy:  due(domain.RatingEasy),
+	}
 }
 
 // attachContent resolves each card's content version in one batched read.
@@ -453,23 +475,7 @@ func (s *Service) AnswerCard(
 	now := s.clock.Now().UTC()
 	params := domain.DefaultParameters()
 
-	currentCardState := domain.CardState{
-		Stability:  cardRow.Stability,
-		Difficulty: cardRow.Difficulty,
-		State:      domain.State(cardRow.State),
-		Reps:       int(cardRow.Reps),
-		Lapses:     int(cardRow.Lapses),
-		// The card's own record of when it was last answered, not `updated_at`.
-		// `updated_at` is written by the database's clock and by things that are
-		// not reviews — suspend, reset — each of which used to reset the
-		// baseline FSRS measures elapsed time from, and with it the learner's
-		// interval growth. Nil means never reviewed, which elapsedDays already
-		// reads as no elapsed time.
-		LastReviewAt: derefTime(cardRow.LastReviewAt),
-		DueAt:        cardRow.DueAt,
-	}
-
-	nextState := domain.Schedule(currentCardState, rating, now, params)
+	nextState := domain.Schedule(cardStateOf(cardRow), rating, now, params)
 	intervalDays := domain.NextInterval(nextState.Stability, params.RequestRetention, params.MaxInterval)
 
 	var updatedCard sqlc.LearnReviewCard
@@ -608,6 +614,23 @@ func (s *Service) sessionMinutes(ctx context.Context, userID uuid.UUID, since ti
 	return int(totalMs / int64(time.Minute/time.Millisecond))
 }
 
+// The answers a learner's review pace is measured over.
+const (
+	reviewPaceWindow = 30 * 24 * time.Hour
+	reviewPaceSample = 200
+)
+
+// AverageReviewSeconds implements contract.ReviewPaceReader: the learner's
+// average time per answer over their recent reviews, zero with none.
+func (s *Service) AverageReviewSeconds(ctx context.Context, userID uuid.UUID) (float64, error) {
+	since := s.clock.Now().UTC().Add(-reviewPaceWindow)
+	averageMs, err := s.repo.AverageRecentReviewElapsedMs(ctx, userID, since, reviewPaceSample)
+	if err != nil {
+		return 0, fmt.Errorf("average review time: %w", err)
+	}
+	return averageMs / 1000, nil
+}
+
 // CompleteSession closes the review session and records daily statistics.
 func (s *Service) CompleteSession(ctx context.Context, userID uuid.UUID, reviewed, correct int) (SessionResult, error) {
 	if reviewed < 0 {
@@ -673,6 +696,28 @@ func derefTime(value *time.Time) time.Time {
 		return time.Time{}
 	}
 	return *value
+}
+
+// cardStateOf is the FSRS state a stored card starts a review from.
+//
+// Shared by AnswerCard and the grade preview, so what the buttons promise is
+// what answering does.
+func cardStateOf(row sqlc.LearnReviewCard) domain.CardState {
+	return domain.CardState{
+		Stability:  row.Stability,
+		Difficulty: row.Difficulty,
+		State:      domain.State(row.State),
+		Reps:       int(row.Reps),
+		Lapses:     int(row.Lapses),
+		// The card's own record of when it was last answered, not `updated_at`.
+		// `updated_at` is written by the database's clock and by things that are
+		// not reviews — suspend, reset — each of which used to reset the
+		// baseline FSRS measures elapsed time from, and with it the learner's
+		// interval growth. Nil means never reviewed, which elapsedDays already
+		// reads as no elapsed time.
+		LastReviewAt: derefTime(row.LastReviewAt),
+		DueAt:        row.DueAt,
+	}
 }
 
 func clampInt32(v int) int32 {

@@ -309,6 +309,7 @@ export function ReviewPage(): React.JSX.Element {
               <GradeButtonGroup
                 onGrade={(grade) => void handleGrade(grade)}
                 disabled={isSubmitting}
+                nextDue={currentCard.next_due_by_grade}
               />
             )}
           </div>

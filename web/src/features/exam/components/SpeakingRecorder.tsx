@@ -126,6 +126,18 @@ export const SpeakingRecorder: React.FC<SpeakingRecorderProps> = ({
     }
     setError(null);
     chunksRef.current = [];
+    // Browsers expose the microphone only on a secure origin. Opened over plain
+    // http from a phone, `mediaDevices` is simply absent, and the old message
+    // ("allow it in your settings") sent learners looking for a permission that
+    // does not exist there.
+    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+      setError(t("exam.speaking.micNeedsHttps"));
+      return;
+    }
+    if (typeof MediaRecorder === "undefined") {
+      setError(t("exam.speaking.recordingUnsupported"));
+      return;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mimeType = pickMimeType();

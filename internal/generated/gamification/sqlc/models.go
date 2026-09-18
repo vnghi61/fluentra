@@ -624,6 +624,7 @@ type LearnLesson struct {
 	Status           string
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
+	CefrLevel        *CoreCefrLevel
 }
 
 type LearnLessonPrerequisite struct {
@@ -641,6 +642,25 @@ type LearnPlacementResult struct {
 	TakenAt        time.Time
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
+	SessionID      *uuid.UUID
+}
+
+type LearnPlacementSession struct {
+	ID                   uuid.UUID
+	UserID               uuid.UUID
+	Status               string
+	Stage                string
+	StartedAt            time.Time
+	DeadlineAt           time.Time
+	Estimate             []byte
+	Items                []byte
+	Version              int32
+	ProductiveStatus     string
+	ProductiveDeadlineAt *time.Time
+	ResultID             *uuid.UUID
+	CompletedAt          *time.Time
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
 }
 
 type LearnProgress struct {
@@ -751,6 +771,14 @@ type LearnUserQuest struct {
 	StartedOn   pgtype.Date
 	ExpiresOn   pgtype.Date
 	CompletedAt *time.Time
+}
+
+type LearnWeeklyPlan struct {
+	UserID      uuid.UUID
+	WeekStart   pgtype.Date
+	MinutesGoal int32
+	Items       []byte
+	CreatedAt   time.Time
 }
 
 type LearnXpActivityHighWater struct {

@@ -27,6 +27,10 @@ type Accounts interface {
 	ReplacePreferences(
 		ctx context.Context, actorID uuid.UUID, wanted domain.Preferences,
 	) (domain.Preferences, error)
+	GetLearningProfile(ctx context.Context, actorID uuid.UUID) (domain.LearningProfile, error)
+	ReplaceLearningProfile(
+		ctx context.Context, actorID uuid.UUID, wanted domain.LearningProfile,
+	) (domain.LearningProfile, error)
 	RequestAvatarUploadIntent(ctx context.Context, actorID uuid.UUID, contentType string) (domain.UploadIntent, error)
 	ConfirmAvatar(ctx context.Context, actorID uuid.UUID, objectKey string) (service.Account, error)
 	RequestExport(ctx context.Context, actorID uuid.UUID) (domain.ExportRequest, error)
@@ -71,6 +75,8 @@ func (h *Handler) Routes(router chi.Router) {
 		me.Delete("/", h.requestDeletion)
 		me.Get("/preferences", h.getPreferences)
 		me.Put("/preferences", h.replacePreferences)
+		me.Get("/learning-profile", h.getLearningProfile)
+		me.Put("/learning-profile", h.replaceLearningProfile)
 		me.Post("/avatar/upload-intent", h.requestAvatarUploadIntent)
 		me.Put("/avatar", h.confirmAvatar)
 		me.Post("/export", h.requestExport)
@@ -231,6 +237,39 @@ func (h *Handler) replacePreferences(writer http.ResponseWriter, request *http.R
 		return
 	}
 	httpx.WriteJSON(writer, request, http.StatusOK, toPreferencesResponse(stored))
+}
+
+func (h *Handler) getLearningProfile(writer http.ResponseWriter, request *http.Request) {
+	actor, err := requireActor(request)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	profile, err := h.accounts.GetLearningProfile(request.Context(), actor.UserID)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	httpx.WriteJSON(writer, request, http.StatusOK, toLearningProfileResponse(profile))
+}
+
+func (h *Handler) replaceLearningProfile(writer http.ResponseWriter, request *http.Request) {
+	actor, err := requireActor(request)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	wanted, err := decodeLearningProfile(request)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	stored, err := h.accounts.ReplaceLearningProfile(request.Context(), actor.UserID, wanted)
+	if err != nil {
+		httpx.WriteProblem(writer, request, err)
+		return
+	}
+	httpx.WriteJSON(writer, request, http.StatusOK, toLearningProfileResponse(stored))
 }
 
 // requireActor reads the caller from the request context.

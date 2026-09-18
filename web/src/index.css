@@ -119,6 +119,22 @@
    * have been tempted to lighten it. This value does not move.
    */
   --color-overlay: #020617;
+
+  /*
+   * Aliases for the shadcn-style names some components were written with.
+   * None of them was defined, so `bg-card` drew no background at all: the
+   * practice-duration dialog showed the exam list through itself in dark mode,
+   * and admin panels rendered their text in the inherited colour. Each alias
+   * points at the token that already carries the role.
+   */
+  --color-card: var(--surface-card);
+  --color-foreground: var(--text);
+  --color-muted-foreground: var(--text-muted);
+  --color-accent: var(--brand);
+  --color-destructive: #dc2626;
+  --color-primary-foreground: #ffffff;
+  --color-success-foreground: #ffffff;
+  --color-danger-foreground: #ffffff;
 }
 
 :root {

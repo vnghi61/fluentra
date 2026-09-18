@@ -47,9 +47,16 @@ const (
 	skillWriting   = "writing"
 	skillSpeaking  = "speaking"
 
-	varKind      = "Kind"
-	varCEFRLevel = "CEFRLevel"
-	keyAnswers   = "answers"
+	varKind         = "Kind"
+	varCEFRLevel    = "CEFRLevel"
+	varRedactedBody = "RedactedBody"
+	keyAnswers      = "answers"
+
+	// Slot lessons the pools share by name.
+	slotReadingComprehension  = "reading-comprehension"
+	slotWritingPrompt         = "writing-prompt"
+	slotSpeakingRespond       = "speaking-task-respond"
+	titleReadingComprehension = "Reading Comprehension"
 )
 
 var examLevels = []string{"A2", "B1", "B2"}
@@ -74,8 +81,8 @@ var examSlots = []examSlotSpec{
 	{
 		position:   2,
 		kind:       kindReadingComprehension,
-		slotName:   "reading-comprehension",
-		title:      "Reading Comprehension",
+		slotName:   slotReadingComprehension,
+		title:      titleReadingComprehension,
 		skillFocus: skillReading,
 	},
 	{
@@ -88,7 +95,7 @@ var examSlots = []examSlotSpec{
 	{
 		position:   4,
 		kind:       kindWritingPrompt,
-		slotName:   "writing-prompt",
+		slotName:   slotWritingPrompt,
 		title:      "Writing Prompt",
 		skillFocus: skillWriting,
 	},
@@ -104,7 +111,7 @@ var examSlots = []examSlotSpec{
 		position:   6,
 		kind:       kindSpeakingTask,
 		taskType:   subTypeRespond,
-		slotName:   "speaking-task-respond",
+		slotName:   slotSpeakingRespond,
 		title:      "Speaking Respond",
 		skillFocus: skillSpeaking,
 	},
@@ -231,7 +238,10 @@ func (s *Service) TopUpExamPool(ctx context.Context) error {
 
 	for _, level := range examLevels {
 		for _, slot := range examSlots {
-			s.topUpExamSlot(ctx, layout, level, slot, author)
+			if stop := s.topUpExamSlot(ctx, layout, level, slot, author); stop {
+				slog.WarnContext(ctx, "exam pool top-up stopped: every AI provider is out of quota or unavailable")
+				return nil
+			}
 		}
 	}
 	return nil
@@ -249,18 +259,20 @@ func (s *Service) resolveGeneratorAuthor(ctx context.Context) uuid.UUID {
 	return uuid.Nil
 }
 
+// topUpExamSlot fills one slot, and reports true when every AI provider is
+// refusing so the run stops.
 func (s *Service) topUpExamSlot(
 	ctx context.Context, layout *examPoolLayout, level string, slot examSlotSpec, author uuid.UUID,
-) {
+) (stop bool) {
 	activities, err := s.examSlotActivities(ctx, layout, level, slot.slotName)
 	if err != nil {
 		slog.ErrorContext(ctx, "could not list exam pool slot", "level", level, "slot", slot.slotName, "error", err)
-		return
+		return false
 	}
 	toAdd, err := s.itemsToAdd(ctx, activities)
 	if err != nil {
 		slog.ErrorContext(ctx, "could not size exam pool top-up", "level", level, "slot", slot.slotName, "error", err)
-		return
+		return false
 	}
 
 	lessonID := layout.lessons[examSlotKey{level: level, slotName: slot.slotName}]
@@ -268,6 +280,9 @@ func (s *Service) topUpExamSlot(
 	for i := 0; i < toAdd; i++ {
 		body, err := s.generateAndVerifyExamItem(ctx, level, slot, author, lessonID, activities)
 		if err != nil {
+			if errors.Is(err, ai.ErrProvidersUnavailable) {
+				return true
+			}
 			slog.WarnContext(ctx, "exam pool item not added", "level", level, "slot", slot.slotName, "error", err)
 			continue
 		}
@@ -277,6 +292,10 @@ func (s *Service) topUpExamSlot(
 	if toAdd > 0 {
 		slog.InfoContext(ctx, "exam pool slot topped up", "level", level, "slot", slot.slotName, "added", added)
 	}
+	if slot.kind == kindListeningComprehension {
+		s.requestAudioRender(ctx, added)
+	}
+	return false
 }
 
 func (s *Service) generateAndVerifyExamItem(
@@ -429,9 +448,10 @@ func parseListeningCandidate(raw json.RawMessage) (listeningCand, error) {
 	if len(cand.Questions) < 4 {
 		return cand, fmt.Errorf("check 1 failed: listening must have at least 4 questions, got %d", len(cand.Questions))
 	}
-	if cand.Voice == "" {
-		cand.Voice = "en-US-Standard-C"
-	}
+	// The voice is configuration (media.ConfiguredVoice), not the model's to pick.
+	// The default written here was a cloud provider's voice name that no engine
+	// could render, so no clip for these items could ever be made or found.
+	cand.Voice = ""
 	return cand, nil
 }
 
@@ -520,7 +540,7 @@ func (s *Service) blindSolveListening(
 	var reply json.RawMessage
 	if err := ai.CompleteJSON(ctx, s.ai, ai.Request{
 		Task: ai.TaskPracticeSolve,
-		Vars: map[string]any{"Kind": kindListeningComprehension, "RedactedBody": string(redactedBody)},
+		Vars: map[string]any{"Kind": kindListeningComprehension, varRedactedBody: string(redactedBody)},
 	}, &reply); err != nil {
 		return fmt.Errorf("ai blind solve call failed: %w", err)
 	}
@@ -778,15 +798,15 @@ var examSittingPlan = []examSectionPlan{
 		{slot: slotListening, count: 3, what: "listening items with audio"},
 	}},
 	{position: 2, skill: skillReading, draws: []examDraw{
-		{slot: "reading-comprehension", count: 2, what: "reading items"},
+		{slot: slotReadingComprehension, count: 2, what: "reading items"},
 	}},
 	{position: 3, skill: skillWriting, draws: []examDraw{
-		{slot: "writing-prompt", count: 1, what: "writing prompts"},
+		{slot: slotWritingPrompt, count: 1, what: "writing prompts"},
 		{slot: "grammar-sentence-transform", count: 3, what: "sentence transform items"},
 	}},
 	{position: 4, skill: skillSpeaking, draws: []examDraw{
 		{slot: "speaking-task-read-aloud", count: 2, what: "speaking read-aloud items"},
-		{slot: "speaking-task-respond", count: 2, what: "speaking respond items"},
+		{slot: slotSpeakingRespond, count: 2, what: "speaking respond items"},
 	}},
 }
 

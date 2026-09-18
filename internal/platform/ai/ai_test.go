@@ -488,6 +488,10 @@ func TestRegistry_PracticeGenerationIsNeverCached(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, listeningGenerate.Cache, "listening_generate must say cache: false in its front matter")
 
+	placementGenerate, err := registry.Get(ai.TaskPlacementGenerate)
+	require.NoError(t, err)
+	assert.False(t, placementGenerate.Cache, "placement_generate must say cache: false in its front matter")
+
 	verify, err := registry.Get(ai.TaskVerifyVocabulary)
 	require.NoError(t, err)
 	assert.True(t, verify.Cache, "a task caches unless its front matter opts out")

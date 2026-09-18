@@ -3,6 +3,7 @@ package repository
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/fluentra/fluentra/internal/generated/lesson/sqlc"
 	"github.com/fluentra/fluentra/internal/modules/lesson/contract"
@@ -91,8 +92,19 @@ func ToContractLesson(l sqlc.LearnLesson, activities []contract.Activity) *contr
 		SkillFocus:       l.SkillFocus,
 		EstimatedMinutes: int(l.EstimatedMinutes),
 		Status:           l.Status,
+		CEFRLevel:        fromSqlcCefrLevel(l.CefrLevel),
 		Activities:       activities,
 	}
+}
+
+// fromSqlcCefrLevel returns a lesson level as the API writes levels everywhere
+// else, A1–C2. core.cefr_level stores them lower case.
+func fromSqlcCefrLevel(level *sqlc.CoreCefrLevel) *string {
+	if level == nil {
+		return nil
+	}
+	upper := strings.ToUpper(string(*level))
+	return &upper
 }
 
 // ToPrerequisiteEdges maps sqlc ListAllPrerequisitesInCourseRow slice to domain.PrerequisiteEdge slice.
