@@ -173,7 +173,7 @@ func TestCourseSeedData_Integrity(t *testing.T) {
 // TestCurriculumLessonsHaveCEFRLevel asserts that every curriculum lesson resolves
 // to a valid CEFR level (A1..C2) in lowercase for the core.cefr_level enum.
 func TestCurriculumLessonsHaveCEFRLevel(t *testing.T) {
-	courses := []seedCourse{courseSeedData, readingCourseSeedData, writingCourseSeedData}
+	courses := []seedCourse{courseSeedData, readingCourseSeedData, writingCourseSeedData, speakingCourseSeedData}
 	validLevels := map[string]bool{
 		"a1": true, "a2": true, "b1": true, "b2": true, "c1": true, "c2": true,
 	}
@@ -459,5 +459,78 @@ func TestWritingCourseSeedData_Integrity(t *testing.T) {
 
 	if totalLessons != 6 {
 		t.Errorf("seeded %d writing lessons, want the 6 §3.7 asks for", totalLessons)
+	}
+}
+
+// TestSpeakingCourseSeedData_Integrity checks what a speaking activity needs
+// beyond a gradable key: the task type the grader branches on, and a reference
+// text for exactly the tasks that are scored against one.
+//
+// A read-aloud without a reference text scores 70% of nothing, and a respond
+// task with one is silently scored as a read-aloud — both render perfectly well,
+// so only this catches them.
+func TestSpeakingCourseSeedData_Integrity(t *testing.T) {
+	if speakingCourseSeedData.Slug != "speaking-practice" || speakingCourseSeedData.Title == "" {
+		t.Fatal("speakingCourseSeedData missing slug or title")
+	}
+
+	totalLessons := 0
+	for _, unit := range speakingCourseSeedData.Units {
+		if unit.Position <= 0 || unit.Title == "" {
+			t.Errorf("invalid unit %+v", unit)
+		}
+		for _, lesson := range unit.Lessons {
+			totalLessons++
+			if lesson.Position <= 0 || lesson.Title == "" || lesson.SkillFocus != skillSpeaking {
+				t.Errorf("invalid speaking lesson %+v", lesson)
+			}
+			if len(lesson.Activities) == 0 {
+				t.Errorf("lesson %s has no activities", lesson.Title)
+			}
+			for _, act := range lesson.Activities {
+				assertActivityIsGradable(t, lesson.Title, act)
+				assertSpeakingActivity(t, lesson.Title, act)
+			}
+		}
+	}
+
+	if totalLessons != 6 {
+		t.Errorf("speaking course has %d lessons, want 6", totalLessons)
+	}
+}
+
+func assertSpeakingActivity(t *testing.T, lessonTitle string, act seedActivity) {
+	t.Helper()
+
+	if act.Kind != kindSpeakingTask {
+		t.Errorf("%s activity %d is %q, not a speaking task", lessonTitle, act.Position, act.Kind)
+		return
+	}
+
+	// Both halves, because the runner reads Config and the grader reads Body.
+	for label, source := range map[string]map[string]any{"config": act.Config, "body": act.Body} {
+		taskType, _ := source[cfgTaskType].(string)
+		if taskType != taskTypeReadAloud && taskType != taskTypeRespond {
+			t.Errorf("%s activity %d %s has task_type %q", lessonTitle, act.Position, label, taskType)
+			continue
+		}
+
+		reference, _ := source[cfgReferenceText].(string)
+		if taskType == taskTypeReadAloud && reference == "" {
+			t.Errorf("%s activity %d %s is read_aloud with no reference_text; word accuracy is 70%% of its score",
+				lessonTitle, act.Position, label)
+		}
+		if taskType == taskTypeRespond && reference != "" {
+			t.Errorf("%s activity %d %s is respond but carries a reference_text, which the grader reads as read-aloud",
+				lessonTitle, act.Position, label)
+		}
+
+		if prompt, _ := source[bodyKeyPrompt].(string); prompt == "" {
+			t.Errorf("%s activity %d %s has no prompt; the runner refuses to render it",
+				lessonTitle, act.Position, label)
+		}
+		if seconds, _ := source[cfgSpeakingTime].(int); seconds <= 0 {
+			t.Errorf("%s activity %d %s has no speaking time", lessonTitle, act.Position, label)
+		}
 	}
 }

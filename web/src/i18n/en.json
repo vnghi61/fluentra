@@ -658,6 +658,12 @@
     },
     "myWords.desc": "Paste vocabulary from your own course. We check each word against a dictionary, write example sentences for it, and schedule it for review here.",
     "myWords.title": "Add your own words",
+    "reading": {
+      "desc": "Practice reading comprehension across curated passages from A2 to B2, with questions and speed tracking.",
+      "label": "Reading",
+      "openBtn": "Start reading",
+      "title": "Reading Comprehension"
+    },
     "review": {
       "label": "Spaced repetition",
       "emptyTitle": "Nothing due right now",
@@ -667,6 +673,12 @@
       "dueDesc": "Grade each card by how well you recalled it. The schedule adapts to your answers.",
       "startBtn": "Start review"
     },
+    "speaking": {
+      "desc": "Record answers and read passages aloud. You get a transcript, word accuracy, speaking rate and AI coaching — pronunciation is not assessed.",
+      "label": "Speaking",
+      "openBtn": "Start speaking",
+      "title": "Read Aloud & Spoken Answers"
+    },
     "tagline": "Keep what you have learned. Reviews are scheduled for the day you are most likely to forget.",
     "title": "Practice",
     "vocabulary": {
@@ -674,12 +686,6 @@
       "descGuest": "Browsing and building decks is still being built.",
       "label": "Vocabulary",
       "title": "Word lists are not here yet"
-    },
-    "reading": {
-      "desc": "Practice reading comprehension across curated passages from A2 to B2, with questions and speed tracking.",
-      "label": "Reading",
-      "openBtn": "Start reading",
-      "title": "Reading Comprehension"
     },
     "writing": {
       "desc": "Practice structured writing tasks from emails to IELTS essays with automated AI feedback and model answers.",

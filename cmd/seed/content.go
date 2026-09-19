@@ -48,6 +48,12 @@ func seedContentAndCurriculum(ctx context.Context, pool *pgxpool.Pool, adminID u
 	_, _ = fmt.Fprintf(out, "  ✓ Course: %s (6 lessons, %d units)\n",
 		writingCourseSeedData.Title, len(writingCourseSeedData.Units))
 
+	if err := seedCourseData(ctx, pool, adminID, speakingCourseSeedData); err != nil {
+		return fmt.Errorf("seed speaking course data: %w", err)
+	}
+	_, _ = fmt.Fprintf(out, "  ✓ Course: %s (6 lessons, %d units)\n",
+		speakingCourseSeedData.Title, len(speakingCourseSeedData.Units))
+
 	// 2. Seed 200 Word Senses and Public Deck
 	count, err := seedVocabularyWords(ctx, pool, adminID, wordSenseSeedData)
 	if err != nil {

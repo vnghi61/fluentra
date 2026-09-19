@@ -6,6 +6,7 @@ import {
   BookMarked,
   BookOpen,
   Layers,
+  Mic,
   PenTool,
   Sparkles,
 } from "lucide-react";
@@ -270,6 +271,44 @@ export function PracticePage(): React.JSX.Element {
             <Button variant="secondary" className="gap-2">
               <PenTool className="h-4 w-4" aria-hidden="true" />
               {t("practice.writing.openBtn", "Start writing")}
+            </Button>
+          </Link>
+        </CardFooter>
+      </Card>
+
+      {/*
+        Speaking Practice Card.
+
+        The hub offered reading and writing and nothing for speaking, while the
+        grading pipeline sat finished behind an empty door: every speaking_task
+        in the database belonged to the exam or placement pools, which no learner
+        opens on purpose. `speaking-practice` is seeded alongside the other two
+        courses, so this card leads somewhere — the rule the generated-drills
+        card above states, applied here.
+      */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2 text-text-muted mb-1">
+            <Mic className="h-5 w-5" aria-hidden="true" />
+            <span className="text-xs font-semibold uppercase tracking-wider">
+              {t("practice.speaking.label", "Speaking")}
+            </span>
+          </div>
+          <CardTitle className="text-base font-semibold">
+            {t("practice.speaking.title", "Read Aloud & Spoken Answers")}
+          </CardTitle>
+          <CardDescription>
+            {t(
+              "practice.speaking.desc",
+              "Record answers and read passages aloud. You get a transcript, word accuracy, speaking rate and AI coaching — pronunciation is not assessed.",
+            )}
+          </CardDescription>
+        </CardHeader>
+        <CardFooter className="pt-0">
+          <Link to="/learn" search={{ course: "speaking-practice" }}>
+            <Button variant="secondary" className="gap-2">
+              <Mic className="h-4 w-4" aria-hidden="true" />
+              {t("practice.speaking.openBtn", "Start speaking")}
             </Button>
           </Link>
         </CardFooter>

@@ -74,6 +74,7 @@ const (
 	skillGrammar    = "grammar"
 	skillReading    = "reading"
 	skillWriting    = "writing"
+	skillSpeaking   = "speaking"
 
 	kindMultipleChoice = "vocab_multiple_choice"
 	kindGapFill        = "vocab_gap_fill"
@@ -88,6 +89,7 @@ const (
 	kindGrammarSentenceTransform = "grammar_sentence_transform"
 	kindReadingComprehension     = "reading_comprehension"
 	kindWritingPrompt            = "writing_prompt"
+	kindSpeakingTask             = "speaking_task"
 
 	cfgOptions         = "options"
 	cfgOptionID        = "id"
@@ -150,6 +152,16 @@ const (
 	cfgRubric       = "rubric"
 	cfgMinWords     = "min_words"
 	cfgSampleAnswer = "sample_answer"
+
+	// The speaking task body the grader and the runner both read. Named here
+	// because internal/modules/speaking/service/grader.go unmarshals exactly
+	// these keys, and a typo produces a task that renders and cannot be scored.
+	cfgTaskType      = "task_type"
+	cfgReferenceText = "reference_text"
+	cfgSpeakingTime  = "speaking_time_seconds"
+
+	taskTypeReadAloud = "read_aloud"
+	taskTypeRespond   = "respond"
 
 	bodyKeyExplanation = "explanation"
 )

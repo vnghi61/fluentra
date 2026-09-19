@@ -658,6 +658,12 @@
     },
     "myWords.desc": "Dán từ vựng từ khoá học của bạn. Chúng tôi đối chiếu từng từ với từ điển, viết câu ví dụ, và xếp lịch ôn tập ngay tại đây.",
     "myWords.title": "Thêm từ của riêng bạn",
+    "reading": {
+      "desc": "Luyện đọc hiểu qua các bài đọc được tuyển chọn từ A2 đến B2, có câu hỏi và đo tốc độ đọc.",
+      "label": "Đọc hiểu",
+      "openBtn": "Bắt đầu đọc",
+      "title": "Luyện đọc hiểu"
+    },
     "review": {
       "label": "Lặp lại ngắt quãng",
       "emptyTitle": "Chưa có thẻ nào đến hạn",
@@ -667,6 +673,12 @@
       "dueDesc": "Chấm từng thẻ theo mức bạn nhớ được. Lịch ôn sẽ điều chỉnh theo câu trả lời.",
       "startBtn": "Bắt đầu ôn tập"
     },
+    "speaking": {
+      "desc": "Ghi âm câu trả lời và đọc to đoạn văn. Bạn nhận được bản ghi lời nói, độ chính xác từ, tốc độ nói và nhận xét từ AI — phát âm không được chấm.",
+      "label": "Nói",
+      "openBtn": "Bắt đầu nói",
+      "title": "Đọc to & Trả lời bằng lời"
+    },
     "tagline": "Giữ lại những gì bạn đã học. Thẻ ôn được xếp vào đúng ngày bạn sắp quên.",
     "title": "Luyện tập",
     "vocabulary": {
@@ -674,12 +686,6 @@
       "descGuest": "Phần duyệt từ và tạo bộ thẻ đang được xây.",
       "label": "Từ vựng",
       "title": "Danh sách từ chưa có"
-    },
-    "reading": {
-      "desc": "Luyện đọc hiểu qua các bài đọc được tuyển chọn từ A2 đến B2, có câu hỏi và đo tốc độ đọc.",
-      "label": "Đọc hiểu",
-      "openBtn": "Bắt đầu đọc",
-      "title": "Luyện đọc hiểu"
     },
     "writing": {
       "desc": "Luyện các bài viết có cấu trúc từ email đến bài luận IELTS với phản hồi AI và bài mẫu.",

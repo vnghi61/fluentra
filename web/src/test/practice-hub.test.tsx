@@ -191,7 +191,7 @@ describe("PracticePage hub", () => {
     expect(screen.queryByText("The week ahead")).not.toBeInTheDocument();
   });
 
-  it("renders reading and writing practice cards with links to their courses", async () => {
+  it("renders reading, writing and speaking cards with links to their courses", async () => {
     server.use(
       http.get("/api/v1/reviews/due-count", () =>
         HttpResponse.json({ due_count: 0 }),
@@ -213,6 +213,14 @@ describe("PracticePage hub", () => {
     expect(writingLink).toHaveAttribute(
       "href",
       "/learn?course=writing-practice",
+    );
+
+    // Speaking was the skill the hub did not offer, while its grading pipeline
+    // sat finished behind content no learner could open.
+    const speakingLink = screen.getByRole("link", { name: /Start speaking/i });
+    expect(speakingLink).toHaveAttribute(
+      "href",
+      "/learn?course=speaking-practice",
     );
   });
 
