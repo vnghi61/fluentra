@@ -23,6 +23,7 @@ import (
 	authdomain "github.com/fluentra/fluentra/internal/modules/auth/domain"
 	authservice "github.com/fluentra/fluentra/internal/modules/auth/service"
 	"github.com/fluentra/fluentra/internal/modules/auth/service/oauth/google"
+	paymentsvc "github.com/fluentra/fluentra/internal/modules/payment/service"
 	"github.com/fluentra/fluentra/internal/platform/ai"
 	"github.com/fluentra/fluentra/internal/platform/cache"
 	"github.com/fluentra/fluentra/internal/platform/job"
@@ -195,6 +196,20 @@ type applicationConfig struct {
 	Exam struct {
 		DailySittingsLimit int `koanf:"daily_sittings_limit"`
 	} `koanf:"exam"`
+	SePay struct {
+		WebhookAPIKey string        `koanf:"webhook_api_key"`
+		APIToken      string        `koanf:"api_token"`
+		AccountNumber string        `koanf:"account_number"`
+		BankCode      string        `koanf:"bank_code"`
+		AccountHolder string        `koanf:"account_holder"`
+		AllowedIPs    string        `koanf:"allowed_ips"`
+		OrderTTL      time.Duration `koanf:"order_ttl"`
+	} `koanf:"sepay"`
+	Studio struct {
+		MinPriceVND     int64 `koanf:"min_price_vnd"`
+		MaxPriceVND     int64 `koanf:"max_price_vnd"`
+		RevenueShareBps int   `koanf:"revenue_share_bps"`
+	} `koanf:"studio"`
 }
 
 func (cfg applicationConfig) aiProviders() []ai.ProviderConfig {
@@ -423,6 +438,15 @@ func run(ctx context.Context) error {
 		SpeechTTSVoice:    cfg.Speech.TTSVoice,
 		ExamDailyLimit:    cfg.Exam.DailySittingsLimit,
 		Transcriber:       mediaTranscriber,
+		PaymentCfg: paymentsvc.Config{
+			WebhookAPIKey: cfg.SePay.WebhookAPIKey,
+			APIToken:      cfg.SePay.APIToken,
+			AccountNumber: cfg.SePay.AccountNumber,
+			BankCode:      cfg.SePay.BankCode,
+			AccountHolder: cfg.SePay.AccountHolder,
+			AllowedIPs:    cfg.SePay.AllowedIPs,
+			OrderTTL:      cfg.SePay.OrderTTL,
+		},
 	})
 
 	health := telemetry.NewHealthHandler(cfg.App.Version,
@@ -570,8 +594,18 @@ func configOptions() config.Options {
 			"speech.asr_timeout":             "60s",
 			"speech.daily_recordings_limit":  30,
 			"exam.daily_sittings_limit":      5,
+			"sepay.webhook_api_key":          "",
+			"sepay.api_token":                "",
+			"sepay.account_number":           "",
+			"sepay.bank_code":                "",
+			"sepay.account_holder":           "",
+			"sepay.allowed_ips":              "",
+			"sepay.order_ttl":                "24h",
+			"studio.min_price_vnd":           int64(49000),
+			"studio.max_price_vnd":           int64(5000000),
+			"studio.revenue_share_bps":       7000,
 		},
-		EnvSections: []string{"SPEECH", "EXAM"},
+		EnvSections: []string{"SPEECH", "EXAM", "SEPAY", "STUDIO"},
 		Required: []config.RequiredKey{
 			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},
 			{Name: "redis.url", DocSection: "docs/deployment/configuration.md#redis"},

@@ -2,13 +2,13 @@
 module: payment
 tier: commerce
 group: modules
-status: PLANNED
-phase: 4
+status: ACTIVE
+phase: 3
 owner: "@backend-team"
 schema: billing
-tables: [payments, invoices, payment_webhooks, refunds, checkout_sessions]
-depends_on: [subscription, audit, job, mailer, storage]
-depended_on_by: [subscription, admin]
+tables: [orders, sepay_transactions, payment_webhooks, refunds, payouts]
+depends_on: [audit, job]
+depended_on_by: [studio, admin]
 spec_version: 1.0.0
 last_verified: 2026-08-06
 ---
@@ -27,64 +27,27 @@ Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR
 <!-- BEGIN GENERATED: api-summary -->
 | Method | Path | Permission | Purpose |
 |---|---|---|---|
-| `POST` | `/api/v1/billing/checkout` | `self` | Create a hosted checkout session and return its redirect URL |
-| `GET` | `/api/v1/billing/checkout/{id}` | `self` | Poll a checkout session's status after redirect |
-| `POST` | `/api/v1/webhooks/payment/{provider}` | `public` | Gateway webhook |
-| `GET` | `/api/v1/me/invoices` | `self` | Invoice history |
-| `GET` | `/api/v1/me/invoices/{id}/pdf` | `self` | Signed link to the invoice PDF |
-| `POST` | `/api/v1/admin/payments/{id}/refund` | `billing.refund` | Issue a refund |
-| `POST` | `/api/v1/admin/webhooks/{id}/replay` | `billing.manage` | Replay a stored webhook |
-| `GET` | `/api/v1/admin/reconciliation` | `billing.read` | Discrepancies between our records and the gateway |
+| `POST` | `/api/v1/webhooks/payment/sepay` | `public` | Ingest SePay incoming bank transfer webhook |
+| `GET` | `/api/v1/me/orders/{id}` | `self` | Poll order status |
+| `GET` | `/api/v1/admin/payments/unmatched` | `admin.dashboard` | List unmatched incoming transactions for operator resolution |
 <!-- END GENERATED: api-summary -->
 
 ## Endpoint detail
 
 <!-- BEGIN GENERATED: api-detail -->
-### `POST /api/v1/billing/checkout`
+### `POST /api/v1/webhooks/payment/sepay`
 
-Create a hosted checkout session and return its redirect URL
-
-| | |
-|---|---|
-| Permission | `self` |
-| Success | 200 |
-| Errors | `PLAN_NOT_AVAILABLE`, `SUBSCRIPTION_ALREADY_ACTIVE` |
-| Notes | Requires an `Idempotency-Key` |
-
-### `GET /api/v1/billing/checkout/{id}`
-
-Poll a checkout session's status after redirect
-
-| | |
-|---|---|
-| Permission | `self` |
-| Success | 200 |
-| Errors | standard set |
-
-### `POST /api/v1/webhooks/payment/{provider}`
-
-Gateway webhook
+Ingest SePay incoming bank transfer webhook
 
 | | |
 |---|---|
 | Permission | `public` |
 | Success | 200 |
 | Errors | standard set |
-| Notes | Signature verified on the raw body before parsing; always acknowledged quickly, processed in a job |
 
-### `GET /api/v1/me/invoices`
+### `GET /api/v1/me/orders/{id}`
 
-Invoice history
-
-| | |
-|---|---|
-| Permission | `self` |
-| Success | 200 |
-| Errors | standard set |
-
-### `GET /api/v1/me/invoices/{id}/pdf`
-
-Signed link to the invoice PDF
+Poll order status
 
 | | |
 |---|---|
@@ -92,33 +55,13 @@ Signed link to the invoice PDF
 | Success | 200 |
 | Errors | standard set |
 
-### `POST /api/v1/admin/payments/{id}/refund`
+### `GET /api/v1/admin/payments/unmatched`
 
-Issue a refund
-
-| | |
-|---|---|
-| Permission | `billing.refund` |
-| Success | 202 |
-| Errors | `REFUND_WINDOW_CLOSED`, `ALREADY_REFUNDED` |
-
-### `POST /api/v1/admin/webhooks/{id}/replay`
-
-Replay a stored webhook
+List unmatched incoming transactions for operator resolution
 
 | | |
 |---|---|
-| Permission | `billing.manage` |
-| Success | 202 |
-| Errors | standard set |
-
-### `GET /api/v1/admin/reconciliation`
-
-Discrepancies between our records and the gateway
-
-| | |
-|---|---|
-| Permission | `billing.read` |
+| Permission | `admin.dashboard` |
 | Success | 200 |
 | Errors | standard set |
 
@@ -129,12 +72,10 @@ Discrepancies between our records and the gateway
 <!-- BEGIN GENERATED: api-errors -->
 | Code | Status | Meaning |
 |---|---|---|
-| `PAYMENT_FAILED` | 402 | Gateway declined |
-| `CHECKOUT_EXPIRED` | 409 | Session expired before completion |
-| `ALREADY_REFUNDED` | 409 | Payment already fully refunded |
-| `REFUND_WINDOW_CLOSED` | 409 | Outside the refund policy period |
-| `WEBHOOK_SIGNATURE_INVALID` | 400 | Signature verification failed |
-| `RECONCILIATION_MISMATCH` | 409 | Our record disagrees with the gateway |
+| `ORDER_NOT_FOUND` | 404 | Order does not exist |
+| `ORDER_EXPIRED` | 409 | Order has expired |
+| `INVALID_WEBHOOK_KEY` | 401 | SePay API key invalid or unauthorized |
+| `RATE_LIMIT_EXCEEDED` | 429 | SePay API rate limit exceeded (3 req/s) |
 <!-- END GENERATED: api-errors -->
 
 ## Rate limits

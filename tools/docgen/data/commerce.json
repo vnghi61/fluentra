@@ -279,81 +279,72 @@
     "tier": "commerce",
     "group": "modules",
     "schema": "billing",
-    "phase": 4,
-    "status": "PLANNED",
+    "phase": 3,
+    "status": "ACTIVE",
     "owner": "@backend-team",
     "hasJobs": true,
-    "purpose": "Money: gateway adapters, hosted checkout sessions, webhook processing, invoices, refunds and reconciliation. Card data never touches our systems — the gateway's hosted fields do, which keeps PCI scope minimal.",
-    "context": "The provider is not yet chosen (plan review Q1: VNPay/MoMo for Vietnam, Stripe for international). Everything here is written against an adapter interface so that decision is a configuration change plus one adapter file.",
+    "purpose": "Money: SePay bank transfer integration, orders, webhook receipt and matching, VietQR generation, refunds and daily reconciliation. No card data exists — payment is a bank transfer the payer initiates via VietQR or banking app.",
+    "context": "Payment is powered by SePay bank transfer webhook integration (docs.sepay.vn). Payers transfer money directly via banking apps. Orders are matched against webhook events and reconciled daily.",
     "responsibilities": [
-      "Gateway adapters behind one interface",
-      "Checkout session creation and redirect handling",
-      "Webhook receipt, signature verification, idempotent processing and replay",
-      "Payment and invoice records",
-      "Refunds, partial and full",
-      "Reconciliation between our records and the gateway's",
-      "Dunning: retry schedule and communications on failed renewals"
+      "Bank transfer order creation and VietQR image generation",
+      "SePay webhook receipt with API key authentication and fast acknowledgement",
+      "Idempotent transaction matching on alphanumeric transfer content",
+      "Reconciliation between SePay transactions and our billing database",
+      "Order expiry sweep",
+      "Admin unmatched queue for manual resolution"
     ],
-    "notResponsibilities": ["Deciding what access a payment buys — that is `subscription`", "Holding card data — the gateway does, and we never proxy it", "Tax calculation in v1"],
+    "notResponsibilities": [
+      "Deciding what access a payment buys — that is `studio` or `subscription`",
+      "Holding card data — no card exists",
+      "Tax calculation in v1"
+    ],
     "tables": [
-      { "name": "payments", "purpose": "One gateway transaction", "notes": "`user_id`, `provider`, `provider_payment_id` UNIQUE, `amount` numeric + `currency`, `status`, `failure_code`" },
-      { "name": "invoices", "purpose": "Billing document", "notes": "`user_id`, `number` UNIQUE, `period`, `lines` jsonb, `total`, `status`, `pdf_object_key`" },
-      { "name": "payment_webhooks", "purpose": "Raw webhook log", "notes": "`provider`, `provider_event_id` UNIQUE, `payload` jsonb, `signature_valid`, `processed_at`. Enables replay." },
-      { "name": "refunds", "purpose": "Refund records", "notes": "`payment_id`, `amount`, `reason`, `actor_id`, `provider_refund_id`" },
-      { "name": "checkout_sessions", "purpose": "In-flight checkouts", "notes": "`user_id`, `plan_id`, `provider_session_id`, `status`, `expires_at`" }
+      { "name": "orders", "purpose": "Bank transfer orders", "notes": "`user_id`, `reference` UNIQUE, `amount_vnd` bigint, `status`, `expires_at`, `paid_at`" },
+      { "name": "sepay_transactions", "purpose": "Incoming SePay transactions", "notes": "`sepay_id` UNIQUE, `gateway`, `transaction_date`, `account_number`, `transfer_amount` bigint, `matched_order_id`, `unmatched_reason`" },
+      { "name": "payment_webhooks", "purpose": "Raw webhook log", "notes": "`sepay_id` UNIQUE, `payload` jsonb, `processed_at`" },
+      { "name": "refunds", "purpose": "Refund records", "notes": "`order_id`, `amount_vnd` bigint, `reason`, `actor_id`" },
+      { "name": "payouts", "purpose": "Creator payout records", "notes": "`creator_id`, `amount_vnd` bigint, `status`" }
     ],
     "endpoints": [
-      { "method": "POST", "path": "/api/v1/billing/checkout", "permission": "self", "purpose": "Create a hosted checkout session and return its redirect URL", "success": "200", "errors": ["PLAN_NOT_AVAILABLE", "SUBSCRIPTION_ALREADY_ACTIVE"], "notes": "Requires an `Idempotency-Key`" },
-      { "method": "GET", "path": "/api/v1/billing/checkout/{id}", "permission": "self", "purpose": "Poll a checkout session's status after redirect", "success": "200" },
-      { "method": "POST", "path": "/api/v1/webhooks/payment/{provider}", "permission": "public", "purpose": "Gateway webhook", "success": "200", "notes": "Signature verified on the raw body before parsing; always acknowledged quickly, processed in a job" },
-      { "method": "GET", "path": "/api/v1/me/invoices", "permission": "self", "purpose": "Invoice history", "success": "200" },
-      { "method": "GET", "path": "/api/v1/me/invoices/{id}/pdf", "permission": "self", "purpose": "Signed link to the invoice PDF", "success": "200" },
-      { "method": "POST", "path": "/api/v1/admin/payments/{id}/refund", "permission": "billing.refund", "purpose": "Issue a refund", "success": "202", "errors": ["REFUND_WINDOW_CLOSED", "ALREADY_REFUNDED"] },
-      { "method": "POST", "path": "/api/v1/admin/webhooks/{id}/replay", "permission": "billing.manage", "purpose": "Replay a stored webhook", "success": "202" },
-      { "method": "GET", "path": "/api/v1/admin/reconciliation", "permission": "billing.read", "purpose": "Discrepancies between our records and the gateway", "success": "200" }
+      { "method": "POST", "path": "/api/v1/webhooks/payment/sepay", "permission": "public", "purpose": "Ingest SePay incoming bank transfer webhook", "success": "200" },
+      { "method": "GET", "path": "/api/v1/me/orders/{id}", "permission": "self", "purpose": "Poll order status", "success": "200" },
+      { "method": "GET", "path": "/api/v1/admin/payments/unmatched", "permission": "admin.dashboard", "purpose": "List unmatched incoming transactions for operator resolution", "success": "200" }
     ],
     "contract": [
-      { "kind": "interface", "name": "payment.Checkout", "purpose": "`CreateSession(ctx, userID, planID)` — used by `subscription`" },
-      { "kind": "interface", "name": "payment.Gateway", "purpose": "The adapter Strategy interface; internal to this module" },
-      { "kind": "interface", "name": "payment.Refunder", "purpose": "`Refund(ctx, paymentID, amount, reason)` — admin only" }
+      { "kind": "interface", "name": "payment.OrderCreator", "purpose": "CreateOrder(ctx, in CreateOrderInput) (*Order, error)" },
+      { "kind": "interface", "name": "payment.OrderReader", "purpose": "GetOrder(ctx, id uuid.UUID) (*Order, error)" }
     ],
     "events": {
       "publishes": [
-        { "name": "payment.succeeded", "payload": "`{user_id, payment_id, plan_code, amount}`" },
-        { "name": "payment.failed", "payload": "`{user_id, payment_id, failure_code}`" },
-        { "name": "payment.refunded", "payload": "`{user_id, payment_id, amount}`" }
+        { "name": "payment.succeeded", "payload": "`{user_id, order_id, subject_kind, subject_id, amount_vnd}`" }
       ],
-      "consumes": [{ "name": "subscription.expiring", "reason": "Schedule the renewal charge" }]
+      "consumes": []
     },
-    "dependsOn": ["subscription", "audit", "job", "mailer", "storage"],
+    "dependsOn": ["audit", "job"],
     "dependsWhy": {
-      "subscription": "Knows what is being purchased and what a successful payment should activate",
       "audit": "Every money movement is audited",
-      "job": "Webhook processing, dunning and reconciliation run asynchronously",
-      "mailer": "Receipts and dunning emails",
-      "storage": "Invoice PDFs"
+      "job": "Webhook transaction matching, order expiry sweep and daily reconciliation"
     },
-    "dependedOnBy": ["subscription", "admin"],
+    "dependedOnBy": ["studio", "admin"],
     "rules": [
-      "Card data never reaches our servers. Checkout is hosted by the gateway; we hold only tokens and identifiers.",
-      "Webhook signatures are verified against the **raw** body before any parsing. An unverified webhook is logged and rejected.",
-      "Webhook processing is idempotent on `provider_event_id`; a duplicate is acknowledged without reprocessing.",
-      "Webhooks are acknowledged within 2 seconds and processed in a job — a slow handler causes the gateway to retry and duplicate.",
-      "Every webhook is stored raw, so it can be replayed after a bug fix without asking the gateway to resend.",
-      "Checkout creation requires an `Idempotency-Key`; a network retry must not create a second session or a second charge.",
-      "The gateway is the source of truth for whether money moved; our records are reconciled against it daily, and a discrepancy raises an alert rather than being auto-corrected.",
-      "Refunds require a reason and a permission, and are always audited.",
-      "Dunning follows a fixed schedule (day 1, 3, 5) with clear communications, and stops immediately on success.",
-      "Amounts are `numeric` with an explicit currency; floating point is never used for money anywhere in this module.",
-      "A payment failure never revokes access directly — it emits an event and `subscription` decides."
+      "BR-PAYMENT-01: No card exists. Payment is a bank transfer the payer initiates; we hold a reference, an amount and what the bank told us.",
+      "BR-PAYMENT-02: Webhook authentication uses an API key verified in constant time. Empty key disables the webhook route.",
+      "BR-PAYMENT-03: Webhook processing is idempotent on `sepay_id`; duplicate deliveries are acknowledged and dropped.",
+      "BR-PAYMENT-04: The acknowledgement budget is SePay's 30 seconds, and the body must be `{\"success\": true}`; we answer in under two seconds.",
+      "BR-PAYMENT-05: Every webhook is stored raw in `billing.payment_webhooks` for replay and audit.",
+      "BR-PAYMENT-06: Matching extracts the order reference case-insensitively after stripping non-alphanumerics from transfer content.",
+      "BR-PAYMENT-07: The bank is the source of truth; daily reconciliation catches missed webhooks and flags discrepancies.",
+      "BR-PAYMENT-08: Order lifetime is 24 hours. A late payment arriving against an expired order reopens it.",
+      "BR-PAYMENT-09: Hourly sweep marks expired unpaid orders using advisory lock 1_700_000_751.",
+      "BR-PAYMENT-10: Daily reconciliation uses advisory lock 1_700_000_752 with rate limiting at max 3 requests/sec.",
+      "BR-PAYMENT-11: Amounts are `bigint` in VND with no subunit decimals. Floating point is forbidden.",
+      "BR-PAYMENT-12: An amount that does not match exactly is never partially credited."
     ],
     "errors": [
-      { "code": "PAYMENT_FAILED", "status": "402", "meaning": "Gateway declined" },
-      { "code": "CHECKOUT_EXPIRED", "status": "409", "meaning": "Session expired before completion" },
-      { "code": "ALREADY_REFUNDED", "status": "409", "meaning": "Payment already fully refunded" },
-      { "code": "REFUND_WINDOW_CLOSED", "status": "409", "meaning": "Outside the refund policy period" },
-      { "code": "WEBHOOK_SIGNATURE_INVALID", "status": "400", "meaning": "Signature verification failed" },
-      { "code": "RECONCILIATION_MISMATCH", "status": "409", "meaning": "Our record disagrees with the gateway" }
+      { "code": "ORDER_NOT_FOUND", "status": "404", "meaning": "Order does not exist" },
+      { "code": "ORDER_EXPIRED", "status": "409", "meaning": "Order has expired" },
+      { "code": "INVALID_WEBHOOK_KEY", "status": "401", "meaning": "SePay API key invalid or unauthorized" },
+      { "code": "RATE_LIMIT_EXCEEDED", "status": "429", "meaning": "SePay API rate limit exceeded (3 req/s)" }
     ],
     "security": [
       "PCI scope is limited to the gateway's hosted fields; we never see, transmit, or store a card number.",
@@ -428,5 +419,98 @@
       "Do not auto-correct a reconciliation discrepancy; raise it."
     ],
     "runtimePrompts": []
+  },
+
+  {
+    "name": "studio",
+    "tier": "commerce",
+    "group": "modules",
+    "schema": "studio",
+    "phase": 3,
+    "status": "ACTIVE",
+    "owner": "@commerce-team",
+    "hasJobs": true,
+    "purpose": "Creator Studio: authoring community courses, draft editing, submissions, automated Gate 1 checks, Gate 2 human moderation, and course publishing.",
+    "context": "Community creators build courses, preview them, and submit them through a two-gate verification pipeline before publication.",
+    "responsibilities": [
+      "Creator profile and payout account registration",
+      "Course draft CRUD and structure validation",
+      "Gate 1 automated verification (structure, CEFR, safety, runner kinds)",
+      "Gate 2 human moderation queue and approval/rejection decisions",
+      "Course publishing to catalogue with content versioning"
+    ],
+    "notResponsibilities": [
+      "Lesson execution and grading — that is `lesson` and `learning`",
+      "Bank transfer matching — that is `payment`"
+    ],
+    "tables": [
+      { "name": "creator_profiles", "purpose": "Creator profiles", "notes": "`user_id` PK, `display_name`, `bio`, `headline`, `trusted_at`, `upheld_report_count`" },
+      { "name": "payout_accounts", "purpose": "Creator payout bank accounts", "notes": "`creator_id` PK, `bank_name`, `account_number_hash`, `encrypted_account_number`, `account_holder_name`" },
+      { "name": "course_drafts", "purpose": "In-flight course authoring drafts", "notes": "`id` PK, `creator_id`, `title`, `description`, `units` jsonb, `status`" },
+      { "name": "submissions", "purpose": "Course submissions undergoing review", "notes": "`id` PK, `draft_id`, `status`, `gate1_report` jsonb, `gate2_required`, `submitted_by`" }
+    ],
+    "endpoints": [
+      { "method": "GET", "path": "/api/v1/studio/creator/profile", "permission": "self", "purpose": "Get current creator profile", "success": "200" },
+      { "method": "POST", "path": "/api/v1/studio/creator/profile", "permission": "self", "purpose": "Create or update creator profile", "success": "200" },
+      { "method": "GET", "path": "/api/v1/studio/creator/payout-account", "permission": "self", "purpose": "Get payout account info", "success": "200" },
+      { "method": "POST", "path": "/api/v1/studio/creator/payout-account", "permission": "self", "purpose": "Set payout account", "success": "200" },
+      { "method": "GET", "path": "/api/v1/studio/courses", "permission": "self", "purpose": "List creator course drafts", "success": "200" },
+      { "method": "POST", "path": "/api/v1/studio/courses", "permission": "self", "purpose": "Create course draft", "success": "201" },
+      { "method": "GET", "path": "/api/v1/studio/courses/{id}", "permission": "self", "purpose": "Get course draft", "success": "200" },
+      { "method": "PUT", "path": "/api/v1/studio/courses/{id}", "permission": "self", "purpose": "Update course draft", "success": "200" },
+      { "method": "POST", "path": "/api/v1/studio/courses/{id}/submit", "permission": "self", "purpose": "Submit draft for verification", "success": "200" }
+    ],
+    "contract": [
+      { "kind": "interface", "name": "studio.Publisher", "purpose": "Course publication and gating" }
+    ],
+    "events": {
+      "publishes": [
+        { "name": "studio.course_published", "payload": "`{course_id, creator_id, title}`" }
+      ],
+      "consumes": []
+    },
+    "dependsOn": ["content", "lesson", "learning", "job"],
+    "dependsWhy": {
+      "content": "Publishes activity content versions",
+      "lesson": "Creates courses, units, and lessons in the core catalogue",
+      "learning": "ItemVerifier candidate checks",
+      "job": "Gate 1 verification worker"
+    },
+    "dependedOnBy": ["admin"],
+    "rules": [
+      "BR-STUDIO-06: A reviewer may not decide their own submission (submitted_by != reviewer_id).",
+      "BR-STUDIO-07: A submission that fails Gate 1 never reaches a human.",
+      "BR-STUDIO-08: Every activity in a published community course is a real content_version.",
+      "BR-STUDIO-09: A creator's payout account is never returned in a list response and never logged.",
+      "BR-STUDIO-10: A course may not contain a kind the lesson runner cannot render (11 runner kinds only)."
+    ],
+    "errors": [
+      { "code": "DRAFT_NOT_FOUND", "status": "404", "meaning": "Course draft not found" },
+      { "code": "SUBMISSION_NOT_FOUND", "status": "404", "meaning": "Submission not found" },
+      { "code": "CANNOT_REVIEW_OWN_SUBMISSION", "status": "403", "meaning": "Reviewer submitted this course" }
+    ],
+    "security": [
+      "Gate 2 moderation requires content.review / content.publish permissions.",
+      "Reviewer cannot review their own course."
+    ],
+    "flows": [],
+    "tasks": [],
+    "limitations": [],
+    "testFocus": [
+      "Gate 1 automated checks",
+      "Gate 2 moderation decisions",
+      "BR-STUDIO-06 self-review prevention"
+    ],
+    "coverage": "80%",
+    "decisions": [],
+    "todo": [],
+    "future": [],
+    "doNot": [
+      "Do not allow a creator to review their own submission.",
+      "Do not log or expose raw payout bank account numbers.",
+      "Do not allow activity kinds outside the 11 runner kinds."
+    ],
+    "runtimePrompts": []
   }
 ]
+

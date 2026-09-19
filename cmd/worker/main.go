@@ -42,6 +42,8 @@ import (
 	writingcontract "github.com/fluentra/fluentra/internal/modules/writing/contract"
 
 	lessonservice "github.com/fluentra/fluentra/internal/modules/lesson/service"
+	"github.com/fluentra/fluentra/internal/modules/payment"
+	paymentsvc "github.com/fluentra/fluentra/internal/modules/payment/service"
 	"github.com/fluentra/fluentra/internal/modules/rbac"
 	rbaccontract "github.com/fluentra/fluentra/internal/modules/rbac/contract"
 	"github.com/fluentra/fluentra/internal/modules/srs"
@@ -185,6 +187,20 @@ type workerConfig struct {
 	Exam struct {
 		DailySittingsLimit int `koanf:"daily_sittings_limit"`
 	} `koanf:"exam"`
+	SePay struct {
+		WebhookAPIKey string        `koanf:"webhook_api_key"`
+		APIToken      string        `koanf:"api_token"`
+		AccountNumber string        `koanf:"account_number"`
+		BankCode      string        `koanf:"bank_code"`
+		AccountHolder string        `koanf:"account_holder"`
+		AllowedIPs    string        `koanf:"allowed_ips"`
+		OrderTTL      time.Duration `koanf:"order_ttl"`
+	} `koanf:"sepay"`
+	Studio struct {
+		MinPriceVND     int64 `koanf:"min_price_vnd"`
+		MaxPriceVND     int64 `koanf:"max_price_vnd"`
+		RevenueShareBps int   `koanf:"revenue_share_bps"`
+	} `koanf:"studio"`
 }
 
 func (cfg workerConfig) aiProviders() []ai.ProviderConfig {
@@ -285,8 +301,18 @@ func configOptions() config.Options {
 			"speech.tts_dispatch_ref":        "main",
 			"speech.tts_dispatch_token":      "",
 			"exam.daily_sittings_limit":      5,
+			"sepay.webhook_api_key":          "",
+			"sepay.api_token":                "",
+			"sepay.account_number":           "",
+			"sepay.bank_code":                "",
+			"sepay.account_holder":           "",
+			"sepay.allowed_ips":              "",
+			"sepay.order_ttl":                "24h",
+			"studio.min_price_vnd":           int64(49000),
+			"studio.max_price_vnd":           int64(5000000),
+			"studio.revenue_share_bps":       7000,
 		},
-		EnvSections: []string{"SPEECH", "EXAM"},
+		EnvSections: []string{"SPEECH", "EXAM", "SEPAY", "STUDIO"},
 		Required: []config.RequiredKey{
 			{Name: "db.dsn", DocSection: "docs/deployment/configuration.md#database"},
 			{Name: "redis.url", DocSection: "docs/deployment/configuration.md#redis"},
@@ -1036,6 +1062,26 @@ func startGrading(ctx context.Context, d gradingDeps) error {
 	); err != nil {
 		return err
 	}
+
+	paymentModule, err := payment.NewModule(payment.Dependencies{
+		Pool: d.pool,
+		Cfg: paymentsvc.Config{
+			WebhookAPIKey: d.cfg.SePay.WebhookAPIKey,
+			APIToken:      d.cfg.SePay.APIToken,
+			AccountNumber: d.cfg.SePay.AccountNumber,
+			BankCode:      d.cfg.SePay.BankCode,
+			AccountHolder: d.cfg.SePay.AccountHolder,
+			AllowedIPs:    d.cfg.SePay.AllowedIPs,
+			OrderTTL:      d.cfg.SePay.OrderTTL,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("assemble payment module: %w", err)
+	}
+	for _, scheduled := range paymentModule.CronJobs() {
+		d.cron.Register(scheduled)
+	}
+
 	return nil
 }
 

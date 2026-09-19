@@ -2,7 +2,7 @@
 module: studio
 tier: commerce
 group: modules
-status: IN_PROGRESS
+status: ACTIVE
 phase: 3
 owner: "@commerce-team"
 schema: studio

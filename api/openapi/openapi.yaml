@@ -102,6 +102,8 @@ tags:
     description: Creator Studio authoring, course drafting, and submission workflows.
   - name: moderation
     description: Course and content moderation queues and approval actions.
+  - name: payment
+    description: SePay bank transfer orders, webhooks, and payment reconciliation.
 security:
   - BearerAuth: []
 paths:
@@ -6665,6 +6667,78 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
         '500': { $ref: '#/components/responses/InternalServerError' }
+  /webhooks/payment/sepay:
+    post:
+      tags: [payment]
+      operationId: paymentHandleSepayWebhook
+      summary: Ingest SePay incoming bank transfer webhook.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SepayWebhookPayload'
+      responses:
+        '200':
+          description: Webhook acknowledged.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SepayWebhookResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /me/orders/{id}:
+    get:
+      tags: [payment]
+      operationId: paymentGetOrder
+      summary: Get status and details of an order.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Order ID.
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Order details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillingOrder'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /admin/payments/unmatched:
+    get:
+      tags: [payment]
+      operationId: paymentListUnmatchedTransactions
+      summary: List unmatched incoming transactions for operator resolution.
+      security:
+        - BearerAuth: []
+      x-permission: admin.dashboard
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, default: 50, minimum: 1, maximum: 100 }
+        - name: offset
+          in: query
+          required: false
+          schema: { type: integer, default: 0, minimum: 0 }
+      responses:
+        '200':
+          description: List of unmatched transactions.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnmatchedTransactionsList'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
 components:
   securitySchemes:
     BearerAuth:
@@ -7100,6 +7174,16 @@ components:
       $ref: ./components/studio.yaml#/ModerationQueueList
     ReviewSubmissionRequest:
       $ref: ./components/studio.yaml#/ReviewSubmissionRequest
+    BillingOrder:
+      $ref: ./components/payment.yaml#/BillingOrder
+    SepayWebhookPayload:
+      $ref: ./components/payment.yaml#/SepayWebhookPayload
+    SepayWebhookResponse:
+      $ref: ./components/payment.yaml#/SepayWebhookResponse
+    UnmatchedTransaction:
+      $ref: ./components/payment.yaml#/UnmatchedTransaction
+    UnmatchedTransactionsList:
+      $ref: ./components/payment.yaml#/UnmatchedTransactionsList
   headers:
     X-Request-Id:
       $ref: ./components/headers.yaml#/X-Request-Id

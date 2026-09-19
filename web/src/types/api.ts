@@ -2771,6 +2771,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/webhooks/payment/sepay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ingest SePay incoming bank transfer webhook. */
+        post: operations["paymentHandleSepayWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/orders/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get status and details of an order. */
+        get: operations["paymentGetOrder"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/payments/unmatched": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List unmatched incoming transactions for operator resolution. */
+        get: operations["paymentListUnmatchedTransactions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -5817,6 +5868,110 @@ export interface components {
             feedback?: string;
             /** @enum {string} */
             status?: "approved" | "rejected" | "changes_requested";
+        };
+        BillingOrder: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            user_id: string;
+            /** @example FLU789ABCDE */
+            reference: string;
+            /**
+             * Format: int64
+             * @example 490000
+             */
+            amount_vnd: number;
+            /**
+             * @example pending
+             * @enum {string}
+             */
+            status: "pending" | "paid" | "expired" | "cancelled" | "refunded";
+            /** @example course */
+            subject_kind: string;
+            /** Format: uuid */
+            subject_id: string;
+            /**
+             * Format: uri
+             * @example https://vietqr.app/img?acc=1017588888&bank=VCB&amount=490000&des=FLU789ABCDE&template=compact
+             */
+            qr_url?: string;
+            /** @example VCB */
+            bank_code?: string;
+            /** @example 1017588888 */
+            account_number?: string;
+            /** @example FLUENTRA */
+            account_holder_name?: string;
+            /** Format: date-time */
+            expires_at: string;
+            /** Format: date-time */
+            paid_at?: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        SepayWebhookPayload: {
+            /**
+             * Format: int64
+             * @example 92704
+             */
+            id: number;
+            /** @example Vietcombank */
+            gateway: string;
+            /** @example 2024-07-02 11:08:33 */
+            transactionDate: string;
+            /** @example 1017588888 */
+            accountNumber: string;
+            /** @example  */
+            subAccount?: string;
+            /** @example SEVN63DC8E5C */
+            code?: string;
+            /** @example FLU789ABCDE chuyen tien */
+            content?: string;
+            /**
+             * @example in
+             * @enum {string}
+             */
+            transferType: "in" | "out";
+            /** @example NGUYEN VAN A chuyen tien */
+            description?: string;
+            /**
+             * Format: int64
+             * @example 490000
+             */
+            transferAmount: number;
+            /**
+             * Format: int64
+             * @example 105000000
+             */
+            accumulated?: number;
+            /** @example FT24012345678 */
+            referenceCode?: string;
+        };
+        SepayWebhookResponse: {
+            /** @example true */
+            success: boolean;
+        };
+        UnmatchedTransaction: {
+            /** Format: uuid */
+            id: string;
+            /** Format: int64 */
+            sepay_id: number;
+            gateway: string;
+            /** Format: date-time */
+            transaction_date: string;
+            account_number: string;
+            content: string;
+            transfer_type: string;
+            /** Format: int64 */
+            transfer_amount: number;
+            unmatched_reason?: string | null;
+            /** Format: date-time */
+            created_at: string;
+        };
+        UnmatchedTransactionsList: {
+            items: components["schemas"]["UnmatchedTransaction"][];
+            total: number;
         };
     };
     responses: {
@@ -12514,6 +12669,85 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    paymentHandleSepayWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SepayWebhookPayload"];
+            };
+        };
+        responses: {
+            /** @description Webhook acknowledged. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SepayWebhookResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    paymentGetOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Order ID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Order details. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillingOrder"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    paymentListUnmatchedTransactions: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of unmatched transactions. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnmatchedTransactionsList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             500: components["responses"]["InternalServerError"];
         };
     };

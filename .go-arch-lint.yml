@@ -132,6 +132,7 @@ components:
   g_speaking:    { in: generated/speaking/sqlc }
   g_exam:        { in: generated/exam/sqlc }
   g_studio:      { in: generated/studio/sqlc }
+  g_payment:     { in: generated/payment/sqlc }
 
   # platform capabilities
   p_telemetry:   { in: platform/telemetry/** }
@@ -284,7 +285,12 @@ components:
   m_gamification_http:       { in: modules/gamification/transport/http }
   m_analytics:     { in: modules/analytics/** }
   m_subscription:  { in: modules/subscription/** }
-  m_payment:       { in: modules/payment/** }
+  m_payment:            { in: modules/payment }
+  m_payment_domain:     { in: modules/payment/domain }
+  m_payment_repository: { in: modules/payment/repository }
+  m_payment_service:    { in: modules/payment/service }
+  m_payment_job:        { in: modules/payment/job }
+  m_payment_http:       { in: modules/payment/transport/http }
   m_studio:            { in: modules/studio }
   m_studio_domain:     { in: modules/studio/domain }
   m_studio_repository: { in: modules/studio/repository }
@@ -337,6 +343,7 @@ deps:
   g_writing:    { anyVendorDeps: true }
   g_listening:  { anyVendorDeps: true }
   g_studio:     { anyVendorDeps: true }
+  g_payment:    { anyVendorDeps: true }
 
   # A platform capability exists to wrap a vendor SDK, so each may import one.
   # Business modules deliberately may not: they reach external systems through
@@ -533,7 +540,12 @@ deps:
   # commerce
   m_analytics:    { mayDependOn: [p_job, p_cache, p_telemetry] }
   m_subscription: { mayDependOn: [p_cache, p_job, p_telemetry, c_payment, c_user, c_notification, c_audit] }
-  m_payment:      { mayDependOn: [p_job, p_mailer, p_storage, p_telemetry, c_subscription, c_audit] }
+  m_payment_domain:     { mayDependOn: [c_payment] }
+  m_payment_repository: { mayDependOn: [m_payment_domain, c_payment, g_payment] }
+  m_payment_service:    { mayDependOn: [m_payment_domain, m_payment_repository, c_payment, p_job, p_telemetry] }
+  m_payment_job:        { mayDependOn: [m_payment_domain, m_payment_repository, m_payment_service, c_payment, p_job] }
+  m_payment_http:       { mayDependOn: [m_payment_domain, m_payment_service, c_payment] }
+  m_payment:            { mayDependOn: [m_payment_domain, m_payment_repository, m_payment_service, m_payment_job, m_payment_http, c_payment, p_job, p_telemetry] }
   m_studio_repository: { mayDependOn: [m_studio_domain, c_studio, g_studio] }
   m_studio_service:    { mayDependOn: [m_studio_domain, m_studio_repository, c_studio, c_learning, c_lesson, c_content] }
   m_studio_job:        { mayDependOn: [m_studio_domain, m_studio_repository, m_studio_service, c_studio, p_job] }

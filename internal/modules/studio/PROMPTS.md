@@ -1,19 +1,19 @@
 ---
-module: payment
+module: studio
 tier: commerce
 group: modules
 status: ACTIVE
 phase: 3
-owner: "@backend-team"
-schema: billing
-tables: [orders, sepay_transactions, payment_webhooks, refunds, payouts]
-depends_on: [audit, job]
-depended_on_by: [studio, admin]
+owner: "@commerce-team"
+schema: studio
+tables: [creator_profiles, payout_accounts, course_drafts, submissions]
+depends_on: [content, lesson, learning, job]
+depended_on_by: [admin]
 spec_version: 1.0.0
 last_verified: 2026-08-06
 ---
 
-# payment — Prompts
+# studio — Prompts
 
 Two kinds. Do not confuse them — see [`/PROMPT_LIBRARY.md`](../../../PROMPT_LIBRARY.md).
 
@@ -26,8 +26,8 @@ Use the standard library in `docs/prompts/dev/`. No module-specific development 
 ### Context to give the agent
 
 ```
-Read /AGENT.md, then internal/modules/payment/AGENT.md.
-Work only inside internal/modules/payment/.
+Read /AGENT.md, then internal/modules/studio/AGENT.md.
+Work only inside internal/modules/studio/.
 Obey rules L1–L12. Business rules are in AGENT.md §9.
 Do not touch other modules; if you need something from one, use its contract package
 and say so in your summary.

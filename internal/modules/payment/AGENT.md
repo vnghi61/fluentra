@@ -2,13 +2,13 @@
 module: payment
 tier: commerce
 group: modules
-status: PLANNED
-phase: 4
+status: ACTIVE
+phase: 3
 owner: "@backend-team"
 schema: billing
-tables: [payments, invoices, payment_webhooks, refunds, checkout_sessions]
-depends_on: [subscription, audit, job, mailer, storage]
-depended_on_by: [subscription, admin]
+tables: [orders, sepay_transactions, payment_webhooks, refunds, payouts]
+depends_on: [audit, job]
+depended_on_by: [studio, admin]
 spec_version: 1.0.0
 last_verified: 2026-08-06
 ---
@@ -25,7 +25,7 @@ last_verified: 2026-08-06
 | Path | `internal/modules/payment` |
 | Schema | `billing` |
 | Delivery phase | 4 |
-| Status | **PLANNED** |
+| Status | **ACTIVE** |
 | Owner | @backend-team |
 
 ---
@@ -33,7 +33,7 @@ last_verified: 2026-08-06
 ## 1. Overview
 
 <!-- BEGIN GENERATED: overview -->
-Money: gateway adapters, hosted checkout sessions, webhook processing, invoices, refunds and reconciliation. Card data never touches our systems — the gateway's hosted fields do, which keeps PCI scope minimal.
+Money: SePay bank transfer integration, orders, webhook receipt and matching, VietQR generation, refunds and daily reconciliation. No card data exists — payment is a bank transfer the payer initiates via VietQR or banking app.
 <!-- END GENERATED: overview -->
 
 **Context.** The provider is not yet chosen (plan review Q1: VNPay/MoMo for Vietnam, Stripe for international). Everything here is written against an adapter interface so that decision is a configuration change plus one adapter file.
@@ -43,18 +43,17 @@ Money: gateway adapters, hosted checkout sessions, webhook processing, invoices,
 <!-- BEGIN GENERATED: responsibilities -->
 **This module owns:**
 
-- Gateway adapters behind one interface
-- Checkout session creation and redirect handling
-- Webhook receipt, signature verification, idempotent processing and replay
-- Payment and invoice records
-- Refunds, partial and full
-- Reconciliation between our records and the gateway's
-- Dunning: retry schedule and communications on failed renewals
+- Bank transfer order creation and VietQR image generation
+- SePay webhook receipt with API key authentication and fast acknowledgement
+- Idempotent transaction matching on alphanumeric transfer content
+- Reconciliation between SePay transactions and our billing database
+- Order expiry sweep
+- Admin unmatched queue for manual resolution
 
 **This module does NOT own:**
 
-- Deciding what access a payment buys — that is `subscription`
-- Holding card data — the gateway does, and we never proxy it
+- Deciding what access a payment buys — that is `studio` or `subscription`
+- Holding card data — no card exists
 - Tax calculation in v1
 <!-- END GENERATED: responsibilities -->
 
@@ -76,18 +75,14 @@ Other modules may import **only** `internal/modules/payment/contract`.
 <!-- BEGIN GENERATED: contract -->
 | Kind | Name | Purpose |
 |---|---|---|
-| interface | `payment.Checkout` | `CreateSession(ctx, userID, planID)` — used by `subscription` |
-| interface | `payment.Gateway` | The adapter Strategy interface; internal to this module |
-| interface | `payment.Refunder` | `Refund(ctx, paymentID, amount, reason)` — admin only |
+| interface | `payment.OrderCreator` | CreateOrder(ctx, in CreateOrderInput) (*Order, error) |
+| interface | `payment.OrderReader` | GetOrder(ctx, id uuid.UUID) (*Order, error) |
 
 ### Events
 
 | Event | Direction | Payload summary |
 |---|---|---|
-| `payment.succeeded` | publishes | `{user_id, payment_id, plan_code, amount}` |
-| `payment.failed` | publishes | `{user_id, payment_id, failure_code}` |
-| `payment.refunded` | publishes | `{user_id, payment_id, amount}` |
-| `subscription.expiring` | consumes | Schedule the renewal charge |
+| `payment.succeeded` | publishes | `{user_id, order_id, subject_kind, subject_id, amount_vnd}` |
 <!-- END GENERATED: contract -->
 
 ## 5. Database schema
@@ -98,11 +93,11 @@ Migrations: `db/migrations/payment/` · Queries: `db/queries/payment/`
 
 | Table | Purpose | Key columns / notes |
 |---|---|---|
-| `billing.payments` | One gateway transaction | `user_id`, `provider`, `provider_payment_id` UNIQUE, `amount` numeric + `currency`, `status`, `failure_code` |
-| `billing.invoices` | Billing document | `user_id`, `number` UNIQUE, `period`, `lines` jsonb, `total`, `status`, `pdf_object_key` |
-| `billing.payment_webhooks` | Raw webhook log | `provider`, `provider_event_id` UNIQUE, `payload` jsonb, `signature_valid`, `processed_at`. Enables replay. |
-| `billing.refunds` | Refund records | `payment_id`, `amount`, `reason`, `actor_id`, `provider_refund_id` |
-| `billing.checkout_sessions` | In-flight checkouts | `user_id`, `plan_id`, `provider_session_id`, `status`, `expires_at` |
+| `billing.orders` | Bank transfer orders | `user_id`, `reference` UNIQUE, `amount_vnd` bigint, `status`, `expires_at`, `paid_at` |
+| `billing.sepay_transactions` | Incoming SePay transactions | `sepay_id` UNIQUE, `gateway`, `transaction_date`, `account_number`, `transfer_amount` bigint, `matched_order_id`, `unmatched_reason` |
+| `billing.payment_webhooks` | Raw webhook log | `sepay_id` UNIQUE, `payload` jsonb, `processed_at` |
+| `billing.refunds` | Refund records | `order_id`, `amount_vnd` bigint, `reason`, `actor_id` |
+| `billing.payouts` | Creator payout records | `creator_id`, `amount_vnd` bigint, `status` |
 
 <!-- END GENERATED: schema -->
 
@@ -114,14 +109,9 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 <!-- BEGIN GENERATED: endpoints -->
 | Method | Path | Permission | Purpose |
 |---|---|---|---|
-| `POST` | `/api/v1/billing/checkout` | `self` | Create a hosted checkout session and return its redirect URL |
-| `GET` | `/api/v1/billing/checkout/{id}` | `self` | Poll a checkout session's status after redirect |
-| `POST` | `/api/v1/webhooks/payment/{provider}` | `public` | Gateway webhook |
-| `GET` | `/api/v1/me/invoices` | `self` | Invoice history |
-| `GET` | `/api/v1/me/invoices/{id}/pdf` | `self` | Signed link to the invoice PDF |
-| `POST` | `/api/v1/admin/payments/{id}/refund` | `billing.refund` | Issue a refund |
-| `POST` | `/api/v1/admin/webhooks/{id}/replay` | `billing.manage` | Replay a stored webhook |
-| `GET` | `/api/v1/admin/reconciliation` | `billing.read` | Discrepancies between our records and the gateway |
+| `POST` | `/api/v1/webhooks/payment/sepay` | `public` | Ingest SePay incoming bank transfer webhook |
+| `GET` | `/api/v1/me/orders/{id}` | `self` | Poll order status |
+| `GET` | `/api/v1/admin/payments/unmatched` | `admin.dashboard` | List unmatched incoming transactions for operator resolution |
 <!-- END GENERATED: endpoints -->
 
 ## 7. Folder map
@@ -143,12 +133,9 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 <!-- BEGIN GENERATED: related -->
 | Module | Direction | Why |
 |---|---|---|
-| [`subscription`](../../modules/subscription/AGENT.md) | → depends on | Knows what is being purchased and what a successful payment should activate |
 | [`audit`](../../modules/audit/AGENT.md) | → depends on | Every money movement is audited |
-| [`job`](../../platform/job/AGENT.md) | → depends on | Webhook processing, dunning and reconciliation run asynchronously |
-| [`mailer`](../../platform/mailer/AGENT.md) | → depends on | Receipts and dunning emails |
-| [`storage`](../../platform/storage/AGENT.md) | → depends on | Invoice PDFs |
-| [`subscription`](../../modules/subscription/AGENT.md) | ← used by | consumes this module's contract |
+| [`job`](../../platform/job/AGENT.md) | → depends on | Webhook transaction matching, order expiry sweep and daily reconciliation |
+| [`studio`](../../modules/studio/AGENT.md) | ← used by | consumes this module's contract |
 | [`admin`](../../modules/admin/AGENT.md) | ← used by | consumes this module's contract |
 <!-- END GENERATED: related -->
 
@@ -159,17 +146,18 @@ and fails `go-arch-lint` in CI.
 ## 9. Business rules
 
 <!-- BEGIN GENERATED: rules -->
-1. **BR-PAYMENT-01** — Card data never reaches our servers. Checkout is hosted by the gateway; we hold only tokens and identifiers.
-2. **BR-PAYMENT-02** — Webhook signatures are verified against the **raw** body before any parsing. An unverified webhook is logged and rejected.
-3. **BR-PAYMENT-03** — Webhook processing is idempotent on `provider_event_id`; a duplicate is acknowledged without reprocessing.
-4. **BR-PAYMENT-04** — Webhooks are acknowledged within 2 seconds and processed in a job — a slow handler causes the gateway to retry and duplicate.
-5. **BR-PAYMENT-05** — Every webhook is stored raw, so it can be replayed after a bug fix without asking the gateway to resend.
-6. **BR-PAYMENT-06** — Checkout creation requires an `Idempotency-Key`; a network retry must not create a second session or a second charge.
-7. **BR-PAYMENT-07** — The gateway is the source of truth for whether money moved; our records are reconciled against it daily, and a discrepancy raises an alert rather than being auto-corrected.
-8. **BR-PAYMENT-08** — Refunds require a reason and a permission, and are always audited.
-9. **BR-PAYMENT-09** — Dunning follows a fixed schedule (day 1, 3, 5) with clear communications, and stops immediately on success.
-10. **BR-PAYMENT-10** — Amounts are `numeric` with an explicit currency; floating point is never used for money anywhere in this module.
-11. **BR-PAYMENT-11** — A payment failure never revokes access directly — it emits an event and `subscription` decides.
+1. **BR-PAYMENT-01** — BR-PAYMENT-01: No card exists. Payment is a bank transfer the payer initiates; we hold a reference, an amount and what the bank told us.
+2. **BR-PAYMENT-02** — BR-PAYMENT-02: Webhook authentication uses an API key verified in constant time. Empty key disables the webhook route.
+3. **BR-PAYMENT-03** — BR-PAYMENT-03: Webhook processing is idempotent on `sepay_id`; duplicate deliveries are acknowledged and dropped.
+4. **BR-PAYMENT-04** — BR-PAYMENT-04: The acknowledgement budget is SePay's 30 seconds, and the body must be `{"success": true}`; we answer in under two seconds.
+5. **BR-PAYMENT-05** — BR-PAYMENT-05: Every webhook is stored raw in `billing.payment_webhooks` for replay and audit.
+6. **BR-PAYMENT-06** — BR-PAYMENT-06: Matching extracts the order reference case-insensitively after stripping non-alphanumerics from transfer content.
+7. **BR-PAYMENT-07** — BR-PAYMENT-07: The bank is the source of truth; daily reconciliation catches missed webhooks and flags discrepancies.
+8. **BR-PAYMENT-08** — BR-PAYMENT-08: Order lifetime is 24 hours. A late payment arriving against an expired order reopens it.
+9. **BR-PAYMENT-09** — BR-PAYMENT-09: Hourly sweep marks expired unpaid orders using advisory lock 1_700_000_751.
+10. **BR-PAYMENT-10** — BR-PAYMENT-10: Daily reconciliation uses advisory lock 1_700_000_752 with rate limiting at max 3 requests/sec.
+11. **BR-PAYMENT-11** — BR-PAYMENT-11: Amounts are `bigint` in VND with no subunit decimals. Floating point is forbidden.
+12. **BR-PAYMENT-12** — BR-PAYMENT-12: An amount that does not match exactly is never partially credited.
 <!-- END GENERATED: rules -->
 
 ## 10. Common tasks

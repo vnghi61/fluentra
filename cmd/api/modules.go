@@ -31,6 +31,9 @@ import (
 	lessonservice "github.com/fluentra/fluentra/internal/modules/lesson/service"
 	"github.com/fluentra/fluentra/internal/modules/listening"
 	listeningcontract "github.com/fluentra/fluentra/internal/modules/listening/contract"
+	"github.com/fluentra/fluentra/internal/modules/payment"
+	paymentsvc "github.com/fluentra/fluentra/internal/modules/payment/service"
+	paymenthttp "github.com/fluentra/fluentra/internal/modules/payment/transport/http"
 	"github.com/fluentra/fluentra/internal/modules/rbac"
 	rbaccontract "github.com/fluentra/fluentra/internal/modules/rbac/contract"
 	"github.com/fluentra/fluentra/internal/modules/reading"
@@ -77,6 +80,7 @@ type identity struct {
 	//nolint:unused // read through Routes and by the dashboard's Reader.
 	gamification *gamification.Module
 	studio       *studio.Module
+	payment      *payment.Module
 
 	rateLimit *httpx.RateLimiter
 }
@@ -162,6 +166,9 @@ type identityDeps struct {
 
 	// ExamDailyLimit is the number of exam sittings a learner may start per day.
 	ExamDailyLimit int
+
+	// PaymentCfg holds SePay configuration for payments.
+	PaymentCfg paymentsvc.Config
 }
 
 // newIdentity constructs the modules in dependency order — audit, then rbac,
@@ -388,6 +395,16 @@ func newIdentity(deps identityDeps) *identity {
 	}
 	assembled.studio = studioMod
 
+	paymentMod, err := payment.NewModule(payment.Dependencies{
+		Pool:  deps.Pool,
+		Guard: lazyGuard{of: assembled},
+		Cfg:   deps.PaymentCfg,
+	})
+	if err != nil {
+		panic(fmt.Sprintf("assemble payment module: %v", err))
+	}
+	assembled.payment = paymentMod
+
 	return assembled
 }
 
@@ -542,6 +559,9 @@ func newLessonCaches(client redis.Cmdable) lessonservice.LessonCaches {
 // infrastructure endpoints, which must answer whether or not a caller has a
 // token, so leaving them outside is correct as well as necessary.
 func (i *identity) Routes(api chi.Router) {
+	// Mount public webhook route outside the Bearer Authenticate middleware
+	i.payment.PublicRoutes(api)
+
 	api.Group(func(authenticated chi.Router) {
 		authenticated.Use(i.auth.Authenticate())
 
@@ -574,6 +594,7 @@ func (i *identity) Routes(api chi.Router) {
 		i.exam.Routes(authenticated)
 		i.studio.Routes(authenticated)
 		i.studio.ModerationRoutes(authenticated)
+		i.payment.AuthenticatedRoutes(authenticated)
 
 		authenticated.Group(func(admin chi.Router) {
 			admin.Use(i.rbac.AdminOnly())
@@ -582,6 +603,7 @@ func (i *identity) Routes(api chi.Router) {
 			i.content.AdminRoutes(admin)
 			i.lesson.AdminRoutes(admin)
 			i.vocabulary.AdminRoutes(admin)
+			i.payment.AdminRoutes(admin)
 		})
 	})
 }
@@ -603,6 +625,7 @@ var _ learning.Guard = lazyGuard{}
 var _ srs.Guard = lazyGuard{}
 var _ gamification.Guard = lazyGuard{}
 var _ vocabulary.Guard = lazyGuard{}
+var _ paymenthttp.Guard = lazyGuard{}
 
 func (g lazyGuard) Require(ctx context.Context, permission string) error {
 	return g.authorizer().Require(ctx, rbaccontract.Permission(permission))

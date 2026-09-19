@@ -1,39 +1,38 @@
 ---
-module: payment
+module: studio
 tier: commerce
 group: modules
 status: ACTIVE
 phase: 3
-owner: "@backend-team"
-schema: billing
-tables: [orders, sepay_transactions, payment_webhooks, refunds, payouts]
-depends_on: [audit, job]
-depended_on_by: [studio, admin]
+owner: "@commerce-team"
+schema: studio
+tables: [creator_profiles, payout_accounts, course_drafts, submissions]
+depends_on: [content, lesson, learning, job]
+depended_on_by: [admin]
 spec_version: 1.0.0
 last_verified: 2026-08-06
 ---
 
-# payment
+# studio
 
-Money: gateway adapters, hosted checkout sessions, webhook processing, invoices, refunds and reconciliation. Card data never touches our systems — the gateway's hosted fields do, which keeps PCI scope minimal.
+Creator Studio: authoring community courses, draft editing, submissions, automated Gate 1 checks, Gate 2 human moderation, and course publishing.
 
 > **AI assistants: read [`AGENT.md`](AGENT.md) instead — it has everything this file has, structured for you.**
 
 ## Business purpose
 
 <!-- BEGIN GENERATED: purpose -->
-Money: SePay bank transfer integration, orders, webhook receipt and matching, VietQR generation, refunds and daily reconciliation. No card data exists — payment is a bank transfer the payer initiates via VietQR or banking app.
+Creator Studio: authoring community courses, draft editing, submissions, automated Gate 1 checks, Gate 2 human moderation, and course publishing.
 <!-- END GENERATED: purpose -->
 
 ## Responsibilities
 
 <!-- BEGIN GENERATED: readme-resp -->
-- Bank transfer order creation and VietQR image generation
-- SePay webhook receipt with API key authentication and fast acknowledgement
-- Idempotent transaction matching on alphanumeric transfer content
-- Reconciliation between SePay transactions and our billing database
-- Order expiry sweep
-- Admin unmatched queue for manual resolution
+- Creator profile and payout account registration
+- Course draft CRUD and structure validation
+- Gate 1 automated verification (structure, CEFR, safety, runner kinds)
+- Gate 2 human moderation queue and approval/rejection decisions
+- Course publishing to catalogue with content versioning
 <!-- END GENERATED: readme-resp -->
 
 ## Where things are
@@ -64,4 +63,4 @@ Money: SePay bank transfer integration, orders, webhook receipt and matching, Vi
 
 ## Status
 
-**PLANNED** — planned for delivery phase 4. See [/ROADMAP.md](../../../ROADMAP.md).
+**ACTIVE** — planned for delivery phase 3. See [/ROADMAP.md](../../../ROADMAP.md).

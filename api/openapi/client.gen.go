@@ -334,6 +334,11 @@ type ClientInterface interface {
 	// Corresponds with POST /admin/lessons/{id}/publish (the `AdminPublishLesson` operationId).
 	AdminPublishLesson(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PaymentListUnmatchedTransactions List unmatched incoming transactions for operator resolution.
+	//
+	// Corresponds with GET /admin/payments/unmatched (the `PaymentListUnmatchedTransactions` operationId).
+	PaymentListUnmatchedTransactions(ctx context.Context, params *PaymentListUnmatchedTransactionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// RbacListRoles List roles and the permissions they grant.
 	//
 	// The catalogue is small and fixed, so it is returned whole rather than paginated.
@@ -1262,6 +1267,11 @@ type ClientInterface interface {
 	// Corresponds with PUT /me/learning-profile (the `UserReplaceMyLearningProfile` operationId).
 	UserReplaceMyLearningProfile(ctx context.Context, body UserReplaceMyLearningProfileJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PaymentGetOrder Get status and details of an order.
+	//
+	// Corresponds with GET /me/orders/{id} (the `PaymentGetOrder` operationId).
+	PaymentGetOrder(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetMyStartingPath Recommended courses and the lesson to start at in each.
 	//
 	// The level is the current placement result; failing that the declared level; failing that A2. Courses are the curriculum courses whose range contains the level, or the nearest below it; the start lesson is the first lesson at or above the level (work order 13 §3.6).
@@ -1813,6 +1823,20 @@ type ClientInterface interface {
 	// Corresponds with POST /vocabulary/words/{sense_id}/state (the `UpdateWordState` operationId).
 	UpdateWordState(ctx context.Context, senseId openapi_types.UUID, body UpdateWordStateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PaymentHandleSepayWebhookWithBody Ingest SePay incoming bank transfer webhook.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /webhooks/payment/sepay (the `PaymentHandleSepayWebhook` operationId).
+	PaymentHandleSepayWebhookWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PaymentHandleSepayWebhook Ingest SePay incoming bank transfer webhook.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /webhooks/payment/sepay (the `PaymentHandleSepayWebhook` operationId).
+	PaymentHandleSepayWebhook(ctx context.Context, body PaymentHandleSepayWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetWritingFeedback Read detailed writing feedback for an attempt.
 	//
 	// Returns IELTS-style criteria scores, located annotations, and bilingual feedback for a graded writing attempt owned by the caller.
@@ -2340,6 +2364,21 @@ func (c *Client) AdminUpdateLessonActivities(ctx context.Context, id openapi_typ
 // Corresponds with POST /admin/lessons/{id}/publish (the `AdminPublishLesson` operationId).
 func (c *Client) AdminPublishLesson(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAdminPublishLessonRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PaymentListUnmatchedTransactions List unmatched incoming transactions for operator resolution.
+//
+// Corresponds with GET /admin/payments/unmatched (the `PaymentListUnmatchedTransactions` operationId).
+func (c *Client) PaymentListUnmatchedTransactions(ctx context.Context, params *PaymentListUnmatchedTransactionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPaymentListUnmatchedTransactionsRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -4258,6 +4297,21 @@ func (c *Client) UserReplaceMyLearningProfile(ctx context.Context, body UserRepl
 	return c.Client.Do(req)
 }
 
+// PaymentGetOrder Get status and details of an order.
+//
+// Corresponds with GET /me/orders/{id} (the `PaymentGetOrder` operationId).
+func (c *Client) PaymentGetOrder(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPaymentGetOrderRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // GetMyStartingPath Recommended courses and the lesson to start at in each.
 //
 // The level is the current placement result; failing that the declared level; failing that A2. Courses are the curriculum courses whose range contains the level, or the nearest below it; the start lesson is the first lesson at or above the level (work order 13 §3.6).
@@ -5539,6 +5593,40 @@ func (c *Client) UpdateWordState(ctx context.Context, senseId openapi_types.UUID
 	return c.Client.Do(req)
 }
 
+// PaymentHandleSepayWebhookWithBody Ingest SePay incoming bank transfer webhook.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /webhooks/payment/sepay (the `PaymentHandleSepayWebhook` operationId).
+func (c *Client) PaymentHandleSepayWebhookWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPaymentHandleSepayWebhookRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PaymentHandleSepayWebhook Ingest SePay incoming bank transfer webhook.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /webhooks/payment/sepay (the `PaymentHandleSepayWebhook` operationId).
+func (c *Client) PaymentHandleSepayWebhook(ctx context.Context, body PaymentHandleSepayWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPaymentHandleSepayWebhookRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // GetWritingFeedback Read detailed writing feedback for an attempt.
 //
 // Returns IELTS-style criteria scores, located annotations, and bilingual feedback for a graded writing attempt owned by the caller.
@@ -6519,6 +6607,72 @@ func NewAdminPublishLessonRequest(server string, id openapi_types.UUID) (*http.R
 	}
 
 	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPaymentListUnmatchedTransactionsRequest constructs an http.Request for the PaymentListUnmatchedTransactions method
+func NewPaymentListUnmatchedTransactionsRequest(server string, params *PaymentListUnmatchedTransactionsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/payments/unmatched")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "offset", *params.Offset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -9596,6 +9750,40 @@ func NewUserReplaceMyLearningProfileRequestWithBody(server string, contentType s
 	return req, nil
 }
 
+// NewPaymentGetOrderRequest constructs an http.Request for the PaymentGetOrder method
+func NewPaymentGetOrderRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/orders/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetMyStartingPathRequest constructs an http.Request for the GetMyStartingPath method
 func NewGetMyStartingPathRequest(server string) (*http.Request, error) {
 	var err error
@@ -11807,6 +11995,46 @@ func NewUpdateWordStateRequestWithBody(server string, senseId openapi_types.UUID
 	return req, nil
 }
 
+// NewPaymentHandleSepayWebhookRequest calls the generic PaymentHandleSepayWebhook builder with application/json body
+func NewPaymentHandleSepayWebhookRequest(server string, body PaymentHandleSepayWebhookJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPaymentHandleSepayWebhookRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewPaymentHandleSepayWebhookRequestWithBody constructs an http.Request for the PaymentHandleSepayWebhook method, with any body, and a specified content type
+func NewPaymentHandleSepayWebhookRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/webhooks/payment/sepay")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetWritingFeedbackRequest constructs an http.Request for the GetWritingFeedback method
 func NewGetWritingFeedbackRequest(server string, id openapi_types.UUID) (*http.Request, error) {
 	var err error
@@ -12216,6 +12444,13 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /admin/lessons/{id}/publish (the `AdminPublishLesson` operationId).
 	AdminPublishLessonWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*AdminPublishLessonResponse, error)
+
+	// PaymentListUnmatchedTransactionsWithResponse List unmatched incoming transactions for operator resolution.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/payments/unmatched (the `PaymentListUnmatchedTransactions` operationId).
+	PaymentListUnmatchedTransactionsWithResponse(ctx context.Context, params *PaymentListUnmatchedTransactionsParams, reqEditors ...RequestEditorFn) (*PaymentListUnmatchedTransactionsResponse, error)
 
 	// RbacListRolesWithResponse List roles and the permissions they grant.
 	//
@@ -13233,6 +13468,13 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with PUT /me/learning-profile (the `UserReplaceMyLearningProfile` operationId).
 	UserReplaceMyLearningProfileWithResponse(ctx context.Context, body UserReplaceMyLearningProfileJSONRequestBody, reqEditors ...RequestEditorFn) (*UserReplaceMyLearningProfileResponse, error)
 
+	// PaymentGetOrderWithResponse Get status and details of an order.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /me/orders/{id} (the `PaymentGetOrder` operationId).
+	PaymentGetOrderWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*PaymentGetOrderResponse, error)
+
 	// GetMyStartingPathWithResponse Recommended courses and the lesson to start at in each.
 	//
 	// The level is the current placement result; failing that the declared level; failing that A2. Courses are the curriculum courses whose range contains the level, or the nearest below it; the start lesson is the first lesson at or above the level (work order 13 §3.6).
@@ -13861,6 +14103,20 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /vocabulary/words/{sense_id}/state (the `UpdateWordState` operationId).
 	UpdateWordStateWithResponse(ctx context.Context, senseId openapi_types.UUID, body UpdateWordStateJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateWordStateResponse, error)
+
+	// PaymentHandleSepayWebhookWithBodyWithResponse Ingest SePay incoming bank transfer webhook.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /webhooks/payment/sepay (the `PaymentHandleSepayWebhook` operationId).
+	PaymentHandleSepayWebhookWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PaymentHandleSepayWebhookResponse, error)
+
+	// PaymentHandleSepayWebhookWithResponse Ingest SePay incoming bank transfer webhook.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /webhooks/payment/sepay (the `PaymentHandleSepayWebhook` operationId).
+	PaymentHandleSepayWebhookWithResponse(ctx context.Context, body PaymentHandleSepayWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*PaymentHandleSepayWebhookResponse, error)
 
 	// GetWritingFeedbackWithResponse Read detailed writing feedback for an attempt.
 	//
@@ -15325,6 +15581,68 @@ func (r AdminPublishLessonResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r AdminPublishLessonResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PaymentListUnmatchedTransactionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *UnmatchedTransactionsList
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PaymentListUnmatchedTransactionsResponse) GetJSON200() *UnmatchedTransactionsList {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r PaymentListUnmatchedTransactionsResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r PaymentListUnmatchedTransactionsResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r PaymentListUnmatchedTransactionsResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r PaymentListUnmatchedTransactionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PaymentListUnmatchedTransactionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PaymentListUnmatchedTransactionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PaymentListUnmatchedTransactionsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -20663,6 +20981,68 @@ func (r UserReplaceMyLearningProfileResponse) ContentType() string {
 	return ""
 }
 
+type PaymentGetOrderResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *BillingOrder
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PaymentGetOrderResponse) GetJSON200() *BillingOrder {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r PaymentGetOrderResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r PaymentGetOrderResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r PaymentGetOrderResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r PaymentGetOrderResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PaymentGetOrderResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PaymentGetOrderResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PaymentGetOrderResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // GetMyStartingPathResponse200Headers the declared response headers of an HTTP 200 response for GetMyStartingPath
 type GetMyStartingPathResponse200Headers struct {
 	XRequestId *string
@@ -24382,6 +24762,68 @@ func (r UpdateWordStateResponse) ContentType() string {
 	return ""
 }
 
+type PaymentHandleSepayWebhookResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SepayWebhookResponse
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PaymentHandleSepayWebhookResponse) GetJSON200() *SepayWebhookResponse {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r PaymentHandleSepayWebhookResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r PaymentHandleSepayWebhookResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r PaymentHandleSepayWebhookResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r PaymentHandleSepayWebhookResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PaymentHandleSepayWebhookResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PaymentHandleSepayWebhookResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PaymentHandleSepayWebhookResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // GetWritingFeedbackResponse200Headers the declared response headers of an HTTP 200 response for GetWritingFeedback
 type GetWritingFeedbackResponse200Headers struct {
 	XRequestId *string
@@ -24952,6 +25394,19 @@ func (c *ClientWithResponses) AdminPublishLessonWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParseAdminPublishLessonResponse(rsp)
+}
+
+// PaymentListUnmatchedTransactionsWithResponse List unmatched incoming transactions for operator resolution.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/payments/unmatched (the `PaymentListUnmatchedTransactions` operationId).
+func (c *ClientWithResponses) PaymentListUnmatchedTransactionsWithResponse(ctx context.Context, params *PaymentListUnmatchedTransactionsParams, reqEditors ...RequestEditorFn) (*PaymentListUnmatchedTransactionsResponse, error) {
+	rsp, err := c.PaymentListUnmatchedTransactions(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePaymentListUnmatchedTransactionsResponse(rsp)
 }
 
 // RbacListRolesWithResponse List roles and the permissions they grant.
@@ -26558,6 +27013,19 @@ func (c *ClientWithResponses) UserReplaceMyLearningProfileWithResponse(ctx conte
 	return ParseUserReplaceMyLearningProfileResponse(rsp)
 }
 
+// PaymentGetOrderWithResponse Get status and details of an order.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /me/orders/{id} (the `PaymentGetOrder` operationId).
+func (c *ClientWithResponses) PaymentGetOrderWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*PaymentGetOrderResponse, error) {
+	rsp, err := c.PaymentGetOrder(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePaymentGetOrderResponse(rsp)
+}
+
 // GetMyStartingPathWithResponse Recommended courses and the lesson to start at in each.
 //
 // The level is the current placement result; failing that the declared level; failing that A2. Courses are the curriculum courses whose range contains the level, or the nearest below it; the start lesson is the first lesson at or above the level (work order 13 §3.6).
@@ -27623,6 +28091,32 @@ func (c *ClientWithResponses) UpdateWordStateWithResponse(ctx context.Context, s
 		return nil, err
 	}
 	return ParseUpdateWordStateResponse(rsp)
+}
+
+// PaymentHandleSepayWebhookWithBodyWithResponse Ingest SePay incoming bank transfer webhook.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /webhooks/payment/sepay (the `PaymentHandleSepayWebhook` operationId).
+func (c *ClientWithResponses) PaymentHandleSepayWebhookWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PaymentHandleSepayWebhookResponse, error) {
+	rsp, err := c.PaymentHandleSepayWebhookWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePaymentHandleSepayWebhookResponse(rsp)
+}
+
+// PaymentHandleSepayWebhookWithResponse Ingest SePay incoming bank transfer webhook.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /webhooks/payment/sepay (the `PaymentHandleSepayWebhook` operationId).
+func (c *ClientWithResponses) PaymentHandleSepayWebhookWithResponse(ctx context.Context, body PaymentHandleSepayWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*PaymentHandleSepayWebhookResponse, error) {
+	rsp, err := c.PaymentHandleSepayWebhook(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePaymentHandleSepayWebhookResponse(rsp)
 }
 
 // GetWritingFeedbackWithResponse Read detailed writing feedback for an attempt.
@@ -28917,6 +29411,53 @@ func ParseAdminPublishLessonResponse(rsp *http.Response) (*AdminPublishLessonRes
 			headers.XRequestId = &value
 		}
 		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParsePaymentListUnmatchedTransactionsResponse parses an HTTP response from a PaymentListUnmatchedTransactionsWithResponse call
+func ParsePaymentListUnmatchedTransactionsResponse(rsp *http.Response) (*PaymentListUnmatchedTransactionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PaymentListUnmatchedTransactionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UnmatchedTransactionsList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
 	}
 
 	return response, nil
@@ -34024,6 +34565,53 @@ func ParseUserReplaceMyLearningProfileResponse(rsp *http.Response) (*UserReplace
 	return response, nil
 }
 
+// ParsePaymentGetOrderResponse parses an HTTP response from a PaymentGetOrderWithResponse call
+func ParsePaymentGetOrderResponse(rsp *http.Response) (*PaymentGetOrderResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PaymentGetOrderResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest BillingOrder
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetMyStartingPathResponse parses an HTTP response from a GetMyStartingPathWithResponse call
 func ParseGetMyStartingPathResponse(rsp *http.Response) (*GetMyStartingPathResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -37195,6 +37783,53 @@ func ParseUpdateWordStateResponse(rsp *http.Response) (*UpdateWordStateResponse,
 			headers.XRequestId = &value
 		}
 		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParsePaymentHandleSepayWebhookResponse parses an HTTP response from a PaymentHandleSepayWebhookWithResponse call
+func ParsePaymentHandleSepayWebhookResponse(rsp *http.Response) (*PaymentHandleSepayWebhookResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PaymentHandleSepayWebhookResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SepayWebhookResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
 	}
 
 	return response, nil
