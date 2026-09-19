@@ -2720,6 +2720,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/courses/{id}/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Claim a free community course. */
+        post: operations["studioClaimCourse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/courses/{id}/purchase": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Initiate purchase of a paid course via VietQR. */
+        post: operations["studioPurchaseCourse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/purchases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List owned community courses for the calling learner. */
+        get: operations["studioListPurchases"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/purchases/{id}/refund": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Request self-service refund for a purchased course within window. */
+        post: operations["studioRefundPurchase"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/moderation/courses": {
         parameters: {
             query?: never;
@@ -4083,6 +4151,22 @@ export interface components {
             visibility?: "public" | "unlisted";
             /** Format: uuid */
             topic_taxonomy_id?: string | null;
+            /**
+             * Format: int64
+             * @description Course price in VND (0 = free).
+             * @example 0
+             */
+            price_vnd?: number;
+            /**
+             * @example free
+             * @enum {string}
+             */
+            pricing_model?: "free" | "one_time";
+            /**
+             * @description Whether the calling learner has purchased or claimed this course.
+             * @example false
+             */
+            owned?: boolean;
         };
         CourseList: {
             courses: components["schemas"]["CourseSummary"][];
@@ -4176,6 +4260,22 @@ export interface components {
             visibility?: "public" | "unlisted";
             /** Format: uuid */
             topic_taxonomy_id?: string | null;
+            /**
+             * Format: int64
+             * @description Course price in VND (0 = free).
+             * @example 0
+             */
+            price_vnd?: number;
+            /**
+             * @example free
+             * @enum {string}
+             */
+            pricing_model?: "free" | "one_time";
+            /**
+             * @description Whether the calling learner has purchased or claimed this course.
+             * @example false
+             */
+            owned?: boolean;
             units: components["schemas"]["CourseUnit"][];
         };
         LessonDetail: {
@@ -5868,6 +5968,61 @@ export interface components {
             feedback?: string;
             /** @enum {string} */
             status?: "approved" | "rejected" | "changes_requested";
+        };
+        CoursePurchase: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            user_id: string;
+            /** Format: uuid */
+            course_id: string;
+            /** @example Business English for Tech Professionals */
+            course_title?: string;
+            /** @example business-english-tech */
+            course_slug?: string;
+            /** Format: uuid */
+            order_id?: string | null;
+            /**
+             * Format: int64
+             * @example 49000
+             */
+            price_paid_vnd: number;
+            /** Format: date-time */
+            granted_at: string;
+            /** Format: date-time */
+            revoked_at?: string | null;
+            revoke_reason?: string | null;
+        };
+        UserPurchaseList: {
+            items: components["schemas"]["CoursePurchase"][];
+            total: number;
+        };
+        PurchaseOrderResponse: {
+            /** Format: uuid */
+            order_id: string;
+            /** @example FLU4KL9A1B2C3 */
+            reference: string;
+            /**
+             * Format: int64
+             * @example 49000
+             */
+            amount_vnd: number;
+            /** @example https://vietqr.app/img?acc=1017588888&bank=VCB&amount=49000&des=FLU4KL9A1B2C3&template=compact */
+            qr_url: string;
+            /** @example VCB */
+            bank_code: string;
+            /** @example 1017588888 */
+            account_number: string;
+            /** @example FLUENTRA */
+            account_holder_name: string;
+            /** Format: date-time */
+            expires_at: string;
+        };
+        RefundPurchaseResponse: {
+            /** @example true */
+            success: boolean;
+            /** @example Refund requested successfully */
+            message: string;
         };
         BillingOrder: {
             /** Format: uuid */
@@ -12583,6 +12738,116 @@ export interface operations {
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationFailed"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    studioClaimCourse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Course ID to claim. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Course successfully claimed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoursePurchase"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    studioPurchaseCourse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Course ID to purchase. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Purchase order created with VietQR payment instructions. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseOrderResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    studioListPurchases: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of purchases and claims. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserPurchaseList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    studioRefundPurchase: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Purchase ID to refund. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Refund processed or requested. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundPurchaseResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
             500: components["responses"]["InternalServerError"];
         };
     };

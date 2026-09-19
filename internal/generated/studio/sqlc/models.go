@@ -502,6 +502,19 @@ type StudioCourseDraft struct {
 	UpdatedAt       time.Time
 }
 
+type StudioCreatorLedger struct {
+	ID             uuid.UUID
+	CreatorID      uuid.UUID
+	Kind           string
+	AmountVnd      int64
+	GrossAmountVnd int64
+	FeeAmountVnd   int64
+	PurchaseID     *uuid.UUID
+	PayoutID       *uuid.UUID
+	Note           string
+	CreatedAt      time.Time
+}
+
 type StudioCreatorProfile struct {
 	UserID         uuid.UUID
 	Bio            string
@@ -509,6 +522,17 @@ type StudioCreatorProfile struct {
 	PayoutEligible bool
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
+}
+
+type StudioListing struct {
+	CourseID        uuid.UUID
+	CreatorID       uuid.UUID
+	PricingModel    string
+	PriceVnd        int64
+	RevenueShareBps int32
+	Status          string
+	PublishedAt     time.Time
+	UpdatedAt       time.Time
 }
 
 type StudioPayoutAccount struct {
@@ -520,6 +544,19 @@ type StudioPayoutAccount struct {
 	IsDefault         bool
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
+}
+
+type StudioPurchase struct {
+	ID           uuid.UUID
+	UserID       uuid.UUID
+	CourseID     uuid.UUID
+	OrderID      *uuid.UUID
+	PricePaidVnd int64
+	GrantedAt    time.Time
+	RevokedAt    *time.Time
+	RevokeReason *string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
 type StudioSubmission struct {

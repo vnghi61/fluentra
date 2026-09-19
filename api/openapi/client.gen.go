@@ -954,12 +954,22 @@ type ClientInterface interface {
 	// Corresponds with GET /courses (the `ListCourses` operationId).
 	ListCourses(ctx context.Context, params *ListCoursesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// StudioClaimCourse Claim a free community course.
+	//
+	// Corresponds with POST /courses/{id}/claim (the `StudioClaimCourse` operationId).
+	StudioClaimCourse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// EnrollCourse Enrol in a course.
 	//
 	// Enrols the authenticated learner into the specified course.
 	//
 	// Corresponds with POST /courses/{id}/enroll (the `EnrollCourse` operationId).
 	EnrollCourse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StudioPurchaseCourse Initiate purchase of a paid course via VietQR.
+	//
+	// Corresponds with POST /courses/{id}/purchase (the `StudioPurchaseCourse` operationId).
+	StudioPurchaseCourse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetCourseBySlug Get course detail with units and lesson summaries.
 	//
@@ -1374,6 +1384,16 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /me/progress (the `GetProgress` operationId).
 	GetProgress(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StudioListPurchases List owned community courses for the calling learner.
+	//
+	// Corresponds with GET /me/purchases (the `StudioListPurchases` operationId).
+	StudioListPurchases(ctx context.Context, params *StudioListPurchasesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StudioRefundPurchase Request self-service refund for a purchased course within window.
+	//
+	// Corresponds with POST /me/purchases/{id}/refund (the `StudioRefundPurchase` operationId).
+	StudioRefundPurchase(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StartLearningSessionWithBody Start a study session.
 	//
@@ -3594,6 +3614,21 @@ func (c *Client) ListCourses(ctx context.Context, params *ListCoursesParams, req
 	return c.Client.Do(req)
 }
 
+// StudioClaimCourse Claim a free community course.
+//
+// Corresponds with POST /courses/{id}/claim (the `StudioClaimCourse` operationId).
+func (c *Client) StudioClaimCourse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStudioClaimCourseRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // EnrollCourse Enrol in a course.
 //
 // Enrols the authenticated learner into the specified course.
@@ -3601,6 +3636,21 @@ func (c *Client) ListCourses(ctx context.Context, params *ListCoursesParams, req
 // Corresponds with POST /courses/{id}/enroll (the `EnrollCourse` operationId).
 func (c *Client) EnrollCourse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewEnrollCourseRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StudioPurchaseCourse Initiate purchase of a paid course via VietQR.
+//
+// Corresponds with POST /courses/{id}/purchase (the `StudioPurchaseCourse` operationId).
+func (c *Client) StudioPurchaseCourse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStudioPurchaseCourseRequest(c.Server, id)
 	if err != nil {
 		return nil, err
 	}
@@ -4535,6 +4585,36 @@ func (c *Client) UserReplaceMyPreferences(ctx context.Context, body UserReplaceM
 // Corresponds with GET /me/progress (the `GetProgress` operationId).
 func (c *Client) GetProgress(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetProgressRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StudioListPurchases List owned community courses for the calling learner.
+//
+// Corresponds with GET /me/purchases (the `StudioListPurchases` operationId).
+func (c *Client) StudioListPurchases(ctx context.Context, params *StudioListPurchasesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStudioListPurchasesRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StudioRefundPurchase Request self-service refund for a purchased course within window.
+//
+// Corresponds with POST /me/purchases/{id}/refund (the `StudioRefundPurchase` operationId).
+func (c *Client) StudioRefundPurchase(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStudioRefundPurchaseRequest(c.Server, id)
 	if err != nil {
 		return nil, err
 	}
@@ -8663,6 +8743,40 @@ func NewListCoursesRequest(server string, params *ListCoursesParams) (*http.Requ
 	return req, nil
 }
 
+// NewStudioClaimCourseRequest constructs an http.Request for the StudioClaimCourse method
+func NewStudioClaimCourseRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/courses/%s/claim", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewEnrollCourseRequest constructs an http.Request for the EnrollCourse method
 func NewEnrollCourseRequest(server string, id openapi_types.UUID) (*http.Request, error) {
 	var err error
@@ -8680,6 +8794,40 @@ func NewEnrollCourseRequest(server string, id openapi_types.UUID) (*http.Request
 	}
 
 	operationPath := fmt.Sprintf("/courses/%s/enroll", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewStudioPurchaseCourseRequest constructs an http.Request for the StudioPurchaseCourse method
+func NewStudioPurchaseCourseRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/courses/%s/purchase", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10120,6 +10268,106 @@ func NewGetProgressRequest(server string) (*http.Request, error) {
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewStudioListPurchasesRequest constructs an http.Request for the StudioListPurchases method
+func NewStudioListPurchasesRequest(server string, params *StudioListPurchasesParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/purchases")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "offset", *params.Offset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewStudioRefundPurchaseRequest constructs an http.Request for the StudioRefundPurchase method
+func NewStudioRefundPurchaseRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/purchases/%s/refund", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -13113,6 +13361,13 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /courses (the `ListCourses` operationId).
 	ListCoursesWithResponse(ctx context.Context, params *ListCoursesParams, reqEditors ...RequestEditorFn) (*ListCoursesResponse, error)
 
+	// StudioClaimCourseWithResponse Claim a free community course.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /courses/{id}/claim (the `StudioClaimCourse` operationId).
+	StudioClaimCourseWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*StudioClaimCourseResponse, error)
+
 	// EnrollCourseWithResponse Enrol in a course.
 	//
 	// Enrols the authenticated learner into the specified course.
@@ -13121,6 +13376,13 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /courses/{id}/enroll (the `EnrollCourse` operationId).
 	EnrollCourseWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*EnrollCourseResponse, error)
+
+	// StudioPurchaseCourseWithResponse Initiate purchase of a paid course via VietQR.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /courses/{id}/purchase (the `StudioPurchaseCourse` operationId).
+	StudioPurchaseCourseWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*StudioPurchaseCourseResponse, error)
 
 	// GetCourseBySlugWithResponse Get course detail with units and lesson summaries.
 	//
@@ -13591,6 +13853,20 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /me/progress (the `GetProgress` operationId).
 	GetProgressWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetProgressResponse, error)
+
+	// StudioListPurchasesWithResponse List owned community courses for the calling learner.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /me/purchases (the `StudioListPurchases` operationId).
+	StudioListPurchasesWithResponse(ctx context.Context, params *StudioListPurchasesParams, reqEditors ...RequestEditorFn) (*StudioListPurchasesResponse, error)
+
+	// StudioRefundPurchaseWithResponse Request self-service refund for a purchased course within window.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /me/purchases/{id}/refund (the `StudioRefundPurchase` operationId).
+	StudioRefundPurchaseWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*StudioRefundPurchaseResponse, error)
 
 	// StartLearningSessionWithBodyWithResponse Start a study session.
 	//
@@ -18813,6 +19089,82 @@ func (r ListCoursesResponse) ContentType() string {
 	return ""
 }
 
+type StudioClaimCourseResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *CoursePurchase
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r StudioClaimCourseResponse) GetJSON200() *CoursePurchase {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r StudioClaimCourseResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r StudioClaimCourseResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r StudioClaimCourseResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r StudioClaimCourseResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r StudioClaimCourseResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r StudioClaimCourseResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StudioClaimCourseResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StudioClaimCourseResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StudioClaimCourseResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // EnrollCourseResponse201Headers the declared response headers of an HTTP 201 response for EnrollCourse
 type EnrollCourseResponse201Headers struct {
 	XRequestId *string
@@ -18890,6 +19242,82 @@ func (r EnrollCourseResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r EnrollCourseResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type StudioPurchaseCourseResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *PurchaseOrderResponse
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r StudioPurchaseCourseResponse) GetJSON201() *PurchaseOrderResponse {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r StudioPurchaseCourseResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r StudioPurchaseCourseResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r StudioPurchaseCourseResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r StudioPurchaseCourseResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r StudioPurchaseCourseResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r StudioPurchaseCourseResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StudioPurchaseCourseResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StudioPurchaseCourseResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StudioPurchaseCourseResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -21678,6 +22106,144 @@ func (r GetProgressResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetProgressResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type StudioListPurchasesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *UserPurchaseList
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r StudioListPurchasesResponse) GetJSON200() *UserPurchaseList {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r StudioListPurchasesResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r StudioListPurchasesResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r StudioListPurchasesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StudioListPurchasesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StudioListPurchasesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StudioListPurchasesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type StudioRefundPurchaseResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *RefundPurchaseResponse
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r StudioRefundPurchaseResponse) GetJSON200() *RefundPurchaseResponse {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r StudioRefundPurchaseResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r StudioRefundPurchaseResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r StudioRefundPurchaseResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r StudioRefundPurchaseResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r StudioRefundPurchaseResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r StudioRefundPurchaseResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r StudioRefundPurchaseResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StudioRefundPurchaseResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StudioRefundPurchaseResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StudioRefundPurchaseResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -26424,6 +26990,19 @@ func (c *ClientWithResponses) ListCoursesWithResponse(ctx context.Context, param
 	return ParseListCoursesResponse(rsp)
 }
 
+// StudioClaimCourseWithResponse Claim a free community course.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /courses/{id}/claim (the `StudioClaimCourse` operationId).
+func (c *ClientWithResponses) StudioClaimCourseWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*StudioClaimCourseResponse, error) {
+	rsp, err := c.StudioClaimCourse(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStudioClaimCourseResponse(rsp)
+}
+
 // EnrollCourseWithResponse Enrol in a course.
 //
 // Enrols the authenticated learner into the specified course.
@@ -26437,6 +27016,19 @@ func (c *ClientWithResponses) EnrollCourseWithResponse(ctx context.Context, id o
 		return nil, err
 	}
 	return ParseEnrollCourseResponse(rsp)
+}
+
+// StudioPurchaseCourseWithResponse Initiate purchase of a paid course via VietQR.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /courses/{id}/purchase (the `StudioPurchaseCourse` operationId).
+func (c *ClientWithResponses) StudioPurchaseCourseWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*StudioPurchaseCourseResponse, error) {
+	rsp, err := c.StudioPurchaseCourse(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStudioPurchaseCourseResponse(rsp)
 }
 
 // GetCourseBySlugWithResponse Get course detail with units and lesson summaries.
@@ -27219,6 +27811,32 @@ func (c *ClientWithResponses) GetProgressWithResponse(ctx context.Context, reqEd
 		return nil, err
 	}
 	return ParseGetProgressResponse(rsp)
+}
+
+// StudioListPurchasesWithResponse List owned community courses for the calling learner.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /me/purchases (the `StudioListPurchases` operationId).
+func (c *ClientWithResponses) StudioListPurchasesWithResponse(ctx context.Context, params *StudioListPurchasesParams, reqEditors ...RequestEditorFn) (*StudioListPurchasesResponse, error) {
+	rsp, err := c.StudioListPurchases(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStudioListPurchasesResponse(rsp)
+}
+
+// StudioRefundPurchaseWithResponse Request self-service refund for a purchased course within window.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /me/purchases/{id}/refund (the `StudioRefundPurchase` operationId).
+func (c *ClientWithResponses) StudioRefundPurchaseWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*StudioRefundPurchaseResponse, error) {
+	rsp, err := c.StudioRefundPurchase(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStudioRefundPurchaseResponse(rsp)
 }
 
 // StartLearningSessionWithBodyWithResponse Start a study session.
@@ -32654,6 +33272,67 @@ func ParseListCoursesResponse(rsp *http.Response) (*ListCoursesResponse, error) 
 	return response, nil
 }
 
+// ParseStudioClaimCourseResponse parses an HTTP response from a StudioClaimCourseWithResponse call
+func ParseStudioClaimCourseResponse(rsp *http.Response) (*StudioClaimCourseResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StudioClaimCourseResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CoursePurchase
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseEnrollCourseResponse parses an HTTP response from a EnrollCourseWithResponse call
 func ParseEnrollCourseResponse(rsp *http.Response) (*EnrollCourseResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -32723,6 +33402,67 @@ func ParseEnrollCourseResponse(rsp *http.Response) (*EnrollCourseResponse, error
 			headers.XRequestId = &value
 		}
 		response.Headers201 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseStudioPurchaseCourseResponse parses an HTTP response from a StudioPurchaseCourseWithResponse call
+func ParseStudioPurchaseCourseResponse(rsp *http.Response) (*StudioPurchaseCourseResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StudioPurchaseCourseResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest PurchaseOrderResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
 	}
 
 	return response, nil
@@ -35158,6 +35898,114 @@ func ParseGetProgressResponse(rsp *http.Response) (*GetProgressResponse, error) 
 			headers.XRequestId = &value
 		}
 		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseStudioListPurchasesResponse parses an HTTP response from a StudioListPurchasesWithResponse call
+func ParseStudioListPurchasesResponse(rsp *http.Response) (*StudioListPurchasesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StudioListPurchasesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UserPurchaseList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseStudioRefundPurchaseResponse parses an HTTP response from a StudioRefundPurchaseWithResponse call
+func ParseStudioRefundPurchaseResponse(rsp *http.Response) (*StudioRefundPurchaseResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StudioRefundPurchaseResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest RefundPurchaseResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
 	}
 
 	return response, nil

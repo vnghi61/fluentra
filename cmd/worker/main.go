@@ -611,19 +611,6 @@ func startLearning(
 			"error", err)
 	}
 
-	studioModule, err := studio.NewModule(studio.Dependencies{
-		Pool:          pool,
-		ItemVerifier:  learningModule.ItemVerifier(),
-		LessonAuthor:  lessonModule.Author(),
-		ContentAuthor: contentModule.Author(),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("assemble studio module: %w", err)
-	}
-	for _, scheduled := range studioModule.CronJobs() {
-		cron.Register(scheduled)
-	}
-
 	return learningModule, nil
 }
 
@@ -1065,6 +1052,7 @@ func startGrading(ctx context.Context, d gradingDeps) error {
 
 	paymentModule, err := payment.NewModule(payment.Dependencies{
 		Pool: d.pool,
+		Bus:  d.bus,
 		Cfg: paymentsvc.Config{
 			WebhookAPIKey: d.cfg.SePay.WebhookAPIKey,
 			APIToken:      d.cfg.SePay.APIToken,
@@ -1080,6 +1068,27 @@ func startGrading(ctx context.Context, d gradingDeps) error {
 	}
 	for _, scheduled := range paymentModule.CronJobs() {
 		d.cron.Register(scheduled)
+	}
+
+	studioModule, err := studio.NewModule(studio.Dependencies{
+		Pool:           d.pool,
+		ItemVerifier:   learningModule.ItemVerifier(),
+		LessonAuthor:   d.lesson.Author(),
+		ContentAuthor:  d.content.Author(),
+		OrderCreator:   paymentModule.OrderCreator(),
+		ProgressReader: learningModule.ProgressReader(),
+		MinPriceVND:    d.cfg.Studio.MinPriceVND,
+		MaxPriceVND:    d.cfg.Studio.MaxPriceVND,
+		RevenueShareBPS: d.cfg.Studio.RevenueShareBps,
+	})
+	if err != nil {
+		return fmt.Errorf("assemble studio module: %w", err)
+	}
+	for _, scheduled := range studioModule.CronJobs() {
+		d.cron.Register(scheduled)
+	}
+	if err := studioModule.Subscribe(d.bus); err != nil {
+		return fmt.Errorf("subscribe studio module: %w", err)
 	}
 
 	return nil

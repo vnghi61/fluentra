@@ -3,14 +3,17 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 
 	contentcontract "github.com/fluentra/fluentra/internal/modules/content/contract"
 	learningcontract "github.com/fluentra/fluentra/internal/modules/learning/contract"
 	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
+	paymentcontract "github.com/fluentra/fluentra/internal/modules/payment/contract"
 	"github.com/fluentra/fluentra/internal/modules/studio/contract"
 	"github.com/fluentra/fluentra/internal/modules/studio/domain"
 	"github.com/fluentra/fluentra/internal/modules/studio/repository"
@@ -19,10 +22,16 @@ import (
 
 // Service coordinates creator studio operations, Gate 1 automated checks, and Gate 2 moderation.
 type Service struct {
-	repo          repository.Repository
-	itemVerifier  learningcontract.ItemVerifier
-	lessonAuthor  lessoncontract.Author
-	contentAuthor contentcontract.Author
+	repo            repository.Repository
+	itemVerifier    learningcontract.ItemVerifier
+	lessonAuthor    lessoncontract.Author
+	contentAuthor   contentcontract.Author
+	orderCreator    paymentcontract.OrderCreator
+	progressReader  learningcontract.ProgressReader
+	lessonReader    lessoncontract.Reader
+	minPriceVND     int64
+	maxPriceVND     int64
+	revenueShareBPS int
 }
 
 // NewService constructs the studio Service.
@@ -33,10 +42,37 @@ func NewService(
 	contentAuthor contentcontract.Author,
 ) *Service {
 	return &Service{
-		repo:          repo,
-		itemVerifier:  itemVerifier,
-		lessonAuthor:  lessonAuthor,
-		contentAuthor: contentAuthor,
+		repo:            repo,
+		itemVerifier:    itemVerifier,
+		lessonAuthor:    lessonAuthor,
+		contentAuthor:   contentAuthor,
+		minPriceVND:     domain.DefaultMinPriceVND,
+		maxPriceVND:     domain.DefaultMaxPriceVND,
+		revenueShareBPS: domain.DefaultRevenueShareBPS,
+	}
+}
+
+func (s *Service) SetOrderCreator(creator paymentcontract.OrderCreator) {
+	s.orderCreator = creator
+}
+
+func (s *Service) SetProgressReader(reader learningcontract.ProgressReader) {
+	s.progressReader = reader
+}
+
+func (s *Service) SetLessonReader(reader lessoncontract.Reader) {
+	s.lessonReader = reader
+}
+
+func (s *Service) SetPriceBounds(minVND, maxVND int64, revShareBPS int) {
+	if minVND > 0 {
+		s.minPriceVND = minVND
+	}
+	if maxVND > 0 {
+		s.maxPriceVND = maxVND
+	}
+	if revShareBPS > 0 {
+		s.revenueShareBPS = revShareBPS
 	}
 }
 
@@ -81,6 +117,18 @@ type CreateDraftRequest struct {
 func (s *Service) CreateDraft(ctx context.Context, ownerID uuid.UUID, req CreateDraftRequest) (*domain.CourseDraft, error) {
 	if strings.TrimSpace(req.Title) == "" || strings.TrimSpace(req.Slug) == "" || strings.TrimSpace(req.CEFRLevel) == "" {
 		return nil, apperr.New(apperr.Validation, "INVALID_DRAFT", "Title, slug, and CEFR level are required")
+	}
+
+	minVND := s.minPriceVND
+	if minVND <= 0 {
+		minVND = domain.DefaultMinPriceVND
+	}
+	maxVND := s.maxPriceVND
+	if maxVND <= 0 {
+		maxVND = domain.DefaultMaxPriceVND
+	}
+	if req.PriceVND < 0 || (req.PriceVND > 0 && (req.PriceVND < minVND || req.PriceVND > maxVND)) {
+		return nil, domain.ErrPriceOutOfBounds
 	}
 
 	structure := req.Structure
@@ -141,6 +189,17 @@ func (s *Service) UpdateDraft(ctx context.Context, ownerID, draftID uuid.UUID, r
 		existing.TopicTaxonomyID = req.TopicTaxonomyID
 	}
 	if req.PriceVND != nil {
+		minVND := s.minPriceVND
+		if minVND <= 0 {
+			minVND = domain.DefaultMinPriceVND
+		}
+		maxVND := s.maxPriceVND
+		if maxVND <= 0 {
+			maxVND = domain.DefaultMaxPriceVND
+		}
+		if *req.PriceVND < 0 || (*req.PriceVND > 0 && (*req.PriceVND < minVND || *req.PriceVND > maxVND)) {
+			return nil, domain.ErrPriceOutOfBounds
+		}
 		existing.PriceVND = *req.PriceVND
 	}
 	if len(req.Structure) > 0 {
@@ -384,6 +443,7 @@ func (s *Service) ApproveSubmission(ctx context.Context, reviewerID, submissionI
 		return nil, err
 	}
 
+	var publishedCourseID uuid.UUID
 	// Publish course hierarchy and content versions
 	if s.lessonAuthor != nil && s.contentAuthor != nil {
 		var structure domain.CourseStructure
@@ -403,14 +463,15 @@ func (s *Service) ApproveSubmission(ctx context.Context, reviewerID, submissionI
 			Visibility:      "public",
 			TopicTaxonomyID: draft.TopicTaxonomyID,
 		}
-		courseID, err := s.lessonAuthor.EnsureCourse(ctx, courseSpec)
+		var err error
+		publishedCourseID, err = s.lessonAuthor.EnsureCourse(ctx, courseSpec)
 		if err != nil {
 			return nil, fmt.Errorf("publish course in lesson module: %w", err)
 		}
 
 		for uIdx, unit := range structure.Units {
 			unitSpec := lessoncontract.UnitSpec{
-				CourseID:    courseID,
+				CourseID:    publishedCourseID,
 				Position:    uIdx + 1,
 				Title:       unit.Title,
 				Description: unit.Description,
@@ -477,6 +538,25 @@ func (s *Service) ApproveSubmission(ctx context.Context, reviewerID, submissionI
 		return nil, err
 	}
 
+	if publishedCourseID != uuid.Nil {
+		pricingModel := domain.PricingModelFree
+		if draft.PriceVND > 0 {
+			pricingModel = domain.PricingModelOneTime
+		}
+		bps := s.revenueShareBPS
+		if bps <= 0 {
+			bps = domain.DefaultRevenueShareBPS
+		}
+		_, _ = s.repo.UpsertListing(ctx, &domain.Listing{
+			CourseID:        publishedCourseID,
+			CreatorID:       draft.OwnerID,
+			PricingModel:    pricingModel,
+			PriceVND:        draft.PriceVND,
+			RevenueShareBPS: bps,
+			Status:          domain.ListingStatusActive,
+		})
+	}
+
 	return approvedSub, nil
 }
 
@@ -519,3 +599,317 @@ func (s *Service) RejectSubmission(
 
 	return updatedSub, nil
 }
+
+// ---------------------------------------------------------------- Paywall & Access (BR-STUDIO-05)
+
+// MayOpen evaluates course opening permission.
+// Truth table:
+// 1. official -> true
+// 2. free community -> true
+// 3. paid unowned -> false
+// 4. paid owned -> true
+// 5. paid refunded -> false
+// 6. paid taken down -> true if owned, false if unowned
+func (s *Service) MayOpen(ctx context.Context, userID *uuid.UUID, courseID uuid.UUID) (bool, error) {
+	listing, err := s.repo.GetListingByCourseID(ctx, courseID)
+	if err != nil {
+		if errors.Is(err, domain.ErrListingNotFound) {
+			// Official curriculum courses have no studio listing -> open
+			return true, nil
+		}
+		return false, err
+	}
+
+	// Free community courses always answer yes
+	if listing.PricingModel == domain.PricingModelFree || listing.PriceVND == 0 {
+		return true, nil
+	}
+
+	// Paid community course:
+	// If anonymous caller (nil or uuid.Nil), cannot open
+	if userID == nil || *userID == uuid.Nil {
+		return false, nil
+	}
+
+	// Creator always has access to their own course
+	if *userID == listing.CreatorID {
+		return true, nil
+	}
+
+	// Check if learner has an active purchase (revoked_at IS NULL)
+	// BR-STUDIO-04: Taking a course down never revokes a purchase. Every learner who already bought it keeps access.
+	purchase, err := s.repo.GetActivePurchase(ctx, *userID, courseID)
+	if err != nil {
+		return false, err
+	}
+	if purchase != nil {
+		return true, nil
+	}
+
+	return false, nil
+}
+
+// ---------------------------------------------------------------- Listing & Purchases
+
+func (s *Service) GetListing(ctx context.Context, courseID uuid.UUID) (*contract.CourseListing, error) {
+	listing, err := s.repo.GetListingByCourseID(ctx, courseID)
+	if err != nil {
+		if errors.Is(err, domain.ErrListingNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return toContractListing(listing), nil
+}
+
+func (s *Service) BatchGetListings(ctx context.Context, courseIDs []uuid.UUID) (map[uuid.UUID]*contract.CourseListing, error) {
+	if len(courseIDs) == 0 {
+		return map[uuid.UUID]*contract.CourseListing{}, nil
+	}
+	listings, err := s.repo.ListListingsByCourseIDs(ctx, courseIDs)
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[uuid.UUID]*contract.CourseListing, len(listings))
+	for _, l := range listings {
+		result[l.CourseID] = toContractListing(l)
+	}
+	return result, nil
+}
+
+func (s *Service) HasPurchased(ctx context.Context, userID, courseID uuid.UUID) (bool, error) {
+	if userID == uuid.Nil {
+		return false, nil
+	}
+	p, err := s.repo.GetActivePurchase(ctx, userID, courseID)
+	if err != nil {
+		return false, err
+	}
+	return p != nil, nil
+}
+
+func (s *Service) BatchHasPurchased(ctx context.Context, userID uuid.UUID, courseIDs []uuid.UUID) (map[uuid.UUID]bool, error) {
+	result := make(map[uuid.UUID]bool, len(courseIDs))
+	if userID == uuid.Nil || len(courseIDs) == 0 {
+		return result, nil
+	}
+	purchases, err := s.repo.ListActivePurchasesByUserAndCourseIDs(ctx, userID, courseIDs)
+	if err != nil {
+		return nil, err
+	}
+	for _, p := range purchases {
+		result[p.CourseID] = true
+	}
+	return result, nil
+}
+
+func (s *Service) ClaimCourse(ctx context.Context, userID, courseID uuid.UUID) (*domain.Purchase, error) {
+	if userID == uuid.Nil {
+		return nil, apperr.New(apperr.Unauthenticated, "UNAUTHORIZED", "Authentication required to claim course")
+	}
+
+	listing, err := s.repo.GetListingByCourseID(ctx, courseID)
+	if err != nil {
+		return nil, err
+	}
+	if listing.Status != domain.ListingStatusActive {
+		return nil, domain.ErrListingNotFound
+	}
+	if listing.PricingModel != domain.PricingModelFree && listing.PriceVND > 0 {
+		return nil, domain.ErrCourseNotFree
+	}
+
+	existing, err := s.repo.GetActivePurchase(ctx, userID, courseID)
+	if err != nil {
+		return nil, err
+	}
+	if existing != nil {
+		return nil, domain.ErrCourseAlreadyPurchased
+	}
+
+	purchase := &domain.Purchase{
+		UserID:       userID,
+		CourseID:     courseID,
+		OrderID:      nil,
+		PricePaidVND: 0,
+	}
+	return s.repo.CreatePurchase(ctx, purchase)
+}
+
+func (s *Service) PurchaseCourse(ctx context.Context, userID, courseID uuid.UUID) (*paymentcontract.Order, error) {
+	if userID == uuid.Nil {
+		return nil, apperr.New(apperr.Unauthenticated, "UNAUTHORIZED", "Authentication required to purchase course")
+	}
+	if s.orderCreator == nil {
+		return nil, apperr.New(apperr.Internal, "BILLING_UNAVAILABLE", "Billing service is not configured")
+	}
+
+	listing, err := s.repo.GetListingByCourseID(ctx, courseID)
+	if err != nil {
+		return nil, err
+	}
+	if listing.Status != domain.ListingStatusActive {
+		return nil, domain.ErrListingNotFound
+	}
+	if listing.PricingModel != domain.PricingModelOneTime || listing.PriceVND <= 0 {
+		return nil, domain.ErrCourseNotPaid
+	}
+
+	existing, err := s.repo.GetActivePurchase(ctx, userID, courseID)
+	if err != nil {
+		return nil, err
+	}
+	if existing != nil {
+		return nil, domain.ErrCourseAlreadyPurchased
+	}
+
+	return s.orderCreator.CreateOrder(ctx, paymentcontract.CreateOrderInput{
+		UserID:      userID,
+		SubjectKind: "course",
+		SubjectID:   courseID,
+		AmountVND:   listing.PriceVND,
+	})
+}
+
+func (s *Service) ListUserPurchases(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*domain.Purchase, int64, error) {
+	return s.repo.ListPurchasesByUserID(ctx, userID, limit, offset)
+}
+
+func (s *Service) RefundPurchase(ctx context.Context, userID, purchaseID uuid.UUID) error {
+	purchase, err := s.repo.GetPurchaseByID(ctx, purchaseID)
+	if err != nil {
+		return err
+	}
+	if purchase.UserID != userID {
+		return domain.ErrPurchaseNotFound
+	}
+	if purchase.RevokedAt != nil {
+		return domain.ErrAlreadyRefunded
+	}
+	if purchase.PricePaidVND <= 0 {
+		return apperr.New(apperr.Validation, "CANNOT_REFUND_FREE", "Free or claimed courses cannot be refunded")
+	}
+
+	// 7 days window (WO 15 §3 / §9)
+	if time.Since(purchase.GrantedAt) > 7*24*time.Hour {
+		return domain.ErrRefundWindowExpired
+	}
+
+	// Under 20% of the course completed (WO 15 §3)
+	if s.progressReader != nil {
+		progs, err := s.progressReader.ProgressOf(ctx, userID, learningcontract.ScopeCourse)
+		if err == nil {
+			for _, p := range progs {
+				if p.ScopeID == purchase.CourseID {
+					if p.Score != nil && *p.Score >= 20 {
+						return domain.ErrRefundProgressExceeded
+					}
+				}
+			}
+		}
+	}
+
+	// Revoke purchase
+	if _, err := s.repo.RevokePurchase(ctx, purchase.ID, "learner_refund"); err != nil {
+		return fmt.Errorf("revoke purchase: %w", err)
+	}
+
+	// Reversal in creator ledger
+	listing, err := s.repo.GetListingByCourseID(ctx, purchase.CourseID)
+	var creatorID uuid.UUID
+	bps := int64(domain.DefaultRevenueShareBPS)
+	if err == nil && listing != nil {
+		creatorID = listing.CreatorID
+		bps = int64(listing.RevenueShareBPS)
+	}
+	creatorRefundShare := (purchase.PricePaidVND * bps) / 10000
+	feeRefundShare := purchase.PricePaidVND - creatorRefundShare
+
+	_, _ = s.repo.CreateLedgerEntry(ctx, &domain.CreatorLedgerEntry{
+		CreatorID:      creatorID,
+		Kind:           domain.LedgerKindRefund,
+		AmountVND:      -creatorRefundShare,
+		GrossAmountVND: -purchase.PricePaidVND,
+		FeeAmountVND:   -feeRefundShare,
+		PurchaseID:     &purchase.ID,
+		Note:           "Self-service learner refund within 7-day window",
+	})
+
+	return nil
+}
+
+func (s *Service) HandlePaymentSucceeded(ctx context.Context, event paymentcontract.EventPaymentSucceeded) error {
+	if event.SubjectKind != "course" {
+		return nil
+	}
+
+	listing, err := s.repo.GetListingByCourseID(ctx, event.SubjectID)
+	if err != nil {
+		return fmt.Errorf("listing for course %s not found: %w", event.SubjectID, err)
+	}
+
+	// Create purchase
+	purchase, err := s.repo.CreatePurchase(ctx, &domain.Purchase{
+		UserID:       event.UserID,
+		CourseID:     event.SubjectID,
+		OrderID:      &event.OrderID,
+		PricePaidVND: event.AmountVND,
+	})
+	if err != nil {
+		return fmt.Errorf("create purchase on payment match: %w", err)
+	}
+
+	// Calculate splits
+	bps := int64(listing.RevenueShareBPS)
+	if bps <= 0 {
+		bps = int64(domain.DefaultRevenueShareBPS)
+	}
+	creatorShare := (event.AmountVND * bps) / 10000
+	platformFee := event.AmountVND - creatorShare
+
+	// Row 1: Creator's share
+	_, err = s.repo.CreateLedgerEntry(ctx, &domain.CreatorLedgerEntry{
+		CreatorID:      listing.CreatorID,
+		Kind:           domain.LedgerKindSale,
+		AmountVND:      creatorShare,
+		GrossAmountVND: event.AmountVND,
+		FeeAmountVND:   platformFee,
+		PurchaseID:     &purchase.ID,
+		Note:           fmt.Sprintf("Course sale (%d%% creator share)", bps/100),
+	})
+	if err != nil {
+		return fmt.Errorf("create creator ledger entry: %w", err)
+	}
+
+	// Row 2: Platform fee
+	_, err = s.repo.CreateLedgerEntry(ctx, &domain.CreatorLedgerEntry{
+		CreatorID:      listing.CreatorID,
+		Kind:           domain.LedgerKindPlatformShare,
+		AmountVND:      platformFee,
+		GrossAmountVND: event.AmountVND,
+		FeeAmountVND:   platformFee,
+		PurchaseID:     &purchase.ID,
+		Note:           fmt.Sprintf("Platform share (%d%%)", (10000-bps)/100),
+	})
+	if err != nil {
+		return fmt.Errorf("create platform share ledger entry: %w", err)
+	}
+
+	return nil
+}
+
+func toContractListing(l *domain.Listing) *contract.CourseListing {
+	if l == nil {
+		return nil
+	}
+	return &contract.CourseListing{
+		CourseID:        l.CourseID,
+		CreatorID:       l.CreatorID,
+		PricingModel:    l.PricingModel,
+		PriceVND:        l.PriceVND,
+		RevenueShareBPS: l.RevenueShareBPS,
+		Status:          l.Status,
+		PublishedAt:     l.PublishedAt,
+	}
+}
+

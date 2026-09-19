@@ -17,6 +17,7 @@ import (
 	contentcontract "github.com/fluentra/fluentra/internal/modules/content/contract"
 	"github.com/fluentra/fluentra/internal/modules/lesson/contract"
 	"github.com/fluentra/fluentra/internal/modules/lesson/domain"
+	studiocontract "github.com/fluentra/fluentra/internal/modules/studio/contract"
 	"github.com/fluentra/fluentra/internal/platform/cache"
 	"github.com/fluentra/fluentra/internal/shared/clock"
 	"github.com/fluentra/fluentra/internal/shared/dbx"
@@ -141,6 +142,9 @@ type Deps struct {
 	Clock      clock.Clock
 	NewID      func() uuid.UUID
 	Env        string
+
+	AccessReader  studiocontract.AccessReader
+	ListingReader studiocontract.ListingReader
 }
 
 // Service orchestrates curriculum and lesson use cases.
@@ -156,6 +160,9 @@ type Service struct {
 	clock      clock.Clock
 	newID     func() uuid.UUID
 	env       string
+
+	accessReader  studiocontract.AccessReader
+	listingReader studiocontract.ListingReader
 }
 
 // New creates a new lesson Service.
@@ -185,6 +192,8 @@ func New(deps Deps) *Service {
 		clock:      clk,
 		newID:      idGen,
 		env:        env,
+		accessReader:  deps.AccessReader,
+		listingReader: deps.ListingReader,
 	}
 }
 
@@ -202,6 +211,9 @@ type CourseSummaryDTO struct {
 	OwnerID         *uuid.UUID `json:"owner_id,omitempty"`
 	Visibility      string     `json:"visibility"`
 	TopicTaxonomyID *uuid.UUID `json:"topic_taxonomy_id,omitempty"`
+	PriceVND        int64      `json:"price_vnd"`
+	PricingModel    string     `json:"pricing_model"`
+	Owned           bool       `json:"owned"`
 }
 
 // LessonSummaryDTO matches OpenAPI LessonSummary schema.
@@ -245,6 +257,9 @@ type CourseDetailDTO struct {
 	OwnerID         *uuid.UUID      `json:"owner_id,omitempty"`
 	Visibility      string          `json:"visibility"`
 	TopicTaxonomyID *uuid.UUID      `json:"topic_taxonomy_id,omitempty"`
+	PriceVND        int64           `json:"price_vnd"`
+	PricingModel    string          `json:"pricing_model"`
+	Owned           bool            `json:"owned"`
 	Units           []CourseUnitDTO `json:"units"`
 }
 
@@ -378,10 +393,15 @@ func (s *Service) CreateCourse(
 
 // ListCourses returns paginated published courses through the cache.
 func (s *Service) ListCourses(
-	ctx context.Context, level *string, topic *string, limit, offset int,
+	ctx context.Context, level *string, topic *string, limit, offset int, userID ...*uuid.UUID,
 ) ([]CourseSummaryDTO, int64, error) {
 	if level != nil && !domain.IsValidCEFRLevel(*level) {
 		return nil, 0, domain.ErrInvalidCEFRLevel.WithInternal("level query parameter must be one of A1..C2")
+	}
+
+	var callerID *uuid.UUID
+	if len(userID) > 0 {
+		callerID = userID[0]
 	}
 
 	var topicTaxonomyID *uuid.UUID
@@ -465,7 +485,33 @@ func (s *Service) ListCourses(
 		return nil, 0, err
 	}
 
-	return data.Courses, data.Total, nil
+	courses := make([]CourseSummaryDTO, len(data.Courses))
+	copy(courses, data.Courses)
+	if s.listingReader != nil && len(courses) > 0 {
+		courseIDs := make([]uuid.UUID, len(courses))
+		for i, c := range courses {
+			courseIDs[i] = c.ID
+		}
+		listings, _ := s.listingReader.BatchGetListings(ctx, courseIDs)
+		var ownedMap map[uuid.UUID]bool
+		if callerID != nil && *callerID != uuid.Nil {
+			ownedMap, _ = s.listingReader.BatchHasPurchased(ctx, *callerID, courseIDs)
+		}
+		for i := range courses {
+			if l, ok := listings[courses[i].ID]; ok && l != nil {
+				courses[i].PriceVND = l.PriceVND
+				courses[i].PricingModel = l.PricingModel
+			} else {
+				courses[i].PriceVND = 0
+				courses[i].PricingModel = "free"
+			}
+			if ownedMap != nil && ownedMap[courses[i].ID] {
+				courses[i].Owned = true
+			}
+		}
+	}
+
+	return courses, data.Total, nil
 }
 
 func (s *Service) catalogueGenerationKey() string {
@@ -516,6 +562,20 @@ func (s *Service) GetCourseDetail(ctx context.Context, slug string, userID uuid.
 		return nil, err
 	}
 
+	// Paywall check: BR-STUDIO-05
+	mayOpen := true
+	if s.accessReader != nil {
+		var uID *uuid.UUID
+		if userID != uuid.Nil {
+			uID = &userID
+		}
+		var accessErr error
+		mayOpen, accessErr = s.accessReader.MayOpen(ctx, uID, tree.Course.ID)
+		if accessErr != nil {
+			return nil, fmt.Errorf("check course access: %w", accessErr)
+		}
+	}
+
 	// Batch evaluate unlocking for all lessons with prerequisites
 	var lessonsToCheck []uuid.UUID
 	for _, u := range tree.Units {
@@ -543,7 +603,11 @@ func (s *Service) GetCourseDetail(ctx context.Context, slug string, userID uuid.
 		for j, l := range u.Lessons {
 			locked := false
 			var lockReason *string
-			if len(l.Prereqs) > 0 {
+			if !mayOpen {
+				locked = true
+				reason := "Purchase required to access"
+				lockReason = &reason
+			} else if len(l.Prereqs) > 0 {
 				if s.unlocker != nil && userID != uuid.Nil {
 					unlocked := unlockedMap[l.ID]
 					if !unlocked {
@@ -577,6 +641,21 @@ func (s *Service) GetCourseDetail(ctx context.Context, slug string, userID uuid.
 		}
 	}
 
+	var priceVND int64
+	pricingModel := "free"
+	owned := false
+	if s.listingReader != nil {
+		if l, err := s.listingReader.GetListing(ctx, tree.Course.ID); err == nil && l != nil {
+			priceVND = l.PriceVND
+			pricingModel = l.PricingModel
+		}
+		if userID != uuid.Nil {
+			if hasP, err := s.listingReader.HasPurchased(ctx, userID, tree.Course.ID); err == nil {
+				owned = hasP
+			}
+		}
+	}
+
 	return &CourseDetailDTO{
 		ID:              tree.Course.ID,
 		Slug:            tree.Course.Slug,
@@ -590,6 +669,9 @@ func (s *Service) GetCourseDetail(ctx context.Context, slug string, userID uuid.
 		OwnerID:         tree.Course.OwnerID,
 		Visibility:      tree.Course.Visibility,
 		TopicTaxonomyID: tree.Course.TopicTaxonomyID,
+		PriceVND:        priceVND,
+		PricingModel:    pricingModel,
+		Owned:           owned,
 		Units:           unitDTOs,
 	}, nil
 }
@@ -715,6 +797,29 @@ func (s *Service) assembleTreeData(
 
 // GetLessonDetail returns the lesson with activities and resolved content versions.
 func (s *Service) GetLessonDetail(ctx context.Context, lessonID, userID uuid.UUID) (*LessonDetailDTO, error) {
+	// Paywall check: BR-STUDIO-05 / ADR-0025 Amendment
+	if s.accessReader != nil {
+		lesson, err := s.repo.GetPublishedLessonByID(ctx, lessonID)
+		if err != nil {
+			return nil, err
+		}
+		unit, err := s.repo.GetUnitByID(ctx, lesson.UnitID)
+		if err != nil {
+			return nil, err
+		}
+		var uID *uuid.UUID
+		if userID != uuid.Nil {
+			uID = &userID
+		}
+		mayOpen, err := s.accessReader.MayOpen(ctx, uID, unit.CourseID)
+		if err != nil {
+			return nil, fmt.Errorf("check lesson access: %w", err)
+		}
+		if !mayOpen {
+			return nil, domain.ErrCourseNotPurchased
+		}
+	}
+
 	prereqs, err := s.repo.ListPrerequisitesByLessonID(ctx, lessonID)
 	if err != nil {
 		return nil, err

@@ -6,9 +6,9 @@ status: ACTIVE
 phase: 3
 owner: "@commerce-team"
 schema: studio
-tables: [creator_profiles, payout_accounts, course_drafts, submissions]
-depends_on: [content, lesson, learning, job]
-depended_on_by: [admin]
+tables: [creator_profiles, payout_accounts, course_drafts, submissions, listings, purchases, creator_ledger]
+depends_on: [content, lesson, learning, payment, job]
+depended_on_by: [admin, lesson, learning]
 spec_version: 1.0.0
 last_verified: 2026-09-20
 ---
@@ -26,8 +26,25 @@ Ordered backlog for the Creator Studio module.
 - [x] Gate 2 moderation queue (reviews, approve, reject with feedback, BR-STUDIO-06 self-review prevention)
 - [x] Course publishing into `lesson` and `content` upon moderator approval
 
-## Next Steps (Steps 5 - 8)
-- [ ] Step 5: `payment` module integration with SePay bank transfer webhook & reconciliation
-- [ ] Step 6: `studio.listings`, `studio.purchases`, `studio.creator_ledger`, and `MayOpen` paywall enforcement
-- [ ] Step 7: Creator earnings dashboard and payout records
-- [ ] Step 8: Web frontend for Creator Studio and Moderation Queue
+## Step 5 Landed (Payment Module)
+- [x] Schema `billing` with `orders`, `sepay_transactions`, `payment_webhooks`, `refunds`, `payouts`
+- [x] SePay VietQR webhook ingestion with constant-time API key auth
+- [x] Background order matching on alphanumeric transfer reference
+- [x] Hourly expiry sweep and daily reconciliation job
+- [x] Unmatched transaction queue for admin resolution
+
+## Step 6 Landed (Listings, Purchases, and Paywall Gating)
+- [x] Tables `studio.listings`, `studio.purchases`, `studio.creator_ledger`
+- [x] Pricing bounds validation (₫49,000 to ₫5,000,000) per BR-STUDIO-01
+- [x] Free course claiming (`POST /courses/{id}/claim`) and paid purchase order creation (`POST /courses/{id}/purchase`)
+- [x] Self-service refunds (`POST /me/purchases/{id}/refund`) within 7 days and < 20% course completion
+- [x] 70/30 creator/platform split recording in `creator_ledger` per BR-STUDIO-03
+- [x] BR-STUDIO-05 paywall enforcement via single-sourced `studio.AccessReader.MayOpen`:
+  - `POST /courses/{id}/enroll`
+  - `GET /courses/{slug}`
+  - `GET /lessons/{id}` (with ADR-0025 amendment)
+
+## Next Steps (Steps 7 - 8)
+- [ ] Step 7: Creator earnings dashboard and admin payout management (`GET /me/studio/earnings`, `billing.payouts`)
+- [ ] Step 8: Web frontend for Creator Studio, Moderation Queue, and Checkout UI
+

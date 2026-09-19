@@ -6,9 +6,9 @@ status: ACTIVE
 phase: 3
 owner: "@commerce-team"
 schema: studio
-tables: [creator_profiles, payout_accounts, course_drafts, submissions]
-depends_on: [content, lesson, learning, job]
-depended_on_by: [admin]
+tables: [creator_profiles, payout_accounts, course_drafts, submissions, listings, purchases, creator_ledger]
+depends_on: [content, lesson, learning, payment, job]
+depended_on_by: [admin, lesson, learning]
 spec_version: 1.0.0
 last_verified: 2026-08-06
 ---
@@ -73,6 +73,8 @@ Other modules may import **only** `internal/modules/studio/contract`.
 <!-- BEGIN GENERATED: contract -->
 | Kind | Name | Purpose |
 |---|---|---|
+| interface | `studio.AccessReader` | MayOpen(ctx, userID, courseID) evaluates paywall access across 3 call sites |
+| interface | `studio.ListingReader` | Course pricing and listing lookup for catalogue |
 | interface | `studio.Publisher` | Course publication and gating |
 
 ### Events
@@ -80,6 +82,7 @@ Other modules may import **only** `internal/modules/studio/contract`.
 | Event | Direction | Payload summary |
 |---|---|---|
 | `studio.course_published` | publishes | `{course_id, creator_id, title}` |
+| `payment.succeeded` | consumes | Fulfill paid course purchase and credit creator ledger with 70/30 split |
 <!-- END GENERATED: contract -->
 
 ## 5. Database schema
@@ -94,6 +97,9 @@ Migrations: `db/migrations/studio/` · Queries: `db/queries/studio/`
 | `studio.payout_accounts` | Creator payout bank accounts | `creator_id` PK, `bank_name`, `account_number_hash`, `encrypted_account_number`, `account_holder_name` |
 | `studio.course_drafts` | In-flight course authoring drafts | `id` PK, `creator_id`, `title`, `description`, `units` jsonb, `status` |
 | `studio.submissions` | Course submissions undergoing review | `id` PK, `draft_id`, `status`, `gate1_report` jsonb, `gate2_required`, `submitted_by` |
+| `studio.listings` | Course pricing and catalogue listings | `course_id` PK, `creator_id`, `pricing_model`, `price_vnd`, `revenue_share_bps`, `status` |
+| `studio.purchases` | User course purchases and free claims | `id` PK, `user_id`, `course_id`, `price_paid_vnd`, `status`, `refund_reason` |
+| `studio.creator_ledger` | Double-entry accounting ledger for creator earnings | `id` PK, `creator_id`, `entry_type`, `amount_vnd`, `balance_after_vnd`, `reference_id` |
 
 <!-- END GENERATED: schema -->
 
@@ -114,6 +120,10 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | `GET` | `/api/v1/studio/courses/{id}` | `self` | Get course draft |
 | `PUT` | `/api/v1/studio/courses/{id}` | `self` | Update course draft |
 | `POST` | `/api/v1/studio/courses/{id}/submit` | `self` | Submit draft for verification |
+| `POST` | `/api/v1/courses/{id}/claim` | `self` | Claim access to a free community course |
+| `POST` | `/api/v1/courses/{id}/purchase` | `self` | Initiate purchase of a paid course via VietQR |
+| `GET` | `/api/v1/me/purchases` | `self` | List courses purchased or claimed by learner |
+| `POST` | `/api/v1/me/purchases/{id}/refund` | `self` | Self-service refund for course purchase |
 <!-- END GENERATED: endpoints -->
 
 ## 7. Folder map
@@ -137,9 +147,12 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 |---|---|---|
 | [`content`](../../modules/content/AGENT.md) | → depends on | Publishes activity content versions |
 | [`lesson`](../../modules/lesson/AGENT.md) | → depends on | Creates courses, units, and lessons in the core catalogue |
-| [`learning`](../../modules/learning/AGENT.md) | → depends on | ItemVerifier candidate checks |
+| [`learning`](../../modules/learning/AGENT.md) | → depends on | ItemVerifier candidate checks and learner progress lookup for refund eligibility |
+| [`payment`](../../modules/payment/AGENT.md) | → depends on | Order creation and payment matching for paid courses |
 | [`job`](../../platform/job/AGENT.md) | → depends on | Gate 1 verification worker |
 | [`admin`](../../modules/admin/AGENT.md) | ← used by | consumes this module's contract |
+| [`lesson`](../../modules/lesson/AGENT.md) | ← used by | consumes this module's contract |
+| [`learning`](../../modules/learning/AGENT.md) | ← used by | consumes this module's contract |
 <!-- END GENERATED: related -->
 
 **Boundary reminder:** you may call these through their `contract` package only.
@@ -149,11 +162,16 @@ and fails `go-arch-lint` in CI.
 ## 9. Business rules
 
 <!-- BEGIN GENERATED: rules -->
-1. **BR-STUDIO-01** — BR-STUDIO-06: A reviewer may not decide their own submission (submitted_by != reviewer_id).
-2. **BR-STUDIO-02** — BR-STUDIO-07: A submission that fails Gate 1 never reaches a human.
-3. **BR-STUDIO-03** — BR-STUDIO-08: Every activity in a published community course is a real content_version.
-4. **BR-STUDIO-04** — BR-STUDIO-09: A creator's payout account is never returned in a list response and never logged.
-5. **BR-STUDIO-05** — BR-STUDIO-10: A course may not contain a kind the lesson runner cannot render (11 runner kinds only).
+1. **BR-STUDIO-01** — BR-STUDIO-01: A price is a whole number of VND inside configured bounds (49,000 to 5,000,000).
+2. **BR-STUDIO-02** — BR-STUDIO-02: Free -> paid requires a new review. Paid -> free does not.
+3. **BR-STUDIO-03** — BR-STUDIO-03: A purchase records the price and the 70/30 creator/platform split in creator_ledger at purchase time.
+4. **BR-STUDIO-04** — BR-STUDIO-04: Taking a course down never revokes a purchase.
+5. **BR-STUDIO-05** — BR-STUDIO-05: The paywall is one function (AccessReader.MayOpen) called by enrollment, course detail, and lesson reads.
+6. **BR-STUDIO-06** — BR-STUDIO-06: A reviewer may not decide their own submission (submitted_by != reviewer_id).
+7. **BR-STUDIO-07** — BR-STUDIO-07: A submission that fails Gate 1 never reaches a human.
+8. **BR-STUDIO-08** — BR-STUDIO-08: Every activity in a published community course is a real content_version.
+9. **BR-STUDIO-09** — BR-STUDIO-09: A creator's payout account is never returned in a list response and never logged.
+10. **BR-STUDIO-10** — BR-STUDIO-10: A course may not contain a kind the lesson runner cannot render (11 runner kinds only).
 <!-- END GENERATED: rules -->
 
 ## 10. Common tasks

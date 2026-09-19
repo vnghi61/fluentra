@@ -137,3 +137,15 @@ func IsAccountRequired(err error) bool {
 	var e *apperr.Error
 	return errors.As(err, &e) && e.Code == "ACCOUNT_REQUIRED"
 }
+
+// ErrCourseNotPurchased is returned when attempting to enroll in a paid course that has not been purchased.
+var ErrCourseNotPurchased = apperr.New(
+	apperr.Forbidden, "COURSE_NOT_PURCHASED", "You must purchase this course before enrolling.",
+)
+
+// IsCourseNotPurchased reports whether err represents ErrCourseNotPurchased.
+func IsCourseNotPurchased(err error) bool {
+	var e *apperr.Error
+	return errors.As(err, &e) && e.Code == "COURSE_NOT_PURCHASED"
+}
+

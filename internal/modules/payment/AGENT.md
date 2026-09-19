@@ -158,6 +158,7 @@ and fails `go-arch-lint` in CI.
 10. **BR-PAYMENT-10** — BR-PAYMENT-10: Daily reconciliation uses advisory lock 1_700_000_752 with rate limiting at max 3 requests/sec.
 11. **BR-PAYMENT-11** — BR-PAYMENT-11: Amounts are `bigint` in VND with no subunit decimals. Floating point is forbidden.
 12. **BR-PAYMENT-12** — BR-PAYMENT-12: An amount that does not match exactly is never partially credited.
+13. **BR-PAYMENT-13** — BR-PAYMENT-13: A payment against an expired order is honoured; the money is real.
 <!-- END GENERATED: rules -->
 
 ## 10. Common tasks

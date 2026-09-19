@@ -84,3 +84,35 @@ type ModerationQueueItem struct {
 type AccessReader interface {
 	MayOpen(ctx context.Context, userID *uuid.UUID, courseID uuid.UUID) (bool, error)
 }
+
+// CourseListing represents public pricing and listing details for a course.
+type CourseListing struct {
+	CourseID        uuid.UUID `json:"course_id"`
+	CreatorID       uuid.UUID `json:"creator_id"`
+	PricingModel    string    `json:"pricing_model"`
+	PriceVND        int64     `json:"price_vnd"`
+	RevenueShareBPS int       `json:"revenue_share_bps"`
+	Status          string    `json:"status"`
+	PublishedAt     time.Time `json:"published_at"`
+}
+
+// ListingReader provides read access to course listings and learner ownership.
+type ListingReader interface {
+	GetListing(ctx context.Context, courseID uuid.UUID) (*CourseListing, error)
+	BatchGetListings(ctx context.Context, courseIDs []uuid.UUID) (map[uuid.UUID]*CourseListing, error)
+	HasPurchased(ctx context.Context, userID, courseID uuid.UUID) (bool, error)
+	BatchHasPurchased(ctx context.Context, userID uuid.UUID, courseIDs []uuid.UUID) (map[uuid.UUID]bool, error)
+}
+
+// Purchase represents an active or revoked course purchase/claim.
+type Purchase struct {
+	ID           uuid.UUID  `json:"id"`
+	UserID       uuid.UUID  `json:"user_id"`
+	CourseID     uuid.UUID  `json:"course_id"`
+	OrderID      *uuid.UUID `json:"order_id,omitempty"`
+	PricePaidVND int64      `json:"price_paid_vnd"`
+	GrantedAt    time.Time  `json:"granted_at"`
+	RevokedAt    *time.Time `json:"revoked_at,omitempty"`
+	RevokeReason *string    `json:"revoke_reason,omitempty"`
+}
+

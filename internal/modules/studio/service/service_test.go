@@ -24,6 +24,9 @@ type mockRepo struct {
 	payoutAccounts map[uuid.UUID]*domain.PayoutAccount
 	drafts         map[uuid.UUID]*domain.CourseDraft
 	submissions    map[uuid.UUID]*domain.Submission
+	listings       map[uuid.UUID]*domain.Listing
+	purchases      map[uuid.UUID]*domain.Purchase
+	ledger         []*domain.CreatorLedgerEntry
 }
 
 func newMockRepo() *mockRepo {
@@ -32,6 +35,8 @@ func newMockRepo() *mockRepo {
 		payoutAccounts: make(map[uuid.UUID]*domain.PayoutAccount),
 		drafts:         make(map[uuid.UUID]*domain.CourseDraft),
 		submissions:    make(map[uuid.UUID]*domain.Submission),
+		listings:       make(map[uuid.UUID]*domain.Listing),
+		purchases:      make(map[uuid.UUID]*domain.Purchase),
 	}
 }
 
@@ -168,6 +173,89 @@ func (m *mockRepo) UpdateSubmissionReview(ctx context.Context, id uuid.UUID, sta
 		return s, nil
 	}
 	return nil, domain.ErrSubmissionNotFound
+}
+
+func (m *mockRepo) UpsertListing(ctx context.Context, l *domain.Listing) (*domain.Listing, error) {
+	l.PublishedAt = time.Now()
+	m.listings[l.CourseID] = l
+	return l, nil
+}
+
+func (m *mockRepo) GetListingByCourseID(ctx context.Context, courseID uuid.UUID) (*domain.Listing, error) {
+	if l, ok := m.listings[courseID]; ok {
+		return l, nil
+	}
+	return nil, domain.ErrListingNotFound
+}
+
+func (m *mockRepo) BatchGetListings(ctx context.Context, courseIDs []uuid.UUID) (map[uuid.UUID]*domain.Listing, error) {
+	out := make(map[uuid.UUID]*domain.Listing)
+	for _, id := range courseIDs {
+		if l, ok := m.listings[id]; ok {
+			out[id] = l
+		}
+	}
+	return out, nil
+}
+
+func (m *mockRepo) CreatePurchase(ctx context.Context, p *domain.Purchase) (*domain.Purchase, error) {
+	p.ID = uuid.New()
+	p.GrantedAt = time.Now()
+	m.purchases[p.ID] = p
+	return p, nil
+}
+
+func (m *mockRepo) GetPurchaseByID(ctx context.Context, id uuid.UUID) (*domain.Purchase, error) {
+	if p, ok := m.purchases[id]; ok {
+		return p, nil
+	}
+	return nil, domain.ErrPurchaseNotFound
+}
+
+func (m *mockRepo) GetActivePurchase(ctx context.Context, userID, courseID uuid.UUID) (*domain.Purchase, error) {
+	for _, p := range m.purchases {
+		if p.UserID == userID && p.CourseID == courseID && p.RevokedAt == nil {
+			return p, nil
+		}
+	}
+	return nil, nil
+}
+
+func (m *mockRepo) ListPurchasesByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*domain.Purchase, int64, error) {
+	var list []*domain.Purchase
+	for _, p := range m.purchases {
+		if p.UserID == userID {
+			list = append(list, p)
+		}
+	}
+	return list, int64(len(list)), nil
+}
+
+func (m *mockRepo) RevokePurchase(ctx context.Context, id uuid.UUID, reason string) (*domain.Purchase, error) {
+	if p, ok := m.purchases[id]; ok {
+		now := time.Now()
+		p.RevokedAt = &now
+		p.RevokeReason = &reason
+		return p, nil
+	}
+	return nil, domain.ErrPurchaseNotFound
+}
+
+func (m *mockRepo) CreateLedgerEntry(ctx context.Context, e *domain.CreatorLedgerEntry) (*domain.CreatorLedgerEntry, error) {
+	e.ID = uuid.New()
+	e.CreatedAt = time.Now()
+	m.ledger = append(m.ledger, e)
+	return e, nil
+}
+
+func (m *mockRepo) ListLedgerEntriesByCreatorID(ctx context.Context, creatorID uuid.UUID, limit, offset int) ([]*domain.CreatorLedgerEntry, error) {
+	var list []*domain.CreatorLedgerEntry
+	for _, e := range m.ledger {
+		if e.CreatorID == creatorID {
+			list = append(list, e)
+		}
+	}
+	return list, nil
 }
 
 type mockVerifier struct {

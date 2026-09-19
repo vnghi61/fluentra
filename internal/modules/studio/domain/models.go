@@ -105,3 +105,90 @@ type Submission struct {
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
 }
+
+// Pricing models.
+const (
+	PricingModelFree    = "free"
+	PricingModelOneTime = "one_time"
+)
+
+// Listing statuses.
+const (
+	ListingStatusActive    = "active"
+	ListingStatusUnlisted  = "unlisted"
+	ListingStatusTakenDown = "taken_down"
+)
+
+// Creator ledger kinds.
+const (
+	LedgerKindSale          = "sale"
+	LedgerKindRefund        = "refund"
+	LedgerKindPayout        = "payout"
+	LedgerKindAdjustment    = "adjustment"
+	LedgerKindPlatformShare = "platform_share"
+)
+
+// Price defaults and bounds (BR-STUDIO-01).
+const (
+	DefaultMinPriceVND     int64 = 49_000
+	DefaultMaxPriceVND     int64 = 5_000_000
+	DefaultRevenueShareBPS int   = 7000
+)
+
+// Listing domain model.
+type Listing struct {
+	CourseID        uuid.UUID
+	CreatorID       uuid.UUID
+	PricingModel    string
+	PriceVND        int64
+	RevenueShareBPS int
+	Status          string
+	PublishedAt     time.Time
+	UpdatedAt       time.Time
+}
+
+// Purchase domain model.
+type Purchase struct {
+	ID           uuid.UUID
+	UserID       uuid.UUID
+	CourseID     uuid.UUID
+	OrderID      *uuid.UUID
+	PricePaidVND int64
+	GrantedAt    time.Time
+	RevokedAt    *time.Time
+	RevokeReason *string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
+
+// CreatorLedgerEntry domain model.
+type CreatorLedgerEntry struct {
+	ID             uuid.UUID
+	CreatorID      uuid.UUID
+	Kind           string
+	AmountVND      int64
+	GrossAmountVND int64
+	FeeAmountVND   int64
+	PurchaseID     *uuid.UUID
+	PayoutID       *uuid.UUID
+	Note           string
+	CreatedAt      time.Time
+}
+
+// ValidatePrice validates pricing bounds according to BR-STUDIO-01.
+func ValidatePrice(pricingModel string, priceVND, minVND, maxVND int64) error {
+	if pricingModel == PricingModelFree {
+		if priceVND != 0 {
+			return ErrPriceOutOfBounds
+		}
+		return nil
+	}
+	if pricingModel == PricingModelOneTime {
+		if priceVND < minVND || priceVND > maxVND {
+			return ErrPriceOutOfBounds
+		}
+		return nil
+	}
+	return ErrPriceOutOfBounds
+}
+

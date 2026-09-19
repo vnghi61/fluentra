@@ -14,6 +14,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/payment/service"
 	paymenthttp "github.com/fluentra/fluentra/internal/modules/payment/transport/http"
 	platformjob "github.com/fluentra/fluentra/internal/platform/job"
+	"github.com/fluentra/fluentra/internal/shared/eventbus"
 )
 
 var (
@@ -26,6 +27,7 @@ type Dependencies struct {
 	Pool  *pgxpool.Pool
 	Guard paymenthttp.Guard
 	Cfg   service.Config
+	Bus   eventbus.EventBus
 }
 
 // Module encapsulates the payment and SePay processing domain.
@@ -40,7 +42,7 @@ type Module struct {
 // NewModule constructs the payment module.
 func NewModule(deps Dependencies) (*Module, error) {
 	repo := repository.NewRepository(deps.Pool)
-	svc := service.NewService(repo, deps.Cfg)
+	svc := service.NewService(repo, deps.Cfg, deps.Bus)
 	handler := paymenthttp.NewHandler(svc, deps.Guard)
 	sweepWorker := job.NewExpirySweepWorker(svc)
 	reconcileWorker := job.NewReconciliationWorker(svc)
@@ -96,6 +98,16 @@ func (m *Module) CreateOrder(ctx context.Context, in contract.CreateOrderInput) 
 	return toContractOrder(o), nil
 }
 
+// OrderCreator returns the OrderCreator contract interface.
+func (m *Module) OrderCreator() contract.OrderCreator {
+	return m
+}
+
+// OrderReader returns the OrderReader contract interface.
+func (m *Module) OrderReader() contract.OrderReader {
+	return m
+}
+
 // GetOrder satisfies contract.OrderReader.
 func (m *Module) GetOrder(ctx context.Context, id uuid.UUID) (*contract.Order, error) {
 	o, err := m.service.GetOrder(ctx, id)
@@ -104,6 +116,7 @@ func (m *Module) GetOrder(ctx context.Context, id uuid.UUID) (*contract.Order, e
 	}
 	return toContractOrder(o), nil
 }
+
 
 func toContractOrder(o *domain.Order) *contract.Order {
 	return &contract.Order{

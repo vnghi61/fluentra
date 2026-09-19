@@ -54,4 +54,65 @@ var (
 		"INVALID_STATUS_TRANSITION",
 		"Invalid submission or draft status transition",
 	)
+
+	ErrListingNotFound = apperr.New(
+		apperr.NotFound,
+		"LISTING_NOT_FOUND",
+		"Course listing not found",
+	)
+
+	ErrPriceOutOfBounds = apperr.New(
+		apperr.Validation,
+		"PRICE_OUT_OF_BOUNDS",
+		"Price must be a whole number of VND between configured minimum and maximum",
+	)
+
+	ErrCourseAlreadyPurchased = apperr.New(
+		apperr.Conflict,
+		"ALREADY_PURCHASED",
+		"Course is already owned by this learner",
+	)
+
+	ErrCourseNotFree = apperr.New(
+		apperr.Validation,
+		"COURSE_NOT_FREE",
+		"Course is not free, use purchase endpoint",
+	)
+
+	ErrCourseNotPaid = apperr.New(
+		apperr.Validation,
+		"COURSE_NOT_PAID",
+		"Course is free, use claim endpoint",
+	)
+
+	ErrPurchaseNotFound = apperr.New(
+		apperr.NotFound,
+		"PURCHASE_NOT_FOUND",
+		"Course purchase not found",
+	)
+
+	ErrRefundWindowExpired = apperr.New(
+		apperr.Conflict,
+		"REFUND_WINDOW_EXPIRED",
+		"Refund window has expired (7 days from purchase)",
+	)
+
+	ErrRefundProgressExceeded = apperr.New(
+		apperr.Conflict,
+		"REFUND_PROGRESS_EXCEEDED",
+		"Self-service refund is not available when more than 20% of the course is completed",
+	)
+
+	ErrAlreadyRefunded = apperr.New(
+		apperr.Conflict,
+		"ALREADY_REFUNDED",
+		"Purchase has already been refunded or revoked",
+	)
+
+	ErrPaywallRestricted = apperr.New(
+		apperr.Forbidden,
+		"PAYWALL_RESTRICTED",
+		"Course must be purchased before access is granted",
+	)
 )
+

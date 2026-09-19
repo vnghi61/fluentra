@@ -43,6 +43,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/srs"
 	srsservice "github.com/fluentra/fluentra/internal/modules/srs/service"
 	"github.com/fluentra/fluentra/internal/modules/studio"
+	studiocontract "github.com/fluentra/fluentra/internal/modules/studio/contract"
 	"github.com/fluentra/fluentra/internal/modules/user"
 	"github.com/fluentra/fluentra/internal/modules/vocabulary"
 	vocabularycontract "github.com/fluentra/fluentra/internal/modules/vocabulary/contract"
@@ -262,9 +263,11 @@ func newIdentity(deps identityDeps) *identity {
 		Guard:      lazyGuard{of: assembled},
 		Content:    assembled.content.Reader(),
 		Taxonomies: assembled.content.TaxonomyResolver(),
-		Unlocker:   lazyUnlocker{of: assembled},
-		Completed:  lazyLessonProgress{of: assembled},
-		Env:        deps.Env,
+		Unlocker:      lazyUnlocker{of: assembled},
+		Completed:     lazyLessonProgress{of: assembled},
+		Env:           deps.Env,
+		AccessReader:  lazyStudioAccess{of: assembled},
+		ListingReader: lazyStudioListing{of: assembled},
 	})
 
 	assembled.srs = srs.New(srs.Deps{
@@ -381,19 +384,8 @@ func newIdentity(deps identityDeps) *identity {
 		Flags:         assembled.admin.FlagReader(),
 		Courses:       assembled.lesson.Catalog(),
 		SRSPace:       assembled.srs.ReviewPace(),
+		StudioAccess:  lazyStudioAccess{of: assembled},
 	})
-
-	studioMod, err := studio.NewModule(studio.Dependencies{
-		Pool:          deps.Pool,
-		Guard:         lazyGuard{of: assembled},
-		ItemVerifier:  assembled.learning.ItemVerifier(),
-		LessonAuthor:  assembled.lesson.Author(),
-		ContentAuthor: assembled.content.Author(),
-	})
-	if err != nil {
-		panic(fmt.Sprintf("assemble studio module: %v", err))
-	}
-	assembled.studio = studioMod
 
 	paymentMod, err := payment.NewModule(payment.Dependencies{
 		Pool:  deps.Pool,
@@ -404,6 +396,20 @@ func newIdentity(deps identityDeps) *identity {
 		panic(fmt.Sprintf("assemble payment module: %v", err))
 	}
 	assembled.payment = paymentMod
+
+	studioMod, err := studio.NewModule(studio.Dependencies{
+		Pool:           deps.Pool,
+		Guard:          lazyGuard{of: assembled},
+		ItemVerifier:   assembled.learning.ItemVerifier(),
+		LessonAuthor:   assembled.lesson.Author(),
+		ContentAuthor:  assembled.content.Author(),
+		OrderCreator:   assembled.payment.OrderCreator(),
+		ProgressReader: assembled.learning.ProgressReader(),
+	})
+	if err != nil {
+		panic(fmt.Sprintf("assemble studio module: %v", err))
+	}
+	assembled.studio = studioMod
 
 	return assembled
 }
@@ -632,6 +638,51 @@ func (g lazyGuard) Require(ctx context.Context, permission string) error {
 }
 
 func (g lazyGuard) authorizer() rbaccontract.Authorizer { return g.of.rbac.Authorizer() }
+
+// lazyStudioAccess adapts studio's AccessReader to lesson and learning's paywall check (BR-STUDIO-05).
+type lazyStudioAccess struct{ of *identity }
+
+var _ studiocontract.AccessReader = lazyStudioAccess{}
+
+func (a lazyStudioAccess) MayOpen(ctx context.Context, userID *uuid.UUID, courseID uuid.UUID) (bool, error) {
+	if a.of.studio == nil {
+		return true, nil
+	}
+	return a.of.studio.AccessReader().MayOpen(ctx, userID, courseID)
+}
+
+// lazyStudioListing adapts studio's ListingReader to lesson's catalogue pricing and ownership.
+type lazyStudioListing struct{ of *identity }
+
+var _ studiocontract.ListingReader = lazyStudioListing{}
+
+func (l lazyStudioListing) GetListing(ctx context.Context, courseID uuid.UUID) (*studiocontract.CourseListing, error) {
+	if l.of.studio == nil {
+		return nil, nil
+	}
+	return l.of.studio.ListingReader().GetListing(ctx, courseID)
+}
+
+func (l lazyStudioListing) BatchGetListings(ctx context.Context, courseIDs []uuid.UUID) (map[uuid.UUID]*studiocontract.CourseListing, error) {
+	if l.of.studio == nil {
+		return map[uuid.UUID]*studiocontract.CourseListing{}, nil
+	}
+	return l.of.studio.ListingReader().BatchGetListings(ctx, courseIDs)
+}
+
+func (l lazyStudioListing) HasPurchased(ctx context.Context, userID, courseID uuid.UUID) (bool, error) {
+	if l.of.studio == nil {
+		return false, nil
+	}
+	return l.of.studio.ListingReader().HasPurchased(ctx, userID, courseID)
+}
+
+func (l lazyStudioListing) BatchHasPurchased(ctx context.Context, userID uuid.UUID, courseIDs []uuid.UUID) (map[uuid.UUID]bool, error) {
+	if l.of.studio == nil {
+		return map[uuid.UUID]bool{}, nil
+	}
+	return l.of.studio.ListingReader().BatchHasPurchased(ctx, userID, courseIDs)
+}
 
 // lazyUnlocker adapts learning's batched UnlockChecker to lesson's consumer interface,
 // resolving it when unlock checks run rather than on construction (P8.4 Trap 1).

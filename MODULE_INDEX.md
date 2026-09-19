@@ -104,7 +104,7 @@ Legend — **Status**: `PLANNED` (spec only) · `IN_PROGRESS` · `DONE` · `DEPR
 | B1 | `analytics` | Event ingestion, daily rollups, funnels, cohorts, admin KPI reports | `analytics` | `analytics_events`, `daily_rollups`, `funnels`, `cohorts` | job, cache | 4 | PLANNED |
 | B2 | `subscription` | Plans, entitlements, trials, upgrades, renewals, grace periods | `billing` | `plans`, `entitlements`, `subscriptions`, `subscription_events` | payment, user, notification | 4 | PLANNED |
 | B3 | `payment` | Gateway adapters, checkout sessions, webhooks, invoices, refunds, reconciliation | `billing` | `payments`, `invoices`, `payment_webhooks`, `refunds` | subscription, audit, job | 4 | PLANNED |
-| B4 | `studio` | Creator profiles, course drafts, automated Gate 1, moderation queue Gate 2, listings | `studio` | `creator_profiles`, `payout_accounts`, `course_drafts`, `submissions` | content, lesson, learning, job | 3 | IMPLEMENTED |
+| B4 | `studio` | Creator profiles, course drafts, automated Gate 1, moderation queue Gate 2, listings | `studio` | `creator_profiles`, `payout_accounts`, `course_drafts`, `submissions`, `listings`, `purchases`, `creator_ledger` | content, lesson, learning, job, payment | 3 | IMPLEMENTED |
 
 ---
 
@@ -140,16 +140,16 @@ graph BT
     core --> platform
     learning --> platform
     commerce --> platform
-    STD --> CNT & LSN & LRN
+    STD --> CNT & LSN & LRN & PAY
     AUTH --> USR & RBAC & AUD
     ADM --> core
     ADM --> CNT & ANA & SUB
     USR & RBAC & CNT & QB & SUB & PAY --> AUD
     NOT --> USR
     CNT --> STO & SCH
-    LSN --> CNT
+    LSN --> CNT & STD
     LRN --> CNT
-    LRN --> LSN & SRS & USR & ADM
+    LRN --> LSN & SRS & USR & ADM & STD
     SRS --> CNT
     SRS --> USR
     SPK --> USR

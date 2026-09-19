@@ -130,3 +130,101 @@ FROM studio.submissions
 WHERE status IN ('submitted', 'verifying')
 ORDER BY submitted_at ASC
 LIMIT $1;
+
+-- -------------------------------------------------- listings
+
+-- name: UpsertListing :one
+INSERT INTO studio.listings (course_id, creator_id, pricing_model, price_vnd, revenue_share_bps, status, published_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, now(), now())
+ON CONFLICT (course_id) DO UPDATE
+SET pricing_model = EXCLUDED.pricing_model,
+    price_vnd = EXCLUDED.price_vnd,
+    revenue_share_bps = EXCLUDED.revenue_share_bps,
+    status = EXCLUDED.status,
+    updated_at = now()
+RETURNING course_id, creator_id, pricing_model, price_vnd, revenue_share_bps, status, published_at, updated_at;
+
+-- name: GetListingByCourseID :one
+SELECT course_id, creator_id, pricing_model, price_vnd, revenue_share_bps, status, published_at, updated_at
+FROM studio.listings
+WHERE course_id = $1;
+
+-- name: ListListingsByCourseIDs :many
+SELECT course_id, creator_id, pricing_model, price_vnd, revenue_share_bps, status, published_at, updated_at
+FROM studio.listings
+WHERE course_id = ANY($1::uuid[]);
+
+-- name: UpdateListingStatus :one
+UPDATE studio.listings
+SET status = $2, updated_at = now()
+WHERE course_id = $1
+RETURNING course_id, creator_id, pricing_model, price_vnd, revenue_share_bps, status, published_at, updated_at;
+
+-- name: UpdateListingPrice :one
+UPDATE studio.listings
+SET pricing_model = $2, price_vnd = $3, updated_at = now()
+WHERE course_id = $1
+RETURNING course_id, creator_id, pricing_model, price_vnd, revenue_share_bps, status, published_at, updated_at;
+
+-- -------------------------------------------------- purchases
+
+-- name: CreatePurchase :one
+INSERT INTO studio.purchases (user_id, course_id, order_id, price_paid_vnd, granted_at, updated_at)
+VALUES ($1, $2, $3, $4, now(), now())
+RETURNING id, user_id, course_id, order_id, price_paid_vnd, granted_at, revoked_at, revoke_reason, created_at, updated_at;
+
+-- name: GetPurchaseByID :one
+SELECT id, user_id, course_id, order_id, price_paid_vnd, granted_at, revoked_at, revoke_reason, created_at, updated_at
+FROM studio.purchases
+WHERE id = $1;
+
+-- name: GetActivePurchase :one
+SELECT id, user_id, course_id, order_id, price_paid_vnd, granted_at, revoked_at, revoke_reason, created_at, updated_at
+FROM studio.purchases
+WHERE user_id = $1 AND course_id = $2 AND revoked_at IS NULL
+LIMIT 1;
+
+-- name: ListPurchasesByUserID :many
+SELECT id, user_id, course_id, order_id, price_paid_vnd, granted_at, revoked_at, revoke_reason, created_at, updated_at
+FROM studio.purchases
+WHERE user_id = $1
+ORDER BY granted_at DESC
+LIMIT $2 OFFSET $3;
+
+-- name: CountPurchasesByUserID :one
+SELECT COUNT(*)
+FROM studio.purchases
+WHERE user_id = $1;
+
+-- name: ListActivePurchasesByUserAndCourseIDs :many
+SELECT id, user_id, course_id, order_id, price_paid_vnd, granted_at, revoked_at, revoke_reason, created_at, updated_at
+FROM studio.purchases
+WHERE user_id = $1 AND course_id = ANY($2::uuid[]) AND revoked_at IS NULL;
+
+-- name: RevokePurchase :one
+UPDATE studio.purchases
+SET revoked_at = now(),
+    revoke_reason = $2,
+    updated_at = now()
+WHERE id = $1
+RETURNING id, user_id, course_id, order_id, price_paid_vnd, granted_at, revoked_at, revoke_reason, created_at, updated_at;
+
+-- -------------------------------------------------- creator_ledger
+
+-- name: CreateLedgerEntry :one
+INSERT INTO studio.creator_ledger (creator_id, kind, amount_vnd, gross_amount_vnd, fee_amount_vnd, purchase_id, payout_id, note)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, creator_id, kind, amount_vnd, gross_amount_vnd, fee_amount_vnd, purchase_id, payout_id, note, created_at;
+
+-- name: ListLedgerEntriesByCreatorID :many
+SELECT id, creator_id, kind, amount_vnd, gross_amount_vnd, fee_amount_vnd, purchase_id, payout_id, note, created_at
+FROM studio.creator_ledger
+WHERE creator_id = $1
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3;
+
+-- name: GetCreatorBalance :one
+SELECT COALESCE(SUM(amount_vnd), 0)::bigint AS balance_vnd
+FROM studio.creator_ledger
+WHERE creator_id = $1 AND kind IN ('sale', 'refund', 'payout', 'adjustment');
+

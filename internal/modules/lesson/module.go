@@ -16,6 +16,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/lesson/repository"
 	"github.com/fluentra/fluentra/internal/modules/lesson/service"
 	lessonhttp "github.com/fluentra/fluentra/internal/modules/lesson/transport/http"
+	studiocontract "github.com/fluentra/fluentra/internal/modules/studio/contract"
 	"github.com/fluentra/fluentra/internal/shared/clock"
 	"github.com/fluentra/fluentra/internal/shared/eventbus"
 	"github.com/fluentra/fluentra/internal/shared/outbox"
@@ -35,6 +36,9 @@ type Deps struct {
 	Unlocker   service.UnlockChecker
 	Completed  service.CompletedLessons
 	Env        string
+
+	AccessReader  studiocontract.AccessReader
+	ListingReader studiocontract.ListingReader
 }
 
 // Module is the lesson module, assembled. It is the only symbol cmd/ imports.
@@ -67,6 +71,8 @@ func New(deps Deps) *Module {
 		Clock:      timekeeper,
 		NewID:      func() uuid.UUID { return uuid.Must(uuid.NewV7()) },
 		Env:        deps.Env,
+		AccessReader:  deps.AccessReader,
+		ListingReader: deps.ListingReader,
 	})
 
 	handler, err := lessonhttp.NewHandler(svc, deps.Guard)

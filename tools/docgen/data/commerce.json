@@ -338,7 +338,8 @@
       "BR-PAYMENT-09: Hourly sweep marks expired unpaid orders using advisory lock 1_700_000_751.",
       "BR-PAYMENT-10: Daily reconciliation uses advisory lock 1_700_000_752 with rate limiting at max 3 requests/sec.",
       "BR-PAYMENT-11: Amounts are `bigint` in VND with no subunit decimals. Floating point is forbidden.",
-      "BR-PAYMENT-12: An amount that does not match exactly is never partially credited."
+      "BR-PAYMENT-12: An amount that does not match exactly is never partially credited.",
+      "BR-PAYMENT-13: A payment against an expired order is honoured; the money is real."
     ],
     "errors": [
       { "code": "ORDER_NOT_FOUND", "status": "404", "meaning": "Order does not exist" },
@@ -447,7 +448,10 @@
       { "name": "creator_profiles", "purpose": "Creator profiles", "notes": "`user_id` PK, `display_name`, `bio`, `headline`, `trusted_at`, `upheld_report_count`" },
       { "name": "payout_accounts", "purpose": "Creator payout bank accounts", "notes": "`creator_id` PK, `bank_name`, `account_number_hash`, `encrypted_account_number`, `account_holder_name`" },
       { "name": "course_drafts", "purpose": "In-flight course authoring drafts", "notes": "`id` PK, `creator_id`, `title`, `description`, `units` jsonb, `status`" },
-      { "name": "submissions", "purpose": "Course submissions undergoing review", "notes": "`id` PK, `draft_id`, `status`, `gate1_report` jsonb, `gate2_required`, `submitted_by`" }
+      { "name": "submissions", "purpose": "Course submissions undergoing review", "notes": "`id` PK, `draft_id`, `status`, `gate1_report` jsonb, `gate2_required`, `submitted_by`" },
+      { "name": "listings", "purpose": "Course pricing and catalogue listings", "notes": "`course_id` PK, `creator_id`, `pricing_model`, `price_vnd`, `revenue_share_bps`, `status`" },
+      { "name": "purchases", "purpose": "User course purchases and free claims", "notes": "`id` PK, `user_id`, `course_id`, `price_paid_vnd`, `status`, `refund_reason`" },
+      { "name": "creator_ledger", "purpose": "Double-entry accounting ledger for creator earnings", "notes": "`id` PK, `creator_id`, `entry_type`, `amount_vnd`, `balance_after_vnd`, `reference_id`" }
     ],
     "endpoints": [
       { "method": "GET", "path": "/api/v1/studio/creator/profile", "permission": "self", "purpose": "Get current creator profile", "success": "200" },
@@ -458,26 +462,40 @@
       { "method": "POST", "path": "/api/v1/studio/courses", "permission": "self", "purpose": "Create course draft", "success": "201" },
       { "method": "GET", "path": "/api/v1/studio/courses/{id}", "permission": "self", "purpose": "Get course draft", "success": "200" },
       { "method": "PUT", "path": "/api/v1/studio/courses/{id}", "permission": "self", "purpose": "Update course draft", "success": "200" },
-      { "method": "POST", "path": "/api/v1/studio/courses/{id}/submit", "permission": "self", "purpose": "Submit draft for verification", "success": "200" }
+      { "method": "POST", "path": "/api/v1/studio/courses/{id}/submit", "permission": "self", "purpose": "Submit draft for verification", "success": "200" },
+      { "method": "POST", "path": "/api/v1/courses/{id}/claim", "permission": "self", "purpose": "Claim access to a free community course", "success": "200" },
+      { "method": "POST", "path": "/api/v1/courses/{id}/purchase", "permission": "self", "purpose": "Initiate purchase of a paid course via VietQR", "success": "200" },
+      { "method": "GET", "path": "/api/v1/me/purchases", "permission": "self", "purpose": "List courses purchased or claimed by learner", "success": "200" },
+      { "method": "POST", "path": "/api/v1/me/purchases/{id}/refund", "permission": "self", "purpose": "Self-service refund for course purchase", "success": "200" }
     ],
     "contract": [
+      { "kind": "interface", "name": "studio.AccessReader", "purpose": "MayOpen(ctx, userID, courseID) evaluates paywall access across 3 call sites" },
+      { "kind": "interface", "name": "studio.ListingReader", "purpose": "Course pricing and listing lookup for catalogue" },
       { "kind": "interface", "name": "studio.Publisher", "purpose": "Course publication and gating" }
     ],
     "events": {
       "publishes": [
         { "name": "studio.course_published", "payload": "`{course_id, creator_id, title}`" }
       ],
-      "consumes": []
+      "consumes": [
+        { "name": "payment.succeeded", "reason": "Fulfill paid course purchase and credit creator ledger with 70/30 split" }
+      ]
     },
-    "dependsOn": ["content", "lesson", "learning", "job"],
+    "dependsOn": ["content", "lesson", "learning", "payment", "job"],
     "dependsWhy": {
       "content": "Publishes activity content versions",
       "lesson": "Creates courses, units, and lessons in the core catalogue",
-      "learning": "ItemVerifier candidate checks",
+      "learning": "ItemVerifier candidate checks and learner progress lookup for refund eligibility",
+      "payment": "Order creation and payment matching for paid courses",
       "job": "Gate 1 verification worker"
     },
-    "dependedOnBy": ["admin"],
+    "dependedOnBy": ["admin", "lesson", "learning"],
     "rules": [
+      "BR-STUDIO-01: A price is a whole number of VND inside configured bounds (49,000 to 5,000,000).",
+      "BR-STUDIO-02: Free -> paid requires a new review. Paid -> free does not.",
+      "BR-STUDIO-03: A purchase records the price and the 70/30 creator/platform split in creator_ledger at purchase time.",
+      "BR-STUDIO-04: Taking a course down never revokes a purchase.",
+      "BR-STUDIO-05: The paywall is one function (AccessReader.MayOpen) called by enrollment, course detail, and lesson reads.",
       "BR-STUDIO-06: A reviewer may not decide their own submission (submitted_by != reviewer_id).",
       "BR-STUDIO-07: A submission that fails Gate 1 never reaches a human.",
       "BR-STUDIO-08: Every activity in a published community course is a real content_version.",

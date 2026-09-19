@@ -17,6 +17,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/payment/contract"
 	"github.com/fluentra/fluentra/internal/modules/payment/domain"
 	"github.com/fluentra/fluentra/internal/modules/payment/repository"
+	"github.com/fluentra/fluentra/internal/shared/eventbus"
 )
 
 var fluReferenceRegex = regexp.MustCompile(`(?i)FLU[A-Za-z0-9]{10}`)
@@ -47,16 +48,22 @@ type paymentService struct {
 	repo       repository.Repository
 	cfg        Config
 	httpClient *http.Client
+	bus        eventbus.EventBus
 }
 
 // NewService creates a new payment service.
-func NewService(repo repository.Repository, cfg Config) Service {
+func NewService(repo repository.Repository, cfg Config, bus ...eventbus.EventBus) Service {
 	if cfg.OrderTTL <= 0 {
 		cfg.OrderTTL = 24 * time.Hour
+	}
+	var eb eventbus.EventBus
+	if len(bus) > 0 {
+		eb = bus[0]
 	}
 	return &paymentService{
 		repo: repo,
 		cfg:  cfg,
+		bus:  eb,
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},
@@ -252,6 +259,24 @@ func (s *paymentService) MatchTransaction(ctx context.Context, tx *domain.SepayT
 		"amount_vnd", tx.TransferAmount,
 		"sepay_id", tx.SepayID,
 	)
+
+	// Publish payment.succeeded event
+	if s.bus != nil {
+		payload, err := json.Marshal(contract.EventPaymentSucceeded{
+			UserID:      matchedOrder.UserID,
+			OrderID:     matchedOrder.ID,
+			SubjectKind: matchedOrder.SubjectKind,
+			SubjectID:   matchedOrder.SubjectID,
+			AmountVND:   matchedOrder.AmountVND,
+		})
+		if err == nil {
+			_ = s.bus.Publish(ctx, eventbus.Message{
+				ID:      uuid.New(),
+				Topic:   "payment.succeeded",
+				Payload: payload,
+			})
+		}
+	}
 
 	return nil
 }

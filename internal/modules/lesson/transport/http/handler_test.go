@@ -51,7 +51,7 @@ type fakeLessonService struct {
 }
 
 func (f *fakeLessonService) ListCourses(
-	_ context.Context, level *string, topic *string, limit, offset int,
+	_ context.Context, level *string, topic *string, limit, offset int, _ ...*uuid.UUID,
 ) ([]service.CourseSummaryDTO, int64, error) {
 	f.seenLevel = level
 	f.seenTopic = topic

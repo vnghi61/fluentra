@@ -24,6 +24,9 @@ type CourseSummaryResponse struct {
 	OwnerID         *uuid.UUID `json:"owner_id,omitempty"`
 	Visibility      string     `json:"visibility"`
 	TopicTaxonomyID *uuid.UUID `json:"topic_taxonomy_id,omitempty"`
+	PriceVND        int64      `json:"price_vnd"`
+	PricingModel    string     `json:"pricing_model,omitempty"`
+	Owned           bool       `json:"owned"`
 }
 
 // CourseListResponse matches OpenAPI CourseList.
@@ -70,6 +73,9 @@ type CourseDetailResponse struct {
 	OwnerID         *uuid.UUID           `json:"owner_id,omitempty"`
 	Visibility      string               `json:"visibility"`
 	TopicTaxonomyID *uuid.UUID           `json:"topic_taxonomy_id,omitempty"`
+	PriceVND        int64                `json:"price_vnd"`
+	PricingModel    string               `json:"pricing_model,omitempty"`
+	Owned           bool                 `json:"owned"`
 	Units           []CourseUnitResponse `json:"units"`
 }
 
@@ -144,6 +150,9 @@ func toCourseSummaryResponse(dto service.CourseSummaryDTO) CourseSummaryResponse
 		OwnerID:         dto.OwnerID,
 		Visibility:      dto.Visibility,
 		TopicTaxonomyID: dto.TopicTaxonomyID,
+		PriceVND:        dto.PriceVND,
+		PricingModel:    dto.PricingModel,
+		Owned:           dto.Owned,
 	}
 }
 
@@ -190,6 +199,9 @@ func toCourseDetailResponse(dto *service.CourseDetailDTO) CourseDetailResponse {
 		OwnerID:         dto.OwnerID,
 		Visibility:      dto.Visibility,
 		TopicTaxonomyID: dto.TopicTaxonomyID,
+		PriceVND:        dto.PriceVND,
+		PricingModel:    dto.PricingModel,
+		Owned:           dto.Owned,
 		Units:           units,
 	}
 }

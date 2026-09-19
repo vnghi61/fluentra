@@ -43,6 +43,19 @@ CourseSummary:
       type: string
       format: uuid
       nullable: true
+    price_vnd:
+      type: integer
+      format: int64
+      description: Course price in VND (0 = free).
+      example: 0
+    pricing_model:
+      type: string
+      enum: [free, one_time]
+      example: free
+    owned:
+      type: boolean
+      description: Whether the calling learner has purchased or claimed this course.
+      example: false
 
 CourseList:
   type: object
@@ -189,6 +202,19 @@ CourseDetail:
       type: string
       format: uuid
       nullable: true
+    price_vnd:
+      type: integer
+      format: int64
+      description: Course price in VND (0 = free).
+      example: 0
+    pricing_model:
+      type: string
+      enum: [free, one_time]
+      example: free
+    owned:
+      type: boolean
+      description: Whether the calling learner has purchased or claimed this course.
+      example: false
     units:
       type: array
       items:

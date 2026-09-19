@@ -6,9 +6,9 @@ status: ACTIVE
 phase: 3
 owner: "@commerce-team"
 schema: studio
-tables: [creator_profiles, payout_accounts, course_drafts, submissions]
-depends_on: [content, lesson, learning, job]
-depended_on_by: [admin]
+tables: [creator_profiles, payout_accounts, course_drafts, submissions, listings, purchases, creator_ledger]
+depends_on: [content, lesson, learning, payment, job]
+depended_on_by: [admin, lesson, learning]
 spec_version: 1.0.0
 last_verified: 2026-08-06
 ---
@@ -36,6 +36,10 @@ Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR
 | `GET` | `/api/v1/studio/courses/{id}` | `self` | Get course draft |
 | `PUT` | `/api/v1/studio/courses/{id}` | `self` | Update course draft |
 | `POST` | `/api/v1/studio/courses/{id}/submit` | `self` | Submit draft for verification |
+| `POST` | `/api/v1/courses/{id}/claim` | `self` | Claim access to a free community course |
+| `POST` | `/api/v1/courses/{id}/purchase` | `self` | Initiate purchase of a paid course via VietQR |
+| `GET` | `/api/v1/me/purchases` | `self` | List courses purchased or claimed by learner |
+| `POST` | `/api/v1/me/purchases/{id}/refund` | `self` | Self-service refund for course purchase |
 <!-- END GENERATED: api-summary -->
 
 ## Endpoint detail
@@ -124,6 +128,46 @@ Update course draft
 ### `POST /api/v1/studio/courses/{id}/submit`
 
 Submit draft for verification
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+### `POST /api/v1/courses/{id}/claim`
+
+Claim access to a free community course
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+### `POST /api/v1/courses/{id}/purchase`
+
+Initiate purchase of a paid course via VietQR
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+### `GET /api/v1/me/purchases`
+
+List courses purchased or claimed by learner
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+### `POST /api/v1/me/purchases/{id}/refund`
+
+Self-service refund for course purchase
 
 | | |
 |---|---|

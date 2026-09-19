@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
+	paymentcontract "github.com/fluentra/fluentra/internal/modules/payment/contract"
 	"github.com/fluentra/fluentra/internal/modules/studio/contract"
 	"github.com/fluentra/fluentra/internal/modules/studio/domain"
 	"github.com/fluentra/fluentra/internal/modules/studio/service"
@@ -45,6 +46,11 @@ type StudioService interface {
 	ListModerationQueue(ctx context.Context, limit, offset int) ([]contract.ModerationQueueItem, int64, error)
 	ApproveSubmission(ctx context.Context, reviewerID, submissionID uuid.UUID) (*domain.Submission, error)
 	RejectSubmission(ctx context.Context, reviewerID, submissionID uuid.UUID, targetStatus, feedback string) (*domain.Submission, error)
+
+	ClaimCourse(ctx context.Context, userID, courseID uuid.UUID) (*domain.Purchase, error)
+	PurchaseCourse(ctx context.Context, userID, courseID uuid.UUID) (*paymentcontract.Order, error)
+	ListUserPurchases(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*domain.Purchase, int64, error)
+	RefundPurchase(ctx context.Context, userID, purchaseID uuid.UUID) error
 }
 
 // Handler serves HTTP endpoints for creator studio and moderation.
@@ -71,6 +77,12 @@ func (h *Handler) Routes(router chi.Router) {
 	router.Get("/studio/courses/{id}", h.getCourseDraft)
 	router.Put("/studio/courses/{id}", h.updateCourseDraft)
 	router.Post("/studio/courses/{id}/submit", h.submitCourseDraft)
+
+	// Commerce / Purchases (Step 6)
+	router.Post("/courses/{id}/claim", h.claimCourse)
+	router.Post("/courses/{id}/purchase", h.purchaseCourse)
+	router.Get("/me/purchases", h.listPurchases)
+	router.Post("/me/purchases/{id}/refund", h.refundPurchase)
 }
 
 // ModerationRoutes mounts staff moderation endpoints under the admin/authenticated router.
@@ -502,3 +514,162 @@ func toSubmissionResponse(s *domain.Submission) CourseSubmissionResponse {
 		UpdatedAt:          s.UpdatedAt,
 	}
 }
+
+// ---------------------------------------------------------------- Purchases & Claim Handlers
+
+func (h *Handler) claimCourse(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	actor, ok := httpx.ActorFrom(ctx)
+	if !ok || actor.UserID == uuid.Nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Unauthenticated, "UNAUTHORIZED", "Authentication required"))
+		return
+	}
+
+	idStr := chi.URLParam(r, "id")
+	courseID, err := uuid.Parse(idStr)
+	if err != nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Validation, "INVALID_ID", "Invalid course ID"))
+		return
+	}
+
+	purchase, err := h.svc.ClaimCourse(ctx, actor.UserID, courseID)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	httpx.WriteJSON(w, r, http.StatusOK, toCoursePurchaseResponse(purchase))
+}
+
+func (h *Handler) purchaseCourse(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	actor, ok := httpx.ActorFrom(ctx)
+	if !ok || actor.UserID == uuid.Nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Unauthenticated, "UNAUTHORIZED", "Authentication required"))
+		return
+	}
+
+	idStr := chi.URLParam(r, "id")
+	courseID, err := uuid.Parse(idStr)
+	if err != nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Validation, "INVALID_ID", "Invalid course ID"))
+		return
+	}
+
+	order, err := h.svc.PurchaseCourse(ctx, actor.UserID, courseID)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	httpx.WriteJSON(w, r, http.StatusCreated, PurchaseOrderResponse{
+		OrderID:           order.ID,
+		Reference:         order.Reference,
+		AmountVND:         order.AmountVND,
+		QRURL:             order.QRURL,
+		BankCode:          order.BankCode,
+		AccountNumber:     order.AccountNumber,
+		AccountHolderName: order.AccountHolderName,
+		ExpiresAt:         order.ExpiresAt,
+	})
+}
+
+func (h *Handler) listPurchases(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	actor, ok := httpx.ActorFrom(ctx)
+	if !ok || actor.UserID == uuid.Nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Unauthenticated, "UNAUTHORIZED", "Authentication required"))
+		return
+	}
+
+	limit := 20
+	if lStr := r.URL.Query().Get("limit"); lStr != "" {
+		if l, err := strconv.Atoi(lStr); err == nil && l > 0 {
+			limit = l
+		}
+	}
+	offset := 0
+	if oStr := r.URL.Query().Get("offset"); oStr != "" {
+		if o, err := strconv.Atoi(oStr); err == nil && o >= 0 {
+			offset = o
+		}
+	}
+
+	purchases, total, err := h.svc.ListUserPurchases(ctx, actor.UserID, limit, offset)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	items := make([]CoursePurchaseResponse, len(purchases))
+	for i, p := range purchases {
+		items[i] = toCoursePurchaseResponse(p)
+	}
+
+	httpx.WriteJSON(w, r, http.StatusOK, map[string]any{
+		"items": items,
+		"total": total,
+	})
+}
+
+func (h *Handler) refundPurchase(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	actor, ok := httpx.ActorFrom(ctx)
+	if !ok || actor.UserID == uuid.Nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Unauthenticated, "UNAUTHORIZED", "Authentication required"))
+		return
+	}
+
+	idStr := chi.URLParam(r, "id")
+	purchaseID, err := uuid.Parse(idStr)
+	if err != nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Validation, "INVALID_ID", "Invalid purchase ID"))
+		return
+	}
+
+	if err := h.svc.RefundPurchase(ctx, actor.UserID, purchaseID); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	httpx.WriteJSON(w, r, http.StatusOK, map[string]any{
+		"success": true,
+		"message": "Refund processed successfully",
+	})
+}
+
+type CoursePurchaseResponse struct {
+	ID           uuid.UUID  `json:"id"`
+	UserID       uuid.UUID  `json:"user_id"`
+	CourseID     uuid.UUID  `json:"course_id"`
+	OrderID      *uuid.UUID `json:"order_id,omitempty"`
+	PricePaidVND int64      `json:"price_paid_vnd"`
+	GrantedAt    time.Time  `json:"granted_at"`
+	RevokedAt    *time.Time `json:"revoked_at,omitempty"`
+	RevokeReason *string    `json:"revoke_reason,omitempty"`
+}
+
+type PurchaseOrderResponse struct {
+	OrderID           uuid.UUID `json:"order_id"`
+	Reference         string    `json:"reference"`
+	AmountVND         int64     `json:"amount_vnd"`
+	QRURL             string    `json:"qr_url"`
+	BankCode          string    `json:"bank_code"`
+	AccountNumber     string    `json:"account_number"`
+	AccountHolderName string    `json:"account_holder_name"`
+	ExpiresAt         time.Time `json:"expires_at"`
+}
+
+func toCoursePurchaseResponse(p *domain.Purchase) CoursePurchaseResponse {
+	return CoursePurchaseResponse{
+		ID:           p.ID,
+		UserID:       p.UserID,
+		CourseID:     p.CourseID,
+		OrderID:      p.OrderID,
+		PricePaidVND: p.PricePaidVND,
+		GrantedAt:    p.GrantedAt,
+		RevokedAt:    p.RevokedAt,
+		RevokeReason: p.RevokeReason,
+	}
+}
+

@@ -24,6 +24,19 @@ func (q *Queries) CountCourseDraftsByOwner(ctx context.Context, ownerID uuid.UUI
 	return count, err
 }
 
+const countPurchasesByUserID = `-- name: CountPurchasesByUserID :one
+SELECT COUNT(*)
+FROM studio.purchases
+WHERE user_id = $1
+`
+
+func (q *Queries) CountPurchasesByUserID(ctx context.Context, userID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countPurchasesByUserID, userID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countSubmissionsByStatus = `-- name: CountSubmissionsByStatus :one
 SELECT COUNT(*)
 FROM studio.submissions
@@ -83,6 +96,90 @@ func (q *Queries) CreateCourseDraft(ctx context.Context, arg CreateCourseDraftPa
 	return i, err
 }
 
+const createLedgerEntry = `-- name: CreateLedgerEntry :one
+
+INSERT INTO studio.creator_ledger (creator_id, kind, amount_vnd, gross_amount_vnd, fee_amount_vnd, purchase_id, payout_id, note)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, creator_id, kind, amount_vnd, gross_amount_vnd, fee_amount_vnd, purchase_id, payout_id, note, created_at
+`
+
+type CreateLedgerEntryParams struct {
+	CreatorID      uuid.UUID
+	Kind           string
+	AmountVnd      int64
+	GrossAmountVnd int64
+	FeeAmountVnd   int64
+	PurchaseID     *uuid.UUID
+	PayoutID       *uuid.UUID
+	Note           string
+}
+
+// -------------------------------------------------- creator_ledger
+func (q *Queries) CreateLedgerEntry(ctx context.Context, arg CreateLedgerEntryParams) (StudioCreatorLedger, error) {
+	row := q.db.QueryRow(ctx, createLedgerEntry,
+		arg.CreatorID,
+		arg.Kind,
+		arg.AmountVnd,
+		arg.GrossAmountVnd,
+		arg.FeeAmountVnd,
+		arg.PurchaseID,
+		arg.PayoutID,
+		arg.Note,
+	)
+	var i StudioCreatorLedger
+	err := row.Scan(
+		&i.ID,
+		&i.CreatorID,
+		&i.Kind,
+		&i.AmountVnd,
+		&i.GrossAmountVnd,
+		&i.FeeAmountVnd,
+		&i.PurchaseID,
+		&i.PayoutID,
+		&i.Note,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const createPurchase = `-- name: CreatePurchase :one
+
+INSERT INTO studio.purchases (user_id, course_id, order_id, price_paid_vnd, granted_at, updated_at)
+VALUES ($1, $2, $3, $4, now(), now())
+RETURNING id, user_id, course_id, order_id, price_paid_vnd, granted_at, revoked_at, revoke_reason, created_at, updated_at
+`
+
+type CreatePurchaseParams struct {
+	UserID       uuid.UUID
+	CourseID     uuid.UUID
+	OrderID      *uuid.UUID
+	PricePaidVnd int64
+}
+
+// -------------------------------------------------- purchases
+func (q *Queries) CreatePurchase(ctx context.Context, arg CreatePurchaseParams) (StudioPurchase, error) {
+	row := q.db.QueryRow(ctx, createPurchase,
+		arg.UserID,
+		arg.CourseID,
+		arg.OrderID,
+		arg.PricePaidVnd,
+	)
+	var i StudioPurchase
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.CourseID,
+		&i.OrderID,
+		&i.PricePaidVnd,
+		&i.GrantedAt,
+		&i.RevokedAt,
+		&i.RevokeReason,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const createSubmission = `-- name: CreateSubmission :one
 INSERT INTO studio.submissions (draft_id, version, status, submitted_by, submitted_at, updated_at)
 VALUES ($1, $2, $3, $4, now(), now())
@@ -115,6 +212,36 @@ func (q *Queries) CreateSubmission(ctx context.Context, arg CreateSubmissionPara
 		&i.VerificationReport,
 		&i.SubmittedAt,
 		&i.ReviewedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getActivePurchase = `-- name: GetActivePurchase :one
+SELECT id, user_id, course_id, order_id, price_paid_vnd, granted_at, revoked_at, revoke_reason, created_at, updated_at
+FROM studio.purchases
+WHERE user_id = $1 AND course_id = $2 AND revoked_at IS NULL
+LIMIT 1
+`
+
+type GetActivePurchaseParams struct {
+	UserID   uuid.UUID
+	CourseID uuid.UUID
+}
+
+func (q *Queries) GetActivePurchase(ctx context.Context, arg GetActivePurchaseParams) (StudioPurchase, error) {
+	row := q.db.QueryRow(ctx, getActivePurchase, arg.UserID, arg.CourseID)
+	var i StudioPurchase
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.CourseID,
+		&i.OrderID,
+		&i.PricePaidVnd,
+		&i.GrantedAt,
+		&i.RevokedAt,
+		&i.RevokeReason,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -178,6 +305,19 @@ func (q *Queries) GetCourseDraftByOwnerAndSlug(ctx context.Context, arg GetCours
 	return i, err
 }
 
+const getCreatorBalance = `-- name: GetCreatorBalance :one
+SELECT COALESCE(SUM(amount_vnd), 0)::bigint AS balance_vnd
+FROM studio.creator_ledger
+WHERE creator_id = $1 AND kind IN ('sale', 'refund', 'payout', 'adjustment')
+`
+
+func (q *Queries) GetCreatorBalance(ctx context.Context, creatorID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, getCreatorBalance, creatorID)
+	var balance_vnd int64
+	err := row.Scan(&balance_vnd)
+	return balance_vnd, err
+}
+
 const getCreatorProfile = `-- name: GetCreatorProfile :one
 SELECT user_id, bio, headline, payout_eligible, created_at, updated_at
 FROM studio.creator_profiles
@@ -226,6 +366,28 @@ func (q *Queries) GetLatestSubmissionByDraftID(ctx context.Context, draftID uuid
 	return i, err
 }
 
+const getListingByCourseID = `-- name: GetListingByCourseID :one
+SELECT course_id, creator_id, pricing_model, price_vnd, revenue_share_bps, status, published_at, updated_at
+FROM studio.listings
+WHERE course_id = $1
+`
+
+func (q *Queries) GetListingByCourseID(ctx context.Context, courseID uuid.UUID) (StudioListing, error) {
+	row := q.db.QueryRow(ctx, getListingByCourseID, courseID)
+	var i StudioListing
+	err := row.Scan(
+		&i.CourseID,
+		&i.CreatorID,
+		&i.PricingModel,
+		&i.PriceVnd,
+		&i.RevenueShareBps,
+		&i.Status,
+		&i.PublishedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getPayoutAccountByCreatorID = `-- name: GetPayoutAccountByCreatorID :one
 SELECT id, creator_id, bank_code, account_number, account_holder_name, is_default, created_at, updated_at
 FROM studio.payout_accounts
@@ -244,6 +406,30 @@ func (q *Queries) GetPayoutAccountByCreatorID(ctx context.Context, creatorID uui
 		&i.AccountNumber,
 		&i.AccountHolderName,
 		&i.IsDefault,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getPurchaseByID = `-- name: GetPurchaseByID :one
+SELECT id, user_id, course_id, order_id, price_paid_vnd, granted_at, revoked_at, revoke_reason, created_at, updated_at
+FROM studio.purchases
+WHERE id = $1
+`
+
+func (q *Queries) GetPurchaseByID(ctx context.Context, id uuid.UUID) (StudioPurchase, error) {
+	row := q.db.QueryRow(ctx, getPurchaseByID, id)
+	var i StudioPurchase
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.CourseID,
+		&i.OrderID,
+		&i.PricePaidVnd,
+		&i.GrantedAt,
+		&i.RevokedAt,
+		&i.RevokeReason,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -274,6 +460,48 @@ func (q *Queries) GetSubmissionByID(ctx context.Context, id uuid.UUID) (StudioSu
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const listActivePurchasesByUserAndCourseIDs = `-- name: ListActivePurchasesByUserAndCourseIDs :many
+SELECT id, user_id, course_id, order_id, price_paid_vnd, granted_at, revoked_at, revoke_reason, created_at, updated_at
+FROM studio.purchases
+WHERE user_id = $1 AND course_id = ANY($2::uuid[]) AND revoked_at IS NULL
+`
+
+type ListActivePurchasesByUserAndCourseIDsParams struct {
+	UserID  uuid.UUID
+	Column2 []uuid.UUID
+}
+
+func (q *Queries) ListActivePurchasesByUserAndCourseIDs(ctx context.Context, arg ListActivePurchasesByUserAndCourseIDsParams) ([]StudioPurchase, error) {
+	rows, err := q.db.Query(ctx, listActivePurchasesByUserAndCourseIDs, arg.UserID, arg.Column2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []StudioPurchase
+	for rows.Next() {
+		var i StudioPurchase
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.CourseID,
+			&i.OrderID,
+			&i.PricePaidVnd,
+			&i.GrantedAt,
+			&i.RevokedAt,
+			&i.RevokeReason,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listCourseDraftsByOwner = `-- name: ListCourseDraftsByOwner :many
@@ -323,6 +551,86 @@ func (q *Queries) ListCourseDraftsByOwner(ctx context.Context, arg ListCourseDra
 	return items, nil
 }
 
+const listLedgerEntriesByCreatorID = `-- name: ListLedgerEntriesByCreatorID :many
+SELECT id, creator_id, kind, amount_vnd, gross_amount_vnd, fee_amount_vnd, purchase_id, payout_id, note, created_at
+FROM studio.creator_ledger
+WHERE creator_id = $1
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListLedgerEntriesByCreatorIDParams struct {
+	CreatorID uuid.UUID
+	Limit     int32
+	Offset    int32
+}
+
+func (q *Queries) ListLedgerEntriesByCreatorID(ctx context.Context, arg ListLedgerEntriesByCreatorIDParams) ([]StudioCreatorLedger, error) {
+	rows, err := q.db.Query(ctx, listLedgerEntriesByCreatorID, arg.CreatorID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []StudioCreatorLedger
+	for rows.Next() {
+		var i StudioCreatorLedger
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatorID,
+			&i.Kind,
+			&i.AmountVnd,
+			&i.GrossAmountVnd,
+			&i.FeeAmountVnd,
+			&i.PurchaseID,
+			&i.PayoutID,
+			&i.Note,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listListingsByCourseIDs = `-- name: ListListingsByCourseIDs :many
+SELECT course_id, creator_id, pricing_model, price_vnd, revenue_share_bps, status, published_at, updated_at
+FROM studio.listings
+WHERE course_id = ANY($1::uuid[])
+`
+
+func (q *Queries) ListListingsByCourseIDs(ctx context.Context, dollar_1 []uuid.UUID) ([]StudioListing, error) {
+	rows, err := q.db.Query(ctx, listListingsByCourseIDs, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []StudioListing
+	for rows.Next() {
+		var i StudioListing
+		if err := rows.Scan(
+			&i.CourseID,
+			&i.CreatorID,
+			&i.PricingModel,
+			&i.PriceVnd,
+			&i.RevenueShareBps,
+			&i.Status,
+			&i.PublishedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPendingVerificationSubmissions = `-- name: ListPendingVerificationSubmissions :many
 SELECT id, draft_id, version, status, submitted_by, reviewer_id, feedback, verification_report, submitted_at, reviewed_at, created_at, updated_at
 FROM studio.submissions
@@ -351,6 +659,51 @@ func (q *Queries) ListPendingVerificationSubmissions(ctx context.Context, limit 
 			&i.VerificationReport,
 			&i.SubmittedAt,
 			&i.ReviewedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPurchasesByUserID = `-- name: ListPurchasesByUserID :many
+SELECT id, user_id, course_id, order_id, price_paid_vnd, granted_at, revoked_at, revoke_reason, created_at, updated_at
+FROM studio.purchases
+WHERE user_id = $1
+ORDER BY granted_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListPurchasesByUserIDParams struct {
+	UserID uuid.UUID
+	Limit  int32
+	Offset int32
+}
+
+func (q *Queries) ListPurchasesByUserID(ctx context.Context, arg ListPurchasesByUserIDParams) ([]StudioPurchase, error) {
+	rows, err := q.db.Query(ctx, listPurchasesByUserID, arg.UserID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []StudioPurchase
+	for rows.Next() {
+		var i StudioPurchase
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.CourseID,
+			&i.OrderID,
+			&i.PricePaidVnd,
+			&i.GrantedAt,
+			&i.RevokedAt,
+			&i.RevokeReason,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -409,6 +762,38 @@ func (q *Queries) ListSubmissionsByStatus(ctx context.Context, arg ListSubmissio
 		return nil, err
 	}
 	return items, nil
+}
+
+const revokePurchase = `-- name: RevokePurchase :one
+UPDATE studio.purchases
+SET revoked_at = now(),
+    revoke_reason = $2,
+    updated_at = now()
+WHERE id = $1
+RETURNING id, user_id, course_id, order_id, price_paid_vnd, granted_at, revoked_at, revoke_reason, created_at, updated_at
+`
+
+type RevokePurchaseParams struct {
+	ID           uuid.UUID
+	RevokeReason *string
+}
+
+func (q *Queries) RevokePurchase(ctx context.Context, arg RevokePurchaseParams) (StudioPurchase, error) {
+	row := q.db.QueryRow(ctx, revokePurchase, arg.ID, arg.RevokeReason)
+	var i StudioPurchase
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.CourseID,
+		&i.OrderID,
+		&i.PricePaidVnd,
+		&i.GrantedAt,
+		&i.RevokedAt,
+		&i.RevokeReason,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const setPayoutEligible = `-- name: SetPayoutEligible :one
@@ -518,6 +903,63 @@ func (q *Queries) UpdateCourseDraftStatus(ctx context.Context, arg UpdateCourseD
 		&i.Status,
 		&i.Structure,
 		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateListingPrice = `-- name: UpdateListingPrice :one
+UPDATE studio.listings
+SET pricing_model = $2, price_vnd = $3, updated_at = now()
+WHERE course_id = $1
+RETURNING course_id, creator_id, pricing_model, price_vnd, revenue_share_bps, status, published_at, updated_at
+`
+
+type UpdateListingPriceParams struct {
+	CourseID     uuid.UUID
+	PricingModel string
+	PriceVnd     int64
+}
+
+func (q *Queries) UpdateListingPrice(ctx context.Context, arg UpdateListingPriceParams) (StudioListing, error) {
+	row := q.db.QueryRow(ctx, updateListingPrice, arg.CourseID, arg.PricingModel, arg.PriceVnd)
+	var i StudioListing
+	err := row.Scan(
+		&i.CourseID,
+		&i.CreatorID,
+		&i.PricingModel,
+		&i.PriceVnd,
+		&i.RevenueShareBps,
+		&i.Status,
+		&i.PublishedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateListingStatus = `-- name: UpdateListingStatus :one
+UPDATE studio.listings
+SET status = $2, updated_at = now()
+WHERE course_id = $1
+RETURNING course_id, creator_id, pricing_model, price_vnd, revenue_share_bps, status, published_at, updated_at
+`
+
+type UpdateListingStatusParams struct {
+	CourseID uuid.UUID
+	Status   string
+}
+
+func (q *Queries) UpdateListingStatus(ctx context.Context, arg UpdateListingStatusParams) (StudioListing, error) {
+	row := q.db.QueryRow(ctx, updateListingStatus, arg.CourseID, arg.Status)
+	var i StudioListing
+	err := row.Scan(
+		&i.CourseID,
+		&i.CreatorID,
+		&i.PricingModel,
+		&i.PriceVnd,
+		&i.RevenueShareBps,
+		&i.Status,
+		&i.PublishedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
@@ -633,6 +1075,52 @@ func (q *Queries) UpsertCreatorProfile(ctx context.Context, arg UpsertCreatorPro
 		&i.Headline,
 		&i.PayoutEligible,
 		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const upsertListing = `-- name: UpsertListing :one
+
+INSERT INTO studio.listings (course_id, creator_id, pricing_model, price_vnd, revenue_share_bps, status, published_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, now(), now())
+ON CONFLICT (course_id) DO UPDATE
+SET pricing_model = EXCLUDED.pricing_model,
+    price_vnd = EXCLUDED.price_vnd,
+    revenue_share_bps = EXCLUDED.revenue_share_bps,
+    status = EXCLUDED.status,
+    updated_at = now()
+RETURNING course_id, creator_id, pricing_model, price_vnd, revenue_share_bps, status, published_at, updated_at
+`
+
+type UpsertListingParams struct {
+	CourseID        uuid.UUID
+	CreatorID       uuid.UUID
+	PricingModel    string
+	PriceVnd        int64
+	RevenueShareBps int32
+	Status          string
+}
+
+// -------------------------------------------------- listings
+func (q *Queries) UpsertListing(ctx context.Context, arg UpsertListingParams) (StudioListing, error) {
+	row := q.db.QueryRow(ctx, upsertListing,
+		arg.CourseID,
+		arg.CreatorID,
+		arg.PricingModel,
+		arg.PriceVnd,
+		arg.RevenueShareBps,
+		arg.Status,
+	)
+	var i StudioListing
+	err := row.Scan(
+		&i.CourseID,
+		&i.CreatorID,
+		&i.PricingModel,
+		&i.PriceVnd,
+		&i.RevenueShareBps,
+		&i.Status,
+		&i.PublishedAt,
 		&i.UpdatedAt,
 	)
 	return i, err

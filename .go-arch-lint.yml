@@ -449,9 +449,9 @@ deps:
   m_content:            { mayDependOn: [m_content_domain, m_content_repository, m_content_service, m_content_http, c_content] }
   # lesson, by layer
   m_lesson_repository: { mayDependOn: [m_lesson_domain, c_lesson, g_lesson] }
-  m_lesson_service:    { mayDependOn: [m_lesson_domain, c_lesson, c_content, p_cache] }
+  m_lesson_service:    { mayDependOn: [m_lesson_domain, c_lesson, c_content, c_studio, p_cache] }
   m_lesson_http:       { mayDependOn: [m_lesson_domain, m_lesson_service, c_lesson, c_content] }
-  m_lesson:            { mayDependOn: [m_lesson_domain, m_lesson_repository, m_lesson_service, m_lesson_http, c_lesson, c_content] }
+  m_lesson:            { mayDependOn: [m_lesson_domain, m_lesson_repository, m_lesson_service, m_lesson_http, c_lesson, c_content, c_studio] }
   # learning, split by layer once it grew layers. P8.3's brief says the module is
   # one component and to inherit that; it stopped being possible the moment the
   # module had more than one package, because `modules/learning/**` makes every
@@ -459,10 +459,10 @@ deps:
   # mayDependOn. Every other module here with real code is split the same way.
   m_learning_domain:     { mayDependOn: [c_learning] }
   m_learning_repository: { mayDependOn: [m_learning_domain, c_learning, g_learning] }
-  m_learning_service:    { mayDependOn: [m_learning_domain, m_learning_repository, c_learning, c_lesson, c_content, c_srs, c_user, c_admin, p_cache, p_job, p_telemetry, p_ai] }
+  m_learning_service:    { mayDependOn: [m_learning_domain, m_learning_repository, c_learning, c_lesson, c_content, c_srs, c_user, c_admin, c_studio, p_cache, p_job, p_telemetry, p_ai] }
   m_learning_http:       { mayDependOn: [m_learning_domain, m_learning_service, c_learning, c_lesson] }
   m_learning_job:        { mayDependOn: [m_learning_domain, p_job, p_telemetry] }
-  m_learning:            { mayDependOn: [m_learning_domain, m_learning_repository, m_learning_service, m_learning_http, m_learning_job, c_learning, c_lesson, c_content, c_srs, c_user, c_admin, g_learning, p_cache, p_job, p_telemetry, p_ai] }
+  m_learning:            { mayDependOn: [m_learning_domain, m_learning_repository, m_learning_service, m_learning_http, m_learning_job, c_learning, c_lesson, c_content, c_srs, c_user, c_admin, c_studio, g_learning, p_cache, p_job, p_telemetry, p_ai] }
   c_srs:           { mayDependOn: [c_learning] }
   c_vocabulary:    { mayDependOn: [c_learning] }
   c_grammar:       { mayDependOn: [c_learning] }
@@ -547,7 +547,7 @@ deps:
   m_payment_http:       { mayDependOn: [m_payment_domain, m_payment_service, c_payment] }
   m_payment:            { mayDependOn: [m_payment_domain, m_payment_repository, m_payment_service, m_payment_job, m_payment_http, c_payment, p_job, p_telemetry] }
   m_studio_repository: { mayDependOn: [m_studio_domain, c_studio, g_studio] }
-  m_studio_service:    { mayDependOn: [m_studio_domain, m_studio_repository, c_studio, c_learning, c_lesson, c_content] }
+  m_studio_service:    { mayDependOn: [m_studio_domain, m_studio_repository, c_studio, c_learning, c_lesson, c_content, c_payment] }
   m_studio_job:        { mayDependOn: [m_studio_domain, m_studio_repository, m_studio_service, c_studio, p_job] }
   m_studio_http:       { mayDependOn: [m_studio_domain, m_studio_service, c_studio] }
-  m_studio:            { mayDependOn: [m_studio_domain, m_studio_repository, m_studio_service, m_studio_job, m_studio_http, c_studio, c_learning, c_lesson, c_content, p_job] }
+  m_studio:            { mayDependOn: [m_studio_domain, m_studio_repository, m_studio_service, m_studio_job, m_studio_http, c_studio, c_learning, c_lesson, c_content, p_job, c_payment] }

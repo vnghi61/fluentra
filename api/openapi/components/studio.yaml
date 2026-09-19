@@ -245,3 +245,91 @@ ReviewSubmissionRequest:
     status:
       type: string
       enum: [approved, rejected, changes_requested]
+
+CoursePurchase:
+  type: object
+  required: [id, user_id, course_id, price_paid_vnd, granted_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+    user_id:
+      type: string
+      format: uuid
+    course_id:
+      type: string
+      format: uuid
+    course_title:
+      type: string
+      example: Business English for Tech Professionals
+    course_slug:
+      type: string
+      example: business-english-tech
+    order_id:
+      type: [string, 'null']
+      format: uuid
+    price_paid_vnd:
+      type: integer
+      format: int64
+      example: 49000
+    granted_at:
+      type: string
+      format: date-time
+    revoked_at:
+      type: [string, 'null']
+      format: date-time
+    revoke_reason:
+      type: [string, 'null']
+
+UserPurchaseList:
+  type: object
+  required: [items, total]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/CoursePurchase'
+    total:
+      type: integer
+
+PurchaseOrderResponse:
+  type: object
+  required: [order_id, reference, amount_vnd, qr_url, bank_code, account_number, account_holder_name, expires_at]
+  properties:
+    order_id:
+      type: string
+      format: uuid
+    reference:
+      type: string
+      example: FLU4KL9A1B2C3
+    amount_vnd:
+      type: integer
+      format: int64
+      example: 49000
+    qr_url:
+      type: string
+      example: https://vietqr.app/img?acc=1017588888&bank=VCB&amount=49000&des=FLU4KL9A1B2C3&template=compact
+    bank_code:
+      type: string
+      example: VCB
+    account_number:
+      type: string
+      example: '1017588888'
+    account_holder_name:
+      type: string
+      example: FLUENTRA
+    expires_at:
+      type: string
+      format: date-time
+
+RefundPurchaseResponse:
+  type: object
+  required: [success, message]
+  properties:
+    success:
+      type: boolean
+      example: true
+    message:
+      type: string
+      example: Refund requested successfully
+

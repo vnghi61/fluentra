@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
+	paymentcontract "github.com/fluentra/fluentra/internal/modules/payment/contract"
 	"github.com/fluentra/fluentra/internal/modules/studio/contract"
 	"github.com/fluentra/fluentra/internal/modules/studio/domain"
 	"github.com/fluentra/fluentra/internal/modules/studio/service"
@@ -183,6 +184,42 @@ func (m *mockStudioService) RejectSubmission(ctx context.Context, reviewerID, su
 		UpdatedAt:   time.Now(),
 	}, nil
 }
+
+func (m *mockStudioService) ClaimCourse(ctx context.Context, userID, courseID uuid.UUID) (*domain.Purchase, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	return &domain.Purchase{
+		ID:        uuid.New(),
+		UserID:    userID,
+		CourseID:  courseID,
+		GrantedAt: time.Now(),
+	}, nil
+}
+
+func (m *mockStudioService) PurchaseCourse(ctx context.Context, userID, courseID uuid.UUID) (*paymentcontract.Order, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	return &paymentcontract.Order{
+		ID:        uuid.New(),
+		UserID:    userID,
+		Reference: "FLU12345",
+		AmountVND: 99000,
+	}, nil
+}
+
+func (m *mockStudioService) ListUserPurchases(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*domain.Purchase, int64, error) {
+	if m.err != nil {
+		return nil, 0, m.err
+	}
+	return nil, 0, nil
+}
+
+func (m *mockStudioService) RefundPurchase(ctx context.Context, userID, purchaseID uuid.UUID) error {
+	return m.err
+}
+
 
 type mockGuard struct {
 	allowed bool

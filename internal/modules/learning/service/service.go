@@ -27,6 +27,7 @@ import (
 	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
 
 	srscontract "github.com/fluentra/fluentra/internal/modules/srs/contract"
+	studiocontract "github.com/fluentra/fluentra/internal/modules/studio/contract"
 	usercontract "github.com/fluentra/fluentra/internal/modules/user/contract"
 	"github.com/fluentra/fluentra/internal/platform/ai"
 	"github.com/fluentra/fluentra/internal/platform/cache"
@@ -255,6 +256,8 @@ type Deps struct {
 	Courses lessoncontract.CourseCatalog
 	// SRSPace reads how long the learner takes per review, for the weekly plan.
 	SRSPace srscontract.ReviewPaceReader
+	// StudioAccess evaluates whether a learner may open/enroll in a course (BR-STUDIO-05).
+	StudioAccess studiocontract.AccessReader
 }
 
 // AudioSynthesiser produces pre-rendered audio for listening exercises.
@@ -284,6 +287,7 @@ type Service struct {
 	flags         admincontract.FlagReader
 	courses       lessoncontract.CourseCatalog
 	srsPace       srscontract.ReviewPaceReader
+	studioAccess  studiocontract.AccessReader
 
 	generatorAuthor uuid.UUID
 	authorResolver  contract.AuthorResolver
@@ -338,6 +342,7 @@ func New(deps Deps) *Service {
 		flags:         deps.Flags,
 		courses:       deps.Courses,
 		srsPace:       deps.SRSPace,
+		studioAccess:  deps.StudioAccess,
 
 		generatorAuthor: deps.GeneratorAuthorID,
 		authorResolver:  deps.AuthorResolver,
@@ -1435,6 +1440,16 @@ func (noopTx) Exec(context.Context, string, ...any) (pgconn.CommandTag, error) {
 
 // Enroll registers a user into a course.
 func (s *Service) Enroll(ctx context.Context, userID, courseID uuid.UUID) (*domain.Enrollment, error) {
+	if s.studioAccess != nil {
+		mayOpen, err := s.studioAccess.MayOpen(ctx, &userID, courseID)
+		if err != nil {
+			return nil, fmt.Errorf("check course access: %w", err)
+		}
+		if !mayOpen {
+			return nil, domain.ErrCourseNotPurchased
+		}
+	}
+
 	existing, err := s.repo.GetEnrollmentByUserCourse(ctx, userID, courseID)
 	if err != nil {
 		return nil, fmt.Errorf("get enrollment: %w", err)

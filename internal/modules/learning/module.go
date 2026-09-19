@@ -21,6 +21,7 @@ import (
 	learninghttp "github.com/fluentra/fluentra/internal/modules/learning/transport/http"
 	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
 	srscontract "github.com/fluentra/fluentra/internal/modules/srs/contract"
+	studiocontract "github.com/fluentra/fluentra/internal/modules/studio/contract"
 	usercontract "github.com/fluentra/fluentra/internal/modules/user/contract"
 	"github.com/fluentra/fluentra/internal/platform/ai"
 	"github.com/fluentra/fluentra/internal/platform/job"
@@ -54,6 +55,7 @@ type Deps struct {
 	User          usercontract.LearningProfileReader
 	Flags         admincontract.FlagReader
 	Courses       lessoncontract.CourseCatalog
+	StudioAccess  studiocontract.AccessReader
 	Graders       map[string]contract.ExerciseGrader
 	DeclaredKinds []string
 	Metrics       telemetry.Instruments
@@ -153,6 +155,7 @@ func New(deps Deps) *Module {
 		Flags:             deps.Flags,
 		Courses:           deps.Courses,
 		SRSPace:           deps.SRSPace,
+		StudioAccess:      deps.StudioAccess,
 	})
 
 	var handler *learninghttp.Handler

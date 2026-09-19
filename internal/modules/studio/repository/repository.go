@@ -35,6 +35,26 @@ type Repository interface {
 	UpdateSubmissionVerification(ctx context.Context, id uuid.UUID, status string, report []byte, feedback *string) (*domain.Submission, error)
 	UpdateSubmissionReview(ctx context.Context, id uuid.UUID, status string, reviewerID uuid.UUID, feedback *string) (*domain.Submission, error)
 	ListPendingVerificationSubmissions(ctx context.Context, limit int32) ([]*domain.Submission, error)
+
+	// Listings
+	UpsertListing(ctx context.Context, listing *domain.Listing) (*domain.Listing, error)
+	GetListingByCourseID(ctx context.Context, courseID uuid.UUID) (*domain.Listing, error)
+	ListListingsByCourseIDs(ctx context.Context, courseIDs []uuid.UUID) ([]*domain.Listing, error)
+	UpdateListingStatus(ctx context.Context, courseID uuid.UUID, status string) (*domain.Listing, error)
+	UpdateListingPrice(ctx context.Context, courseID uuid.UUID, pricingModel string, priceVND int64) (*domain.Listing, error)
+
+	// Purchases
+	CreatePurchase(ctx context.Context, purchase *domain.Purchase) (*domain.Purchase, error)
+	GetPurchaseByID(ctx context.Context, id uuid.UUID) (*domain.Purchase, error)
+	GetActivePurchase(ctx context.Context, userID, courseID uuid.UUID) (*domain.Purchase, error)
+	ListPurchasesByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*domain.Purchase, int64, error)
+	ListActivePurchasesByUserAndCourseIDs(ctx context.Context, userID uuid.UUID, courseIDs []uuid.UUID) ([]*domain.Purchase, error)
+	RevokePurchase(ctx context.Context, id uuid.UUID, reason string) (*domain.Purchase, error)
+
+	// Creator Ledger
+	CreateLedgerEntry(ctx context.Context, entry *domain.CreatorLedgerEntry) (*domain.CreatorLedgerEntry, error)
+	ListLedgerEntriesByCreatorID(ctx context.Context, creatorID uuid.UUID, limit, offset int) ([]*domain.CreatorLedgerEntry, error)
+	GetCreatorBalance(ctx context.Context, creatorID uuid.UUID) (int64, error)
 }
 
 type pgRepository struct {
@@ -383,3 +403,246 @@ func toDomainSubmission(row sqlc.StudioSubmission) *domain.Submission {
 		UpdatedAt:          row.UpdatedAt,
 	}
 }
+
+// ---------------------------------------------------------------- Listings
+
+func (r *pgRepository) UpsertListing(ctx context.Context, listing *domain.Listing) (*domain.Listing, error) {
+	row, err := r.q.UpsertListing(ctx, sqlc.UpsertListingParams{
+		CourseID:        listing.CourseID,
+		CreatorID:       listing.CreatorID,
+		PricingModel:    listing.PricingModel,
+		PriceVnd:        listing.PriceVND,
+		RevenueShareBps: int32(listing.RevenueShareBPS),
+		Status:          listing.Status,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return toDomainListing(row), nil
+}
+
+func (r *pgRepository) GetListingByCourseID(ctx context.Context, courseID uuid.UUID) (*domain.Listing, error) {
+	row, err := r.q.GetListingByCourseID(ctx, courseID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrListingNotFound
+		}
+		return nil, err
+	}
+	return toDomainListing(row), nil
+}
+
+func (r *pgRepository) ListListingsByCourseIDs(ctx context.Context, courseIDs []uuid.UUID) ([]*domain.Listing, error) {
+	rows, err := r.q.ListListingsByCourseIDs(ctx, courseIDs)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]*domain.Listing, len(rows))
+	for i, row := range rows {
+		items[i] = toDomainListing(row)
+	}
+	return items, nil
+}
+
+func (r *pgRepository) UpdateListingStatus(ctx context.Context, courseID uuid.UUID, status string) (*domain.Listing, error) {
+	row, err := r.q.UpdateListingStatus(ctx, sqlc.UpdateListingStatusParams{
+		CourseID: courseID,
+		Status:   status,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrListingNotFound
+		}
+		return nil, err
+	}
+	return toDomainListing(row), nil
+}
+
+func (r *pgRepository) UpdateListingPrice(ctx context.Context, courseID uuid.UUID, pricingModel string, priceVND int64) (*domain.Listing, error) {
+	row, err := r.q.UpdateListingPrice(ctx, sqlc.UpdateListingPriceParams{
+		CourseID:     courseID,
+		PricingModel: pricingModel,
+		PriceVnd:     priceVND,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrListingNotFound
+		}
+		return nil, err
+	}
+	return toDomainListing(row), nil
+}
+
+// ---------------------------------------------------------------- Purchases
+
+func (r *pgRepository) CreatePurchase(ctx context.Context, purchase *domain.Purchase) (*domain.Purchase, error) {
+	row, err := r.q.CreatePurchase(ctx, sqlc.CreatePurchaseParams{
+		UserID:       purchase.UserID,
+		CourseID:     purchase.CourseID,
+		OrderID:      purchase.OrderID,
+		PricePaidVnd: purchase.PricePaidVND,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return toDomainPurchase(row), nil
+}
+
+func (r *pgRepository) GetPurchaseByID(ctx context.Context, id uuid.UUID) (*domain.Purchase, error) {
+	row, err := r.q.GetPurchaseByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrPurchaseNotFound
+		}
+		return nil, err
+	}
+	return toDomainPurchase(row), nil
+}
+
+func (r *pgRepository) GetActivePurchase(ctx context.Context, userID, courseID uuid.UUID) (*domain.Purchase, error) {
+	row, err := r.q.GetActivePurchase(ctx, sqlc.GetActivePurchaseParams{
+		UserID:   userID,
+		CourseID: courseID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return toDomainPurchase(row), nil
+}
+
+func (r *pgRepository) ListPurchasesByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*domain.Purchase, int64, error) {
+	total, err := r.q.CountPurchasesByUserID(ctx, userID)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	rows, err := r.q.ListPurchasesByUserID(ctx, sqlc.ListPurchasesByUserIDParams{
+		UserID: userID,
+		Limit:  int32(limit),
+		Offset: int32(offset),
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+
+	items := make([]*domain.Purchase, len(rows))
+	for i, row := range rows {
+		items[i] = toDomainPurchase(row)
+	}
+	return items, total, nil
+}
+
+func (r *pgRepository) ListActivePurchasesByUserAndCourseIDs(ctx context.Context, userID uuid.UUID, courseIDs []uuid.UUID) ([]*domain.Purchase, error) {
+	rows, err := r.q.ListActivePurchasesByUserAndCourseIDs(ctx, sqlc.ListActivePurchasesByUserAndCourseIDsParams{
+		UserID:  userID,
+		Column2: courseIDs,
+	})
+	if err != nil {
+		return nil, err
+	}
+	items := make([]*domain.Purchase, len(rows))
+	for i, row := range rows {
+		items[i] = toDomainPurchase(row)
+	}
+	return items, nil
+}
+
+func (r *pgRepository) RevokePurchase(ctx context.Context, id uuid.UUID, reason string) (*domain.Purchase, error) {
+	row, err := r.q.RevokePurchase(ctx, sqlc.RevokePurchaseParams{
+		ID:           id,
+		RevokeReason: &reason,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrPurchaseNotFound
+		}
+		return nil, err
+	}
+	return toDomainPurchase(row), nil
+}
+
+// ---------------------------------------------------------------- Creator Ledger
+
+func (r *pgRepository) CreateLedgerEntry(ctx context.Context, entry *domain.CreatorLedgerEntry) (*domain.CreatorLedgerEntry, error) {
+	row, err := r.q.CreateLedgerEntry(ctx, sqlc.CreateLedgerEntryParams{
+		CreatorID:      entry.CreatorID,
+		Kind:           entry.Kind,
+		AmountVnd:      entry.AmountVND,
+		GrossAmountVnd: entry.GrossAmountVND,
+		FeeAmountVnd:   entry.FeeAmountVND,
+		PurchaseID:     entry.PurchaseID,
+		PayoutID:       entry.PayoutID,
+		Note:           entry.Note,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return toDomainLedgerEntry(row), nil
+}
+
+func (r *pgRepository) ListLedgerEntriesByCreatorID(ctx context.Context, creatorID uuid.UUID, limit, offset int) ([]*domain.CreatorLedgerEntry, error) {
+	rows, err := r.q.ListLedgerEntriesByCreatorID(ctx, sqlc.ListLedgerEntriesByCreatorIDParams{
+		CreatorID: creatorID,
+		Limit:     int32(limit),
+		Offset:    int32(offset),
+	})
+	if err != nil {
+		return nil, err
+	}
+	items := make([]*domain.CreatorLedgerEntry, len(rows))
+	for i, row := range rows {
+		items[i] = toDomainLedgerEntry(row)
+	}
+	return items, nil
+}
+
+func (r *pgRepository) GetCreatorBalance(ctx context.Context, creatorID uuid.UUID) (int64, error) {
+	return r.q.GetCreatorBalance(ctx, creatorID)
+}
+
+func toDomainListing(row sqlc.StudioListing) *domain.Listing {
+	return &domain.Listing{
+		CourseID:        row.CourseID,
+		CreatorID:       row.CreatorID,
+		PricingModel:    row.PricingModel,
+		PriceVND:        row.PriceVnd,
+		RevenueShareBPS: int(row.RevenueShareBps),
+		Status:          row.Status,
+		PublishedAt:     row.PublishedAt,
+		UpdatedAt:       row.UpdatedAt,
+	}
+}
+
+func toDomainPurchase(row sqlc.StudioPurchase) *domain.Purchase {
+	return &domain.Purchase{
+		ID:           row.ID,
+		UserID:       row.UserID,
+		CourseID:     row.CourseID,
+		OrderID:      row.OrderID,
+		PricePaidVND: row.PricePaidVnd,
+		GrantedAt:    row.GrantedAt,
+		RevokedAt:    row.RevokedAt,
+		RevokeReason: row.RevokeReason,
+		CreatedAt:    row.CreatedAt,
+		UpdatedAt:    row.UpdatedAt,
+	}
+}
+
+func toDomainLedgerEntry(row sqlc.StudioCreatorLedger) *domain.CreatorLedgerEntry {
+	return &domain.CreatorLedgerEntry{
+		ID:             row.ID,
+		CreatorID:      row.CreatorID,
+		Kind:           row.Kind,
+		AmountVND:      row.AmountVnd,
+		GrossAmountVND: row.GrossAmountVnd,
+		FeeAmountVND:   row.FeeAmountVnd,
+		PurchaseID:     row.PurchaseID,
+		PayoutID:       row.PayoutID,
+		Note:           row.Note,
+		CreatedAt:      row.CreatedAt,
+	}
+}
+
