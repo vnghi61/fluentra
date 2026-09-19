@@ -1004,7 +1004,7 @@ func startGrading(ctx context.Context, d gradingDeps) error {
 		Attempts:    learningRef,
 		Completer:   learningRef,
 		DailyLimit:  d.cfg.Speech.DailyRecordingsLimit,
-		ASRModel:    d.cfg.Speech.ASRModel,
+		ASRModel:    effectiveASRModel(d.cfg.Speech.ASRBaseURL, d.cfg.Speech.ASRModel),
 	})
 
 	learningModule, err := startLearning(
@@ -1067,6 +1067,21 @@ func skillGraders(
 		graders[kind] = speakingModule.Grader()
 	}
 	return graders
+}
+
+// effectiveASRModel names the transcriber that actually ran.
+//
+// SPEECH_ASR_BASE_URL unset falls back to MockTranscriber, which returns one
+// fixed sentence for every recording. Recording the configured model name
+// against that transcript claimed a learner's speech had been through
+// whisper-large-v3 when nothing had listened to it at all — and the feedback
+// screen then presented a score computed against "the quick brown fox" as an
+// assessment. The row now says which it was, and the screen reads it.
+func effectiveASRModel(baseURL, configured string) string {
+	if baseURL == "" || baseURL == mockName {
+		return mockName
+	}
+	return configured
 }
 
 func newWorkerTranscriber(cfg workerConfig) media.Transcriber {

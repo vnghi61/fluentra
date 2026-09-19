@@ -358,8 +358,10 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("create job client: %w", err)
 	}
 
+	// See speechASRModelName: which transcriber runs decides what the feedback
+	// row may claim about itself.
 	var mediaTranscriber media.Transcriber
-	if cfg.Speech.ASRBaseURL != "" && cfg.Speech.ASRBaseURL != "mock" {
+	if cfg.Speech.ASRBaseURL != "" && cfg.Speech.ASRBaseURL != asrMockName {
 		mediaTranscriber = media.NewHTTPTranscriber(media.HTTPTranscriberConfig{
 			BaseURL: cfg.Speech.ASRBaseURL,
 			Model:   cfg.Speech.ASRModel,
@@ -417,7 +419,7 @@ func run(ctx context.Context) error {
 		WorkerNudger:      workerNudger,
 		WritingDailyLimit: cfg.AI.WritingDailyLimit,
 		SpeechDailyLimit:  cfg.Speech.DailyRecordingsLimit,
-		SpeechASRModel:    cfg.Speech.ASRModel,
+		SpeechASRModel:    speechASRModelName(cfg.Speech.ASRBaseURL, cfg.Speech.ASRModel),
 		SpeechTTSVoice:    cfg.Speech.TTSVoice,
 		ExamDailyLimit:    cfg.Exam.DailySittingsLimit,
 		Transcriber:       mediaTranscriber,
@@ -725,6 +727,24 @@ func newAPIMailSender(cfg applicationConfig, pool *pgxpool.Pool) mailer.Sender {
 		From:     cfg.Mail.From,
 		DevMode:  cfg.SMTP.DevMode,
 	}, renderer, suppressions, recorder)
+}
+
+// asrMockName is the base URL value that selects the mock transcriber, and the
+// model name recorded when it runs.
+const asrMockName = "mock"
+
+// speechASRModelName names the transcriber that actually ran.
+//
+// With SPEECH_ASR_BASE_URL unset the mock returns one fixed sentence for every
+// recording. Writing the configured model name against that transcript claimed
+// the learner's speech had been through whisper-large-v3 when nothing had
+// listened to it, and the feedback screen presented the resulting score as an
+// assessment.
+func speechASRModelName(baseURL, configured string) string {
+	if baseURL == "" || baseURL == asrMockName {
+		return asrMockName
+	}
+	return configured
 }
 
 func initAIClient(ctx context.Context, cfg applicationConfig, pool *pgxpool.Pool) ai.Client {

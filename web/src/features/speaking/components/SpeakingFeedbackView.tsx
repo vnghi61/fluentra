@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import {
   Activity,
+  ArrowRight,
   Award,
   ChevronDown,
   ChevronUp,
@@ -21,6 +22,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { speakText } from "@/lib/speech";
 import { cn } from "@/lib/utils";
 import type { SpeakingFeedback } from "../types";
 import { computeWordDiff, type DiffToken } from "../utils/diff";
@@ -100,6 +102,18 @@ export const SpeakingFeedbackView: React.FC<SpeakingFeedbackViewProps> = ({
     (feedback.read_aloud_accuracy !== null &&
       feedback.read_aloud_accuracy !== undefined) ||
     Boolean(referenceText);
+
+  /**
+   * Says a word the learner missed or replaced.
+   *
+   * Synthesis, not a recording: no seeded content carries audio for individual
+   * words, and a button that is absent teaches nothing. It is deliberately the
+   * *expected* word — hearing what you actually said is what the recording
+   * above is for.
+   */
+  const speakWord = (word: string) => {
+    speakText(word, { lang: "en-US" });
+  };
 
   const diffTokens: DiffToken[] = useMemo(() => {
     if (!isReadAloud || !referenceText) return [];
@@ -216,6 +230,28 @@ export const SpeakingFeedbackView: React.FC<SpeakingFeedbackViewProps> = ({
             )}
           </div>
 
+          {/*
+            Nothing listened to this recording.
+
+            With SPEECH_ASR_BASE_URL unset the server falls back to a mock
+            transcriber that returns one fixed sentence whatever was said, so the
+            word alignment and the score below were computed against text the
+            learner never spoke. Presenting that as an assessment is the
+            "passing against nothing" failure this project keeps finding; the
+            screen says it instead.
+          */}
+          {feedback.asr_model === "mock" && (
+            <div
+              role="status"
+              className="rounded-xl border border-warning/40 bg-warning/10 p-4 text-sm text-text"
+            >
+              <p className="font-semibold">
+                {t("speaking.mockAsrTitle")}
+              </p>
+              <p className="mt-1 text-text-muted">{t("speaking.mockAsrBody")}</p>
+            </div>
+          )}
+
           {/* Block 1: Transcript & Alignment Diff */}
           <div className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -238,6 +274,14 @@ export const SpeakingFeedbackView: React.FC<SpeakingFeedbackViewProps> = ({
                     <span className="h-2 w-2 rounded-full bg-amber-500" />
                     <span>{t("speaking.legendExtra", "Extra")}</span>
                   </span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-full bg-primary" />
+                    <span>{t("speaking.legendSwapped")}</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-text-muted">
+                    <Volume2 className="h-3 w-3" aria-hidden="true" />
+                    <span>{t("speaking.legendTapToHear")}</span>
+                  </span>
                 </div>
               )}
             </div>
@@ -253,49 +297,66 @@ export const SpeakingFeedbackView: React.FC<SpeakingFeedbackViewProps> = ({
                         </span>
                       );
                     }
+                    // Tap to hear it. A tooltip is not an explanation on a
+                    // phone, and the colour alone says nothing to a learner who
+                    // cannot tell rose from amber.
                     if (token.type === "omission") {
                       return (
-                        <span
+                        <button
                           key={idx}
-                          title={t("speaking.missedWordTooltip", "Missed word")}
-                          className="line-through text-rose-500 bg-rose-500/10 px-1 py-0.5 rounded font-medium"
+                          type="button"
+                          onClick={() => speakWord(token.text)}
+                          aria-label={t("speaking.missedWordAria", {
+                            word: token.text,
+                          })}
+                          className="inline-flex min-h-11 items-center gap-1 rounded bg-rose-500/10 px-1.5 py-0.5 font-medium text-rose-500 underline decoration-dotted underline-offset-4"
                         >
-                          {token.text}
-                        </span>
+                          <span className="line-through">{token.text}</span>
+                          <Volume2 className="h-3 w-3 shrink-0" aria-hidden="true" />
+                        </button>
                       );
                     }
+                    // Nothing to play: an extra word has no correct version.
                     if (token.type === "addition") {
                       return (
                         <span
                           key={idx}
-                          title={t("speaking.addedWordTooltip", "Extra word")}
-                          className="text-amber-500 bg-amber-500/10 px-1 py-0.5 rounded font-medium underline decoration-amber-500/50"
+                          aria-label={t("speaking.addedWordAria", {
+                            word: token.text,
+                          })}
+                          className="rounded bg-amber-500/10 px-1 py-0.5 font-medium text-amber-500 underline decoration-amber-500/50"
                         >
                           {token.text}
                         </span>
                       );
                     }
+                    // Two words side by side said nothing about which was
+                    // which. An arrow reads as "you said this instead", and the
+                    // expected word is the one worth hearing.
                     if (token.type === "substitution") {
                       return (
-                        <span
+                        <button
                           key={idx}
-                          title={t(
-                            "speaking.substitutionTooltip",
-                            "Expected '{{expected}}', heard '{{received}}'",
-                            {
-                              expected: token.expected,
-                              received: token.received,
-                            },
-                          )}
-                          className="inline-flex items-center gap-1 bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded text-xs"
+                          type="button"
+                          onClick={() => speakWord(token.expected ?? "")}
+                          aria-label={t("speaking.substitutionAria", {
+                            expected: token.expected,
+                            received: token.received,
+                          })}
+                          className="inline-flex min-h-11 items-center gap-1 rounded border border-primary/20 bg-primary/10 px-1.5 py-0.5 text-xs"
                         >
-                          <span className="line-through text-text-muted">
+                          <span className="font-semibold text-primary">
                             {token.expected}
                           </span>
-                          <span className="text-primary font-semibold">
+                          <ArrowRight
+                            className="h-3 w-3 shrink-0 text-text-muted"
+                            aria-hidden="true"
+                          />
+                          <span className="text-text-muted line-through">
                             {token.received}
                           </span>
-                        </span>
+                          <Volume2 className="h-3 w-3 shrink-0 text-primary" aria-hidden="true" />
+                        </button>
                       );
                     }
                     return null;

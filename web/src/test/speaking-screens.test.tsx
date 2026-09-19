@@ -10,7 +10,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { I18nextProvider } from "react-i18next";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import i18n, { initI18n } from "@/i18n";
 import { MySpeakingPage } from "@/routes/MySpeakingPage";
@@ -275,6 +275,71 @@ describe("Speaking Screens & Components (§3.6)", () => {
       // Clicking again expands it back
       await user.click(criteriaToggle);
       expect(screen.getByText(/Band 7.0/i)).toBeInTheDocument();
+    });
+
+    it("lets the learner tap a word they got wrong and hear it said correctly", async () => {
+      const speak = vi.fn();
+      class FakeUtterance {
+        text: string;
+        lang = "";
+        rate = 1;
+        onend: (() => void) | null = null;
+        onerror: (() => void) | null = null;
+        constructor(text: string) {
+          this.text = text;
+        }
+      }
+      vi.stubGlobal("speechSynthesis", { speak, cancel: vi.fn() });
+      vi.stubGlobal("SpeechSynthesisUtterance", FakeUtterance);
+
+      try {
+        const user = userEvent.setup();
+        render(
+          <I18nextProvider i18n={i18n}>
+            <SpeakingFeedbackView
+              feedback={{
+                ...mockReadAloudFeedback,
+                // "quick" dropped, "lazy" heard as "crazy".
+                transcript: "The brown fox jumps over the crazy dog",
+              }}
+              taskType="read_aloud"
+              referenceText="The quick brown fox jumps over the lazy dog"
+            />
+          </I18nextProvider>,
+        );
+
+        // The word that was skipped: tapping it says the word the learner
+        // should have said, which a tooltip on a phone never could.
+        const missed = screen.getByRole("button", { name: /quick/i });
+        await user.click(missed);
+        expect(speak).toHaveBeenCalledTimes(1);
+        expect((speak.mock.calls[0]![0] as FakeUtterance).text).toBe("quick");
+
+        // The word that was replaced plays the expected one, not what was heard.
+        const swapped = screen.getByRole("button", { name: /lazy/i });
+        await user.click(swapped);
+        expect((speak.mock.calls[1]![0] as FakeUtterance).text).toBe("lazy");
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    });
+
+    it("says plainly when nothing transcribed the recording", () => {
+      render(
+        <I18nextProvider i18n={i18n}>
+          <SpeakingFeedbackView
+            feedback={{ ...mockReadAloudFeedback, asr_model: "mock" }}
+            taskType="read_aloud"
+            referenceText="The quick brown fox jumps over the lazy dog"
+          />
+        </I18nextProvider>,
+      );
+
+      // A score computed against a fixed sample sentence is not an assessment,
+      // and the screen has to be the thing that says so.
+      expect(
+        screen.getByText(/not a real transcription/i),
+      ).toBeInTheDocument();
     });
 
     it("displays 90-day privacy purged notice when recording has been purged", () => {
