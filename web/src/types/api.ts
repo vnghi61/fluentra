@@ -2788,6 +2788,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/studio/earnings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get creator earnings, balance, and recent ledger entries. */
+        get: operations["studioGetEarnings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/studio/payouts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Request a payout of creator earnings. */
+        post: operations["studioRequestPayout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/billing/payouts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List creator payout requests. */
+        get: operations["paymentListPayouts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/billing/payouts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get payout details including creator bank details. */
+        get: operations["paymentGetPayout"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/billing/payouts/{id}/fulfill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record manual bank transfer fulfillment for a payout. */
+        post: operations["paymentFulfillPayout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/moderation/courses": {
         parameters: {
             query?: never;
@@ -6023,6 +6108,117 @@ export interface components {
             success: boolean;
             /** @example Refund requested successfully */
             message: string;
+        };
+        CreatorLedgerEntry: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @example sale
+             * @enum {string}
+             */
+            kind: "sale" | "refund" | "payout" | "adjustment" | "platform_share";
+            /**
+             * Format: int64
+             * @example 34300
+             */
+            amount_vnd: number;
+            /**
+             * Format: int64
+             * @example 49000
+             */
+            gross_amount_vnd: number;
+            /**
+             * Format: int64
+             * @example 14700
+             */
+            fee_amount_vnd: number;
+            /** @example 70% creator share */
+            note: string;
+            /** Format: date-time */
+            created_at: string;
+        };
+        CreatorEarningsSummary: {
+            /**
+             * Format: int64
+             * @example 3500000
+             */
+            available_balance_vnd: number;
+            /**
+             * Format: int64
+             * @example 5000000
+             */
+            lifetime_earnings_vnd: number;
+            /**
+             * Format: int64
+             * @example 0
+             */
+            pending_payout_vnd: number;
+            /**
+             * Format: int64
+             * @example 1500000
+             */
+            total_paid_out_vnd: number;
+            /**
+             * Format: int64
+             * @example 500000
+             */
+            payout_threshold_vnd: number;
+            /** @example true */
+            can_request_payout: boolean;
+            /** @example true */
+            payout_account_configured: boolean;
+            /** @example VCB */
+            payout_bank_code?: string | null;
+            /** @example NGUYEN VAN A */
+            payout_account_holder?: string | null;
+            /** @example ******8888 */
+            payout_masked_account?: string | null;
+            recent_ledger: components["schemas"]["CreatorLedgerEntry"][];
+        };
+        RequestPayoutRequest: {
+            /**
+             * Format: int64
+             * @example 1000000
+             */
+            amount_vnd?: number | null;
+        };
+        PayoutResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            creator_id: string;
+            /**
+             * Format: int64
+             * @example 1000000
+             */
+            amount_vnd: number;
+            /**
+             * @example pending
+             * @enum {string}
+             */
+            status: "pending" | "sent" | "failed";
+            /** @example VCB-TRF-123456 */
+            bank_reference?: string | null;
+            /** Format: date-time */
+            sent_at?: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** @example VCB */
+            bank_code?: string | null;
+            /** @example 1017588888 */
+            account_number?: string | null;
+            /** @example NGUYEN VAN A */
+            account_holder_name?: string | null;
+        };
+        AdminPayoutList: {
+            items: components["schemas"]["PayoutResponse"][];
+            total: number;
+        };
+        FulfillPayoutRequest: {
+            /** @example VCB-TRF-123456 */
+            bank_reference: string;
+            /** @example Transferred from corporate Vietcombank */
+            note?: string | null;
         };
         BillingOrder: {
             /** Format: uuid */
@@ -12841,6 +13037,142 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RefundPurchaseResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    studioGetEarnings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Creator earnings summary. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatorEarningsSummary"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    studioRequestPayout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RequestPayoutRequest"];
+            };
+        };
+        responses: {
+            /** @description Payout request created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    paymentListPayouts: {
+        parameters: {
+            query?: {
+                status?: "pending" | "sent" | "failed";
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of payouts. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminPayoutList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    paymentGetPayout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Payout details. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    paymentFulfillPayout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FulfillPayoutRequest"];
+            };
+        };
+        responses: {
+            /** @description Payout fulfilled. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutResponse"];
                 };
             };
             400: components["responses"]["BadRequest"];

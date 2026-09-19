@@ -25,12 +25,12 @@ func newMockRepository() *mockRepository {
 	}
 }
 
-func (m *mockRepository) CreateOrder(ctx context.Context, order *domain.Order) (*domain.Order, error) {
+func (m *mockRepository) CreateOrder(_ context.Context, order *domain.Order) (*domain.Order, error) {
 	m.orders[order.ID] = order
 	return order, nil
 }
 
-func (m *mockRepository) GetOrderByID(ctx context.Context, id uuid.UUID) (*domain.Order, error) {
+func (m *mockRepository) GetOrderByID(_ context.Context, id uuid.UUID) (*domain.Order, error) {
 	o, ok := m.orders[id]
 	if !ok {
 		return nil, domain.ErrOrderNotFound
@@ -38,7 +38,7 @@ func (m *mockRepository) GetOrderByID(ctx context.Context, id uuid.UUID) (*domai
 	return o, nil
 }
 
-func (m *mockRepository) GetOrderByReference(ctx context.Context, ref string) (*domain.Order, error) {
+func (m *mockRepository) GetOrderByReference(_ context.Context, ref string) (*domain.Order, error) {
 	for _, o := range m.orders {
 		if o.Reference == ref {
 			return o, nil
@@ -47,7 +47,12 @@ func (m *mockRepository) GetOrderByReference(ctx context.Context, ref string) (*
 	return nil, domain.ErrOrderNotFound
 }
 
-func (m *mockRepository) UpdateOrderStatus(ctx context.Context, id uuid.UUID, status domain.OrderStatus, paidAt *time.Time) (*domain.Order, error) {
+func (m *mockRepository) UpdateOrderStatus(
+	_ context.Context,
+	id uuid.UUID,
+	status domain.OrderStatus,
+	paidAt *time.Time,
+) (*domain.Order, error) {
 	o, ok := m.orders[id]
 	if !ok {
 		return nil, domain.ErrOrderNotFound
@@ -58,7 +63,7 @@ func (m *mockRepository) UpdateOrderStatus(ctx context.Context, id uuid.UUID, st
 	return o, nil
 }
 
-func (m *mockRepository) ListExpiredPendingOrders(ctx context.Context, limit int32) ([]*domain.Order, error) {
+func (m *mockRepository) ListExpiredPendingOrders(_ context.Context, _ int32) ([]*domain.Order, error) {
 	var list []*domain.Order
 	now := time.Now().UTC()
 	for _, o := range m.orders {
@@ -69,11 +74,13 @@ func (m *mockRepository) ListExpiredPendingOrders(ctx context.Context, limit int
 	return list, nil
 }
 
-func (m *mockRepository) InsertPaymentWebhook(ctx context.Context, provider, providerEventID string, payload []byte, valid bool, errStr *string) error {
+func (m *mockRepository) InsertPaymentWebhook(_ context.Context, _, _ string, _ []byte, _ bool, _ *string) error {
 	return nil
 }
 
-func (m *mockRepository) InsertSepayTransaction(ctx context.Context, tx *domain.SepayTransaction) (*domain.SepayTransaction, error) {
+func (m *mockRepository) InsertSepayTransaction(
+	_ context.Context, tx *domain.SepayTransaction,
+) (*domain.SepayTransaction, error) {
 	if tx.ID == uuid.Nil {
 		tx.ID = uuid.New()
 	}
@@ -81,11 +88,19 @@ func (m *mockRepository) InsertSepayTransaction(ctx context.Context, tx *domain.
 	return tx, nil
 }
 
-func (m *mockRepository) GetSepayTransactionBySepayID(ctx context.Context, sepayID int64) (*domain.SepayTransaction, error) {
+func (m *mockRepository) GetSepayTransactionBySepayID(
+	_ context.Context, sepayID int64,
+) (*domain.SepayTransaction, error) {
 	return m.transactions[sepayID], nil
 }
 
-func (m *mockRepository) UpdateSepayTransactionMatch(ctx context.Context, id uuid.UUID, orderID *uuid.UUID, matchedAt *time.Time, unmatchedReason *string) (*domain.SepayTransaction, error) {
+func (m *mockRepository) UpdateSepayTransactionMatch(
+	_ context.Context,
+	id uuid.UUID,
+	orderID *uuid.UUID,
+	matchedAt *time.Time,
+	unmatchedReason *string,
+) (*domain.SepayTransaction, error) {
 	for _, tx := range m.transactions {
 		if tx.ID == id {
 			tx.OrderID = orderID
@@ -97,7 +112,9 @@ func (m *mockRepository) UpdateSepayTransactionMatch(ctx context.Context, id uui
 	return nil, fmt.Errorf("transaction not found")
 }
 
-func (m *mockRepository) ListUnmatchedTransactions(ctx context.Context, limit, offset int32) ([]domain.UnmatchedTransaction, int64, error) {
+func (m *mockRepository) ListUnmatchedTransactions(
+	_ context.Context, _, _ int32,
+) ([]domain.UnmatchedTransaction, int64, error) {
 	var items []domain.UnmatchedTransaction
 	for _, tx := range m.transactions {
 		if tx.MatchedAt == nil {
@@ -118,7 +135,7 @@ func (m *mockRepository) ListUnmatchedTransactions(ctx context.Context, limit, o
 	return items, int64(len(items)), nil
 }
 
-func (m *mockRepository) GetLastSeenSepayID(ctx context.Context) (int64, error) {
+func (m *mockRepository) GetLastSeenSepayID(_ context.Context) (int64, error) {
 	var maxID int64
 	for id := range m.transactions {
 		if id > maxID {
@@ -126,6 +143,51 @@ func (m *mockRepository) GetLastSeenSepayID(ctx context.Context) (int64, error) 
 		}
 	}
 	return maxID, nil
+}
+
+func (m *mockRepository) CreatePayout(_ context.Context, p *domain.Payout) (*domain.Payout, error) {
+	if p.ID == uuid.Nil {
+		p.ID = uuid.New()
+	}
+	p.Status = domain.PayoutStatusPending
+	p.CreatedAt = time.Now().UTC()
+	p.UpdatedAt = p.CreatedAt
+	return p, nil
+}
+
+func (m *mockRepository) GetPayoutByID(_ context.Context, id uuid.UUID) (*domain.Payout, error) {
+	return &domain.Payout{ID: id, CreatorID: uuid.New(), AmountVND: 500000, Status: domain.PayoutStatusPending}, nil
+}
+
+func (m *mockRepository) UpdatePayoutStatus(
+	_ context.Context,
+	id uuid.UUID,
+	status domain.PayoutStatus,
+	bankRef *string,
+	actorID uuid.UUID,
+	sentAt *time.Time,
+) (*domain.Payout, error) {
+	return &domain.Payout{
+		ID:            id,
+		CreatorID:     uuid.New(),
+		AmountVND:     500000,
+		Status:        status,
+		BankReference: bankRef,
+		ActorID:       actorID,
+		SentAt:        sentAt,
+	}, nil
+}
+
+func (m *mockRepository) ListPayouts(_ context.Context, _ *string, _, _ int32) ([]domain.Payout, int64, error) {
+	return nil, 0, nil
+}
+
+func (m *mockRepository) ListPayoutsByCreatorID(_ context.Context, _ uuid.UUID, _, _ int32) ([]domain.Payout, error) {
+	return nil, nil
+}
+
+func (m *mockRepository) GetPendingPayoutTotalByCreatorID(_ context.Context, _ uuid.UUID) (int64, error) {
+	return 0, nil
 }
 
 func setupTestService() (service.Service, *mockRepository) {

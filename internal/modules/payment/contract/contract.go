@@ -52,3 +52,41 @@ type EventPaymentSucceeded struct {
 	SubjectID   uuid.UUID `json:"subject_id"`
 	AmountVND   int64     `json:"amount_vnd"`
 }
+
+// Payout represents a manual bank transfer payout to a creator.
+type Payout struct {
+	ID            uuid.UUID  `json:"id"`
+	CreatorID     uuid.UUID  `json:"creator_id"`
+	AmountVND     int64      `json:"amount_vnd"`
+	Status        string     `json:"status"` // "pending", "sent", "failed"
+	BankReference *string    `json:"bank_reference"`
+	ActorID       uuid.UUID  `json:"actor_id"`
+	SentAt        *time.Time `json:"sent_at"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
+}
+
+// CreatePayoutInput contains parameters to create a payout request.
+type CreatePayoutInput struct {
+	CreatorID uuid.UUID
+	AmountVND int64
+	ActorID   uuid.UUID
+}
+
+// PayoutManager defines operations for creator payouts.
+type PayoutManager interface {
+	CreatePayout(ctx context.Context, in CreatePayoutInput) (*Payout, error)
+	GetPayout(ctx context.Context, id uuid.UUID) (*Payout, error)
+	ListPayouts(ctx context.Context, status *string, limit, offset int) ([]Payout, int64, error)
+	ListCreatorPayouts(ctx context.Context, creatorID uuid.UUID, limit, offset int) ([]Payout, error)
+	GetPendingPayoutTotal(ctx context.Context, creatorID uuid.UUID) (int64, error)
+	FulfillPayout(ctx context.Context, id uuid.UUID, bankReference string, actorID uuid.UUID) (*Payout, error)
+}
+
+// EventPayoutSent is published when a creator payout is fulfilled.
+type EventPayoutSent struct {
+	PayoutID      uuid.UUID `json:"payout_id"`
+	CreatorID     uuid.UUID `json:"creator_id"`
+	AmountVND     int64     `json:"amount_vnd"`
+	BankReference string    `json:"bank_reference"`
+}

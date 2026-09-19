@@ -20,7 +20,7 @@ func TestGenerateReference(t *testing.T) {
 		t.Fatalf("expected reference length 13 (FLU + 10), got %d (%s)", len(ref), ref)
 	}
 	for _, ch := range ref[3:] {
-		if !((ch >= 'A' && ch <= 'Z') || (ch >= '2' && ch <= '7')) {
+		if (ch < 'A' || ch > 'Z') && (ch < '2' || ch > '7') {
 			t.Errorf("expected standard base32 char, got %c in %s", ch, ref)
 		}
 	}

@@ -148,4 +148,3 @@ func IsCourseNotPurchased(err error) bool {
 	var e *apperr.Error
 	return errors.As(err, &e) && e.Code == "COURSE_NOT_PURCHASED"
 }
-

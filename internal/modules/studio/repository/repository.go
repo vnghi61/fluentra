@@ -1,3 +1,4 @@
+// Package repository implements database operations for the studio module using PostgreSQL and sqlc.
 package repository
 
 import (
@@ -41,20 +42,32 @@ type Repository interface {
 	GetListingByCourseID(ctx context.Context, courseID uuid.UUID) (*domain.Listing, error)
 	ListListingsByCourseIDs(ctx context.Context, courseIDs []uuid.UUID) ([]*domain.Listing, error)
 	UpdateListingStatus(ctx context.Context, courseID uuid.UUID, status string) (*domain.Listing, error)
-	UpdateListingPrice(ctx context.Context, courseID uuid.UUID, pricingModel string, priceVND int64) (*domain.Listing, error)
+	UpdateListingPrice(
+		ctx context.Context, courseID uuid.UUID, pricingModel string, priceVND int64,
+	) (*domain.Listing, error)
 
 	// Purchases
 	CreatePurchase(ctx context.Context, purchase *domain.Purchase) (*domain.Purchase, error)
 	GetPurchaseByID(ctx context.Context, id uuid.UUID) (*domain.Purchase, error)
 	GetActivePurchase(ctx context.Context, userID, courseID uuid.UUID) (*domain.Purchase, error)
-	ListPurchasesByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*domain.Purchase, int64, error)
-	ListActivePurchasesByUserAndCourseIDs(ctx context.Context, userID uuid.UUID, courseIDs []uuid.UUID) ([]*domain.Purchase, error)
+	ListPurchasesByUserID(
+		ctx context.Context, userID uuid.UUID, limit, offset int,
+	) ([]*domain.Purchase, int64, error)
+	ListActivePurchasesByUserAndCourseIDs(
+		ctx context.Context, userID uuid.UUID, courseIDs []uuid.UUID,
+	) ([]*domain.Purchase, error)
 	RevokePurchase(ctx context.Context, id uuid.UUID, reason string) (*domain.Purchase, error)
 
 	// Creator Ledger
-	CreateLedgerEntry(ctx context.Context, entry *domain.CreatorLedgerEntry) (*domain.CreatorLedgerEntry, error)
-	ListLedgerEntriesByCreatorID(ctx context.Context, creatorID uuid.UUID, limit, offset int) ([]*domain.CreatorLedgerEntry, error)
+	CreateLedgerEntry(
+		ctx context.Context, entry *domain.CreatorLedgerEntry,
+	) (*domain.CreatorLedgerEntry, error)
+	ListLedgerEntriesByCreatorID(
+		ctx context.Context, creatorID uuid.UUID, limit, offset int,
+	) ([]*domain.CreatorLedgerEntry, error)
 	GetCreatorBalance(ctx context.Context, creatorID uuid.UUID) (int64, error)
+	GetCreatorLifetimeEarnings(ctx context.Context, creatorID uuid.UUID) (int64, error)
+	GetCreatorTotalPaidOut(ctx context.Context, creatorID uuid.UUID) (int64, error)
 }
 
 type pgRepository struct {
@@ -458,7 +471,9 @@ func (r *pgRepository) UpdateListingStatus(ctx context.Context, courseID uuid.UU
 	return toDomainListing(row), nil
 }
 
-func (r *pgRepository) UpdateListingPrice(ctx context.Context, courseID uuid.UUID, pricingModel string, priceVND int64) (*domain.Listing, error) {
+func (r *pgRepository) UpdateListingPrice(
+	ctx context.Context, courseID uuid.UUID, pricingModel string, priceVND int64,
+) (*domain.Listing, error) {
 	row, err := r.q.UpdateListingPrice(ctx, sqlc.UpdateListingPriceParams{
 		CourseID:     courseID,
 		PricingModel: pricingModel,
@@ -513,7 +528,9 @@ func (r *pgRepository) GetActivePurchase(ctx context.Context, userID, courseID u
 	return toDomainPurchase(row), nil
 }
 
-func (r *pgRepository) ListPurchasesByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*domain.Purchase, int64, error) {
+func (r *pgRepository) ListPurchasesByUserID(
+	ctx context.Context, userID uuid.UUID, limit, offset int,
+) ([]*domain.Purchase, int64, error) {
 	total, err := r.q.CountPurchasesByUserID(ctx, userID)
 	if err != nil {
 		return nil, 0, err
@@ -535,7 +552,9 @@ func (r *pgRepository) ListPurchasesByUserID(ctx context.Context, userID uuid.UU
 	return items, total, nil
 }
 
-func (r *pgRepository) ListActivePurchasesByUserAndCourseIDs(ctx context.Context, userID uuid.UUID, courseIDs []uuid.UUID) ([]*domain.Purchase, error) {
+func (r *pgRepository) ListActivePurchasesByUserAndCourseIDs(
+	ctx context.Context, userID uuid.UUID, courseIDs []uuid.UUID,
+) ([]*domain.Purchase, error) {
 	rows, err := r.q.ListActivePurchasesByUserAndCourseIDs(ctx, sqlc.ListActivePurchasesByUserAndCourseIDsParams{
 		UserID:  userID,
 		Column2: courseIDs,
@@ -566,7 +585,9 @@ func (r *pgRepository) RevokePurchase(ctx context.Context, id uuid.UUID, reason 
 
 // ---------------------------------------------------------------- Creator Ledger
 
-func (r *pgRepository) CreateLedgerEntry(ctx context.Context, entry *domain.CreatorLedgerEntry) (*domain.CreatorLedgerEntry, error) {
+func (r *pgRepository) CreateLedgerEntry(
+	ctx context.Context, entry *domain.CreatorLedgerEntry,
+) (*domain.CreatorLedgerEntry, error) {
 	row, err := r.q.CreateLedgerEntry(ctx, sqlc.CreateLedgerEntryParams{
 		CreatorID:      entry.CreatorID,
 		Kind:           entry.Kind,
@@ -583,7 +604,9 @@ func (r *pgRepository) CreateLedgerEntry(ctx context.Context, entry *domain.Crea
 	return toDomainLedgerEntry(row), nil
 }
 
-func (r *pgRepository) ListLedgerEntriesByCreatorID(ctx context.Context, creatorID uuid.UUID, limit, offset int) ([]*domain.CreatorLedgerEntry, error) {
+func (r *pgRepository) ListLedgerEntriesByCreatorID(
+	ctx context.Context, creatorID uuid.UUID, limit, offset int,
+) ([]*domain.CreatorLedgerEntry, error) {
 	rows, err := r.q.ListLedgerEntriesByCreatorID(ctx, sqlc.ListLedgerEntriesByCreatorIDParams{
 		CreatorID: creatorID,
 		Limit:     int32(limit),
@@ -601,6 +624,14 @@ func (r *pgRepository) ListLedgerEntriesByCreatorID(ctx context.Context, creator
 
 func (r *pgRepository) GetCreatorBalance(ctx context.Context, creatorID uuid.UUID) (int64, error) {
 	return r.q.GetCreatorBalance(ctx, creatorID)
+}
+
+func (r *pgRepository) GetCreatorLifetimeEarnings(ctx context.Context, creatorID uuid.UUID) (int64, error) {
+	return r.q.GetCreatorLifetimeEarnings(ctx, creatorID)
+}
+
+func (r *pgRepository) GetCreatorTotalPaidOut(ctx context.Context, creatorID uuid.UUID) (int64, error) {
+	return r.q.GetCreatorTotalPaidOut(ctx, creatorID)
 }
 
 func toDomainListing(row sqlc.StudioListing) *domain.Listing {
@@ -645,4 +676,3 @@ func toDomainLedgerEntry(row sqlc.StudioCreatorLedger) *domain.CreatorLedgerEntr
 		CreatedAt:      row.CreatedAt,
 	}
 }
-

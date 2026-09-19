@@ -57,7 +57,8 @@ const mockReadAloudFeedback: SpeakingFeedback = {
   updated_at: "2026-09-15T10:00:00Z",
 };
 
-const { audio_url: _unusedAudioUrl, ...purgedBaseFeedback } = mockReadAloudFeedback;
+const { audio_url: _unusedAudioUrl, ...purgedBaseFeedback } =
+  mockReadAloudFeedback;
 const mockPurgedFeedback: SpeakingFeedback = {
   ...purgedBaseFeedback,
   id: "fb-456",
@@ -186,7 +187,9 @@ describe("Speaking Screens & Components (§3.6)", () => {
       expect(substitution?.expected).toBe("quick");
 
       // jumps -> runs leaps (substitution or addition)
-      expect(diff.some((d) => d.type === "addition" || d.type === "substitution")).toBe(true);
+      expect(
+        diff.some((d) => d.type === "addition" || d.type === "substitution"),
+      ).toBe(true);
     });
 
     it("splits the way the Go scorer does, so the diff matches the score", () => {
@@ -211,10 +214,15 @@ describe("Speaking Screens & Components (§3.6)", () => {
     });
 
     it("detects omissions when learner skips words", () => {
-      const diff = computeWordDiff("read all these words carefully", "read these carefully");
+      const diff = computeWordDiff(
+        "read all these words carefully",
+        "read these carefully",
+      );
       const omissions = diff.filter((d) => d.type === "omission");
       expect(omissions.length).toBeGreaterThanOrEqual(1);
-      expect(omissions.some((o) => o.text === "all" || o.text === "words")).toBe(true);
+      expect(
+        omissions.some((o) => o.text === "all" || o.text === "words"),
+      ).toBe(true);
     });
   });
 
@@ -238,7 +246,10 @@ describe("Speaking Screens & Components (§3.6)", () => {
       // Audio player
       const audioElement = document.querySelector("audio");
       expect(audioElement).toBeInTheDocument();
-      expect(audioElement).toHaveAttribute("src", mockReadAloudFeedback.audio_url);
+      expect(audioElement).toHaveAttribute(
+        "src",
+        mockReadAloudFeedback.audio_url,
+      );
 
       // Transcript and alignment diff
       expect(
@@ -258,12 +269,16 @@ describe("Speaking Screens & Components (§3.6)", () => {
         screen.getByText(/Note on Pronunciation Assessment/i),
       ).toBeInTheDocument();
       expect(
-        screen.getByText(/Pronunciation, intonation, and vowel clarity are not directly measured/i),
+        screen.getByText(
+          /Pronunciation, intonation, and vowel clarity are not directly measured/i,
+        ),
       ).toBeInTheDocument();
 
       // Criteria is expanded by default
       expect(screen.getByText(/Band 7.0/i)).toBeInTheDocument();
-      expect(screen.getByText(/Clear articulation and rhythm/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Clear articulation and rhythm/i),
+      ).toBeInTheDocument();
 
       // Clicking accordion toggle collapses it
       const criteriaToggle = screen.getByRole("button", {
@@ -337,9 +352,7 @@ describe("Speaking Screens & Components (§3.6)", () => {
 
       // A score computed against a fixed sample sentence is not an assessment,
       // and the screen has to be the thing that says so.
-      expect(
-        screen.getByText(/not a real transcription/i),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/not a real transcription/i)).toBeInTheDocument();
     });
 
     it("displays 90-day privacy purged notice when recording has been purged", () => {
@@ -354,7 +367,9 @@ describe("Speaking Screens & Components (§3.6)", () => {
 
       expect(screen.getByText(/Audio purged \(90d\)/i)).toBeInTheDocument();
       expect(
-        screen.getByText(/Audio recording was removed per 90-day privacy retention policy/i),
+        screen.getByText(
+          /Audio recording was removed per 90-day privacy retention policy/i,
+        ),
       ).toBeInTheDocument();
       expect(document.querySelector("audio")).toBeNull();
     });

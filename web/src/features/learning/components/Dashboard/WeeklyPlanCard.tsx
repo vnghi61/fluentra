@@ -4,12 +4,7 @@ import { CalendarDays, CheckCircle2, Circle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useWeeklyPlan, type WeeklyPlanItem } from "../../api/placement";
 
@@ -21,7 +16,9 @@ export interface WeeklyPlanCardProps {
  * This week's plan: fixed for the week, with the minutes studied and the items
  * done read when the card loads.
  */
-export const WeeklyPlanCard: React.FC<WeeklyPlanCardProps> = ({ className }) => {
+export const WeeklyPlanCard: React.FC<WeeklyPlanCardProps> = ({
+  className,
+}) => {
   const { t, i18n } = useTranslation();
   const { data: plan } = useWeeklyPlan();
   if (!plan) return null;
@@ -100,7 +97,10 @@ export const WeeklyPlanCard: React.FC<WeeklyPlanCardProps> = ({ className }) => 
                     aria-label={t("weeklyPlan.done")}
                   />
                 ) : (
-                  <Circle className="h-5 w-5 shrink-0 text-text-muted" aria-hidden="true" />
+                  <Circle
+                    className="h-5 w-5 shrink-0 text-text-muted"
+                    aria-hidden="true"
+                  />
                 )}
                 <div className="min-w-0">
                   {item.lesson_id ? (

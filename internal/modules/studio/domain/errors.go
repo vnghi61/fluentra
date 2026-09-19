@@ -1,3 +1,4 @@
+// Package domain defines domain models and business errors for the creator studio module.
 package domain
 
 import (
@@ -5,6 +6,7 @@ import (
 )
 
 var (
+	// ErrDraftNotFound indicates that the requested course draft does not exist.
 	ErrDraftNotFound = apperr.New(
 		apperr.NotFound,
 		"DRAFT_NOT_FOUND",
@@ -114,5 +116,22 @@ var (
 		"PAYWALL_RESTRICTED",
 		"Course must be purchased before access is granted",
 	)
-)
 
+	ErrPayoutAccountRequired = apperr.New(
+		apperr.Validation,
+		"PAYOUT_ACCOUNT_REQUIRED",
+		"Payout account must be registered before requesting payouts",
+	)
+
+	ErrInsufficientBalance = apperr.New(
+		apperr.Conflict,
+		"INSUFFICIENT_BALANCE",
+		"Insufficient available balance for payout request",
+	)
+
+	ErrPayoutBelowMinimum = apperr.New(
+		apperr.Validation,
+		"PAYOUT_BELOW_MINIMUM",
+		"Requested payout amount is below the minimum threshold (500,000 VND)",
+	)
+)

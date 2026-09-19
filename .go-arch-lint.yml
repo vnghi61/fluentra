@@ -549,5 +549,5 @@ deps:
   m_studio_repository: { mayDependOn: [m_studio_domain, c_studio, g_studio] }
   m_studio_service:    { mayDependOn: [m_studio_domain, m_studio_repository, c_studio, c_learning, c_lesson, c_content, c_payment] }
   m_studio_job:        { mayDependOn: [m_studio_domain, m_studio_repository, m_studio_service, c_studio, p_job] }
-  m_studio_http:       { mayDependOn: [m_studio_domain, m_studio_service, c_studio] }
+  m_studio_http:       { mayDependOn: [m_studio_domain, m_studio_service, c_studio, c_payment] }
   m_studio:            { mayDependOn: [m_studio_domain, m_studio_repository, m_studio_service, m_studio_job, m_studio_http, c_studio, c_learning, c_lesson, c_content, p_job, c_payment] }

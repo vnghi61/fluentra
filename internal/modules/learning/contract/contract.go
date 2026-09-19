@@ -343,10 +343,9 @@ type ItemVerifier interface {
 // VerifyItemRequest specifies an item to verify through ItemVerifier.
 type VerifyItemRequest struct {
 	Kind       string
-	TaskType   string            // read_aloud / respond, for speaking_task
+	TaskType   string // read_aloud / respond, for speaking_task
 	CEFRLevel  string
 	Body       json.RawMessage
 	Existing   []json.RawMessage // for the duplicate check
 	BlindSolve bool
 }
-

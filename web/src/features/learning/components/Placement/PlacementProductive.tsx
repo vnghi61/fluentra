@@ -233,7 +233,9 @@ export const PlacementProductive: React.FC<ProductiveProps> = ({
               key={skill}
               className="rounded-xl border border-border-subtle bg-surface-base p-3"
             >
-              <dt className="text-xs text-text-muted">{t(`skills.${skill}`)}</dt>
+              <dt className="text-xs text-text-muted">
+                {t(`skills.${skill}`)}
+              </dt>
               <dd className="text-lg font-bold text-text">
                 {perSkill[skill]?.band ?? t("placement.result.notMeasured")}
               </dd>

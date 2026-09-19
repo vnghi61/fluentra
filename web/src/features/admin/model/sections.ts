@@ -22,12 +22,7 @@ import { PERMISSIONS, usePermissions } from "./permissions";
  */
 
 export type AdminSectionKey =
-  | "users"
-  | "content"
-  | "reports"
-  | "vocabulary"
-  | "flags"
-  | "ai";
+  "users" | "content" | "reports" | "vocabulary" | "flags" | "ai";
 
 export interface AdminSection {
   key: AdminSectionKey;

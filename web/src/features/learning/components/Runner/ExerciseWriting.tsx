@@ -339,7 +339,8 @@ export const ExerciseWriting: React.FC<ExerciseWritingProps> = ({
                 {t("runner.explanationLabel", "Giải thích")}
               </div>
               <p className="text-sm text-text leading-relaxed bg-surface-muted/60 rounded-xl p-4 border border-border/60 whitespace-pre-line">
-                {Boolean(i18n?.language?.startsWith("vi")) && explanation.text_vi
+                {Boolean(i18n?.language?.startsWith("vi")) &&
+                explanation.text_vi
                   ? explanation.text_vi
                   : explanation.text}
               </p>

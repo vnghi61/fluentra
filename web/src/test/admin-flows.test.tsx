@@ -67,13 +67,15 @@ const sampleFlag = {
   updated_at: "2026-08-01T10:00:00Z",
 };
 
-
 /**
  * AdminPage reads which section to show from the path, so it needs a router.
  * Both routes are mounted because the page serves both: /admin picks the first
  * section the permissions allow, /admin/$section names one.
  */
-async function renderAdminPage(initialPath = "/admin", ui?: React.ReactElement) {
+async function renderAdminPage(
+  initialPath = "/admin",
+  ui?: React.ReactElement,
+) {
   const rootRoute = createRootRoute();
   const page = () => ui ?? <AdminPage />;
   const adminIndexRoute = createRoute({

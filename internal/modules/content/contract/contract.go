@@ -121,4 +121,3 @@ type TTSCache interface {
 type TaxonomyResolver interface {
 	ResolveTaxonomyID(ctx context.Context, namespace, code string) (*uuid.UUID, error)
 }
-

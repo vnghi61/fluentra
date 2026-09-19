@@ -1,3 +1,4 @@
+// Package contract defines the public types, events, and interfaces exported by the studio module.
 package contract
 
 import (
@@ -116,3 +117,8 @@ type Purchase struct {
 	RevokeReason *string    `json:"revoke_reason,omitempty"`
 }
 
+// PayoutAccountReader provides read access to a creator's payout account details.
+// BR-STUDIO-09: Used exclusively by payment fulfillment detail view. Never exposed in list endpoints.
+type PayoutAccountReader interface {
+	GetPayoutAccount(ctx context.Context, creatorID uuid.UUID) (*PayoutAccount, error)
+}

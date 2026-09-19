@@ -27,6 +27,16 @@ type Repository interface {
 	UpdateSepayTransactionMatch(ctx context.Context, id uuid.UUID, orderID *uuid.UUID, matchedAt *time.Time, unmatchedReason *string) (*domain.SepayTransaction, error)
 	ListUnmatchedTransactions(ctx context.Context, limit, offset int32) ([]domain.UnmatchedTransaction, int64, error)
 	GetLastSeenSepayID(ctx context.Context) (int64, error)
+
+	CreatePayout(ctx context.Context, p *domain.Payout) (*domain.Payout, error)
+	GetPayoutByID(ctx context.Context, id uuid.UUID) (*domain.Payout, error)
+	UpdatePayoutStatus(
+		ctx context.Context, id uuid.UUID, status domain.PayoutStatus,
+		bankRef *string, actorID uuid.UUID, sentAt *time.Time,
+	) (*domain.Payout, error)
+	ListPayouts(ctx context.Context, status *string, limit, offset int32) ([]domain.Payout, int64, error)
+	ListPayoutsByCreatorID(ctx context.Context, creatorID uuid.UUID, limit, offset int32) ([]domain.Payout, error)
+	GetPendingPayoutTotalByCreatorID(ctx context.Context, creatorID uuid.UUID) (int64, error)
 }
 
 type pgRepository struct {
@@ -196,6 +206,134 @@ func (r *pgRepository) ListUnmatchedTransactions(ctx context.Context, limit, off
 
 func (r *pgRepository) GetLastSeenSepayID(ctx context.Context) (int64, error) {
 	return r.q.GetLastSeenSepayID(ctx)
+}
+
+func (r *pgRepository) CreatePayout(ctx context.Context, p *domain.Payout) (*domain.Payout, error) {
+	row, err := r.q.CreatePayout(ctx, sqlc.CreatePayoutParams{
+		CreatorID: p.CreatorID,
+		AmountVnd: p.AmountVND,
+		ActorID:   p.ActorID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return mapPayoutRow(&row), nil
+}
+
+func (r *pgRepository) GetPayoutByID(ctx context.Context, id uuid.UUID) (*domain.Payout, error) {
+	row, err := r.q.GetPayoutByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrPayoutNotFound
+		}
+		return nil, err
+	}
+	return mapPayoutRow(&row), nil
+}
+
+func (r *pgRepository) UpdatePayoutStatus(
+	ctx context.Context,
+	id uuid.UUID,
+	status domain.PayoutStatus,
+	bankRef *string,
+	actorID uuid.UUID,
+	sentAt *time.Time,
+) (*domain.Payout, error) {
+	row, err := r.q.UpdatePayoutStatus(ctx, sqlc.UpdatePayoutStatusParams{
+		ID:            id,
+		Status:        string(status),
+		BankReference: bankRef,
+		ActorID:       actorID,
+		SentAt:        sentAt,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrPayoutNotFound
+		}
+		return nil, err
+	}
+	return mapPayoutRow(&row), nil
+}
+
+func (r *pgRepository) ListPayouts(
+	ctx context.Context,
+	status *string,
+	limit, offset int32,
+) ([]domain.Payout, int64, error) {
+	if status != nil && *status != "" {
+		rows, err := r.q.ListPayoutsByStatus(ctx, sqlc.ListPayoutsByStatusParams{
+			Status: *status,
+			Limit:  limit,
+			Offset: offset,
+		})
+		if err != nil {
+			return nil, 0, err
+		}
+		total, err := r.q.CountPayoutsByStatus(ctx, *status)
+		if err != nil {
+			return nil, 0, err
+		}
+		items := make([]domain.Payout, len(rows))
+		for i, row := range rows {
+			items[i] = *mapPayoutRow(&row)
+		}
+		return items, total, nil
+	}
+
+	rows, err := r.q.ListPayouts(ctx, sqlc.ListPayoutsParams{
+		Limit:  limit,
+		Offset: offset,
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+	total, err := r.q.CountPayouts(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+	items := make([]domain.Payout, len(rows))
+	for i, row := range rows {
+		items[i] = *mapPayoutRow(&row)
+	}
+	return items, total, nil
+}
+
+func (r *pgRepository) ListPayoutsByCreatorID(
+	ctx context.Context,
+	creatorID uuid.UUID,
+	limit, offset int32,
+) ([]domain.Payout, error) {
+	rows, err := r.q.ListPayoutsByCreatorID(ctx, sqlc.ListPayoutsByCreatorIDParams{
+		CreatorID: creatorID,
+		Limit:     limit,
+		Offset:    offset,
+	})
+	if err != nil {
+		return nil, err
+	}
+	items := make([]domain.Payout, len(rows))
+	for i, row := range rows {
+		items[i] = *mapPayoutRow(&row)
+	}
+	return items, nil
+}
+
+func (r *pgRepository) GetPendingPayoutTotalByCreatorID(ctx context.Context, creatorID uuid.UUID) (int64, error) {
+	return r.q.GetPendingPayoutTotalByCreatorID(ctx, creatorID)
+}
+
+func mapPayoutRow(r *sqlc.BillingPayout) *domain.Payout {
+	return &domain.Payout{
+		ID:            r.ID,
+		CreatorID:     r.CreatorID,
+		AmountVND:     r.AmountVnd,
+		Status:        domain.PayoutStatus(r.Status),
+		BankReference: r.BankReference,
+		ActorID:       r.ActorID,
+		SentAt:        r.SentAt,
+		CreatedAt:     r.CreatedAt,
+		UpdatedAt:     r.UpdatedAt,
+	}
 }
 
 func mapOrderRow(r *sqlc.BillingOrder, qrURL, bankCode, accountNum, holderName string) *domain.Order {

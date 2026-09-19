@@ -318,6 +318,19 @@ func (q *Queries) GetCreatorBalance(ctx context.Context, creatorID uuid.UUID) (i
 	return balance_vnd, err
 }
 
+const getCreatorLifetimeEarnings = `-- name: GetCreatorLifetimeEarnings :one
+SELECT COALESCE(SUM(amount_vnd), 0)::bigint AS lifetime_earnings_vnd
+FROM studio.creator_ledger
+WHERE creator_id = $1 AND kind = 'sale'
+`
+
+func (q *Queries) GetCreatorLifetimeEarnings(ctx context.Context, creatorID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, getCreatorLifetimeEarnings, creatorID)
+	var lifetime_earnings_vnd int64
+	err := row.Scan(&lifetime_earnings_vnd)
+	return lifetime_earnings_vnd, err
+}
+
 const getCreatorProfile = `-- name: GetCreatorProfile :one
 SELECT user_id, bio, headline, payout_eligible, created_at, updated_at
 FROM studio.creator_profiles
@@ -336,6 +349,19 @@ func (q *Queries) GetCreatorProfile(ctx context.Context, userID uuid.UUID) (Stud
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getCreatorTotalPaidOut = `-- name: GetCreatorTotalPaidOut :one
+SELECT COALESCE(SUM(ABS(amount_vnd)), 0)::bigint AS total_paid_out_vnd
+FROM studio.creator_ledger
+WHERE creator_id = $1 AND kind = 'payout'
+`
+
+func (q *Queries) GetCreatorTotalPaidOut(ctx context.Context, creatorID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, getCreatorTotalPaidOut, creatorID)
+	var total_paid_out_vnd int64
+	err := row.Scan(&total_paid_out_vnd)
+	return total_paid_out_vnd, err
 }
 
 const getLatestSubmissionByDraftID = `-- name: GetLatestSubmissionByDraftID :one

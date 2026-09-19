@@ -79,9 +79,46 @@ func (m *mockService) ListUnmatchedTransactions(ctx context.Context, limit, offs
 	}, nil
 }
 
+func (m *mockService) CreatePayout(_ context.Context, in contract.CreatePayoutInput) (*domain.Payout, error) {
+	return &domain.Payout{
+		ID:        uuid.New(),
+		CreatorID: in.CreatorID,
+		AmountVND: in.AmountVND,
+		Status:    domain.PayoutStatusPending,
+	}, nil
+}
+
+func (m *mockService) GetPayout(_ context.Context, id uuid.UUID) (*domain.Payout, error) {
+	return &domain.Payout{ID: id, CreatorID: uuid.New(), AmountVND: 500000, Status: domain.PayoutStatusPending}, nil
+}
+
+func (m *mockService) ListPayouts(_ context.Context, _ *string, _, _ int) ([]domain.Payout, int64, error) {
+	return nil, 0, nil
+}
+
+func (m *mockService) ListCreatorPayouts(_ context.Context, _ uuid.UUID, _, _ int) ([]domain.Payout, error) {
+	return nil, nil
+}
+
+func (m *mockService) GetPendingPayoutTotal(_ context.Context, _ uuid.UUID) (int64, error) {
+	return 0, nil
+}
+
+func (m *mockService) FulfillPayout(
+	_ context.Context, id uuid.UUID, bankReference string, _ uuid.UUID,
+) (*domain.Payout, error) {
+	return &domain.Payout{
+		ID:            id,
+		CreatorID:     uuid.New(),
+		AmountVND:     500000,
+		Status:        domain.PayoutStatusSent,
+		BankReference: &bankReference,
+	}, nil
+}
+
 type mockGuard struct{}
 
-func (g *mockGuard) Require(ctx context.Context, perm string) error {
+func (g *mockGuard) Require(_ context.Context, _ string) error {
 	return nil
 }
 

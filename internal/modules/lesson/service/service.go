@@ -158,8 +158,8 @@ type Service struct {
 	events     EventWriter
 	caches     LessonCaches
 	clock      clock.Clock
-	newID     func() uuid.UUID
-	env       string
+	newID      func() uuid.UUID
+	env        string
 
 	accessReader  studiocontract.AccessReader
 	listingReader studiocontract.ListingReader
@@ -181,17 +181,17 @@ func New(deps Deps) *Service {
 	}
 
 	return &Service{
-		pool:       deps.Pool,
-		repo:       deps.Repo,
-		content:    deps.Content,
-		taxonomies: deps.Taxonomies,
-		unlocker:   deps.Unlocker,
-		completed:  deps.Completed,
-		events:     deps.Events,
-		caches:     deps.Caches,
-		clock:      clk,
-		newID:      idGen,
-		env:        env,
+		pool:          deps.Pool,
+		repo:          deps.Repo,
+		content:       deps.Content,
+		taxonomies:    deps.Taxonomies,
+		unlocker:      deps.Unlocker,
+		completed:     deps.Completed,
+		events:        deps.Events,
+		caches:        deps.Caches,
+		clock:         clk,
+		newID:         idGen,
+		env:           env,
 		accessReader:  deps.AccessReader,
 		listingReader: deps.ListingReader,
 	}

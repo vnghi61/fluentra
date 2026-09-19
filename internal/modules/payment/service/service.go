@@ -42,6 +42,13 @@ type Service interface {
 	SweepExpiredOrders(ctx context.Context) (int, error)
 	Reconcile(ctx context.Context) error
 	ListUnmatchedTransactions(ctx context.Context, limit, offset int32) (*domain.UnmatchedTransactionsList, error)
+
+	CreatePayout(ctx context.Context, in contract.CreatePayoutInput) (*domain.Payout, error)
+	GetPayout(ctx context.Context, id uuid.UUID) (*domain.Payout, error)
+	ListPayouts(ctx context.Context, status *string, limit, offset int) ([]domain.Payout, int64, error)
+	ListCreatorPayouts(ctx context.Context, creatorID uuid.UUID, limit, offset int) ([]domain.Payout, error)
+	GetPendingPayoutTotal(ctx context.Context, creatorID uuid.UUID) (int64, error)
+	FulfillPayout(ctx context.Context, id uuid.UUID, bankReference string, actorID uuid.UUID) (*domain.Payout, error)
 }
 
 type paymentService struct {
@@ -304,6 +311,7 @@ type SePayAPIResponse struct {
 	Transactions []SePayTransaction `json:"transactions"`
 }
 
+// SePayTransaction represents a transaction record in the SePay API list response.
 type SePayTransaction struct {
 	ID                 int64   `json:"id"`
 	AmountIn           float64 `json:"amount_in"`
@@ -404,4 +412,96 @@ func (s *paymentService) ListUnmatchedTransactions(ctx context.Context, limit, o
 		Items: items,
 		Total: total,
 	}, nil
+}
+
+func (s *paymentService) CreatePayout(ctx context.Context, in contract.CreatePayoutInput) (*domain.Payout, error) {
+	if in.AmountVND <= 0 {
+		return nil, domain.ErrInvalidAmount
+	}
+	p := &domain.Payout{
+		CreatorID: in.CreatorID,
+		AmountVND: in.AmountVND,
+		ActorID:   in.ActorID,
+	}
+	return s.repo.CreatePayout(ctx, p)
+}
+
+func (s *paymentService) GetPayout(ctx context.Context, id uuid.UUID) (*domain.Payout, error) {
+	return s.repo.GetPayoutByID(ctx, id)
+}
+
+func (s *paymentService) ListPayouts(
+	ctx context.Context,
+	status *string,
+	limit, offset int,
+) ([]domain.Payout, int64, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	return s.repo.ListPayouts(ctx, status, int32(limit), int32(offset))
+}
+
+func (s *paymentService) ListCreatorPayouts(
+	ctx context.Context,
+	creatorID uuid.UUID,
+	limit, offset int,
+) ([]domain.Payout, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	return s.repo.ListPayoutsByCreatorID(ctx, creatorID, int32(limit), int32(offset))
+}
+
+func (s *paymentService) GetPendingPayoutTotal(ctx context.Context, creatorID uuid.UUID) (int64, error) {
+	return s.repo.GetPendingPayoutTotalByCreatorID(ctx, creatorID)
+}
+
+func (s *paymentService) FulfillPayout(
+	ctx context.Context,
+	id uuid.UUID,
+	bankReference string,
+	actorID uuid.UUID,
+) (*domain.Payout, error) {
+	payout, err := s.repo.GetPayoutByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if payout.Status != domain.PayoutStatusPending {
+		return nil, domain.ErrPayoutAlreadyProcessed
+	}
+	now := time.Now().UTC()
+	updated, err := s.repo.UpdatePayoutStatus(ctx, id, domain.PayoutStatusSent, &bankReference, actorID, &now)
+	if err != nil {
+		return nil, err
+	}
+
+	if s.bus != nil {
+		payload, err := json.Marshal(contract.EventPayoutSent{
+			PayoutID:      updated.ID,
+			CreatorID:     updated.CreatorID,
+			AmountVND:     updated.AmountVND,
+			BankReference: bankReference,
+		})
+		if err == nil {
+			_ = s.bus.Publish(ctx, eventbus.Message{
+				ID:      uuid.New(),
+				Topic:   "payment.payout_sent",
+				Payload: payload,
+			})
+		}
+	}
+
+	return updated, nil
 }

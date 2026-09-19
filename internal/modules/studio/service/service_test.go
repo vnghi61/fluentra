@@ -13,6 +13,7 @@ import (
 	contentcontract "github.com/fluentra/fluentra/internal/modules/content/contract"
 	learningcontract "github.com/fluentra/fluentra/internal/modules/learning/contract"
 	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
+	paymentcontract "github.com/fluentra/fluentra/internal/modules/payment/contract"
 	"github.com/fluentra/fluentra/internal/modules/studio/domain"
 	"github.com/fluentra/fluentra/internal/modules/studio/repository"
 	"github.com/fluentra/fluentra/internal/modules/studio/service"
@@ -40,14 +41,16 @@ func newMockRepo() *mockRepo {
 	}
 }
 
-func (m *mockRepo) GetCreatorProfile(ctx context.Context, userID uuid.UUID) (*domain.CreatorProfile, error) {
+func (m *mockRepo) GetCreatorProfile(_ context.Context, userID uuid.UUID) (*domain.CreatorProfile, error) {
 	if p, ok := m.profiles[userID]; ok {
 		return p, nil
 	}
 	return nil, domain.ErrProfileNotFound
 }
 
-func (m *mockRepo) UpsertCreatorProfile(ctx context.Context, userID uuid.UUID, bio, headline string) (*domain.CreatorProfile, error) {
+func (m *mockRepo) UpsertCreatorProfile(
+	_ context.Context, userID uuid.UUID, bio, headline string,
+) (*domain.CreatorProfile, error) {
 	p := &domain.CreatorProfile{
 		UserID:    userID,
 		Bio:       bio,
@@ -258,6 +261,44 @@ func (m *mockRepo) ListLedgerEntriesByCreatorID(ctx context.Context, creatorID u
 	return list, nil
 }
 
+func (m *mockRepo) GetCreatorBalance(_ context.Context, creatorID uuid.UUID) (int64, error) {
+	var bal int64
+	for _, e := range m.ledger {
+		matchKind := e.Kind == domain.LedgerKindSale ||
+			e.Kind == domain.LedgerKindRefund ||
+			e.Kind == domain.LedgerKindPayout ||
+			e.Kind == domain.LedgerKindAdjustment
+		if e.CreatorID == creatorID && matchKind {
+			bal += e.AmountVND
+		}
+	}
+	return bal, nil
+}
+
+func (m *mockRepo) GetCreatorLifetimeEarnings(_ context.Context, creatorID uuid.UUID) (int64, error) {
+	var sum int64
+	for _, e := range m.ledger {
+		if e.CreatorID == creatorID && e.Kind == domain.LedgerKindSale {
+			sum += e.AmountVND
+		}
+	}
+	return sum, nil
+}
+
+func (m *mockRepo) GetCreatorTotalPaidOut(_ context.Context, creatorID uuid.UUID) (int64, error) {
+	var sum int64
+	for _, e := range m.ledger {
+		if e.CreatorID == creatorID && e.Kind == domain.LedgerKindPayout {
+			if e.AmountVND < 0 {
+				sum += -e.AmountVND
+			} else {
+				sum += e.AmountVND
+			}
+		}
+	}
+	return sum, nil
+}
+
 type mockVerifier struct {
 	verifyFunc func(ctx context.Context, req learningcontract.VerifyItemRequest) error
 }
@@ -458,5 +499,181 @@ func TestGate2Moderation_BR_STUDIO_06_SelfReviewForbidden(t *testing.T) {
 	}
 	if lessonAuthor.coursesCreated != 1 {
 		t.Errorf("expected 1 course published into lesson, got %d", lessonAuthor.coursesCreated)
+	}
+}
+
+const testPayoutPending = "pending"
+
+type mockPayoutManager struct {
+	paymentcontract.PayoutManager
+	pendingTotal int64
+	created      []paymentcontract.CreatePayoutInput
+}
+
+func (m *mockPayoutManager) GetPendingPayoutTotal(_ context.Context, _ uuid.UUID) (int64, error) {
+	return m.pendingTotal, nil
+}
+
+func (m *mockPayoutManager) CreatePayout(
+	_ context.Context, in paymentcontract.CreatePayoutInput,
+) (*paymentcontract.Payout, error) {
+	m.created = append(m.created, in)
+	return &paymentcontract.Payout{
+		ID:        uuid.New(),
+		CreatorID: in.CreatorID,
+		AmountVND: in.AmountVND,
+		Status:    testPayoutPending,
+		ActorID:   in.ActorID,
+		CreatedAt: time.Now(),
+	}, nil
+}
+
+func TestEarnings_InitialStateAndSales(t *testing.T) {
+	ctx := context.Background()
+	repo := newMockRepo()
+	svc := service.NewService(repo, nil, nil, nil)
+	payoutMgr := &mockPayoutManager{}
+	svc.SetPayoutManager(payoutMgr)
+	creatorID := uuid.New()
+
+	earnings, err := svc.GetEarnings(ctx, creatorID)
+	if err != nil {
+		t.Fatalf("get earnings error: %v", err)
+	}
+	if earnings.AvailableBalanceVND != 0 || earnings.CanRequestPayout {
+		t.Errorf("expected 0 balance and can_request_payout = false, got %+v", earnings)
+	}
+
+	_, _ = repo.CreateLedgerEntry(ctx, &domain.CreatorLedgerEntry{
+		CreatorID:      creatorID,
+		Kind:           domain.LedgerKindSale,
+		AmountVND:      1000000,
+		GrossAmountVND: 1428571,
+		FeeAmountVND:   428571,
+		Note:           "Sale 1",
+	})
+
+	earnings, err = svc.GetEarnings(ctx, creatorID)
+	if err != nil {
+		t.Fatalf("get earnings error: %v", err)
+	}
+	if earnings.AvailableBalanceVND != 1000000 || earnings.LifetimeEarningsVND != 1000000 {
+		t.Errorf("expected 1,000,000 balance and lifetime, got %+v", earnings)
+	}
+	if earnings.CanRequestPayout || earnings.PayoutAccountConfigured {
+		t.Errorf("cannot request payout without bank account configured")
+	}
+
+	_, err = svc.RequestPayout(ctx, creatorID, nil)
+	if !errors.Is(err, domain.ErrPayoutAccountRequired) {
+		t.Fatalf("expected ErrPayoutAccountRequired, got %v", err)
+	}
+}
+
+func TestEarnings_ConfigureAccountAndValidateAmounts(t *testing.T) {
+	ctx := context.Background()
+	repo := newMockRepo()
+	svc := service.NewService(repo, nil, nil, nil)
+	payoutMgr := &mockPayoutManager{}
+	svc.SetPayoutManager(payoutMgr)
+	creatorID := uuid.New()
+
+	_, _ = repo.CreateLedgerEntry(ctx, &domain.CreatorLedgerEntry{
+		CreatorID: creatorID,
+		Kind:      domain.LedgerKindSale,
+		AmountVND: 1000000,
+	})
+
+	_, err := svc.UpsertPayoutAccount(ctx, creatorID, "VCB", "1017588888", "NGUYEN VAN A", true)
+	if err != nil {
+		t.Fatalf("upsert payout account error: %v", err)
+	}
+
+	earnings, err := svc.GetEarnings(ctx, creatorID)
+	if err != nil {
+		t.Fatalf("get earnings error: %v", err)
+	}
+	if !earnings.CanRequestPayout || !earnings.PayoutAccountConfigured {
+		t.Errorf("expected can_request_payout = true after account configured")
+	}
+	if earnings.PayoutMaskedAccount == nil || *earnings.PayoutMaskedAccount != "******8888" {
+		t.Errorf("expected masked account ******8888, got %v", earnings.PayoutMaskedAccount)
+	}
+
+	smallAmt := int64(300000)
+	_, err = svc.RequestPayout(ctx, creatorID, &smallAmt)
+	if !errors.Is(err, domain.ErrPayoutBelowMinimum) {
+		t.Fatalf("expected ErrPayoutBelowMinimum, got %v", err)
+	}
+
+	largeAmt := int64(1500000)
+	_, err = svc.RequestPayout(ctx, creatorID, &largeAmt)
+	if !errors.Is(err, domain.ErrInsufficientBalance) {
+		t.Fatalf("expected ErrInsufficientBalance, got %v", err)
+	}
+}
+
+func TestEarnings_RequestPayoutAndFulfill(t *testing.T) {
+	ctx := context.Background()
+	repo := newMockRepo()
+	svc := service.NewService(repo, nil, nil, nil)
+	payoutMgr := &mockPayoutManager{}
+	svc.SetPayoutManager(payoutMgr)
+	creatorID := uuid.New()
+
+	_, _ = repo.CreateLedgerEntry(ctx, &domain.CreatorLedgerEntry{
+		CreatorID: creatorID,
+		Kind:      domain.LedgerKindSale,
+		AmountVND: 1000000,
+	})
+	_, _ = svc.UpsertPayoutAccount(ctx, creatorID, "VCB", "1017588888", "NGUYEN VAN A", true)
+
+	validAmt := int64(700000)
+	payout, err := svc.RequestPayout(ctx, creatorID, &validAmt)
+	if err != nil {
+		t.Fatalf("request payout error: %v", err)
+	}
+	if payout.AmountVND != 700000 || payout.Status != testPayoutPending {
+		t.Errorf("unexpected payout created: %+v", payout)
+	}
+	if len(payoutMgr.created) != 1 {
+		t.Fatalf("expected 1 payout created via payout manager")
+	}
+
+	payoutMgr.pendingTotal = 700000
+	earnings, err := svc.GetEarnings(ctx, creatorID)
+	if err != nil {
+		t.Fatalf("get earnings error: %v", err)
+	}
+	if earnings.AvailableBalanceVND != 300000 {
+		t.Errorf("expected 300,000 available balance, got %d", earnings.AvailableBalanceVND)
+	}
+	if earnings.CanRequestPayout {
+		t.Errorf("expected can_request_payout = false when available < threshold")
+	}
+
+	err = svc.HandlePayoutSent(ctx, paymentcontract.EventPayoutSent{
+		PayoutID:      payout.ID,
+		CreatorID:     creatorID,
+		AmountVND:     700000,
+		BankReference: "VCB-REF-123456",
+	})
+	if err != nil {
+		t.Fatalf("handle payout sent error: %v", err)
+	}
+
+	payoutMgr.pendingTotal = 0
+	earnings, err = svc.GetEarnings(ctx, creatorID)
+	if err != nil {
+		t.Fatalf("get earnings error: %v", err)
+	}
+	if earnings.AvailableBalanceVND != 300000 {
+		t.Errorf("expected 300,000 available balance after fulfillment, got %d", earnings.AvailableBalanceVND)
+	}
+	if earnings.TotalPaidOutVND != 700000 {
+		t.Errorf("expected total paid out 700,000, got %d", earnings.TotalPaidOutVND)
+	}
+	if earnings.LifetimeEarningsVND != 1000000 {
+		t.Errorf("expected lifetime earnings unchanged at 1,000,000, got %d", earnings.LifetimeEarningsVND)
 	}
 }

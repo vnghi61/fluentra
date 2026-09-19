@@ -18,8 +18,9 @@ import (
 )
 
 var (
-	_ contract.OrderCreator = (*Module)(nil)
-	_ contract.OrderReader  = (*Module)(nil)
+	_ contract.OrderCreator  = (*Module)(nil)
+	_ contract.OrderReader   = (*Module)(nil)
+	_ contract.PayoutManager = (*Module)(nil)
 )
 
 // Dependencies declares external inputs to the payment module.
@@ -54,6 +55,11 @@ func NewModule(deps Dependencies) (*Module, error) {
 		sweepWorker:     sweepWorker,
 		reconcileWorker: reconcileWorker,
 	}, nil
+}
+
+// SetPayoutAccountReader injects the payout account reader for single payout admin inspection.
+func (m *Module) SetPayoutAccountReader(reader paymenthttp.PayoutAccountReader) {
+	m.handler.SetPayoutAccountReader(reader)
 }
 
 // PublicRoutes mounts unauthenticated routes (e.g. SePay webhook).
@@ -117,6 +123,86 @@ func (m *Module) GetOrder(ctx context.Context, id uuid.UUID) (*contract.Order, e
 	return toContractOrder(o), nil
 }
 
+// PayoutManager returns the PayoutManager contract interface.
+func (m *Module) PayoutManager() contract.PayoutManager {
+	return m
+}
+
+// CreatePayout creates a new pending payout request.
+func (m *Module) CreatePayout(ctx context.Context, in contract.CreatePayoutInput) (*contract.Payout, error) {
+	p, err := m.service.CreatePayout(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return toContractPayout(p), nil
+}
+
+// GetPayout retrieves a payout by its ID.
+func (m *Module) GetPayout(ctx context.Context, id uuid.UUID) (*contract.Payout, error) {
+	p, err := m.service.GetPayout(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return toContractPayout(p), nil
+}
+
+// ListPayouts returns paginated payouts filtered optionally by status.
+func (m *Module) ListPayouts(ctx context.Context, status *string, limit, offset int) ([]contract.Payout, int64, error) {
+	items, total, err := m.service.ListPayouts(ctx, status, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	res := make([]contract.Payout, len(items))
+	for i, p := range items {
+		res[i] = *toContractPayout(&p)
+	}
+	return res, total, nil
+}
+
+// ListCreatorPayouts returns all payouts for a specific creator.
+func (m *Module) ListCreatorPayouts(
+	ctx context.Context, creatorID uuid.UUID, limit, offset int,
+) ([]contract.Payout, error) {
+	items, err := m.service.ListCreatorPayouts(ctx, creatorID, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]contract.Payout, len(items))
+	for i, p := range items {
+		res[i] = *toContractPayout(&p)
+	}
+	return res, nil
+}
+
+// GetPendingPayoutTotal returns the sum of pending payout requests for a creator.
+func (m *Module) GetPendingPayoutTotal(ctx context.Context, creatorID uuid.UUID) (int64, error) {
+	return m.service.GetPendingPayoutTotal(ctx, creatorID)
+}
+
+// FulfillPayout marks a pending payout as sent with its bank transfer reference.
+func (m *Module) FulfillPayout(
+	ctx context.Context, id uuid.UUID, bankReference string, actorID uuid.UUID,
+) (*contract.Payout, error) {
+	p, err := m.service.FulfillPayout(ctx, id, bankReference, actorID)
+	if err != nil {
+		return nil, err
+	}
+	return toContractPayout(p), nil
+}
+
+func toContractPayout(p *domain.Payout) *contract.Payout {
+	return &contract.Payout{
+		ID:            p.ID,
+		CreatorID:     p.CreatorID,
+		AmountVND:     p.AmountVND,
+		Status:        string(p.Status),
+		BankReference: p.BankReference,
+		ActorID:       p.ActorID,
+		SentAt:        p.SentAt,
+		CreatedAt:     p.CreatedAt,
+		UpdatedAt:     p.UpdatedAt,
+	}
+}
 
 func toContractOrder(o *domain.Order) *contract.Order {
 	return &contract.Order{

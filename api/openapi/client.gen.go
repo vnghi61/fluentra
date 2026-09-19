@@ -141,6 +141,30 @@ type ClientInterface interface {
 	// Corresponds with GET /admin/audit-logs (the `AuditSearchLogs` operationId).
 	AuditSearchLogs(ctx context.Context, params *AuditSearchLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PaymentListPayouts List creator payout requests.
+	//
+	// Corresponds with GET /admin/billing/payouts (the `PaymentListPayouts` operationId).
+	PaymentListPayouts(ctx context.Context, params *PaymentListPayoutsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PaymentGetPayout Get payout details including creator bank details.
+	//
+	// Corresponds with GET /admin/billing/payouts/{id} (the `PaymentGetPayout` operationId).
+	PaymentGetPayout(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PaymentFulfillPayoutWithBody Record manual bank transfer fulfillment for a payout.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /admin/billing/payouts/{id}/fulfill (the `PaymentFulfillPayout` operationId).
+	PaymentFulfillPayoutWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PaymentFulfillPayout Record manual bank transfer fulfillment for a payout.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /admin/billing/payouts/{id}/fulfill (the `PaymentFulfillPayout` operationId).
+	PaymentFulfillPayout(ctx context.Context, id openapi_types.UUID, body PaymentFulfillPayoutJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AdminListContent List and filter content items for authoring.
 	//
 	// Returns a paginated list of content items filtered by authoring status or kind.
@@ -1445,6 +1469,25 @@ type ClientInterface interface {
 	// Corresponds with POST /me/streak/freeze (the `UseStreakFreeze` operationId).
 	UseStreakFreeze(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// StudioGetEarnings Get creator earnings, balance, and recent ledger entries.
+	//
+	// Corresponds with GET /me/studio/earnings (the `StudioGetEarnings` operationId).
+	StudioGetEarnings(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StudioRequestPayoutWithBody Request a payout of creator earnings.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /me/studio/payouts (the `StudioRequestPayout` operationId).
+	StudioRequestPayoutWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StudioRequestPayout Request a payout of creator earnings.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /me/studio/payouts (the `StudioRequestPayout` operationId).
+	StudioRequestPayout(ctx context.Context, body StudioRequestPayoutJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListVocabUploads Your uploads, newest first.
 	//
 	// Each row carries the verified, rejected and still-pending counts, so a learner can see how far the checking has got without opening it.
@@ -1961,6 +2004,70 @@ func (c *Client) AdminGetAIUsage(ctx context.Context, reqEditors ...RequestEdito
 // Corresponds with GET /admin/audit-logs (the `AuditSearchLogs` operationId).
 func (c *Client) AuditSearchLogs(ctx context.Context, params *AuditSearchLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAuditSearchLogsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PaymentListPayouts List creator payout requests.
+//
+// Corresponds with GET /admin/billing/payouts (the `PaymentListPayouts` operationId).
+func (c *Client) PaymentListPayouts(ctx context.Context, params *PaymentListPayoutsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPaymentListPayoutsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PaymentGetPayout Get payout details including creator bank details.
+//
+// Corresponds with GET /admin/billing/payouts/{id} (the `PaymentGetPayout` operationId).
+func (c *Client) PaymentGetPayout(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPaymentGetPayoutRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PaymentFulfillPayoutWithBody Record manual bank transfer fulfillment for a payout.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /admin/billing/payouts/{id}/fulfill (the `PaymentFulfillPayout` operationId).
+func (c *Client) PaymentFulfillPayoutWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPaymentFulfillPayoutRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PaymentFulfillPayout Record manual bank transfer fulfillment for a payout.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /admin/billing/payouts/{id}/fulfill (the `PaymentFulfillPayout` operationId).
+func (c *Client) PaymentFulfillPayout(ctx context.Context, id openapi_types.UUID, body PaymentFulfillPayoutJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPaymentFulfillPayoutRequest(c.Server, id, body)
 	if err != nil {
 		return nil, err
 	}
@@ -4735,6 +4842,55 @@ func (c *Client) UseStreakFreeze(ctx context.Context, reqEditors ...RequestEdito
 	return c.Client.Do(req)
 }
 
+// StudioGetEarnings Get creator earnings, balance, and recent ledger entries.
+//
+// Corresponds with GET /me/studio/earnings (the `StudioGetEarnings` operationId).
+func (c *Client) StudioGetEarnings(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStudioGetEarningsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StudioRequestPayoutWithBody Request a payout of creator earnings.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /me/studio/payouts (the `StudioRequestPayout` operationId).
+func (c *Client) StudioRequestPayoutWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStudioRequestPayoutRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StudioRequestPayout Request a payout of creator earnings.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /me/studio/payouts (the `StudioRequestPayout` operationId).
+func (c *Client) StudioRequestPayout(ctx context.Context, body StudioRequestPayoutJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStudioRequestPayoutRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // ListVocabUploads Your uploads, newest first.
 //
 // Each row carries the verified, rejected and still-pending counts, so a learner can see how far the checking has got without opening it.
@@ -5983,6 +6139,165 @@ func NewAuditSearchLogsRequest(server string, params *AuditSearchLogsParams) (*h
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewPaymentListPayoutsRequest constructs an http.Request for the PaymentListPayouts method
+func NewPaymentListPayoutsRequest(server string, params *PaymentListPayoutsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/billing/payouts")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Status != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "status", *params.Status, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "offset", *params.Offset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPaymentGetPayoutRequest constructs an http.Request for the PaymentGetPayout method
+func NewPaymentGetPayoutRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/billing/payouts/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPaymentFulfillPayoutRequest calls the generic PaymentFulfillPayout builder with application/json body
+func NewPaymentFulfillPayoutRequest(server string, id openapi_types.UUID, body PaymentFulfillPayoutJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPaymentFulfillPayoutRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewPaymentFulfillPayoutRequestWithBody constructs an http.Request for the PaymentFulfillPayout method, with any body, and a specified content type
+func NewPaymentFulfillPayoutRequestWithBody(server string, id openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/billing/payouts/%s/fulfill", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -10516,6 +10831,73 @@ func NewUseStreakFreezeRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewStudioGetEarningsRequest constructs an http.Request for the StudioGetEarnings method
+func NewStudioGetEarningsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/studio/earnings")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewStudioRequestPayoutRequest calls the generic StudioRequestPayout builder with application/json body
+func NewStudioRequestPayoutRequest(server string, body StudioRequestPayoutJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewStudioRequestPayoutRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewStudioRequestPayoutRequestWithBody constructs an http.Request for the StudioRequestPayout method, with any body, and a specified content type
+func NewStudioRequestPayoutRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/me/studio/payouts")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewListVocabUploadsRequest constructs an http.Request for the ListVocabUploads method
 func NewListVocabUploadsRequest(server string, params *ListVocabUploadsParams) (*http.Request, error) {
 	var err error
@@ -12482,6 +12864,34 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /admin/audit-logs (the `AuditSearchLogs` operationId).
 	AuditSearchLogsWithResponse(ctx context.Context, params *AuditSearchLogsParams, reqEditors ...RequestEditorFn) (*AuditSearchLogsResponse, error)
 
+	// PaymentListPayoutsWithResponse List creator payout requests.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/billing/payouts (the `PaymentListPayouts` operationId).
+	PaymentListPayoutsWithResponse(ctx context.Context, params *PaymentListPayoutsParams, reqEditors ...RequestEditorFn) (*PaymentListPayoutsResponse, error)
+
+	// PaymentGetPayoutWithResponse Get payout details including creator bank details.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/billing/payouts/{id} (the `PaymentGetPayout` operationId).
+	PaymentGetPayoutWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*PaymentGetPayoutResponse, error)
+
+	// PaymentFulfillPayoutWithBodyWithResponse Record manual bank transfer fulfillment for a payout.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/billing/payouts/{id}/fulfill (the `PaymentFulfillPayout` operationId).
+	PaymentFulfillPayoutWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PaymentFulfillPayoutResponse, error)
+
+	// PaymentFulfillPayoutWithResponse Record manual bank transfer fulfillment for a payout.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/billing/payouts/{id}/fulfill (the `PaymentFulfillPayout` operationId).
+	PaymentFulfillPayoutWithResponse(ctx context.Context, id openapi_types.UUID, body PaymentFulfillPayoutJSONRequestBody, reqEditors ...RequestEditorFn) (*PaymentFulfillPayoutResponse, error)
+
 	// AdminListContentWithResponse List and filter content items for authoring.
 	//
 	// Returns a paginated list of content items filtered by authoring status or kind.
@@ -13922,6 +14332,27 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /me/streak/freeze (the `UseStreakFreeze` operationId).
 	UseStreakFreezeWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*UseStreakFreezeResponse, error)
 
+	// StudioGetEarningsWithResponse Get creator earnings, balance, and recent ledger entries.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /me/studio/earnings (the `StudioGetEarnings` operationId).
+	StudioGetEarningsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*StudioGetEarningsResponse, error)
+
+	// StudioRequestPayoutWithBodyWithResponse Request a payout of creator earnings.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /me/studio/payouts (the `StudioRequestPayout` operationId).
+	StudioRequestPayoutWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StudioRequestPayoutResponse, error)
+
+	// StudioRequestPayoutWithResponse Request a payout of creator earnings.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /me/studio/payouts (the `StudioRequestPayout` operationId).
+	StudioRequestPayoutWithResponse(ctx context.Context, body StudioRequestPayoutJSONRequestBody, reqEditors ...RequestEditorFn) (*StudioRequestPayoutResponse, error)
+
 	// ListVocabUploadsWithResponse Your uploads, newest first.
 	//
 	// Each row carries the verified, rejected and still-pending counts, so a learner can see how far the checking has got without opening it.
@@ -14704,6 +15135,220 @@ func (r AuditSearchLogsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r AuditSearchLogsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PaymentListPayoutsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AdminPayoutList
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PaymentListPayoutsResponse) GetJSON200() *AdminPayoutList {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r PaymentListPayoutsResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r PaymentListPayoutsResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r PaymentListPayoutsResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r PaymentListPayoutsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PaymentListPayoutsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PaymentListPayoutsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PaymentListPayoutsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PaymentGetPayoutResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PayoutResponse
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PaymentGetPayoutResponse) GetJSON200() *PayoutResponse {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r PaymentGetPayoutResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r PaymentGetPayoutResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r PaymentGetPayoutResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r PaymentGetPayoutResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r PaymentGetPayoutResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PaymentGetPayoutResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PaymentGetPayoutResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PaymentGetPayoutResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PaymentFulfillPayoutResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PayoutResponse
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PaymentFulfillPayoutResponse) GetJSON200() *PayoutResponse {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r PaymentFulfillPayoutResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r PaymentFulfillPayoutResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r PaymentFulfillPayoutResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r PaymentFulfillPayoutResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r PaymentFulfillPayoutResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r PaymentFulfillPayoutResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r PaymentFulfillPayoutResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PaymentFulfillPayoutResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PaymentFulfillPayoutResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PaymentFulfillPayoutResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -22533,6 +23178,137 @@ func (r UseStreakFreezeResponse) ContentType() string {
 	return ""
 }
 
+type StudioGetEarningsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *CreatorEarningsSummary
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r StudioGetEarningsResponse) GetJSON200() *CreatorEarningsSummary {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r StudioGetEarningsResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r StudioGetEarningsResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r StudioGetEarningsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StudioGetEarningsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StudioGetEarningsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StudioGetEarningsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type StudioRequestPayoutResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *PayoutResponse
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *BadRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r StudioRequestPayoutResponse) GetJSON201() *PayoutResponse {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r StudioRequestPayoutResponse) GetApplicationproblemJSON400() *BadRequest {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r StudioRequestPayoutResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r StudioRequestPayoutResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r StudioRequestPayoutResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r StudioRequestPayoutResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r StudioRequestPayoutResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StudioRequestPayoutResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StudioRequestPayoutResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StudioRequestPayoutResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // ListVocabUploadsResponse200Headers the declared response headers of an HTTP 200 response for ListVocabUploads
 type ListVocabUploadsResponse200Headers struct {
 	XRequestId *string
@@ -25613,6 +26389,58 @@ func (c *ClientWithResponses) AuditSearchLogsWithResponse(ctx context.Context, p
 	return ParseAuditSearchLogsResponse(rsp)
 }
 
+// PaymentListPayoutsWithResponse List creator payout requests.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/billing/payouts (the `PaymentListPayouts` operationId).
+func (c *ClientWithResponses) PaymentListPayoutsWithResponse(ctx context.Context, params *PaymentListPayoutsParams, reqEditors ...RequestEditorFn) (*PaymentListPayoutsResponse, error) {
+	rsp, err := c.PaymentListPayouts(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePaymentListPayoutsResponse(rsp)
+}
+
+// PaymentGetPayoutWithResponse Get payout details including creator bank details.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/billing/payouts/{id} (the `PaymentGetPayout` operationId).
+func (c *ClientWithResponses) PaymentGetPayoutWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*PaymentGetPayoutResponse, error) {
+	rsp, err := c.PaymentGetPayout(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePaymentGetPayoutResponse(rsp)
+}
+
+// PaymentFulfillPayoutWithBodyWithResponse Record manual bank transfer fulfillment for a payout.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/billing/payouts/{id}/fulfill (the `PaymentFulfillPayout` operationId).
+func (c *ClientWithResponses) PaymentFulfillPayoutWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PaymentFulfillPayoutResponse, error) {
+	rsp, err := c.PaymentFulfillPayoutWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePaymentFulfillPayoutResponse(rsp)
+}
+
+// PaymentFulfillPayoutWithResponse Record manual bank transfer fulfillment for a payout.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/billing/payouts/{id}/fulfill (the `PaymentFulfillPayout` operationId).
+func (c *ClientWithResponses) PaymentFulfillPayoutWithResponse(ctx context.Context, id openapi_types.UUID, body PaymentFulfillPayoutJSONRequestBody, reqEditors ...RequestEditorFn) (*PaymentFulfillPayoutResponse, error) {
+	rsp, err := c.PaymentFulfillPayout(ctx, id, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePaymentFulfillPayoutResponse(rsp)
+}
+
 // AdminListContentWithResponse List and filter content items for authoring.
 //
 // Returns a paginated list of content items filtered by authoring status or kind.
@@ -27929,6 +28757,45 @@ func (c *ClientWithResponses) UseStreakFreezeWithResponse(ctx context.Context, r
 	return ParseUseStreakFreezeResponse(rsp)
 }
 
+// StudioGetEarningsWithResponse Get creator earnings, balance, and recent ledger entries.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /me/studio/earnings (the `StudioGetEarnings` operationId).
+func (c *ClientWithResponses) StudioGetEarningsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*StudioGetEarningsResponse, error) {
+	rsp, err := c.StudioGetEarnings(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStudioGetEarningsResponse(rsp)
+}
+
+// StudioRequestPayoutWithBodyWithResponse Request a payout of creator earnings.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /me/studio/payouts (the `StudioRequestPayout` operationId).
+func (c *ClientWithResponses) StudioRequestPayoutWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StudioRequestPayoutResponse, error) {
+	rsp, err := c.StudioRequestPayoutWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStudioRequestPayoutResponse(rsp)
+}
+
+// StudioRequestPayoutWithResponse Request a payout of creator earnings.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /me/studio/payouts (the `StudioRequestPayout` operationId).
+func (c *ClientWithResponses) StudioRequestPayoutWithResponse(ctx context.Context, body StudioRequestPayoutJSONRequestBody, reqEditors ...RequestEditorFn) (*StudioRequestPayoutResponse, error) {
+	rsp, err := c.StudioRequestPayout(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStudioRequestPayoutResponse(rsp)
+}
+
 // ListVocabUploadsWithResponse Your uploads, newest first.
 //
 // Each row carries the verified, rejected and still-pending counts, so a learner can see how far the checking has got without opening it.
@@ -29017,6 +29884,175 @@ func ParseAuditSearchLogsResponse(rsp *http.Response) (*AuditSearchLogsResponse,
 			headers.XRequestId = &value
 		}
 		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParsePaymentListPayoutsResponse parses an HTTP response from a PaymentListPayoutsWithResponse call
+func ParsePaymentListPayoutsResponse(rsp *http.Response) (*PaymentListPayoutsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PaymentListPayoutsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AdminPayoutList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePaymentGetPayoutResponse parses an HTTP response from a PaymentGetPayoutWithResponse call
+func ParsePaymentGetPayoutResponse(rsp *http.Response) (*PaymentGetPayoutResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PaymentGetPayoutResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PayoutResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePaymentFulfillPayoutResponse parses an HTTP response from a PaymentFulfillPayoutWithResponse call
+func ParsePaymentFulfillPayoutResponse(rsp *http.Response) (*PaymentFulfillPayoutResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PaymentFulfillPayoutResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PayoutResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
 	}
 
 	return response, nil
@@ -36253,6 +37289,107 @@ func ParseUseStreakFreezeResponse(rsp *http.Response) (*UseStreakFreezeResponse,
 			headers.XRequestId = &value
 		}
 		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseStudioGetEarningsResponse parses an HTTP response from a StudioGetEarningsWithResponse call
+func ParseStudioGetEarningsResponse(rsp *http.Response) (*StudioGetEarningsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StudioGetEarningsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CreatorEarningsSummary
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseStudioRequestPayoutResponse parses an HTTP response from a StudioRequestPayoutWithResponse call
+func ParseStudioRequestPayoutResponse(rsp *http.Response) (*StudioRequestPayoutResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StudioRequestPayoutResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest PayoutResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
 	}
 
 	return response, nil

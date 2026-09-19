@@ -60,17 +60,17 @@ func New(deps Deps) *Module {
 	events := outboxWriter{Writer: outbox.NewWriter()}
 
 	svc := service.New(service.Deps{
-		Pool:       deps.Pool,
-		Repo:       repoAdapter,
-		Content:    deps.Content,
-		Taxonomies: deps.Taxonomies,
-		Unlocker:   deps.Unlocker,
-		Completed:  deps.Completed,
-		Events:     events,
-		Caches:     deps.Caches,
-		Clock:      timekeeper,
-		NewID:      func() uuid.UUID { return uuid.Must(uuid.NewV7()) },
-		Env:        deps.Env,
+		Pool:          deps.Pool,
+		Repo:          repoAdapter,
+		Content:       deps.Content,
+		Taxonomies:    deps.Taxonomies,
+		Unlocker:      deps.Unlocker,
+		Completed:     deps.Completed,
+		Events:        events,
+		Caches:        deps.Caches,
+		Clock:         timekeeper,
+		NewID:         func() uuid.UUID { return uuid.Must(uuid.NewV7()) },
+		Env:           deps.Env,
 		AccessReader:  deps.AccessReader,
 		ListingReader: deps.ListingReader,
 	})

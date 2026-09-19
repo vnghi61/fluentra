@@ -3,10 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
-import {
-  placementApi,
-  type PlacementSession,
-} from "../../api/placement";
+import { placementApi, type PlacementSession } from "../../api/placement";
 import { WeeklyPlanCard } from "../Dashboard/WeeklyPlanCard";
 import { PlacementProductive } from "./PlacementProductive";
 import { StartingPathCard } from "./StartingPathCard";
@@ -73,7 +70,9 @@ export const PlacementResultView: React.FC<PlacementResultViewProps> = ({
                 key={skill}
                 className="rounded-xl border border-border-subtle bg-surface-card p-3"
               >
-                <dt className="text-xs text-text-muted">{t(`skills.${skill}`)}</dt>
+                <dt className="text-xs text-text-muted">
+                  {t(`skills.${skill}`)}
+                </dt>
                 <dd className="text-lg font-bold text-text">
                   {result.per_skill[skill]?.band ??
                     t("placement.result.notMeasured")}

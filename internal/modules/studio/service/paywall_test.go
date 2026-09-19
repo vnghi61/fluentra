@@ -23,6 +23,9 @@ func (m *mockOrderCreator) CreateOrder(ctx context.Context, in paymentcontract.C
 	if m.err != nil {
 		return nil, m.err
 	}
+	if m.order != nil {
+		return m.order, nil
+	}
 	return &paymentcontract.Order{
 		ID:          uuid.New(),
 		UserID:      in.UserID,
@@ -38,7 +41,9 @@ type mockProgressReader struct {
 	progress []learningcontract.Progress
 }
 
-func (m *mockProgressReader) ProgressOf(ctx context.Context, userID uuid.UUID, scope learningcontract.ProgressScope) ([]learningcontract.Progress, error) {
+func (m *mockProgressReader) ProgressOf(
+	_ context.Context, _ uuid.UUID, _ learningcontract.ProgressScope,
+) ([]learningcontract.Progress, error) {
 	return m.progress, nil
 }
 

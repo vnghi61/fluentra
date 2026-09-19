@@ -12,6 +12,31 @@ import (
 	"github.com/google/uuid"
 )
 
+const countPayouts = `-- name: CountPayouts :one
+SELECT COUNT(*)
+FROM billing.payouts
+`
+
+func (q *Queries) CountPayouts(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countPayouts)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countPayoutsByStatus = `-- name: CountPayoutsByStatus :one
+SELECT COUNT(*)
+FROM billing.payouts
+WHERE status = $1
+`
+
+func (q *Queries) CountPayoutsByStatus(ctx context.Context, status string) (int64, error) {
+	row := q.db.QueryRow(ctx, countPayoutsByStatus, status)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countUnmatchedTransactions = `-- name: CountUnmatchedTransactions :one
 SELECT COUNT(*)
 FROM billing.sepay_transactions
@@ -61,6 +86,38 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Billi
 		&i.SubjectID,
 		&i.ExpiresAt,
 		&i.PaidAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const createPayout = `-- name: CreatePayout :one
+
+INSERT INTO billing.payouts (
+    creator_id, amount_vnd, status, actor_id, updated_at
+) VALUES ($1, $2, 'pending', $3, now())
+RETURNING id, creator_id, amount_vnd, status, bank_reference, actor_id, sent_at, created_at, updated_at
+`
+
+type CreatePayoutParams struct {
+	CreatorID uuid.UUID
+	AmountVnd int64
+	ActorID   uuid.UUID
+}
+
+// -------------------------------------------------- billing.payouts
+func (q *Queries) CreatePayout(ctx context.Context, arg CreatePayoutParams) (BillingPayout, error) {
+	row := q.db.QueryRow(ctx, createPayout, arg.CreatorID, arg.AmountVnd, arg.ActorID)
+	var i BillingPayout
+	err := row.Scan(
+		&i.ID,
+		&i.CreatorID,
+		&i.AmountVnd,
+		&i.Status,
+		&i.BankReference,
+		&i.ActorID,
+		&i.SentAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -127,6 +184,42 @@ func (q *Queries) GetOrderByReference(ctx context.Context, reference string) (Bi
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getPayoutByID = `-- name: GetPayoutByID :one
+SELECT id, creator_id, amount_vnd, status, bank_reference, actor_id, sent_at, created_at, updated_at
+FROM billing.payouts
+WHERE id = $1
+`
+
+func (q *Queries) GetPayoutByID(ctx context.Context, id uuid.UUID) (BillingPayout, error) {
+	row := q.db.QueryRow(ctx, getPayoutByID, id)
+	var i BillingPayout
+	err := row.Scan(
+		&i.ID,
+		&i.CreatorID,
+		&i.AmountVnd,
+		&i.Status,
+		&i.BankReference,
+		&i.ActorID,
+		&i.SentAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getPendingPayoutTotalByCreatorID = `-- name: GetPendingPayoutTotalByCreatorID :one
+SELECT COALESCE(SUM(amount_vnd), 0)::bigint
+FROM billing.payouts
+WHERE creator_id = $1 AND status = 'pending'
+`
+
+func (q *Queries) GetPendingPayoutTotalByCreatorID(ctx context.Context, creatorID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, getPendingPayoutTotalByCreatorID, creatorID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
 }
 
 const getSepayTransactionBySepayID = `-- name: GetSepayTransactionBySepayID :one
@@ -354,6 +447,136 @@ func (q *Queries) ListOrdersByUserID(ctx context.Context, arg ListOrdersByUserID
 	return items, nil
 }
 
+const listPayouts = `-- name: ListPayouts :many
+SELECT id, creator_id, amount_vnd, status, bank_reference, actor_id, sent_at, created_at, updated_at
+FROM billing.payouts
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2
+`
+
+type ListPayoutsParams struct {
+	Limit  int32
+	Offset int32
+}
+
+func (q *Queries) ListPayouts(ctx context.Context, arg ListPayoutsParams) ([]BillingPayout, error) {
+	rows, err := q.db.Query(ctx, listPayouts, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []BillingPayout
+	for rows.Next() {
+		var i BillingPayout
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatorID,
+			&i.AmountVnd,
+			&i.Status,
+			&i.BankReference,
+			&i.ActorID,
+			&i.SentAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPayoutsByCreatorID = `-- name: ListPayoutsByCreatorID :many
+SELECT id, creator_id, amount_vnd, status, bank_reference, actor_id, sent_at, created_at, updated_at
+FROM billing.payouts
+WHERE creator_id = $1
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListPayoutsByCreatorIDParams struct {
+	CreatorID uuid.UUID
+	Limit     int32
+	Offset    int32
+}
+
+func (q *Queries) ListPayoutsByCreatorID(ctx context.Context, arg ListPayoutsByCreatorIDParams) ([]BillingPayout, error) {
+	rows, err := q.db.Query(ctx, listPayoutsByCreatorID, arg.CreatorID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []BillingPayout
+	for rows.Next() {
+		var i BillingPayout
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatorID,
+			&i.AmountVnd,
+			&i.Status,
+			&i.BankReference,
+			&i.ActorID,
+			&i.SentAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPayoutsByStatus = `-- name: ListPayoutsByStatus :many
+SELECT id, creator_id, amount_vnd, status, bank_reference, actor_id, sent_at, created_at, updated_at
+FROM billing.payouts
+WHERE status = $1
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListPayoutsByStatusParams struct {
+	Status string
+	Limit  int32
+	Offset int32
+}
+
+func (q *Queries) ListPayoutsByStatus(ctx context.Context, arg ListPayoutsByStatusParams) ([]BillingPayout, error) {
+	rows, err := q.db.Query(ctx, listPayoutsByStatus, arg.Status, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []BillingPayout
+	for rows.Next() {
+		var i BillingPayout
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatorID,
+			&i.AmountVnd,
+			&i.Status,
+			&i.BankReference,
+			&i.ActorID,
+			&i.SentAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUnmatchedTransactions = `-- name: ListUnmatchedTransactions :many
 SELECT id, sepay_id, gateway, transaction_date, account_number, sub_account, code, content, transfer_type, transfer_amount, reference_code, accumulated, order_id, matched_at, unmatched_reason, created_at
 FROM billing.sepay_transactions
@@ -500,6 +723,48 @@ func (q *Queries) UpdatePaymentWebhookStatus(ctx context.Context, arg UpdatePaym
 		&i.ReceivedAt,
 		&i.ProcessedAt,
 		&i.Error,
+	)
+	return i, err
+}
+
+const updatePayoutStatus = `-- name: UpdatePayoutStatus :one
+UPDATE billing.payouts
+SET status = $2,
+    bank_reference = $3,
+    actor_id = $4,
+    sent_at = $5,
+    updated_at = now()
+WHERE id = $1
+RETURNING id, creator_id, amount_vnd, status, bank_reference, actor_id, sent_at, created_at, updated_at
+`
+
+type UpdatePayoutStatusParams struct {
+	ID            uuid.UUID
+	Status        string
+	BankReference *string
+	ActorID       uuid.UUID
+	SentAt        *time.Time
+}
+
+func (q *Queries) UpdatePayoutStatus(ctx context.Context, arg UpdatePayoutStatusParams) (BillingPayout, error) {
+	row := q.db.QueryRow(ctx, updatePayoutStatus,
+		arg.ID,
+		arg.Status,
+		arg.BankReference,
+		arg.ActorID,
+		arg.SentAt,
+	)
+	var i BillingPayout
+	err := row.Scan(
+		&i.ID,
+		&i.CreatorID,
+		&i.AmountVnd,
+		&i.Status,
+		&i.BankReference,
+		&i.ActorID,
+		&i.SentAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }

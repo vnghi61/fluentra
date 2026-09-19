@@ -6690,6 +6690,126 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
         '500': { $ref: '#/components/responses/InternalServerError' }
+  /me/studio/earnings:
+    get:
+      tags: [studio]
+      operationId: studioGetEarnings
+      summary: Get creator earnings, balance, and recent ledger entries.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Creator earnings summary.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatorEarningsSummary'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /me/studio/payouts:
+    post:
+      tags: [studio]
+      operationId: studioRequestPayout
+      summary: Request a payout of creator earnings.
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestPayoutRequest'
+      responses:
+        '201':
+          description: Payout request created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayoutResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /admin/billing/payouts:
+    get:
+      tags: [payment]
+      operationId: paymentListPayouts
+      summary: List creator payout requests.
+      x-permission: admin.dashboard
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, sent, failed]
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20 }
+        - name: offset
+          in: query
+          schema: { type: integer, default: 0 }
+      responses:
+        '200':
+          description: List of payouts.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminPayoutList'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /admin/billing/payouts/{id}:
+    get:
+      tags: [payment]
+      operationId: paymentGetPayout
+      summary: Get payout details including creator bank details.
+      x-permission: admin.dashboard
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Payout details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayoutResponse'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /admin/billing/payouts/{id}/fulfill:
+    post:
+      tags: [payment]
+      operationId: paymentFulfillPayout
+      summary: Record manual bank transfer fulfillment for a payout.
+      x-permission: admin.dashboard
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FulfillPayoutRequest'
+      responses:
+        '200':
+          description: Payout fulfilled.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayoutResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
   /moderation/courses:
     get:
       tags: [moderation]
@@ -7281,6 +7401,18 @@ components:
       $ref: ./components/studio.yaml#/PurchaseOrderResponse
     RefundPurchaseResponse:
       $ref: ./components/studio.yaml#/RefundPurchaseResponse
+    CreatorLedgerEntry:
+      $ref: ./components/studio.yaml#/CreatorLedgerEntry
+    CreatorEarningsSummary:
+      $ref: ./components/studio.yaml#/CreatorEarningsSummary
+    RequestPayoutRequest:
+      $ref: ./components/studio.yaml#/RequestPayoutRequest
+    PayoutResponse:
+      $ref: ./components/studio.yaml#/PayoutResponse
+    AdminPayoutList:
+      $ref: ./components/studio.yaml#/AdminPayoutList
+    FulfillPayoutRequest:
+      $ref: ./components/studio.yaml#/FulfillPayoutRequest
     BillingOrder:
       $ref: ./components/payment.yaml#/BillingOrder
     SepayWebhookPayload:

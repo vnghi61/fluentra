@@ -228,3 +228,14 @@ SELECT COALESCE(SUM(amount_vnd), 0)::bigint AS balance_vnd
 FROM studio.creator_ledger
 WHERE creator_id = $1 AND kind IN ('sale', 'refund', 'payout', 'adjustment');
 
+-- name: GetCreatorLifetimeEarnings :one
+SELECT COALESCE(SUM(amount_vnd), 0)::bigint AS lifetime_earnings_vnd
+FROM studio.creator_ledger
+WHERE creator_id = $1 AND kind = 'sale';
+
+-- name: GetCreatorTotalPaidOut :one
+SELECT COALESCE(SUM(ABS(amount_vnd)), 0)::bigint AS total_paid_out_vnd
+FROM studio.creator_ledger
+WHERE creator_id = $1 AND kind = 'payout';
+
+

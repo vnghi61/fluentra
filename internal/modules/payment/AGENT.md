@@ -112,6 +112,9 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 | `POST` | `/api/v1/webhooks/payment/sepay` | `public` | Ingest SePay incoming bank transfer webhook |
 | `GET` | `/api/v1/me/orders/{id}` | `self` | Poll order status |
 | `GET` | `/api/v1/admin/payments/unmatched` | `admin.dashboard` | List unmatched incoming transactions for operator resolution |
+| `GET` | `/api/v1/admin/billing/payouts` | `admin.dashboard` | List creator payout requests |
+| `GET` | `/api/v1/admin/billing/payouts/{id}` | `admin.dashboard` | Get payout request detail and creator bank account |
+| `POST` | `/api/v1/admin/billing/payouts/{id}/fulfill` | `admin.dashboard` | Mark creator payout as fulfilled with bank reference |
 <!-- END GENERATED: endpoints -->
 
 ## 7. Folder map

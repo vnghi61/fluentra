@@ -29,7 +29,7 @@ const (
 	SubmissionStatusChangesRequested = "changes_requested"
 )
 
-// The eleven activity kinds a creator may author (BR-STUDIO-10).
+// AllowedActivityKinds contains the eleven activity kinds a creator may author (BR-STUDIO-10).
 // Listening comprehension is excluded in v1.
 var AllowedActivityKinds = map[string]struct{}{
 	"vocab_multiple_choice":      {},
@@ -192,3 +192,20 @@ func ValidatePrice(pricingModel string, priceVND, minVND, maxVND int64) error {
 	return ErrPriceOutOfBounds
 }
 
+// DefaultPayoutThresholdVND is the minimum balance required before a creator can request a payout.
+const DefaultPayoutThresholdVND int64 = 500000
+
+// EarningsSummary represents a creator's financial position and ledger overview.
+type EarningsSummary struct {
+	AvailableBalanceVND     int64
+	LifetimeEarningsVND     int64
+	PendingPayoutVND        int64
+	TotalPaidOutVND         int64
+	PayoutThresholdVND      int64
+	CanRequestPayout        bool
+	PayoutAccountConfigured bool
+	PayoutBankCode          *string
+	PayoutAccountHolder     *string
+	PayoutMaskedAccount     *string
+	RecentLedger            []*CreatorLedgerEntry
+}

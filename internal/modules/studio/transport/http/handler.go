@@ -1,3 +1,4 @@
+// Package http exposes creator studio and course moderation HTTP endpoints.
 package http
 
 import (
@@ -35,22 +36,38 @@ type StudioService interface {
 	GetCreatorProfile(ctx context.Context, userID uuid.UUID) (*domain.CreatorProfile, error)
 	UpsertCreatorProfile(ctx context.Context, userID uuid.UUID, bio, headline string) (*domain.CreatorProfile, error)
 	GetPayoutAccount(ctx context.Context, creatorID uuid.UUID) (*domain.PayoutAccount, error)
-	UpsertPayoutAccount(ctx context.Context, creatorID uuid.UUID, bankCode, accountNumber, accountHolderName string, isDefault bool) (*domain.PayoutAccount, error)
+	UpsertPayoutAccount(
+		ctx context.Context,
+		creatorID uuid.UUID,
+		bankCode, accountNumber, accountHolderName string,
+		isDefault bool,
+	) (*domain.PayoutAccount, error)
 
 	CreateDraft(ctx context.Context, ownerID uuid.UUID, req service.CreateDraftRequest) (*domain.CourseDraft, error)
-	UpdateDraft(ctx context.Context, ownerID, draftID uuid.UUID, req service.UpdateDraftRequest) (*domain.CourseDraft, error)
+	UpdateDraft(
+		ctx context.Context,
+		ownerID, draftID uuid.UUID,
+		req service.UpdateDraftRequest,
+	) (*domain.CourseDraft, error)
 	GetDraft(ctx context.Context, ownerID, draftID uuid.UUID) (*domain.CourseDraft, error)
 	ListDrafts(ctx context.Context, ownerID uuid.UUID, limit, offset int) ([]*domain.CourseDraft, int64, error)
 	SubmitDraft(ctx context.Context, ownerID, draftID uuid.UUID) (*domain.Submission, error)
 
 	ListModerationQueue(ctx context.Context, limit, offset int) ([]contract.ModerationQueueItem, int64, error)
 	ApproveSubmission(ctx context.Context, reviewerID, submissionID uuid.UUID) (*domain.Submission, error)
-	RejectSubmission(ctx context.Context, reviewerID, submissionID uuid.UUID, targetStatus, feedback string) (*domain.Submission, error)
+	RejectSubmission(
+		ctx context.Context,
+		reviewerID, submissionID uuid.UUID,
+		targetStatus, feedback string,
+	) (*domain.Submission, error)
 
 	ClaimCourse(ctx context.Context, userID, courseID uuid.UUID) (*domain.Purchase, error)
 	PurchaseCourse(ctx context.Context, userID, courseID uuid.UUID) (*paymentcontract.Order, error)
 	ListUserPurchases(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*domain.Purchase, int64, error)
 	RefundPurchase(ctx context.Context, userID, purchaseID uuid.UUID) error
+
+	GetEarnings(ctx context.Context, creatorID uuid.UUID) (*domain.EarningsSummary, error)
+	RequestPayout(ctx context.Context, creatorID uuid.UUID, requestedAmount *int64) (*paymentcontract.Payout, error)
 }
 
 // Handler serves HTTP endpoints for creator studio and moderation.
@@ -83,6 +100,10 @@ func (h *Handler) Routes(router chi.Router) {
 	router.Post("/courses/{id}/purchase", h.purchaseCourse)
 	router.Get("/me/purchases", h.listPurchases)
 	router.Post("/me/purchases/{id}/refund", h.refundPurchase)
+
+	// Creator Earnings & Payouts (Step 7)
+	router.Get("/me/studio/earnings", h.getEarnings)
+	router.Post("/me/studio/payouts", h.requestPayout)
 }
 
 // ModerationRoutes mounts staff moderation endpoints under the admin/authenticated router.
@@ -94,6 +115,7 @@ func (h *Handler) ModerationRoutes(router chi.Router) {
 
 // ---------------------------------------------------------------- DTOs
 
+// CreatorProfileResponse represents the creator profile response.
 type CreatorProfileResponse struct {
 	UserID         uuid.UUID `json:"user_id"`
 	Bio            string    `json:"bio"`
@@ -103,11 +125,13 @@ type CreatorProfileResponse struct {
 	UpdatedAt      time.Time `json:"updated_at"`
 }
 
+// UpsertCreatorProfileRequest contains payload for updating creator profile.
 type UpsertCreatorProfileRequest struct {
 	Bio      string `json:"bio"`
 	Headline string `json:"headline"`
 }
 
+// PayoutAccountResponse represents creator payout bank account details.
 type PayoutAccountResponse struct {
 	ID                uuid.UUID `json:"id"`
 	CreatorID         uuid.UUID `json:"creator_id"`
@@ -119,6 +143,7 @@ type PayoutAccountResponse struct {
 	UpdatedAt         time.Time `json:"updated_at"`
 }
 
+// CreatePayoutAccountRequest contains payload for configuring payout bank account.
 type CreatePayoutAccountRequest struct {
 	BankCode          string `json:"bank_code"`
 	AccountNumber     string `json:"account_number"`
@@ -126,6 +151,7 @@ type CreatePayoutAccountRequest struct {
 	IsDefault         bool   `json:"is_default"`
 }
 
+// CourseDraftResponse represents course draft details returned by API.
 type CourseDraftResponse struct {
 	ID              uuid.UUID       `json:"id"`
 	OwnerID         uuid.UUID       `json:"owner_id"`
@@ -141,11 +167,13 @@ type CourseDraftResponse struct {
 	UpdatedAt       time.Time       `json:"updated_at"`
 }
 
+// CourseDraftListResponse represents paginated course drafts.
 type CourseDraftListResponse struct {
 	Items []CourseDraftResponse `json:"items"`
 	Total int64                 `json:"total"`
 }
 
+// CourseSubmissionResponse represents review submission status and details.
 type CourseSubmissionResponse struct {
 	ID                 uuid.UUID       `json:"id"`
 	DraftID            uuid.UUID       `json:"draft_id"`
@@ -161,11 +189,13 @@ type CourseSubmissionResponse struct {
 	UpdatedAt          time.Time       `json:"updated_at"`
 }
 
+// ModerationQueueListResponse represents paginated submissions waiting in moderation.
 type ModerationQueueListResponse struct {
 	Items []contract.ModerationQueueItem `json:"items"`
 	Total int64                          `json:"total"`
 }
 
+// ReviewSubmissionRequest contains moderation review decision and feedback.
 type ReviewSubmissionRequest struct {
 	Feedback string `json:"feedback"`
 	Status   string `json:"status"`
@@ -217,7 +247,9 @@ func (h *Handler) upsertPayoutAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	account, err := h.svc.UpsertPayoutAccount(ctx, actor.UserID, req.BankCode, req.AccountNumber, req.AccountHolderName, req.IsDefault)
+	account, err := h.svc.UpsertPayoutAccount(
+		ctx, actor.UserID, req.BankCode, req.AccountNumber, req.AccountHolderName, req.IsDefault,
+	)
 	if err != nil {
 		httpx.WriteProblem(w, r, err)
 		return
@@ -638,6 +670,7 @@ func (h *Handler) refundPurchase(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// CoursePurchaseResponse represents purchase status for a learner.
 type CoursePurchaseResponse struct {
 	ID           uuid.UUID  `json:"id"`
 	UserID       uuid.UUID  `json:"user_id"`
@@ -649,6 +682,7 @@ type CoursePurchaseResponse struct {
 	RevokeReason *string    `json:"revoke_reason,omitempty"`
 }
 
+// PurchaseOrderResponse contains checkout payment instructions and VietQR data.
 type PurchaseOrderResponse struct {
 	OrderID           uuid.UUID `json:"order_id"`
 	Reference         string    `json:"reference"`
@@ -673,3 +707,124 @@ func toCoursePurchaseResponse(p *domain.Purchase) CoursePurchaseResponse {
 	}
 }
 
+// ---------------------------------------------------------------- Creator Earnings & Payouts Handlers (Step 7)
+
+// CreatorLedgerEntryResponse represents a single credit or debit entry in the creator ledger.
+type CreatorLedgerEntryResponse struct {
+	ID             uuid.UUID `json:"id"`
+	Kind           string    `json:"kind"`
+	AmountVND      int64     `json:"amount_vnd"`
+	GrossAmountVND int64     `json:"gross_amount_vnd"`
+	FeeAmountVND   int64     `json:"fee_amount_vnd"`
+	Note           string    `json:"note"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+// CreatorEarningsSummaryResponse holds creator balance, lifetime earnings, and ledger overview.
+type CreatorEarningsSummaryResponse struct {
+	AvailableBalanceVND     int64                        `json:"available_balance_vnd"`
+	LifetimeEarningsVND     int64                        `json:"lifetime_earnings_vnd"`
+	PendingPayoutVND        int64                        `json:"pending_payout_vnd"`
+	TotalPaidOutVND         int64                        `json:"total_paid_out_vnd"`
+	PayoutThresholdVND      int64                        `json:"payout_threshold_vnd"`
+	CanRequestPayout        bool                         `json:"can_request_payout"`
+	PayoutAccountConfigured bool                         `json:"payout_account_configured"`
+	PayoutBankCode          *string                      `json:"payout_bank_code"`
+	PayoutAccountHolder     *string                      `json:"payout_account_holder"`
+	PayoutMaskedAccount     *string                      `json:"payout_masked_account"`
+	RecentLedger            []CreatorLedgerEntryResponse `json:"recent_ledger"`
+}
+
+// RequestPayoutRequestBody contains the optional requested amount for creator payout.
+type RequestPayoutRequestBody struct {
+	AmountVND *int64 `json:"amount_vnd,omitempty"`
+}
+
+// PayoutResponse represents the created or fetched payout record.
+type PayoutResponse struct {
+	ID                uuid.UUID  `json:"id"`
+	CreatorID         uuid.UUID  `json:"creator_id"`
+	AmountVND         int64      `json:"amount_vnd"`
+	Status            string     `json:"status"`
+	BankReference     *string    `json:"bank_reference,omitempty"`
+	SentAt            *time.Time `json:"sent_at,omitempty"`
+	CreatedAt         time.Time  `json:"created_at"`
+	BankCode          *string    `json:"bank_code,omitempty"`
+	AccountNumber     *string    `json:"account_number,omitempty"`
+	AccountHolderName *string    `json:"account_holder_name,omitempty"`
+}
+
+func (h *Handler) getEarnings(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	actor, ok := httpx.ActorFrom(ctx)
+	if !ok || actor.UserID == uuid.Nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Unauthenticated, "UNAUTHENTICATED", "Authentication required"))
+		return
+	}
+
+	summary, err := h.svc.GetEarnings(ctx, actor.UserID)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	entries := make([]CreatorLedgerEntryResponse, len(summary.RecentLedger))
+	for i, e := range summary.RecentLedger {
+		entries[i] = CreatorLedgerEntryResponse{
+			ID:             e.ID,
+			Kind:           e.Kind,
+			AmountVND:      e.AmountVND,
+			GrossAmountVND: e.GrossAmountVND,
+			FeeAmountVND:   e.FeeAmountVND,
+			Note:           e.Note,
+			CreatedAt:      e.CreatedAt,
+		}
+	}
+
+	httpx.WriteJSON(w, r, http.StatusOK, CreatorEarningsSummaryResponse{
+		AvailableBalanceVND:     summary.AvailableBalanceVND,
+		LifetimeEarningsVND:     summary.LifetimeEarningsVND,
+		PendingPayoutVND:        summary.PendingPayoutVND,
+		TotalPaidOutVND:         summary.TotalPaidOutVND,
+		PayoutThresholdVND:      summary.PayoutThresholdVND,
+		CanRequestPayout:        summary.CanRequestPayout,
+		PayoutAccountConfigured: summary.PayoutAccountConfigured,
+		PayoutBankCode:          summary.PayoutBankCode,
+		PayoutAccountHolder:     summary.PayoutAccountHolder,
+		PayoutMaskedAccount:     summary.PayoutMaskedAccount,
+		RecentLedger:            entries,
+	})
+}
+
+func (h *Handler) requestPayout(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	actor, ok := httpx.ActorFrom(ctx)
+	if !ok || actor.UserID == uuid.Nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Unauthenticated, "UNAUTHENTICATED", "Authentication required"))
+		return
+	}
+
+	var req RequestPayoutRequestBody
+	if r.ContentLength > 0 {
+		if err := httpx.DecodeJSON(r, &req); err != nil {
+			httpx.WriteProblem(w, r, err)
+			return
+		}
+	}
+
+	payout, err := h.svc.RequestPayout(ctx, actor.UserID, req.AmountVND)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	httpx.WriteJSON(w, r, http.StatusCreated, PayoutResponse{
+		ID:            payout.ID,
+		CreatorID:     payout.CreatorID,
+		AmountVND:     payout.AmountVND,
+		Status:        payout.Status,
+		BankReference: payout.BankReference,
+		SentAt:        payout.SentAt,
+		CreatedAt:     payout.CreatedAt,
+	})
+}

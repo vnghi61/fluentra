@@ -258,11 +258,11 @@ func newIdentity(deps identityDeps) *identity {
 	})
 
 	assembled.lesson = lesson.New(lesson.Deps{
-		Pool:       deps.Pool,
-		Caches:     newLessonCaches(deps.Redis),
-		Guard:      lazyGuard{of: assembled},
-		Content:    assembled.content.Reader(),
-		Taxonomies: assembled.content.TaxonomyResolver(),
+		Pool:          deps.Pool,
+		Caches:        newLessonCaches(deps.Redis),
+		Guard:         lazyGuard{of: assembled},
+		Content:       assembled.content.Reader(),
+		Taxonomies:    assembled.content.TaxonomyResolver(),
 		Unlocker:      lazyUnlocker{of: assembled},
 		Completed:     lazyLessonProgress{of: assembled},
 		Env:           deps.Env,
@@ -395,6 +395,7 @@ func newIdentity(deps identityDeps) *identity {
 	if err != nil {
 		panic(fmt.Sprintf("assemble payment module: %v", err))
 	}
+	paymentMod.SetPayoutAccountReader(lazyPaymentAccountReader{of: assembled})
 	assembled.payment = paymentMod
 
 	studioMod, err := studio.NewModule(studio.Dependencies{
@@ -405,6 +406,7 @@ func newIdentity(deps identityDeps) *identity {
 		ContentAuthor:  assembled.content.Author(),
 		OrderCreator:   assembled.payment.OrderCreator(),
 		ProgressReader: assembled.learning.ProgressReader(),
+		PayoutManager:  assembled.payment.PayoutManager(),
 	})
 	if err != nil {
 		panic(fmt.Sprintf("assemble studio module: %v", err))
@@ -682,6 +684,22 @@ func (l lazyStudioListing) BatchHasPurchased(ctx context.Context, userID uuid.UU
 		return map[uuid.UUID]bool{}, nil
 	}
 	return l.of.studio.ListingReader().BatchHasPurchased(ctx, userID, courseIDs)
+}
+
+// lazyPaymentAccountReader adapts studio's PayoutAccountReader to payment's single payout inspect view.
+type lazyPaymentAccountReader struct{ of *identity }
+
+var _ paymenthttp.PayoutAccountReader = lazyPaymentAccountReader{}
+
+func (r lazyPaymentAccountReader) GetPayoutAccount(ctx context.Context, creatorID uuid.UUID) (string, string, string, error) {
+	if r.of.studio == nil {
+		return "", "", "", nil
+	}
+	acc, err := r.of.studio.PayoutAccountReader().GetPayoutAccount(ctx, creatorID)
+	if err != nil || acc == nil {
+		return "", "", "", err
+	}
+	return acc.BankCode, acc.AccountNumber, acc.AccountHolderName, nil
 }
 
 // lazyUnlocker adapts learning's batched UnlockChecker to lesson's consumer interface,

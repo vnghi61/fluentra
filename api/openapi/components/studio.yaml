@@ -333,3 +333,145 @@ RefundPurchaseResponse:
       type: string
       example: Refund requested successfully
 
+CreatorLedgerEntry:
+  type: object
+  required: [id, kind, amount_vnd, gross_amount_vnd, fee_amount_vnd, note, created_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+    kind:
+      type: string
+      enum: [sale, refund, payout, adjustment, platform_share]
+      example: sale
+    amount_vnd:
+      type: integer
+      format: int64
+      example: 34300
+    gross_amount_vnd:
+      type: integer
+      format: int64
+      example: 49000
+    fee_amount_vnd:
+      type: integer
+      format: int64
+      example: 14700
+    note:
+      type: string
+      example: 70% creator share
+    created_at:
+      type: string
+      format: date-time
+
+CreatorEarningsSummary:
+  type: object
+  required: [available_balance_vnd, lifetime_earnings_vnd, pending_payout_vnd, total_paid_out_vnd, payout_threshold_vnd, can_request_payout, payout_account_configured, recent_ledger]
+  properties:
+    available_balance_vnd:
+      type: integer
+      format: int64
+      example: 3500000
+    lifetime_earnings_vnd:
+      type: integer
+      format: int64
+      example: 5000000
+    pending_payout_vnd:
+      type: integer
+      format: int64
+      example: 0
+    total_paid_out_vnd:
+      type: integer
+      format: int64
+      example: 1500000
+    payout_threshold_vnd:
+      type: integer
+      format: int64
+      example: 500000
+    can_request_payout:
+      type: boolean
+      example: true
+    payout_account_configured:
+      type: boolean
+      example: true
+    payout_bank_code:
+      type: [string, 'null']
+      example: VCB
+    payout_account_holder:
+      type: [string, 'null']
+      example: NGUYEN VAN A
+    payout_masked_account:
+      type: [string, 'null']
+      example: '******8888'
+    recent_ledger:
+      type: array
+      items:
+        $ref: '#/CreatorLedgerEntry'
+
+RequestPayoutRequest:
+  type: object
+  properties:
+    amount_vnd:
+      type: [integer, 'null']
+      format: int64
+      example: 1000000
+
+PayoutResponse:
+  type: object
+  required: [id, creator_id, amount_vnd, status, created_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+    creator_id:
+      type: string
+      format: uuid
+    amount_vnd:
+      type: integer
+      format: int64
+      example: 1000000
+    status:
+      type: string
+      enum: [pending, sent, failed]
+      example: pending
+    bank_reference:
+      type: [string, 'null']
+      example: VCB-TRF-123456
+    sent_at:
+      type: [string, 'null']
+      format: date-time
+    created_at:
+      type: string
+      format: date-time
+    bank_code:
+      type: [string, 'null']
+      example: VCB
+    account_number:
+      type: [string, 'null']
+      example: '1017588888'
+    account_holder_name:
+      type: [string, 'null']
+      example: NGUYEN VAN A
+
+AdminPayoutList:
+  type: object
+  required: [items, total]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/PayoutResponse'
+    total:
+      type: integer
+
+FulfillPayoutRequest:
+  type: object
+  required: [bank_reference]
+  properties:
+    bank_reference:
+      type: string
+      example: VCB-TRF-123456
+    note:
+      type: [string, 'null']
+      example: Transferred from corporate Vietcombank
+
+

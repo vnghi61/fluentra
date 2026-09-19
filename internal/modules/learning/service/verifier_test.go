@@ -9,8 +9,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
-	"github.com/fluentra/fluentra/internal/modules/learning/domain"
 	learningcontract "github.com/fluentra/fluentra/internal/modules/learning/contract"
+	"github.com/fluentra/fluentra/internal/modules/learning/domain"
 	"github.com/fluentra/fluentra/internal/modules/learning/service"
 	"github.com/fluentra/fluentra/internal/shared/clock"
 )

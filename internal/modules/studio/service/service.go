@@ -1,3 +1,4 @@
+// Package service coordinates creator studio operations, Gate 1 automated checks, and Gate 2 moderation.
 package service
 
 import (
@@ -22,16 +23,18 @@ import (
 
 // Service coordinates creator studio operations, Gate 1 automated checks, and Gate 2 moderation.
 type Service struct {
-	repo            repository.Repository
-	itemVerifier    learningcontract.ItemVerifier
-	lessonAuthor    lessoncontract.Author
-	contentAuthor   contentcontract.Author
-	orderCreator    paymentcontract.OrderCreator
-	progressReader  learningcontract.ProgressReader
-	lessonReader    lessoncontract.Reader
-	minPriceVND     int64
-	maxPriceVND     int64
-	revenueShareBPS int
+	repo               repository.Repository
+	itemVerifier       learningcontract.ItemVerifier
+	lessonAuthor       lessoncontract.Author
+	contentAuthor      contentcontract.Author
+	orderCreator       paymentcontract.OrderCreator
+	progressReader     learningcontract.ProgressReader
+	lessonReader       lessoncontract.Reader
+	minPriceVND        int64
+	maxPriceVND        int64
+	revenueShareBPS    int
+	payoutManager      paymentcontract.PayoutManager
+	payoutThresholdVND int64
 }
 
 // NewService constructs the studio Service.
@@ -42,28 +45,33 @@ func NewService(
 	contentAuthor contentcontract.Author,
 ) *Service {
 	return &Service{
-		repo:            repo,
-		itemVerifier:    itemVerifier,
-		lessonAuthor:    lessonAuthor,
-		contentAuthor:   contentAuthor,
-		minPriceVND:     domain.DefaultMinPriceVND,
-		maxPriceVND:     domain.DefaultMaxPriceVND,
-		revenueShareBPS: domain.DefaultRevenueShareBPS,
+		repo:               repo,
+		itemVerifier:       itemVerifier,
+		lessonAuthor:       lessonAuthor,
+		contentAuthor:      contentAuthor,
+		minPriceVND:        domain.DefaultMinPriceVND,
+		maxPriceVND:        domain.DefaultMaxPriceVND,
+		revenueShareBPS:    domain.DefaultRevenueShareBPS,
+		payoutThresholdVND: domain.DefaultPayoutThresholdVND,
 	}
 }
 
+// SetOrderCreator configures the order creator for course purchases.
 func (s *Service) SetOrderCreator(creator paymentcontract.OrderCreator) {
 	s.orderCreator = creator
 }
 
+// SetProgressReader configures the learning progress reader for refund evaluations.
 func (s *Service) SetProgressReader(reader learningcontract.ProgressReader) {
 	s.progressReader = reader
 }
 
+// SetLessonReader configures the lesson reader.
 func (s *Service) SetLessonReader(reader lessoncontract.Reader) {
 	s.lessonReader = reader
 }
 
+// SetPriceBounds overrides default pricing bounds and platform revenue share.
 func (s *Service) SetPriceBounds(minVND, maxVND int64, revShareBPS int) {
 	if minVND > 0 {
 		s.minPriceVND = minVND
@@ -76,27 +84,47 @@ func (s *Service) SetPriceBounds(minVND, maxVND int64, revShareBPS int) {
 	}
 }
 
+// SetPayoutManager configures the billing payout manager adapter.
+func (s *Service) SetPayoutManager(manager paymentcontract.PayoutManager) {
+	s.payoutManager = manager
+}
+
+// SetPayoutThresholdVND sets the minimum creator payout threshold.
+func (s *Service) SetPayoutThresholdVND(threshold int64) {
+	if threshold > 0 {
+		s.payoutThresholdVND = threshold
+	}
+}
+
 // ---------------------------------------------------------------- Creator Profile
 
+// GetCreatorProfile retrieves the creator's profile by user ID.
 func (s *Service) GetCreatorProfile(ctx context.Context, userID uuid.UUID) (*domain.CreatorProfile, error) {
 	return s.repo.GetCreatorProfile(ctx, userID)
 }
 
-func (s *Service) UpsertCreatorProfile(ctx context.Context, userID uuid.UUID, bio, headline string) (*domain.CreatorProfile, error) {
+// UpsertCreatorProfile creates or updates the creator's bio and headline.
+func (s *Service) UpsertCreatorProfile(
+	ctx context.Context, userID uuid.UUID, bio, headline string,
+) (*domain.CreatorProfile, error) {
 	return s.repo.UpsertCreatorProfile(ctx, userID, bio, headline)
 }
 
+// GetPayoutAccount retrieves the creator's registered payout account.
 func (s *Service) GetPayoutAccount(ctx context.Context, creatorID uuid.UUID) (*domain.PayoutAccount, error) {
 	return s.repo.GetPayoutAccount(ctx, creatorID)
 }
 
+// UpsertPayoutAccount registers or updates the creator's payout bank account.
 func (s *Service) UpsertPayoutAccount(
 	ctx context.Context,
 	creatorID uuid.UUID,
 	bankCode, accountNumber, accountHolderName string,
 	isDefault bool,
 ) (*domain.PayoutAccount, error) {
-	if strings.TrimSpace(bankCode) == "" || strings.TrimSpace(accountNumber) == "" || strings.TrimSpace(accountHolderName) == "" {
+	if strings.TrimSpace(bankCode) == "" ||
+		strings.TrimSpace(accountNumber) == "" ||
+		strings.TrimSpace(accountHolderName) == "" {
 		return nil, apperr.New(apperr.Validation, "INVALID_PAYOUT_ACCOUNT", "All bank account details are required")
 	}
 	return s.repo.UpsertPayoutAccount(ctx, creatorID, bankCode, accountNumber, accountHolderName, isDefault)
@@ -104,6 +132,7 @@ func (s *Service) UpsertPayoutAccount(
 
 // ---------------------------------------------------------------- Course Drafts
 
+// CreateDraftRequest holds input parameters for creating a new course draft.
 type CreateDraftRequest struct {
 	Title           string          `json:"title"`
 	Slug            string          `json:"slug"`
@@ -114,7 +143,10 @@ type CreateDraftRequest struct {
 	Structure       json.RawMessage `json:"structure"`
 }
 
-func (s *Service) CreateDraft(ctx context.Context, ownerID uuid.UUID, req CreateDraftRequest) (*domain.CourseDraft, error) {
+// CreateDraft initializes a new course draft authored by a creator.
+func (s *Service) CreateDraft(
+	ctx context.Context, ownerID uuid.UUID, req CreateDraftRequest,
+) (*domain.CourseDraft, error) {
 	if strings.TrimSpace(req.Title) == "" || strings.TrimSpace(req.Slug) == "" || strings.TrimSpace(req.CEFRLevel) == "" {
 		return nil, apperr.New(apperr.Validation, "INVALID_DRAFT", "Title, slug, and CEFR level are required")
 	}
@@ -151,6 +183,7 @@ func (s *Service) CreateDraft(ctx context.Context, ownerID uuid.UUID, req Create
 	return s.repo.CreateCourseDraft(ctx, draft)
 }
 
+// UpdateDraftRequest holds optional updates for a course draft.
 type UpdateDraftRequest struct {
 	Title           *string         `json:"title,omitempty"`
 	Slug            *string         `json:"slug,omitempty"`
@@ -209,6 +242,7 @@ func (s *Service) UpdateDraft(ctx context.Context, ownerID, draftID uuid.UUID, r
 	return s.repo.UpdateCourseDraft(ctx, existing)
 }
 
+// GetDraft fetches an existing course draft owned by the specified user.
 func (s *Service) GetDraft(ctx context.Context, ownerID, draftID uuid.UUID) (*domain.CourseDraft, error) {
 	draft, err := s.repo.GetCourseDraftByID(ctx, draftID)
 	if err != nil {
@@ -220,6 +254,7 @@ func (s *Service) GetDraft(ctx context.Context, ownerID, draftID uuid.UUID) (*do
 	return draft, nil
 }
 
+// ListDrafts returns paginated drafts owned by the given creator.
 func (s *Service) ListDrafts(ctx context.Context, ownerID uuid.UUID, limit, offset int) ([]*domain.CourseDraft, int64, error) {
 	if limit <= 0 {
 		limit = 20
@@ -232,6 +267,7 @@ func (s *Service) ListDrafts(ctx context.Context, ownerID uuid.UUID, limit, offs
 
 // ---------------------------------------------------------------- Submissions & Gate 1
 
+// SubmitDraft submits a course draft for Gate 1 and Gate 2 verification.
 func (s *Service) SubmitDraft(ctx context.Context, ownerID, draftID uuid.UUID) (*domain.Submission, error) {
 	draft, err := s.repo.GetCourseDraftByID(ctx, draftID)
 	if err != nil {
@@ -368,7 +404,10 @@ func (s *Service) RunGate1Verification(ctx context.Context, submissionID uuid.UU
 
 // ---------------------------------------------------------------- Gate 2 Moderation
 
-func (s *Service) ListModerationQueue(ctx context.Context, limit, offset int) ([]contract.ModerationQueueItem, int64, error) {
+// ListModerationQueue retrieves submissions pending staff review.
+func (s *Service) ListModerationQueue(
+	ctx context.Context, limit, offset int,
+) ([]contract.ModerationQueueItem, int64, error) {
 	if limit <= 0 {
 		limit = 20
 	}
@@ -560,6 +599,7 @@ func (s *Service) ApproveSubmission(ctx context.Context, reviewerID, submissionI
 	return approvedSub, nil
 }
 
+// RejectSubmission records moderator rejection or changes-requested decision.
 func (s *Service) RejectSubmission(
 	ctx context.Context,
 	reviewerID, submissionID uuid.UUID,
@@ -651,6 +691,7 @@ func (s *Service) MayOpen(ctx context.Context, userID *uuid.UUID, courseID uuid.
 
 // ---------------------------------------------------------------- Listing & Purchases
 
+// GetListing returns the course listing if it exists.
 func (s *Service) GetListing(ctx context.Context, courseID uuid.UUID) (*contract.CourseListing, error) {
 	listing, err := s.repo.GetListingByCourseID(ctx, courseID)
 	if err != nil {
@@ -662,6 +703,7 @@ func (s *Service) GetListing(ctx context.Context, courseID uuid.UUID) (*contract
 	return toContractListing(listing), nil
 }
 
+// BatchGetListings retrieves listings for multiple course IDs.
 func (s *Service) BatchGetListings(ctx context.Context, courseIDs []uuid.UUID) (map[uuid.UUID]*contract.CourseListing, error) {
 	if len(courseIDs) == 0 {
 		return map[uuid.UUID]*contract.CourseListing{}, nil
@@ -677,6 +719,7 @@ func (s *Service) BatchGetListings(ctx context.Context, courseIDs []uuid.UUID) (
 	return result, nil
 }
 
+// HasPurchased returns whether the given user has an active purchase of the course.
 func (s *Service) HasPurchased(ctx context.Context, userID, courseID uuid.UUID) (bool, error) {
 	if userID == uuid.Nil {
 		return false, nil
@@ -688,6 +731,7 @@ func (s *Service) HasPurchased(ctx context.Context, userID, courseID uuid.UUID) 
 	return p != nil, nil
 }
 
+// BatchHasPurchased returns purchase status for a set of courses.
 func (s *Service) BatchHasPurchased(ctx context.Context, userID uuid.UUID, courseIDs []uuid.UUID) (map[uuid.UUID]bool, error) {
 	result := make(map[uuid.UUID]bool, len(courseIDs))
 	if userID == uuid.Nil || len(courseIDs) == 0 {
@@ -703,6 +747,7 @@ func (s *Service) BatchHasPurchased(ctx context.Context, userID uuid.UUID, cours
 	return result, nil
 }
 
+// ClaimCourse grants access to a free community course without payment.
 func (s *Service) ClaimCourse(ctx context.Context, userID, courseID uuid.UUID) (*domain.Purchase, error) {
 	if userID == uuid.Nil {
 		return nil, apperr.New(apperr.Unauthenticated, "UNAUTHORIZED", "Authentication required to claim course")
@@ -736,6 +781,7 @@ func (s *Service) ClaimCourse(ctx context.Context, userID, courseID uuid.UUID) (
 	return s.repo.CreatePurchase(ctx, purchase)
 }
 
+// PurchaseCourse creates a billing order to purchase a paid community course.
 func (s *Service) PurchaseCourse(ctx context.Context, userID, courseID uuid.UUID) (*paymentcontract.Order, error) {
 	if userID == uuid.Nil {
 		return nil, apperr.New(apperr.Unauthenticated, "UNAUTHORIZED", "Authentication required to purchase course")
@@ -771,10 +817,14 @@ func (s *Service) PurchaseCourse(ctx context.Context, userID, courseID uuid.UUID
 	})
 }
 
-func (s *Service) ListUserPurchases(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*domain.Purchase, int64, error) {
+// ListUserPurchases returns all course purchases for a user.
+func (s *Service) ListUserPurchases(
+	ctx context.Context, userID uuid.UUID, limit, offset int,
+) ([]*domain.Purchase, int64, error) {
 	return s.repo.ListPurchasesByUserID(ctx, userID, limit, offset)
 }
 
+// RefundPurchase revokes a purchase and reverses creator ledger credits within policy window.
 func (s *Service) RefundPurchase(ctx context.Context, userID, purchaseID uuid.UUID) error {
 	purchase, err := s.repo.GetPurchaseByID(ctx, purchaseID)
 	if err != nil {
@@ -838,6 +888,7 @@ func (s *Service) RefundPurchase(ctx context.Context, userID, purchaseID uuid.UU
 	return nil
 }
 
+// HandlePaymentSucceeded creates a purchase and writes ledger credit rows when an order is paid.
 func (s *Service) HandlePaymentSucceeded(ctx context.Context, event paymentcontract.EventPaymentSucceeded) error {
 	if event.SubjectKind != "course" {
 		return nil
@@ -913,3 +964,161 @@ func toContractListing(l *domain.Listing) *contract.CourseListing {
 	}
 }
 
+// ---------------------------------------------------------------- Creator Earnings & Payouts (Step 7)
+
+// GetEarnings returns the creator earnings summary and recent ledger activity.
+func (s *Service) GetEarnings(ctx context.Context, creatorID uuid.UUID) (*domain.EarningsSummary, error) {
+	balance, err := s.repo.GetCreatorBalance(ctx, creatorID)
+	if err != nil {
+		return nil, fmt.Errorf("get creator balance: %w", err)
+	}
+
+	lifetime, err := s.repo.GetCreatorLifetimeEarnings(ctx, creatorID)
+	if err != nil {
+		return nil, fmt.Errorf("get lifetime earnings: %w", err)
+	}
+
+	totalPaidOut, err := s.repo.GetCreatorTotalPaidOut(ctx, creatorID)
+	if err != nil {
+		return nil, fmt.Errorf("get total paid out: %w", err)
+	}
+
+	var pendingPayout int64
+	if s.payoutManager != nil {
+		pending, err := s.payoutManager.GetPendingPayoutTotal(ctx, creatorID)
+		if err != nil {
+			return nil, fmt.Errorf("get pending payout total: %w", err)
+		}
+		pendingPayout = pending
+	}
+
+	available := balance - pendingPayout
+	if available < 0 {
+		available = 0
+	}
+
+	threshold := s.payoutThresholdVND
+	if threshold <= 0 {
+		threshold = domain.DefaultPayoutThresholdVND
+	}
+
+	account, err := s.repo.GetPayoutAccount(ctx, creatorID)
+	hasAccount := (err == nil && account != nil)
+
+	var bankCode, holder, maskedAccount *string
+	if hasAccount {
+		bankCode = &account.BankCode
+		holder = &account.AccountHolderName
+		masked := maskAccountNumber(account.AccountNumber)
+		maskedAccount = &masked
+	}
+
+	canRequest := hasAccount && (available >= threshold)
+
+	recentEntries, err := s.repo.ListLedgerEntriesByCreatorID(ctx, creatorID, 20, 0)
+	if err != nil {
+		return nil, fmt.Errorf("list ledger entries: %w", err)
+	}
+
+	return &domain.EarningsSummary{
+		AvailableBalanceVND:     available,
+		LifetimeEarningsVND:     lifetime,
+		PendingPayoutVND:        pendingPayout,
+		TotalPaidOutVND:         totalPaidOut,
+		PayoutThresholdVND:      threshold,
+		CanRequestPayout:        canRequest,
+		PayoutAccountConfigured: hasAccount,
+		PayoutBankCode:          bankCode,
+		PayoutAccountHolder:     holder,
+		PayoutMaskedAccount:     maskedAccount,
+		RecentLedger:            recentEntries,
+	}, nil
+}
+
+// RequestPayout initiates a payout request against available creator balance.
+func (s *Service) RequestPayout(
+	ctx context.Context, creatorID uuid.UUID, requestedAmount *int64,
+) (*paymentcontract.Payout, error) {
+	if s.payoutManager == nil {
+		return nil, apperr.New(apperr.Internal, "PAYOUT_SERVICE_UNAVAILABLE", "Payout service is not available")
+	}
+
+	account, err := s.repo.GetPayoutAccount(ctx, creatorID)
+	if err != nil || account == nil {
+		return nil, domain.ErrPayoutAccountRequired
+	}
+
+	balance, err := s.repo.GetCreatorBalance(ctx, creatorID)
+	if err != nil {
+		return nil, fmt.Errorf("get creator balance: %w", err)
+	}
+
+	pendingPayout, err := s.payoutManager.GetPendingPayoutTotal(ctx, creatorID)
+	if err != nil {
+		return nil, fmt.Errorf("get pending payout total: %w", err)
+	}
+
+	available := balance - pendingPayout
+	if available < 0 {
+		available = 0
+	}
+
+	threshold := s.payoutThresholdVND
+	if threshold <= 0 {
+		threshold = domain.DefaultPayoutThresholdVND
+	}
+
+	payoutAmount := available
+	if requestedAmount != nil && *requestedAmount > 0 {
+		payoutAmount = *requestedAmount
+	}
+
+	if payoutAmount < threshold {
+		return nil, domain.ErrPayoutBelowMinimum
+	}
+
+	if payoutAmount > available {
+		return nil, domain.ErrInsufficientBalance
+	}
+
+	payout, err := s.payoutManager.CreatePayout(ctx, paymentcontract.CreatePayoutInput{
+		CreatorID: creatorID,
+		AmountVND: payoutAmount,
+		ActorID:   creatorID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create payout: %w", err)
+	}
+
+	return payout, nil
+}
+
+// HandlePayoutSent records a payout debit in the creator ledger upon bank fulfillment.
+func (s *Service) HandlePayoutSent(ctx context.Context, event paymentcontract.EventPayoutSent) error {
+	note := fmt.Sprintf("Payout fulfilled (ref: %s)", event.BankReference)
+	if event.BankReference == "" {
+		note = "Payout fulfilled"
+	}
+
+	_, err := s.repo.CreateLedgerEntry(ctx, &domain.CreatorLedgerEntry{
+		CreatorID:      event.CreatorID,
+		Kind:           domain.LedgerKindPayout,
+		AmountVND:      -event.AmountVND,
+		GrossAmountVND: event.AmountVND,
+		FeeAmountVND:   0,
+		PayoutID:       &event.PayoutID,
+		Note:           note,
+	})
+	if err != nil {
+		return fmt.Errorf("create payout debit ledger entry: %w", err)
+	}
+	return nil
+}
+
+func maskAccountNumber(num string) string {
+	cleaned := strings.TrimSpace(num)
+	if len(cleaned) <= 4 {
+		return cleaned
+	}
+	return strings.Repeat("*", len(cleaned)-4) + cleaned[len(cleaned)-4:]
+}

@@ -165,7 +165,9 @@ describe("work order 13 screens", () => {
       renderWithProviders(<WeeklyPlanCard />);
 
       expect(await screen.findByText("This week's plan")).toBeInTheDocument();
-      expect(screen.getByRole("link", { name: "Making plans" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: "Making plans" }),
+      ).toBeInTheDocument();
       expect(screen.getByText("25 of 90 minutes")).toBeInTheDocument();
       expect(screen.getByText("15 reviews")).toBeInTheDocument();
       expect(screen.getByText("Focus")).toBeInTheDocument();
@@ -200,8 +202,12 @@ describe("work order 13 screens", () => {
       expect(await screen.findByText("Placement")).toBeInTheDocument();
       expect(screen.getAllByText("B1").length).toBeGreaterThan(0);
       expect(screen.getByText(/Placed on/)).toBeInTheDocument();
-      expect(screen.getByText(/You can retake the test on/)).toBeInTheDocument();
-      expect(screen.queryByRole("link", { name: /retake placement/i })).toBeNull();
+      expect(
+        screen.getByText(/You can retake the test on/),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: /retake placement/i }),
+      ).toBeNull();
     });
   });
 
@@ -210,7 +216,10 @@ describe("work order 13 screens", () => {
       const user = userEvent.setup();
       server.use(
         http.get("/api/v1/me/learning-profile", () =>
-          HttpResponse.json({ code: "LEARNING_PROFILE_NOT_FOUND" }, { status: 404 }),
+          HttpResponse.json(
+            { code: "LEARNING_PROFILE_NOT_FOUND" },
+            { status: 404 },
+          ),
         ),
       );
       renderWithProviders(<WelcomePage />);
@@ -276,7 +285,9 @@ describe("work order 13 screens", () => {
       await user.click(next);
 
       expect(await screen.findByText("Your level")).toBeInTheDocument();
-      expect(screen.getByRole("heading", { level: 1, name: "B1" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { level: 1, name: "B1" }),
+      ).toBeInTheDocument();
       expect(seenKey).toMatch(/^[0-9a-f-]{36}$/);
       expect(seenBody).toEqual({
         activity_id: ACTIVITY_ID,

@@ -9,6 +9,7 @@ import (
 // OrderStatus defines the state of a billing order.
 type OrderStatus string
 
+// Order status constants.
 const (
 	OrderStatusPending   OrderStatus = "pending"
 	OrderStatusPaid      OrderStatus = "paid"
@@ -90,4 +91,27 @@ type UnmatchedTransaction struct {
 type UnmatchedTransactionsList struct {
 	Items []UnmatchedTransaction `json:"items"`
 	Total int64                  `json:"total"`
+}
+
+// PayoutStatus defines the lifecycle status of a payout.
+type PayoutStatus string
+
+// Payout status constants.
+const (
+	PayoutStatusPending PayoutStatus = "pending"
+	PayoutStatusSent    PayoutStatus = "sent"
+	PayoutStatusFailed  PayoutStatus = "failed"
+)
+
+// Payout represents a manual payout record to a creator.
+type Payout struct {
+	ID            uuid.UUID    `json:"id"`
+	CreatorID     uuid.UUID    `json:"creator_id"`
+	AmountVND     int64        `json:"amount_vnd"`
+	Status        PayoutStatus `json:"status"`
+	BankReference *string      `json:"bank_reference"`
+	ActorID       uuid.UUID    `json:"actor_id"`
+	SentAt        *time.Time   `json:"sent_at"`
+	CreatedAt     time.Time    `json:"created_at"`
+	UpdatedAt     time.Time    `json:"updated_at"`
 }

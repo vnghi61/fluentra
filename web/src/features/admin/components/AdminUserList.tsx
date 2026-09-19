@@ -544,7 +544,9 @@ export const AdminUserList: React.FC = () => {
           page={cursorHistory.length + 1}
           pageCount={Math.max(1, Math.ceil(total / PAGE_SIZE))}
           total={total}
-          rangeFrom={users.length > 0 ? cursorHistory.length * PAGE_SIZE + 1 : 0}
+          rangeFrom={
+            users.length > 0 ? cursorHistory.length * PAGE_SIZE + 1 : 0
+          }
           rangeTo={cursorHistory.length * PAGE_SIZE + users.length}
           isBusy={isLoading}
           canPrevious={cursorHistory.length > 0}

@@ -99,3 +99,61 @@ FROM billing.payment_webhooks
 WHERE processed_at IS NULL
 ORDER BY received_at ASC
 LIMIT $1;
+
+-- -------------------------------------------------- billing.payouts
+
+-- name: CreatePayout :one
+INSERT INTO billing.payouts (
+    creator_id, amount_vnd, status, actor_id, updated_at
+) VALUES ($1, $2, 'pending', $3, now())
+RETURNING id, creator_id, amount_vnd, status, bank_reference, actor_id, sent_at, created_at, updated_at;
+
+-- name: GetPayoutByID :one
+SELECT id, creator_id, amount_vnd, status, bank_reference, actor_id, sent_at, created_at, updated_at
+FROM billing.payouts
+WHERE id = $1;
+
+-- name: UpdatePayoutStatus :one
+UPDATE billing.payouts
+SET status = $2,
+    bank_reference = $3,
+    actor_id = $4,
+    sent_at = $5,
+    updated_at = now()
+WHERE id = $1
+RETURNING id, creator_id, amount_vnd, status, bank_reference, actor_id, sent_at, created_at, updated_at;
+
+-- name: ListPayouts :many
+SELECT id, creator_id, amount_vnd, status, bank_reference, actor_id, sent_at, created_at, updated_at
+FROM billing.payouts
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2;
+
+-- name: CountPayouts :one
+SELECT COUNT(*)
+FROM billing.payouts;
+
+-- name: ListPayoutsByStatus :many
+SELECT id, creator_id, amount_vnd, status, bank_reference, actor_id, sent_at, created_at, updated_at
+FROM billing.payouts
+WHERE status = $1
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3;
+
+-- name: CountPayoutsByStatus :one
+SELECT COUNT(*)
+FROM billing.payouts
+WHERE status = $1;
+
+-- name: ListPayoutsByCreatorID :many
+SELECT id, creator_id, amount_vnd, status, bank_reference, actor_id, sent_at, created_at, updated_at
+FROM billing.payouts
+WHERE creator_id = $1
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3;
+
+-- name: GetPendingPayoutTotalByCreatorID :one
+SELECT COALESCE(SUM(amount_vnd), 0)::bigint
+FROM billing.payouts
+WHERE creator_id = $1 AND status = 'pending';
+

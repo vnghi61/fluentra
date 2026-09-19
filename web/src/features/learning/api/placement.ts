@@ -58,7 +58,10 @@ export const placementApi = {
   },
 
   /** Starts the writing and speaking part, or skips it. */
-  async productive(sessionId: string, skip: boolean): Promise<PlacementSession> {
+  async productive(
+    sessionId: string,
+    skip: boolean,
+  ): Promise<PlacementSession> {
     return apiFetch<PlacementSession>(
       `${PLACEMENT}/sessions/${sessionId}/productive`,
       { method: "POST", body: JSON.stringify({ skip }) },

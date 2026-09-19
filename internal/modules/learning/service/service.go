@@ -25,7 +25,6 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/learning/domain"
 	"github.com/fluentra/fluentra/internal/modules/learning/repository"
 	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
-
 	srscontract "github.com/fluentra/fluentra/internal/modules/srs/contract"
 	studiocontract "github.com/fluentra/fluentra/internal/modules/studio/contract"
 	usercontract "github.com/fluentra/fluentra/internal/modules/user/contract"

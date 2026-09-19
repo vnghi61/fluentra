@@ -225,10 +225,16 @@ describe("ReviewPage SRS Session (P10.4)", () => {
     expect(screen.getByText("\u0110\u00e3 nh\u1edb")).toBeInTheDocument();
     expect(screen.getByText("Thu\u1ed9c l\u00f2ng")).toBeInTheDocument();
     // What a grade does, from the schedule rather than a fixed label.
-    expect(screen.getByText("\u00d4n l\u1ea1i sau 10 ph\u00fat")).toBeInTheDocument();
-    expect(screen.getByText("\u00d4n l\u1ea1i sau 3 ng\u00e0y")).toBeInTheDocument();
+    expect(
+      screen.getByText("\u00d4n l\u1ea1i sau 10 ph\u00fat"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("\u00d4n l\u1ea1i sau 3 ng\u00e0y"),
+    ).toBeInTheDocument();
     // The Vietnamese meaning is labelled, so it does not read as a heading.
-    expect(screen.getAllByText("Ngh\u0129a ti\u1ebfng Vi\u1ec7t").length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText("Ngh\u0129a ti\u1ebfng Vi\u1ec7t").length,
+    ).toBeGreaterThan(0);
   });
 
   it("says so when a card arrives with no content, rather than inventing a word", async () => {

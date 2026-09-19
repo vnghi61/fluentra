@@ -33,25 +33,24 @@ import (
 	learningcontract "github.com/fluentra/fluentra/internal/modules/learning/contract"
 	learningjob "github.com/fluentra/fluentra/internal/modules/learning/job"
 	"github.com/fluentra/fluentra/internal/modules/lesson"
+	lessonservice "github.com/fluentra/fluentra/internal/modules/lesson/service"
 	"github.com/fluentra/fluentra/internal/modules/listening"
 	listeningcontract "github.com/fluentra/fluentra/internal/modules/listening/contract"
-	"github.com/fluentra/fluentra/internal/modules/reading"
-	readingcontract "github.com/fluentra/fluentra/internal/modules/reading/contract"
-	"github.com/fluentra/fluentra/internal/modules/speaking"
-	speakingcontract "github.com/fluentra/fluentra/internal/modules/speaking/contract"
-	writingcontract "github.com/fluentra/fluentra/internal/modules/writing/contract"
-
-	lessonservice "github.com/fluentra/fluentra/internal/modules/lesson/service"
 	"github.com/fluentra/fluentra/internal/modules/payment"
 	paymentsvc "github.com/fluentra/fluentra/internal/modules/payment/service"
 	"github.com/fluentra/fluentra/internal/modules/rbac"
 	rbaccontract "github.com/fluentra/fluentra/internal/modules/rbac/contract"
+	"github.com/fluentra/fluentra/internal/modules/reading"
+	readingcontract "github.com/fluentra/fluentra/internal/modules/reading/contract"
+	"github.com/fluentra/fluentra/internal/modules/speaking"
+	speakingcontract "github.com/fluentra/fluentra/internal/modules/speaking/contract"
 	"github.com/fluentra/fluentra/internal/modules/srs"
 	"github.com/fluentra/fluentra/internal/modules/studio"
 	"github.com/fluentra/fluentra/internal/modules/user"
 	"github.com/fluentra/fluentra/internal/modules/vocabulary"
 	vocabularyrepo "github.com/fluentra/fluentra/internal/modules/vocabulary/repository"
 	"github.com/fluentra/fluentra/internal/modules/writing"
+	writingcontract "github.com/fluentra/fluentra/internal/modules/writing/contract"
 	"github.com/fluentra/fluentra/internal/platform/ai"
 	"github.com/fluentra/fluentra/internal/platform/cache"
 	"github.com/fluentra/fluentra/internal/platform/job"
@@ -1071,14 +1070,14 @@ func startGrading(ctx context.Context, d gradingDeps) error {
 	}
 
 	studioModule, err := studio.NewModule(studio.Dependencies{
-		Pool:           d.pool,
-		ItemVerifier:   learningModule.ItemVerifier(),
-		LessonAuthor:   d.lesson.Author(),
-		ContentAuthor:  d.content.Author(),
-		OrderCreator:   paymentModule.OrderCreator(),
-		ProgressReader: learningModule.ProgressReader(),
-		MinPriceVND:    d.cfg.Studio.MinPriceVND,
-		MaxPriceVND:    d.cfg.Studio.MaxPriceVND,
+		Pool:            d.pool,
+		ItemVerifier:    learningModule.ItemVerifier(),
+		LessonAuthor:    d.lesson.Author(),
+		ContentAuthor:   d.content.Author(),
+		OrderCreator:    paymentModule.OrderCreator(),
+		ProgressReader:  learningModule.ProgressReader(),
+		MinPriceVND:     d.cfg.Studio.MinPriceVND,
+		MaxPriceVND:     d.cfg.Studio.MaxPriceVND,
 		RevenueShareBPS: d.cfg.Studio.RevenueShareBps,
 	})
 	if err != nil {

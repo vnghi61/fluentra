@@ -1,3 +1,4 @@
+// Package job implements background tasks for the studio module including automated Gate 1 verification.
 package job
 
 import (
@@ -10,7 +11,7 @@ import (
 	"github.com/fluentra/fluentra/internal/platform/job"
 )
 
-// Advisory lock id for Gate 1 verification job (matches studio migration timestamp).
+// Gate1VerificationLockID is the advisory lock id for the Gate 1 verification job (matches studio migration timestamp).
 const Gate1VerificationLockID int64 = 1_700_000_750
 
 const verificationInterval = 10 * time.Second

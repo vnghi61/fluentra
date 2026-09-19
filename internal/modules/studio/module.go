@@ -1,3 +1,4 @@
+// Package studio configures and wires dependencies for the creator studio module.
 package studio
 
 import (
@@ -5,6 +6,7 @@ import (
 	"encoding/json"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	contentcontract "github.com/fluentra/fluentra/internal/modules/content/contract"
@@ -22,16 +24,18 @@ import (
 
 // Dependencies represents the external dependencies required to construct the studio Module.
 type Dependencies struct {
-	Pool            *pgxpool.Pool
-	Guard           studiohttp.Guard
-	ItemVerifier    learningcontract.ItemVerifier
-	LessonAuthor    lessoncontract.Author
-	ContentAuthor   contentcontract.Author
-	OrderCreator    paymentcontract.OrderCreator
-	ProgressReader  learningcontract.ProgressReader
-	MinPriceVND     int64
-	MaxPriceVND     int64
-	RevenueShareBPS int
+	Pool               *pgxpool.Pool
+	Guard              studiohttp.Guard
+	ItemVerifier       learningcontract.ItemVerifier
+	LessonAuthor       lessoncontract.Author
+	ContentAuthor      contentcontract.Author
+	OrderCreator       paymentcontract.OrderCreator
+	ProgressReader     learningcontract.ProgressReader
+	PayoutManager      paymentcontract.PayoutManager
+	MinPriceVND        int64
+	MaxPriceVND        int64
+	RevenueShareBPS    int
+	PayoutThresholdVND int64
 }
 
 // Module encapsulates the studio and moderation domain capabilities.
@@ -51,6 +55,12 @@ func NewModule(deps Dependencies) (*Module, error) {
 	}
 	if deps.ProgressReader != nil {
 		svc.SetProgressReader(deps.ProgressReader)
+	}
+	if deps.PayoutManager != nil {
+		svc.SetPayoutManager(deps.PayoutManager)
+	}
+	if deps.PayoutThresholdVND > 0 {
+		svc.SetPayoutThresholdVND(deps.PayoutThresholdVND)
 	}
 	svc.SetPriceBounds(deps.MinPriceVND, deps.MaxPriceVND, deps.RevenueShareBPS)
 
@@ -105,14 +115,54 @@ func (m *Module) ListingReader() contract.ListingReader {
 	return m.service
 }
 
-// Subscribe listens to payment.succeeded events from the event bus.
+// PayoutAccountReader returns the creator payout bank account reader for admin fulfillment.
+func (m *Module) PayoutAccountReader() contract.PayoutAccountReader {
+	return payoutAccountReaderAdapter{svc: m.service}
+}
+
+type payoutAccountReaderAdapter struct {
+	svc *service.Service
+}
+
+func (a payoutAccountReaderAdapter) GetPayoutAccount(
+	ctx context.Context, creatorID uuid.UUID,
+) (*contract.PayoutAccount, error) {
+	acc, err := a.svc.GetPayoutAccount(ctx, creatorID)
+	if err != nil {
+		return nil, err
+	}
+	if acc == nil {
+		return nil, nil
+	}
+	return &contract.PayoutAccount{
+		ID:                acc.ID,
+		CreatorID:         acc.CreatorID,
+		BankCode:          acc.BankCode,
+		AccountNumber:     acc.AccountNumber,
+		AccountHolderName: acc.AccountHolderName,
+		IsDefault:         acc.IsDefault,
+		CreatedAt:         acc.CreatedAt,
+		UpdatedAt:         acc.UpdatedAt,
+	}, nil
+}
+
+// Subscribe listens to payment.succeeded and payment.payout_sent events from the event bus.
 func (m *Module) Subscribe(bus eventbus.EventBus) error {
-	return bus.Subscribe("payment.succeeded", func(ctx context.Context, msg eventbus.Message) error {
+	if err := bus.Subscribe("payment.succeeded", func(ctx context.Context, msg eventbus.Message) error {
 		var event paymentcontract.EventPaymentSucceeded
 		if err := json.Unmarshal(msg.Payload, &event); err != nil {
 			return err
 		}
 		return m.service.HandlePaymentSucceeded(ctx, event)
+	}); err != nil {
+		return err
+	}
+
+	return bus.Subscribe("payment.payout_sent", func(ctx context.Context, msg eventbus.Message) error {
+		var event paymentcontract.EventPayoutSent
+		if err := json.Unmarshal(msg.Payload, &event); err != nil {
+			return err
+		}
+		return m.service.HandlePayoutSent(ctx, event)
 	})
 }
-

@@ -156,7 +156,6 @@ func toCourseSummaryResponse(dto service.CourseSummaryDTO) CourseSummaryResponse
 	}
 }
 
-
 func toCourseDetailResponse(dto *service.CourseDetailDTO) CourseDetailResponse {
 	units := make([]CourseUnitResponse, len(dto.Units))
 	for i, u := range dto.Units {

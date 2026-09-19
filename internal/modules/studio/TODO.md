@@ -44,7 +44,13 @@ Ordered backlog for the Creator Studio module.
   - `GET /courses/{slug}`
   - `GET /lessons/{id}` (with ADR-0025 amendment)
 
-## Next Steps (Steps 7 - 8)
-- [ ] Step 7: Creator earnings dashboard and admin payout management (`GET /me/studio/earnings`, `billing.payouts`)
+## Step 7 Landed (Creator Earnings and Admin Payouts)
+- [x] Creator earnings dashboard (`GET /me/studio/earnings`) with available balance, lifetime earnings, pending payouts, masked account
+- [x] Payout request flow (`POST /me/studio/payouts`) with balance and threshold checks (₫500,000 minimum)
+- [x] Admin payout listing and detail endpoints (`GET /admin/billing/payouts`, `GET /admin/billing/payouts/{id}`)
+- [x] Admin payout fulfillment endpoint (`POST /admin/billing/payouts/{id}/fulfill`) emitting `payment.payout_sent`
+- [x] Creator ledger debiting on payout sent event (`kind='payout'`, negative amount)
+
+## Next Steps (Step 8)
 - [ ] Step 8: Web frontend for Creator Studio, Moderation Queue, and Checkout UI
 

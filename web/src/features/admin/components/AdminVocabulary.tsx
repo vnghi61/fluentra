@@ -546,7 +546,10 @@ export const AdminVocabulary: React.FC = () => {
                                 item.status,
                               )}`}
                             >
-                              {t(`admin.queueStatus.${item.status}`, item.status)}
+                              {t(
+                                `admin.queueStatus.${item.status}`,
+                                item.status,
+                              )}
                             </span>
                             {item.verified_by_model && (
                               <div className="text-[11px] text-muted-foreground flex items-center gap-1">
