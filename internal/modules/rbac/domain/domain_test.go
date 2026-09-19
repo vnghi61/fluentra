@@ -100,18 +100,17 @@ func TestPermission_ValidRejectsAnythingOutsideTheNamingRule(t *testing.T) {
 	}
 }
 
-func TestParseRole_AcceptsExactlyTwo(t *testing.T) {
+func TestParseRole_AcceptsRoles(t *testing.T) {
 	t.Parallel()
 
-	for _, name := range []string{roleAdminName, "user"} {
+	for _, name := range []string{roleAdminName, "user", "moderator"} {
 		if _, ok := contract.ParseRole(name); !ok {
 			t.Errorf("ParseRole(%q) was rejected", name)
 		}
 	}
-	// BR-RBAC-02: a third role is an ADR, not a request body.
-	for _, name := range []string{"", "ADMIN", "superadmin", "moderator", "root"} {
+	for _, name := range []string{"", "ADMIN", "superadmin", "root", "unknown"} {
 		if _, ok := contract.ParseRole(name); ok {
-			t.Errorf("ParseRole(%q) was accepted; there are exactly two roles", name)
+			t.Errorf("ParseRole(%q) was accepted; want rejected", name)
 		}
 	}
 }

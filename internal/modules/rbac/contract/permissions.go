@@ -92,20 +92,20 @@ func (p Permission) Valid() bool { return permissionPattern.MatchString(string(p
 // String renders the permission for logs and error messages.
 func (p Permission) String() string { return string(p) }
 
-// Role is one of exactly two values (BR-RBAC-02).
+// Role is one of the supported role values.
 type Role string
 
 // The complete set of roles.
 const (
-	RoleAdmin Role = "admin"
-	RoleUser  Role = "user"
+	RoleAdmin     Role = "admin"
+	RoleUser      Role = "user"
+	RoleModerator Role = "moderator"
 )
 
 // ParseRole converts a submitted value into a Role, rejecting anything else.
-// A third role is an ADR, not a request body.
 func ParseRole(value string) (Role, bool) {
 	switch Role(value) {
-	case RoleAdmin, RoleUser:
+	case RoleAdmin, RoleUser, RoleModerator:
 		return Role(value), true
 	default:
 		return "", false

@@ -51,13 +51,15 @@ type demoAccount struct {
 	email       string
 	displayName string
 	admin       bool
+	role        string
 }
 
-// The two accounts docs/development/getting-started.md §4 names. Changing one
+// The accounts docs/development/getting-started.md §4 names. Changing one
 // here means changing it there.
 var demoAccounts = []demoAccount{
 	{email: "learner@fluentra.dev", displayName: "Demo Learner"},
 	{email: "admin@fluentra.dev", displayName: "Demo Operator", admin: true},
+	{email: "moderator@fluentra.dev", displayName: "Demo Reviewer", role: "moderator"},
 }
 
 func main() {
@@ -135,6 +137,11 @@ func run(ctx context.Context, out io.Writer) error {
 				return fmt.Errorf("grant admin to %s: %w", account.email, err)
 			}
 		}
+		if account.role != "" {
+			if err := ensureRole(ctx, pool, id, account.role); err != nil {
+				return fmt.Errorf("grant %s to %s: %w", account.role, account.email, err)
+			}
+		}
 
 		state := "already present, refreshed"
 		if created {
@@ -154,7 +161,7 @@ func run(ctx context.Context, out io.Writer) error {
 		return err
 	}
 
-	_, _ = fmt.Fprintf(out, "\npassword for both: %s\n", demoPassword)
+	_, _ = fmt.Fprintf(out, "\npassword for all: %s\n", demoPassword)
 	return nil
 }
 
@@ -231,13 +238,18 @@ func ensureVerified(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID) e
 	return err
 }
 
-// ensureAdmin grants the admin role, the same insert db/seeds/rbac.sql makes.
+// ensureRole grants a role by name to a user account.
 // granted_by stays NULL because the system made this grant, not a person.
-func ensureAdmin(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID) error {
+func ensureRole(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID, roleName string) error {
 	const grant = `
 		INSERT INTO core.user_roles (user_id, role_id, granted_by)
-		SELECT $1, r.id, NULL FROM core.roles r WHERE r.name = 'admin'
+		SELECT $1, r.id, NULL FROM core.roles r WHERE r.name = $2
 		ON CONFLICT (user_id, role_id) DO NOTHING`
-	_, err := pool.Exec(ctx, grant, userID)
+	_, err := pool.Exec(ctx, grant, userID, roleName)
 	return err
+}
+
+// ensureAdmin grants the admin role, the same insert db/seeds/rbac.sql makes.
+func ensureAdmin(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID) error {
+	return ensureRole(ctx, pool, userID, "admin")
 }
