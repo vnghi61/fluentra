@@ -1560,6 +1560,27 @@ type ClientInterface interface {
 	// Corresponds with DELETE /speaking/attempts/{id}/recording (the `DeleteSpeakingRecording` operationId).
 	DeleteSpeakingRecording(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetSpeakingConsent Whether the learner has consented to voice recording.
+	//
+	// BR-SPEAKING-03. Reports whether the caller has given explicit consent to be recorded, and when. The recorder asks for consent when this says no.
+	//
+	// Corresponds with GET /speaking/consent (the `GetSpeakingConsent` operationId).
+	GetSpeakingConsent(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RecordSpeakingConsent Record the learner's consent to voice recording.
+	//
+	// BR-SPEAKING-03. Stores the consent with its timestamp. Calling it again is harmless and does not move the original timestamp: consent was given when it was given.
+	//
+	// Corresponds with POST /speaking/consent (the `RecordSpeakingConsent` operationId).
+	RecordSpeakingConsent(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListSpeakingSubmissions List the learner's speaking submissions.
+	//
+	// Returns a paginated list of speaking submissions with status, band scores, task types, and recording availability for the authenticated user.
+	//
+	// Corresponds with GET /speaking/submissions (the `ListSpeakingSubmissions` operationId).
+	ListSpeakingSubmissions(ctx context.Context, params *ListSpeakingSubmissionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CreateSpeakingUploadIntentWithBody Presigned PUT URL for recording upload to storage.
 	//
 	// Generates a constrained presigned PUT URL directly to the media storage bucket. Validates daily recording quotas before issuing the intent.
@@ -4800,6 +4821,57 @@ func (c *Client) GetSpeakingFeedback(ctx context.Context, id openapi_types.UUID,
 // Corresponds with DELETE /speaking/attempts/{id}/recording (the `DeleteSpeakingRecording` operationId).
 func (c *Client) DeleteSpeakingRecording(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteSpeakingRecordingRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetSpeakingConsent Whether the learner has consented to voice recording.
+//
+// BR-SPEAKING-03. Reports whether the caller has given explicit consent to be recorded, and when. The recorder asks for consent when this says no.
+//
+// Corresponds with GET /speaking/consent (the `GetSpeakingConsent` operationId).
+func (c *Client) GetSpeakingConsent(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetSpeakingConsentRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RecordSpeakingConsent Record the learner's consent to voice recording.
+//
+// BR-SPEAKING-03. Stores the consent with its timestamp. Calling it again is harmless and does not move the original timestamp: consent was given when it was given.
+//
+// Corresponds with POST /speaking/consent (the `RecordSpeakingConsent` operationId).
+func (c *Client) RecordSpeakingConsent(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRecordSpeakingConsentRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListSpeakingSubmissions List the learner's speaking submissions.
+//
+// Returns a paginated list of speaking submissions with status, band scores, task types, and recording availability for the authenticated user.
+//
+// Corresponds with GET /speaking/submissions (the `ListSpeakingSubmissions` operationId).
+func (c *Client) ListSpeakingSubmissions(ctx context.Context, params *ListSpeakingSubmissionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListSpeakingSubmissionsRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -10222,6 +10294,126 @@ func NewDeleteSpeakingRecordingRequest(server string, id openapi_types.UUID) (*h
 	return req, nil
 }
 
+// NewGetSpeakingConsentRequest constructs an http.Request for the GetSpeakingConsent method
+func NewGetSpeakingConsentRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/speaking/consent")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewRecordSpeakingConsentRequest constructs an http.Request for the RecordSpeakingConsent method
+func NewRecordSpeakingConsentRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/speaking/consent")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListSpeakingSubmissionsRequest constructs an http.Request for the ListSpeakingSubmissions method
+func NewListSpeakingSubmissionsRequest(server string, params *ListSpeakingSubmissionsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/speaking/submissions")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page", *params.Page, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.PageSize != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page_size", *params.PageSize, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewCreateSpeakingUploadIntentRequest calls the generic CreateSpeakingUploadIntent builder with application/json body
 func NewCreateSpeakingUploadIntentRequest(server string, body CreateSpeakingUploadIntentJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -12488,6 +12680,33 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with DELETE /speaking/attempts/{id}/recording (the `DeleteSpeakingRecording` operationId).
 	DeleteSpeakingRecordingWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteSpeakingRecordingResponse, error)
+
+	// GetSpeakingConsentWithResponse Whether the learner has consented to voice recording.
+	//
+	// BR-SPEAKING-03. Reports whether the caller has given explicit consent to be recorded, and when. The recorder asks for consent when this says no.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /speaking/consent (the `GetSpeakingConsent` operationId).
+	GetSpeakingConsentWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetSpeakingConsentResponse, error)
+
+	// RecordSpeakingConsentWithResponse Record the learner's consent to voice recording.
+	//
+	// BR-SPEAKING-03. Stores the consent with its timestamp. Calling it again is harmless and does not move the original timestamp: consent was given when it was given.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /speaking/consent (the `RecordSpeakingConsent` operationId).
+	RecordSpeakingConsentWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*RecordSpeakingConsentResponse, error)
+
+	// ListSpeakingSubmissionsWithResponse List the learner's speaking submissions.
+	//
+	// Returns a paginated list of speaking submissions with status, band scores, task types, and recording availability for the authenticated user.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /speaking/submissions (the `ListSpeakingSubmissions` operationId).
+	ListSpeakingSubmissionsWithResponse(ctx context.Context, params *ListSpeakingSubmissionsParams, reqEditors ...RequestEditorFn) (*ListSpeakingSubmissionsResponse, error)
 
 	// CreateSpeakingUploadIntentWithBodyWithResponse Presigned PUT URL for recording upload to storage.
 	//
@@ -21410,6 +21629,192 @@ func (r DeleteSpeakingRecordingResponse) ContentType() string {
 	return ""
 }
 
+// GetSpeakingConsentResponse200Headers the declared response headers of an HTTP 200 response for GetSpeakingConsent
+type GetSpeakingConsentResponse200Headers struct {
+	XRequestId *string
+}
+
+type GetSpeakingConsentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SpeakingConsent
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetSpeakingConsentResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetSpeakingConsentResponse) GetJSON200() *SpeakingConsent {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetSpeakingConsentResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r GetSpeakingConsentResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetSpeakingConsentResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetSpeakingConsentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetSpeakingConsentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetSpeakingConsentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// RecordSpeakingConsentResponse200Headers the declared response headers of an HTTP 200 response for RecordSpeakingConsent
+type RecordSpeakingConsentResponse200Headers struct {
+	XRequestId *string
+}
+
+type RecordSpeakingConsentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SpeakingConsent
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *RecordSpeakingConsentResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RecordSpeakingConsentResponse) GetJSON200() *SpeakingConsent {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r RecordSpeakingConsentResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r RecordSpeakingConsentResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r RecordSpeakingConsentResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RecordSpeakingConsentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RecordSpeakingConsentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RecordSpeakingConsentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ListSpeakingSubmissionsResponse200Headers the declared response headers of an HTTP 200 response for ListSpeakingSubmissions
+type ListSpeakingSubmissionsResponse200Headers struct {
+	XRequestId *string
+}
+
+type ListSpeakingSubmissionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SpeakingSubmissionList
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ListSpeakingSubmissionsResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListSpeakingSubmissionsResponse) GetJSON200() *SpeakingSubmissionList {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ListSpeakingSubmissionsResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r ListSpeakingSubmissionsResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ListSpeakingSubmissionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListSpeakingSubmissionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListSpeakingSubmissionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListSpeakingSubmissionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // CreateSpeakingUploadIntentResponse200Headers the declared response headers of an HTTP 200 response for CreateSpeakingUploadIntent
 type CreateSpeakingUploadIntentResponse200Headers struct {
 	XRequestId *string
@@ -21438,6 +21843,8 @@ type CreateSpeakingUploadIntentResponse struct {
 	ApplicationproblemJSON400 *BadRequest
 	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
 	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
 	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
 	ApplicationproblemJSON429 *TooManyRequests
 	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
@@ -21467,6 +21874,11 @@ func (r CreateSpeakingUploadIntentResponse) GetApplicationproblemJSON400() *BadR
 // GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
 func (r CreateSpeakingUploadIntentResponse) GetApplicationproblemJSON401() *Unauthorized {
 	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r CreateSpeakingUploadIntentResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
 }
 
 // GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
@@ -24901,6 +25313,51 @@ func (c *ClientWithResponses) DeleteSpeakingRecordingWithResponse(ctx context.Co
 		return nil, err
 	}
 	return ParseDeleteSpeakingRecordingResponse(rsp)
+}
+
+// GetSpeakingConsentWithResponse Whether the learner has consented to voice recording.
+//
+// BR-SPEAKING-03. Reports whether the caller has given explicit consent to be recorded, and when. The recorder asks for consent when this says no.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /speaking/consent (the `GetSpeakingConsent` operationId).
+func (c *ClientWithResponses) GetSpeakingConsentWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetSpeakingConsentResponse, error) {
+	rsp, err := c.GetSpeakingConsent(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetSpeakingConsentResponse(rsp)
+}
+
+// RecordSpeakingConsentWithResponse Record the learner's consent to voice recording.
+//
+// BR-SPEAKING-03. Stores the consent with its timestamp. Calling it again is harmless and does not move the original timestamp: consent was given when it was given.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /speaking/consent (the `RecordSpeakingConsent` operationId).
+func (c *ClientWithResponses) RecordSpeakingConsentWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*RecordSpeakingConsentResponse, error) {
+	rsp, err := c.RecordSpeakingConsent(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRecordSpeakingConsentResponse(rsp)
+}
+
+// ListSpeakingSubmissionsWithResponse List the learner's speaking submissions.
+//
+// Returns a paginated list of speaking submissions with status, band scores, task types, and recording availability for the authenticated user.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /speaking/submissions (the `ListSpeakingSubmissions` operationId).
+func (c *ClientWithResponses) ListSpeakingSubmissionsWithResponse(ctx context.Context, params *ListSpeakingSubmissionsParams, reqEditors ...RequestEditorFn) (*ListSpeakingSubmissionsResponse, error) {
+	rsp, err := c.ListSpeakingSubmissions(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListSpeakingSubmissionsResponse(rsp)
 }
 
 // CreateSpeakingUploadIntentWithBodyWithResponse Presigned PUT URL for recording upload to storage.
@@ -33248,6 +33705,165 @@ func ParseDeleteSpeakingRecordingResponse(rsp *http.Response) (*DeleteSpeakingRe
 	return response, nil
 }
 
+// ParseGetSpeakingConsentResponse parses an HTTP response from a GetSpeakingConsentWithResponse call
+func ParseGetSpeakingConsentResponse(rsp *http.Response) (*GetSpeakingConsentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetSpeakingConsentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SpeakingConsent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetSpeakingConsentResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseRecordSpeakingConsentResponse parses an HTTP response from a RecordSpeakingConsentWithResponse call
+func ParseRecordSpeakingConsentResponse(rsp *http.Response) (*RecordSpeakingConsentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RecordSpeakingConsentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SpeakingConsent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers RecordSpeakingConsentResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseListSpeakingSubmissionsResponse parses an HTTP response from a ListSpeakingSubmissionsWithResponse call
+func ParseListSpeakingSubmissionsResponse(rsp *http.Response) (*ListSpeakingSubmissionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListSpeakingSubmissionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SpeakingSubmissionList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ListSpeakingSubmissionsResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseCreateSpeakingUploadIntentResponse parses an HTTP response from a CreateSpeakingUploadIntentWithResponse call
 func ParseCreateSpeakingUploadIntentResponse(rsp *http.Response) (*CreateSpeakingUploadIntentResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -33288,6 +33904,13 @@ func ParseCreateSpeakingUploadIntentResponse(rsp *http.Response) (*CreateSpeakin
 			return nil, err
 		}
 		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest TooManyRequests

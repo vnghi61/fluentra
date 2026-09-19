@@ -4,7 +4,10 @@ import {
   ArrowRight,
   BookOpen,
   Calendar,
+  Headphones,
   Layers,
+  Mic,
+  PenTool,
   Sparkles,
   Zap,
 } from "lucide-react";
@@ -115,7 +118,7 @@ export const DailyPracticeCard: React.FC<DailyPracticeCardProps> = ({
         <CardDescription className="text-sm text-text-muted">
           {t(
             "practice.daily.desc",
-            "9 verified exercises freshly drawn for today: 1 reading passage, 5 grammar questions, and 3 sentence rewrites.",
+            "10 verified exercises freshly drawn for today, across all five skills: grammar, reading, listening, speaking and writing.",
           )}
         </CardDescription>
 
@@ -137,8 +140,34 @@ export const DailyPracticeCard: React.FC<DailyPracticeCardProps> = ({
           </p>
         )}
 
+        {/*
+          What the set is made of, so the badge row is not a claim the draw
+          stops honouring. A slot that has nothing in it yet contributes
+          nothing, which is why these say what was asked for rather than what
+          arrived — the runner shows the difference.
+        */}
         {!compact && (
           <div className="flex items-center gap-2 pt-2 flex-wrap">
+            <Badge
+              variant="outline"
+              className="gap-1.5 py-1 px-2.5 text-xs bg-surface/60"
+            >
+              <Layers
+                className="h-3.5 w-3.5 text-secondary-accent"
+                aria-hidden="true"
+              />
+              <span>{t("practice.daily.slotGrammar", "3 Grammar")}</span>
+            </Badge>
+            <Badge
+              variant="outline"
+              className="gap-1.5 py-1 px-2.5 text-xs bg-surface/60"
+            >
+              <Zap
+                className="h-3.5 w-3.5 text-warning-accent"
+                aria-hidden="true"
+              />
+              <span>{t("practice.daily.slotTransforms", "2 Transforms")}</span>
+            </Badge>
             <Badge
               variant="outline"
               className="gap-1.5 py-1 px-2.5 text-xs bg-surface/60"
@@ -153,21 +182,31 @@ export const DailyPracticeCard: React.FC<DailyPracticeCardProps> = ({
               variant="outline"
               className="gap-1.5 py-1 px-2.5 text-xs bg-surface/60"
             >
-              <Layers
-                className="h-3.5 w-3.5 text-secondary-accent"
+              <Headphones
+                className="h-3.5 w-3.5 text-primary"
                 aria-hidden="true"
               />
-              <span>{t("practice.daily.slotGrammar", "5 Grammar")}</span>
+              <span>{t("practice.daily.slotListening", "1 Clip")}</span>
             </Badge>
             <Badge
               variant="outline"
               className="gap-1.5 py-1 px-2.5 text-xs bg-surface/60"
             >
-              <Zap
+              <Mic
+                className="h-3.5 w-3.5 text-success-accent"
+                aria-hidden="true"
+              />
+              <span>{t("practice.daily.slotSpeaking", "2 Speaking")}</span>
+            </Badge>
+            <Badge
+              variant="outline"
+              className="gap-1.5 py-1 px-2.5 text-xs bg-surface/60"
+            >
+              <PenTool
                 className="h-3.5 w-3.5 text-warning-accent"
                 aria-hidden="true"
               />
-              <span>{t("practice.daily.slotTransforms", "3 Transforms")}</span>
+              <span>{t("practice.daily.slotWriting", "1 Writing")}</span>
             </Badge>
           </div>
         )}

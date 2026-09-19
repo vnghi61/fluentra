@@ -61,31 +61,84 @@ const (
 
 var practiceLevels = []string{"A2", "B1", "B2"}
 
-// practiceLesson is a slot's lesson inside each level's unit.
-type practiceLesson struct {
-	position   int
-	kind       string
-	title      string
-	skillFocus string
-}
-
-var practiceLessons = []practiceLesson{
-	{position: 1, kind: kindReadingComprehension, title: titleReadingComprehension, skillFocus: skillReading},
-	{position: 2, kind: kindGrammarTenseChoice, title: "Grammar Tense Choice", skillFocus: skillGrammar},
-	{position: 3, kind: kindGrammarSentenceTransform, title: "Grammar Sentence Transform", skillFocus: skillGrammar},
+// practiceSlots is what the practice pool generates, at every level.
+//
+// It used to be three slots — a reading passage and two grammar drills — while
+// the exam pool generated six and the runner could render eleven kinds. The
+// result was a "daily practice" that never once asked the learner to listen,
+// write or speak, and a Practice hub whose listening door led nowhere because
+// every listening item in the database belonged to a pool no learner opens.
+//
+// The seven slots below are the six an exam sitting draws, with speaking split
+// into its two tasks. Vocabulary is deliberately absent: those seven kinds are
+// built from the learner's own dictionary by the vocabulary generator, and
+// generating generic vocabulary here would drill words nobody is learning.
+//
+// The depths differ by what an item costs and how fast it is consumed. A
+// grammar drill is one line and three are used a day; a listening clip has to
+// be rendered by cmd/tts before it can be drawn at all, and a writing prompt is
+// answered once.
+var practiceSlots = []poolSlotSpec{
+	{
+		position: 1, kind: kindReadingComprehension,
+		slotName: slotReadingComprehension, title: titleReadingComprehension,
+		skillFocus: skillReading, target: 30, ceiling: 120,
+	},
+	{
+		position: 2, kind: kindGrammarTenseChoice,
+		slotName: slotGrammarTenseChoice, title: titleGrammarTenseChoice,
+		skillFocus: skillGrammar, target: 50, ceiling: 200,
+	},
+	{
+		position: 3, kind: kindGrammarSentenceTransform,
+		slotName: slotGrammarTransform, title: titleGrammarTransform,
+		skillFocus: skillGrammar, target: 40, ceiling: 160,
+	},
+	{
+		position: 4, kind: kindListeningComprehension,
+		slotName: slotListening, title: titleListening,
+		skillFocus: skillListening, target: 20, ceiling: 80,
+	},
+	{
+		position: 5, kind: kindWritingPrompt,
+		slotName: slotWritingPrompt, title: titleWritingPrompt,
+		skillFocus: skillWriting, target: 15, ceiling: 60,
+	},
+	{
+		position: 6, kind: kindSpeakingTask, taskType: subTypeReadAloud,
+		slotName: slotSpeakingReadAloud, title: titleSpeakingReadAloud,
+		skillFocus: skillSpeaking, target: 15, ceiling: 60,
+	},
+	{
+		position: 7, kind: kindSpeakingTask, taskType: subTypeRespond,
+		slotName: slotSpeakingRespond, title: titleSpeakingRespond,
+		skillFocus: skillSpeaking, target: 15, ceiling: 60,
+	},
 }
 
 // dailySetComposition is what one day's set draws from each slot at a level.
+//
+// Ten items across all five skills, where it used to be nine across two. The
+// receptive drills still carry the bulk, because they are the ones answered in
+// seconds; the productive tasks appear once each, which is as often as anyone
+// writes an essay or records an answer in a day.
+//
+// A slot with nothing in it contributes nothing rather than failing the draw
+// (drawFromSlot), so a set stays the right shape while a new slot fills up.
 var dailySetComposition = []struct {
-	kind  string
-	count int
+	slotName string
+	count    int
 }{
-	{kind: kindReadingComprehension, count: 1},
-	{kind: kindGrammarTenseChoice, count: 5},
-	{kind: kindGrammarSentenceTransform, count: 3},
+	{slotName: slotGrammarTenseChoice, count: 3},
+	{slotName: slotGrammarTransform, count: 2},
+	{slotName: slotReadingComprehension, count: 1},
+	{slotName: slotListening, count: 1},
+	{slotName: slotSpeakingReadAloud, count: 1},
+	{slotName: slotSpeakingRespond, count: 1},
+	{slotName: slotWritingPrompt, count: 1},
 }
 
-type slotKey struct{ level, kind string }
+type slotKey struct{ level, slotName string }
 
 // practicePoolLayout is the pool's course and the lesson behind each slot.
 type practicePoolLayout struct {
@@ -141,18 +194,18 @@ func (s *Service) buildPracticePool(ctx context.Context) (*practicePoolLayout, e
 		if err != nil {
 			return nil, fmt.Errorf("ensure practice pool unit %s: %w", level, err)
 		}
-		for _, lesson := range practiceLessons {
+		for _, slot := range practiceSlots {
 			lessonID, err := s.lessonAuthor.EnsureLesson(ctx, lessoncontract.LessonSpec{
 				UnitID:           unitID,
-				Position:         lesson.position,
-				Title:            lesson.title,
-				SkillFocus:       lesson.skillFocus,
+				Position:         slot.position,
+				Title:            slot.title,
+				SkillFocus:       slot.skillFocus,
 				EstimatedMinutes: 10,
 			})
 			if err != nil {
-				return nil, fmt.Errorf("ensure practice pool lesson %s in %s: %w", lesson.title, level, err)
+				return nil, fmt.Errorf("ensure practice pool lesson %s in %s: %w", slot.title, level, err)
 			}
-			layout.lessons[slotKey{level: level, kind: lesson.kind}] = lessonID
+			layout.lessons[slotKey{level: level, slotName: slot.slotName}] = lessonID
 		}
 	}
 	return layout, nil
@@ -160,11 +213,11 @@ func (s *Service) buildPracticePool(ctx context.Context) (*practicePoolLayout, e
 
 // slotActivities lists a slot's active items through lesson's contract.
 func (s *Service) slotActivities(
-	ctx context.Context, layout *practicePoolLayout, level, kind string,
+	ctx context.Context, layout *practicePoolLayout, level, slotName string,
 ) ([]lessoncontract.Activity, error) {
-	lessonID, ok := layout.lessons[slotKey{level: level, kind: kind}]
+	lessonID, ok := layout.lessons[slotKey{level: level, slotName: slotName}]
 	if !ok {
-		return nil, fmt.Errorf("no practice pool lesson for %s %s", level, kind)
+		return nil, fmt.Errorf("no practice pool lesson for %s %s", level, slotName)
 	}
 	if s.lesson == nil {
 		return nil, errors.New("lesson reader dependency is required for the practice pool")
@@ -206,8 +259,8 @@ func (s *Service) TopUpPracticePool(ctx context.Context) error {
 		return fmt.Errorf("ensure pool structure: %w", err)
 	}
 	for _, level := range practiceLevels {
-		for _, lesson := range practiceLessons {
-			if stop := s.topUpSlot(ctx, layout, level, lesson.kind, author); stop {
+		for _, slot := range practiceSlots {
+			if stop := s.topUpSlot(ctx, layout, level, slot, author); stop {
 				slog.WarnContext(ctx, "practice pool top-up stopped: every AI provider is out of quota or unavailable")
 				return nil
 			}
@@ -219,48 +272,56 @@ func (s *Service) TopUpPracticePool(ctx context.Context) error {
 // topUpSlot fills one slot. It reports true when every AI provider is refusing,
 // so the run stops rather than sending each remaining slot into the same refusal.
 func (s *Service) topUpSlot(
-	ctx context.Context, layout *practicePoolLayout, level, kind string, author uuid.UUID,
+	ctx context.Context, layout *practicePoolLayout, level string, slot poolSlotSpec, author uuid.UUID,
 ) (stop bool) {
-	activities, err := s.slotActivities(ctx, layout, level, kind)
+	activities, err := s.slotActivities(ctx, layout, level, slot.slotName)
 	if err != nil {
-		slog.ErrorContext(ctx, "could not list practice pool slot", "level", level, "kind", kind, "error", err)
+		slog.ErrorContext(ctx, "could not list practice pool slot", "level", level, "slot", slot.slotName, "error", err)
 		return false
 	}
-	toAdd, err := s.itemsToAdd(ctx, activities)
+	toAdd, err := s.itemsToAdd(ctx, activities, slot)
 	if err != nil {
-		slog.ErrorContext(ctx, "could not size practice pool top-up", "level", level, "kind", kind, "error", err)
+		slog.ErrorContext(ctx, "could not size practice pool top-up", "level", level, "slot", slot.slotName, "error", err)
 		return false
 	}
 
-	lessonID := layout.lessons[slotKey{level: level, kind: kind}]
+	lessonID := layout.lessons[slotKey{level: level, slotName: slot.slotName}]
 	added := 0
 	for i := 0; i < toAdd; i++ {
-		body, err := s.generateAndVerifyItem(ctx, level, kind, author, lessonID, activities)
+		body, err := s.generateAndVerifyItem(ctx, level, slot, author, lessonID, activities)
 		if err != nil {
 			if errors.Is(err, ai.ErrProvidersUnavailable) {
 				return true
 			}
-			slog.WarnContext(ctx, "practice pool item not added", "level", level, "kind", kind, "error", err)
+			slog.WarnContext(ctx, "practice pool item not added", "level", level, "slot", slot.slotName, "error", err)
 			continue
 		}
 		// Later candidates in this run are checked for duplicates against it too.
-		activities = append(activities, lessoncontract.Activity{Kind: kind, Config: body})
+		activities = append(activities, lessoncontract.Activity{Kind: slot.kind, Config: body})
 		added++
 	}
 	if toAdd > 0 {
-		slog.InfoContext(ctx, "practice pool slot topped up", "level", level, "kind", kind, "added", added)
+		slog.InfoContext(ctx, "practice pool slot topped up", "level", level, "slot", slot.slotName, "added", added)
+	}
+	// A clip nobody rendered can never be drawn, so the render is asked for as
+	// soon as the item exists rather than waiting for the next manual `make tts`.
+	if slot.kind == kindListeningComprehension {
+		s.requestAudioRender(ctx, added)
 	}
 	return false
 }
 
 // itemsToAdd is §3.11's rule: fill to the target five at a time, then grow only
 // while an active learner is running low, and never past the ceiling.
-func (s *Service) itemsToAdd(ctx context.Context, activities []lessoncontract.Activity) (int, error) {
+func (s *Service) itemsToAdd(
+	ctx context.Context, activities []lessoncontract.Activity, slot poolSlotSpec,
+) (int, error) {
 	count := len(activities)
+	target, ceiling := slot.slotTarget(), slot.slotCeiling()
 	switch {
-	case count < targetActiveItemsPerSlot:
-		return min(maxItemsToAddPerRun, targetActiveItemsPerSlot-count), nil
-	case count >= maxActiveItemsPerSlot:
+	case count < target:
+		return min(maxItemsToAddPerRun, target-count), nil
+	case count >= ceiling:
 		return 0, nil
 	}
 	low, err := s.repo.HasActiveLearnerRunningLow(ctx, idsOf(activities), runningLowThreshold)
@@ -270,44 +331,46 @@ func (s *Service) itemsToAdd(ctx context.Context, activities []lessoncontract.Ac
 	if !low {
 		return 0, nil
 	}
-	return min(maxItemsToAddPerRun, maxActiveItemsPerSlot-count), nil
+	return min(maxItemsToAddPerRun, ceiling-count), nil
 }
 
 // generateAndVerifyItem tries a candidate up to three times and returns the body
 // of the one it published.
 func (s *Service) generateAndVerifyItem(
-	ctx context.Context, level, kind string, author uuid.UUID, lessonID uuid.UUID, existing []lessoncontract.Activity,
+	ctx context.Context, level string, slot poolSlotSpec, author uuid.UUID,
+	lessonID uuid.UUID, existing []lessoncontract.Activity,
 ) (json.RawMessage, error) {
 	var lastErr error
 	for attempt := 0; attempt <= maxRetriesPerItem; attempt++ {
-		body, err := s.tryGenerateAndVerify(ctx, level, kind, author, lessonID, existing)
+		body, err := s.tryGenerateAndVerify(ctx, level, slot, author, lessonID, existing)
 		if err == nil {
 			return body, nil
 		}
 		lastErr = err
 		slog.WarnContext(ctx, "practice pool candidate rejected",
-			"level", level, "kind", kind, "attempt", attempt+1, "reason", err)
+			"level", level, "slot", slot.slotName, "attempt", attempt+1, "reason", err)
 	}
 	return nil, lastErr
 }
 
 func (s *Service) tryGenerateAndVerify(
-	ctx context.Context, level, kind string, author uuid.UUID, lessonID uuid.UUID, existing []lessoncontract.Activity,
+	ctx context.Context, level string, slot poolSlotSpec, author uuid.UUID,
+	lessonID uuid.UUID, existing []lessoncontract.Activity,
 ) (json.RawMessage, error) {
-	// CompleteJSON takes the JSON out of whatever the model wrapped it in: a model
-	// that answers inside a ```json fence is still answering.
-	var body json.RawMessage
-	if err := ai.CompleteJSON(ctx, s.ai, ai.Request{
-		Task: ai.TaskPracticeGenerate,
-		Vars: map[string]any{varKind: kind, varCEFRLevel: level},
-	}, &body); err != nil {
-		return nil, fmt.Errorf("ai generate call failed: %w", err)
-	}
-
-	if err := s.checkCandidate(ctx, level, kind, body, existing); err != nil {
+	body, err := s.generatePoolCandidate(ctx, level, slot)
+	if err != nil {
 		return nil, err
 	}
-	if err := s.publishCandidate(ctx, level, kind, author, lessonID, body); err != nil {
+
+	// The same six checks the exam pool runs, because they are checks on the
+	// item, not on the pool that asked for it. Listening and speaking come back
+	// prepared — a clip key attached, a task type and a time filled in — so what
+	// is published is the body that was checked.
+	body, err = s.checkAndPreparePoolCandidate(ctx, level, slot, body, existing)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.publishCandidate(ctx, level, slot, author, lessonID, body); err != nil {
 		return nil, err
 	}
 	return body, nil
@@ -396,15 +459,17 @@ func gradesFullMarks(
 // publishCandidate publishes an item that passed every check and appends it to its
 // slot's lesson. Appending, never replacing: see work order 11 §3.0.
 func (s *Service) publishCandidate(
-	ctx context.Context, level, kind string, author uuid.UUID, lessonID uuid.UUID, body json.RawMessage,
+	ctx context.Context, level string, slot poolSlotSpec, author uuid.UUID,
+	lessonID uuid.UUID, body json.RawMessage,
 ) error {
-	// content_items.slug is kebab-case (ck_content_items_slug_format) and a kind is
-	// snake_case, so the kind's underscores made every insert fail.
+	// content_items.slug is kebab-case (ck_content_items_slug_format), and a slot
+	// name already is: a kind is snake_case, and its underscores made every
+	// insert fail. The slot name is also what tells the two speaking slots apart.
 	slug := fmt.Sprintf("pool-%s-%s-%s",
-		strings.ToLower(level), strings.ReplaceAll(kind, "_", "-"), uuid.New().String()[:8])
+		strings.ToLower(level), slot.slotName, uuid.New().String()[:8])
 	versionID, err := s.contentAuthor.EnsurePublished(ctx, contentcontract.AuthorSpec{
 		Slug:      slug,
-		Kind:      kind,
+		Kind:      slot.kind,
 		CEFRLevel: level,
 		Body:      body,
 		AuthorID:  author,
@@ -414,7 +479,7 @@ func (s *Service) publishCandidate(
 	}
 
 	if _, err := s.lessonAuthor.AppendActivity(ctx, lessonID, lessoncontract.ActivitySpec{
-		Kind:             kind,
+		Kind:             slot.kind,
 		ContentVersionID: versionID,
 		Config:           body,
 		Weight:           1,
@@ -784,13 +849,18 @@ func (s *Service) drawDailySet(
 ) ([]uuid.UUID, error) {
 	var chosen []uuid.UUID
 	for _, part := range dailySetComposition {
-		activities, err := s.slotActivities(ctx, layout, level, part.kind)
+		activities, err := s.slotActivities(ctx, layout, level, part.slotName)
 		if err != nil {
 			return nil, err
 		}
+		if part.slotName == slotListening {
+			// The rule a sitting already follows: a clip that has not been
+			// rendered cannot be listened to, so it is not put in front of anyone.
+			activities = s.listeningWithAudio(ctx, activities)
+		}
 		picked, err := s.drawFromSlot(ctx, userID, activities, part.count)
 		if err != nil {
-			return nil, fmt.Errorf("draw from %s %s: %w", level, part.kind, err)
+			return nil, fmt.Errorf("draw from %s %s: %w", level, part.slotName, err)
 		}
 		chosen = append(chosen, picked...)
 	}

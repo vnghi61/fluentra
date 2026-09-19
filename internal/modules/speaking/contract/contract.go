@@ -47,8 +47,47 @@ type SpeakingFeedback struct {
 	PromptVersion      string              `json:"prompt_version"`
 	Model              string              `json:"model"`
 	ASRModel           string              `json:"asr_model"`
-	CreatedAt          time.Time           `json:"created_at"`
-	UpdatedAt          time.Time           `json:"updated_at"`
+	AudioURL           string              `json:"audio_url,omitempty"`
+	// The grade as it was given. Pointers because a row written before these
+	// columns existed has no score, and reporting "none" is honest where
+	// reconstructing one is not.
+	OverallBand *float64  `json:"overall_band,omitempty"`
+	Score       *int      `json:"score,omitempty"`
+	TaskType    string    `json:"task_type,omitempty"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// SpeakingSubmissionSummary is a lightweight overview of a learner's speaking submission.
+type SpeakingSubmissionSummary struct {
+	AttemptID uuid.UUID `json:"attempt_id"`
+	Status    string    `json:"status"`
+	// Null for an attempt graded before the grade was persisted; the screen says
+	// so rather than printing a number that was never awarded.
+	OverallBand  *float64  `json:"overall_band"`
+	Score        *int      `json:"score"`
+	HasRecording bool      `json:"has_recording"`
+	TaskType     string    `json:"task_type"`
+	FeedbackEn   string    `json:"feedback_en,omitempty"`
+	FeedbackVi   string    `json:"feedback_vi,omitempty"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+// SpeakingSubmissionList is a paginated collection of speaking submissions.
+type SpeakingSubmissionList struct {
+	Items    []SpeakingSubmissionSummary `json:"items"`
+	Total    int                         `json:"total"`
+	Page     int                         `json:"page"`
+	PageSize int                         `json:"page_size"`
+}
+
+// SpeakingConsent is a learner's recorded agreement to be recorded.
+//
+// BR-SPEAKING-03 requires the timestamp, not merely the fact: voice is
+// biometric-adjacent personal data, and "when" is half the record.
+type SpeakingConsent struct {
+	Consented   bool       `json:"consented"`
+	ConsentedAt *time.Time `json:"consented_at"`
 }
 
 // UploadIntentResult represents the presigned PUT URL and quota metadata for uploading audio.
@@ -65,9 +104,16 @@ type Grader interface {
 	learningcontract.ExerciseGrader
 }
 
-// FeedbackReader retrieves speaking feedback.
+// ConsentKeeper reads and records voice-recording consent.
+type ConsentKeeper interface {
+	GetConsent(ctx context.Context, userID uuid.UUID) (*SpeakingConsent, error)
+	RecordConsent(ctx context.Context, userID uuid.UUID) (*SpeakingConsent, error)
+}
+
+// FeedbackReader retrieves speaking feedback and submission lists.
 type FeedbackReader interface {
 	GetSpeakingFeedback(ctx context.Context, attemptID, userID uuid.UUID) (*SpeakingFeedback, error)
+	ListSpeakingSubmissions(ctx context.Context, userID uuid.UUID, page, pageSize int) (*SpeakingSubmissionList, error)
 }
 
 // RecordingCleaner purges audio recordings for GDPR / account erasure.

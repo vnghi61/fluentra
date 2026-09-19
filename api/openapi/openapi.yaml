@@ -5824,6 +5824,20 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: >-
+            RECORDING_CONSENT_REQUIRED — voice consent has not been given (BR-SPEAKING-03).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://fluentra.dev/errors/RECORDING_CONSENT_REQUIRED
+                title: Voice consent required
+                status: 403
+                detail: Consent to voice recording is required before recording.
+                code: RECORDING_CONSENT_REQUIRED
+                request_id: 01J8XQ7Z9K3M4N5P6Q7R8S9T0V
         '429':
           $ref: '#/components/responses/TooManyRequests'
         '500':
@@ -5893,6 +5907,106 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /speaking/consent:
+    get:
+      tags: [speaking]
+      operationId: getSpeakingConsent
+      summary: Whether the learner has consented to voice recording.
+      description: >-
+        BR-SPEAKING-03. Reports whether the caller has given explicit consent to be recorded,
+        and when. The recorder asks for consent when this says no.
+      x-permission: self
+      responses:
+        '200':
+          description: The caller's consent state.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpeakingConsent'
+              example: {"consented": true, "consented_at": "2026-09-19T08:00:00Z"}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      tags: [speaking]
+      operationId: recordSpeakingConsent
+      summary: Record the learner's consent to voice recording.
+      description: >-
+        BR-SPEAKING-03. Stores the consent with its timestamp. Calling it again is harmless
+        and does not move the original timestamp: consent was given when it was given.
+      x-permission: self
+      responses:
+        '200':
+          description: Consent recorded.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpeakingConsent'
+              example: {"consented": true, "consented_at": "2026-09-19T08:00:00Z"}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /speaking/submissions:
+    get:
+      tags: [speaking]
+      operationId: listSpeakingSubmissions
+      summary: List the learner's speaking submissions.
+      description: Returns a paginated list of speaking submissions with status, band scores, task types, and recording availability for the authenticated user.
+      x-permission: self
+      parameters:
+        - name: page
+          in: query
+          required: false
+          description: Page number (1-based).
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: page_size
+          in: query
+          required: false
+          description: Number of items per page.
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Paginated list of speaking submissions.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpeakingSubmissionList'
+              example:
+                items:
+                  - attempt_id: "77777777-7777-7777-7777-777777777777"
+                    status: "graded"
+                    overall_band: 6.5
+                    score: 72
+                    has_recording: true
+                    task_type: "read_aloud"
+                    feedback_en: "Clear answer with simple structures."
+                    feedback_vi: "Câu trả lời rõ ràng với cấu trúc đơn giản."
+                    created_at: "2026-09-14T10:20:00Z"
+                total: 1
+                page: 1
+                page_size: 10
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalServerError'
   /exams:
@@ -6655,6 +6769,12 @@ components:
       $ref: ./components/speaking.yaml#/SpeakingCriterion
     SpeakingFeedback:
       $ref: ./components/speaking.yaml#/SpeakingFeedback
+    SpeakingConsent:
+      $ref: ./components/speaking.yaml#/SpeakingConsent
+    SpeakingSubmissionSummary:
+      $ref: ./components/speaking.yaml#/SpeakingSubmissionSummary
+    SpeakingSubmissionList:
+      $ref: ./components/speaking.yaml#/SpeakingSubmissionList
     LearningProfile:
       $ref: ./components/user.yaml#/LearningProfile
     LearningProfileRequest:

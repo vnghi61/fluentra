@@ -276,6 +276,15 @@ type CoreUserPreference struct {
 	PracticeLevel        *CoreCefrLevel
 }
 
+// BR-SPEAKING-03: one row per learner who has consented to voice recording.
+type SkillSpeakingConsent struct {
+	UserID uuid.UUID
+	// When consent was given. The timestamp the business rule requires.
+	ConsentedAt time.Time
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
 type SkillSpeakingFeedback struct {
 	ID                 uuid.UUID
 	AttemptID          uuid.UUID
@@ -293,4 +302,10 @@ type SkillSpeakingFeedback struct {
 	AsrModel           string
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
+	// Band the model gave the transcript. Null for rows graded before this column existed.
+	OverallBand pgtype.Numeric
+	// The 0-100 score the attempt was completed with, blended for read-aloud tasks.
+	Score *int32
+	// read_aloud or respond, as authored. Null for rows graded before this column existed.
+	TaskType *string
 }

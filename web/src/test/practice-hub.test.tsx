@@ -191,7 +191,7 @@ describe("PracticePage hub", () => {
     expect(screen.queryByText("The week ahead")).not.toBeInTheDocument();
   });
 
-  it("renders reading and writing practice cards with links to their courses", async () => {
+  it("renders reading, writing and speaking cards with links to their courses", async () => {
     server.use(
       http.get("/api/v1/reviews/due-count", () =>
         HttpResponse.json({ due_count: 0 }),
@@ -214,6 +214,14 @@ describe("PracticePage hub", () => {
       "href",
       "/learn?course=writing-practice",
     );
+
+    // Speaking was the skill the hub did not offer, while its grading pipeline
+    // sat finished behind content no learner could open.
+    const speakingLink = screen.getByRole("link", { name: /Start speaking/i });
+    expect(speakingLink).toHaveAttribute(
+      "href",
+      "/learn?course=speaking-practice",
+    );
   });
 
   it("starts today's set at the level stored in preferences", async () => {
@@ -230,9 +238,19 @@ describe("PracticePage hub", () => {
     await renderPractice();
 
     expect(await screen.findByText("Today's Practice Set")).toBeInTheDocument();
-    expect(screen.getByText("1 Passage")).toBeInTheDocument();
-    expect(screen.getByText("5 Grammar")).toBeInTheDocument();
-    expect(screen.getByText("3 Transforms")).toBeInTheDocument();
+    // The badge row is the set's composition. It covers all five skills now,
+    // and a stale badge here is how the card went on advertising a reading and
+    // grammar set after the draw had stopped being one.
+    for (const slot of [
+      "3 Grammar",
+      "2 Transforms",
+      "1 Passage",
+      "1 Clip",
+      "2 Speaking",
+      "1 Writing",
+    ]) {
+      expect(screen.getByText(slot)).toBeInTheDocument();
+    }
 
     const startDailyLink = screen.getByRole("link", {
       name: /Start Today's Set/i,

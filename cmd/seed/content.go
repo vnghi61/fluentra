@@ -48,6 +48,21 @@ func seedContentAndCurriculum(ctx context.Context, pool *pgxpool.Pool, adminID u
 	_, _ = fmt.Fprintf(out, "  ✓ Course: %s (6 lessons, %d units)\n",
 		writingCourseSeedData.Title, len(writingCourseSeedData.Units))
 
+	if err := seedCourseData(ctx, pool, adminID, speakingCourseSeedData); err != nil {
+		return fmt.Errorf("seed speaking course data: %w", err)
+	}
+	_, _ = fmt.Fprintf(out, "  ✓ Course: %s (6 lessons, %d units)\n",
+		speakingCourseSeedData.Title, len(speakingCourseSeedData.Units))
+
+	// The clips these lessons need are rendered afterwards by `make tts`, which
+	// walks every published listening_comprehension script. Until it has run,
+	// the items exist and the play route answers AUDIO_NOT_READY.
+	if err := seedCourseData(ctx, pool, adminID, listeningCourseSeedData); err != nil {
+		return fmt.Errorf("seed listening course data: %w", err)
+	}
+	_, _ = fmt.Fprintf(out, "  ✓ Course: %s (6 lessons, %d units) — run `make tts` to render the audio\n",
+		listeningCourseSeedData.Title, len(listeningCourseSeedData.Units))
+
 	// 2. Seed 200 Word Senses and Public Deck
 	count, err := seedVocabularyWords(ctx, pool, adminID, wordSenseSeedData)
 	if err != nil {

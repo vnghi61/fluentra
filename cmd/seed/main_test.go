@@ -173,7 +173,10 @@ func TestCourseSeedData_Integrity(t *testing.T) {
 // TestCurriculumLessonsHaveCEFRLevel asserts that every curriculum lesson resolves
 // to a valid CEFR level (A1..C2) in lowercase for the core.cefr_level enum.
 func TestCurriculumLessonsHaveCEFRLevel(t *testing.T) {
-	courses := []seedCourse{courseSeedData, readingCourseSeedData, writingCourseSeedData}
+	courses := []seedCourse{
+		courseSeedData, readingCourseSeedData, writingCourseSeedData,
+		speakingCourseSeedData, listeningCourseSeedData,
+	}
 	validLevels := map[string]bool{
 		"a1": true, "a2": true, "b1": true, "b2": true, "c1": true, "c2": true,
 	}
@@ -459,5 +462,181 @@ func TestWritingCourseSeedData_Integrity(t *testing.T) {
 
 	if totalLessons != 6 {
 		t.Errorf("seeded %d writing lessons, want the 6 §3.7 asks for", totalLessons)
+	}
+}
+
+// TestSpeakingCourseSeedData_Integrity checks what a speaking activity needs
+// beyond a gradable key: the task type the grader branches on, and a reference
+// text for exactly the tasks that are scored against one.
+//
+// A read-aloud without a reference text scores 70% of nothing, and a respond
+// task with one is silently scored as a read-aloud — both render perfectly well,
+// so only this catches them.
+func TestSpeakingCourseSeedData_Integrity(t *testing.T) {
+	if speakingCourseSeedData.Slug != "speaking-practice" || speakingCourseSeedData.Title == "" {
+		t.Fatal("speakingCourseSeedData missing slug or title")
+	}
+
+	totalLessons := 0
+	for _, unit := range speakingCourseSeedData.Units {
+		if unit.Position <= 0 || unit.Title == "" {
+			t.Errorf("invalid unit %+v", unit)
+		}
+		for _, lesson := range unit.Lessons {
+			totalLessons++
+			if lesson.Position <= 0 || lesson.Title == "" || lesson.SkillFocus != skillSpeaking {
+				t.Errorf("invalid speaking lesson %+v", lesson)
+			}
+			if len(lesson.Activities) == 0 {
+				t.Errorf("lesson %s has no activities", lesson.Title)
+			}
+			for _, act := range lesson.Activities {
+				assertActivityIsGradable(t, lesson.Title, act)
+				assertSpeakingActivity(t, lesson.Title, act)
+			}
+		}
+	}
+
+	if totalLessons != 6 {
+		t.Errorf("speaking course has %d lessons, want 6", totalLessons)
+	}
+}
+
+func assertSpeakingActivity(t *testing.T, lessonTitle string, act seedActivity) {
+	t.Helper()
+
+	if act.Kind != kindSpeakingTask {
+		t.Errorf("%s activity %d is %q, not a speaking task", lessonTitle, act.Position, act.Kind)
+		return
+	}
+
+	// Both halves, because the runner reads Config and the grader reads Body.
+	for label, source := range map[string]map[string]any{"config": act.Config, "body": act.Body} {
+		taskType, _ := source[cfgTaskType].(string)
+		if taskType != taskTypeReadAloud && taskType != taskTypeRespond {
+			t.Errorf("%s activity %d %s has task_type %q", lessonTitle, act.Position, label, taskType)
+			continue
+		}
+
+		reference, _ := source[cfgReferenceText].(string)
+		if taskType == taskTypeReadAloud && reference == "" {
+			t.Errorf("%s activity %d %s is read_aloud with no reference_text; word accuracy is 70%% of its score",
+				lessonTitle, act.Position, label)
+		}
+		if taskType == taskTypeRespond && reference != "" {
+			t.Errorf("%s activity %d %s is respond but carries a reference_text, which the grader reads as read-aloud",
+				lessonTitle, act.Position, label)
+		}
+
+		if prompt, _ := source[bodyKeyPrompt].(string); prompt == "" {
+			t.Errorf("%s activity %d %s has no prompt; the runner refuses to render it",
+				lessonTitle, act.Position, label)
+		}
+		if seconds, _ := source[cfgSpeakingTime].(int); seconds <= 0 {
+			t.Errorf("%s activity %d %s has no speaking time", lessonTitle, act.Position, label)
+		}
+	}
+}
+
+// TestListeningCourseSeedData_Integrity checks the one thing that makes a
+// listening item a listening item: the script is on the body and not on the
+// config.
+//
+// The config is what the browser receives. A script that travels with it is an
+// item the learner reads instead of hearing — which renders perfectly, grades
+// perfectly, and measures nothing. The rest is the same contract reading has:
+// every question asked in the config has to be answered in the body, under the
+// same id, or the grade comes back with a question the learner never saw.
+func TestListeningCourseSeedData_Integrity(t *testing.T) {
+	if listeningCourseSeedData.Slug != "listening-practice" || listeningCourseSeedData.Title == "" {
+		t.Fatal("listeningCourseSeedData missing slug or title")
+	}
+
+	totalLessons := 0
+	for _, unit := range listeningCourseSeedData.Units {
+		if unit.Position <= 0 || unit.Title == "" {
+			t.Errorf("invalid unit %+v", unit)
+		}
+		for _, lesson := range unit.Lessons {
+			totalLessons++
+			if lesson.Position <= 0 || lesson.Title == "" || lesson.SkillFocus != skillListening {
+				t.Errorf("invalid listening lesson %+v", lesson)
+			}
+			if len(lesson.Activities) == 0 {
+				t.Errorf("lesson %s has no activities", lesson.Title)
+			}
+			for _, act := range lesson.Activities {
+				assertListeningActivity(t, lesson.Title, act)
+			}
+		}
+	}
+
+	if totalLessons != 6 {
+		t.Errorf("listening course has %d lessons, want 6", totalLessons)
+	}
+}
+
+func assertListeningActivity(t *testing.T, lessonTitle string, act seedActivity) {
+	t.Helper()
+
+	if act.Kind != kindListeningComprehension {
+		t.Errorf("%s activity %d is %q, not a listening item", lessonTitle, act.Position, act.Kind)
+		return
+	}
+
+	if script, _ := act.Body[cfgScript].(string); script == "" {
+		t.Errorf("%s activity %d has no script; cmd/tts has nothing to render and the clip never exists",
+			lessonTitle, act.Position)
+	}
+	if _, leaked := act.Config[cfgScript]; leaked {
+		t.Errorf("%s activity %d carries the script in its config; the learner reads it instead of listening",
+			lessonTitle, act.Position)
+	}
+
+	configQuestions, _ := act.Config["questions"].([]map[string]any)
+	bodyQuestions, _ := act.Body["questions"].([]map[string]any)
+	if len(configQuestions) < 4 {
+		t.Errorf("%s activity %d asks %d questions, want at least 4",
+			lessonTitle, act.Position, len(configQuestions))
+	}
+	if len(configQuestions) != len(bodyQuestions) {
+		t.Errorf("%s activity %d asks %d questions and answers %d",
+			lessonTitle, act.Position, len(configQuestions), len(bodyQuestions))
+		return
+	}
+
+	answers := map[string]string{}
+	for _, q := range bodyQuestions {
+		id, _ := q["id"].(string)
+		answer, _ := q["answer"].(string)
+		if answer == "" {
+			t.Errorf("%s activity %d question %q has no answer", lessonTitle, act.Position, id)
+		}
+		answers[id] = answer
+	}
+
+	for _, q := range configQuestions {
+		id, _ := q["id"].(string)
+		answer, answered := answers[id]
+		if !answered {
+			t.Errorf("%s activity %d asks question %q the body does not answer", lessonTitle, act.Position, id)
+			continue
+		}
+		// A choice answer has to name one of the options the learner is shown;
+		// an answer that names nothing on screen can never be picked.
+		options, hasOptions := q[cfgOptions].([]map[string]string)
+		if !hasOptions {
+			continue
+		}
+		found := false
+		for _, opt := range options {
+			if opt[cfgOptionID] == answer {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("%s activity %d question %q answers %q, which is not one of its options",
+				lessonTitle, act.Position, id, answer)
+		}
 	}
 }

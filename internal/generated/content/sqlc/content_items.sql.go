@@ -14,7 +14,7 @@ import (
 const countContentItemsFiltered = `-- name: CountContentItemsFiltered :one
 SELECT COUNT(*)::bigint
 FROM content.content_items
-WHERE ($1::text IS NULL OR status = $1)
+WHERE ($1::text IS NULL OR status::text = $1)
   AND ($2::text IS NULL OR kind = $2)
   AND ($3::text IS NULL OR slug ILIKE $3 || '%')
 `
@@ -167,7 +167,7 @@ func (q *Queries) ListContentItemsByOwner(ctx context.Context, arg ListContentIt
 const listContentItemsFiltered = `-- name: ListContentItemsFiltered :many
 SELECT id, kind, slug, current_version_id, status, owner_id, created_at, updated_at
 FROM content.content_items
-WHERE ($1::text IS NULL OR status = $1)
+WHERE ($1::text IS NULL OR status::text = $1)
   AND ($2::text IS NULL OR kind = $2)
   AND ($3::text IS NULL OR slug ILIKE $3 || '%')
 ORDER BY updated_at DESC, id DESC

@@ -107,6 +107,14 @@ func (f *fakeAIClient) Complete(_ context.Context, _ ai.Request) (ai.Response, e
 
 const keyAudioObject = "audio_object_key"
 
+// The criterion fields in the model's JSON, each spelled once.
+const (
+	keyBand      = "band"
+	keyCommentEn = "comment_en"
+	keyCommentVi = "comment_vi"
+	keyName      = "name"
+)
+
 func TestGrader_Grade_Validation(t *testing.T) {
 	userID := uuid.New()
 	attemptID := uuid.New()
@@ -216,7 +224,7 @@ func TestGrader_GradeSubmission_ReadAloud(t *testing.T) {
 		"score":        80,
 		"correct":      true,
 		"criteria": []map[string]any{
-			{"name": "fluency_coherence", "band": 7.0, "comment_en": "Good flow", "comment_vi": "Lưu loát"},
+			{keyName: "fluency_coherence", keyBand: 7.0, keyCommentEn: "Good flow", keyCommentVi: "Lưu loát"},
 		},
 		"feedback_en": "Good reading aloud.",
 		"feedback_vi": "Đọc tốt.",
@@ -253,4 +261,101 @@ func TestGrader_GradeSubmission_ReadAloud(t *testing.T) {
 	assert.True(t, completer.result.Score > 50)
 	require.NotEmpty(t, completer.result.ReviewItems)
 	assert.Equal(t, "good", completer.result.ReviewItems[0].InitialGrade)
+
+	// The stored grade is the awarded grade, not a number to be reconstructed
+	// later. The history screen reads these two fields; before they existed it
+	// rebuilt a score of its own, and the two disagreed (see the respond case
+	// below, where the rebuild produced 70 against an awarded 80).
+	require.NotNil(t, feedbackWriter.savedFeedback.Score)
+	assert.Equal(t, completer.result.Score, *feedbackWriter.savedFeedback.Score,
+		"the score written to feedback must be the score the attempt was completed with")
+	require.NotNil(t, feedbackWriter.savedFeedback.OverallBand)
+	assert.InDelta(t, 7.0, *feedbackWriter.savedFeedback.OverallBand, 0.01)
+	assert.Equal(t, contract.TypeReadAloud, feedbackWriter.savedFeedback.TaskType)
+
+	// 0.3 x model score + 0.7 x word accuracy, the blend the grader applies to a
+	// read-aloud task: 0.3*80 + 0.7*77.78 = 78.4 -> 78. Pinned so the blend
+	// cannot drift away from the number the history screen now reads back.
+	assert.Equal(t, 78, completer.result.Score)
+}
+
+// TestGrader_GradeSubmission_Respond covers the open task, where the model's
+// score stands alone because there is no reference text to measure against.
+//
+// It is the case that made the old history screen visibly wrong: with no
+// read-aloud accuracy to fall back on, that screen averaged the criteria bands
+// and multiplied by ten, so an attempt awarded 80 was listed as 70.
+func TestGrader_GradeSubmission_Respond(t *testing.T) {
+	attemptID := uuid.New()
+	userID := uuid.New()
+	versionID := uuid.New()
+	recordingKey := "recordings/" + userID.String() + "/01DEF.webm"
+
+	bodyJSON, _ := json.Marshal(map[string]any{
+		"task_type": "respond",
+		"prompt":    "How do you usually get to work?",
+	})
+	contentReader := &fakeContentReader{
+		version: &contentcontract.Version{
+			ID:   versionID,
+			Kind: contract.KindSpeakingTask,
+			Body: bodyJSON,
+		},
+	}
+
+	respJSON, _ := json.Marshal(map[string]string{keyAudioObject: recordingKey})
+	attemptReader := &fakeAttemptReader{
+		attempt: &learningcontract.AttemptDetail{
+			ID:               attemptID,
+			UserID:           userID,
+			ContentVersionID: versionID,
+			Status:           "grading",
+			Response:         respJSON,
+		},
+	}
+
+	completer := &fakeCompleter{}
+	feedbackWriter := &fakeFeedbackWriter{}
+	transcriber := &fakeTranscriber{
+		result: &media.TranscribeResult{
+			Text:     "I usually take the bus because it is cheaper than driving.",
+			Duration: 6.0,
+		},
+	}
+
+	// Criteria average 7.0, which is what the rebuild used; the model's own
+	// score is 80, which is what the learner was actually given.
+	aiPayload, _ := json.Marshal(map[string]any{
+		"overall_band": 7.0,
+		"score":        80,
+		"correct":      true,
+		"criteria": []map[string]any{
+			{keyName: "fluency_coherence", keyBand: 7.0, keyCommentEn: "Steady", keyCommentVi: "Ổn định"},
+			{keyName: "lexical_resource", keyBand: 7.0, keyCommentEn: "Adequate", keyCommentVi: "Đủ dùng"},
+		},
+		"feedback_en": "Clear answer.",
+		"feedback_vi": "Câu trả lời rõ ràng.",
+	})
+
+	grader := service.NewGrader(service.GraderDeps{
+		Content:     contentReader,
+		Attempts:    attemptReader,
+		Completer:   completer,
+		Storage:     &mockStorageStore{},
+		Transcriber: transcriber,
+		AI:          &fakeAIClient{response: ai.Response{Text: string(aiPayload), Model: "mock-model"}},
+		Feedback:    feedbackWriter,
+		Clock:       clock.NewFake(time.Now()),
+	})
+
+	require.NoError(t, grader.GradeSubmission(context.Background(), attemptID, true))
+
+	// No reference text, so no accuracy and no blend: the model score stands.
+	require.NotNil(t, feedbackWriter.savedFeedback)
+	assert.Nil(t, feedbackWriter.savedFeedback.ReadAloudAccuracy)
+	assert.Equal(t, 80, completer.result.Score)
+
+	require.NotNil(t, feedbackWriter.savedFeedback.Score)
+	assert.Equal(t, completer.result.Score, *feedbackWriter.savedFeedback.Score)
+	assert.Equal(t, contract.TypeRespond, feedbackWriter.savedFeedback.TaskType)
 }

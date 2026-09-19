@@ -63,6 +63,21 @@ func (r *Repository) InsertFeedback(ctx context.Context, fb *contract.SpeakingFe
 	if id == uuid.Nil {
 		id = uuid.New()
 	}
+	var band pgtype.Numeric
+	if fb.OverallBand != nil {
+		_ = band.Scan(fmt.Sprintf("%.1f", *fb.OverallBand))
+	}
+	var score *int32
+	if fb.Score != nil {
+		v := clampInt32(*fb.Score)
+		score = &v
+	}
+	var taskType *string
+	if fb.TaskType != "" {
+		t := fb.TaskType
+		taskType = &t
+	}
+
 	now := time.Now().UTC()
 	if fb.CreatedAt.IsZero() {
 		fb.CreatedAt = now
@@ -86,6 +101,9 @@ func (r *Repository) InsertFeedback(ctx context.Context, fb *contract.SpeakingFe
 		PromptVersion:      fb.PromptVersion,
 		Model:              fb.Model,
 		AsrModel:           fb.ASRModel,
+		OverallBand:        band,
+		Score:              score,
+		TaskType:           taskType,
 		CreatedAt:          fb.CreatedAt,
 		UpdatedAt:          fb.UpdatedAt,
 	})
@@ -198,6 +216,25 @@ func toContractFeedback(row sqlc.SkillSpeakingFeedback) (*contract.SpeakingFeedb
 		wpm = &v
 	}
 
+	var band *float64
+	if row.OverallBand.Valid {
+		v, _ := row.OverallBand.Float64Value()
+		if v.Valid {
+			band = &v.Float64
+		}
+	}
+
+	var score *int
+	if row.Score != nil {
+		v := int(*row.Score)
+		score = &v
+	}
+
+	var taskType string
+	if row.TaskType != nil {
+		taskType = *row.TaskType
+	}
+
 	return &contract.SpeakingFeedback{
 		ID:                 row.ID,
 		AttemptID:          row.AttemptID,
@@ -213,9 +250,80 @@ func toContractFeedback(row sqlc.SkillSpeakingFeedback) (*contract.SpeakingFeedb
 		PromptVersion:      row.PromptVersion,
 		Model:              row.Model,
 		ASRModel:           row.AsrModel,
+		OverallBand:        band,
+		Score:              score,
+		TaskType:           taskType,
 		CreatedAt:          row.CreatedAt,
 		UpdatedAt:          row.UpdatedAt,
 	}, nil
+}
+
+// ListSubmissionsByUser retrieves speaking submissions for a user with pagination.
+// ListSubmissionsByUser returns one page of a learner's graded speaking
+// submissions, mapped to the contract here rather than in the service — the
+// sqlc row type is this package's business, the way writing's repository has it.
+func (r *Repository) ListSubmissionsByUser(
+	ctx context.Context, userID uuid.UUID, limit, offset int,
+) ([]contract.SpeakingSubmissionSummary, error) {
+	rows, err := r.queries.ListSpeakingSubmissionsByUser(ctx, sqlc.ListSpeakingSubmissionsByUserParams{
+		UserID: userID,
+		Limit:  clampInt32(limit),
+		Offset: clampInt32(offset),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list speaking submissions: %w", err)
+	}
+
+	items := make([]contract.SpeakingSubmissionSummary, 0, len(rows))
+	for _, row := range rows {
+		var band *float64
+		if row.OverallBand.Valid {
+			v, _ := row.OverallBand.Float64Value()
+			if v.Valid {
+				band = &v.Float64
+			}
+		}
+
+		var score *int
+		if row.Score != nil {
+			v := int(*row.Score)
+			score = &v
+		}
+
+		// The authored type when the row carries it. A row written before the
+		// column existed falls back to the old inference, which is the best
+		// available answer for history and is wrong only for a `respond` task
+		// that was authored with a reference text.
+		taskType := ""
+		switch {
+		case row.TaskType != nil && *row.TaskType != "":
+			taskType = *row.TaskType
+		case row.ReadAloudAccuracy.Valid:
+			taskType = contract.TypeReadAloud
+		default:
+			taskType = contract.TypeRespond
+		}
+
+		items = append(items, contract.SpeakingSubmissionSummary{
+			AttemptID: row.AttemptID,
+			// A row exists here only once grading succeeded, so every row in
+			// this list is graded — the same reasoning writing's list uses.
+			Status:       "graded",
+			OverallBand:  band,
+			Score:        score,
+			HasRecording: row.RecordingDeletedAt == nil && row.RecordingKey != "",
+			TaskType:     taskType,
+			FeedbackEn:   row.FeedbackEn,
+			FeedbackVi:   row.FeedbackVi,
+			CreatedAt:    row.CreatedAt,
+		})
+	}
+	return items, nil
+}
+
+// CountSubmissionsByUser counts speaking submissions for a user.
+func (r *Repository) CountSubmissionsByUser(ctx context.Context, userID uuid.UUID) (int64, error) {
+	return r.queries.CountSpeakingSubmissionsByUser(ctx, userID)
 }
 
 // clampInt32 narrows an int to int32 with a bound CodeQL and gosec can see.
@@ -227,4 +335,33 @@ func clampInt32(v int) int32 {
 		return math.MinInt32
 	}
 	return int32(v)
+}
+
+// GetConsent reports whether the learner has consented to voice recording.
+//
+// Absence is an answer, not an error: nobody has consented until they have.
+func (r *Repository) GetConsent(
+	ctx context.Context, userID uuid.UUID,
+) (*contract.SpeakingConsent, error) {
+	row, err := r.queries.GetSpeakingConsent(ctx, userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return &contract.SpeakingConsent{Consented: false}, nil
+		}
+		return nil, fmt.Errorf("get speaking consent: %w", err)
+	}
+	at := row.ConsentedAt
+	return &contract.SpeakingConsent{Consented: true, ConsentedAt: &at}, nil
+}
+
+// RecordConsent stores the learner's consent with its timestamp.
+func (r *Repository) RecordConsent(
+	ctx context.Context, userID uuid.UUID,
+) (*contract.SpeakingConsent, error) {
+	row, err := r.queries.UpsertSpeakingConsent(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("record speaking consent: %w", err)
+	}
+	at := row.ConsentedAt
+	return &contract.SpeakingConsent{Consented: true, ConsentedAt: &at}, nil
 }

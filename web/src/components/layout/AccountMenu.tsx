@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "@tanstack/react-router";
 import {
   LogOut,
+  Mic,
   PenTool,
   Settings,
   ShieldCheck,
@@ -117,6 +118,12 @@ export default function AccountMenu({
           <Link to="/my-writing">
             <PenTool className="h-4 w-4 shrink-0" aria-hidden="true" />
             {t("nav.myWriting", "My Writing")}
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/my-speaking">
+            <Mic className="h-4 w-4 shrink-0" aria-hidden="true" />
+            {t("nav.mySpeaking", "My Speaking")}
           </Link>
         </DropdownMenuItem>
         {role === "admin" && (

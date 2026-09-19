@@ -13,6 +13,15 @@ import (
 )
 
 var (
+	// ErrConsentRequired is returned when a learner asks for an upload URL before
+	// agreeing to be recorded (BR-SPEAKING-03). The code has been documented in
+	// the module's error table since it was written; this is where it starts
+	// being true.
+	ErrConsentRequired = apperr.New(
+		apperr.Forbidden,
+		"RECORDING_CONSENT_REQUIRED",
+		"Consent to voice recording is required before recording.",
+	)
 	// ErrUnsupportedAudioFormat is returned when the uploaded audio content type is not supported.
 	ErrUnsupportedAudioFormat = apperr.New(apperr.BadRequest, "UNSUPPORTED_AUDIO_FORMAT", "audio format not supported")
 	// ErrDailyLimitReached is returned when the user exceeds the daily speaking recording quota.

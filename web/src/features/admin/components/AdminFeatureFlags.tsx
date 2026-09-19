@@ -142,7 +142,7 @@ export const AdminFeatureFlags: React.FC = () => {
         },
       }),
       columnHelper.accessor("enabled", {
-        header: "State",
+        header: t("admin.state"),
         cell: (info) => {
           const flag = info.row.original;
           const isUpdating = updatingKey === flag.key;
@@ -192,7 +192,7 @@ export const AdminFeatureFlags: React.FC = () => {
         },
       }),
       columnHelper.accessor("owner", {
-        header: "Owner",
+        header: t("admin.owner"),
         cell: (info) => (
           <span className="text-xs text-text-muted flex items-center gap-1 font-mono">
             <User className="h-3.5 w-3.5 text-text-muted" />

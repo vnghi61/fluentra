@@ -510,6 +510,8 @@
       { "question": "How does a graded writing or speaking score become a placement band?", "choice": "From the grader's 0–100 score: below 30 A1, below 50 A2, below 70 B1, below 85 B2, otherwise C1", "why": "Both graders report a 0–100 rubric score in `GradeResult`; the IELTS-style band lives only in each module's feedback table, which `learning` may not read. The table follows `CEFRFromScore`, capped at C1 because C2 is not placed, so a skill mastery written from placement and one written from practice agree on what a score means (work order 13 §3.5)" },
       { "question": "What does a placement write into skill mastery?", "choice": "Each measured skill's band at confidence 0.40, only where the existing confidence is lower", "why": "A placement is one short measurement; a learner whose practice has already raised confidence above 0.40 has better evidence than the test. Each skill's band is its own estimate, drawn towards the overall one in proportion to how few responses it had (n / (n + 5)), and a skill with no responses is not written (work order 13 §3.5)" },
       { "question": "How many plays does a placement clip get?", "choice": "One, and only while it is the current item of the caller's open session", "why": "A placement is a test, so it takes the exam's rule rather than practice's three. The context is checked by `learning` through `PlacementListeningPolicy`: a client-chosen context id would be a fresh set of plays every time (work order 13 §3.5)" },
+      { "question": "Which kinds does the practice pool generate?", "choice": "All six an exam sitting draws \u2014 reading, tense choice, sentence transform, listening, writing and both speaking tasks \u2014 at every level", "why": "It generated three, so a daily set was reading and grammar and nothing else: a learner could practise every day and never be asked to listen, write or speak, and every `listening_comprehension` item in the database belonged to `pool-exam` or `pool-placement`, which no learner opens. Vocabulary stays out on purpose \u2014 those kinds are built from the learner's own dictionary by `vocabulary`, and a generic vocabulary drill teaches words nobody is learning" },
+      { "question": "How deep is each pool slot kept?", "choice": "Per slot, not one number for all of them: 50 tense choices down to 15 writing prompts and speaking tasks, with a ceiling of four times the target", "why": "Items are not equally cheap or equally consumed. A daily set takes three grammar drills and one writing prompt, and a listening clip cannot be drawn at all until `cmd/tts` has rendered it \u2014 filling every slot to fifty spent the AI budget building a backlog of essays and unplayable clips while the grammar slot ran short" },
       { "question": "How is the weekly plan composed?", "choice": "By estimated minutes: 40% next lessons, 30% daily sets of 10 minutes, 20% due reviews in 5-minute blocks at the learner's pace, one 15-minute writing or speaking task", "why": "Items are whole and the plan is trimmed from the share furthest over while it would still meet the goal, so it never exceeds the goal by more than one item; the productive task is never trimmed. The weakest skill — the lowest mastery band, as a gap below the target level when set — takes the least important item's place: a review block, else a practice set, else a lesson. Pace is the learner's average `elapsed_ms` over their last 200 answers in 30 days, 20 seconds with none (work order 13 §3.7)" }
     ],
     "adrs": [{ "id": "ADR-0015", "file": "ADR-0015-content-exercise-core.md", "title": "Shared content + exercise engine" }],
@@ -1007,23 +1009,26 @@
     "status": "DONE",
     "owner": "@learning-team",
     "hasJobs": true,
-    "purpose": "Spoken practice: prompts, browser recording, automatic speech recognition, phoneme-level pronunciation assessment, fluency measurement, and AI coaching built on top of those numbers.",
+    "purpose": "Spoken practice: prompts, browser recording, automatic speech recognition, read-aloud word accuracy, speaking rate, and AI coaching built on the transcript.",
     "responsibilities": [
-      "Speaking tasks: read-aloud, describe-an-image, opinion, role-play",
+      "Speaking tasks: read-aloud and open response",
       "Recording upload coordination and attempt lifecycle",
-      "Orchestrating the media pipeline for transcription and pronunciation assessment",
-      "Fluency metrics: speech rate, pauses, filler words",
-      "AI coaching feedback derived from transcript plus scores",
-      "Phoneme-level feedback rendering data (the heat map)"
+      "Orchestrating the media pipeline for transcription",
+      "Read-aloud word accuracy and speaking rate, computed in Go from the transcript",
+      "AI coaching feedback derived from the transcript plus those numbers"
     ],
     "notResponsibilities": ["Transcoding or ASR — that is `platform/media`", "Storing audio — that is `platform/storage`", "Generating text feedback directly — it asks `platform/ai`"],
     "tables": [
-      { "name": "speaking_feedback", "purpose": "Per-attempt asynchronous feedback, metrics, and transcript", "notes": "`attempt_id` UNIQUE FK learn.attempts, `user_id`, `recording_key`, `recording_deleted_at`, `transcript`, `criteria` jsonb, `read_aloud_accuracy`, `words_per_minute`, `feedback_en`, `feedback_vi`" }
+      { "name": "speaking_feedback", "purpose": "Per-attempt asynchronous feedback, metrics, and transcript", "notes": "`attempt_id` UNIQUE FK learn.attempts, `user_id`, `recording_key`, `recording_deleted_at`, `transcript`, `criteria` jsonb, `read_aloud_accuracy`, `words_per_minute`, `feedback_en`, `feedback_vi`, `overall_band`, `score`, `task_type`" },
+      { "name": "speaking_consents", "purpose": "BR-SPEAKING-03: who agreed to be recorded, and when", "notes": "`user_id` PK FK core.users ON DELETE CASCADE, `consented_at`. One row per learner; the upload-intent endpoint refuses without it." }
     ],
     "endpoints": [
       { "method": "POST", "path": "/api/v1/speaking/upload-intent", "permission": "self", "purpose": "Presigned PUT URL for recording upload to storage", "success": "200", "errors": ["UNSUPPORTED_AUDIO_FORMAT", "SPEECH_DAILY_LIMIT_REACHED"] },
       { "method": "DELETE", "path": "/api/v1/speaking/attempts/{id}/recording", "permission": "self", "purpose": "Purges the recording object while keeping scores and feedback", "success": "204" },
-      { "method": "GET", "path": "/api/v1/speaking/attempts/{id}/feedback", "permission": "self", "purpose": "Read feedback on a graded speaking attempt", "success": "200", "errors": ["FEEDBACK_NOT_FOUND"] }
+      { "method": "GET", "path": "/api/v1/speaking/attempts/{id}/feedback", "permission": "self", "purpose": "Read feedback on a graded speaking attempt, with a presigned audio_url while the recording lives", "success": "200", "errors": ["FEEDBACK_NOT_FOUND"] },
+      { "method": "GET", "path": "/api/v1/speaking/submissions", "permission": "self", "purpose": "Paginated history of the learner's graded speaking attempts", "success": "200" },
+      { "method": "GET", "path": "/api/v1/speaking/consent", "permission": "self", "purpose": "Whether the learner has consented to voice recording, and when", "success": "200" },
+      { "method": "POST", "path": "/api/v1/speaking/consent", "permission": "self", "purpose": "Record the learner's consent to voice recording (BR-SPEAKING-03)", "success": "200" }
     ],
     "contract": [{ "kind": "interface", "name": "speaking.Grader", "purpose": "Implements `learning.ExerciseGrader`; always asynchronous" }],
     "events": {

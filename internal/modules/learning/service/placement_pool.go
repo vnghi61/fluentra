@@ -70,7 +70,7 @@ var placementSlots = []placementSlotSpec{
 	},
 	{
 		position: 2, kind: kindGrammarTenseChoice, promptKind: kindGrammarTenseChoice,
-		slotName: "grammar-tense-choice", title: "Grammar Tense Choice", skill: domain.SkillGrammar,
+		slotName: slotGrammarTenseChoice, title: titleGrammarTenseChoice, skill: domain.SkillGrammar,
 		target: 40, minimum: domain.PlacementStageOneMax / 2,
 	},
 	{
@@ -80,12 +80,12 @@ var placementSlots = []placementSlotSpec{
 	},
 	{
 		position: 4, kind: kindListeningComprehension, promptKind: kindListeningComprehension,
-		slotName: slotListening, title: "Listening Comprehension", skill: domain.SkillListening,
+		slotName: slotListening, title: titleListening, skill: domain.SkillListening,
 		target: 15, minimum: 3,
 	},
 	{
 		position: 5, kind: kindWritingPrompt, promptKind: kindWritingPrompt,
-		slotName: slotWritingPrompt, title: "Writing Prompt", skill: domain.SkillWriting,
+		slotName: slotWritingPrompt, title: titleWritingPrompt, skill: domain.SkillWriting,
 		target: 10, minimum: 1,
 	},
 	{

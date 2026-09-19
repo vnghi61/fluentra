@@ -360,11 +360,7 @@ func TestPoolIsolation_PracticeNeverContainsExam_ExamNeverContainsPractice(t *te
 	require.NoError(t, f.svc.EnsureExamPoolStructure(context.Background()))
 
 	// Seed practice pool
-	practiceIDsMap := f.seed(t, "B1", map[string]int{
-		poolKindReading:   3,
-		poolKindTense:     10,
-		poolKindTransform: 6,
-	})
+	practiceIDsMap := f.seed(t, "B1", stockedSlots(6))
 	practiceSet := make(map[uuid.UUID]bool)
 	for _, ids := range practiceIDsMap {
 		for _, id := range ids {

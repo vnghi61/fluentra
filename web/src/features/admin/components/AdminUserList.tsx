@@ -7,8 +7,6 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import {
-  ChevronLeft,
-  ChevronRight,
   Eye,
   Loader2,
   Lock,
@@ -25,6 +23,7 @@ import { AdminUserDetailModal } from "./AdminUserDetailModal";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Pagination } from "@/components/ui/pagination";
 import type { components } from "@/types/api";
 
 type UserStatus = components["schemas"]["UserStatus"];
@@ -260,7 +259,7 @@ export const AdminUserList: React.FC = () => {
         },
       }),
       columnHelper.accessor("email", {
-        header: "Email",
+        header: t("admin.email"),
         cell: (info) => (
           <span className="text-xs font-mono text-text-muted">
             {info.getValue()}
@@ -281,7 +280,7 @@ export const AdminUserList: React.FC = () => {
                     : "bg-warning/10 text-warning-accent border-warning/20"
               }`}
             >
-              {status}
+              {t(`admin.userStatus.${status}`, status)}
             </span>
           );
         },
@@ -537,39 +536,22 @@ export const AdminUserList: React.FC = () => {
           </div>
         )}
 
-        {/* Cursor Pagination Footer */}
-        <div className="flex items-center justify-between border-t border-border-subtle px-4 py-3 bg-surface-muted text-xs text-text-muted">
-          <div>
-            {/* The match count, not the page size. This read "15 learner(s)"
-                whatever the search matched, because it counted the rows it had
-                been handed. */}
-            {t("admin.totalLearners", { count: total })}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handlePreviousPage}
-              disabled={cursorHistory.length === 0 || isLoading}
-            >
-              <ChevronLeft className="mr-1 h-3.5 w-3.5" />
-              {t("admin.previous")}
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleNextPage}
-              disabled={!nextCursor || isLoading}
-            >
-              Next
-              <ChevronRight className="ml-1 h-3.5 w-3.5" />
-            </Button>
-          </div>
-        </div>
+        {/* No `onPageSelect`: /admin/users is cursor-paged, so page 6 cannot be
+            asked for directly. The position readout is still worth having — the
+            complaint was never that the numbers were unclickable, it was that
+            there were none. */}
+        <Pagination
+          page={cursorHistory.length + 1}
+          pageCount={Math.max(1, Math.ceil(total / PAGE_SIZE))}
+          total={total}
+          rangeFrom={users.length > 0 ? cursorHistory.length * PAGE_SIZE + 1 : 0}
+          rangeTo={cursorHistory.length * PAGE_SIZE + users.length}
+          isBusy={isLoading}
+          canPrevious={cursorHistory.length > 0}
+          canNext={Boolean(nextCursor)}
+          onPrevious={handlePreviousPage}
+          onNext={handleNextPage}
+        />
       </div>
 
       {/* Batch confirmation. One justification covers the whole batch, which

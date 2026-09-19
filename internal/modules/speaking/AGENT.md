@@ -6,11 +6,11 @@ status: DONE
 phase: 3
 owner: "@learning-team"
 schema: skill
-tables: [speaking_feedback]
+tables: [speaking_feedback, speaking_consents]
 depends_on: [media, ai, storage, job, content, learning]
 depended_on_by: [learning, analytics, gamification]
 spec_version: 1.0.0
-last_verified: 2026-08-06
+last_verified: 2026-09-18
 ---
 
 # speaking — AGENT.md
@@ -33,7 +33,7 @@ last_verified: 2026-08-06
 ## 1. Overview
 
 <!-- BEGIN GENERATED: overview -->
-Spoken practice: prompts, browser recording, automatic speech recognition, phoneme-level pronunciation assessment, fluency measurement, and AI coaching built on top of those numbers.
+Spoken practice: prompts, browser recording, automatic speech recognition, read-aloud word accuracy, speaking rate, and AI coaching built on the transcript.
 <!-- END GENERATED: overview -->
 
 ## 2. Responsibilities
@@ -41,12 +41,11 @@ Spoken practice: prompts, browser recording, automatic speech recognition, phone
 <!-- BEGIN GENERATED: responsibilities -->
 **This module owns:**
 
-- Speaking tasks: read-aloud, describe-an-image, opinion, role-play
+- Speaking tasks: read-aloud and open response
 - Recording upload coordination and attempt lifecycle
-- Orchestrating the media pipeline for transcription and pronunciation assessment
-- Fluency metrics: speech rate, pauses, filler words
-- AI coaching feedback derived from transcript plus scores
-- Phoneme-level feedback rendering data (the heat map)
+- Orchestrating the media pipeline for transcription
+- Read-aloud word accuracy and speaking rate, computed in Go from the transcript
+- AI coaching feedback derived from the transcript plus those numbers
 
 **This module does NOT own:**
 
@@ -93,7 +92,8 @@ Migrations: `db/migrations/speaking/` · Queries: `db/queries/speaking/`
 
 | Table | Purpose | Key columns / notes |
 |---|---|---|
-| `skill.speaking_feedback` | Per-attempt asynchronous feedback, metrics, and transcript | `attempt_id` UNIQUE FK learn.attempts, `user_id`, `recording_key`, `recording_deleted_at`, `transcript`, `criteria` jsonb, `read_aloud_accuracy`, `words_per_minute`, `feedback_en`, `feedback_vi` |
+| `skill.speaking_feedback` | Per-attempt asynchronous feedback, metrics, and transcript | `attempt_id` UNIQUE FK learn.attempts, `user_id`, `recording_key`, `recording_deleted_at`, `transcript`, `criteria` jsonb, `read_aloud_accuracy`, `words_per_minute`, `feedback_en`, `feedback_vi`, `overall_band`, `score`, `task_type` |
+| `skill.speaking_consents` | BR-SPEAKING-03: who agreed to be recorded, and when | `user_id` PK FK core.users ON DELETE CASCADE, `consented_at`. One row per learner; the upload-intent endpoint refuses without it. |
 
 <!-- END GENERATED: schema -->
 
@@ -107,7 +107,10 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 |---|---|---|---|
 | `POST` | `/api/v1/speaking/upload-intent` | `self` | Presigned PUT URL for recording upload to storage |
 | `DELETE` | `/api/v1/speaking/attempts/{id}/recording` | `self` | Purges the recording object while keeping scores and feedback |
-| `GET` | `/api/v1/speaking/attempts/{id}/feedback` | `self` | Read feedback on a graded speaking attempt |
+| `GET` | `/api/v1/speaking/attempts/{id}/feedback` | `self` | Read feedback on a graded speaking attempt, with a presigned audio_url while the recording lives |
+| `GET` | `/api/v1/speaking/submissions` | `self` | Paginated history of the learner's graded speaking attempts |
+| `GET` | `/api/v1/speaking/consent` | `self` | Whether the learner has consented to voice recording, and when |
+| `POST` | `/api/v1/speaking/consent` | `self` | Record the learner's consent to voice recording (BR-SPEAKING-03) |
 <!-- END GENERATED: endpoints -->
 
 ## 7. Folder map
