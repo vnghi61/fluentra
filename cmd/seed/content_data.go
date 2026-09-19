@@ -75,6 +75,7 @@ const (
 	skillReading    = "reading"
 	skillWriting    = "writing"
 	skillSpeaking   = "speaking"
+	skillListening  = "listening"
 
 	kindMultipleChoice = "vocab_multiple_choice"
 	kindGapFill        = "vocab_gap_fill"
@@ -90,6 +91,7 @@ const (
 	kindReadingComprehension     = "reading_comprehension"
 	kindWritingPrompt            = "writing_prompt"
 	kindSpeakingTask             = "speaking_task"
+	kindListeningComprehension   = "listening_comprehension"
 
 	cfgOptions         = "options"
 	cfgOptionID        = "id"

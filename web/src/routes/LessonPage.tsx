@@ -26,6 +26,7 @@ import {
   ExerciseListenType,
   ExerciseMatch,
   ExerciseMultipleChoice,
+  ExerciseListening,
   ExerciseReading,
   type ItemResult,
   type ReadingQuestionItem,
@@ -47,10 +48,7 @@ import {
   type WritingFeedback,
   writingApi,
 } from "@/features/writing";
-import {
-  type SpeakingFeedback,
-  speakingApi,
-} from "@/features/speaking";
+import { type SpeakingFeedback, speakingApi } from "@/features/speaking";
 import { readExampleSentences } from "@/lib/examples";
 
 // The activity `config` is a free-form object in the spec, because its shape
@@ -119,6 +117,14 @@ interface FlashcardConfig {
   example_sentence?: string;
   example_sentences?: string[];
   audio_url?: string;
+}
+
+// The listening body the browser receives. `script` is absent by design: the
+// server redacts it, because an item whose script you can read is a reading
+// item. It comes back from the transcript route after the attempt is graded.
+interface ListeningConfig {
+  title?: string;
+  questions?: ReadingQuestionItem[];
 }
 
 interface ReadingConfig {
@@ -387,7 +393,8 @@ export function LessonPage(): React.JSX.Element {
                   fb.read_aloud_accuracy !== undefined
                     ? Math.round(fb.read_aloud_accuracy)
                     : Math.round(
-                        ((fb.criteria?.reduce((acc, c) => acc + c.band, 0) ?? 0) /
+                        ((fb.criteria?.reduce((acc, c) => acc + c.band, 0) ??
+                          0) /
                           (fb.criteria?.length || 1)) *
                           10,
                       );
@@ -699,6 +706,7 @@ export function LessonPage(): React.JSX.Element {
   const reorderConfig = rawConfig as ReorderConfig;
   const contextConfig = rawConfig as ContextChoiceConfig;
   const readingConfig = rawConfig as ReadingConfig;
+  const listeningConfig = rawConfig as ListeningConfig;
   const writingConfig = rawConfig as WritingConfig;
   const speakingConfig = rawConfig as SpeakingConfig;
 
@@ -771,6 +779,15 @@ export function LessonPage(): React.JSX.Element {
       readingConfig.options.length > 0) ||
       (Array.isArray(readingConfig.questions) &&
         readingConfig.questions.length > 0));
+
+  // The clip itself is not in the config — it is fetched, play by play, against
+  // the attempt — so what makes a listening item renderable is its questions
+  // plus a content version to ask the play route about.
+  const canRenderListening =
+    kind === "listening_comprehension" &&
+    Boolean(currentActivity?.content_version_id) &&
+    Array.isArray(listeningConfig.questions) &&
+    listeningConfig.questions.length > 0;
 
   const canRenderWriting =
     kind === "writing_prompt" &&
@@ -852,6 +869,7 @@ export function LessonPage(): React.JSX.Element {
           !canRenderReorder &&
           !canRenderContextChoice &&
           !canRenderReading &&
+          !canRenderListening &&
           !canRenderWriting &&
           !canRenderSpeaking && (
             <ActivityUnavailable
@@ -1080,8 +1098,33 @@ export function LessonPage(): React.JSX.Element {
           />
         )}
 
+        {canRenderListening && (
+          <ExerciseListening
+            // Remount on the next activity, for the same reason as writing and
+            // speaking below: the player holds a play it has already spent and
+            // the answers hold the previous question's choices, neither of
+            // which handleContinue can reach.
+            key={currentActivity?.id}
+            versionId={currentActivity?.content_version_id}
+            attemptId={currentAttemptId ?? pollingAttemptId}
+            title={listeningConfig.title}
+            questions={listeningConfig.questions}
+            itemResults={submissionResult?.item_results}
+            feedback={submissionResult?.feedback}
+            explanation={submissionResult?.explanation}
+            isSubmitted={isSubmitted}
+            isCorrect={submissionResult?.correct}
+            isLoading={isSubmitting || isAttemptPending}
+            onSubmit={(answers) => void handleSubmit({ answers })}
+            onContinue={handleContinue}
+          />
+        )}
+
         {canRenderWriting && (
           <ExerciseWriting
+            // Same reason as ExerciseSpeaking below: the typed answer is state
+            // in the child, and the draft it restores is keyed by activity.
+            key={currentActivity?.id}
             prompt={writingConfig.prompt ?? ""}
             rubric={writingConfig.rubric}
             minWords={writingConfig.min_words}
@@ -1113,6 +1156,13 @@ export function LessonPage(): React.JSX.Element {
 
         {canRenderSpeaking && (
           <ExerciseSpeaking
+            // Remount on the next activity. These two exercises hold state the
+            // parent cannot reach — a recording that has been made, a draft
+            // being typed — and handleContinue resets only its own. Without the
+            // key, the second speaking task in a lesson opened already showing
+            // "recording ready" for the previous question's audio, with no
+            // action left to take.
+            key={currentActivity?.id}
             prompt={speakingConfig.prompt}
             referenceText={speakingConfig.reference_text}
             taskType={speakingConfig.task_type}

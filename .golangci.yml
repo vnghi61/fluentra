@@ -38,8 +38,11 @@ linters:
       # writing prompts — and takes the same exemption for the same reasons, as
       # does speaking_data.go: read-aloud references and spoken model answers are
       # sentences, and a sentence split across concatenated literals to satisfy a
-      # column limit is a sentence nobody will edit correctly.
-      - path: cmd/seed/(content_data|reading_writing_data|speaking_data)\.go
+      # column limit is a sentence nobody will edit correctly. listening_data.go
+      # carries whole clip scripts, which are the longest of the lot: cmd/tts
+      # synthesises the string exactly as written, so a script wrapped for a
+      # column limit is a script with the wrap in it.
+      - path: cmd/seed/(content_data|reading_writing_data|speaking_data|listening_data)\.go
         linters:
           - goconst
           # A reading passage is a paragraph. Breaking one across concatenated

@@ -623,10 +623,13 @@
     "daily": {
       "badge": "Bộ bài tập hôm nay",
       "title": "Luyện tập hàng ngày",
-      "desc": "9 bài tập được kiểm định dành riêng cho hôm nay: 1 bài đọc, 5 câu ngữ pháp và 3 câu chuyển đổi.",
+      "desc": "10 bài tập được kiểm định dành riêng cho hôm nay, đủ cả năm kỹ năng: ngữ pháp, đọc, nghe, nói và viết.",
       "slotReading": "1 Bài đọc",
-      "slotGrammar": "5 Ngữ pháp",
-      "slotTransforms": "3 Biến đổi câu",
+      "slotGrammar": "3 Ngữ pháp",
+      "slotTransforms": "2 Biến đổi câu",
+      "slotListening": "1 Bài nghe",
+      "slotSpeaking": "2 Bài nói",
+      "slotWriting": "1 Bài viết",
       "guestNote": "Đăng nhập để tích lũy chuỗi ngày và lưu tiến độ bài tập.",
       "levelLabel": "Cấp độ {{lvl}}",
       "levelGroup": "Cấp độ luyện tập",
@@ -646,6 +649,12 @@
     "forecast": {
       "title": "Tuần tới",
       "desc": "Những thẻ đã được xếp lịch quay lại với bạn."
+    },
+    "listening": {
+      "label": "Nghe",
+      "title": "Thông báo & hội thoại",
+      "desc": "Nghe thông báo, hội thoại và bài nói ngắn, rồi trả lời câu hỏi đọc hiểu. Mỗi đoạn ghi âm nghe được ba lượt, và có bản ghi lời nói sau khi chấm.",
+      "openBtn": "Bắt đầu nghe"
     },
     "generated": {
       "desc": "Bài tập dựng từ những từ đã có trong từ điển của bạn. Vốn từ lớn tới đâu, bài tập nhiều tới đó.",
@@ -780,6 +789,21 @@
     "sentenceTransformPlaceholder": "Nhập câu viết lại...",
     "incorrect": "Chưa đúng. Xem đáp án chuẩn phía trên.",
     "knewItBtn": "Tôi nhớ từ này",
+    "listening": {
+      "audioClip": "Đoạn ghi âm",
+      "instructions": "Nghe xong hãy trả lời các câu hỏi bên dưới.",
+      "play": "Phát",
+      "pause": "Tạm dừng",
+      "playsLeft": "Còn {{count}} lượt nghe",
+      "limitReached": "Bạn đã dùng hết số lượt nghe.",
+      "notReady": "Đoạn ghi âm này chưa được tạo. Hãy bỏ qua và làm bài khác.",
+      "loadFailed": "Không phát được đoạn ghi âm.",
+      "needsAttempt": "Đăng nhập để nghe — số lượt nghe được tính trên lượt làm bài của bạn.",
+      "showTranscript": "Xem bản ghi lời nói",
+      "transcriptLabel": "Bản ghi lời nói",
+      "transcriptNotReady": "Bản ghi lời nói hiện ra sau khi lượt làm bài này được chấm."
+    },
+    "questionCount": "{{count}} câu hỏi",
     "listenFullSentence": "Nghe câu hoàn chỉnh",
     "listenSentence": "Nghe câu",
     "listenTypeLabel": "Từ bạn vừa nghe",

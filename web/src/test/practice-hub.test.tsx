@@ -238,9 +238,19 @@ describe("PracticePage hub", () => {
     await renderPractice();
 
     expect(await screen.findByText("Today's Practice Set")).toBeInTheDocument();
-    expect(screen.getByText("1 Passage")).toBeInTheDocument();
-    expect(screen.getByText("5 Grammar")).toBeInTheDocument();
-    expect(screen.getByText("3 Transforms")).toBeInTheDocument();
+    // The badge row is the set's composition. It covers all five skills now,
+    // and a stale badge here is how the card went on advertising a reading and
+    // grammar set after the draw had stopped being one.
+    for (const slot of [
+      "3 Grammar",
+      "2 Transforms",
+      "1 Passage",
+      "1 Clip",
+      "2 Speaking",
+      "1 Writing",
+    ]) {
+      expect(screen.getByText(slot)).toBeInTheDocument();
+    }
 
     const startDailyLink = screen.getByRole("link", {
       name: /Start Today's Set/i,

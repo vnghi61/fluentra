@@ -623,10 +623,13 @@
     "daily": {
       "badge": "Daily Practice Set",
       "title": "Today's Practice Set",
-      "desc": "9 verified exercises freshly drawn for today: 1 reading passage, 5 grammar questions, and 3 sentence rewrites.",
+      "desc": "10 verified exercises freshly drawn for today, across all five skills: grammar, reading, listening, speaking and writing.",
       "slotReading": "1 Passage",
-      "slotGrammar": "5 Grammar",
-      "slotTransforms": "3 Transforms",
+      "slotGrammar": "3 Grammar",
+      "slotTransforms": "2 Transforms",
+      "slotListening": "1 Clip",
+      "slotSpeaking": "2 Speaking",
+      "slotWriting": "1 Writing",
       "guestNote": "Sign in to save streaks and track exposure history.",
       "levelLabel": "Level {{lvl}}",
       "levelGroup": "Practice level",
@@ -646,6 +649,12 @@
     "forecast": {
       "title": "The week ahead",
       "desc": "Cards already scheduled to come back to you."
+    },
+    "listening": {
+      "label": "Listening",
+      "title": "Announcements & Conversations",
+      "desc": "Listen to announcements, conversations and short talks, then answer comprehension questions. Three plays per clip, and the transcript after marking.",
+      "openBtn": "Start listening"
     },
     "generated": {
       "desc": "Exercises built from the words already in your dictionary. They grow as your vocabulary does.",
@@ -780,6 +789,21 @@
     "sentenceTransformPlaceholder": "Type the rewritten sentence...",
     "incorrect": "Not quite. Check the correct answer above.",
     "knewItBtn": "I knew it",
+    "listening": {
+      "audioClip": "Audio clip",
+      "instructions": "Listen, then answer the questions below.",
+      "play": "Play",
+      "pause": "Pause",
+      "playsLeft": "Plays left: {{count}}",
+      "limitReached": "You have used all your plays.",
+      "notReady": "This recording has not been produced yet. Skip it and try another exercise.",
+      "loadFailed": "The recording could not be played.",
+      "needsAttempt": "Sign in to play the recording — plays are counted against your attempt.",
+      "showTranscript": "Show the transcript",
+      "transcriptLabel": "Transcript",
+      "transcriptNotReady": "The transcript is available once this attempt has been marked."
+    },
+    "questionCount": "{{count}} questions",
     "listenFullSentence": "Listen to the full sentence",
     "listenSentence": "Listen to the sentence",
     "listenTypeLabel": "The word you heard",
