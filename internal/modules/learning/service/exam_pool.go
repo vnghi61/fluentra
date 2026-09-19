@@ -52,31 +52,87 @@ const (
 	varRedactedBody = "RedactedBody"
 	keyAnswers      = "answers"
 
-	// Slot lessons the pools share by name.
+	// Slot lessons the pools share by name, and the titles the lessons carry.
+	//
+	// Three pools now generate overlapping kinds, so the same slot name and the
+	// same lesson title are written in three files. Named here because a typo in
+	// one of them does not fail: it makes a fourth slot that nothing draws from,
+	// and the pool it belongs to quietly never fills.
+	slotListening             = "listening-comprehension"
 	slotReadingComprehension  = "reading-comprehension"
+	slotGrammarTenseChoice    = "grammar-tense-choice"
+	slotGrammarTransform      = "grammar-sentence-transform"
 	slotWritingPrompt         = "writing-prompt"
+	slotSpeakingReadAloud     = "speaking-task-read-aloud"
 	slotSpeakingRespond       = "speaking-task-respond"
+	titleListening            = "Listening Comprehension"
 	titleReadingComprehension = "Reading Comprehension"
+	titleGrammarTenseChoice   = "Grammar Tense Choice"
+	titleGrammarTransform     = "Grammar Sentence Transform"
+	titleWritingPrompt        = "Writing Prompt"
+	titleSpeakingReadAloud    = "Speaking Read Aloud"
+	titleSpeakingRespond      = "Speaking Respond"
 )
 
 var examLevels = []string{"A2", "B1", "B2"}
 
-type examSlotSpec struct {
+// poolSlotSpec describes one slot of a generated pool: what kind of item it
+// holds, and how many.
+//
+// It is shared with the practice pool. The two pools generate the same kinds
+// through the same six checks, and the only things that ever differed were the
+// slug prefix and how deep each slot is kept. Keeping two slot types meant a
+// kind added to one pool silently stayed missing from the other, which is how
+// the practice pool ended up generating three of the six kinds a sitting draws.
+//
+// `slotName` rather than `kind` identifies a slot, because speaking has two:
+// read-aloud and respond are one kind with different tasks.
+type poolSlotSpec struct {
 	position   int
 	kind       string
 	taskType   string
 	slotName   string
 	title      string
 	skillFocus string
+	// target is how many items the slot is filled to, and ceiling how far it
+	// may grow for learners who have seen everything. Zero means the defaults.
+	//
+	// They are per slot because the items are not equally cheap. A listening
+	// clip has to be rendered offline before it can be drawn at all, and a
+	// writing prompt is answered once a day at most; filling either to the
+	// depth a one-line grammar drill needs spends the AI budget on a backlog
+	// nobody reaches.
+	target  int
+	ceiling int
 }
 
-var examSlots = []examSlotSpec{
+// slotTarget and slotCeiling read a slot's depth, falling back to the defaults.
+func (slot poolSlotSpec) slotTarget() int {
+	if slot.target > 0 {
+		return slot.target
+	}
+	return targetActiveItemsPerSlot
+}
+
+func (slot poolSlotSpec) slotCeiling() int {
+	if slot.ceiling > 0 {
+		return slot.ceiling
+	}
+	return maxActiveItemsPerSlot
+}
+
+// The depths are per slot for the same reason as the practice pool's: one
+// sitting draws three clips and one essay prompt, and filling every slot to the
+// same fifty spent the AI budget on writing prompts and undrawable clips while
+// the grammar slot a sitting takes three from stayed short.
+var examSlots = []poolSlotSpec{
 	{
 		position:   1,
 		kind:       kindListeningComprehension,
-		slotName:   "listening-comprehension",
-		title:      "Listening Comprehension",
+		slotName:   slotListening,
+		title:      titleListening,
 		skillFocus: skillListening,
+		target:     30, ceiling: 120,
 	},
 	{
 		position:   2,
@@ -84,36 +140,41 @@ var examSlots = []examSlotSpec{
 		slotName:   slotReadingComprehension,
 		title:      titleReadingComprehension,
 		skillFocus: skillReading,
+		target:     30, ceiling: 120,
 	},
 	{
 		position:   3,
 		kind:       kindGrammarSentenceTransform,
-		slotName:   "grammar-sentence-transform",
-		title:      "Grammar Sentence Transform",
+		slotName:   slotGrammarTransform,
+		title:      titleGrammarTransform,
 		skillFocus: skillGrammar,
+		target:     50, ceiling: 200,
 	},
 	{
 		position:   4,
 		kind:       kindWritingPrompt,
 		slotName:   slotWritingPrompt,
-		title:      "Writing Prompt",
+		title:      titleWritingPrompt,
 		skillFocus: skillWriting,
+		target:     20, ceiling: 80,
 	},
 	{
 		position:   5,
 		kind:       kindSpeakingTask,
 		taskType:   subTypeReadAloud,
-		slotName:   "speaking-task-read-aloud",
-		title:      "Speaking Read Aloud",
+		slotName:   slotSpeakingReadAloud,
+		title:      titleSpeakingReadAloud,
 		skillFocus: skillSpeaking,
+		target:     25, ceiling: 100,
 	},
 	{
 		position:   6,
 		kind:       kindSpeakingTask,
 		taskType:   subTypeRespond,
 		slotName:   slotSpeakingRespond,
-		title:      "Speaking Respond",
+		title:      titleSpeakingRespond,
 		skillFocus: skillSpeaking,
+		target:     25, ceiling: 100,
 	},
 }
 
@@ -262,14 +323,14 @@ func (s *Service) resolveGeneratorAuthor(ctx context.Context) uuid.UUID {
 // topUpExamSlot fills one slot, and reports true when every AI provider is
 // refusing so the run stops.
 func (s *Service) topUpExamSlot(
-	ctx context.Context, layout *examPoolLayout, level string, slot examSlotSpec, author uuid.UUID,
+	ctx context.Context, layout *examPoolLayout, level string, slot poolSlotSpec, author uuid.UUID,
 ) (stop bool) {
 	activities, err := s.examSlotActivities(ctx, layout, level, slot.slotName)
 	if err != nil {
 		slog.ErrorContext(ctx, "could not list exam pool slot", "level", level, "slot", slot.slotName, "error", err)
 		return false
 	}
-	toAdd, err := s.itemsToAdd(ctx, activities)
+	toAdd, err := s.itemsToAdd(ctx, activities, slot)
 	if err != nil {
 		slog.ErrorContext(ctx, "could not size exam pool top-up", "level", level, "slot", slot.slotName, "error", err)
 		return false
@@ -299,7 +360,7 @@ func (s *Service) topUpExamSlot(
 }
 
 func (s *Service) generateAndVerifyExamItem(
-	ctx context.Context, level string, slot examSlotSpec, author uuid.UUID,
+	ctx context.Context, level string, slot poolSlotSpec, author uuid.UUID,
 	lessonID uuid.UUID, existing []lessoncontract.Activity,
 ) (json.RawMessage, error) {
 	var lastErr error
@@ -315,11 +376,13 @@ func (s *Service) generateAndVerifyExamItem(
 	return nil, lastErr
 }
 
-func (s *Service) tryGenerateAndVerifyExamItem(
-	ctx context.Context, level string, slot examSlotSpec, author uuid.UUID,
-	lessonID uuid.UUID, existing []lessoncontract.Activity,
+// generatePoolCandidate asks the model for one item of the slot's kind.
+//
+// Shared by both generated pools: the prompt task and its variables follow from
+// the kind, not from which pool asked.
+func (s *Service) generatePoolCandidate(
+	ctx context.Context, level string, slot poolSlotSpec,
 ) (json.RawMessage, error) {
-	var body json.RawMessage
 	task := ai.TaskPracticeGenerate
 	vars := map[string]any{varKind: slot.kind, varCEFRLevel: level}
 
@@ -331,14 +394,23 @@ func (s *Service) tryGenerateAndVerifyExamItem(
 		vars["TaskType"] = slot.taskType
 	}
 
-	if err := ai.CompleteJSON(ctx, s.ai, ai.Request{
-		Task: task,
-		Vars: vars,
-	}, &body); err != nil {
+	var body json.RawMessage
+	if err := ai.CompleteJSON(ctx, s.ai, ai.Request{Task: task, Vars: vars}, &body); err != nil {
 		return nil, fmt.Errorf("ai generate call failed: %w", err)
 	}
+	return body, nil
+}
 
-	body, err := s.checkAndPrepareExamCandidate(ctx, level, slot, body, existing)
+func (s *Service) tryGenerateAndVerifyExamItem(
+	ctx context.Context, level string, slot poolSlotSpec, author uuid.UUID,
+	lessonID uuid.UUID, existing []lessoncontract.Activity,
+) (json.RawMessage, error) {
+	body, err := s.generatePoolCandidate(ctx, level, slot)
+	if err != nil {
+		return nil, err
+	}
+
+	body, err = s.checkAndPreparePoolCandidate(ctx, level, slot, body, existing)
 	if err != nil {
 		return nil, err
 	}
@@ -349,14 +421,19 @@ func (s *Service) tryGenerateAndVerifyExamItem(
 	return body, nil
 }
 
-func (s *Service) checkAndPrepareExamCandidate(
-	ctx context.Context, level string, slot examSlotSpec, body json.RawMessage,
+func (s *Service) checkAndPreparePoolCandidate(
+	ctx context.Context, level string, slot poolSlotSpec, body json.RawMessage,
 	existing []lessoncontract.Activity,
 ) (json.RawMessage, error) {
 	switch slot.kind {
 	case kindListeningComprehension:
 		return s.checkAndPrepareListening(ctx, level, body, existing)
-	case kindReadingComprehension, kindGrammarSentenceTransform:
+	case kindReadingComprehension, kindGrammarTenseChoice, kindGrammarSentenceTransform:
+		// The three kinds whose answer key is in the body: checkCandidate runs
+		// all six checks over them unchanged. grammar_tense_choice is here
+		// because the practice pool generates it and this switch is now both
+		// pools'; routed through the default it was "unsupported kind", and
+		// every tense-choice candidate was rejected without being looked at.
 		if err := s.checkCandidate(ctx, level, slot.kind, body, existing); err != nil {
 			return nil, err
 		}
@@ -366,7 +443,7 @@ func (s *Service) checkAndPrepareExamCandidate(
 	case kindSpeakingTask:
 		return s.checkSpeakingTask(ctx, slot.taskType, body, existing)
 	default:
-		return nil, fmt.Errorf("unsupported exam kind: %s", slot.kind)
+		return nil, fmt.Errorf("unsupported pool kind: %s", slot.kind)
 	}
 }
 
@@ -696,7 +773,7 @@ func speakingDuplicate(existing []lessoncontract.Activity, text string, field fu
 }
 
 func (s *Service) publishExamCandidate(
-	ctx context.Context, level string, slot examSlotSpec, author uuid.UUID,
+	ctx context.Context, level string, slot poolSlotSpec, author uuid.UUID,
 	lessonID uuid.UUID, body json.RawMessage,
 ) error {
 	// Kebab-case slug: pool-exam-<level>-<slot-name>-<random>
@@ -778,8 +855,6 @@ func (s *Service) DrawExamSitting(
 	return sections, nil
 }
 
-const slotListening = "listening-comprehension"
-
 type examDraw struct {
 	slot  string
 	count int
@@ -802,10 +877,10 @@ var examSittingPlan = []examSectionPlan{
 	}},
 	{position: 3, skill: skillWriting, draws: []examDraw{
 		{slot: slotWritingPrompt, count: 1, what: "writing prompts"},
-		{slot: "grammar-sentence-transform", count: 3, what: "sentence transform items"},
+		{slot: slotGrammarTransform, count: 3, what: "sentence transform items"},
 	}},
 	{position: 4, skill: skillSpeaking, draws: []examDraw{
-		{slot: "speaking-task-read-aloud", count: 2, what: "speaking read-aloud items"},
+		{slot: slotSpeakingReadAloud, count: 2, what: "speaking read-aloud items"},
 		{slot: slotSpeakingRespond, count: 2, what: "speaking respond items"},
 	}},
 }

@@ -28,15 +28,35 @@ const (
 	poolKindReading    = "reading_comprehension"
 	poolKindTense      = "grammar_tense_choice"
 	poolKindTransform  = "grammar_sentence_transform"
+	poolKindListening  = "listening_comprehension"
+	poolKindWriting    = "writing_prompt"
+	poolKindSpeaking   = "speaking_task"
 	poolTitleReading   = "Reading Comprehension"
 	poolTitleTense     = "Grammar Tense Choice"
 	poolTitleTransform = "Grammar Sentence Transform"
+	poolTitleListening = "Listening Comprehension"
+	poolTitleWriting   = "Writing Prompt"
+	poolTitleReadAloud = "Speaking Read Aloud"
+	poolTitleRespond   = "Speaking Respond"
+
+	// dailySetSize is what one day's set holds when every slot is stocked: three
+	// tense drills, two transforms, and one each of reading, listening, the two
+	// speaking tasks and writing.
+	dailySetSize = 10
 )
 
+// poolSlots mirrors service.practiceSlots. Seeding is by lesson title because
+// that is what the fake keys lessons under, and the two speaking slots have
+// different titles for the same reason the service gives them different slot
+// names: one kind, two tasks.
 var poolSlots = []struct{ kind, title string }{
 	{kind: poolKindReading, title: poolTitleReading},
 	{kind: poolKindTense, title: poolTitleTense},
 	{kind: poolKindTransform, title: poolTitleTransform},
+	{kind: poolKindListening, title: poolTitleListening},
+	{kind: poolKindWriting, title: poolTitleWriting},
+	{kind: poolKindSpeaking, title: poolTitleReadAloud},
+	{kind: poolKindSpeaking, title: poolTitleRespond},
 }
 
 // --------------------------------------------------------------------------
@@ -547,19 +567,55 @@ func newPoolFixture(
 	return f
 }
 
-// seed fills slots at a level with prompt-only items and returns their ids by kind.
+// seed fills slots at a level with prompt-only items and returns their ids by
+// kind. `counts` is keyed by lesson title, so the two speaking slots can be
+// stocked separately.
 func (f poolFixture) seed(t *testing.T, level string, counts map[string]int) map[string][]uuid.UUID {
 	t.Helper()
 	seeded := map[string][]uuid.UUID{}
 	for _, slot := range poolSlots {
-		for i := 0; i < counts[slot.kind]; i++ {
+		for i := 0; i < counts[slot.title]; i++ {
 			versionID := uuid.New()
-			body := json.RawMessage(fmt.Sprintf(`{"prompt": "%s %s %d"}`, level, slot.kind, i))
+			body := json.RawMessage(fmt.Sprintf(`{"prompt": "%s %s %d"}`, level, slot.title, i))
+			if slot.kind == poolKindListening {
+				// A clip with no render is never drawn, here as in a sitting, so
+				// a listening item seeded without one would silently never appear.
+				body = json.RawMessage(fmt.Sprintf(
+					`{"prompt": "%s %s %d", "script": "s%d", "audio_object_key": "tts/%s-%d.wav"}`,
+					level, slot.title, i, i, level, i))
+			}
 			f.content.versions[versionID] = &contentcontract.Version{ID: versionID, Kind: slot.kind, Body: body}
-			seeded[slot.kind] = append(seeded[slot.kind], f.lessons.seed(t, level, slot.title, slot.kind, versionID, body))
+			seeded[slot.title] = append(seeded[slot.title],
+				f.lessons.seed(t, level, slot.title, slot.kind, versionID, body))
 		}
 	}
 	return seeded
+}
+
+// atTarget fills every slot to its own target, so a top-up over a pool in this
+// state has nothing to add anywhere. The depths are per slot now — a listening
+// clip and a writing prompt are not kept as deep as a one-line grammar drill —
+// so a single number for all of them would leave four slots short and the
+// top-up would generate into them.
+func atTarget() map[string]int {
+	return map[string]int{
+		poolTitleReading:   30,
+		poolTitleTense:     50,
+		poolTitleTransform: 40,
+		poolTitleListening: 20,
+		poolTitleWriting:   15,
+		poolTitleReadAloud: 15,
+		poolTitleRespond:   15,
+	}
+}
+
+// stockedSlots is every slot filled deep enough for a full day's set.
+func stockedSlots(n int) map[string]int {
+	counts := map[string]int{}
+	for _, slot := range poolSlots {
+		counts[slot.title] = n
+	}
+	return counts
 }
 
 func passingGraders() *domain.GraderRegistry {
@@ -595,15 +651,15 @@ func TestGetDailySet_SecondSetSharesNothingWithFirstWhileUnseenRemain(t *testing
 	t.Parallel()
 	clk := testClock()
 	f := newPoolFixture(t, clk, uuid.New(), nil, nil)
-	f.seed(t, poolLevel, map[string]int{poolKindReading: 2, poolKindTense: 10, poolKindTransform: 6})
+	f.seed(t, poolLevel, stockedSlots(6))
 	userID := uuid.New()
 
 	day1 := dailySetIDs(t, f.svc, userID)
 	clk.Advance(24 * time.Hour)
 	day2 := dailySetIDs(t, f.svc, userID)
 
-	if len(day1) != 9 || len(day2) != 9 {
-		t.Fatalf("expected two sets of 9, got %d and %d", len(day1), len(day2))
+	if len(day1) != dailySetSize || len(day2) != dailySetSize {
+		t.Fatalf("expected two sets of %d, got %d and %d", dailySetSize, len(day1), len(day2))
 	}
 	first := map[uuid.UUID]bool{}
 	for _, id := range day1 {
@@ -620,7 +676,12 @@ func TestGetDailySet_SeenEverythingDrawsTheUnseenFirstThenTheOldest(t *testing.T
 	t.Parallel()
 	clk := testClock()
 	f := newPoolFixture(t, clk, uuid.New(), nil, nil)
-	seeded := f.seed(t, poolLevel, map[string]int{poolKindReading: 1, poolKindTense: 6, poolKindTransform: 3})
+	// Four tense drills for a set that takes three: exactly one is left unseen
+	// after day one, and it is the item day two has to reach for first.
+	counts := stockedSlots(1)
+	counts[poolTitleTense] = 4
+	counts[poolTitleTransform] = 2
+	seeded := f.seed(t, poolLevel, counts)
 	userID := uuid.New()
 
 	day1 := dailySetIDs(t, f.svc, userID)
@@ -629,7 +690,7 @@ func TestGetDailySet_SeenEverythingDrawsTheUnseenFirstThenTheOldest(t *testing.T
 		shown[id] = true
 	}
 	var unseenTense uuid.UUID
-	for _, id := range seeded[poolKindTense] {
+	for _, id := range seeded[poolTitleTense] {
 		if !shown[id] {
 			unseenTense = id
 		}
@@ -638,8 +699,8 @@ func TestGetDailySet_SeenEverythingDrawsTheUnseenFirstThenTheOldest(t *testing.T
 	clk.Advance(24 * time.Hour)
 	day2 := dailySetIDs(t, f.svc, userID)
 
-	if len(day2) != 9 {
-		t.Fatalf("expected a full set of 9 drawn partly from seen items, got %d", len(day2))
+	if len(day2) != dailySetSize {
+		t.Fatalf("expected a full set of %d drawn partly from seen items, got %d", dailySetSize, len(day2))
 	}
 	found := false
 	for _, id := range day2 {
@@ -656,7 +717,7 @@ func TestGetDailySet_SameDayReturnsTheStoredSet(t *testing.T) {
 	t.Parallel()
 	clk := testClock()
 	f := newPoolFixture(t, clk, uuid.New(), nil, nil)
-	f.seed(t, poolLevel, map[string]int{poolKindReading: 2, poolKindTense: 10, poolKindTransform: 6})
+	f.seed(t, poolLevel, stockedSlots(6))
 	userID := uuid.New()
 
 	first := dailySetIDs(t, f.svc, userID)
@@ -675,11 +736,11 @@ func TestGetDailySet_SameDayReturnsTheStoredSet(t *testing.T) {
 func TestGetDailySet_LosingTheRaceReturnsTheStoredSetAndRecordsNothing(t *testing.T) {
 	t.Parallel()
 	f := newPoolFixture(t, testClock(), uuid.New(), nil, nil)
-	seeded := f.seed(t, poolLevel, map[string]int{poolKindReading: 2, poolKindTense: 10, poolKindTransform: 6})
+	seeded := f.seed(t, poolLevel, stockedSlots(6))
 
-	winner := []uuid.UUID{seeded[poolKindReading][1]}
-	winner = append(winner, seeded[poolKindTense][5:]...)
-	winner = append(winner, seeded[poolKindTransform][3:]...)
+	winner := []uuid.UUID{seeded[poolTitleReading][1]}
+	winner = append(winner, seeded[poolTitleTense][3:]...)
+	winner = append(winner, seeded[poolTitleTransform][3:]...)
 	f.repo.raceWinner = winner
 
 	got := dailySetIDs(t, f.svc, uuid.New())
@@ -732,7 +793,7 @@ func TestDailySet_RedactionCarriesNoAnswers(t *testing.T) {
 func TestPoolCourseIsLeftOffProgressAndNextActivity(t *testing.T) {
 	t.Parallel()
 	f := newPoolFixture(t, testClock(), uuid.New(), nil, nil)
-	f.seed(t, poolLevel, map[string]int{poolKindReading: 1, poolKindTense: 5, poolKindTransform: 3})
+	f.seed(t, poolLevel, stockedSlots(3))
 	userID := uuid.New()
 	_ = dailySetIDs(t, f.svc, userID)
 
@@ -750,6 +811,65 @@ func TestPoolCourseIsLeftOffProgressAndNextActivity(t *testing.T) {
 	}
 	if next.State != domain.StateNotStarted {
 		t.Errorf("expected not_started for a learner enrolled only in the pool, got %s", next.State)
+	}
+}
+
+// --------------------------------------------------------------------------
+// Coverage
+// --------------------------------------------------------------------------
+
+// TestPracticePool_GeneratesEveryKindASittingDraws is the guard on the gap this
+// slot table was widened to close.
+//
+// The practice pool generated reading and two grammar kinds while an exam
+// sitting drew six, so "daily practice" never once asked the learner to listen,
+// write or speak, and the only listening items in the database belonged to pools
+// no learner opens. A kind added to the exam pool and forgotten here puts it
+// back, silently: nothing fails, the learner is just never asked.
+func TestPracticePool_GeneratesEveryKindASittingDraws(t *testing.T) {
+	t.Parallel()
+	f := newPoolFixture(t, testClock(), uuid.New(), nil, nil)
+
+	for _, level := range []string{"A2", "B1", "B2"} {
+		for _, slot := range poolSlots {
+			if _, ok := f.lessons.slotLesson[service.PracticePoolCourseSlug+"/"+level+"/"+slot.title]; !ok {
+				t.Errorf("no practice pool slot for %s at %s", slot.title, level)
+			}
+		}
+	}
+}
+
+// TestPracticePool_DailySetSpansEverySkill checks the composition, not just its
+// size: ten items that were all grammar would pass a length assertion.
+func TestPracticePool_DailySetSpansEverySkill(t *testing.T) {
+	t.Parallel()
+	f := newPoolFixture(t, testClock(), uuid.New(), nil, nil)
+	f.seed(t, poolLevel, stockedSlots(6))
+
+	set, err := f.svc.GetDailySet(context.Background(), uuid.New(), poolLevel)
+	if err != nil {
+		t.Fatalf("GetDailySet: %v", err)
+	}
+	if len(set.Activities) != dailySetSize {
+		t.Fatalf("daily set holds %d items, want %d", len(set.Activities), dailySetSize)
+	}
+
+	kinds := map[string]int{}
+	for _, activity := range set.Activities {
+		kinds[activity.Kind]++
+	}
+	for kind, want := range map[string]int{
+		poolKindTense:     3,
+		poolKindTransform: 2,
+		poolKindReading:   1,
+		poolKindListening: 1,
+		poolKindWriting:   1,
+		// Read-aloud and respond are one kind in two slots.
+		poolKindSpeaking: 2,
+	} {
+		if kinds[kind] != want {
+			t.Errorf("daily set holds %d %s, want %d", kinds[kind], kind, want)
+		}
 	}
 }
 
@@ -789,9 +909,9 @@ func TestTopUpPracticePool_ThrottlingLimits(t *testing.T) {
 
 	var a2Tense []uuid.UUID
 	for _, level := range []string{"A2", "B1", "B2"} {
-		seeded := f.seed(t, level, map[string]int{poolKindReading: 50, poolKindTense: 50, poolKindTransform: 50})
+		seeded := f.seed(t, level, atTarget())
 		if level == "A2" {
-			a2Tense = seeded[poolKindTense]
+			a2Tense = seeded[poolTitleTense]
 		}
 	}
 
@@ -813,7 +933,7 @@ func TestTopUpPracticePool_ThrottlingLimits(t *testing.T) {
 	}
 
 	// At the ceiling nothing more is added, whoever is running low.
-	f.seed(t, "A2", map[string]int{poolKindTense: 200 - 55})
+	f.seed(t, "A2", map[string]int{poolTitleTense: 200 - 55})
 	if err := f.svc.TopUpPracticePool(context.Background()); err != nil {
 		t.Fatalf("TopUpPracticePool: %v", err)
 	}
@@ -827,9 +947,9 @@ func TestTopUpPracticePool_PublishesUnderTheGeneratorAuthor(t *testing.T) {
 	author := uuid.New()
 	f := newPoolFixture(t, testClock(), author, passingGraders(), &cannedPracticeAI{solve: solveOptionA})
 	for _, level := range []string{"A2", "B1", "B2"} {
-		counts := map[string]int{poolKindReading: 50, poolKindTense: 50, poolKindTransform: 50}
+		counts := atTarget()
 		if level == poolLevel {
-			counts[poolKindTense] = 49
+			counts[poolTitleTense] = 49
 		}
 		f.seed(t, level, counts)
 	}
@@ -856,9 +976,9 @@ func TestTopUpPracticePool_AcceptsRepliesInACodeFence(t *testing.T) {
 	f := newPoolFixture(t, testClock(), uuid.New(), passingGraders(),
 		&cannedPracticeAI{solve: solveOptionA, fenced: true})
 	for _, level := range []string{"A2", "B1", "B2"} {
-		counts := map[string]int{poolKindReading: 50, poolKindTense: 50, poolKindTransform: 50}
+		counts := atTarget()
 		if level == poolLevel {
-			counts[poolKindTense] = 49
+			counts[poolTitleTense] = 49
 		}
 		f.seed(t, level, counts)
 	}
