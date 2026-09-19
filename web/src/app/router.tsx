@@ -142,6 +142,11 @@ const MyWritingPage = lazyRouteComponent(
   "MyWritingPage",
 );
 
+const MySpeakingPage = lazyRouteComponent(
+  () => import("@/routes/MySpeakingPage"),
+  "MySpeakingPage",
+);
+
 const ExamsPage = lazyRouteComponent(
   () => import("@/routes/ExamsPage"),
   "ExamsPage",
@@ -165,6 +170,13 @@ const WelcomePage = lazyRouteComponent(
 const PlacementPage = lazyRouteComponent(
   () => import("@/routes/PlacementPage"),
   "PlacementPage",
+);
+
+/** Lazy: it reads /me/permissions, which nobody but an administrator needs. */
+const AdminSidebarNav = React.lazy(() =>
+  import("@/features/admin/components/AdminSidebarNav").then((m) => ({
+    default: m.AdminSidebarNav,
+  })),
 );
 
 function RootApp(): React.JSX.Element {
@@ -191,6 +203,13 @@ function RootApp(): React.JSX.Element {
     <AppShell
       user={user}
       status={status}
+      adminNav={
+        user?.role === "admin" ? (
+          <React.Suspense fallback={null}>
+            <AdminSidebarNav />
+          </React.Suspense>
+        ) : undefined
+      }
       onLogout={() => void handleLogout()}
       chrome={!isBareRoute(pathname)}
       displayName={displayName}
@@ -322,6 +341,18 @@ export const myWritingRoute = createRoute({
   component: MyWritingPage,
 });
 
+export const mySpeakingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/my-speaking",
+  beforeLoad: () => {
+    const { status } = useAuthStore.getState();
+    if (status === "unauthenticated") {
+      throw redirect({ to: "/login" });
+    }
+  },
+  component: MySpeakingPage,
+});
+
 export const progressRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/progress",
@@ -349,6 +380,26 @@ export const settingsRoute = createRoute({
 export const adminRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin",
+  beforeLoad: () => {
+    const { status, user } = useAuthStore.getState();
+    if (status === "unauthenticated") {
+      throw redirect({ to: "/login" });
+    }
+    if (user?.role !== "admin") {
+      throw redirect({ to: "/" });
+    }
+  },
+  component: AdminPage,
+});
+
+/**
+ * One route per administrative section, so the sidebar has something to link to
+ * and a reload lands where the reader was. The same page renders them: which
+ * section is on screen is read from the path, not held in component state.
+ */
+export const adminSectionRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/$section",
   beforeLoad: () => {
     const { status, user } = useAuthStore.getState();
     if (status === "unauthenticated") {
@@ -477,12 +528,14 @@ export const routeTree = rootRoute.addChildren([
   reviewRoute,
   myWordsRoute,
   myWritingRoute,
+  mySpeakingRoute,
   examsRoute,
   examSittingRoute,
   examReportRoute,
   progressRoute,
   settingsRoute,
   adminRoute,
+  adminSectionRoute,
   loginRoute,
   registerRoute,
   forgotPasswordRoute,

@@ -136,6 +136,12 @@ func (allowAllGuard) Require(_ context.Context, _ string) error { return nil }
 
 const roleAdmin = "admin"
 
+// Fixture values used across several tests, spelled once.
+const (
+	kindVocabWord   = "vocab_word"
+	statusPublished = "published"
+)
+
 // call drives one request through the module's router. actor is uuid.Nil for a
 // learner request, which carries no authenticated actor; body is nil for the
 // state-change endpoints, which take no payload.
@@ -278,7 +284,7 @@ func (f *authoringFixture) createDraft(ctx context.Context, t *testing.T) {
 	t.Helper()
 
 	rec := call(ctx, t, f.router, http.MethodPost, "/admin/content", map[string]any{
-		"kind":       "vocab_word",
+		"kind":       kindVocabWord,
 		"slug":       lifecycleSlug,
 		"cefr_level": "B2",
 		"body":       map[string]any{"word": "photosynthesis", "def": "process by plants"},
@@ -369,10 +375,10 @@ func (f *authoringFixture) publishGatedOnMedia(ctx context.Context, t *testing.T
 	if err := json.Unmarshal(rec.Body.Bytes(), &version); err != nil {
 		t.Fatalf("unmarshal published version: %v", err)
 	}
-	if version.Status != "published" {
+	if version.Status != statusPublished {
 		t.Errorf("version status = %q, want published", version.Status)
 	}
-	if got := outboxEvents(ctx, t, "published"); got != 1 {
+	if got := outboxEvents(ctx, t, statusPublished); got != 1 {
 		t.Fatalf("content.published outbox events = %d, want 1", got)
 	}
 
@@ -481,5 +487,109 @@ func TestGetManyVersionsSingleQuery_Integration(t *testing.T) {
 		if _, ok := res[id]; !ok {
 			t.Errorf("missing version %v in result map", id)
 		}
+	}
+}
+
+// TestAdminListContentFiltered_Integration covers GET /admin/content, which
+// answered 500 to every single request for as long as it existed.
+//
+// content_items.status is the enum content.authoring_status, and the query
+// compared it against a text parameter. Postgres has no
+// `authoring_status = text` operator, and it resolves operators when it parses
+// the statement — so the filter being absent did not help: the unfiltered list,
+// the one the screen opens on, failed exactly like the filtered one.
+//
+// Nothing in the unit suite could see it. sqlc type-checks the parameters, the
+// service and handler tests run against a mocked repository, and the string
+// only becomes wrong when a real Postgres resolves it. So the test lives here,
+// and it asks for the unfiltered page first, because that is the request that
+// was broken.
+func TestAdminListContentFiltered_Integration(t *testing.T) {
+	ctx := context.Background()
+	resetTables(ctx, t)
+
+	mod := content.New(content.Deps{Pool: pool, Guard: allowAllGuard{}})
+	router := chi.NewRouter()
+	mod.AdminRoutes(router)
+
+	authorID := uuid.MustParse("018f0000-0000-7000-8000-000000000001")
+	seedUser(ctx, t, authorID, "author@fluentra.test")
+
+	seeded := []struct {
+		slug   string
+		kind   string
+		status string
+	}{
+		{"filter-published-one", kindVocabWord, statusPublished},
+		{"filter-published-two", kindVocabWord, statusPublished},
+		{"filter-draft-one", "grammar_note", "draft"},
+	}
+	for _, item := range seeded {
+		mustExec(ctx, t, `
+			INSERT INTO content.content_items (id, kind, slug, status, owner_id)
+			VALUES ($1, $2, $3, $4::content.authoring_status, $5)
+		`, uuid.New(), item.kind, item.slug, item.status, authorID)
+	}
+
+	decode := func(rec *httptest.ResponseRecorder) struct {
+		Items []struct {
+			Slug   string `json:"slug"`
+			Kind   string `json:"kind"`
+			Status string `json:"status"`
+		} `json:"items"`
+		Total int `json:"total"`
+	} {
+		t.Helper()
+		var body struct {
+			Items []struct {
+				Slug   string `json:"slug"`
+				Kind   string `json:"kind"`
+				Status string `json:"status"`
+			} `json:"items"`
+			Total int `json:"total"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+			t.Fatalf("decode admin content list: %v: %s", err, rec.Body.String())
+		}
+		return body
+	}
+
+	rec := call(ctx, t, router, http.MethodGet, "/admin/content?limit=15&offset=0", nil, authorID)
+	wantStatus(t, rec, http.StatusOK, "unfiltered admin content list")
+	if got := decode(rec).Total; got != len(seeded) {
+		t.Errorf("unfiltered total = %d, want %d", got, len(seeded))
+	}
+
+	rec = call(ctx, t, router, http.MethodGet, "/admin/content?status=published", nil, authorID)
+	wantStatus(t, rec, http.StatusOK, "admin content list filtered by status")
+	byStatus := decode(rec)
+	if byStatus.Total != 2 {
+		t.Errorf("status=published total = %d, want 2", byStatus.Total)
+	}
+	for _, item := range byStatus.Items {
+		if item.Status != statusPublished {
+			t.Errorf("status=published returned %s (%s)", item.Slug, item.Status)
+		}
+	}
+
+	// A status outside the enum must come back as an empty page rather than the
+	// 22P02 an enum cast would raise. Casting the column, not the parameter, is
+	// what keeps an unknown filter a filter that matches nothing.
+	rec = call(ctx, t, router, http.MethodGet, "/admin/content?status=not_a_status", nil, authorID)
+	wantStatus(t, rec, http.StatusOK, "admin content list with an unknown status")
+	if got := decode(rec).Total; got != 0 {
+		t.Errorf("unknown status total = %d, want 0", got)
+	}
+
+	rec = call(ctx, t, router, http.MethodGet, "/admin/content?kind=grammar_note", nil, authorID)
+	wantStatus(t, rec, http.StatusOK, "admin content list filtered by kind")
+	if got := decode(rec).Total; got != 1 {
+		t.Errorf("kind=grammar_note total = %d, want 1", got)
+	}
+
+	rec = call(ctx, t, router, http.MethodGet, "/admin/content?q=filter-published", nil, authorID)
+	wantStatus(t, rec, http.StatusOK, "admin content list filtered by slug prefix")
+	if got := decode(rec).Total; got != 2 {
+		t.Errorf("q=filter-published total = %d, want 2", got)
 	}
 }

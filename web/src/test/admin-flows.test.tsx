@@ -1,8 +1,16 @@
+import React from "react";
 import { describe, it, expect, beforeEach } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  RouterProvider,
+} from "@tanstack/react-router";
 import { server } from "./msw-server";
 import i18n, { initI18n } from "@/i18n";
 import { AdminUserList } from "@/features/admin/components/AdminUserList";
@@ -58,6 +66,33 @@ const sampleFlag = {
   created_at: "2026-08-01T10:00:00Z",
   updated_at: "2026-08-01T10:00:00Z",
 };
+
+
+/**
+ * AdminPage reads which section to show from the path, so it needs a router.
+ * Both routes are mounted because the page serves both: /admin picks the first
+ * section the permissions allow, /admin/$section names one.
+ */
+async function renderAdminPage(initialPath = "/admin", ui?: React.ReactElement) {
+  const rootRoute = createRootRoute();
+  const page = () => ui ?? <AdminPage />;
+  const adminIndexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/admin",
+    component: page,
+  });
+  const adminSectionRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/admin/$section",
+    component: page,
+  });
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([adminIndexRoute, adminSectionRoute]),
+    history: createMemoryHistory({ initialEntries: [initialPath] }),
+  });
+  await router.load();
+  return render(<RouterProvider router={router} />);
+}
 
 describe("Admin Shell & Operations", () => {
   beforeEach(async () => {
@@ -173,7 +208,7 @@ describe("Admin Shell & Operations", () => {
 
   it("renders Admin page and switches tabs", async () => {
     const user = userEvent.setup();
-    render(<AdminPage />);
+    await renderAdminPage();
 
     expect(screen.getByText("Platform Administration")).toBeInTheDocument();
 
@@ -667,7 +702,7 @@ describe("Admin permission gating", () => {
       ),
     );
 
-    render(<AdminPage />);
+    await renderAdminPage();
 
     expect(
       await screen.findByRole("button", { name: /Learner Management/i }),
@@ -687,7 +722,7 @@ describe("Admin permission gating", () => {
       ),
     );
 
-    render(<AdminPage />);
+    await renderAdminPage();
 
     // A read that did not happen is not evidence of a permission.
     expect(
@@ -709,11 +744,12 @@ describe("Admin AI usage", () => {
   // It is also the only admin component that uses react-query, so it needs the
   // provider the app root supplies in main.tsx. The sibling screens fetch by
   // hand and render without one, which is why no existing test needed this.
-  function renderAdmin() {
+  async function renderAdmin() {
     const client = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     });
-    return render(
+    return renderAdminPage(
+      "/admin",
       <QueryClientProvider client={client}>
         <AdminPage />
       </QueryClientProvider>,
@@ -756,7 +792,7 @@ describe("Admin AI usage", () => {
       ),
     );
 
-    renderAdmin();
+    await renderAdmin();
 
     expect(await screen.findByText(/openai_compatible/)).toBeInTheDocument();
     expect(screen.getByText(/fallback_llm/)).toBeInTheDocument();
@@ -769,7 +805,7 @@ describe("Admin AI usage", () => {
       ),
     );
 
-    renderAdmin();
+    await renderAdmin();
 
     expect(
       await screen.findByRole("button", { name: /Learner Management/i }),

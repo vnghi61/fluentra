@@ -21,6 +21,7 @@ import {
 import { AdminEditWordSenseModal } from "./AdminEditWordSenseModal";
 import { PERMISSIONS, usePermissions } from "../model/permissions";
 import { Button } from "@/components/ui/button";
+import { Pagination } from "@/components/ui/pagination";
 
 type SubTab = "words" | "queue";
 
@@ -293,7 +294,7 @@ export const AdminVocabulary: React.FC = () => {
                       {t("admin.source")}
                     </th>
                     <th className="px-4 py-3 font-medium text-right">
-                      Actions
+                      {t("admin.actions")}
                     </th>
                   </tr>
                 </thead>
@@ -382,40 +383,21 @@ export const AdminVocabulary: React.FC = () => {
               </table>
             </div>
 
-            {/* Pagination */}
-            <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-muted/20 text-xs text-muted-foreground">
-              <div>
-                {t("admin.showingRange", {
-                  from: words.length > 0 ? wordsOffset + 1 : 0,
-                  to: Math.min(wordsOffset + words.length, wordsTotal),
-                  total: wordsTotal,
-                })}
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={wordsOffset === 0 || isWordsLoading}
-                  onClick={() =>
-                    setWordsOffset((prev) => Math.max(0, prev - wordsLimit))
-                  }
-                  className="min-h-11 px-4 text-xs"
-                >
-                  {t("common.previous")}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={
-                    wordsOffset + wordsLimit >= wordsTotal || isWordsLoading
-                  }
-                  onClick={() => setWordsOffset((prev) => prev + wordsLimit)}
-                  className="min-h-11 px-4 text-xs"
-                >
-                  {t("common.next")}
-                </Button>
-              </div>
-            </div>
+            <Pagination
+              page={Math.floor(wordsOffset / wordsLimit) + 1}
+              pageCount={Math.max(1, Math.ceil(wordsTotal / wordsLimit))}
+              total={wordsTotal}
+              rangeFrom={words.length > 0 ? wordsOffset + 1 : 0}
+              rangeTo={Math.min(wordsOffset + words.length, wordsTotal)}
+              isBusy={isWordsLoading}
+              canPrevious={wordsOffset > 0}
+              canNext={wordsOffset + wordsLimit < wordsTotal}
+              onPrevious={() =>
+                setWordsOffset((prev) => Math.max(0, prev - wordsLimit))
+              }
+              onNext={() => setWordsOffset((prev) => prev + wordsLimit)}
+              onPageSelect={(next) => setWordsOffset((next - 1) * wordsLimit)}
+            />
           </div>
         </div>
       )}
@@ -564,7 +546,7 @@ export const AdminVocabulary: React.FC = () => {
                                 item.status,
                               )}`}
                             >
-                              {item.status}
+                              {t(`admin.queueStatus.${item.status}`, item.status)}
                             </span>
                             {item.verified_by_model && (
                               <div className="text-[11px] text-muted-foreground flex items-center gap-1">
@@ -636,40 +618,21 @@ export const AdminVocabulary: React.FC = () => {
               </table>
             </div>
 
-            {/* Pagination */}
-            <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-muted/20 text-xs text-muted-foreground">
-              <div>
-                {t("admin.showingRange", {
-                  from: queueItems.length > 0 ? queueOffset + 1 : 0,
-                  to: Math.min(queueOffset + queueItems.length, queueTotal),
-                  total: queueTotal,
-                })}
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={queueOffset === 0 || isQueueLoading}
-                  onClick={() =>
-                    setQueueOffset((prev) => Math.max(0, prev - queueLimit))
-                  }
-                  className="min-h-11 px-4 text-xs"
-                >
-                  {t("common.previous")}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={
-                    queueOffset + queueLimit >= queueTotal || isQueueLoading
-                  }
-                  onClick={() => setQueueOffset((prev) => prev + queueLimit)}
-                  className="min-h-11 px-4 text-xs"
-                >
-                  {t("common.next")}
-                </Button>
-              </div>
-            </div>
+            <Pagination
+              page={Math.floor(queueOffset / queueLimit) + 1}
+              pageCount={Math.max(1, Math.ceil(queueTotal / queueLimit))}
+              total={queueTotal}
+              rangeFrom={queueItems.length > 0 ? queueOffset + 1 : 0}
+              rangeTo={Math.min(queueOffset + queueItems.length, queueTotal)}
+              isBusy={isQueueLoading}
+              canPrevious={queueOffset > 0}
+              canNext={queueOffset + queueLimit < queueTotal}
+              onPrevious={() =>
+                setQueueOffset((prev) => Math.max(0, prev - queueLimit))
+              }
+              onNext={() => setQueueOffset((prev) => prev + queueLimit)}
+              onPageSelect={(next) => setQueueOffset((next - 1) * queueLimit)}
+            />
           </div>
         </div>
       )}

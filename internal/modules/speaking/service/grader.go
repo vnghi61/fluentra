@@ -342,6 +342,12 @@ func (g *Grader) evaluate(
 		PromptVersion:     "speaking_grade.v1",
 		Model:             modelName,
 		ASRModel:          g.asrModel,
+		// Kept, not left to be reconstructed later. The history screen reads
+		// these; deriving a replacement from the criteria gave a different
+		// number for the same attempt.
+		OverallBand: &out.OverallBand,
+		Score:       &finalScore,
+		TaskType:    taskTypeOf(body),
 	}
 
 	initialGrade := "again"
@@ -362,6 +368,14 @@ func (g *Grader) evaluate(
 		},
 	}
 	return fb, result, nil
+}
+
+// taskTypeOf reports the authored task type, defaulting the way judge() does.
+func taskTypeOf(body speakingTaskBody) string {
+	if body.TaskType != "" {
+		return body.TaskType
+	}
+	return contract.TypeRespond
 }
 
 // transcribe fetches the recording from storage and sends it to the transcriber.

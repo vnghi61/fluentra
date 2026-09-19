@@ -47,6 +47,13 @@ export interface AppShellProps {
   displayName?: string | undefined;
   /** The learner's uploaded avatar, when the profile has loaded one. */
   avatarUrl?: string | undefined;
+  /**
+   * The administrative group for the sidebar, passed in for the same reason
+   * `controls` is: it is permission filtered, and a component may not reach into
+   * a feature. The router supplies it only to an administrator, so no one else
+   * pays for the `/me/permissions` read it makes.
+   */
+  adminNav?: React.ReactNode;
 }
 
 /**
@@ -97,10 +104,14 @@ const destinations = [
   },
 ] as const;
 
-const navBase =
+// Exported because the administrative group is rendered by the admin feature —
+// a feature may import a component, the reverse is what the boundary forbids —
+// and a second copy of these strings is how the sidebar ends up with two
+// different ideas of what "active" looks like.
+export const navBase =
   "flex items-center gap-3 h-11 px-3 rounded-lg min-h-[44px] transition-colors text-sm";
-const navIdle = "text-text-muted hover:bg-surface-muted hover:text-text";
-const navActive = "bg-primary/10 text-primary-accent font-semibold";
+export const navIdle = "text-text-muted hover:bg-surface-muted hover:text-text";
+export const navActive = "bg-primary/10 text-primary-accent font-semibold";
 
 export const AppShell: React.FC<AppShellProps> = ({
   children,
@@ -110,6 +121,7 @@ export const AppShell: React.FC<AppShellProps> = ({
   chrome = true,
   controls,
   banner,
+  adminNav,
   displayName,
   avatarUrl,
 }) => {
@@ -244,19 +256,23 @@ export const AppShell: React.FC<AppShellProps> = ({
                 </Link>
               )}
 
-              {signedIn && user?.role === "admin" && (
-                <Link
-                  to="/admin"
-                  className={`${navBase} ${navIdle}`}
-                  activeProps={{ className: `${navBase} ${navActive}` }}
-                >
-                  <ShieldCheck
-                    className="h-[18px] w-[18px] shrink-0"
-                    aria-hidden="true"
-                  />
-                  {t("nav.admin", "Admin")}
-                </Link>
-              )}
+              {signedIn &&
+                user?.role === "admin" &&
+                // The group when the router supplied one; the plain link when it
+                // did not, so the frame still reaches /admin on its own.
+                (adminNav ?? (
+                  <Link
+                    to="/admin"
+                    className={`${navBase} ${navIdle}`}
+                    activeProps={{ className: `${navBase} ${navActive}` }}
+                  >
+                    <ShieldCheck
+                      className="h-[18px] w-[18px] shrink-0"
+                      aria-hidden="true"
+                    />
+                    {t("nav.admin", "Admin")}
+                  </Link>
+                ))}
             </nav>
           </div>
         </aside>

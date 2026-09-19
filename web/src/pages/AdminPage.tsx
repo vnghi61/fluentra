@@ -1,14 +1,7 @@
-import React, { useState } from "react";
+import React from "react";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import {
-  AlertTriangle,
-  BookA,
-  BookOpen,
-  Flag,
-  Gauge,
-  Shield,
-  Users,
-} from "lucide-react";
+import { Shield } from "lucide-react";
 import {
   AdminUserList,
   AdminFeatureFlags,
@@ -18,89 +11,24 @@ import {
   AdminVocabulary,
 } from "@/features/admin";
 import {
-  PERMISSIONS,
-  usePermissions,
-} from "@/features/admin/model/permissions";
-
-type AdminTab = "users" | "content" | "reports" | "vocabulary" | "flags" | "ai";
+  type AdminSectionKey,
+  useVisibleAdminSections,
+} from "@/features/admin/model/sections";
 
 export function AdminPage(): React.JSX.Element {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<AdminTab>("users");
-  const { can, isLoading } = usePermissions();
+  const navigate = useNavigate();
+  const params: Record<string, string | undefined> = useParams({
+    strict: false,
+  });
+  const { sections, isLoading } = useVisibleAdminSections();
 
-  // The route already refuses non-admins. This is the finer cut: `admin` is one
-  // role but its permissions are individually grantable, so an administrator
-  // without `system.flags` must not be shown a Feature Flags tab whose every
-  // action answers 403. The server still enforces both — see each operation's
-  // x-permission in api/openapi/openapi.yaml.
-  const tabs = [
-    ...(can(PERMISSIONS.userList)
-      ? [
-          {
-            key: "users" as AdminTab,
-            label: t("page.learnerManagement"),
-            icon: Users,
-          },
-        ]
-      : []),
-    ...(can(PERMISSIONS.contentEdit) ||
-    can(PERMISSIONS.contentReview) ||
-    can(PERMISSIONS.contentPublish)
-      ? [
-          {
-            key: "content" as AdminTab,
-            label: t("page.contentLibrary"),
-            icon: BookOpen,
-          },
-        ]
-      : []),
-    ...(can(PERMISSIONS.contentReview) || can(PERMISSIONS.contentEdit)
-      ? [
-          {
-            key: "reports" as AdminTab,
-            label: t("adminReports.tabLabel", "Reported Items"),
-            icon: AlertTriangle,
-          },
-        ]
-      : []),
-    ...(can(PERMISSIONS.contentEdit) || can(PERMISSIONS.contentCreate)
-      ? [
-          {
-            key: "vocabulary" as AdminTab,
-            label: t("page.vocabulary"),
-            icon: BookA,
-          },
-        ]
-      : []),
-    ...(can(PERMISSIONS.systemFlags)
-      ? [
-          {
-            key: "flags" as AdminTab,
-            label: t("page.featureFlags"),
-            icon: Flag,
-          },
-        ]
-      : []),
-    // The whole point of the AI usage view is that an administrator sees a
-    // provider run out before a learner meets a queued word, and a component
-    // that is exported but never rendered shows nobody anything.
-    ...(can(PERMISSIONS.adminDashboard)
-      ? [
-          {
-            key: "ai" as AdminTab,
-            label: t("page.aiUsage"),
-            icon: Gauge,
-          },
-        ]
-      : []),
-  ];
-
-  // Nothing is rendered on a guess: until the read lands, and if it fails,
-  // no administrative surface is offered.
-  const visible = tabs.some((tab) => tab.key === activeTab)
-    ? activeTab
-    : tabs[0]?.key;
+  // The address decides, not component state. /admin names no section, and a
+  // section the permissions do not grant is not one to render, so both fall
+  // back to the first section this administrator actually holds.
+  const asked = params["section"];
+  const visible: AdminSectionKey | undefined =
+    sections.find((section) => section.key === asked)?.key ?? sections[0]?.key;
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 py-4">
@@ -115,22 +43,20 @@ export function AdminPage(): React.JSX.Element {
         <h1 className="text-2xl font-bold text-text">
           {t("page.platformAdministration")}
         </h1>
-        <p className="text-sm text-text-muted">
-          Manage platform learners, enforce moderation, and configure system
-          feature flags.
-        </p>
+        <p className="text-sm text-text-muted">{t("page.adminIntro")}</p>
       </header>
 
-      {/* Tabs */}
-      <div className="flex border-b border-border-subtle gap-2 pb-px overflow-x-auto">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = visible === tab.key;
+      {/* The sections live in the sidebar now. It is drawn from `md` up, so this
+          row is what carries them on a phone — the same destinations, not a
+          second source of truth. */}
+      <div className="flex border-b border-border-subtle gap-2 pb-px overflow-x-auto md:hidden">
+        {sections.map(({ key, path, labelKey, labelFallback, Icon }) => {
+          const isActive = visible === key;
           return (
             <button
-              key={tab.key}
+              key={key}
               type="button"
-              onClick={() => setActiveTab(tab.key)}
+              onClick={() => void navigate({ to: path })}
               className={`flex items-center gap-2 whitespace-nowrap px-4 py-3 text-sm font-medium border-b-2 transition-colors min-h-[44px] cursor-pointer ${
                 isActive
                   ? "border-primary text-primary-accent bg-primary/5 rounded-t-lg"
@@ -138,7 +64,7 @@ export function AdminPage(): React.JSX.Element {
               }`}
             >
               <Icon className="h-4 w-4" />
-              {tab.label}
+              {t(labelKey, labelFallback)}
             </button>
           );
         })}
@@ -147,8 +73,10 @@ export function AdminPage(): React.JSX.Element {
       {/* Tab Panels */}
       <div>
         {isLoading ? (
-          <p className="text-sm text-text-muted">Checking your permissions…</p>
-        ) : tabs.length === 0 ? (
+          <p className="text-sm text-text-muted">
+            {t("page.checkingYourPermissions")}
+          </p>
+        ) : sections.length === 0 ? (
           <p className="text-sm text-text-muted">
             {t("page.yourAccountHoldsNoAdministrativePermissions")}
           </p>

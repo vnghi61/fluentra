@@ -39,7 +39,7 @@ WHERE id = $1;
 -- name: ListContentItemsFiltered :many
 SELECT id, kind, slug, current_version_id, status, owner_id, created_at, updated_at
 FROM content.content_items
-WHERE (sqlc.narg('status')::text IS NULL OR status = sqlc.narg('status'))
+WHERE (sqlc.narg('status')::text IS NULL OR status::text = sqlc.narg('status'))
   AND (sqlc.narg('kind')::text IS NULL OR kind = sqlc.narg('kind'))
   AND (sqlc.narg('query')::text IS NULL OR slug ILIKE sqlc.narg('query') || '%')
 ORDER BY updated_at DESC, id DESC
@@ -48,7 +48,7 @@ LIMIT @result_limit OFFSET @result_offset;
 -- name: CountContentItemsFiltered :one
 SELECT COUNT(*)::bigint
 FROM content.content_items
-WHERE (sqlc.narg('status')::text IS NULL OR status = sqlc.narg('status'))
+WHERE (sqlc.narg('status')::text IS NULL OR status::text = sqlc.narg('status'))
   AND (sqlc.narg('kind')::text IS NULL OR kind = sqlc.narg('kind'))
   AND (sqlc.narg('query')::text IS NULL OR slug ILIKE sqlc.narg('query') || '%');
 

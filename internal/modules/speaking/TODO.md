@@ -6,11 +6,11 @@ status: DONE
 phase: 3
 owner: "@learning-team"
 schema: skill
-tables: [speaking_feedback]
+tables: [speaking_feedback, speaking_consents]
 depends_on: [media, ai, storage, job, content, learning]
 depended_on_by: [learning, analytics, gamification]
 spec_version: 1.0.0
-last_verified: 2026-08-06
+last_verified: 2026-09-18
 ---
 
 # speaking — TODO

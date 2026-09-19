@@ -19,8 +19,20 @@ import { ERROR_MESSAGES, getErrorMessage } from "@/lib/errors/catalogue";
 
 const MODULE_ROOT = join(__dirname, "../../../internal/modules");
 
-/** Codes the API can put in `problem.code`, read from the domain error files. */
+let cachedServerErrorCodes: Set<string> | undefined;
+
+/**
+ * Codes the API can put in `problem.code`, read from the domain error files.
+ *
+ * Memoised: the Go tree does not change while the suite runs, and this used to
+ * walk it seven times — once in one test and once per code in the other's loop.
+ * Standalone that cost under a second; sharing a machine with the rest of the
+ * suite it took six, and the 5s default timeout failed two tests that had found
+ * nothing wrong.
+ */
 function serverErrorCodes(): Set<string> {
+  if (cachedServerErrorCodes !== undefined) return cachedServerErrorCodes;
+
   const codes = new Set<string>();
 
   const walk = (directory: string): void => {
@@ -54,6 +66,7 @@ function serverErrorCodes(): Set<string> {
   };
 
   walk(MODULE_ROOT);
+  cachedServerErrorCodes = codes;
   return codes;
 }
 

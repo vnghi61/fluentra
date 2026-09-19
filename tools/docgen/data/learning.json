@@ -1007,23 +1007,26 @@
     "status": "DONE",
     "owner": "@learning-team",
     "hasJobs": true,
-    "purpose": "Spoken practice: prompts, browser recording, automatic speech recognition, phoneme-level pronunciation assessment, fluency measurement, and AI coaching built on top of those numbers.",
+    "purpose": "Spoken practice: prompts, browser recording, automatic speech recognition, read-aloud word accuracy, speaking rate, and AI coaching built on the transcript.",
     "responsibilities": [
-      "Speaking tasks: read-aloud, describe-an-image, opinion, role-play",
+      "Speaking tasks: read-aloud and open response",
       "Recording upload coordination and attempt lifecycle",
-      "Orchestrating the media pipeline for transcription and pronunciation assessment",
-      "Fluency metrics: speech rate, pauses, filler words",
-      "AI coaching feedback derived from transcript plus scores",
-      "Phoneme-level feedback rendering data (the heat map)"
+      "Orchestrating the media pipeline for transcription",
+      "Read-aloud word accuracy and speaking rate, computed in Go from the transcript",
+      "AI coaching feedback derived from the transcript plus those numbers"
     ],
     "notResponsibilities": ["Transcoding or ASR — that is `platform/media`", "Storing audio — that is `platform/storage`", "Generating text feedback directly — it asks `platform/ai`"],
     "tables": [
-      { "name": "speaking_feedback", "purpose": "Per-attempt asynchronous feedback, metrics, and transcript", "notes": "`attempt_id` UNIQUE FK learn.attempts, `user_id`, `recording_key`, `recording_deleted_at`, `transcript`, `criteria` jsonb, `read_aloud_accuracy`, `words_per_minute`, `feedback_en`, `feedback_vi`" }
+      { "name": "speaking_feedback", "purpose": "Per-attempt asynchronous feedback, metrics, and transcript", "notes": "`attempt_id` UNIQUE FK learn.attempts, `user_id`, `recording_key`, `recording_deleted_at`, `transcript`, `criteria` jsonb, `read_aloud_accuracy`, `words_per_minute`, `feedback_en`, `feedback_vi`, `overall_band`, `score`, `task_type`" },
+      { "name": "speaking_consents", "purpose": "BR-SPEAKING-03: who agreed to be recorded, and when", "notes": "`user_id` PK FK core.users ON DELETE CASCADE, `consented_at`. One row per learner; the upload-intent endpoint refuses without it." }
     ],
     "endpoints": [
       { "method": "POST", "path": "/api/v1/speaking/upload-intent", "permission": "self", "purpose": "Presigned PUT URL for recording upload to storage", "success": "200", "errors": ["UNSUPPORTED_AUDIO_FORMAT", "SPEECH_DAILY_LIMIT_REACHED"] },
       { "method": "DELETE", "path": "/api/v1/speaking/attempts/{id}/recording", "permission": "self", "purpose": "Purges the recording object while keeping scores and feedback", "success": "204" },
-      { "method": "GET", "path": "/api/v1/speaking/attempts/{id}/feedback", "permission": "self", "purpose": "Read feedback on a graded speaking attempt", "success": "200", "errors": ["FEEDBACK_NOT_FOUND"] }
+      { "method": "GET", "path": "/api/v1/speaking/attempts/{id}/feedback", "permission": "self", "purpose": "Read feedback on a graded speaking attempt, with a presigned audio_url while the recording lives", "success": "200", "errors": ["FEEDBACK_NOT_FOUND"] },
+      { "method": "GET", "path": "/api/v1/speaking/submissions", "permission": "self", "purpose": "Paginated history of the learner's graded speaking attempts", "success": "200" },
+      { "method": "GET", "path": "/api/v1/speaking/consent", "permission": "self", "purpose": "Whether the learner has consented to voice recording, and when", "success": "200" },
+      { "method": "POST", "path": "/api/v1/speaking/consent", "permission": "self", "purpose": "Record the learner's consent to voice recording (BR-SPEAKING-03)", "success": "200" }
     ],
     "contract": [{ "kind": "interface", "name": "speaking.Grader", "purpose": "Implements `learning.ExerciseGrader`; always asynchronous" }],
     "events": {

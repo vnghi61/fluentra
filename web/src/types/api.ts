@@ -2427,6 +2427,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/speaking/consent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Whether the learner has consented to voice recording.
+         * @description BR-SPEAKING-03. Reports whether the caller has given explicit consent to be recorded, and when. The recorder asks for consent when this says no.
+         */
+        get: operations["getSpeakingConsent"];
+        put?: never;
+        /**
+         * Record the learner's consent to voice recording.
+         * @description BR-SPEAKING-03. Stores the consent with its timestamp. Calling it again is harmless and does not move the original timestamp: consent was given when it was given.
+         */
+        post: operations["recordSpeakingConsent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/speaking/submissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the learner's speaking submissions.
+         * @description Returns a paginated list of speaking submissions with status, band scores, task types, and recording availability for the authenticated user.
+         */
+        get: operations["listSpeakingSubmissions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/exams": {
         parameters: {
             query?: never;
@@ -5148,10 +5192,83 @@ export interface components {
             prompt_version: string;
             model: string;
             asr_model: string;
+            /** Format: uri */
+            audio_url?: string;
+            /**
+             * Format: float
+             * @description Band the model gave the transcript. Absent on rows graded before it was persisted.
+             * @example 6.5
+             */
+            overall_band?: number;
+            /**
+             * @description The score the attempt was completed with. Absent on rows graded before it was persisted.
+             * @example 85
+             */
+            score?: number;
+            /**
+             * @example read_aloud
+             * @enum {string}
+             */
+            task_type?: "read_aloud" | "respond";
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
             updated_at: string;
+        };
+        SpeakingConsent: {
+            /** @example true */
+            consented: boolean;
+            /**
+             * Format: date-time
+             * @description When consent was given. Absent until it has been.
+             * @example 2026-09-19T08:00:00Z
+             */
+            consented_at?: string | null;
+        };
+        SpeakingSubmissionSummary: {
+            /** Format: uuid */
+            attempt_id: string;
+            /**
+             * @example graded
+             * @enum {string}
+             */
+            status: "grading" | "graded" | "failed";
+            /**
+             * Format: float
+             * @description Null for an attempt graded before the grade was persisted.
+             * @example 6.5
+             */
+            overall_band: number | null;
+            /**
+             * @description Null for an attempt graded before the grade was persisted.
+             * @example 72
+             */
+            score: number | null;
+            /** @example true */
+            has_recording: boolean;
+            /**
+             * @example read_aloud
+             * @enum {string}
+             */
+            task_type: "read_aloud" | "respond";
+            /** @example Good overall effort. */
+            feedback_en?: string;
+            /** @example Bài nói tổng thể tốt. */
+            feedback_vi?: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-14T10:20:00Z
+             */
+            created_at: string;
+        };
+        SpeakingSubmissionList: {
+            items: components["schemas"]["SpeakingSubmissionSummary"][];
+            /** @example 42 */
+            total: number;
+            /** @example 1 */
+            page: number;
+            /** @example 10 */
+            page_size: number;
         };
         /** @description Self-declared learning goals and background. */
         LearningProfile: {
@@ -11046,6 +11163,25 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
+            /** @description RECORDING_CONSENT_REQUIRED — voice consent has not been given (BR-SPEAKING-03). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "type": "https://fluentra.dev/errors/RECORDING_CONSENT_REQUIRED",
+                     *       "title": "Voice consent required",
+                     *       "status": 403,
+                     *       "detail": "Consent to voice recording is required before recording.",
+                     *       "code": "RECORDING_CONSENT_REQUIRED",
+                     *       "request_id": "01J8XQ7Z9K3M4N5P6Q7R8S9T0V"
+                     *     }
+                     */
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             429: components["responses"]["TooManyRequests"];
             500: components["responses"]["InternalServerError"];
         };
@@ -11126,6 +11262,112 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    getSpeakingConsent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The caller's consent state. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "consented": true,
+                     *       "consented_at": "2026-09-19T08:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SpeakingConsent"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    recordSpeakingConsent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Consent recorded. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "consented": true,
+                     *       "consented_at": "2026-09-19T08:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SpeakingConsent"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    listSpeakingSubmissions: {
+        parameters: {
+            query?: {
+                /** @description Page number (1-based). */
+                page?: number;
+                /** @description Number of items per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated list of speaking submissions. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "attempt_id": "77777777-7777-7777-7777-777777777777",
+                     *           "status": "graded",
+                     *           "overall_band": 6.5,
+                     *           "score": 72,
+                     *           "has_recording": true,
+                     *           "task_type": "read_aloud",
+                     *           "feedback_en": "Clear answer with simple structures.",
+                     *           "feedback_vi": "Câu trả lời rõ ràng với cấu trúc đơn giản.",
+                     *           "created_at": "2026-09-14T10:20:00Z"
+                     *         }
+                     *       ],
+                     *       "total": 1,
+                     *       "page": 1,
+                     *       "page_size": 10
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SpeakingSubmissionList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
             500: components["responses"]["InternalServerError"];
         };
     };

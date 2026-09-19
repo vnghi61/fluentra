@@ -28,9 +28,19 @@ type AttemptCounter interface {
 	CountAttemptsTowardLimitSince(ctx context.Context, userID uuid.UUID, grader string, since time.Time) (int, error)
 }
 
+// ConsentStore reads and records voice-recording consent. Narrow and injectable
+// so the consent gate can be exercised without a database, the way the grader
+// narrows its own dependencies.
+type ConsentStore interface {
+	GetConsent(ctx context.Context, userID uuid.UUID) (*contract.SpeakingConsent, error)
+	RecordConsent(ctx context.Context, userID uuid.UUID) (*contract.SpeakingConsent, error)
+}
+
 // Deps holds dependencies for the speaking service.
 type Deps struct {
-	Repo       *repository.Repository
+	Repo *repository.Repository
+	// Defaults to Repo. Supplied separately only by tests.
+	Consent    ConsentStore
 	Storage    storage.Store
 	Counter    AttemptCounter
 	Clock      clock.Clock
@@ -41,6 +51,7 @@ type Deps struct {
 // Service manages audio recording intents, GDPR deletions, and retention policies.
 type Service struct {
 	repo       *repository.Repository
+	consent    ConsentStore
 	storage    storage.Store
 	counter    AttemptCounter
 	clock      clock.Clock
@@ -63,8 +74,14 @@ func New(deps Deps) *Service {
 		b = storage.BucketMedia
 	}
 
+	consent := deps.Consent
+	if consent == nil && deps.Repo != nil {
+		consent = deps.Repo
+	}
+
 	return &Service{
 		repo:       deps.Repo,
+		consent:    consent,
 		storage:    deps.Storage,
 		counter:    deps.Counter,
 		clock:      timekeeper,
@@ -81,10 +98,23 @@ func (s *Service) UploadIntent(
 		return nil, domain.ErrUnsupportedAudioFormat
 	}
 
+	// BR-SPEAKING-03, enforced where it bites: no presigned URL without consent.
+	// Checking it in the browser alone left the rule as a suggestion, since the
+	// endpoint answers anyone who asks it directly.
+	if s.consent == nil {
+		return nil, domain.ErrConsentRequired
+	}
+	consent, err := s.consent.GetConsent(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("read speaking consent: %w", err)
+	}
+	if !consent.Consented {
+		return nil, domain.ErrConsentRequired
+	}
+
 	// Daily recordings limit check
 	var used int
 	if s.counter != nil && s.dailyLimit > 0 {
-		var err error
 		startOfDay := startOfLearnerDay(s.clock.Now())
 		used, err = s.counter.CountAttemptsTowardLimitSince(ctx, userID, contract.KindSpeakingTask, startOfDay)
 		if err != nil {
@@ -187,9 +217,76 @@ func (s *Service) DeleteUserRecordings(ctx context.Context, userID uuid.UUID) er
 	return nil
 }
 
-// GetSpeakingFeedback retrieves feedback for a user attempt.
+// GetSpeakingFeedback retrieves feedback for a user attempt, generating an audio playback URL if still active.
 func (s *Service) GetSpeakingFeedback(
 	ctx context.Context, attemptID, userID uuid.UUID,
 ) (*contract.SpeakingFeedback, error) {
-	return s.repo.GetFeedbackForUser(ctx, attemptID, userID)
+	fb, err := s.repo.GetFeedbackForUser(ctx, attemptID, userID)
+	if err != nil {
+		return nil, err
+	}
+	if fb.RecordingDeletedAt == nil && fb.RecordingKey != "" && s.storage != nil {
+		if presignedURL, err := s.storage.PresignGet(ctx, s.bucket, fb.RecordingKey, 15*time.Minute); err == nil {
+			fb.AudioURL = presignedURL
+		}
+	}
+	return fb, nil
+}
+
+// ListSpeakingSubmissions retrieves a paginated history of speaking submissions
+// for a learner.
+//
+// It reports the grade the attempt was completed with, read back from the row.
+// It used to rebuild one here — averaging the criteria bands, or taking the raw
+// read-aloud accuracy — and that number did not match the one the learner was
+// shown in the runner, because the grader blends the model score with the
+// accuracy before awarding it.
+func (s *Service) ListSpeakingSubmissions(
+	ctx context.Context, userID uuid.UUID, page, pageSize int,
+) (*contract.SpeakingSubmissionList, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 10
+	}
+	offset := (page - 1) * pageSize
+
+	total, err := s.repo.CountSubmissionsByUser(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("count speaking submissions: %w", err)
+	}
+
+	items, err := s.repo.ListSubmissionsByUser(ctx, userID, pageSize, offset)
+	if err != nil {
+		return nil, fmt.Errorf("list speaking submissions: %w", err)
+	}
+
+	return &contract.SpeakingSubmissionList{
+		Items:    items,
+		Total:    int(total),
+		Page:     page,
+		PageSize: pageSize,
+	}, nil
+}
+
+// GetConsent reports whether the learner has agreed to be recorded.
+func (s *Service) GetConsent(
+	ctx context.Context, userID uuid.UUID,
+) (*contract.SpeakingConsent, error) {
+	if s.consent == nil {
+		return &contract.SpeakingConsent{Consented: false}, nil
+	}
+	return s.consent.GetConsent(ctx, userID)
+}
+
+// RecordConsent stores the learner's agreement, with the timestamp
+// BR-SPEAKING-03 requires.
+func (s *Service) RecordConsent(
+	ctx context.Context, userID uuid.UUID,
+) (*contract.SpeakingConsent, error) {
+	if s.consent == nil {
+		return nil, fmt.Errorf("speaking: no consent store configured")
+	}
+	return s.consent.RecordConsent(ctx, userID)
 }

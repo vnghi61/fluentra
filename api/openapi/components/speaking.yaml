@@ -55,9 +55,94 @@ SpeakingFeedback:
       type: string
     asr_model:
       type: string
+    audio_url:
+      type: string
+      format: uri
+    overall_band:
+      description: Band the model gave the transcript. Absent on rows graded before it was persisted.
+      type: number
+      format: float
+      example: 6.5
+    score:
+      description: The score the attempt was completed with. Absent on rows graded before it was persisted.
+      type: integer
+      example: 85
+    task_type:
+      type: string
+      enum: [read_aloud, respond]
+      example: read_aloud
     created_at:
       type: string
       format: date-time
     updated_at:
       type: string
       format: date-time
+
+SpeakingSubmissionSummary:
+  type: object
+  required: [attempt_id, status, overall_band, score, created_at, has_recording, task_type]
+  properties:
+    attempt_id:
+      type: string
+      format: uuid
+    status:
+      type: string
+      enum: [grading, graded, failed]
+      example: graded
+    overall_band:
+      description: Null for an attempt graded before the grade was persisted.
+      type: [number, 'null']
+      format: float
+      example: 6.5
+    score:
+      description: Null for an attempt graded before the grade was persisted.
+      type: [integer, 'null']
+      example: 72
+    has_recording:
+      type: boolean
+      example: true
+    task_type:
+      type: string
+      enum: [read_aloud, respond]
+      example: read_aloud
+    feedback_en:
+      type: string
+      example: Good overall effort.
+    feedback_vi:
+      type: string
+      example: Bài nói tổng thể tốt.
+    created_at:
+      type: string
+      format: date-time
+      example: '2026-09-14T10:20:00Z'
+
+SpeakingSubmissionList:
+  type: object
+  required: [items, total, page, page_size]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/SpeakingSubmissionSummary'
+    total:
+      type: integer
+      example: 42
+    page:
+      type: integer
+      example: 1
+    page_size:
+      type: integer
+      example: 10
+
+SpeakingConsent:
+  type: object
+  required: [consented]
+  properties:
+    consented:
+      type: boolean
+      example: true
+    consented_at:
+      description: When consent was given. Absent until it has been.
+      type: [string, 'null']
+      format: date-time
+      example: '2026-09-19T08:00:00Z'

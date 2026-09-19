@@ -11,6 +11,7 @@ import {
 import { adminApi, type ContentItem } from "../api/adminApi";
 import { AdminContentDetailModal } from "./AdminContentDetailModal";
 import { Button } from "@/components/ui/button";
+import { Pagination } from "@/components/ui/pagination";
 
 // The filter values are the server's, so they stay literals; only the labels are
 // translated. Both lists live inside the component because a module-level
@@ -253,7 +254,7 @@ export const AdminContentList: React.FC = () => {
                           item.status,
                         )}`}
                       >
-                        {item.status}
+                        {t(`admin.contentStatus.${item.status}`, item.status)}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">
@@ -278,39 +279,21 @@ export const AdminContentList: React.FC = () => {
           </table>
         </div>
 
-        {/* Pagination Bar */}
-        <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-muted/20 text-xs text-muted-foreground">
-          <div>
-            {t("admin.showingRange", {
-              from: items.length > 0 ? offset + 1 : 0,
-              to: Math.min(offset + items.length, total),
-              total,
-            })}
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={offset === 0 || isLoading}
-              onClick={() => setOffset((prev) => Math.max(0, prev - limit))}
-              className="min-h-11 px-4 text-xs"
-            >
-              {t("common.previous")}
-            </Button>
-            <span>
-              {t("admin.pageOf", { current: currentPage, total: totalPages })}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={offset + limit >= total || isLoading}
-              onClick={() => setOffset((prev) => prev + limit)}
-              className="min-h-11 px-4 text-xs"
-            >
-              {t("common.next")}
-            </Button>
-          </div>
-        </div>
+        {/* This endpoint takes limit+offset, so every page has an address and
+            the numbers are live. */}
+        <Pagination
+          page={currentPage}
+          pageCount={totalPages}
+          total={total}
+          rangeFrom={items.length > 0 ? offset + 1 : 0}
+          rangeTo={Math.min(offset + items.length, total)}
+          isBusy={isLoading}
+          canPrevious={offset > 0}
+          canNext={offset + limit < total}
+          onPrevious={() => setOffset((prev) => Math.max(0, prev - limit))}
+          onNext={() => setOffset((prev) => prev + limit)}
+          onPageSelect={(next) => setOffset((next - 1) * limit)}
+        />
       </div>
 
       {/* Content Detail & State Machine Transition Modal */}

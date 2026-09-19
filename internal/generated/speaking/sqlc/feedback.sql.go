@@ -13,8 +13,39 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countSpeakingSubmissionsByUser = `-- name: CountSpeakingSubmissionsByUser :one
+SELECT count(*)
+FROM skill.speaking_feedback
+WHERE user_id = $1
+`
+
+func (q *Queries) CountSpeakingSubmissionsByUser(ctx context.Context, userID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countSpeakingSubmissionsByUser, userID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const getSpeakingConsent = `-- name: GetSpeakingConsent :one
+SELECT user_id, consented_at
+FROM skill.speaking_consents
+WHERE user_id = $1
+`
+
+type GetSpeakingConsentRow struct {
+	UserID      uuid.UUID
+	ConsentedAt time.Time
+}
+
+func (q *Queries) GetSpeakingConsent(ctx context.Context, userID uuid.UUID) (GetSpeakingConsentRow, error) {
+	row := q.db.QueryRow(ctx, getSpeakingConsent, userID)
+	var i GetSpeakingConsentRow
+	err := row.Scan(&i.UserID, &i.ConsentedAt)
+	return i, err
+}
+
 const getSpeakingFeedbackByAttemptID = `-- name: GetSpeakingFeedbackByAttemptID :one
-SELECT id, attempt_id, user_id, recording_key, recording_deleted_at, transcript, criteria, read_aloud_accuracy, words_per_minute, feedback_en, feedback_vi, prompt_version, model, asr_model, created_at, updated_at FROM skill.speaking_feedback
+SELECT id, attempt_id, user_id, recording_key, recording_deleted_at, transcript, criteria, read_aloud_accuracy, words_per_minute, feedback_en, feedback_vi, prompt_version, model, asr_model, created_at, updated_at, overall_band, score, task_type FROM skill.speaking_feedback
 WHERE attempt_id = $1
 `
 
@@ -38,12 +69,15 @@ func (q *Queries) GetSpeakingFeedbackByAttemptID(ctx context.Context, attemptID 
 		&i.AsrModel,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.OverallBand,
+		&i.Score,
+		&i.TaskType,
 	)
 	return i, err
 }
 
 const getSpeakingFeedbackForUser = `-- name: GetSpeakingFeedbackForUser :one
-SELECT id, attempt_id, user_id, recording_key, recording_deleted_at, transcript, criteria, read_aloud_accuracy, words_per_minute, feedback_en, feedback_vi, prompt_version, model, asr_model, created_at, updated_at FROM skill.speaking_feedback
+SELECT id, attempt_id, user_id, recording_key, recording_deleted_at, transcript, criteria, read_aloud_accuracy, words_per_minute, feedback_en, feedback_vi, prompt_version, model, asr_model, created_at, updated_at, overall_band, score, task_type FROM skill.speaking_feedback
 WHERE attempt_id = $1 AND user_id = $2
 `
 
@@ -72,6 +106,9 @@ func (q *Queries) GetSpeakingFeedbackForUser(ctx context.Context, arg GetSpeakin
 		&i.AsrModel,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.OverallBand,
+		&i.Score,
+		&i.TaskType,
 	)
 	return i, err
 }
@@ -92,12 +129,15 @@ INSERT INTO skill.speaking_feedback (
     prompt_version,
     model,
     asr_model,
+    overall_band,
+    score,
+    task_type,
     created_at,
     updated_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19
 )
-RETURNING id, attempt_id, user_id, recording_key, recording_deleted_at, transcript, criteria, read_aloud_accuracy, words_per_minute, feedback_en, feedback_vi, prompt_version, model, asr_model, created_at, updated_at
+RETURNING id, attempt_id, user_id, recording_key, recording_deleted_at, transcript, criteria, read_aloud_accuracy, words_per_minute, feedback_en, feedback_vi, prompt_version, model, asr_model, created_at, updated_at, overall_band, score, task_type
 `
 
 type InsertSpeakingFeedbackParams struct {
@@ -115,6 +155,9 @@ type InsertSpeakingFeedbackParams struct {
 	PromptVersion      string
 	Model              string
 	AsrModel           string
+	OverallBand        pgtype.Numeric
+	Score              *int32
+	TaskType           *string
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
 }
@@ -135,6 +178,9 @@ func (q *Queries) InsertSpeakingFeedback(ctx context.Context, arg InsertSpeaking
 		arg.PromptVersion,
 		arg.Model,
 		arg.AsrModel,
+		arg.OverallBand,
+		arg.Score,
+		arg.TaskType,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -156,6 +202,9 @@ func (q *Queries) InsertSpeakingFeedback(ctx context.Context, arg InsertSpeaking
 		&i.AsrModel,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.OverallBand,
+		&i.Score,
+		&i.TaskType,
 	)
 	return i, err
 }
@@ -195,6 +244,77 @@ func (q *Queries) ListRecordingsOlderThan(ctx context.Context, arg ListRecording
 			&i.AttemptID,
 			&i.UserID,
 			&i.RecordingKey,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSpeakingSubmissionsByUser = `-- name: ListSpeakingSubmissionsByUser :many
+SELECT
+    attempt_id,
+    user_id,
+    recording_key,
+    recording_deleted_at,
+    read_aloud_accuracy,
+    overall_band,
+    score,
+    task_type,
+    feedback_en,
+    feedback_vi,
+    created_at
+FROM skill.speaking_feedback
+WHERE user_id = $1
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListSpeakingSubmissionsByUserParams struct {
+	UserID uuid.UUID
+	Limit  int32
+	Offset int32
+}
+
+type ListSpeakingSubmissionsByUserRow struct {
+	AttemptID          uuid.UUID
+	UserID             uuid.UUID
+	RecordingKey       string
+	RecordingDeletedAt *time.Time
+	ReadAloudAccuracy  pgtype.Numeric
+	OverallBand        pgtype.Numeric
+	Score              *int32
+	TaskType           *string
+	FeedbackEn         string
+	FeedbackVi         string
+	CreatedAt          time.Time
+}
+
+func (q *Queries) ListSpeakingSubmissionsByUser(ctx context.Context, arg ListSpeakingSubmissionsByUserParams) ([]ListSpeakingSubmissionsByUserRow, error) {
+	rows, err := q.db.Query(ctx, listSpeakingSubmissionsByUser, arg.UserID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSpeakingSubmissionsByUserRow
+	for rows.Next() {
+		var i ListSpeakingSubmissionsByUserRow
+		if err := rows.Scan(
+			&i.AttemptID,
+			&i.UserID,
+			&i.RecordingKey,
+			&i.RecordingDeletedAt,
+			&i.ReadAloudAccuracy,
+			&i.OverallBand,
+			&i.Score,
+			&i.TaskType,
+			&i.FeedbackEn,
+			&i.FeedbackVi,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -260,4 +380,26 @@ WHERE id = ANY($1::uuid[])
 func (q *Queries) MarkRecordingsDeletedBatch(ctx context.Context, dollar_1 []uuid.UUID) error {
 	_, err := q.db.Exec(ctx, markRecordingsDeletedBatch, dollar_1)
 	return err
+}
+
+const upsertSpeakingConsent = `-- name: UpsertSpeakingConsent :one
+INSERT INTO skill.speaking_consents (user_id, consented_at)
+VALUES ($1, now())
+ON CONFLICT (user_id) DO UPDATE
+SET updated_at = now()
+RETURNING user_id, consented_at
+`
+
+type UpsertSpeakingConsentRow struct {
+	UserID      uuid.UUID
+	ConsentedAt time.Time
+}
+
+// Consent was given when it was given: a second call does not move the
+// timestamp, it only refreshes updated_at.
+func (q *Queries) UpsertSpeakingConsent(ctx context.Context, userID uuid.UUID) (UpsertSpeakingConsentRow, error) {
+	row := q.db.QueryRow(ctx, upsertSpeakingConsent, userID)
+	var i UpsertSpeakingConsentRow
+	err := row.Scan(&i.UserID, &i.ConsentedAt)
+	return i, err
 }

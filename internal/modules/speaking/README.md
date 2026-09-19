@@ -6,7 +6,7 @@ status: DONE
 phase: 3
 owner: "@learning-team"
 schema: skill
-tables: [speaking_feedback]
+tables: [speaking_feedback, speaking_consents]
 depends_on: [media, ai, storage, job, content, learning]
 depended_on_by: [learning, analytics, gamification]
 spec_version: 1.0.0
@@ -22,18 +22,17 @@ Spoken practice: prompts, browser recording, automatic speech recognition, phone
 ## Business purpose
 
 <!-- BEGIN GENERATED: purpose -->
-Spoken practice: prompts, browser recording, automatic speech recognition, phoneme-level pronunciation assessment, fluency measurement, and AI coaching built on top of those numbers.
+Spoken practice: prompts, browser recording, automatic speech recognition, read-aloud word accuracy, speaking rate, and AI coaching built on the transcript.
 <!-- END GENERATED: purpose -->
 
 ## Responsibilities
 
 <!-- BEGIN GENERATED: readme-resp -->
-- Speaking tasks: read-aloud, describe-an-image, opinion, role-play
+- Speaking tasks: read-aloud and open response
 - Recording upload coordination and attempt lifecycle
-- Orchestrating the media pipeline for transcription and pronunciation assessment
-- Fluency metrics: speech rate, pauses, filler words
-- AI coaching feedback derived from transcript plus scores
-- Phoneme-level feedback rendering data (the heat map)
+- Orchestrating the media pipeline for transcription
+- Read-aloud word accuracy and speaking rate, computed in Go from the transcript
+- AI coaching feedback derived from the transcript plus those numbers
 <!-- END GENERATED: readme-resp -->
 
 ## Where things are

@@ -6,7 +6,7 @@ status: DONE
 phase: 3
 owner: "@learning-team"
 schema: skill
-tables: [speaking_feedback]
+tables: [speaking_feedback, speaking_consents]
 depends_on: [media, ai, storage, job, content, learning]
 depended_on_by: [learning, analytics, gamification]
 spec_version: 1.0.0
@@ -29,7 +29,10 @@ Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR
 |---|---|---|---|
 | `POST` | `/api/v1/speaking/upload-intent` | `self` | Presigned PUT URL for recording upload to storage |
 | `DELETE` | `/api/v1/speaking/attempts/{id}/recording` | `self` | Purges the recording object while keeping scores and feedback |
-| `GET` | `/api/v1/speaking/attempts/{id}/feedback` | `self` | Read feedback on a graded speaking attempt |
+| `GET` | `/api/v1/speaking/attempts/{id}/feedback` | `self` | Read feedback on a graded speaking attempt, with a presigned audio_url while the recording lives |
+| `GET` | `/api/v1/speaking/submissions` | `self` | Paginated history of the learner's graded speaking attempts |
+| `GET` | `/api/v1/speaking/consent` | `self` | Whether the learner has consented to voice recording, and when |
+| `POST` | `/api/v1/speaking/consent` | `self` | Record the learner's consent to voice recording (BR-SPEAKING-03) |
 <!-- END GENERATED: api-summary -->
 
 ## Endpoint detail
@@ -57,13 +60,43 @@ Purges the recording object while keeping scores and feedback
 
 ### `GET /api/v1/speaking/attempts/{id}/feedback`
 
-Read feedback on a graded speaking attempt
+Read feedback on a graded speaking attempt, with a presigned audio_url while the recording lives
 
 | | |
 |---|---|
 | Permission | `self` |
 | Success | 200 |
 | Errors | `FEEDBACK_NOT_FOUND` |
+
+### `GET /api/v1/speaking/submissions`
+
+Paginated history of the learner's graded speaking attempts
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+### `GET /api/v1/speaking/consent`
+
+Whether the learner has consented to voice recording, and when
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+### `POST /api/v1/speaking/consent`
+
+Record the learner's consent to voice recording (BR-SPEAKING-03)
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
 
 <!-- END GENERATED: api-detail -->
 
