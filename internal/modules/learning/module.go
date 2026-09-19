@@ -221,6 +221,11 @@ func (m *Module) ItemExposureRecorder() contract.ItemExposureRecorder {
 	return m.service
 }
 
+// ItemVerifier returns the public ItemVerifier contract implementation.
+func (m *Module) ItemVerifier() contract.ItemVerifier {
+	return m.service
+}
+
 // Routes mounts learner-facing attempt endpoints under the authenticated router.
 func (m *Module) Routes(router chi.Router) {
 	if m.handler != nil {

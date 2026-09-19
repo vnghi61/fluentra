@@ -460,17 +460,17 @@ type listeningCand struct {
 	Explanation    *learningcontract.AnswerExplanation `json:"explanation,omitempty"`
 }
 
-func (s *Service) checkAndPrepareListening(
-	ctx context.Context, level string, raw json.RawMessage, existing []lessoncontract.Activity,
-) (json.RawMessage, error) {
+func (s *Service) verifyListeningCandidate(
+	ctx context.Context, level string, raw json.RawMessage, existing []lessoncontract.Activity, blindSolve bool,
+) (listeningCand, error) {
 	cand, err := parseListeningCandidate(raw)
 	if err != nil {
-		return nil, err
+		return cand, err
 	}
 
 	grader, ok := s.graders.Get(kindListeningComprehension)
 	if !ok || grader == nil {
-		return nil, errors.New("listening grader not registered")
+		return cand, errors.New("listening grader not registered")
 	}
 
 	versionID := uuid.New()
@@ -480,16 +480,28 @@ func (s *Service) checkAndPrepareListening(
 
 	// Checks 2 and 3: the item's own answers score full marks, and its questions are well formed.
 	if err := checkListeningQuestions(gradeCtx, grader, versionID, cand); err != nil {
-		return nil, err
+		return cand, err
 	}
 
 	// Check 4: Blind solve
-	if err := s.blindSolveListening(gradeCtx, grader, versionID, cand); err != nil {
-		return nil, fmt.Errorf("check 4 (blind solve) failed: %w", err)
+	if blindSolve {
+		if err := s.blindSolveListening(gradeCtx, grader, versionID, cand); err != nil {
+			return cand, fmt.Errorf("check 4 (blind solve) failed: %w", err)
+		}
 	}
 
 	// Checks 5 and 6: not a duplicate, and nothing answer-bearing survives redaction.
 	if err := checkListeningNovelAndRedacted(raw, cand, existing); err != nil {
+		return cand, err
+	}
+	return cand, nil
+}
+
+func (s *Service) checkAndPrepareListening(
+	ctx context.Context, level string, raw json.RawMessage, existing []lessoncontract.Activity,
+) (json.RawMessage, error) {
+	cand, err := s.verifyListeningCandidate(ctx, level, raw, existing, true)
+	if err != nil {
 		return nil, err
 	}
 
