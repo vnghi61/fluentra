@@ -248,13 +248,14 @@ func newIdentity(deps identityDeps) *identity {
 	})
 
 	assembled.lesson = lesson.New(lesson.Deps{
-		Pool:      deps.Pool,
-		Caches:    newLessonCaches(deps.Redis),
-		Guard:     lazyGuard{of: assembled},
-		Content:   assembled.content.Reader(),
-		Unlocker:  lazyUnlocker{of: assembled},
-		Completed: lazyLessonProgress{of: assembled},
-		Env:       deps.Env,
+		Pool:       deps.Pool,
+		Caches:     newLessonCaches(deps.Redis),
+		Guard:      lazyGuard{of: assembled},
+		Content:    assembled.content.Reader(),
+		Taxonomies: assembled.content.TaxonomyResolver(),
+		Unlocker:   lazyUnlocker{of: assembled},
+		Completed:  lazyLessonProgress{of: assembled},
+		Env:        deps.Env,
 	})
 
 	assembled.srs = srs.New(srs.Deps{

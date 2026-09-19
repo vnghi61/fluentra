@@ -21,13 +21,17 @@ type ActivityInputDTO = domain.ActivityInput
 
 // CreateCourseParams holds the parameters to insert a course.
 type CreateCourseParams struct {
-	Slug           string
-	Title          string
-	Description    string
-	CEFRFrom       string
-	CEFRTo         string
-	Status         string
-	EstimatedHours int
+	Slug            string
+	Title           string
+	Description     string
+	CEFRFrom        string
+	CEFRTo          string
+	Status          string
+	EstimatedHours  int
+	OwnerID         *uuid.UUID
+	Origin          string
+	Visibility      string
+	TopicTaxonomyID *uuid.UUID
 }
 
 // CreateUnitParams holds the parameters to insert a unit.
@@ -98,12 +102,13 @@ func (r *Repository) WithTx(tx pgx.Tx) *Repository {
 // ListPublishedCourses retrieves paginated published courses ordered by CEFR level and title.
 // level is nil when the caller did not filter.
 func (r *Repository) ListPublishedCourses(
-	ctx context.Context, level *string, limit, offset int32,
+	ctx context.Context, level *string, topicTaxonomyID *uuid.UUID, limit, offset int32,
 ) ([]*contract.Course, error) {
 	rows, err := r.queries.ListPublishedCourses(ctx, sqlc.ListPublishedCoursesParams{
-		Level:  level,
-		Limit:  limit,
-		Offset: offset,
+		Level:           level,
+		TopicTaxonomyID: topicTaxonomyID,
+		Limit:           limit,
+		Offset:          offset,
 	})
 	if err != nil {
 		return nil, mapPgError(err)
@@ -112,8 +117,11 @@ func (r *Repository) ListPublishedCourses(
 }
 
 // CountPublishedCourses returns the total number of published courses matching level.
-func (r *Repository) CountPublishedCourses(ctx context.Context, level *string) (int64, error) {
-	count, err := r.queries.CountPublishedCourses(ctx, level)
+func (r *Repository) CountPublishedCourses(ctx context.Context, level *string, topicTaxonomyID *uuid.UUID) (int64, error) {
+	count, err := r.queries.CountPublishedCourses(ctx, sqlc.CountPublishedCoursesParams{
+		Level:           level,
+		TopicTaxonomyID: topicTaxonomyID,
+	})
 	if err != nil {
 		return 0, mapPgError(err)
 	}
@@ -159,13 +167,25 @@ func (r *Repository) GetPublishedLessonByID(ctx context.Context, id uuid.UUID) (
 func (r *Repository) UpsertCourse(
 	ctx context.Context, params contract.CourseSpec,
 ) (*contract.Course, error) {
+	var origin *string
+	if params.Origin != "" {
+		origin = &params.Origin
+	}
+	var visibility *string
+	if params.Visibility != "" {
+		visibility = &params.Visibility
+	}
 	row, err := r.queries.UpsertCourse(ctx, sqlc.UpsertCourseParams{
-		Slug:           params.Slug,
-		Title:          params.Title,
-		Description:    params.Description,
-		CefrFrom:       params.CEFRFrom,
-		CefrTo:         params.CEFRTo,
-		EstimatedHours: int32(params.EstimatedHours), //nolint:gosec // a course length in hours
+		Slug:            params.Slug,
+		Title:           params.Title,
+		Description:     params.Description,
+		CefrFrom:        params.CEFRFrom,
+		CefrTo:          params.CEFRTo,
+		EstimatedHours:  int32(params.EstimatedHours), //nolint:gosec // a course length in hours
+		Origin:          origin,
+		OwnerID:         params.OwnerID,
+		Visibility:      visibility,
+		TopicTaxonomyID: params.TopicTaxonomyID,
 	})
 	if err != nil {
 		return nil, mapPgError(err)
@@ -270,14 +290,26 @@ func (r *Repository) GetCourseByID(ctx context.Context, id uuid.UUID) (*contract
 
 // CreateCourse inserts a new course record into the database.
 func (r *Repository) CreateCourse(ctx context.Context, params CreateCourseParams) (*contract.Course, error) {
+	origin := params.Origin
+	if origin == "" {
+		origin = "official"
+	}
+	visibility := params.Visibility
+	if visibility == "" {
+		visibility = "public"
+	}
 	row, err := r.queries.CreateCourse(ctx, sqlc.CreateCourseParams{
-		Slug:           params.Slug,
-		Title:          params.Title,
-		Description:    params.Description,
-		CefrFrom:       params.CEFRFrom,
-		CefrTo:         params.CEFRTo,
-		Status:         params.Status,
-		EstimatedHours: int32(params.EstimatedHours), //nolint:gosec // bounded integer
+		Slug:            params.Slug,
+		Title:           params.Title,
+		Description:     params.Description,
+		CefrFrom:        params.CEFRFrom,
+		CefrTo:          params.CEFRTo,
+		Status:          params.Status,
+		EstimatedHours:  int32(params.EstimatedHours), //nolint:gosec // bounded integer
+		OwnerID:         params.OwnerID,
+		Origin:          origin,
+		Visibility:      visibility,
+		TopicTaxonomyID: params.TopicTaxonomyID,
 	})
 	if err != nil {
 		return nil, mapPgError(err)

@@ -371,7 +371,7 @@ func TestCache_CatalogueGenerationCounter_Invalidation(t *testing.T) {
 	ctx := context.Background()
 
 	// 1. ListCourses populates catalogue cache (gen 1)
-	courses1, total1, err := svc.ListCourses(ctx, nil, 10, 0)
+	courses1, total1, err := svc.ListCourses(ctx, nil, nil, 10, 0)
 	if err != nil {
 		t.Fatalf("ListCourses: %v", err)
 	}
@@ -382,7 +382,7 @@ func TestCache_CatalogueGenerationCounter_Invalidation(t *testing.T) {
 	queriesAfterFirst := repo.queryCounter.Load()
 
 	// 2. Second ListCourses hits catalogue cache (0 DB queries)
-	courses2, _, err := svc.ListCourses(ctx, nil, 10, 0)
+	courses2, _, err := svc.ListCourses(ctx, nil, nil, 10, 0)
 	if err != nil {
 		t.Fatalf("ListCourses second call: %v", err)
 	}
@@ -400,7 +400,7 @@ func TestCache_CatalogueGenerationCounter_Invalidation(t *testing.T) {
 	}
 
 	// 4. Third ListCourses misses cache because generation changed!
-	courses3, _, err := svc.ListCourses(ctx, nil, 10, 0)
+	courses3, _, err := svc.ListCourses(ctx, nil, nil, 10, 0)
 	if err != nil {
 		t.Fatalf("ListCourses third call: %v", err)
 	}

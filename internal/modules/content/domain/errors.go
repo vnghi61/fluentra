@@ -49,6 +49,9 @@ var (
 	// ErrInvalidCEFRLevel is returned when CEFR level is not one of A1..C2.
 	ErrInvalidCEFRLevel = apperr.New(apperr.Validation, "INVALID_CEFR_LEVEL", "Invalid CEFR level.")
 
+	// ErrTaxonomyNotFound is returned when a taxonomy entry is not found.
+	ErrTaxonomyNotFound = apperr.New(apperr.NotFound, "TAXONOMY_NOT_FOUND", "The taxonomy entry was not found.")
+
 	// ErrInvalidSlug is returned when slug format is invalid.
 	ErrInvalidSlug = apperr.New(apperr.Validation, "INVALID_SLUG", "Invalid slug format.")
 

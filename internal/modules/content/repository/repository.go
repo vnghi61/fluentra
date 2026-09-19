@@ -518,7 +518,7 @@ func (r *Repository) GetTaxonomyByNamespaceCode(ctx context.Context, namespace, 
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return domain.Taxonomy{}, fmt.Errorf("taxonomy %s:%s not found", namespace, code)
+			return domain.Taxonomy{}, domain.ErrTaxonomyNotFound
 		}
 		return domain.Taxonomy{}, fmt.Errorf("get taxonomy: %w", err)
 	}

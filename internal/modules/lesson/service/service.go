@@ -53,13 +53,17 @@ type UnlockChecker interface {
 
 // CreateCourseParams holds data to create a course in the repository.
 type CreateCourseParams struct {
-	Slug           string
-	Title          string
-	Description    string
-	CEFRFrom       string
-	CEFRTo         string
-	Status         string
-	EstimatedHours int
+	Slug            string
+	Title           string
+	Description     string
+	CEFRFrom        string
+	CEFRTo          string
+	Status          string
+	EstimatedHours  int
+	Origin          string
+	OwnerID         *uuid.UUID
+	Visibility      string
+	TopicTaxonomyID *uuid.UUID
 }
 
 // PrerequisiteItem models a prerequisite link with descriptive fields for lock reason.
@@ -67,8 +71,8 @@ type PrerequisiteItem = contract.PrerequisiteItem
 
 // Repository defines data access methods required by the lesson service.
 type Repository interface {
-	ListPublishedCourses(ctx context.Context, level *string, limit, offset int32) ([]*contract.Course, error)
-	CountPublishedCourses(ctx context.Context, level *string) (int64, error)
+	ListPublishedCourses(ctx context.Context, level *string, topicTaxonomyID *uuid.UUID, limit, offset int32) ([]*contract.Course, error)
+	CountPublishedCourses(ctx context.Context, level *string, topicTaxonomyID *uuid.UUID) (int64, error)
 	GetCourseBySlug(ctx context.Context, slug string) (*contract.Course, error)
 	GetPublishedCourseBySlug(ctx context.Context, slug string) (*contract.Course, error)
 	GetPublishedLessonByID(ctx context.Context, id uuid.UUID) (*contract.Lesson, error)
@@ -126,28 +130,30 @@ type LessonCaches struct {
 
 // Deps carries dependencies for constructing the lesson Service.
 type Deps struct {
-	Pool      *pgxpool.Pool
-	Repo      Repository
-	Content   contentcontract.Reader
-	Unlocker  UnlockChecker
-	Completed CompletedLessons
-	Events    EventWriter
-	Caches    LessonCaches
-	Clock     clock.Clock
-	NewID     func() uuid.UUID
-	Env       string
+	Pool       *pgxpool.Pool
+	Repo       Repository
+	Content    contentcontract.Reader
+	Taxonomies contentcontract.TaxonomyResolver
+	Unlocker   UnlockChecker
+	Completed  CompletedLessons
+	Events     EventWriter
+	Caches     LessonCaches
+	Clock      clock.Clock
+	NewID      func() uuid.UUID
+	Env        string
 }
 
 // Service orchestrates curriculum and lesson use cases.
 type Service struct {
-	pool      *pgxpool.Pool
-	repo      Repository
-	content   contentcontract.Reader
-	unlocker  UnlockChecker
-	completed CompletedLessons
-	events    EventWriter
-	caches    LessonCaches
-	clock     clock.Clock
+	pool       *pgxpool.Pool
+	repo       Repository
+	content    contentcontract.Reader
+	taxonomies contentcontract.TaxonomyResolver
+	unlocker   UnlockChecker
+	completed  CompletedLessons
+	events     EventWriter
+	caches     LessonCaches
+	clock      clock.Clock
 	newID     func() uuid.UUID
 	env       string
 }
@@ -168,29 +174,34 @@ func New(deps Deps) *Service {
 	}
 
 	return &Service{
-		pool:      deps.Pool,
-		repo:      deps.Repo,
-		content:   deps.Content,
-		unlocker:  deps.Unlocker,
-		completed: deps.Completed,
-		events:    deps.Events,
-		caches:    deps.Caches,
-		clock:     clk,
-		newID:     idGen,
-		env:       env,
+		pool:       deps.Pool,
+		repo:       deps.Repo,
+		content:    deps.Content,
+		taxonomies: deps.Taxonomies,
+		unlocker:   deps.Unlocker,
+		completed:  deps.Completed,
+		events:     deps.Events,
+		caches:     deps.Caches,
+		clock:      clk,
+		newID:      idGen,
+		env:        env,
 	}
 }
 
 // CourseSummaryDTO matches OpenAPI CourseSummary schema.
 type CourseSummaryDTO struct {
-	ID             uuid.UUID `json:"id"`
-	Slug           string    `json:"slug"`
-	Title          string    `json:"title"`
-	Description    string    `json:"description"`
-	CEFRFrom       string    `json:"cefr_from"`
-	CEFRTo         string    `json:"cefr_to"`
-	Status         string    `json:"status"`
-	EstimatedHours int       `json:"estimated_hours"`
+	ID              uuid.UUID  `json:"id"`
+	Slug            string     `json:"slug"`
+	Title           string     `json:"title"`
+	Description     string     `json:"description"`
+	CEFRFrom        string     `json:"cefr_from"`
+	CEFRTo          string     `json:"cefr_to"`
+	Status          string     `json:"status"`
+	EstimatedHours  int        `json:"estimated_hours"`
+	Origin          string     `json:"origin"`
+	OwnerID         *uuid.UUID `json:"owner_id,omitempty"`
+	Visibility      string     `json:"visibility"`
+	TopicTaxonomyID *uuid.UUID `json:"topic_taxonomy_id,omitempty"`
 }
 
 // LessonSummaryDTO matches OpenAPI LessonSummary schema.
@@ -222,15 +233,19 @@ type CourseUnitDTO struct {
 
 // CourseDetailDTO matches OpenAPI CourseDetail schema.
 type CourseDetailDTO struct {
-	ID             uuid.UUID       `json:"id"`
-	Slug           string          `json:"slug"`
-	Title          string          `json:"title"`
-	Description    string          `json:"description"`
-	CEFRFrom       string          `json:"cefr_from"`
-	CEFRTo         string          `json:"cefr_to"`
-	Status         string          `json:"status"`
-	EstimatedHours int             `json:"estimated_hours"`
-	Units          []CourseUnitDTO `json:"units"`
+	ID              uuid.UUID       `json:"id"`
+	Slug            string          `json:"slug"`
+	Title           string          `json:"title"`
+	Description     string          `json:"description"`
+	CEFRFrom        string          `json:"cefr_from"`
+	CEFRTo          string          `json:"cefr_to"`
+	Status          string          `json:"status"`
+	EstimatedHours  int             `json:"estimated_hours"`
+	Origin          string          `json:"origin"`
+	OwnerID         *uuid.UUID      `json:"owner_id,omitempty"`
+	Visibility      string          `json:"visibility"`
+	TopicTaxonomyID *uuid.UUID      `json:"topic_taxonomy_id,omitempty"`
+	Units           []CourseUnitDTO `json:"units"`
 }
 
 // LessonTreeData models a lesson node in the static cached course tree.
@@ -303,12 +318,16 @@ type LessonDetailDTO struct {
 
 // CreateCourseInput carries arguments for creating a course.
 type CreateCourseInput struct {
-	Slug           string
-	Title          string
-	Description    string
-	CEFRFrom       string
-	CEFRTo         string
-	EstimatedHours int
+	Slug            string
+	Title           string
+	Description     string
+	CEFRFrom        string
+	CEFRTo          string
+	EstimatedHours  int
+	Origin          string
+	OwnerID         *uuid.UUID
+	Visibility      string
+	TopicTaxonomyID *uuid.UUID
 }
 
 // CreateCourse handles creating a new course in draft status.
@@ -329,14 +348,27 @@ func (s *Service) CreateCourse(
 		return nil, domain.ErrInvalidTitle
 	}
 
+	origin := input.Origin
+	if origin == "" {
+		origin = "curriculum"
+	}
+	visibility := input.Visibility
+	if visibility == "" {
+		visibility = "public"
+	}
+
 	course, err := s.repo.CreateCourse(ctx, CreateCourseParams{
-		Slug:           input.Slug,
-		Title:          input.Title,
-		Description:    input.Description,
-		CEFRFrom:       input.CEFRFrom,
-		CEFRTo:         input.CEFRTo,
-		Status:         "draft",
-		EstimatedHours: input.EstimatedHours,
+		Slug:            input.Slug,
+		Title:           input.Title,
+		Description:     input.Description,
+		CEFRFrom:        input.CEFRFrom,
+		CEFRTo:          input.CEFRTo,
+		Status:          "draft",
+		EstimatedHours:  input.EstimatedHours,
+		Origin:          origin,
+		OwnerID:         input.OwnerID,
+		Visibility:      visibility,
+		TopicTaxonomyID: input.TopicTaxonomyID,
 	})
 	if err != nil {
 		return nil, err
@@ -346,10 +378,29 @@ func (s *Service) CreateCourse(
 
 // ListCourses returns paginated published courses through the cache.
 func (s *Service) ListCourses(
-	ctx context.Context, level *string, limit, offset int,
+	ctx context.Context, level *string, topic *string, limit, offset int,
 ) ([]CourseSummaryDTO, int64, error) {
 	if level != nil && !domain.IsValidCEFRLevel(*level) {
 		return nil, 0, domain.ErrInvalidCEFRLevel.WithInternal("level query parameter must be one of A1..C2")
+	}
+
+	var topicTaxonomyID *uuid.UUID
+	if topic != nil && *topic != "" {
+		if parsed, err := uuid.Parse(*topic); err == nil {
+			topicTaxonomyID = &parsed
+		} else if s.taxonomies != nil {
+			resolved, err := s.taxonomies.ResolveTaxonomyID(ctx, "course_topic", *topic)
+			if err != nil {
+				return nil, 0, err
+			}
+			if resolved == nil {
+				// Topic not found; return empty list
+				return []CourseSummaryDTO{}, 0, nil
+			}
+			topicTaxonomyID = resolved
+		} else {
+			return nil, 0, fmt.Errorf("taxonomy resolver not configured")
+		}
 	}
 
 	normLimit := domain.NormaliseLimit(limit)
@@ -359,18 +410,22 @@ func (s *Service) ListCourses(
 	if level != nil {
 		levelKey = *level
 	}
+	topicKey := "all"
+	if topicTaxonomyID != nil {
+		topicKey = topicTaxonomyID.String()
+	}
 
 	gen := s.getCatalogueGeneration(ctx)
-	filterHash := fmt.Sprintf("g%d_%s_%d_%d", gen, levelKey, normLimit, normOffset)
+	filterHash := fmt.Sprintf("g%d_%s_%s_%d_%d", gen, levelKey, topicKey, normLimit, normOffset)
 	catKey := cache.Key(s.env, "lesson", "catalogue", filterHash, cacheVersion)
 
 	loader := func(loadCtx context.Context) (*CatalogueData, error) {
-		courses, err := s.repo.ListPublishedCourses(loadCtx, level, normLimit, normOffset)
+		courses, err := s.repo.ListPublishedCourses(loadCtx, level, topicTaxonomyID, normLimit, normOffset)
 		if err != nil {
 			return nil, err
 		}
 
-		total, err := s.repo.CountPublishedCourses(loadCtx, level)
+		total, err := s.repo.CountPublishedCourses(loadCtx, level, topicTaxonomyID)
 		if err != nil {
 			return nil, err
 		}
@@ -378,14 +433,18 @@ func (s *Service) ListCourses(
 		dtos := make([]CourseSummaryDTO, len(courses))
 		for i, c := range courses {
 			dtos[i] = CourseSummaryDTO{
-				ID:             c.ID,
-				Slug:           c.Slug,
-				Title:          c.Title,
-				Description:    c.Description,
-				CEFRFrom:       c.CEFRFrom,
-				CEFRTo:         c.CEFRTo,
-				Status:         c.Status,
-				EstimatedHours: c.EstimatedHours,
+				ID:              c.ID,
+				Slug:            c.Slug,
+				Title:           c.Title,
+				Description:     c.Description,
+				CEFRFrom:        c.CEFRFrom,
+				CEFRTo:          c.CEFRTo,
+				Status:          c.Status,
+				EstimatedHours:  c.EstimatedHours,
+				Origin:          c.Origin,
+				OwnerID:         c.OwnerID,
+				Visibility:      c.Visibility,
+				TopicTaxonomyID: c.TopicTaxonomyID,
 			}
 		}
 
@@ -519,15 +578,19 @@ func (s *Service) GetCourseDetail(ctx context.Context, slug string, userID uuid.
 	}
 
 	return &CourseDetailDTO{
-		ID:             tree.Course.ID,
-		Slug:           tree.Course.Slug,
-		Title:          tree.Course.Title,
-		Description:    tree.Course.Description,
-		CEFRFrom:       tree.Course.CEFRFrom,
-		CEFRTo:         tree.Course.CEFRTo,
-		Status:         tree.Course.Status,
-		EstimatedHours: tree.Course.EstimatedHours,
-		Units:          unitDTOs,
+		ID:              tree.Course.ID,
+		Slug:            tree.Course.Slug,
+		Title:           tree.Course.Title,
+		Description:     tree.Course.Description,
+		CEFRFrom:        tree.Course.CEFRFrom,
+		CEFRTo:          tree.Course.CEFRTo,
+		Status:          tree.Course.Status,
+		EstimatedHours:  tree.Course.EstimatedHours,
+		Origin:          tree.Course.Origin,
+		OwnerID:         tree.Course.OwnerID,
+		Visibility:      tree.Course.Visibility,
+		TopicTaxonomyID: tree.Course.TopicTaxonomyID,
+		Units:           unitDTOs,
 	}, nil
 }
 
@@ -633,14 +696,18 @@ func (s *Service) assembleTreeData(
 
 	return &CourseTreeData{
 		Course: CourseSummaryDTO{
-			ID:             course.ID,
-			Slug:           course.Slug,
-			Title:          course.Title,
-			Description:    course.Description,
-			CEFRFrom:       course.CEFRFrom,
-			CEFRTo:         course.CEFRTo,
-			Status:         course.Status,
-			EstimatedHours: course.EstimatedHours,
+			ID:              course.ID,
+			Slug:            course.Slug,
+			Title:           course.Title,
+			Description:     course.Description,
+			CEFRFrom:        course.CEFRFrom,
+			CEFRTo:          course.CEFRTo,
+			Status:          course.Status,
+			EstimatedHours:  course.EstimatedHours,
+			Origin:          course.Origin,
+			OwnerID:         course.OwnerID,
+			Visibility:      course.Visibility,
+			TopicTaxonomyID: course.TopicTaxonomyID,
 		},
 		Units: unitTrees,
 	}
@@ -1116,7 +1183,7 @@ const curriculumCatalogLimit int32 = 100
 // ListCurriculumCourses implements contract.CourseCatalog: the published
 // curriculum courses whose range contains level, or all of them.
 func (s *Service) ListCurriculumCourses(ctx context.Context, level *string) ([]*contract.Course, error) {
-	return s.repo.ListPublishedCourses(ctx, level, curriculumCatalogLimit, 0)
+	return s.repo.ListPublishedCourses(ctx, level, nil, curriculumCatalogLimit, 0)
 }
 
 // ListUnitsByCourseID implements contract.Reader.

@@ -26,14 +26,15 @@ type Guard = lessonhttp.Guard
 
 // Deps are the dependencies supplied by the composition root.
 type Deps struct {
-	Pool      *pgxpool.Pool
-	Caches    service.LessonCaches
-	Clock     clock.Clock
-	Guard     Guard
-	Content   contentcontract.Reader
-	Unlocker  service.UnlockChecker
-	Completed service.CompletedLessons
-	Env       string
+	Pool       *pgxpool.Pool
+	Caches     service.LessonCaches
+	Clock      clock.Clock
+	Guard      Guard
+	Content    contentcontract.Reader
+	Taxonomies contentcontract.TaxonomyResolver
+	Unlocker   service.UnlockChecker
+	Completed  service.CompletedLessons
+	Env        string
 }
 
 // Module is the lesson module, assembled. It is the only symbol cmd/ imports.
@@ -55,16 +56,17 @@ func New(deps Deps) *Module {
 	events := outboxWriter{Writer: outbox.NewWriter()}
 
 	svc := service.New(service.Deps{
-		Pool:      deps.Pool,
-		Repo:      repoAdapter,
-		Content:   deps.Content,
-		Unlocker:  deps.Unlocker,
-		Completed: deps.Completed,
-		Events:    events,
-		Caches:    deps.Caches,
-		Clock:     timekeeper,
-		NewID:     func() uuid.UUID { return uuid.Must(uuid.NewV7()) },
-		Env:       deps.Env,
+		Pool:       deps.Pool,
+		Repo:       repoAdapter,
+		Content:    deps.Content,
+		Taxonomies: deps.Taxonomies,
+		Unlocker:   deps.Unlocker,
+		Completed:  deps.Completed,
+		Events:     events,
+		Caches:     deps.Caches,
+		Clock:      timekeeper,
+		NewID:      func() uuid.UUID { return uuid.Must(uuid.NewV7()) },
+		Env:        deps.Env,
 	})
 
 	handler, err := lessonhttp.NewHandler(svc, deps.Guard)

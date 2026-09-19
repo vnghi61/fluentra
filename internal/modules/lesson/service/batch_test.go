@@ -87,22 +87,24 @@ type fakeLessonRepo struct {
 
 	// what the last catalogue query was given, so a test can assert the clamp
 	// and the level filter reach the query rather than stopping at the service.
-	lastLevel  *string
-	lastLimit  int32
-	lastOffset int32
+	lastLevel           *string
+	lastTopicTaxonomyID *uuid.UUID
+	lastLimit           int32
+	lastOffset          int32
 }
 
 func (f *fakeLessonRepo) ListPublishedCourses(
-	_ context.Context, level *string, limit, offset int32,
+	_ context.Context, level *string, topicTaxonomyID *uuid.UUID, limit, offset int32,
 ) ([]*contract.Course, error) {
 	f.queryCounter.Add(1)
 	f.lastLevel = level
+	f.lastTopicTaxonomyID = topicTaxonomyID
 	f.lastLimit = limit
 	f.lastOffset = offset
 	return f.publishedCourses(), nil
 }
 
-func (f *fakeLessonRepo) CountPublishedCourses(_ context.Context, _ *string) (int64, error) {
+func (f *fakeLessonRepo) CountPublishedCourses(_ context.Context, _ *string, _ *uuid.UUID) (int64, error) {
 	f.queryCounter.Add(1)
 	return int64(len(f.publishedCourses())), nil
 }

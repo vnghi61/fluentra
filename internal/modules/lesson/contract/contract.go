@@ -18,14 +18,18 @@ const (
 
 // Course represents a top-level curriculum container (e.g., IELTS Foundation).
 type Course struct {
-	ID             uuid.UUID `json:"id"`
-	Slug           string    `json:"slug"`
-	Title          string    `json:"title"`
-	Description    string    `json:"description"`
-	CEFRFrom       string    `json:"cefr_from"`
-	CEFRTo         string    `json:"cefr_to"`
-	Status         string    `json:"status"`
-	EstimatedHours int       `json:"estimated_hours"`
+	ID              uuid.UUID  `json:"id"`
+	Slug            string     `json:"slug"`
+	Title           string     `json:"title"`
+	Description     string     `json:"description"`
+	CEFRFrom        string     `json:"cefr_from"`
+	CEFRTo          string     `json:"cefr_to"`
+	Status          string     `json:"status"`
+	EstimatedHours  int        `json:"estimated_hours"`
+	Origin          string     `json:"origin"`
+	OwnerID         *uuid.UUID `json:"owner_id,omitempty"`
+	Visibility      string     `json:"visibility"`
+	TopicTaxonomyID *uuid.UUID `json:"topic_taxonomy_id,omitempty"`
 }
 
 // Unit represents a thematic group of lessons within a course.
@@ -111,12 +115,16 @@ type Reader interface {
 // runs on a schedule and must be able to say "unit 2 of the practice course"
 // without remembering what it created last time.
 type CourseSpec struct {
-	Slug           string
-	Title          string
-	Description    string
-	CEFRFrom       string
-	CEFRTo         string
-	EstimatedHours int
+	Slug            string
+	Title           string
+	Description     string
+	CEFRFrom        string
+	CEFRTo          string
+	EstimatedHours  int
+	Origin          string
+	OwnerID         *uuid.UUID
+	Visibility      string
+	TopicTaxonomyID *uuid.UUID
 }
 
 // UnitSpec is identified by its position within the course.

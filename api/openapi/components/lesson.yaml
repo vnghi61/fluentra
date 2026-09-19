@@ -27,6 +27,22 @@ CourseSummary:
     estimated_hours:
       type: integer
       example: 40
+    origin:
+      type: string
+      enum: [curriculum, generated, official, community]
+      example: official
+    owner_id:
+      type: string
+      format: uuid
+      nullable: true
+    visibility:
+      type: string
+      enum: [public, unlisted]
+      example: public
+    topic_taxonomy_id:
+      type: string
+      format: uuid
+      nullable: true
 
 CourseList:
   type: object
@@ -157,6 +173,22 @@ CourseDetail:
     estimated_hours:
       type: integer
       example: 40
+    origin:
+      type: string
+      enum: [curriculum, generated, official, community]
+      example: official
+    owner_id:
+      type: string
+      format: uuid
+      nullable: true
+    visibility:
+      type: string
+      enum: [public, unlisted]
+      example: public
+    topic_taxonomy_id:
+      type: string
+      format: uuid
+      nullable: true
     units:
       type: array
       items:

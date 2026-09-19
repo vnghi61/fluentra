@@ -2531,6 +2531,12 @@ paths:
           description: Return only courses whose CEFR range covers this level.
           schema:
             $ref: '#/components/schemas/CEFRLevel'
+        - name: topic
+          in: query
+          required: false
+          description: Return only courses matching this topic taxonomy ID or code.
+          schema:
+            type: string
         - name: limit
           in: query
           required: false

@@ -12,14 +12,18 @@ import (
 
 // CourseSummaryResponse matches OpenAPI CourseSummary.
 type CourseSummaryResponse struct {
-	ID             uuid.UUID `json:"id"`
-	Slug           string    `json:"slug"`
-	Title          string    `json:"title"`
-	Description    string    `json:"description,omitempty"`
-	CEFRFrom       string    `json:"cefr_from"`
-	CEFRTo         string    `json:"cefr_to"`
-	Status         string    `json:"status"`
-	EstimatedHours int       `json:"estimated_hours"`
+	ID              uuid.UUID  `json:"id"`
+	Slug            string     `json:"slug"`
+	Title           string     `json:"title"`
+	Description     string     `json:"description,omitempty"`
+	CEFRFrom        string     `json:"cefr_from"`
+	CEFRTo          string     `json:"cefr_to"`
+	Status          string     `json:"status"`
+	EstimatedHours  int        `json:"estimated_hours"`
+	Origin          string     `json:"origin"`
+	OwnerID         *uuid.UUID `json:"owner_id,omitempty"`
+	Visibility      string     `json:"visibility"`
+	TopicTaxonomyID *uuid.UUID `json:"topic_taxonomy_id,omitempty"`
 }
 
 // CourseListResponse matches OpenAPI CourseList.
@@ -54,15 +58,19 @@ type CourseUnitResponse struct {
 
 // CourseDetailResponse matches OpenAPI CourseDetail.
 type CourseDetailResponse struct {
-	ID             uuid.UUID            `json:"id"`
-	Slug           string               `json:"slug"`
-	Title          string               `json:"title"`
-	Description    string               `json:"description,omitempty"`
-	CEFRFrom       string               `json:"cefr_from"`
-	CEFRTo         string               `json:"cefr_to"`
-	Status         string               `json:"status"`
-	EstimatedHours int                  `json:"estimated_hours"`
-	Units          []CourseUnitResponse `json:"units"`
+	ID              uuid.UUID            `json:"id"`
+	Slug            string               `json:"slug"`
+	Title           string               `json:"title"`
+	Description     string               `json:"description,omitempty"`
+	CEFRFrom        string               `json:"cefr_from"`
+	CEFRTo          string               `json:"cefr_to"`
+	Status          string               `json:"status"`
+	EstimatedHours  int                  `json:"estimated_hours"`
+	Origin          string               `json:"origin"`
+	OwnerID         *uuid.UUID           `json:"owner_id,omitempty"`
+	Visibility      string               `json:"visibility"`
+	TopicTaxonomyID *uuid.UUID           `json:"topic_taxonomy_id,omitempty"`
+	Units           []CourseUnitResponse `json:"units"`
 }
 
 // LessonActivityResponse matches OpenAPI LessonActivity.
@@ -92,12 +100,15 @@ type LessonDetailResponse struct {
 
 // CreateCourseRequest payload for POST /admin/courses.
 type CreateCourseRequest struct {
-	Slug           string `json:"slug"`
-	Title          string `json:"title"`
-	Description    string `json:"description"`
-	CEFRFrom       string `json:"cefr_from"`
-	CEFRTo         string `json:"cefr_to"`
-	EstimatedHours int    `json:"estimated_hours"`
+	Slug            string     `json:"slug"`
+	Title           string     `json:"title"`
+	Description     string     `json:"description"`
+	CEFRFrom        string     `json:"cefr_from"`
+	CEFRTo          string     `json:"cefr_to"`
+	EstimatedHours  int        `json:"estimated_hours"`
+	Origin          string     `json:"origin,omitempty"`
+	Visibility      string     `json:"visibility,omitempty"`
+	TopicTaxonomyID *uuid.UUID `json:"topic_taxonomy_id,omitempty"`
 }
 
 // ActivityInput for PUT /admin/lessons/{id}/activities.
@@ -121,16 +132,21 @@ type UpdateActivitiesResponse struct {
 
 func toCourseSummaryResponse(dto service.CourseSummaryDTO) CourseSummaryResponse {
 	return CourseSummaryResponse{
-		ID:             dto.ID,
-		Slug:           dto.Slug,
-		Title:          dto.Title,
-		Description:    dto.Description,
-		CEFRFrom:       dto.CEFRFrom,
-		CEFRTo:         dto.CEFRTo,
-		Status:         dto.Status,
-		EstimatedHours: dto.EstimatedHours,
+		ID:              dto.ID,
+		Slug:            dto.Slug,
+		Title:           dto.Title,
+		Description:     dto.Description,
+		CEFRFrom:        dto.CEFRFrom,
+		CEFRTo:          dto.CEFRTo,
+		Status:          dto.Status,
+		EstimatedHours:  dto.EstimatedHours,
+		Origin:          dto.Origin,
+		OwnerID:         dto.OwnerID,
+		Visibility:      dto.Visibility,
+		TopicTaxonomyID: dto.TopicTaxonomyID,
 	}
 }
+
 
 func toCourseDetailResponse(dto *service.CourseDetailDTO) CourseDetailResponse {
 	units := make([]CourseUnitResponse, len(dto.Units))
@@ -162,15 +178,19 @@ func toCourseDetailResponse(dto *service.CourseDetailDTO) CourseDetailResponse {
 	}
 
 	return CourseDetailResponse{
-		ID:             dto.ID,
-		Slug:           dto.Slug,
-		Title:          dto.Title,
-		Description:    dto.Description,
-		CEFRFrom:       dto.CEFRFrom,
-		CEFRTo:         dto.CEFRTo,
-		Status:         dto.Status,
-		EstimatedHours: dto.EstimatedHours,
-		Units:          units,
+		ID:              dto.ID,
+		Slug:            dto.Slug,
+		Title:           dto.Title,
+		Description:     dto.Description,
+		CEFRFrom:        dto.CEFRFrom,
+		CEFRTo:          dto.CEFRTo,
+		Status:          dto.Status,
+		EstimatedHours:  dto.EstimatedHours,
+		Origin:          dto.Origin,
+		OwnerID:         dto.OwnerID,
+		Visibility:      dto.Visibility,
+		TopicTaxonomyID: dto.TopicTaxonomyID,
+		Units:           units,
 	}
 }
 

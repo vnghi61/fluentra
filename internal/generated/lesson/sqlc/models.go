@@ -501,17 +501,20 @@ type LearnActivity struct {
 }
 
 type LearnCourse struct {
-	ID             uuid.UUID
-	Slug           string
-	Title          string
-	Description    string
-	CefrFrom       string
-	CefrTo         string
-	Status         string
-	EstimatedHours int32
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-	Origin         string
+	ID              uuid.UUID
+	Slug            string
+	Title           string
+	Description     string
+	CefrFrom        string
+	CefrTo          string
+	Status          string
+	EstimatedHours  int32
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	Origin          string
+	OwnerID         *uuid.UUID
+	Visibility      string
+	TopicTaxonomyID *uuid.UUID
 }
 
 type LearnCourseUnit struct {

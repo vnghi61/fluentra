@@ -15,20 +15,27 @@ const countPublishedCourses = `-- name: CountPublishedCourses :one
 SELECT count(*)
 FROM learn.courses
 WHERE status = 'published'
-  -- Curriculum only. The generator's course is practice, not syllabus, and it
-  -- is A1 against the curriculum's A2 — so without this it sorted first and
-  -- /learn opened on a machine-made drill set.
-  AND origin = 'curriculum'
+  AND visibility = 'public'
+  AND origin IN ('curriculum', 'official', 'community')
   AND (
       $1::text IS NULL
       OR array_position(ARRAY['A1', 'A2', 'B1', 'B2', 'C1', 'C2'], $1::text)
          BETWEEN array_position(ARRAY['A1', 'A2', 'B1', 'B2', 'C1', 'C2'], cefr_from)
              AND array_position(ARRAY['A1', 'A2', 'B1', 'B2', 'C1', 'C2'], cefr_to)
   )
+  AND (
+      $2::uuid IS NULL
+      OR topic_taxonomy_id = $2::uuid
+  )
 `
 
-func (q *Queries) CountPublishedCourses(ctx context.Context, level *string) (int64, error) {
-	row := q.db.QueryRow(ctx, countPublishedCourses, level)
+type CountPublishedCoursesParams struct {
+	Level           *string
+	TopicTaxonomyID *uuid.UUID
+}
+
+func (q *Queries) CountPublishedCourses(ctx context.Context, arg CountPublishedCoursesParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countPublishedCourses, arg.Level, arg.TopicTaxonomyID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -42,20 +49,28 @@ INSERT INTO learn.courses (
     cefr_from,
     cefr_to,
     status,
-    estimated_hours
+    estimated_hours,
+    owner_id,
+    origin,
+    visibility,
+    topic_taxonomy_id
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7
-) RETURNING id, slug, title, description, cefr_from, cefr_to, status, estimated_hours, created_at, updated_at, origin
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+) RETURNING id, slug, title, description, cefr_from, cefr_to, status, estimated_hours, created_at, updated_at, origin, owner_id, visibility, topic_taxonomy_id
 `
 
 type CreateCourseParams struct {
-	Slug           string
-	Title          string
-	Description    string
-	CefrFrom       string
-	CefrTo         string
-	Status         string
-	EstimatedHours int32
+	Slug            string
+	Title           string
+	Description     string
+	CefrFrom        string
+	CefrTo          string
+	Status          string
+	EstimatedHours  int32
+	OwnerID         *uuid.UUID
+	Origin          string
+	Visibility      string
+	TopicTaxonomyID *uuid.UUID
 }
 
 func (q *Queries) CreateCourse(ctx context.Context, arg CreateCourseParams) (LearnCourse, error) {
@@ -67,6 +82,10 @@ func (q *Queries) CreateCourse(ctx context.Context, arg CreateCourseParams) (Lea
 		arg.CefrTo,
 		arg.Status,
 		arg.EstimatedHours,
+		arg.OwnerID,
+		arg.Origin,
+		arg.Visibility,
+		arg.TopicTaxonomyID,
 	)
 	var i LearnCourse
 	err := row.Scan(
@@ -81,12 +100,15 @@ func (q *Queries) CreateCourse(ctx context.Context, arg CreateCourseParams) (Lea
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Origin,
+		&i.OwnerID,
+		&i.Visibility,
+		&i.TopicTaxonomyID,
 	)
 	return i, err
 }
 
 const getCourseByID = `-- name: GetCourseByID :one
-SELECT id, slug, title, description, cefr_from, cefr_to, status, estimated_hours, created_at, updated_at, origin
+SELECT id, slug, title, description, cefr_from, cefr_to, status, estimated_hours, created_at, updated_at, origin, owner_id, visibility, topic_taxonomy_id
 FROM learn.courses
 WHERE id = $1
 LIMIT 1
@@ -107,12 +129,15 @@ func (q *Queries) GetCourseByID(ctx context.Context, id uuid.UUID) (LearnCourse,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Origin,
+		&i.OwnerID,
+		&i.Visibility,
+		&i.TopicTaxonomyID,
 	)
 	return i, err
 }
 
 const getCourseBySlug = `-- name: GetCourseBySlug :one
-SELECT id, slug, title, description, cefr_from, cefr_to, status, estimated_hours, created_at, updated_at, origin
+SELECT id, slug, title, description, cefr_from, cefr_to, status, estimated_hours, created_at, updated_at, origin, owner_id, visibility, topic_taxonomy_id
 FROM learn.courses
 WHERE slug = $1
 LIMIT 1
@@ -135,12 +160,15 @@ func (q *Queries) GetCourseBySlug(ctx context.Context, slug string) (LearnCourse
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Origin,
+		&i.OwnerID,
+		&i.Visibility,
+		&i.TopicTaxonomyID,
 	)
 	return i, err
 }
 
 const getPublishedCourseBySlug = `-- name: GetPublishedCourseBySlug :one
-SELECT id, slug, title, description, cefr_from, cefr_to, status, estimated_hours, created_at, updated_at, origin
+SELECT id, slug, title, description, cefr_from, cefr_to, status, estimated_hours, created_at, updated_at, origin, owner_id, visibility, topic_taxonomy_id
 FROM learn.courses
 WHERE slug = $1
   AND status = 'published'
@@ -162,32 +190,38 @@ func (q *Queries) GetPublishedCourseBySlug(ctx context.Context, slug string) (Le
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Origin,
+		&i.OwnerID,
+		&i.Visibility,
+		&i.TopicTaxonomyID,
 	)
 	return i, err
 }
 
 const listPublishedCourses = `-- name: ListPublishedCourses :many
-SELECT id, slug, title, description, cefr_from, cefr_to, status, estimated_hours, created_at, updated_at, origin
+SELECT id, slug, title, description, cefr_from, cefr_to, status, estimated_hours, created_at, updated_at, origin, owner_id, visibility, topic_taxonomy_id
 FROM learn.courses
 WHERE status = 'published'
-  -- Curriculum only. The generator's course is practice, not syllabus, and it
-  -- is A1 against the curriculum's A2 — so without this it sorted first and
-  -- /learn opened on a machine-made drill set.
-  AND origin = 'curriculum'
+  AND visibility = 'public'
+  AND origin IN ('curriculum', 'official', 'community')
   AND (
       $1::text IS NULL
       OR array_position(ARRAY['A1', 'A2', 'B1', 'B2', 'C1', 'C2'], $1::text)
          BETWEEN array_position(ARRAY['A1', 'A2', 'B1', 'B2', 'C1', 'C2'], cefr_from)
              AND array_position(ARRAY['A1', 'A2', 'B1', 'B2', 'C1', 'C2'], cefr_to)
   )
+  AND (
+      $2::uuid IS NULL
+      OR topic_taxonomy_id = $2::uuid
+  )
 ORDER BY cefr_from ASC, title ASC
-LIMIT $3 OFFSET $2
+LIMIT $4 OFFSET $3
 `
 
 type ListPublishedCoursesParams struct {
-	Level  *string
-	Offset int32
-	Limit  int32
+	Level           *string
+	TopicTaxonomyID *uuid.UUID
+	Offset          int32
+	Limit           int32
 }
 
 // The catalogue's `level` filter asks "is this course suitable for a learner at
@@ -196,7 +230,12 @@ type ListPublishedCoursesParams struct {
 // only by accident of the alphabet; array_position states the order outright so
 // a future level name cannot break the comparison silently.
 func (q *Queries) ListPublishedCourses(ctx context.Context, arg ListPublishedCoursesParams) ([]LearnCourse, error) {
-	rows, err := q.db.Query(ctx, listPublishedCourses, arg.Level, arg.Offset, arg.Limit)
+	rows, err := q.db.Query(ctx, listPublishedCourses,
+		arg.Level,
+		arg.TopicTaxonomyID,
+		arg.Offset,
+		arg.Limit,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -216,6 +255,9 @@ func (q *Queries) ListPublishedCourses(ctx context.Context, arg ListPublishedCou
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Origin,
+			&i.OwnerID,
+			&i.Visibility,
+			&i.TopicTaxonomyID,
 		); err != nil {
 			return nil, err
 		}
@@ -237,7 +279,7 @@ SET title = $2,
     estimated_hours = $7,
     updated_at = now()
 WHERE id = $1
-RETURNING id, slug, title, description, cefr_from, cefr_to, status, estimated_hours, created_at, updated_at, origin
+RETURNING id, slug, title, description, cefr_from, cefr_to, status, estimated_hours, created_at, updated_at, origin, owner_id, visibility, topic_taxonomy_id
 `
 
 type UpdateCourseParams struct {
@@ -273,38 +315,68 @@ func (q *Queries) UpdateCourse(ctx context.Context, arg UpdateCourseParams) (Lea
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Origin,
+		&i.OwnerID,
+		&i.Visibility,
+		&i.TopicTaxonomyID,
 	)
 	return i, err
 }
 
 const upsertCourse = `-- name: UpsertCourse :one
-INSERT INTO learn.courses (slug, title, description, cefr_from, cefr_to, status, estimated_hours, origin)
-VALUES ($1, $2, $3, $4, $5, 'published', $6, 'generated')
+INSERT INTO learn.courses (
+    slug,
+    title,
+    description,
+    cefr_from,
+    cefr_to,
+    status,
+    estimated_hours,
+    origin,
+    owner_id,
+    visibility,
+    topic_taxonomy_id
+) VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    'published',
+    $6,
+    coalesce($7::text, 'generated'),
+    $8::uuid,
+    coalesce($9::text, 'public'),
+    $10::uuid
+)
 ON CONFLICT (slug) DO UPDATE
-SET title           = EXCLUDED.title,
-    description     = EXCLUDED.description,
-    cefr_from       = EXCLUDED.cefr_from,
-    cefr_to         = EXCLUDED.cefr_to,
-    estimated_hours = EXCLUDED.estimated_hours,
-    updated_at      = now()
-RETURNING id, slug, title, description, cefr_from, cefr_to, status, estimated_hours, created_at, updated_at, origin
+SET title             = EXCLUDED.title,
+    description       = EXCLUDED.description,
+    cefr_from         = EXCLUDED.cefr_from,
+    cefr_to           = EXCLUDED.cefr_to,
+    estimated_hours   = EXCLUDED.estimated_hours,
+    origin            = EXCLUDED.origin,
+    owner_id          = coalesce(EXCLUDED.owner_id, learn.courses.owner_id),
+    visibility        = EXCLUDED.visibility,
+    topic_taxonomy_id = coalesce(EXCLUDED.topic_taxonomy_id, learn.courses.topic_taxonomy_id),
+    updated_at        = now()
+RETURNING id, slug, title, description, cefr_from, cefr_to, status, estimated_hours, created_at, updated_at, origin, owner_id, visibility, topic_taxonomy_id
 `
 
 type UpsertCourseParams struct {
-	Slug           string
-	Title          string
-	Description    string
-	CefrFrom       string
-	CefrTo         string
-	EstimatedHours int32
+	Slug            string
+	Title           string
+	Description     string
+	CefrFrom        string
+	CefrTo          string
+	EstimatedHours  int32
+	Origin          *string
+	OwnerID         *uuid.UUID
+	Visibility      *string
+	TopicTaxonomyID *uuid.UUID
 }
 
-// The generator's course. Keyed on the slug, which is what makes re-running the
-// job idempotent.
-//
-// A separate query from CreateCourse on purpose: a human author creating a
-// course whose slug is taken should be told so, not have their title silently
-// overwrite somebody else's course.
+// The generator's or creator's course. Keyed on the slug, which is what makes
+// re-running the job or publishing idempotent.
 func (q *Queries) UpsertCourse(ctx context.Context, arg UpsertCourseParams) (LearnCourse, error) {
 	row := q.db.QueryRow(ctx, upsertCourse,
 		arg.Slug,
@@ -313,6 +385,10 @@ func (q *Queries) UpsertCourse(ctx context.Context, arg UpsertCourseParams) (Lea
 		arg.CefrFrom,
 		arg.CefrTo,
 		arg.EstimatedHours,
+		arg.Origin,
+		arg.OwnerID,
+		arg.Visibility,
+		arg.TopicTaxonomyID,
 	)
 	var i LearnCourse
 	err := row.Scan(
@@ -327,6 +403,9 @@ func (q *Queries) UpsertCourse(ctx context.Context, arg UpsertCourseParams) (Lea
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Origin,
+		&i.OwnerID,
+		&i.Visibility,
+		&i.TopicTaxonomyID,
 	)
 	return i, err
 }

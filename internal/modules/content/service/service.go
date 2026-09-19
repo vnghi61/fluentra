@@ -198,6 +198,18 @@ func (s *Service) GetVersion(ctx context.Context, id uuid.UUID) (*contract.Versi
 	return toContractVersion(v, tagStrings), nil
 }
 
+// ResolveTaxonomyID resolves a taxonomy code in a namespace to its primary key UUID.
+func (s *Service) ResolveTaxonomyID(ctx context.Context, namespace, code string) (*uuid.UUID, error) {
+	tax, err := s.repo.GetTaxonomyByNamespaceCode(ctx, namespace, code)
+	if err != nil {
+		if errors.Is(err, domain.ErrTaxonomyNotFound) || errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &tax.ID, nil
+}
+
 // GetManyVersions retrieves multiple content versions in ONE single query,
 // avoiding N+1 queries during lesson rendering.
 func (s *Service) GetManyVersions(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]*contract.Version, error) {

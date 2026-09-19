@@ -3878,6 +3878,20 @@ export interface components {
             status: "draft" | "published" | "archived";
             /** @example 40 */
             estimated_hours: number;
+            /**
+             * @example official
+             * @enum {string}
+             */
+            origin?: "curriculum" | "generated" | "official" | "community";
+            /** Format: uuid */
+            owner_id?: string | null;
+            /**
+             * @example public
+             * @enum {string}
+             */
+            visibility?: "public" | "unlisted";
+            /** Format: uuid */
+            topic_taxonomy_id?: string | null;
         };
         CourseList: {
             courses: components["schemas"]["CourseSummary"][];
@@ -3957,6 +3971,20 @@ export interface components {
             status: string;
             /** @example 40 */
             estimated_hours: number;
+            /**
+             * @example official
+             * @enum {string}
+             */
+            origin?: "curriculum" | "generated" | "official" | "community";
+            /** Format: uuid */
+            owner_id?: string | null;
+            /**
+             * @example public
+             * @enum {string}
+             */
+            visibility?: "public" | "unlisted";
+            /** Format: uuid */
+            topic_taxonomy_id?: string | null;
             units: components["schemas"]["CourseUnit"][];
         };
         LessonDetail: {
@@ -7962,6 +7990,8 @@ export interface operations {
             query?: {
                 /** @description Return only courses whose CEFR range covers this level. */
                 level?: components["schemas"]["CEFRLevel"];
+                /** @description Return only courses matching this topic taxonomy ID or code. */
+                topic?: string;
                 /** @description Maximum courses to return. */
                 limit?: number;
                 /** @description Courses to skip before the page starts. */

@@ -8079,6 +8079,18 @@ func NewListCoursesRequest(server string, params *ListCoursesParams) (*http.Requ
 
 		}
 
+		if params.Topic != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "topic", *params.Topic, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if params.Limit != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {

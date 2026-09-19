@@ -7,15 +7,17 @@
 SELECT *
 FROM learn.courses
 WHERE status = 'published'
-  -- Curriculum only. The generator's course is practice, not syllabus, and it
-  -- is A1 against the curriculum's A2 — so without this it sorted first and
-  -- /learn opened on a machine-made drill set.
-  AND origin = 'curriculum'
+  AND visibility = 'public'
+  AND origin IN ('curriculum', 'official', 'community')
   AND (
       sqlc.narg('level')::text IS NULL
       OR array_position(ARRAY['A1', 'A2', 'B1', 'B2', 'C1', 'C2'], sqlc.narg('level')::text)
          BETWEEN array_position(ARRAY['A1', 'A2', 'B1', 'B2', 'C1', 'C2'], cefr_from)
              AND array_position(ARRAY['A1', 'A2', 'B1', 'B2', 'C1', 'C2'], cefr_to)
+  )
+  AND (
+      sqlc.narg('topic_taxonomy_id')::uuid IS NULL
+      OR topic_taxonomy_id = sqlc.narg('topic_taxonomy_id')::uuid
   )
 ORDER BY cefr_from ASC, title ASC
 LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
@@ -24,15 +26,17 @@ LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
 SELECT count(*)
 FROM learn.courses
 WHERE status = 'published'
-  -- Curriculum only. The generator's course is practice, not syllabus, and it
-  -- is A1 against the curriculum's A2 — so without this it sorted first and
-  -- /learn opened on a machine-made drill set.
-  AND origin = 'curriculum'
+  AND visibility = 'public'
+  AND origin IN ('curriculum', 'official', 'community')
   AND (
       sqlc.narg('level')::text IS NULL
       OR array_position(ARRAY['A1', 'A2', 'B1', 'B2', 'C1', 'C2'], sqlc.narg('level')::text)
          BETWEEN array_position(ARRAY['A1', 'A2', 'B1', 'B2', 'C1', 'C2'], cefr_from)
              AND array_position(ARRAY['A1', 'A2', 'B1', 'B2', 'C1', 'C2'], cefr_to)
+  )
+  AND (
+      sqlc.narg('topic_taxonomy_id')::uuid IS NULL
+      OR topic_taxonomy_id = sqlc.narg('topic_taxonomy_id')::uuid
   );
 
 -- GetCourseBySlug is the authoring read: it returns a course in any state.
@@ -64,9 +68,13 @@ INSERT INTO learn.courses (
     cefr_from,
     cefr_to,
     status,
-    estimated_hours
+    estimated_hours,
+    owner_id,
+    origin,
+    visibility,
+    topic_taxonomy_id
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
 ) RETURNING *;
 
 -- name: UpdateCourse :one
@@ -82,19 +90,42 @@ WHERE id = $1
 RETURNING *;
 
 -- name: UpsertCourse :one
--- The generator's course. Keyed on the slug, which is what makes re-running the
--- job idempotent.
---
--- A separate query from CreateCourse on purpose: a human author creating a
--- course whose slug is taken should be told so, not have their title silently
--- overwrite somebody else's course.
-INSERT INTO learn.courses (slug, title, description, cefr_from, cefr_to, status, estimated_hours, origin)
-VALUES ($1, $2, $3, $4, $5, 'published', $6, 'generated')
+-- The generator's or creator's course. Keyed on the slug, which is what makes
+-- re-running the job or publishing idempotent.
+INSERT INTO learn.courses (
+    slug,
+    title,
+    description,
+    cefr_from,
+    cefr_to,
+    status,
+    estimated_hours,
+    origin,
+    owner_id,
+    visibility,
+    topic_taxonomy_id
+) VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    'published',
+    $6,
+    coalesce(sqlc.narg('origin')::text, 'generated'),
+    sqlc.narg('owner_id')::uuid,
+    coalesce(sqlc.narg('visibility')::text, 'public'),
+    sqlc.narg('topic_taxonomy_id')::uuid
+)
 ON CONFLICT (slug) DO UPDATE
-SET title           = EXCLUDED.title,
-    description     = EXCLUDED.description,
-    cefr_from       = EXCLUDED.cefr_from,
-    cefr_to         = EXCLUDED.cefr_to,
-    estimated_hours = EXCLUDED.estimated_hours,
-    updated_at      = now()
+SET title             = EXCLUDED.title,
+    description       = EXCLUDED.description,
+    cefr_from         = EXCLUDED.cefr_from,
+    cefr_to           = EXCLUDED.cefr_to,
+    estimated_hours   = EXCLUDED.estimated_hours,
+    origin            = EXCLUDED.origin,
+    owner_id          = coalesce(EXCLUDED.owner_id, learn.courses.owner_id),
+    visibility        = EXCLUDED.visibility,
+    topic_taxonomy_id = coalesce(EXCLUDED.topic_taxonomy_id, learn.courses.topic_taxonomy_id),
+    updated_at        = now()
 RETURNING *;
