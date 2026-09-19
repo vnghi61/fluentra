@@ -41,6 +41,7 @@ Legend — **Status**: `PLANNED` (spec only) · `IN_PROGRESS` · `DONE` · `DEPR
 | Change reporting, KPIs, funnels, cohorts | [`analytics`](internal/modules/analytics/AGENT.md) |
 | Change checkout, gateway, webhooks, refunds | [`payment`](internal/modules/payment/AGENT.md) |
 | Change plans, entitlements, trials, renewals | [`subscription`](internal/modules/subscription/AGENT.md) |
+| Author community courses, creator studio, review submissions | [`studio`](internal/modules/studio/AGENT.md) |
 | Call an LLM, add a provider, change a prompt | [`platform/ai`](internal/platform/ai/AGENT.md) |
 | Cache something | [`platform/cache`](internal/platform/cache/AGENT.md) |
 | Store or serve a file | [`platform/storage`](internal/platform/storage/AGENT.md) |
@@ -103,6 +104,7 @@ Legend — **Status**: `PLANNED` (spec only) · `IN_PROGRESS` · `DONE` · `DEPR
 | B1 | `analytics` | Event ingestion, daily rollups, funnels, cohorts, admin KPI reports | `analytics` | `analytics_events`, `daily_rollups`, `funnels`, `cohorts` | job, cache | 4 | PLANNED |
 | B2 | `subscription` | Plans, entitlements, trials, upgrades, renewals, grace periods | `billing` | `plans`, `entitlements`, `subscriptions`, `subscription_events` | payment, user, notification | 4 | PLANNED |
 | B3 | `payment` | Gateway adapters, checkout sessions, webhooks, invoices, refunds, reconciliation | `billing` | `payments`, `invoices`, `payment_webhooks`, `refunds` | subscription, audit, job | 4 | PLANNED |
+| B4 | `studio` | Creator profiles, course drafts, automated Gate 1, moderation queue Gate 2, listings | `studio` | `creator_profiles`, `payout_accounts`, `course_drafts`, `submissions` | content, lesson, learning, job | 3 | IMPLEMENTED |
 
 ---
 
@@ -131,13 +133,14 @@ graph BT
     end
 
     subgraph commerce
-        ANA[analytics]; SUB[subscription]; PAY[payment]
+        ANA[analytics]; SUB[subscription]; PAY[payment]; STD[studio]
     end
 
     platform --> shared
     core --> platform
     learning --> platform
     commerce --> platform
+    STD --> CNT & LSN & LRN
     AUTH --> USR & RBAC & AUD
     ADM --> core
     ADM --> CNT & ANA & SUB

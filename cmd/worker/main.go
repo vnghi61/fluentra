@@ -45,6 +45,7 @@ import (
 	"github.com/fluentra/fluentra/internal/modules/rbac"
 	rbaccontract "github.com/fluentra/fluentra/internal/modules/rbac/contract"
 	"github.com/fluentra/fluentra/internal/modules/srs"
+	"github.com/fluentra/fluentra/internal/modules/studio"
 	"github.com/fluentra/fluentra/internal/modules/user"
 	"github.com/fluentra/fluentra/internal/modules/vocabulary"
 	vocabularyrepo "github.com/fluentra/fluentra/internal/modules/vocabulary/repository"
@@ -583,6 +584,20 @@ func startLearning(
 		slog.ErrorContext(ctx, "could not compute retention at start-up; the scheduled job will retry",
 			"error", err)
 	}
+
+	studioModule, err := studio.NewModule(studio.Dependencies{
+		Pool:          pool,
+		ItemVerifier:  learningModule.ItemVerifier(),
+		LessonAuthor:  lessonModule.Author(),
+		ContentAuthor: contentModule.Author(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("assemble studio module: %w", err)
+	}
+	for _, scheduled := range studioModule.CronJobs() {
+		cron.Register(scheduled)
+	}
+
 	return learningModule, nil
 }
 

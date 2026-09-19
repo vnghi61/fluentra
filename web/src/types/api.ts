@@ -2631,6 +2631,146 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/studio/creator/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get creator profile for current user. */
+        get: operations["studioGetCreatorProfile"];
+        put?: never;
+        /** Register or update creator profile for current user. */
+        post: operations["studioUpsertCreatorProfile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/studio/creator/payout-account": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get default payout account for current user. */
+        get: operations["studioGetPayoutAccount"];
+        put?: never;
+        /** Add or update default payout account for current user. */
+        post: operations["studioUpsertPayoutAccount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/studio/courses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List creator drafts. */
+        get: operations["studioListCourses"];
+        put?: never;
+        /** Create a course draft. */
+        post: operations["studioCreateCourseDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/studio/courses/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get course draft by ID. */
+        get: operations["studioGetCourseDraft"];
+        /** Update course draft. */
+        put: operations["studioUpdateCourseDraft"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/studio/courses/{id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit course draft for review. */
+        post: operations["studioSubmitCourseDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/moderation/courses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List course submissions in review queue. */
+        get: operations["moderationListCoursesQueue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/moderation/courses/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve submission and publish course. */
+        post: operations["moderationApproveCourse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/moderation/courses/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject or request changes on course submission. */
+        post: operations["moderationRejectCourse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -5531,6 +5671,152 @@ export interface components {
             minutes_goal: number;
             items: components["schemas"]["WeeklyPlanItem"][];
             progress: components["schemas"]["WeeklyPlanProgress"];
+        };
+        CreatorProfile: {
+            /** Format: uuid */
+            user_id: string;
+            /** @example Experienced IELTS instructor and curriculum designer. */
+            bio: string;
+            /** @example Senior English Language Coach */
+            headline: string;
+            payout_eligible: boolean;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        UpsertCreatorProfileRequest: {
+            /** @example Experienced IELTS instructor and curriculum designer. */
+            bio: string;
+            /** @example Senior English Language Coach */
+            headline: string;
+        };
+        PayoutAccount: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            creator_id: string;
+            /** @example MB */
+            bank_code: string;
+            /** @example 0987654321 */
+            account_number: string;
+            /** @example NGUYEN VAN A */
+            account_holder_name: string;
+            is_default: boolean;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        CreatePayoutAccountRequest: {
+            /** @example MB */
+            bank_code: string;
+            /** @example 0987654321 */
+            account_number: string;
+            /** @example NGUYEN VAN A */
+            account_holder_name: string;
+            /** @default true */
+            is_default: boolean;
+        };
+        CourseDraft: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            owner_id: string;
+            /** @example Business English for Tech Professionals */
+            title: string;
+            /** @example business-english-tech */
+            slug: string;
+            /** @example Master technical communication and presentation in English. */
+            description: string;
+            /** @example B2 */
+            cefr_level: string;
+            /** Format: uuid */
+            topic_taxonomy_id?: string | null;
+            /**
+             * Format: int64
+             * @description Course price in VND (0 = free).
+             * @example 0
+             */
+            price_vnd: number;
+            /** @enum {string} */
+            status: "draft" | "submitted" | "verifying" | "in_review" | "published" | "rejected" | "changes_requested";
+            /** @description Course structure containing units, lessons, and activities. */
+            structure: Record<string, never>;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        CreateCourseDraftRequest: {
+            /** @example Business English for Tech Professionals */
+            title: string;
+            /** @example business-english-tech */
+            slug: string;
+            /** @example Master technical communication and presentation in English. */
+            description?: string;
+            /** @example B2 */
+            cefr_level: string;
+            /** Format: uuid */
+            topic_taxonomy_id?: string;
+            /**
+             * Format: int64
+             * @default 0
+             */
+            price_vnd: number;
+            structure?: Record<string, never>;
+        };
+        UpdateCourseDraftRequest: {
+            title?: string;
+            slug?: string;
+            description?: string;
+            cefr_level?: string;
+            /** Format: uuid */
+            topic_taxonomy_id?: string;
+            /** Format: int64 */
+            price_vnd?: number;
+            structure?: Record<string, never>;
+        };
+        CourseDraftList: {
+            items: components["schemas"]["CourseDraft"][];
+            total: number;
+        };
+        CourseSubmission: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            draft_id: string;
+            version: number;
+            /** @enum {string} */
+            status: "submitted" | "verifying" | "in_review" | "approved" | "rejected" | "changes_requested";
+            /** Format: uuid */
+            submitted_by: string;
+            /** Format: uuid */
+            reviewer_id?: string | null;
+            feedback?: string | null;
+            verification_report?: Record<string, never> | null;
+            /** Format: date-time */
+            submitted_at: string;
+            /** Format: date-time */
+            reviewed_at?: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        ModerationQueueItem: {
+            submission: components["schemas"]["CourseSubmission"];
+            draft: components["schemas"]["CourseDraft"];
+        };
+        ModerationQueueList: {
+            items: components["schemas"]["ModerationQueueItem"][];
+            total: number;
+        };
+        ReviewSubmissionRequest: {
+            /** @example Please fix grammar in quiz question 2. */
+            feedback?: string;
+            /** @enum {string} */
+            status?: "approved" | "rejected" | "changes_requested";
         };
     };
     responses: {
@@ -11906,6 +12192,328 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    studioGetCreatorProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Creator profile. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatorProfile"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    studioUpsertCreatorProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpsertCreatorProfileRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated creator profile. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatorProfile"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            422: components["responses"]["ValidationFailed"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    studioGetPayoutAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Payout account. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutAccount"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    studioUpsertPayoutAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePayoutAccountRequest"];
+            };
+        };
+        responses: {
+            /** @description Payout account set. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutAccount"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            422: components["responses"]["ValidationFailed"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    studioListCourses: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of course drafts. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourseDraftList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    studioCreateCourseDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCourseDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description Course draft created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourseDraft"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    studioGetCourseDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Course draft details. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourseDraft"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    studioUpdateCourseDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCourseDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description Course draft updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourseDraft"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    studioSubmitCourseDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Course submitted for verification. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourseSubmission"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    moderationListCoursesQueue: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of submissions in review. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModerationQueueList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    moderationApproveCourse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Submission ID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Submission approved and course published. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourseSubmission"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    moderationRejectCourse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Submission ID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ReviewSubmissionRequest"];
+            };
+        };
+        responses: {
+            /** @description Submission rejected or changes requested. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourseSubmission"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
             500: components["responses"]["InternalServerError"];
         };
     };

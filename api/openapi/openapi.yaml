@@ -98,6 +98,10 @@ tags:
   - name: exam
     description: >-
       Timed mock exams, section navigation, auto-submit on expiry, integrity signals, and score reports.
+  - name: studio
+    description: Creator Studio authoring, course drafting, and submission workflows.
+  - name: moderation
+    description: Course and content moderation queues and approval actions.
 security:
   - BearerAuth: []
 paths:
@@ -6404,6 +6408,263 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /studio/creator/profile:
+    get:
+      tags: [studio]
+      operationId: studioGetCreatorProfile
+      summary: Get creator profile for current user.
+      responses:
+        '200':
+          description: Creator profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatorProfile'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+    post:
+      tags: [studio]
+      operationId: studioUpsertCreatorProfile
+      summary: Register or update creator profile for current user.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertCreatorProfileRequest'
+      responses:
+        '200':
+          description: Updated creator profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatorProfile'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /studio/creator/payout-account:
+    get:
+      tags: [studio]
+      operationId: studioGetPayoutAccount
+      summary: Get default payout account for current user.
+      responses:
+        '200':
+          description: Payout account.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayoutAccount'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+    post:
+      tags: [studio]
+      operationId: studioUpsertPayoutAccount
+      summary: Add or update default payout account for current user.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePayoutAccountRequest'
+      responses:
+        '200':
+          description: Payout account set.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayoutAccount'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /studio/courses:
+    get:
+      tags: [studio]
+      operationId: studioListCourses
+      summary: List creator drafts.
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20 }
+        - name: offset
+          in: query
+          schema: { type: integer, default: 0 }
+      responses:
+        '200':
+          description: List of course drafts.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseDraftList'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+    post:
+      tags: [studio]
+      operationId: studioCreateCourseDraft
+      summary: Create a course draft.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCourseDraftRequest'
+      responses:
+        '201':
+          description: Course draft created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseDraft'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /studio/courses/{id}:
+    get:
+      tags: [studio]
+      operationId: studioGetCourseDraft
+      summary: Get course draft by ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Course draft details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseDraft'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+    put:
+      tags: [studio]
+      operationId: studioUpdateCourseDraft
+      summary: Update course draft.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCourseDraftRequest'
+      responses:
+        '200':
+          description: Course draft updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseDraft'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /studio/courses/{id}/submit:
+    post:
+      tags: [studio]
+      operationId: studioSubmitCourseDraft
+      summary: Submit course draft for review.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Course submitted for verification.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseSubmission'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /moderation/courses:
+    get:
+      tags: [moderation]
+      operationId: moderationListCoursesQueue
+      summary: List course submissions in review queue.
+      x-permission: moderation.read
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20 }
+        - name: offset
+          in: query
+          schema: { type: integer, default: 0 }
+      responses:
+        '200':
+          description: List of submissions in review.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModerationQueueList'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /moderation/courses/{id}/approve:
+    post:
+      tags: [moderation]
+      operationId: moderationApproveCourse
+      summary: Approve submission and publish course.
+      x-permission: content.publish
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Submission ID.
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Submission approved and course published.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseSubmission'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /moderation/courses/{id}/reject:
+    post:
+      tags: [moderation]
+      operationId: moderationRejectCourse
+      summary: Reject or request changes on course submission.
+      x-permission: content.review
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Submission ID.
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewSubmissionRequest'
+      responses:
+        '200':
+          description: Submission rejected or changes requested.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseSubmission'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
 components:
   securitySchemes:
     BearerAuth:
@@ -6815,6 +7076,30 @@ components:
       $ref: ./components/learning.yaml#/WeeklyPlanProgress
     WeeklyPlan:
       $ref: ./components/learning.yaml#/WeeklyPlan
+    CreatorProfile:
+      $ref: ./components/studio.yaml#/CreatorProfile
+    UpsertCreatorProfileRequest:
+      $ref: ./components/studio.yaml#/UpsertCreatorProfileRequest
+    PayoutAccount:
+      $ref: ./components/studio.yaml#/PayoutAccount
+    CreatePayoutAccountRequest:
+      $ref: ./components/studio.yaml#/CreatePayoutAccountRequest
+    CourseDraft:
+      $ref: ./components/studio.yaml#/CourseDraft
+    CreateCourseDraftRequest:
+      $ref: ./components/studio.yaml#/CreateCourseDraftRequest
+    UpdateCourseDraftRequest:
+      $ref: ./components/studio.yaml#/UpdateCourseDraftRequest
+    CourseDraftList:
+      $ref: ./components/studio.yaml#/CourseDraftList
+    CourseSubmission:
+      $ref: ./components/studio.yaml#/CourseSubmission
+    ModerationQueueItem:
+      $ref: ./components/studio.yaml#/ModerationQueueItem
+    ModerationQueueList:
+      $ref: ./components/studio.yaml#/ModerationQueueList
+    ReviewSubmissionRequest:
+      $ref: ./components/studio.yaml#/ReviewSubmissionRequest
   headers:
     X-Request-Id:
       $ref: ./components/headers.yaml#/X-Request-Id

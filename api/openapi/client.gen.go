@@ -1454,6 +1454,30 @@ type ClientInterface interface {
 	// Corresponds with GET /me/weekly-plan (the `GetMyWeeklyPlan` operationId).
 	GetMyWeeklyPlan(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ModerationListCoursesQueue List course submissions in review queue.
+	//
+	// Corresponds with GET /moderation/courses (the `ModerationListCoursesQueue` operationId).
+	ModerationListCoursesQueue(ctx context.Context, params *ModerationListCoursesQueueParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ModerationApproveCourse Approve submission and publish course.
+	//
+	// Corresponds with POST /moderation/courses/{id}/approve (the `ModerationApproveCourse` operationId).
+	ModerationApproveCourse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ModerationRejectCourseWithBody Reject or request changes on course submission.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /moderation/courses/{id}/reject (the `ModerationRejectCourse` operationId).
+	ModerationRejectCourseWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ModerationRejectCourse Reject or request changes on course submission.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /moderation/courses/{id}/reject (the `ModerationRejectCourse` operationId).
+	ModerationRejectCourse(ctx context.Context, id openapi_types.UUID, body ModerationRejectCourseJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// SystemPing Check API dependency connectivity.
 	//
 	// Performs lightweight PostgreSQL and Redis checks for the trace proof.
@@ -1611,6 +1635,87 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /storage/avatars/{assetId} (the `StorageGetAvatar` operationId).
 	StorageGetAvatar(ctx context.Context, assetId openapi_types.UUID, params *StorageGetAvatarParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StudioListCourses List creator drafts.
+	//
+	// Corresponds with GET /studio/courses (the `StudioListCourses` operationId).
+	StudioListCourses(ctx context.Context, params *StudioListCoursesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StudioCreateCourseDraftWithBody Create a course draft.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /studio/courses (the `StudioCreateCourseDraft` operationId).
+	StudioCreateCourseDraftWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StudioCreateCourseDraft Create a course draft.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /studio/courses (the `StudioCreateCourseDraft` operationId).
+	StudioCreateCourseDraft(ctx context.Context, body StudioCreateCourseDraftJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StudioGetCourseDraft Get course draft by ID.
+	//
+	// Corresponds with GET /studio/courses/{id} (the `StudioGetCourseDraft` operationId).
+	StudioGetCourseDraft(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StudioUpdateCourseDraftWithBody Update course draft.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /studio/courses/{id} (the `StudioUpdateCourseDraft` operationId).
+	StudioUpdateCourseDraftWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StudioUpdateCourseDraft Update course draft.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /studio/courses/{id} (the `StudioUpdateCourseDraft` operationId).
+	StudioUpdateCourseDraft(ctx context.Context, id openapi_types.UUID, body StudioUpdateCourseDraftJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StudioSubmitCourseDraft Submit course draft for review.
+	//
+	// Corresponds with POST /studio/courses/{id}/submit (the `StudioSubmitCourseDraft` operationId).
+	StudioSubmitCourseDraft(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StudioGetPayoutAccount Get default payout account for current user.
+	//
+	// Corresponds with GET /studio/creator/payout-account (the `StudioGetPayoutAccount` operationId).
+	StudioGetPayoutAccount(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StudioUpsertPayoutAccountWithBody Add or update default payout account for current user.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /studio/creator/payout-account (the `StudioUpsertPayoutAccount` operationId).
+	StudioUpsertPayoutAccountWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StudioUpsertPayoutAccount Add or update default payout account for current user.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /studio/creator/payout-account (the `StudioUpsertPayoutAccount` operationId).
+	StudioUpsertPayoutAccount(ctx context.Context, body StudioUpsertPayoutAccountJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StudioGetCreatorProfile Get creator profile for current user.
+	//
+	// Corresponds with GET /studio/creator/profile (the `StudioGetCreatorProfile` operationId).
+	StudioGetCreatorProfile(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StudioUpsertCreatorProfileWithBody Register or update creator profile for current user.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /studio/creator/profile (the `StudioUpsertCreatorProfile` operationId).
+	StudioUpsertCreatorProfileWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StudioUpsertCreatorProfile Register or update creator profile for current user.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /studio/creator/profile (the `StudioUpsertCreatorProfile` operationId).
+	StudioUpsertCreatorProfile(ctx context.Context, body StudioUpsertCreatorProfileJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SystemVersion Read the deployed API version.
 	//
@@ -4585,6 +4690,70 @@ func (c *Client) GetMyWeeklyPlan(ctx context.Context, reqEditors ...RequestEdito
 	return c.Client.Do(req)
 }
 
+// ModerationListCoursesQueue List course submissions in review queue.
+//
+// Corresponds with GET /moderation/courses (the `ModerationListCoursesQueue` operationId).
+func (c *Client) ModerationListCoursesQueue(ctx context.Context, params *ModerationListCoursesQueueParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewModerationListCoursesQueueRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ModerationApproveCourse Approve submission and publish course.
+//
+// Corresponds with POST /moderation/courses/{id}/approve (the `ModerationApproveCourse` operationId).
+func (c *Client) ModerationApproveCourse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewModerationApproveCourseRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ModerationRejectCourseWithBody Reject or request changes on course submission.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /moderation/courses/{id}/reject (the `ModerationRejectCourse` operationId).
+func (c *Client) ModerationRejectCourseWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewModerationRejectCourseRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ModerationRejectCourse Reject or request changes on course submission.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /moderation/courses/{id}/reject (the `ModerationRejectCourse` operationId).
+func (c *Client) ModerationRejectCourse(ctx context.Context, id openapi_types.UUID, body ModerationRejectCourseJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewModerationRejectCourseRequest(c.Server, id, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // SystemPing Check API dependency connectivity.
 //
 // Performs lightweight PostgreSQL and Redis checks for the trace proof.
@@ -4933,6 +5102,217 @@ func (c *Client) CreateSpeakingUploadIntent(ctx context.Context, body CreateSpea
 // Corresponds with GET /storage/avatars/{assetId} (the `StorageGetAvatar` operationId).
 func (c *Client) StorageGetAvatar(ctx context.Context, assetId openapi_types.UUID, params *StorageGetAvatarParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewStorageGetAvatarRequest(c.Server, assetId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StudioListCourses List creator drafts.
+//
+// Corresponds with GET /studio/courses (the `StudioListCourses` operationId).
+func (c *Client) StudioListCourses(ctx context.Context, params *StudioListCoursesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStudioListCoursesRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StudioCreateCourseDraftWithBody Create a course draft.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /studio/courses (the `StudioCreateCourseDraft` operationId).
+func (c *Client) StudioCreateCourseDraftWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStudioCreateCourseDraftRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StudioCreateCourseDraft Create a course draft.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /studio/courses (the `StudioCreateCourseDraft` operationId).
+func (c *Client) StudioCreateCourseDraft(ctx context.Context, body StudioCreateCourseDraftJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStudioCreateCourseDraftRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StudioGetCourseDraft Get course draft by ID.
+//
+// Corresponds with GET /studio/courses/{id} (the `StudioGetCourseDraft` operationId).
+func (c *Client) StudioGetCourseDraft(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStudioGetCourseDraftRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StudioUpdateCourseDraftWithBody Update course draft.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /studio/courses/{id} (the `StudioUpdateCourseDraft` operationId).
+func (c *Client) StudioUpdateCourseDraftWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStudioUpdateCourseDraftRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StudioUpdateCourseDraft Update course draft.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /studio/courses/{id} (the `StudioUpdateCourseDraft` operationId).
+func (c *Client) StudioUpdateCourseDraft(ctx context.Context, id openapi_types.UUID, body StudioUpdateCourseDraftJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStudioUpdateCourseDraftRequest(c.Server, id, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StudioSubmitCourseDraft Submit course draft for review.
+//
+// Corresponds with POST /studio/courses/{id}/submit (the `StudioSubmitCourseDraft` operationId).
+func (c *Client) StudioSubmitCourseDraft(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStudioSubmitCourseDraftRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StudioGetPayoutAccount Get default payout account for current user.
+//
+// Corresponds with GET /studio/creator/payout-account (the `StudioGetPayoutAccount` operationId).
+func (c *Client) StudioGetPayoutAccount(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStudioGetPayoutAccountRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StudioUpsertPayoutAccountWithBody Add or update default payout account for current user.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /studio/creator/payout-account (the `StudioUpsertPayoutAccount` operationId).
+func (c *Client) StudioUpsertPayoutAccountWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStudioUpsertPayoutAccountRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StudioUpsertPayoutAccount Add or update default payout account for current user.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /studio/creator/payout-account (the `StudioUpsertPayoutAccount` operationId).
+func (c *Client) StudioUpsertPayoutAccount(ctx context.Context, body StudioUpsertPayoutAccountJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStudioUpsertPayoutAccountRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StudioGetCreatorProfile Get creator profile for current user.
+//
+// Corresponds with GET /studio/creator/profile (the `StudioGetCreatorProfile` operationId).
+func (c *Client) StudioGetCreatorProfile(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStudioGetCreatorProfileRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StudioUpsertCreatorProfileWithBody Register or update creator profile for current user.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /studio/creator/profile (the `StudioUpsertCreatorProfile` operationId).
+func (c *Client) StudioUpsertCreatorProfileWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStudioUpsertCreatorProfileRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StudioUpsertCreatorProfile Register or update creator profile for current user.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /studio/creator/profile (the `StudioUpsertCreatorProfile` operationId).
+func (c *Client) StudioUpsertCreatorProfile(ctx context.Context, body StudioUpsertCreatorProfileJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStudioUpsertCreatorProfileRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -9855,6 +10235,153 @@ func NewGetMyWeeklyPlanRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewModerationListCoursesQueueRequest constructs an http.Request for the ModerationListCoursesQueue method
+func NewModerationListCoursesQueueRequest(server string, params *ModerationListCoursesQueueParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/moderation/courses")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "offset", *params.Offset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewModerationApproveCourseRequest constructs an http.Request for the ModerationApproveCourse method
+func NewModerationApproveCourseRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/moderation/courses/%s/approve", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewModerationRejectCourseRequest calls the generic ModerationRejectCourse builder with application/json body
+func NewModerationRejectCourseRequest(server string, id openapi_types.UUID, body ModerationRejectCourseJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewModerationRejectCourseRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewModerationRejectCourseRequestWithBody constructs an http.Request for the ModerationRejectCourse method, with any body, and a specified content type
+func NewModerationRejectCourseRequestWithBody(server string, id openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/moderation/courses/%s/reject", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewSystemPingRequest constructs an http.Request for the SystemPing method
 func NewSystemPingRequest(server string) (*http.Request, error) {
 	var err error
@@ -10523,6 +11050,361 @@ func NewStorageGetAvatarRequest(server string, assetId openapi_types.UUID, param
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewStudioListCoursesRequest constructs an http.Request for the StudioListCourses method
+func NewStudioListCoursesRequest(server string, params *StudioListCoursesParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/studio/courses")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "offset", *params.Offset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewStudioCreateCourseDraftRequest calls the generic StudioCreateCourseDraft builder with application/json body
+func NewStudioCreateCourseDraftRequest(server string, body StudioCreateCourseDraftJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewStudioCreateCourseDraftRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewStudioCreateCourseDraftRequestWithBody constructs an http.Request for the StudioCreateCourseDraft method, with any body, and a specified content type
+func NewStudioCreateCourseDraftRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/studio/courses")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewStudioGetCourseDraftRequest constructs an http.Request for the StudioGetCourseDraft method
+func NewStudioGetCourseDraftRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/studio/courses/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewStudioUpdateCourseDraftRequest calls the generic StudioUpdateCourseDraft builder with application/json body
+func NewStudioUpdateCourseDraftRequest(server string, id openapi_types.UUID, body StudioUpdateCourseDraftJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewStudioUpdateCourseDraftRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewStudioUpdateCourseDraftRequestWithBody constructs an http.Request for the StudioUpdateCourseDraft method, with any body, and a specified content type
+func NewStudioUpdateCourseDraftRequestWithBody(server string, id openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/studio/courses/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewStudioSubmitCourseDraftRequest constructs an http.Request for the StudioSubmitCourseDraft method
+func NewStudioSubmitCourseDraftRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/studio/courses/%s/submit", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewStudioGetPayoutAccountRequest constructs an http.Request for the StudioGetPayoutAccount method
+func NewStudioGetPayoutAccountRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/studio/creator/payout-account")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewStudioUpsertPayoutAccountRequest calls the generic StudioUpsertPayoutAccount builder with application/json body
+func NewStudioUpsertPayoutAccountRequest(server string, body StudioUpsertPayoutAccountJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewStudioUpsertPayoutAccountRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewStudioUpsertPayoutAccountRequestWithBody constructs an http.Request for the StudioUpsertPayoutAccount method, with any body, and a specified content type
+func NewStudioUpsertPayoutAccountRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/studio/creator/payout-account")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewStudioGetCreatorProfileRequest constructs an http.Request for the StudioGetCreatorProfile method
+func NewStudioGetCreatorProfileRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/studio/creator/profile")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewStudioUpsertCreatorProfileRequest calls the generic StudioUpsertCreatorProfile builder with application/json body
+func NewStudioUpsertCreatorProfileRequest(server string, body StudioUpsertCreatorProfileJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewStudioUpsertCreatorProfileRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewStudioUpsertCreatorProfileRequestWithBody constructs an http.Request for the StudioUpsertCreatorProfile method, with any body, and a specified content type
+func NewStudioUpsertCreatorProfileRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/studio/creator/profile")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -12567,6 +13449,34 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /me/weekly-plan (the `GetMyWeeklyPlan` operationId).
 	GetMyWeeklyPlanWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetMyWeeklyPlanResponse, error)
 
+	// ModerationListCoursesQueueWithResponse List course submissions in review queue.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /moderation/courses (the `ModerationListCoursesQueue` operationId).
+	ModerationListCoursesQueueWithResponse(ctx context.Context, params *ModerationListCoursesQueueParams, reqEditors ...RequestEditorFn) (*ModerationListCoursesQueueResponse, error)
+
+	// ModerationApproveCourseWithResponse Approve submission and publish course.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /moderation/courses/{id}/approve (the `ModerationApproveCourse` operationId).
+	ModerationApproveCourseWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*ModerationApproveCourseResponse, error)
+
+	// ModerationRejectCourseWithBodyWithResponse Reject or request changes on course submission.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /moderation/courses/{id}/reject (the `ModerationRejectCourse` operationId).
+	ModerationRejectCourseWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ModerationRejectCourseResponse, error)
+
+	// ModerationRejectCourseWithResponse Reject or request changes on course submission.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /moderation/courses/{id}/reject (the `ModerationRejectCourse` operationId).
+	ModerationRejectCourseWithResponse(ctx context.Context, id openapi_types.UUID, body ModerationRejectCourseJSONRequestBody, reqEditors ...RequestEditorFn) (*ModerationRejectCourseResponse, error)
+
 	// SystemPingWithResponse Check API dependency connectivity.
 	//
 	// Performs lightweight PostgreSQL and Redis checks for the trace proof.
@@ -12752,6 +13662,97 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /storage/avatars/{assetId} (the `StorageGetAvatar` operationId).
 	StorageGetAvatarWithResponse(ctx context.Context, assetId openapi_types.UUID, params *StorageGetAvatarParams, reqEditors ...RequestEditorFn) (*StorageGetAvatarResponse, error)
+
+	// StudioListCoursesWithResponse List creator drafts.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /studio/courses (the `StudioListCourses` operationId).
+	StudioListCoursesWithResponse(ctx context.Context, params *StudioListCoursesParams, reqEditors ...RequestEditorFn) (*StudioListCoursesResponse, error)
+
+	// StudioCreateCourseDraftWithBodyWithResponse Create a course draft.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /studio/courses (the `StudioCreateCourseDraft` operationId).
+	StudioCreateCourseDraftWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StudioCreateCourseDraftResponse, error)
+
+	// StudioCreateCourseDraftWithResponse Create a course draft.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /studio/courses (the `StudioCreateCourseDraft` operationId).
+	StudioCreateCourseDraftWithResponse(ctx context.Context, body StudioCreateCourseDraftJSONRequestBody, reqEditors ...RequestEditorFn) (*StudioCreateCourseDraftResponse, error)
+
+	// StudioGetCourseDraftWithResponse Get course draft by ID.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /studio/courses/{id} (the `StudioGetCourseDraft` operationId).
+	StudioGetCourseDraftWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*StudioGetCourseDraftResponse, error)
+
+	// StudioUpdateCourseDraftWithBodyWithResponse Update course draft.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /studio/courses/{id} (the `StudioUpdateCourseDraft` operationId).
+	StudioUpdateCourseDraftWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StudioUpdateCourseDraftResponse, error)
+
+	// StudioUpdateCourseDraftWithResponse Update course draft.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /studio/courses/{id} (the `StudioUpdateCourseDraft` operationId).
+	StudioUpdateCourseDraftWithResponse(ctx context.Context, id openapi_types.UUID, body StudioUpdateCourseDraftJSONRequestBody, reqEditors ...RequestEditorFn) (*StudioUpdateCourseDraftResponse, error)
+
+	// StudioSubmitCourseDraftWithResponse Submit course draft for review.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /studio/courses/{id}/submit (the `StudioSubmitCourseDraft` operationId).
+	StudioSubmitCourseDraftWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*StudioSubmitCourseDraftResponse, error)
+
+	// StudioGetPayoutAccountWithResponse Get default payout account for current user.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /studio/creator/payout-account (the `StudioGetPayoutAccount` operationId).
+	StudioGetPayoutAccountWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*StudioGetPayoutAccountResponse, error)
+
+	// StudioUpsertPayoutAccountWithBodyWithResponse Add or update default payout account for current user.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /studio/creator/payout-account (the `StudioUpsertPayoutAccount` operationId).
+	StudioUpsertPayoutAccountWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StudioUpsertPayoutAccountResponse, error)
+
+	// StudioUpsertPayoutAccountWithResponse Add or update default payout account for current user.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /studio/creator/payout-account (the `StudioUpsertPayoutAccount` operationId).
+	StudioUpsertPayoutAccountWithResponse(ctx context.Context, body StudioUpsertPayoutAccountJSONRequestBody, reqEditors ...RequestEditorFn) (*StudioUpsertPayoutAccountResponse, error)
+
+	// StudioGetCreatorProfileWithResponse Get creator profile for current user.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /studio/creator/profile (the `StudioGetCreatorProfile` operationId).
+	StudioGetCreatorProfileWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*StudioGetCreatorProfileResponse, error)
+
+	// StudioUpsertCreatorProfileWithBodyWithResponse Register or update creator profile for current user.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /studio/creator/profile (the `StudioUpsertCreatorProfile` operationId).
+	StudioUpsertCreatorProfileWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StudioUpsertCreatorProfileResponse, error)
+
+	// StudioUpsertCreatorProfileWithResponse Register or update creator profile for current user.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /studio/creator/profile (the `StudioUpsertCreatorProfile` operationId).
+	StudioUpsertCreatorProfileWithResponse(ctx context.Context, body StudioUpsertCreatorProfileJSONRequestBody, reqEditors ...RequestEditorFn) (*StudioUpsertCreatorProfileResponse, error)
 
 	// SystemVersionWithResponse Read the deployed API version.
 	//
@@ -20848,6 +21849,220 @@ func (r GetMyWeeklyPlanResponse) ContentType() string {
 	return ""
 }
 
+type ModerationListCoursesQueueResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ModerationQueueList
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ModerationListCoursesQueueResponse) GetJSON200() *ModerationQueueList {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ModerationListCoursesQueueResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r ModerationListCoursesQueueResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r ModerationListCoursesQueueResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ModerationListCoursesQueueResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ModerationListCoursesQueueResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ModerationListCoursesQueueResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ModerationListCoursesQueueResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ModerationApproveCourseResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *CourseSubmission
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ModerationApproveCourseResponse) GetJSON200() *CourseSubmission {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ModerationApproveCourseResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r ModerationApproveCourseResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ModerationApproveCourseResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r ModerationApproveCourseResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r ModerationApproveCourseResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ModerationApproveCourseResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ModerationApproveCourseResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ModerationApproveCourseResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ModerationApproveCourseResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ModerationRejectCourseResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *CourseSubmission
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ModerationRejectCourseResponse) GetJSON200() *CourseSubmission {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ModerationRejectCourseResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r ModerationRejectCourseResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ModerationRejectCourseResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r ModerationRejectCourseResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r ModerationRejectCourseResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ModerationRejectCourseResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ModerationRejectCourseResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ModerationRejectCourseResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ModerationRejectCourseResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // SystemPingResponse200Headers the declared response headers of an HTTP 200 response for SystemPing
 type SystemPingResponse200Headers struct {
 	XRequestId *string
@@ -21982,6 +23197,592 @@ func (r StorageGetAvatarResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r StorageGetAvatarResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type StudioListCoursesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *CourseDraftList
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r StudioListCoursesResponse) GetJSON200() *CourseDraftList {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r StudioListCoursesResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r StudioListCoursesResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r StudioListCoursesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StudioListCoursesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StudioListCoursesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StudioListCoursesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type StudioCreateCourseDraftResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *CourseDraft
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r StudioCreateCourseDraftResponse) GetJSON201() *CourseDraft {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r StudioCreateCourseDraftResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r StudioCreateCourseDraftResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r StudioCreateCourseDraftResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r StudioCreateCourseDraftResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r StudioCreateCourseDraftResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StudioCreateCourseDraftResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StudioCreateCourseDraftResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StudioCreateCourseDraftResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type StudioGetCourseDraftResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *CourseDraft
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r StudioGetCourseDraftResponse) GetJSON200() *CourseDraft {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r StudioGetCourseDraftResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r StudioGetCourseDraftResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r StudioGetCourseDraftResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r StudioGetCourseDraftResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StudioGetCourseDraftResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StudioGetCourseDraftResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StudioGetCourseDraftResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type StudioUpdateCourseDraftResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *CourseDraft
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r StudioUpdateCourseDraftResponse) GetJSON200() *CourseDraft {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r StudioUpdateCourseDraftResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r StudioUpdateCourseDraftResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r StudioUpdateCourseDraftResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r StudioUpdateCourseDraftResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r StudioUpdateCourseDraftResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r StudioUpdateCourseDraftResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StudioUpdateCourseDraftResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StudioUpdateCourseDraftResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StudioUpdateCourseDraftResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type StudioSubmitCourseDraftResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *CourseSubmission
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r StudioSubmitCourseDraftResponse) GetJSON200() *CourseSubmission {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r StudioSubmitCourseDraftResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r StudioSubmitCourseDraftResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r StudioSubmitCourseDraftResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r StudioSubmitCourseDraftResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r StudioSubmitCourseDraftResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r StudioSubmitCourseDraftResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StudioSubmitCourseDraftResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StudioSubmitCourseDraftResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StudioSubmitCourseDraftResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type StudioGetPayoutAccountResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PayoutAccount
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r StudioGetPayoutAccountResponse) GetJSON200() *PayoutAccount {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r StudioGetPayoutAccountResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r StudioGetPayoutAccountResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r StudioGetPayoutAccountResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r StudioGetPayoutAccountResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StudioGetPayoutAccountResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StudioGetPayoutAccountResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StudioGetPayoutAccountResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type StudioUpsertPayoutAccountResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PayoutAccount
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r StudioUpsertPayoutAccountResponse) GetJSON200() *PayoutAccount {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r StudioUpsertPayoutAccountResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r StudioUpsertPayoutAccountResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r StudioUpsertPayoutAccountResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r StudioUpsertPayoutAccountResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StudioUpsertPayoutAccountResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StudioUpsertPayoutAccountResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StudioUpsertPayoutAccountResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type StudioGetCreatorProfileResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *CreatorProfile
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r StudioGetCreatorProfileResponse) GetJSON200() *CreatorProfile {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r StudioGetCreatorProfileResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r StudioGetCreatorProfileResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r StudioGetCreatorProfileResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r StudioGetCreatorProfileResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StudioGetCreatorProfileResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StudioGetCreatorProfileResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StudioGetCreatorProfileResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type StudioUpsertCreatorProfileResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *CreatorProfile
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *ValidationFailed
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r StudioUpsertCreatorProfileResponse) GetJSON200() *CreatorProfile {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r StudioUpsertCreatorProfileResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r StudioUpsertCreatorProfileResponse) GetApplicationproblemJSON422() *ValidationFailed {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r StudioUpsertCreatorProfileResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r StudioUpsertCreatorProfileResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StudioUpsertCreatorProfileResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StudioUpsertCreatorProfileResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StudioUpsertCreatorProfileResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -25117,6 +26918,58 @@ func (c *ClientWithResponses) GetMyWeeklyPlanWithResponse(ctx context.Context, r
 	return ParseGetMyWeeklyPlanResponse(rsp)
 }
 
+// ModerationListCoursesQueueWithResponse List course submissions in review queue.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /moderation/courses (the `ModerationListCoursesQueue` operationId).
+func (c *ClientWithResponses) ModerationListCoursesQueueWithResponse(ctx context.Context, params *ModerationListCoursesQueueParams, reqEditors ...RequestEditorFn) (*ModerationListCoursesQueueResponse, error) {
+	rsp, err := c.ModerationListCoursesQueue(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseModerationListCoursesQueueResponse(rsp)
+}
+
+// ModerationApproveCourseWithResponse Approve submission and publish course.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /moderation/courses/{id}/approve (the `ModerationApproveCourse` operationId).
+func (c *ClientWithResponses) ModerationApproveCourseWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*ModerationApproveCourseResponse, error) {
+	rsp, err := c.ModerationApproveCourse(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseModerationApproveCourseResponse(rsp)
+}
+
+// ModerationRejectCourseWithBodyWithResponse Reject or request changes on course submission.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /moderation/courses/{id}/reject (the `ModerationRejectCourse` operationId).
+func (c *ClientWithResponses) ModerationRejectCourseWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ModerationRejectCourseResponse, error) {
+	rsp, err := c.ModerationRejectCourseWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseModerationRejectCourseResponse(rsp)
+}
+
+// ModerationRejectCourseWithResponse Reject or request changes on course submission.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /moderation/courses/{id}/reject (the `ModerationRejectCourse` operationId).
+func (c *ClientWithResponses) ModerationRejectCourseWithResponse(ctx context.Context, id openapi_types.UUID, body ModerationRejectCourseJSONRequestBody, reqEditors ...RequestEditorFn) (*ModerationRejectCourseResponse, error) {
+	rsp, err := c.ModerationRejectCourse(ctx, id, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseModerationRejectCourseResponse(rsp)
+}
+
 // SystemPingWithResponse Check API dependency connectivity.
 //
 // Performs lightweight PostgreSQL and Redis checks for the trace proof.
@@ -25421,6 +27274,175 @@ func (c *ClientWithResponses) StorageGetAvatarWithResponse(ctx context.Context, 
 		return nil, err
 	}
 	return ParseStorageGetAvatarResponse(rsp)
+}
+
+// StudioListCoursesWithResponse List creator drafts.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /studio/courses (the `StudioListCourses` operationId).
+func (c *ClientWithResponses) StudioListCoursesWithResponse(ctx context.Context, params *StudioListCoursesParams, reqEditors ...RequestEditorFn) (*StudioListCoursesResponse, error) {
+	rsp, err := c.StudioListCourses(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStudioListCoursesResponse(rsp)
+}
+
+// StudioCreateCourseDraftWithBodyWithResponse Create a course draft.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /studio/courses (the `StudioCreateCourseDraft` operationId).
+func (c *ClientWithResponses) StudioCreateCourseDraftWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StudioCreateCourseDraftResponse, error) {
+	rsp, err := c.StudioCreateCourseDraftWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStudioCreateCourseDraftResponse(rsp)
+}
+
+// StudioCreateCourseDraftWithResponse Create a course draft.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /studio/courses (the `StudioCreateCourseDraft` operationId).
+func (c *ClientWithResponses) StudioCreateCourseDraftWithResponse(ctx context.Context, body StudioCreateCourseDraftJSONRequestBody, reqEditors ...RequestEditorFn) (*StudioCreateCourseDraftResponse, error) {
+	rsp, err := c.StudioCreateCourseDraft(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStudioCreateCourseDraftResponse(rsp)
+}
+
+// StudioGetCourseDraftWithResponse Get course draft by ID.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /studio/courses/{id} (the `StudioGetCourseDraft` operationId).
+func (c *ClientWithResponses) StudioGetCourseDraftWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*StudioGetCourseDraftResponse, error) {
+	rsp, err := c.StudioGetCourseDraft(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStudioGetCourseDraftResponse(rsp)
+}
+
+// StudioUpdateCourseDraftWithBodyWithResponse Update course draft.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /studio/courses/{id} (the `StudioUpdateCourseDraft` operationId).
+func (c *ClientWithResponses) StudioUpdateCourseDraftWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StudioUpdateCourseDraftResponse, error) {
+	rsp, err := c.StudioUpdateCourseDraftWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStudioUpdateCourseDraftResponse(rsp)
+}
+
+// StudioUpdateCourseDraftWithResponse Update course draft.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /studio/courses/{id} (the `StudioUpdateCourseDraft` operationId).
+func (c *ClientWithResponses) StudioUpdateCourseDraftWithResponse(ctx context.Context, id openapi_types.UUID, body StudioUpdateCourseDraftJSONRequestBody, reqEditors ...RequestEditorFn) (*StudioUpdateCourseDraftResponse, error) {
+	rsp, err := c.StudioUpdateCourseDraft(ctx, id, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStudioUpdateCourseDraftResponse(rsp)
+}
+
+// StudioSubmitCourseDraftWithResponse Submit course draft for review.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /studio/courses/{id}/submit (the `StudioSubmitCourseDraft` operationId).
+func (c *ClientWithResponses) StudioSubmitCourseDraftWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*StudioSubmitCourseDraftResponse, error) {
+	rsp, err := c.StudioSubmitCourseDraft(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStudioSubmitCourseDraftResponse(rsp)
+}
+
+// StudioGetPayoutAccountWithResponse Get default payout account for current user.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /studio/creator/payout-account (the `StudioGetPayoutAccount` operationId).
+func (c *ClientWithResponses) StudioGetPayoutAccountWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*StudioGetPayoutAccountResponse, error) {
+	rsp, err := c.StudioGetPayoutAccount(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStudioGetPayoutAccountResponse(rsp)
+}
+
+// StudioUpsertPayoutAccountWithBodyWithResponse Add or update default payout account for current user.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /studio/creator/payout-account (the `StudioUpsertPayoutAccount` operationId).
+func (c *ClientWithResponses) StudioUpsertPayoutAccountWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StudioUpsertPayoutAccountResponse, error) {
+	rsp, err := c.StudioUpsertPayoutAccountWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStudioUpsertPayoutAccountResponse(rsp)
+}
+
+// StudioUpsertPayoutAccountWithResponse Add or update default payout account for current user.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /studio/creator/payout-account (the `StudioUpsertPayoutAccount` operationId).
+func (c *ClientWithResponses) StudioUpsertPayoutAccountWithResponse(ctx context.Context, body StudioUpsertPayoutAccountJSONRequestBody, reqEditors ...RequestEditorFn) (*StudioUpsertPayoutAccountResponse, error) {
+	rsp, err := c.StudioUpsertPayoutAccount(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStudioUpsertPayoutAccountResponse(rsp)
+}
+
+// StudioGetCreatorProfileWithResponse Get creator profile for current user.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /studio/creator/profile (the `StudioGetCreatorProfile` operationId).
+func (c *ClientWithResponses) StudioGetCreatorProfileWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*StudioGetCreatorProfileResponse, error) {
+	rsp, err := c.StudioGetCreatorProfile(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStudioGetCreatorProfileResponse(rsp)
+}
+
+// StudioUpsertCreatorProfileWithBodyWithResponse Register or update creator profile for current user.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /studio/creator/profile (the `StudioUpsertCreatorProfile` operationId).
+func (c *ClientWithResponses) StudioUpsertCreatorProfileWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StudioUpsertCreatorProfileResponse, error) {
+	rsp, err := c.StudioUpsertCreatorProfileWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStudioUpsertCreatorProfileResponse(rsp)
+}
+
+// StudioUpsertCreatorProfileWithResponse Register or update creator profile for current user.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /studio/creator/profile (the `StudioUpsertCreatorProfile` operationId).
+func (c *ClientWithResponses) StudioUpsertCreatorProfileWithResponse(ctx context.Context, body StudioUpsertCreatorProfileJSONRequestBody, reqEditors ...RequestEditorFn) (*StudioUpsertCreatorProfileResponse, error) {
+	rsp, err := c.StudioUpsertCreatorProfile(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStudioUpsertCreatorProfileResponse(rsp)
 }
 
 // SystemVersionWithResponse Read the deployed API version.
@@ -33026,6 +35048,175 @@ func ParseGetMyWeeklyPlanResponse(rsp *http.Response) (*GetMyWeeklyPlanResponse,
 	return response, nil
 }
 
+// ParseModerationListCoursesQueueResponse parses an HTTP response from a ModerationListCoursesQueueWithResponse call
+func ParseModerationListCoursesQueueResponse(rsp *http.Response) (*ModerationListCoursesQueueResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ModerationListCoursesQueueResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ModerationQueueList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseModerationApproveCourseResponse parses an HTTP response from a ModerationApproveCourseWithResponse call
+func ParseModerationApproveCourseResponse(rsp *http.Response) (*ModerationApproveCourseResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ModerationApproveCourseResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CourseSubmission
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseModerationRejectCourseResponse parses an HTTP response from a ModerationRejectCourseWithResponse call
+func ParseModerationRejectCourseResponse(rsp *http.Response) (*ModerationRejectCourseResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ModerationRejectCourseResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CourseSubmission
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseSystemPingResponse parses an HTTP response from a SystemPingWithResponse call
 func ParseSystemPingResponse(rsp *http.Response) (*SystemPingResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -34035,6 +36226,457 @@ func ParseStorageGetAvatarResponse(rsp *http.Response) (*StorageGetAvatarRespons
 			headers.XRequestId = &value
 		}
 		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseStudioListCoursesResponse parses an HTTP response from a StudioListCoursesWithResponse call
+func ParseStudioListCoursesResponse(rsp *http.Response) (*StudioListCoursesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StudioListCoursesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CourseDraftList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseStudioCreateCourseDraftResponse parses an HTTP response from a StudioCreateCourseDraftWithResponse call
+func ParseStudioCreateCourseDraftResponse(rsp *http.Response) (*StudioCreateCourseDraftResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StudioCreateCourseDraftResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest CourseDraft
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseStudioGetCourseDraftResponse parses an HTTP response from a StudioGetCourseDraftWithResponse call
+func ParseStudioGetCourseDraftResponse(rsp *http.Response) (*StudioGetCourseDraftResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StudioGetCourseDraftResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CourseDraft
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseStudioUpdateCourseDraftResponse parses an HTTP response from a StudioUpdateCourseDraftWithResponse call
+func ParseStudioUpdateCourseDraftResponse(rsp *http.Response) (*StudioUpdateCourseDraftResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StudioUpdateCourseDraftResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CourseDraft
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseStudioSubmitCourseDraftResponse parses an HTTP response from a StudioSubmitCourseDraftWithResponse call
+func ParseStudioSubmitCourseDraftResponse(rsp *http.Response) (*StudioSubmitCourseDraftResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StudioSubmitCourseDraftResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CourseSubmission
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseStudioGetPayoutAccountResponse parses an HTTP response from a StudioGetPayoutAccountWithResponse call
+func ParseStudioGetPayoutAccountResponse(rsp *http.Response) (*StudioGetPayoutAccountResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StudioGetPayoutAccountResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PayoutAccount
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseStudioUpsertPayoutAccountResponse parses an HTTP response from a StudioUpsertPayoutAccountWithResponse call
+func ParseStudioUpsertPayoutAccountResponse(rsp *http.Response) (*StudioUpsertPayoutAccountResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StudioUpsertPayoutAccountResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PayoutAccount
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseStudioGetCreatorProfileResponse parses an HTTP response from a StudioGetCreatorProfileWithResponse call
+func ParseStudioGetCreatorProfileResponse(rsp *http.Response) (*StudioGetCreatorProfileResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StudioGetCreatorProfileResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CreatorProfile
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseStudioUpsertCreatorProfileResponse parses an HTTP response from a StudioUpsertCreatorProfileWithResponse call
+func ParseStudioUpsertCreatorProfileResponse(rsp *http.Response) (*StudioUpsertCreatorProfileResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StudioUpsertCreatorProfileResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CreatorProfile
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
 	}
 
 	return response, nil

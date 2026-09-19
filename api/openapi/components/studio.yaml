@@ -1,0 +1,247 @@
+CreatorProfile:
+  type: object
+  required: [user_id, bio, headline, payout_eligible, created_at, updated_at]
+  properties:
+    user_id:
+      type: string
+      format: uuid
+    bio:
+      type: string
+      example: Experienced IELTS instructor and curriculum designer.
+    headline:
+      type: string
+      example: Senior English Language Coach
+    payout_eligible:
+      type: boolean
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+
+UpsertCreatorProfileRequest:
+  type: object
+  required: [bio, headline]
+  properties:
+    bio:
+      type: string
+      example: Experienced IELTS instructor and curriculum designer.
+    headline:
+      type: string
+      example: Senior English Language Coach
+
+PayoutAccount:
+  type: object
+  required: [id, creator_id, bank_code, account_number, account_holder_name, is_default, created_at, updated_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+    creator_id:
+      type: string
+      format: uuid
+    bank_code:
+      type: string
+      example: MB
+    account_number:
+      type: string
+      example: '0987654321'
+    account_holder_name:
+      type: string
+      example: NGUYEN VAN A
+    is_default:
+      type: boolean
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+
+CreatePayoutAccountRequest:
+  type: object
+  required: [bank_code, account_number, account_holder_name]
+  properties:
+    bank_code:
+      type: string
+      example: MB
+    account_number:
+      type: string
+      example: '0987654321'
+    account_holder_name:
+      type: string
+      example: NGUYEN VAN A
+    is_default:
+      type: boolean
+      default: true
+
+CourseDraft:
+  type: object
+  required: [id, owner_id, title, slug, description, cefr_level, price_vnd, status, structure, created_at, updated_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+    owner_id:
+      type: string
+      format: uuid
+    title:
+      type: string
+      example: Business English for Tech Professionals
+    slug:
+      type: string
+      example: business-english-tech
+    description:
+      type: string
+      example: Master technical communication and presentation in English.
+    cefr_level:
+      type: string
+      example: B2
+    topic_taxonomy_id:
+      type: [string, 'null']
+      format: uuid
+    price_vnd:
+      type: integer
+      format: int64
+      description: Course price in VND (0 = free).
+      example: 0
+    status:
+      type: string
+      enum: [draft, submitted, verifying, in_review, published, rejected, changes_requested]
+    structure:
+      type: object
+      description: Course structure containing units, lessons, and activities.
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+
+CreateCourseDraftRequest:
+  type: object
+  required: [title, slug, cefr_level]
+  properties:
+    title:
+      type: string
+      example: Business English for Tech Professionals
+    slug:
+      type: string
+      example: business-english-tech
+    description:
+      type: string
+      example: Master technical communication and presentation in English.
+    cefr_level:
+      type: string
+      example: B2
+    topic_taxonomy_id:
+      type: string
+      format: uuid
+    price_vnd:
+      type: integer
+      format: int64
+      minimum: 0
+      default: 0
+    structure:
+      type: object
+
+UpdateCourseDraftRequest:
+  type: object
+  properties:
+    title:
+      type: string
+    slug:
+      type: string
+    description:
+      type: string
+    cefr_level:
+      type: string
+    topic_taxonomy_id:
+      type: string
+      format: uuid
+    price_vnd:
+      type: integer
+      format: int64
+      minimum: 0
+    structure:
+      type: object
+
+CourseDraftList:
+  type: object
+  required: [items, total]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/CourseDraft'
+    total:
+      type: integer
+
+CourseSubmission:
+  type: object
+  required: [id, draft_id, version, status, submitted_by, submitted_at, created_at, updated_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+    draft_id:
+      type: string
+      format: uuid
+    version:
+      type: integer
+    status:
+      type: string
+      enum: [submitted, verifying, in_review, approved, rejected, changes_requested]
+    submitted_by:
+      type: string
+      format: uuid
+    reviewer_id:
+      type: [string, 'null']
+      format: uuid
+    feedback:
+      type: [string, 'null']
+    verification_report:
+      type: [object, 'null']
+    submitted_at:
+      type: string
+      format: date-time
+    reviewed_at:
+      type: [string, 'null']
+      format: date-time
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+
+ModerationQueueItem:
+  type: object
+  required: [submission, draft]
+  properties:
+    submission:
+      $ref: '#/CourseSubmission'
+    draft:
+      $ref: '#/CourseDraft'
+
+ModerationQueueList:
+  type: object
+  required: [items, total]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/ModerationQueueItem'
+    total:
+      type: integer
+
+ReviewSubmissionRequest:
+  type: object
+  properties:
+    feedback:
+      type: string
+      example: Please fix grammar in quiz question 2.
+    status:
+      type: string
+      enum: [approved, rejected, changes_requested]

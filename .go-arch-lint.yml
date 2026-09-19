@@ -131,6 +131,7 @@ components:
   g_listening:   { in: generated/listening/sqlc }
   g_speaking:    { in: generated/speaking/sqlc }
   g_exam:        { in: generated/exam/sqlc }
+  g_studio:      { in: generated/studio/sqlc }
 
   # platform capabilities
   p_telemetry:   { in: platform/telemetry/** }
@@ -173,6 +174,7 @@ components:
   c_analytics:     { in: modules/analytics/contract }
   c_subscription:  { in: modules/subscription/contract }
   c_payment:       { in: modules/payment/contract }
+  c_studio:        { in: modules/studio/contract }
 
   # module internals — never importable from outside the module itself
   #
@@ -283,6 +285,12 @@ components:
   m_analytics:     { in: modules/analytics/** }
   m_subscription:  { in: modules/subscription/** }
   m_payment:       { in: modules/payment/** }
+  m_studio:            { in: modules/studio }
+  m_studio_domain:     { in: modules/studio/domain }
+  m_studio_repository: { in: modules/studio/repository }
+  m_studio_service:    { in: modules/studio/service }
+  m_studio_job:        { in: modules/studio/job }
+  m_studio_http:       { in: modules/studio/transport/http }
 
 # ------------------------------------------------------------------- rules
 # `mayDependOn` lists are deliberately minimal. Adding an entry here is a
@@ -328,6 +336,7 @@ deps:
   g_vocabulary: { anyVendorDeps: true }
   g_writing:    { anyVendorDeps: true }
   g_listening:  { anyVendorDeps: true }
+  g_studio:     { anyVendorDeps: true }
 
   # A platform capability exists to wrap a vendor SDK, so each may import one.
   # Business modules deliberately may not: they reach external systems through
@@ -525,3 +534,8 @@ deps:
   m_analytics:    { mayDependOn: [p_job, p_cache, p_telemetry] }
   m_subscription: { mayDependOn: [p_cache, p_job, p_telemetry, c_payment, c_user, c_notification, c_audit] }
   m_payment:      { mayDependOn: [p_job, p_mailer, p_storage, p_telemetry, c_subscription, c_audit] }
+  m_studio_repository: { mayDependOn: [m_studio_domain, c_studio, g_studio] }
+  m_studio_service:    { mayDependOn: [m_studio_domain, m_studio_repository, c_studio, c_learning, c_lesson, c_content] }
+  m_studio_job:        { mayDependOn: [m_studio_domain, m_studio_repository, m_studio_service, c_studio, p_job] }
+  m_studio_http:       { mayDependOn: [m_studio_domain, m_studio_service, c_studio] }
+  m_studio:            { mayDependOn: [m_studio_domain, m_studio_repository, m_studio_service, m_studio_job, m_studio_http, c_studio, c_learning, c_lesson, c_content, p_job] }

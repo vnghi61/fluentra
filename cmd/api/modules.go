@@ -39,6 +39,7 @@ import (
 	speakingcontract "github.com/fluentra/fluentra/internal/modules/speaking/contract"
 	"github.com/fluentra/fluentra/internal/modules/srs"
 	srsservice "github.com/fluentra/fluentra/internal/modules/srs/service"
+	"github.com/fluentra/fluentra/internal/modules/studio"
 	"github.com/fluentra/fluentra/internal/modules/user"
 	"github.com/fluentra/fluentra/internal/modules/vocabulary"
 	vocabularycontract "github.com/fluentra/fluentra/internal/modules/vocabulary/contract"
@@ -75,6 +76,7 @@ type identity struct {
 	exam       *exam.Module
 	//nolint:unused // read through Routes and by the dashboard's Reader.
 	gamification *gamification.Module
+	studio       *studio.Module
 
 	rateLimit *httpx.RateLimiter
 }
@@ -374,6 +376,18 @@ func newIdentity(deps identityDeps) *identity {
 		SRSPace:       assembled.srs.ReviewPace(),
 	})
 
+	studioMod, err := studio.NewModule(studio.Dependencies{
+		Pool:          deps.Pool,
+		Guard:         lazyGuard{of: assembled},
+		ItemVerifier:  assembled.learning.ItemVerifier(),
+		LessonAuthor:  assembled.lesson.Author(),
+		ContentAuthor: assembled.content.Author(),
+	})
+	if err != nil {
+		panic(fmt.Sprintf("assemble studio module: %v", err))
+	}
+	assembled.studio = studioMod
+
 	return assembled
 }
 
@@ -558,6 +572,8 @@ func (i *identity) Routes(api chi.Router) {
 		i.listening.Routes(authenticated)
 		i.speaking.Routes(authenticated)
 		i.exam.Routes(authenticated)
+		i.studio.Routes(authenticated)
+		i.studio.ModerationRoutes(authenticated)
 
 		authenticated.Group(func(admin chi.Router) {
 			admin.Use(i.rbac.AdminOnly())
