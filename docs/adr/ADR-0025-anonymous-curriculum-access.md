@@ -110,7 +110,7 @@ denial-of-wallet, and opening one needs its own decision and its own quota.
 **Paid community courses are an explicit exception to anonymous lesson reads.**
 
 With the introduction of creator courses and monetization (BR-STUDIO-05):
+
 1. Official curriculum courses and free community courses remain anonymous-readable as decided above.
 2. Paid community courses require an active purchase. An anonymous visitor or an authenticated learner who has not purchased or claimed the course receives `403 Forbidden` (`COURSE_NOT_PURCHASED`) on `GET /lessons/{id}`.
 3. Access is single-sourced and evaluated via `studio.AccessReader.MayOpen(ctx, userID, courseID)`.
-

@@ -144,3 +144,44 @@ UnmatchedTransactionsList:
         $ref: '#/UnmatchedTransaction'
     total:
       type: integer
+
+Refund:
+  type: object
+  description: >-
+    Money owed back to a learner. A record of an obligation rather than a
+    transfer: SePay receives money and does not send it, so the refund is paid
+    by an admin making a bank transfer and then marking this row sent.
+  required: [id, order_id, amount_vnd, reason, status, created_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+    order_id:
+      type: string
+      format: uuid
+    amount_vnd:
+      type: integer
+      format: int64
+      description: Whole VND. The currency has no subunit.
+    reason:
+      type: string
+    status:
+      type: string
+      enum: [requested, sent, failed]
+    sent_at:
+      type: [string, 'null']
+      format: date-time
+    created_at:
+      type: string
+      format: date-time
+
+RefundList:
+  type: object
+  required: [items, total]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/Refund'
+    total:
+      type: integer

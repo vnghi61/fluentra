@@ -111,10 +111,12 @@ Full definitions are in [`api/openapi/openapi.yaml`](../../../api/openapi/openap
 |---|---|---|---|
 | `POST` | `/api/v1/webhooks/payment/sepay` | `public` | Ingest SePay incoming bank transfer webhook |
 | `GET` | `/api/v1/me/orders/{id}` | `self` | Poll order status |
-| `GET` | `/api/v1/admin/payments/unmatched` | `admin.dashboard` | List unmatched incoming transactions for operator resolution |
-| `GET` | `/api/v1/admin/billing/payouts` | `admin.dashboard` | List creator payout requests |
-| `GET` | `/api/v1/admin/billing/payouts/{id}` | `admin.dashboard` | Get payout request detail and creator bank account |
-| `POST` | `/api/v1/admin/billing/payouts/{id}/fulfill` | `admin.dashboard` | Mark creator payout as fulfilled with bank reference |
+| `GET` | `/api/v1/admin/payments/unmatched` | `billing.read` | List unmatched incoming transactions for operator resolution |
+| `GET` | `/api/v1/admin/billing/refunds` | `billing.read` | Refunds owed to learners, which an admin pays by bank transfer |
+| `POST` | `/api/v1/admin/billing/refunds/{id}/sent` | `billing.manage` | Record that a refund has been transferred |
+| `GET` | `/api/v1/admin/billing/payouts` | `billing.read` | Payouts owed to creators; bank details are not in this response |
+| `GET` | `/api/v1/admin/billing/payouts/{id}` | `billing.manage` | One payout with the creator bank account, so an admin can transfer it |
+| `POST` | `/api/v1/admin/billing/payouts/{id}/fulfill` | `billing.manage` | Record that a creator payout has been transferred |
 <!-- END GENERATED: endpoints -->
 
 ## 7. Folder map

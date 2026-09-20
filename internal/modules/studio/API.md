@@ -40,6 +40,8 @@ Error format: RFC 9457 Problem Details — [`/ERROR_HANDLING.md`](../../../ERROR
 | `POST` | `/api/v1/courses/{id}/purchase` | `self` | Initiate purchase of a paid course via VietQR |
 | `GET` | `/api/v1/me/purchases` | `self` | List courses purchased or claimed by learner |
 | `POST` | `/api/v1/me/purchases/{id}/refund` | `self` | Self-service refund for course purchase |
+| `GET` | `/api/v1/me/studio/earnings` | `self` | What this creator has earned, been paid, and is still owed |
+| `POST` | `/api/v1/me/studio/payouts` | `self` | Request a payout of the creator balance |
 <!-- END GENERATED: api-summary -->
 
 ## Endpoint detail
@@ -173,6 +175,26 @@ Self-service refund for course purchase
 |---|---|
 | Permission | `self` |
 | Success | 200 |
+| Errors | standard set |
+
+### `GET /api/v1/me/studio/earnings`
+
+What this creator has earned, been paid, and is still owed
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 200 |
+| Errors | standard set |
+
+### `POST /api/v1/me/studio/payouts`
+
+Request a payout of the creator balance
+
+| | |
+|---|---|
+| Permission | `self` |
+| Success | 201 |
 | Errors | standard set |
 
 <!-- END GENERATED: api-detail -->

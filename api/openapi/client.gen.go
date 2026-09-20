@@ -143,15 +143,21 @@ type ClientInterface interface {
 
 	// PaymentListPayouts List creator payout requests.
 	//
+	// Payouts owed to creators, newest first. Bank details are not in this response; they are on the single payout (BR-STUDIO-09).
+	//
 	// Corresponds with GET /admin/billing/payouts (the `PaymentListPayouts` operationId).
 	PaymentListPayouts(ctx context.Context, params *PaymentListPayoutsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PaymentGetPayout Get payout details including creator bank details.
 	//
+	// One payout with the creator's bank account, so an admin can make the transfer. The only route that returns those details.
+	//
 	// Corresponds with GET /admin/billing/payouts/{id} (the `PaymentGetPayout` operationId).
 	PaymentGetPayout(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PaymentFulfillPayoutWithBody Record manual bank transfer fulfillment for a payout.
+	//
+	// Records that the bank transfer for a payout has been made, with its reference.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -160,10 +166,26 @@ type ClientInterface interface {
 
 	// PaymentFulfillPayout Record manual bank transfer fulfillment for a payout.
 	//
+	// Records that the bank transfer for a payout has been made, with its reference.
+	//
 	// Takes a body of the `application/json` content type.
 	//
 	// Corresponds with POST /admin/billing/payouts/{id}/fulfill (the `PaymentFulfillPayout` operationId).
 	PaymentFulfillPayout(ctx context.Context, id openapi_types.UUID, body PaymentFulfillPayoutJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PaymentListRefunds Refunds owed to learners.
+	//
+	// The queue of money to send back. SePay receives money and does not send it, so every refund is a bank transfer somebody makes by hand; this is the list of the ones still to make.
+	//
+	// Corresponds with GET /admin/billing/refunds (the `PaymentListRefunds` operationId).
+	PaymentListRefunds(ctx context.Context, params *PaymentListRefundsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PaymentMarkRefundSent Record that a refund has been transferred.
+	//
+	// Marks a requested refund as sent, after the admin has made the bank transfer. A refund already marked sent is a 409 rather than a second transfer.
+	//
+	// Corresponds with POST /admin/billing/refunds/{id}/sent (the `PaymentMarkRefundSent` operationId).
+	PaymentMarkRefundSent(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// AdminListContent List and filter content items for authoring.
 	//
@@ -359,6 +381,8 @@ type ClientInterface interface {
 	AdminPublishLesson(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PaymentListUnmatchedTransactions List unmatched incoming transactions for operator resolution.
+	//
+	// Bank transactions that matched no order, or matched one with the wrong amount. A human decides what to do with each: an amount that does not match exactly is never partially credited (BR-PAYMENT-12).
 	//
 	// Corresponds with GET /admin/payments/unmatched (the `PaymentListUnmatchedTransactions` operationId).
 	PaymentListUnmatchedTransactions(ctx context.Context, params *PaymentListUnmatchedTransactionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -980,6 +1004,8 @@ type ClientInterface interface {
 
 	// StudioClaimCourse Claim a free community course.
 	//
+	// Takes a free community course, creating the access record without an order.
+	//
 	// Corresponds with POST /courses/{id}/claim (the `StudioClaimCourse` operationId).
 	StudioClaimCourse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -991,6 +1017,8 @@ type ClientInterface interface {
 	EnrollCourse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StudioPurchaseCourse Initiate purchase of a paid course via VietQR.
+	//
+	// Creates a bank transfer order for a paid course and returns what the learner needs to pay it: the amount, the reference to put in the transfer, and a VietQR image carrying both. The price comes from the listing, never from the request.
 	//
 	// Corresponds with POST /courses/{id}/purchase (the `StudioPurchaseCourse` operationId).
 	StudioPurchaseCourse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1303,6 +1331,8 @@ type ClientInterface interface {
 
 	// PaymentGetOrder Get status and details of an order.
 	//
+	// One of the caller's own orders. The purchase page polls this while the learner makes the transfer, because the webhook is what moves it to paid.
+	//
 	// Corresponds with GET /me/orders/{id} (the `PaymentGetOrder` operationId).
 	PaymentGetOrder(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -1411,10 +1441,14 @@ type ClientInterface interface {
 
 	// StudioListPurchases List owned community courses for the calling learner.
 	//
+	// The courses the caller owns, newest first.
+	//
 	// Corresponds with GET /me/purchases (the `StudioListPurchases` operationId).
 	StudioListPurchases(ctx context.Context, params *StudioListPurchasesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StudioRefundPurchase Request self-service refund for a purchased course within window.
+	//
+	// Refunds a purchase within seven days and under a fifth of the course completed. Records what is owed against the order and reverses the creator credit; the transfer itself is made by an admin, because SePay receives money and does not send it.
 	//
 	// Corresponds with POST /me/purchases/{id}/refund (the `StudioRefundPurchase` operationId).
 	StudioRefundPurchase(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1471,10 +1505,14 @@ type ClientInterface interface {
 
 	// StudioGetEarnings Get creator earnings, balance, and recent ledger entries.
 	//
+	// What the caller has earned, what has been paid out, and what is still owed.
+	//
 	// Corresponds with GET /me/studio/earnings (the `StudioGetEarnings` operationId).
 	StudioGetEarnings(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StudioRequestPayoutWithBody Request a payout of creator earnings.
+	//
+	// Asks to be paid the balance. Pending until an admin makes the bank transfer and records its reference.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1482,6 +1520,8 @@ type ClientInterface interface {
 	StudioRequestPayoutWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StudioRequestPayout Request a payout of creator earnings.
+	//
+	// Asks to be paid the balance. Pending until an admin makes the bank transfer and records its reference.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1529,15 +1569,21 @@ type ClientInterface interface {
 
 	// ModerationListCoursesQueue List course submissions in review queue.
 	//
+	// Submissions waiting for a human decision. Every one has already passed Gate 1, so the queue holds only what the machine could not judge.
+	//
 	// Corresponds with GET /moderation/courses (the `ModerationListCoursesQueue` operationId).
 	ModerationListCoursesQueue(ctx context.Context, params *ModerationListCoursesQueueParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ModerationApproveCourse Approve submission and publish course.
 	//
+	// Approves a submission and publishes the course. The reviewer may not be its creator (BR-STUDIO-06), and the submission must have passed Gate 1 (BR-STUDIO-07).
+	//
 	// Corresponds with POST /moderation/courses/{id}/approve (the `ModerationApproveCourse` operationId).
 	ModerationApproveCourse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ModerationRejectCourseWithBody Reject or request changes on course submission.
+	//
+	// Rejects a submission or asks for changes. Notes are required: "changes requested" naming no change is how a review queue stops being useful.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1545,6 +1591,8 @@ type ClientInterface interface {
 	ModerationRejectCourseWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ModerationRejectCourse Reject or request changes on course submission.
+	//
+	// Rejects a submission or asks for changes. Notes are required: "changes requested" naming no change is how a review queue stops being useful.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1711,10 +1759,14 @@ type ClientInterface interface {
 
 	// StudioListCourses List creator drafts.
 	//
+	// The caller's own course drafts, newest first, with the status of each.
+	//
 	// Corresponds with GET /studio/courses (the `StudioListCourses` operationId).
 	StudioListCourses(ctx context.Context, params *StudioListCoursesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StudioCreateCourseDraftWithBody Create a course draft.
+	//
+	// Starts a course draft owned by the caller. The draft holds the whole unit, lesson and activity tree; nothing is published until it has passed both gates.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1723,6 +1775,8 @@ type ClientInterface interface {
 
 	// StudioCreateCourseDraft Create a course draft.
 	//
+	// Starts a course draft owned by the caller. The draft holds the whole unit, lesson and activity tree; nothing is published until it has passed both gates.
+	//
 	// Takes a body of the `application/json` content type.
 	//
 	// Corresponds with POST /studio/courses (the `StudioCreateCourseDraft` operationId).
@@ -1730,10 +1784,14 @@ type ClientInterface interface {
 
 	// StudioGetCourseDraft Get course draft by ID.
 	//
+	// One of the caller's drafts, with its structure and its last verification report. Another creator's id is a 404 rather than a 403, because they should not learn it exists.
+	//
 	// Corresponds with GET /studio/courses/{id} (the `StudioGetCourseDraft` operationId).
 	StudioGetCourseDraft(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StudioUpdateCourseDraftWithBody Update course draft.
+	//
+	// Replaces the fields the request sets. Only a draft, or one that came back with changes requested, may be edited: a submission in review is what a moderator is reading.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1742,6 +1800,8 @@ type ClientInterface interface {
 
 	// StudioUpdateCourseDraft Update course draft.
 	//
+	// Replaces the fields the request sets. Only a draft, or one that came back with changes requested, may be edited: a submission in review is what a moderator is reading.
+	//
 	// Takes a body of the `application/json` content type.
 	//
 	// Corresponds with PUT /studio/courses/{id} (the `StudioUpdateCourseDraft` operationId).
@@ -1749,15 +1809,21 @@ type ClientInterface interface {
 
 	// StudioSubmitCourseDraft Submit course draft for review.
 	//
+	// Submits a draft for review. Returns immediately, because Gate 1 checks every activity answer key and a creator submitting forty of them should not watch a request time out.
+	//
 	// Corresponds with POST /studio/courses/{id}/submit (the `StudioSubmitCourseDraft` operationId).
 	StudioSubmitCourseDraft(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StudioGetPayoutAccount Get default payout account for current user.
 	//
+	// The bank account this creator is paid into. Returned to its owner, and to an admin holding billing.manage for one payout at a time (BR-STUDIO-09).
+	//
 	// Corresponds with GET /studio/creator/payout-account (the `StudioGetPayoutAccount` operationId).
 	StudioGetPayoutAccount(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StudioUpsertPayoutAccountWithBody Add or update default payout account for current user.
+	//
+	// Records where to send this creator's share. A paid course cannot be listed without one: selling a course nobody can be paid for is a support ticket, not a sale.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1766,6 +1832,8 @@ type ClientInterface interface {
 
 	// StudioUpsertPayoutAccount Add or update default payout account for current user.
 	//
+	// Records where to send this creator's share. A paid course cannot be listed without one: selling a course nobody can be paid for is a support ticket, not a sale.
+	//
 	// Takes a body of the `application/json` content type.
 	//
 	// Corresponds with POST /studio/creator/payout-account (the `StudioUpsertPayoutAccount` operationId).
@@ -1773,10 +1841,14 @@ type ClientInterface interface {
 
 	// StudioGetCreatorProfile Get creator profile for current user.
 	//
+	// The caller's creator profile, or 404 if they have not opened the studio yet.
+	//
 	// Corresponds with GET /studio/creator/profile (the `StudioGetCreatorProfile` operationId).
 	StudioGetCreatorProfile(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StudioUpsertCreatorProfileWithBody Register or update creator profile for current user.
+	//
+	// Opens the studio for the caller, or updates the profile they already have.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1784,6 +1856,8 @@ type ClientInterface interface {
 	StudioUpsertCreatorProfileWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StudioUpsertCreatorProfile Register or update creator profile for current user.
+	//
+	// Opens the studio for the caller, or updates the profile they already have.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1888,12 +1962,16 @@ type ClientInterface interface {
 
 	// PaymentHandleSepayWebhookWithBody Ingest SePay incoming bank transfer webhook.
 	//
+	// SePay calls this when a transaction posts to our bank account. The body is stored raw and matching runs as a job. SePay counts a delivery as successful only on a 200 or 201 carrying {"success": true} within 30 seconds, and otherwise retries seven times over five hours; duplicates are dropped on its own transaction id.
+	//
 	// Takes any type of body and a specified content type.
 	//
 	// Corresponds with POST /webhooks/payment/sepay (the `PaymentHandleSepayWebhook` operationId).
 	PaymentHandleSepayWebhookWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PaymentHandleSepayWebhook Ingest SePay incoming bank transfer webhook.
+	//
+	// SePay calls this when a transaction posts to our bank account. The body is stored raw and matching runs as a job. SePay counts a delivery as successful only on a 200 or 201 carrying {"success": true} within 30 seconds, and otherwise retries seven times over five hours; duplicates are dropped on its own transaction id.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -2016,6 +2094,8 @@ func (c *Client) AuditSearchLogs(ctx context.Context, params *AuditSearchLogsPar
 
 // PaymentListPayouts List creator payout requests.
 //
+// Payouts owed to creators, newest first. Bank details are not in this response; they are on the single payout (BR-STUDIO-09).
+//
 // Corresponds with GET /admin/billing/payouts (the `PaymentListPayouts` operationId).
 func (c *Client) PaymentListPayouts(ctx context.Context, params *PaymentListPayoutsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPaymentListPayoutsRequest(c.Server, params)
@@ -2031,6 +2111,8 @@ func (c *Client) PaymentListPayouts(ctx context.Context, params *PaymentListPayo
 
 // PaymentGetPayout Get payout details including creator bank details.
 //
+// One payout with the creator's bank account, so an admin can make the transfer. The only route that returns those details.
+//
 // Corresponds with GET /admin/billing/payouts/{id} (the `PaymentGetPayout` operationId).
 func (c *Client) PaymentGetPayout(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPaymentGetPayoutRequest(c.Server, id)
@@ -2045,6 +2127,8 @@ func (c *Client) PaymentGetPayout(ctx context.Context, id openapi_types.UUID, re
 }
 
 // PaymentFulfillPayoutWithBody Record manual bank transfer fulfillment for a payout.
+//
+// Records that the bank transfer for a payout has been made, with its reference.
 //
 // Takes any type of body and a specified content type.
 //
@@ -2063,11 +2147,47 @@ func (c *Client) PaymentFulfillPayoutWithBody(ctx context.Context, id openapi_ty
 
 // PaymentFulfillPayout Record manual bank transfer fulfillment for a payout.
 //
+// Records that the bank transfer for a payout has been made, with its reference.
+//
 // Takes a body of the `application/json` content type.
 //
 // Corresponds with POST /admin/billing/payouts/{id}/fulfill (the `PaymentFulfillPayout` operationId).
 func (c *Client) PaymentFulfillPayout(ctx context.Context, id openapi_types.UUID, body PaymentFulfillPayoutJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPaymentFulfillPayoutRequest(c.Server, id, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PaymentListRefunds Refunds owed to learners.
+//
+// The queue of money to send back. SePay receives money and does not send it, so every refund is a bank transfer somebody makes by hand; this is the list of the ones still to make.
+//
+// Corresponds with GET /admin/billing/refunds (the `PaymentListRefunds` operationId).
+func (c *Client) PaymentListRefunds(ctx context.Context, params *PaymentListRefundsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPaymentListRefundsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PaymentMarkRefundSent Record that a refund has been transferred.
+//
+// Marks a requested refund as sent, after the admin has made the bank transfer. A refund already marked sent is a 409 rather than a second transfer.
+//
+// Corresponds with POST /admin/billing/refunds/{id}/sent (the `PaymentMarkRefundSent` operationId).
+func (c *Client) PaymentMarkRefundSent(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPaymentMarkRefundSentRequest(c.Server, id)
 	if err != nil {
 		return nil, err
 	}
@@ -2502,6 +2622,8 @@ func (c *Client) AdminPublishLesson(ctx context.Context, id openapi_types.UUID, 
 }
 
 // PaymentListUnmatchedTransactions List unmatched incoming transactions for operator resolution.
+//
+// Bank transactions that matched no order, or matched one with the wrong amount. A human decides what to do with each: an amount that does not match exactly is never partially credited (BR-PAYMENT-12).
 //
 // Corresponds with GET /admin/payments/unmatched (the `PaymentListUnmatchedTransactions` operationId).
 func (c *Client) PaymentListUnmatchedTransactions(ctx context.Context, params *PaymentListUnmatchedTransactionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -3723,6 +3845,8 @@ func (c *Client) ListCourses(ctx context.Context, params *ListCoursesParams, req
 
 // StudioClaimCourse Claim a free community course.
 //
+// Takes a free community course, creating the access record without an order.
+//
 // Corresponds with POST /courses/{id}/claim (the `StudioClaimCourse` operationId).
 func (c *Client) StudioClaimCourse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewStudioClaimCourseRequest(c.Server, id)
@@ -3754,6 +3878,8 @@ func (c *Client) EnrollCourse(ctx context.Context, id openapi_types.UUID, reqEdi
 }
 
 // StudioPurchaseCourse Initiate purchase of a paid course via VietQR.
+//
+// Creates a bank transfer order for a paid course and returns what the learner needs to pay it: the amount, the reference to put in the transfer, and a VietQR image carrying both. The price comes from the listing, never from the request.
 //
 // Corresponds with POST /courses/{id}/purchase (the `StudioPurchaseCourse` operationId).
 func (c *Client) StudioPurchaseCourse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -4456,6 +4582,8 @@ func (c *Client) UserReplaceMyLearningProfile(ctx context.Context, body UserRepl
 
 // PaymentGetOrder Get status and details of an order.
 //
+// One of the caller's own orders. The purchase page polls this while the learner makes the transfer, because the webhook is what moves it to paid.
+//
 // Corresponds with GET /me/orders/{id} (the `PaymentGetOrder` operationId).
 func (c *Client) PaymentGetOrder(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPaymentGetOrderRequest(c.Server, id)
@@ -4704,6 +4832,8 @@ func (c *Client) GetProgress(ctx context.Context, reqEditors ...RequestEditorFn)
 
 // StudioListPurchases List owned community courses for the calling learner.
 //
+// The courses the caller owns, newest first.
+//
 // Corresponds with GET /me/purchases (the `StudioListPurchases` operationId).
 func (c *Client) StudioListPurchases(ctx context.Context, params *StudioListPurchasesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewStudioListPurchasesRequest(c.Server, params)
@@ -4718,6 +4848,8 @@ func (c *Client) StudioListPurchases(ctx context.Context, params *StudioListPurc
 }
 
 // StudioRefundPurchase Request self-service refund for a purchased course within window.
+//
+// Refunds a purchase within seven days and under a fifth of the course completed. Records what is owed against the order and reverses the creator credit; the transfer itself is made by an admin, because SePay receives money and does not send it.
 //
 // Corresponds with POST /me/purchases/{id}/refund (the `StudioRefundPurchase` operationId).
 func (c *Client) StudioRefundPurchase(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -4844,6 +4976,8 @@ func (c *Client) UseStreakFreeze(ctx context.Context, reqEditors ...RequestEdito
 
 // StudioGetEarnings Get creator earnings, balance, and recent ledger entries.
 //
+// What the caller has earned, what has been paid out, and what is still owed.
+//
 // Corresponds with GET /me/studio/earnings (the `StudioGetEarnings` operationId).
 func (c *Client) StudioGetEarnings(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewStudioGetEarningsRequest(c.Server)
@@ -4858,6 +4992,8 @@ func (c *Client) StudioGetEarnings(ctx context.Context, reqEditors ...RequestEdi
 }
 
 // StudioRequestPayoutWithBody Request a payout of creator earnings.
+//
+// Asks to be paid the balance. Pending until an admin makes the bank transfer and records its reference.
 //
 // Takes any type of body and a specified content type.
 //
@@ -4875,6 +5011,8 @@ func (c *Client) StudioRequestPayoutWithBody(ctx context.Context, contentType st
 }
 
 // StudioRequestPayout Request a payout of creator earnings.
+//
+// Asks to be paid the balance. Pending until an admin makes the bank transfer and records its reference.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -4982,6 +5120,8 @@ func (c *Client) GetMyWeeklyPlan(ctx context.Context, reqEditors ...RequestEdito
 
 // ModerationListCoursesQueue List course submissions in review queue.
 //
+// Submissions waiting for a human decision. Every one has already passed Gate 1, so the queue holds only what the machine could not judge.
+//
 // Corresponds with GET /moderation/courses (the `ModerationListCoursesQueue` operationId).
 func (c *Client) ModerationListCoursesQueue(ctx context.Context, params *ModerationListCoursesQueueParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewModerationListCoursesQueueRequest(c.Server, params)
@@ -4997,6 +5137,8 @@ func (c *Client) ModerationListCoursesQueue(ctx context.Context, params *Moderat
 
 // ModerationApproveCourse Approve submission and publish course.
 //
+// Approves a submission and publishes the course. The reviewer may not be its creator (BR-STUDIO-06), and the submission must have passed Gate 1 (BR-STUDIO-07).
+//
 // Corresponds with POST /moderation/courses/{id}/approve (the `ModerationApproveCourse` operationId).
 func (c *Client) ModerationApproveCourse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewModerationApproveCourseRequest(c.Server, id)
@@ -5011,6 +5153,8 @@ func (c *Client) ModerationApproveCourse(ctx context.Context, id openapi_types.U
 }
 
 // ModerationRejectCourseWithBody Reject or request changes on course submission.
+//
+// Rejects a submission or asks for changes. Notes are required: "changes requested" naming no change is how a review queue stops being useful.
 //
 // Takes any type of body and a specified content type.
 //
@@ -5028,6 +5172,8 @@ func (c *Client) ModerationRejectCourseWithBody(ctx context.Context, id openapi_
 }
 
 // ModerationRejectCourse Reject or request changes on course submission.
+//
+// Rejects a submission or asks for changes. Notes are required: "changes requested" naming no change is how a review queue stops being useful.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -5404,6 +5550,8 @@ func (c *Client) StorageGetAvatar(ctx context.Context, assetId openapi_types.UUI
 
 // StudioListCourses List creator drafts.
 //
+// The caller's own course drafts, newest first, with the status of each.
+//
 // Corresponds with GET /studio/courses (the `StudioListCourses` operationId).
 func (c *Client) StudioListCourses(ctx context.Context, params *StudioListCoursesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewStudioListCoursesRequest(c.Server, params)
@@ -5418,6 +5566,8 @@ func (c *Client) StudioListCourses(ctx context.Context, params *StudioListCourse
 }
 
 // StudioCreateCourseDraftWithBody Create a course draft.
+//
+// Starts a course draft owned by the caller. The draft holds the whole unit, lesson and activity tree; nothing is published until it has passed both gates.
 //
 // Takes any type of body and a specified content type.
 //
@@ -5436,6 +5586,8 @@ func (c *Client) StudioCreateCourseDraftWithBody(ctx context.Context, contentTyp
 
 // StudioCreateCourseDraft Create a course draft.
 //
+// Starts a course draft owned by the caller. The draft holds the whole unit, lesson and activity tree; nothing is published until it has passed both gates.
+//
 // Takes a body of the `application/json` content type.
 //
 // Corresponds with POST /studio/courses (the `StudioCreateCourseDraft` operationId).
@@ -5453,6 +5605,8 @@ func (c *Client) StudioCreateCourseDraft(ctx context.Context, body StudioCreateC
 
 // StudioGetCourseDraft Get course draft by ID.
 //
+// One of the caller's drafts, with its structure and its last verification report. Another creator's id is a 404 rather than a 403, because they should not learn it exists.
+//
 // Corresponds with GET /studio/courses/{id} (the `StudioGetCourseDraft` operationId).
 func (c *Client) StudioGetCourseDraft(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewStudioGetCourseDraftRequest(c.Server, id)
@@ -5467,6 +5621,8 @@ func (c *Client) StudioGetCourseDraft(ctx context.Context, id openapi_types.UUID
 }
 
 // StudioUpdateCourseDraftWithBody Update course draft.
+//
+// Replaces the fields the request sets. Only a draft, or one that came back with changes requested, may be edited: a submission in review is what a moderator is reading.
 //
 // Takes any type of body and a specified content type.
 //
@@ -5485,6 +5641,8 @@ func (c *Client) StudioUpdateCourseDraftWithBody(ctx context.Context, id openapi
 
 // StudioUpdateCourseDraft Update course draft.
 //
+// Replaces the fields the request sets. Only a draft, or one that came back with changes requested, may be edited: a submission in review is what a moderator is reading.
+//
 // Takes a body of the `application/json` content type.
 //
 // Corresponds with PUT /studio/courses/{id} (the `StudioUpdateCourseDraft` operationId).
@@ -5502,6 +5660,8 @@ func (c *Client) StudioUpdateCourseDraft(ctx context.Context, id openapi_types.U
 
 // StudioSubmitCourseDraft Submit course draft for review.
 //
+// Submits a draft for review. Returns immediately, because Gate 1 checks every activity answer key and a creator submitting forty of them should not watch a request time out.
+//
 // Corresponds with POST /studio/courses/{id}/submit (the `StudioSubmitCourseDraft` operationId).
 func (c *Client) StudioSubmitCourseDraft(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewStudioSubmitCourseDraftRequest(c.Server, id)
@@ -5517,6 +5677,8 @@ func (c *Client) StudioSubmitCourseDraft(ctx context.Context, id openapi_types.U
 
 // StudioGetPayoutAccount Get default payout account for current user.
 //
+// The bank account this creator is paid into. Returned to its owner, and to an admin holding billing.manage for one payout at a time (BR-STUDIO-09).
+//
 // Corresponds with GET /studio/creator/payout-account (the `StudioGetPayoutAccount` operationId).
 func (c *Client) StudioGetPayoutAccount(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewStudioGetPayoutAccountRequest(c.Server)
@@ -5531,6 +5693,8 @@ func (c *Client) StudioGetPayoutAccount(ctx context.Context, reqEditors ...Reque
 }
 
 // StudioUpsertPayoutAccountWithBody Add or update default payout account for current user.
+//
+// Records where to send this creator's share. A paid course cannot be listed without one: selling a course nobody can be paid for is a support ticket, not a sale.
 //
 // Takes any type of body and a specified content type.
 //
@@ -5549,6 +5713,8 @@ func (c *Client) StudioUpsertPayoutAccountWithBody(ctx context.Context, contentT
 
 // StudioUpsertPayoutAccount Add or update default payout account for current user.
 //
+// Records where to send this creator's share. A paid course cannot be listed without one: selling a course nobody can be paid for is a support ticket, not a sale.
+//
 // Takes a body of the `application/json` content type.
 //
 // Corresponds with POST /studio/creator/payout-account (the `StudioUpsertPayoutAccount` operationId).
@@ -5566,6 +5732,8 @@ func (c *Client) StudioUpsertPayoutAccount(ctx context.Context, body StudioUpser
 
 // StudioGetCreatorProfile Get creator profile for current user.
 //
+// The caller's creator profile, or 404 if they have not opened the studio yet.
+//
 // Corresponds with GET /studio/creator/profile (the `StudioGetCreatorProfile` operationId).
 func (c *Client) StudioGetCreatorProfile(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewStudioGetCreatorProfileRequest(c.Server)
@@ -5580,6 +5748,8 @@ func (c *Client) StudioGetCreatorProfile(ctx context.Context, reqEditors ...Requ
 }
 
 // StudioUpsertCreatorProfileWithBody Register or update creator profile for current user.
+//
+// Opens the studio for the caller, or updates the profile they already have.
 //
 // Takes any type of body and a specified content type.
 //
@@ -5597,6 +5767,8 @@ func (c *Client) StudioUpsertCreatorProfileWithBody(ctx context.Context, content
 }
 
 // StudioUpsertCreatorProfile Register or update creator profile for current user.
+//
+// Opens the studio for the caller, or updates the profile they already have.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -5831,6 +6003,8 @@ func (c *Client) UpdateWordState(ctx context.Context, senseId openapi_types.UUID
 
 // PaymentHandleSepayWebhookWithBody Ingest SePay incoming bank transfer webhook.
 //
+// SePay calls this when a transaction posts to our bank account. The body is stored raw and matching runs as a job. SePay counts a delivery as successful only on a 200 or 201 carrying {"success": true} within 30 seconds, and otherwise retries seven times over five hours; duplicates are dropped on its own transaction id.
+//
 // Takes any type of body and a specified content type.
 //
 // Corresponds with POST /webhooks/payment/sepay (the `PaymentHandleSepayWebhook` operationId).
@@ -5847,6 +6021,8 @@ func (c *Client) PaymentHandleSepayWebhookWithBody(ctx context.Context, contentT
 }
 
 // PaymentHandleSepayWebhook Ingest SePay incoming bank transfer webhook.
+//
+// SePay calls this when a transaction posts to our bank account. The body is stored raw and matching runs as a job. SePay counts a delivery as successful only on a 200 or 201 carrying {"success": true} within 30 seconds, and otherwise retries seven times over five hours; duplicates are dropped on its own transaction id.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -6298,6 +6474,118 @@ func NewPaymentFulfillPayoutRequestWithBody(server string, id openapi_types.UUID
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewPaymentListRefundsRequest constructs an http.Request for the PaymentListRefunds method
+func NewPaymentListRefundsRequest(server string, params *PaymentListRefundsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/billing/refunds")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Status != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "status", *params.Status, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "offset", *params.Offset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPaymentMarkRefundSentRequest constructs an http.Request for the PaymentMarkRefundSent method
+func NewPaymentMarkRefundSentRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/admin/billing/refunds/%s/sent", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -12866,12 +13154,16 @@ type ClientWithResponsesInterface interface {
 
 	// PaymentListPayoutsWithResponse List creator payout requests.
 	//
+	// Payouts owed to creators, newest first. Bank details are not in this response; they are on the single payout (BR-STUDIO-09).
+	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with GET /admin/billing/payouts (the `PaymentListPayouts` operationId).
 	PaymentListPayoutsWithResponse(ctx context.Context, params *PaymentListPayoutsParams, reqEditors ...RequestEditorFn) (*PaymentListPayoutsResponse, error)
 
 	// PaymentGetPayoutWithResponse Get payout details including creator bank details.
+	//
+	// One payout with the creator's bank account, so an admin can make the transfer. The only route that returns those details.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -12880,6 +13172,8 @@ type ClientWithResponsesInterface interface {
 
 	// PaymentFulfillPayoutWithBodyWithResponse Record manual bank transfer fulfillment for a payout.
 	//
+	// Records that the bank transfer for a payout has been made, with its reference.
+	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with POST /admin/billing/payouts/{id}/fulfill (the `PaymentFulfillPayout` operationId).
@@ -12887,10 +13181,30 @@ type ClientWithResponsesInterface interface {
 
 	// PaymentFulfillPayoutWithResponse Record manual bank transfer fulfillment for a payout.
 	//
+	// Records that the bank transfer for a payout has been made, with its reference.
+	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with POST /admin/billing/payouts/{id}/fulfill (the `PaymentFulfillPayout` operationId).
 	PaymentFulfillPayoutWithResponse(ctx context.Context, id openapi_types.UUID, body PaymentFulfillPayoutJSONRequestBody, reqEditors ...RequestEditorFn) (*PaymentFulfillPayoutResponse, error)
+
+	// PaymentListRefundsWithResponse Refunds owed to learners.
+	//
+	// The queue of money to send back. SePay receives money and does not send it, so every refund is a bank transfer somebody makes by hand; this is the list of the ones still to make.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/billing/refunds (the `PaymentListRefunds` operationId).
+	PaymentListRefundsWithResponse(ctx context.Context, params *PaymentListRefundsParams, reqEditors ...RequestEditorFn) (*PaymentListRefundsResponse, error)
+
+	// PaymentMarkRefundSentWithResponse Record that a refund has been transferred.
+	//
+	// Marks a requested refund as sent, after the admin has made the bank transfer. A refund already marked sent is a 409 rather than a second transfer.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/billing/refunds/{id}/sent (the `PaymentMarkRefundSent` operationId).
+	PaymentMarkRefundSentWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*PaymentMarkRefundSentResponse, error)
 
 	// AdminListContentWithResponse List and filter content items for authoring.
 	//
@@ -13104,6 +13418,8 @@ type ClientWithResponsesInterface interface {
 	AdminPublishLessonWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*AdminPublishLessonResponse, error)
 
 	// PaymentListUnmatchedTransactionsWithResponse List unmatched incoming transactions for operator resolution.
+	//
+	// Bank transactions that matched no order, or matched one with the wrong amount. A human decides what to do with each: an amount that does not match exactly is never partially credited (BR-PAYMENT-12).
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -13773,6 +14089,8 @@ type ClientWithResponsesInterface interface {
 
 	// StudioClaimCourseWithResponse Claim a free community course.
 	//
+	// Takes a free community course, creating the access record without an order.
+	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with POST /courses/{id}/claim (the `StudioClaimCourse` operationId).
@@ -13788,6 +14106,8 @@ type ClientWithResponsesInterface interface {
 	EnrollCourseWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*EnrollCourseResponse, error)
 
 	// StudioPurchaseCourseWithResponse Initiate purchase of a paid course via VietQR.
+	//
+	// Creates a bank transfer order for a paid course and returns what the learner needs to pay it: the amount, the reference to put in the transfer, and a VietQR image carrying both. The price comes from the listing, never from the request.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -14142,6 +14462,8 @@ type ClientWithResponsesInterface interface {
 
 	// PaymentGetOrderWithResponse Get status and details of an order.
 	//
+	// One of the caller's own orders. The purchase page polls this while the learner makes the transfer, because the webhook is what moves it to paid.
+	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with GET /me/orders/{id} (the `PaymentGetOrder` operationId).
@@ -14266,12 +14588,16 @@ type ClientWithResponsesInterface interface {
 
 	// StudioListPurchasesWithResponse List owned community courses for the calling learner.
 	//
+	// The courses the caller owns, newest first.
+	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with GET /me/purchases (the `StudioListPurchases` operationId).
 	StudioListPurchasesWithResponse(ctx context.Context, params *StudioListPurchasesParams, reqEditors ...RequestEditorFn) (*StudioListPurchasesResponse, error)
 
 	// StudioRefundPurchaseWithResponse Request self-service refund for a purchased course within window.
+	//
+	// Refunds a purchase within seven days and under a fifth of the course completed. Records what is owed against the order and reverses the creator credit; the transfer itself is made by an admin, because SePay receives money and does not send it.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -14334,6 +14660,8 @@ type ClientWithResponsesInterface interface {
 
 	// StudioGetEarningsWithResponse Get creator earnings, balance, and recent ledger entries.
 	//
+	// What the caller has earned, what has been paid out, and what is still owed.
+	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with GET /me/studio/earnings (the `StudioGetEarnings` operationId).
@@ -14341,12 +14669,16 @@ type ClientWithResponsesInterface interface {
 
 	// StudioRequestPayoutWithBodyWithResponse Request a payout of creator earnings.
 	//
+	// Asks to be paid the balance. Pending until an admin makes the bank transfer and records its reference.
+	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with POST /me/studio/payouts (the `StudioRequestPayout` operationId).
 	StudioRequestPayoutWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StudioRequestPayoutResponse, error)
 
 	// StudioRequestPayoutWithResponse Request a payout of creator earnings.
+	//
+	// Asks to be paid the balance. Pending until an admin makes the bank transfer and records its reference.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -14400,12 +14732,16 @@ type ClientWithResponsesInterface interface {
 
 	// ModerationListCoursesQueueWithResponse List course submissions in review queue.
 	//
+	// Submissions waiting for a human decision. Every one has already passed Gate 1, so the queue holds only what the machine could not judge.
+	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with GET /moderation/courses (the `ModerationListCoursesQueue` operationId).
 	ModerationListCoursesQueueWithResponse(ctx context.Context, params *ModerationListCoursesQueueParams, reqEditors ...RequestEditorFn) (*ModerationListCoursesQueueResponse, error)
 
 	// ModerationApproveCourseWithResponse Approve submission and publish course.
+	//
+	// Approves a submission and publishes the course. The reviewer may not be its creator (BR-STUDIO-06), and the submission must have passed Gate 1 (BR-STUDIO-07).
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -14414,12 +14750,16 @@ type ClientWithResponsesInterface interface {
 
 	// ModerationRejectCourseWithBodyWithResponse Reject or request changes on course submission.
 	//
+	// Rejects a submission or asks for changes. Notes are required: "changes requested" naming no change is how a review queue stops being useful.
+	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with POST /moderation/courses/{id}/reject (the `ModerationRejectCourse` operationId).
 	ModerationRejectCourseWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ModerationRejectCourseResponse, error)
 
 	// ModerationRejectCourseWithResponse Reject or request changes on course submission.
+	//
+	// Rejects a submission or asks for changes. Notes are required: "changes requested" naming no change is how a review queue stops being useful.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -14614,12 +14954,16 @@ type ClientWithResponsesInterface interface {
 
 	// StudioListCoursesWithResponse List creator drafts.
 	//
+	// The caller's own course drafts, newest first, with the status of each.
+	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with GET /studio/courses (the `StudioListCourses` operationId).
 	StudioListCoursesWithResponse(ctx context.Context, params *StudioListCoursesParams, reqEditors ...RequestEditorFn) (*StudioListCoursesResponse, error)
 
 	// StudioCreateCourseDraftWithBodyWithResponse Create a course draft.
+	//
+	// Starts a course draft owned by the caller. The draft holds the whole unit, lesson and activity tree; nothing is published until it has passed both gates.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -14628,12 +14972,16 @@ type ClientWithResponsesInterface interface {
 
 	// StudioCreateCourseDraftWithResponse Create a course draft.
 	//
+	// Starts a course draft owned by the caller. The draft holds the whole unit, lesson and activity tree; nothing is published until it has passed both gates.
+	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with POST /studio/courses (the `StudioCreateCourseDraft` operationId).
 	StudioCreateCourseDraftWithResponse(ctx context.Context, body StudioCreateCourseDraftJSONRequestBody, reqEditors ...RequestEditorFn) (*StudioCreateCourseDraftResponse, error)
 
 	// StudioGetCourseDraftWithResponse Get course draft by ID.
+	//
+	// One of the caller's drafts, with its structure and its last verification report. Another creator's id is a 404 rather than a 403, because they should not learn it exists.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -14642,12 +14990,16 @@ type ClientWithResponsesInterface interface {
 
 	// StudioUpdateCourseDraftWithBodyWithResponse Update course draft.
 	//
+	// Replaces the fields the request sets. Only a draft, or one that came back with changes requested, may be edited: a submission in review is what a moderator is reading.
+	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with PUT /studio/courses/{id} (the `StudioUpdateCourseDraft` operationId).
 	StudioUpdateCourseDraftWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StudioUpdateCourseDraftResponse, error)
 
 	// StudioUpdateCourseDraftWithResponse Update course draft.
+	//
+	// Replaces the fields the request sets. Only a draft, or one that came back with changes requested, may be edited: a submission in review is what a moderator is reading.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -14656,12 +15008,16 @@ type ClientWithResponsesInterface interface {
 
 	// StudioSubmitCourseDraftWithResponse Submit course draft for review.
 	//
+	// Submits a draft for review. Returns immediately, because Gate 1 checks every activity answer key and a creator submitting forty of them should not watch a request time out.
+	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with POST /studio/courses/{id}/submit (the `StudioSubmitCourseDraft` operationId).
 	StudioSubmitCourseDraftWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*StudioSubmitCourseDraftResponse, error)
 
 	// StudioGetPayoutAccountWithResponse Get default payout account for current user.
+	//
+	// The bank account this creator is paid into. Returned to its owner, and to an admin holding billing.manage for one payout at a time (BR-STUDIO-09).
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -14670,12 +15026,16 @@ type ClientWithResponsesInterface interface {
 
 	// StudioUpsertPayoutAccountWithBodyWithResponse Add or update default payout account for current user.
 	//
+	// Records where to send this creator's share. A paid course cannot be listed without one: selling a course nobody can be paid for is a support ticket, not a sale.
+	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with POST /studio/creator/payout-account (the `StudioUpsertPayoutAccount` operationId).
 	StudioUpsertPayoutAccountWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StudioUpsertPayoutAccountResponse, error)
 
 	// StudioUpsertPayoutAccountWithResponse Add or update default payout account for current user.
+	//
+	// Records where to send this creator's share. A paid course cannot be listed without one: selling a course nobody can be paid for is a support ticket, not a sale.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -14684,6 +15044,8 @@ type ClientWithResponsesInterface interface {
 
 	// StudioGetCreatorProfileWithResponse Get creator profile for current user.
 	//
+	// The caller's creator profile, or 404 if they have not opened the studio yet.
+	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with GET /studio/creator/profile (the `StudioGetCreatorProfile` operationId).
@@ -14691,12 +15053,16 @@ type ClientWithResponsesInterface interface {
 
 	// StudioUpsertCreatorProfileWithBodyWithResponse Register or update creator profile for current user.
 	//
+	// Opens the studio for the caller, or updates the profile they already have.
+	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with POST /studio/creator/profile (the `StudioUpsertCreatorProfile` operationId).
 	StudioUpsertCreatorProfileWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StudioUpsertCreatorProfileResponse, error)
 
 	// StudioUpsertCreatorProfileWithResponse Register or update creator profile for current user.
+	//
+	// Opens the studio for the caller, or updates the profile they already have.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -14813,12 +15179,16 @@ type ClientWithResponsesInterface interface {
 
 	// PaymentHandleSepayWebhookWithBodyWithResponse Ingest SePay incoming bank transfer webhook.
 	//
+	// SePay calls this when a transaction posts to our bank account. The body is stored raw and matching runs as a job. SePay counts a delivery as successful only on a 200 or 201 carrying {"success": true} within 30 seconds, and otherwise retries seven times over five hours; duplicates are dropped on its own transaction id.
+	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with POST /webhooks/payment/sepay (the `PaymentHandleSepayWebhook` operationId).
 	PaymentHandleSepayWebhookWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PaymentHandleSepayWebhookResponse, error)
 
 	// PaymentHandleSepayWebhookWithResponse Ingest SePay incoming bank transfer webhook.
+	//
+	// SePay calls this when a transaction posts to our bank account. The body is stored raw and matching runs as a job. SePay counts a delivery as successful only on a 200 or 201 carrying {"success": true} within 30 seconds, and otherwise retries seven times over five hours; duplicates are dropped on its own transaction id.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -15349,6 +15719,158 @@ func (r PaymentFulfillPayoutResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r PaymentFulfillPayoutResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// PaymentListRefundsResponse200Headers the declared response headers of an HTTP 200 response for PaymentListRefunds
+type PaymentListRefundsResponse200Headers struct {
+	XRequestId *string
+}
+
+type PaymentListRefundsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *RefundList
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *PaymentListRefundsResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PaymentListRefundsResponse) GetJSON200() *RefundList {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r PaymentListRefundsResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r PaymentListRefundsResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r PaymentListRefundsResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r PaymentListRefundsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PaymentListRefundsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PaymentListRefundsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PaymentListRefundsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// PaymentMarkRefundSentResponse200Headers the declared response headers of an HTTP 200 response for PaymentMarkRefundSent
+type PaymentMarkRefundSentResponse200Headers struct {
+	XRequestId *string
+}
+
+type PaymentMarkRefundSentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Refund
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthorized
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Forbidden
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Conflict
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *InternalServerError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *PaymentMarkRefundSentResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PaymentMarkRefundSentResponse) GetJSON200() *Refund {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r PaymentMarkRefundSentResponse) GetApplicationproblemJSON401() *Unauthorized {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r PaymentMarkRefundSentResponse) GetApplicationproblemJSON403() *Forbidden {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r PaymentMarkRefundSentResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r PaymentMarkRefundSentResponse) GetApplicationproblemJSON409() *Conflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r PaymentMarkRefundSentResponse) GetApplicationproblemJSON500() *InternalServerError {
+	return r.ApplicationproblemJSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r PaymentMarkRefundSentResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PaymentMarkRefundSentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PaymentMarkRefundSentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PaymentMarkRefundSentResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -26391,6 +26913,8 @@ func (c *ClientWithResponses) AuditSearchLogsWithResponse(ctx context.Context, p
 
 // PaymentListPayoutsWithResponse List creator payout requests.
 //
+// Payouts owed to creators, newest first. Bank details are not in this response; they are on the single payout (BR-STUDIO-09).
+//
 // Returns a wrapper object for the known response body format(s).
 //
 // Corresponds with GET /admin/billing/payouts (the `PaymentListPayouts` operationId).
@@ -26403,6 +26927,8 @@ func (c *ClientWithResponses) PaymentListPayoutsWithResponse(ctx context.Context
 }
 
 // PaymentGetPayoutWithResponse Get payout details including creator bank details.
+//
+// One payout with the creator's bank account, so an admin can make the transfer. The only route that returns those details.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -26417,6 +26943,8 @@ func (c *ClientWithResponses) PaymentGetPayoutWithResponse(ctx context.Context, 
 
 // PaymentFulfillPayoutWithBodyWithResponse Record manual bank transfer fulfillment for a payout.
 //
+// Records that the bank transfer for a payout has been made, with its reference.
+//
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with POST /admin/billing/payouts/{id}/fulfill (the `PaymentFulfillPayout` operationId).
@@ -26430,6 +26958,8 @@ func (c *ClientWithResponses) PaymentFulfillPayoutWithBodyWithResponse(ctx conte
 
 // PaymentFulfillPayoutWithResponse Record manual bank transfer fulfillment for a payout.
 //
+// Records that the bank transfer for a payout has been made, with its reference.
+//
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with POST /admin/billing/payouts/{id}/fulfill (the `PaymentFulfillPayout` operationId).
@@ -26439,6 +26969,36 @@ func (c *ClientWithResponses) PaymentFulfillPayoutWithResponse(ctx context.Conte
 		return nil, err
 	}
 	return ParsePaymentFulfillPayoutResponse(rsp)
+}
+
+// PaymentListRefundsWithResponse Refunds owed to learners.
+//
+// The queue of money to send back. SePay receives money and does not send it, so every refund is a bank transfer somebody makes by hand; this is the list of the ones still to make.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/billing/refunds (the `PaymentListRefunds` operationId).
+func (c *ClientWithResponses) PaymentListRefundsWithResponse(ctx context.Context, params *PaymentListRefundsParams, reqEditors ...RequestEditorFn) (*PaymentListRefundsResponse, error) {
+	rsp, err := c.PaymentListRefunds(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePaymentListRefundsResponse(rsp)
+}
+
+// PaymentMarkRefundSentWithResponse Record that a refund has been transferred.
+//
+// Marks a requested refund as sent, after the admin has made the bank transfer. A refund already marked sent is a 409 rather than a second transfer.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/billing/refunds/{id}/sent (the `PaymentMarkRefundSent` operationId).
+func (c *ClientWithResponses) PaymentMarkRefundSentWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*PaymentMarkRefundSentResponse, error) {
+	rsp, err := c.PaymentMarkRefundSent(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePaymentMarkRefundSentResponse(rsp)
 }
 
 // AdminListContentWithResponse List and filter content items for authoring.
@@ -26791,6 +27351,8 @@ func (c *ClientWithResponses) AdminPublishLessonWithResponse(ctx context.Context
 }
 
 // PaymentListUnmatchedTransactionsWithResponse List unmatched incoming transactions for operator resolution.
+//
+// Bank transactions that matched no order, or matched one with the wrong amount. A human decides what to do with each: an amount that does not match exactly is never partially credited (BR-PAYMENT-12).
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -27820,6 +28382,8 @@ func (c *ClientWithResponses) ListCoursesWithResponse(ctx context.Context, param
 
 // StudioClaimCourseWithResponse Claim a free community course.
 //
+// Takes a free community course, creating the access record without an order.
+//
 // Returns a wrapper object for the known response body format(s).
 //
 // Corresponds with POST /courses/{id}/claim (the `StudioClaimCourse` operationId).
@@ -27847,6 +28411,8 @@ func (c *ClientWithResponses) EnrollCourseWithResponse(ctx context.Context, id o
 }
 
 // StudioPurchaseCourseWithResponse Initiate purchase of a paid course via VietQR.
+//
+// Creates a bank transfer order for a paid course and returns what the learner needs to pay it: the amount, the reference to put in the transfer, and a VietQR image carrying both. The price comes from the listing, never from the request.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -28435,6 +29001,8 @@ func (c *ClientWithResponses) UserReplaceMyLearningProfileWithResponse(ctx conte
 
 // PaymentGetOrderWithResponse Get status and details of an order.
 //
+// One of the caller's own orders. The purchase page polls this while the learner makes the transfer, because the webhook is what moves it to paid.
+//
 // Returns a wrapper object for the known response body format(s).
 //
 // Corresponds with GET /me/orders/{id} (the `PaymentGetOrder` operationId).
@@ -28643,6 +29211,8 @@ func (c *ClientWithResponses) GetProgressWithResponse(ctx context.Context, reqEd
 
 // StudioListPurchasesWithResponse List owned community courses for the calling learner.
 //
+// The courses the caller owns, newest first.
+//
 // Returns a wrapper object for the known response body format(s).
 //
 // Corresponds with GET /me/purchases (the `StudioListPurchases` operationId).
@@ -28655,6 +29225,8 @@ func (c *ClientWithResponses) StudioListPurchasesWithResponse(ctx context.Contex
 }
 
 // StudioRefundPurchaseWithResponse Request self-service refund for a purchased course within window.
+//
+// Refunds a purchase within seven days and under a fifth of the course completed. Records what is owed against the order and reverses the creator credit; the transfer itself is made by an admin, because SePay receives money and does not send it.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -28759,6 +29331,8 @@ func (c *ClientWithResponses) UseStreakFreezeWithResponse(ctx context.Context, r
 
 // StudioGetEarningsWithResponse Get creator earnings, balance, and recent ledger entries.
 //
+// What the caller has earned, what has been paid out, and what is still owed.
+//
 // Returns a wrapper object for the known response body format(s).
 //
 // Corresponds with GET /me/studio/earnings (the `StudioGetEarnings` operationId).
@@ -28772,6 +29346,8 @@ func (c *ClientWithResponses) StudioGetEarningsWithResponse(ctx context.Context,
 
 // StudioRequestPayoutWithBodyWithResponse Request a payout of creator earnings.
 //
+// Asks to be paid the balance. Pending until an admin makes the bank transfer and records its reference.
+//
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with POST /me/studio/payouts (the `StudioRequestPayout` operationId).
@@ -28784,6 +29360,8 @@ func (c *ClientWithResponses) StudioRequestPayoutWithBodyWithResponse(ctx contex
 }
 
 // StudioRequestPayoutWithResponse Request a payout of creator earnings.
+//
+// Asks to be paid the balance. Pending until an admin makes the bank transfer and records its reference.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -28873,6 +29451,8 @@ func (c *ClientWithResponses) GetMyWeeklyPlanWithResponse(ctx context.Context, r
 
 // ModerationListCoursesQueueWithResponse List course submissions in review queue.
 //
+// Submissions waiting for a human decision. Every one has already passed Gate 1, so the queue holds only what the machine could not judge.
+//
 // Returns a wrapper object for the known response body format(s).
 //
 // Corresponds with GET /moderation/courses (the `ModerationListCoursesQueue` operationId).
@@ -28885,6 +29465,8 @@ func (c *ClientWithResponses) ModerationListCoursesQueueWithResponse(ctx context
 }
 
 // ModerationApproveCourseWithResponse Approve submission and publish course.
+//
+// Approves a submission and publishes the course. The reviewer may not be its creator (BR-STUDIO-06), and the submission must have passed Gate 1 (BR-STUDIO-07).
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -28899,6 +29481,8 @@ func (c *ClientWithResponses) ModerationApproveCourseWithResponse(ctx context.Co
 
 // ModerationRejectCourseWithBodyWithResponse Reject or request changes on course submission.
 //
+// Rejects a submission or asks for changes. Notes are required: "changes requested" naming no change is how a review queue stops being useful.
+//
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with POST /moderation/courses/{id}/reject (the `ModerationRejectCourse` operationId).
@@ -28911,6 +29495,8 @@ func (c *ClientWithResponses) ModerationRejectCourseWithBodyWithResponse(ctx con
 }
 
 // ModerationRejectCourseWithResponse Reject or request changes on course submission.
+//
+// Rejects a submission or asks for changes. Notes are required: "changes requested" naming no change is how a review queue stops being useful.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -29231,6 +29817,8 @@ func (c *ClientWithResponses) StorageGetAvatarWithResponse(ctx context.Context, 
 
 // StudioListCoursesWithResponse List creator drafts.
 //
+// The caller's own course drafts, newest first, with the status of each.
+//
 // Returns a wrapper object for the known response body format(s).
 //
 // Corresponds with GET /studio/courses (the `StudioListCourses` operationId).
@@ -29243,6 +29831,8 @@ func (c *ClientWithResponses) StudioListCoursesWithResponse(ctx context.Context,
 }
 
 // StudioCreateCourseDraftWithBodyWithResponse Create a course draft.
+//
+// Starts a course draft owned by the caller. The draft holds the whole unit, lesson and activity tree; nothing is published until it has passed both gates.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -29257,6 +29847,8 @@ func (c *ClientWithResponses) StudioCreateCourseDraftWithBodyWithResponse(ctx co
 
 // StudioCreateCourseDraftWithResponse Create a course draft.
 //
+// Starts a course draft owned by the caller. The draft holds the whole unit, lesson and activity tree; nothing is published until it has passed both gates.
+//
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with POST /studio/courses (the `StudioCreateCourseDraft` operationId).
@@ -29269,6 +29861,8 @@ func (c *ClientWithResponses) StudioCreateCourseDraftWithResponse(ctx context.Co
 }
 
 // StudioGetCourseDraftWithResponse Get course draft by ID.
+//
+// One of the caller's drafts, with its structure and its last verification report. Another creator's id is a 404 rather than a 403, because they should not learn it exists.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -29283,6 +29877,8 @@ func (c *ClientWithResponses) StudioGetCourseDraftWithResponse(ctx context.Conte
 
 // StudioUpdateCourseDraftWithBodyWithResponse Update course draft.
 //
+// Replaces the fields the request sets. Only a draft, or one that came back with changes requested, may be edited: a submission in review is what a moderator is reading.
+//
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with PUT /studio/courses/{id} (the `StudioUpdateCourseDraft` operationId).
@@ -29295,6 +29891,8 @@ func (c *ClientWithResponses) StudioUpdateCourseDraftWithBodyWithResponse(ctx co
 }
 
 // StudioUpdateCourseDraftWithResponse Update course draft.
+//
+// Replaces the fields the request sets. Only a draft, or one that came back with changes requested, may be edited: a submission in review is what a moderator is reading.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -29309,6 +29907,8 @@ func (c *ClientWithResponses) StudioUpdateCourseDraftWithResponse(ctx context.Co
 
 // StudioSubmitCourseDraftWithResponse Submit course draft for review.
 //
+// Submits a draft for review. Returns immediately, because Gate 1 checks every activity answer key and a creator submitting forty of them should not watch a request time out.
+//
 // Returns a wrapper object for the known response body format(s).
 //
 // Corresponds with POST /studio/courses/{id}/submit (the `StudioSubmitCourseDraft` operationId).
@@ -29321,6 +29921,8 @@ func (c *ClientWithResponses) StudioSubmitCourseDraftWithResponse(ctx context.Co
 }
 
 // StudioGetPayoutAccountWithResponse Get default payout account for current user.
+//
+// The bank account this creator is paid into. Returned to its owner, and to an admin holding billing.manage for one payout at a time (BR-STUDIO-09).
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -29335,6 +29937,8 @@ func (c *ClientWithResponses) StudioGetPayoutAccountWithResponse(ctx context.Con
 
 // StudioUpsertPayoutAccountWithBodyWithResponse Add or update default payout account for current user.
 //
+// Records where to send this creator's share. A paid course cannot be listed without one: selling a course nobody can be paid for is a support ticket, not a sale.
+//
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with POST /studio/creator/payout-account (the `StudioUpsertPayoutAccount` operationId).
@@ -29347,6 +29951,8 @@ func (c *ClientWithResponses) StudioUpsertPayoutAccountWithBodyWithResponse(ctx 
 }
 
 // StudioUpsertPayoutAccountWithResponse Add or update default payout account for current user.
+//
+// Records where to send this creator's share. A paid course cannot be listed without one: selling a course nobody can be paid for is a support ticket, not a sale.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -29361,6 +29967,8 @@ func (c *ClientWithResponses) StudioUpsertPayoutAccountWithResponse(ctx context.
 
 // StudioGetCreatorProfileWithResponse Get creator profile for current user.
 //
+// The caller's creator profile, or 404 if they have not opened the studio yet.
+//
 // Returns a wrapper object for the known response body format(s).
 //
 // Corresponds with GET /studio/creator/profile (the `StudioGetCreatorProfile` operationId).
@@ -29374,6 +29982,8 @@ func (c *ClientWithResponses) StudioGetCreatorProfileWithResponse(ctx context.Co
 
 // StudioUpsertCreatorProfileWithBodyWithResponse Register or update creator profile for current user.
 //
+// Opens the studio for the caller, or updates the profile they already have.
+//
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with POST /studio/creator/profile (the `StudioUpsertCreatorProfile` operationId).
@@ -29386,6 +29996,8 @@ func (c *ClientWithResponses) StudioUpsertCreatorProfileWithBodyWithResponse(ctx
 }
 
 // StudioUpsertCreatorProfileWithResponse Register or update creator profile for current user.
+//
+// Opens the studio for the caller, or updates the profile they already have.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -29580,6 +30192,8 @@ func (c *ClientWithResponses) UpdateWordStateWithResponse(ctx context.Context, s
 
 // PaymentHandleSepayWebhookWithBodyWithResponse Ingest SePay incoming bank transfer webhook.
 //
+// SePay calls this when a transaction posts to our bank account. The body is stored raw and matching runs as a job. SePay counts a delivery as successful only on a 200 or 201 carrying {"success": true} within 30 seconds, and otherwise retries seven times over five hours; duplicates are dropped on its own transaction id.
+//
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with POST /webhooks/payment/sepay (the `PaymentHandleSepayWebhook` operationId).
@@ -29592,6 +30206,8 @@ func (c *ClientWithResponses) PaymentHandleSepayWebhookWithBodyWithResponse(ctx 
 }
 
 // PaymentHandleSepayWebhookWithResponse Ingest SePay incoming bank transfer webhook.
+//
+// SePay calls this when a transaction posts to our bank account. The body is stored raw and matching runs as a job. SePay counts a delivery as successful only on a 200 or 201 carrying {"success": true} within 30 seconds, and otherwise retries seven times over five hours; duplicates are dropped on its own transaction id.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -30053,6 +30669,140 @@ func ParsePaymentFulfillPayoutResponse(rsp *http.Response) (*PaymentFulfillPayou
 		}
 		response.ApplicationproblemJSON500 = &dest
 
+	}
+
+	return response, nil
+}
+
+// ParsePaymentListRefundsResponse parses an HTTP response from a PaymentListRefundsWithResponse call
+func ParsePaymentListRefundsResponse(rsp *http.Response) (*PaymentListRefundsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PaymentListRefundsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest RefundList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers PaymentListRefundsResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParsePaymentMarkRefundSentResponse parses an HTTP response from a PaymentMarkRefundSentWithResponse call
+func ParsePaymentMarkRefundSentResponse(rsp *http.Response) (*PaymentMarkRefundSentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PaymentMarkRefundSentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Refund
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers PaymentMarkRefundSentResponse200Headers
+		if values := rsp.Header.Values("X-Request-Id"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRequestId = &value
+		}
+		response.Headers200 = &headers
 	}
 
 	return response, nil

@@ -2638,10 +2638,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get creator profile for current user. */
+        /**
+         * Get creator profile for current user.
+         * @description The caller's creator profile, or 404 if they have not opened the studio yet.
+         */
         get: operations["studioGetCreatorProfile"];
         put?: never;
-        /** Register or update creator profile for current user. */
+        /**
+         * Register or update creator profile for current user.
+         * @description Opens the studio for the caller, or updates the profile they already have.
+         */
         post: operations["studioUpsertCreatorProfile"];
         delete?: never;
         options?: never;
@@ -2656,10 +2662,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get default payout account for current user. */
+        /**
+         * Get default payout account for current user.
+         * @description The bank account this creator is paid into. Returned to its owner, and to an admin holding billing.manage for one payout at a time (BR-STUDIO-09).
+         */
         get: operations["studioGetPayoutAccount"];
         put?: never;
-        /** Add or update default payout account for current user. */
+        /**
+         * Add or update default payout account for current user.
+         * @description Records where to send this creator's share. A paid course cannot be listed without one: selling a course nobody can be paid for is a support ticket, not a sale.
+         */
         post: operations["studioUpsertPayoutAccount"];
         delete?: never;
         options?: never;
@@ -2674,10 +2686,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List creator drafts. */
+        /**
+         * List creator drafts.
+         * @description The caller's own course drafts, newest first, with the status of each.
+         */
         get: operations["studioListCourses"];
         put?: never;
-        /** Create a course draft. */
+        /**
+         * Create a course draft.
+         * @description Starts a course draft owned by the caller. The draft holds the whole unit, lesson and activity tree; nothing is published until it has passed both gates.
+         */
         post: operations["studioCreateCourseDraft"];
         delete?: never;
         options?: never;
@@ -2692,9 +2710,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get course draft by ID. */
+        /**
+         * Get course draft by ID.
+         * @description One of the caller's drafts, with its structure and its last verification report. Another creator's id is a 404 rather than a 403, because they should not learn it exists.
+         */
         get: operations["studioGetCourseDraft"];
-        /** Update course draft. */
+        /**
+         * Update course draft.
+         * @description Replaces the fields the request sets. Only a draft, or one that came back with changes requested, may be edited: a submission in review is what a moderator is reading.
+         */
         put: operations["studioUpdateCourseDraft"];
         post?: never;
         delete?: never;
@@ -2712,7 +2736,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Submit course draft for review. */
+        /**
+         * Submit course draft for review.
+         * @description Submits a draft for review. Returns immediately, because Gate 1 checks every activity answer key and a creator submitting forty of them should not watch a request time out.
+         */
         post: operations["studioSubmitCourseDraft"];
         delete?: never;
         options?: never;
@@ -2729,7 +2756,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Claim a free community course. */
+        /**
+         * Claim a free community course.
+         * @description Takes a free community course, creating the access record without an order.
+         */
         post: operations["studioClaimCourse"];
         delete?: never;
         options?: never;
@@ -2746,7 +2776,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Initiate purchase of a paid course via VietQR. */
+        /**
+         * Initiate purchase of a paid course via VietQR.
+         * @description Creates a bank transfer order for a paid course and returns what the learner needs to pay it: the amount, the reference to put in the transfer, and a VietQR image carrying both. The price comes from the listing, never from the request.
+         */
         post: operations["studioPurchaseCourse"];
         delete?: never;
         options?: never;
@@ -2761,7 +2794,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List owned community courses for the calling learner. */
+        /**
+         * List owned community courses for the calling learner.
+         * @description The courses the caller owns, newest first.
+         */
         get: operations["studioListPurchases"];
         put?: never;
         post?: never;
@@ -2780,7 +2816,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Request self-service refund for a purchased course within window. */
+        /**
+         * Request self-service refund for a purchased course within window.
+         * @description Refunds a purchase within seven days and under a fifth of the course completed. Records what is owed against the order and reverses the creator credit; the transfer itself is made by an admin, because SePay receives money and does not send it.
+         */
         post: operations["studioRefundPurchase"];
         delete?: never;
         options?: never;
@@ -2795,7 +2834,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get creator earnings, balance, and recent ledger entries. */
+        /**
+         * Get creator earnings, balance, and recent ledger entries.
+         * @description What the caller has earned, what has been paid out, and what is still owed.
+         */
         get: operations["studioGetEarnings"];
         put?: never;
         post?: never;
@@ -2814,8 +2856,51 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Request a payout of creator earnings. */
+        /**
+         * Request a payout of creator earnings.
+         * @description Asks to be paid the balance. Pending until an admin makes the bank transfer and records its reference.
+         */
         post: operations["studioRequestPayout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/billing/refunds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Refunds owed to learners.
+         * @description The queue of money to send back. SePay receives money and does not send it, so every refund is a bank transfer somebody makes by hand; this is the list of the ones still to make.
+         */
+        get: operations["paymentListRefunds"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/billing/refunds/{id}/sent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record that a refund has been transferred.
+         * @description Marks a requested refund as sent, after the admin has made the bank transfer. A refund already marked sent is a 409 rather than a second transfer.
+         */
+        post: operations["paymentMarkRefundSent"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2829,7 +2914,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List creator payout requests. */
+        /**
+         * List creator payout requests.
+         * @description Payouts owed to creators, newest first. Bank details are not in this response; they are on the single payout (BR-STUDIO-09).
+         */
         get: operations["paymentListPayouts"];
         put?: never;
         post?: never;
@@ -2846,7 +2934,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get payout details including creator bank details. */
+        /**
+         * Get payout details including creator bank details.
+         * @description One payout with the creator's bank account, so an admin can make the transfer. The only route that returns those details.
+         */
         get: operations["paymentGetPayout"];
         put?: never;
         post?: never;
@@ -2865,7 +2956,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Record manual bank transfer fulfillment for a payout. */
+        /**
+         * Record manual bank transfer fulfillment for a payout.
+         * @description Records that the bank transfer for a payout has been made, with its reference.
+         */
         post: operations["paymentFulfillPayout"];
         delete?: never;
         options?: never;
@@ -2880,7 +2974,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List course submissions in review queue. */
+        /**
+         * List course submissions in review queue.
+         * @description Submissions waiting for a human decision. Every one has already passed Gate 1, so the queue holds only what the machine could not judge.
+         */
         get: operations["moderationListCoursesQueue"];
         put?: never;
         post?: never;
@@ -2899,7 +2996,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Approve submission and publish course. */
+        /**
+         * Approve submission and publish course.
+         * @description Approves a submission and publishes the course. The reviewer may not be its creator (BR-STUDIO-06), and the submission must have passed Gate 1 (BR-STUDIO-07).
+         */
         post: operations["moderationApproveCourse"];
         delete?: never;
         options?: never;
@@ -2916,7 +3016,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Reject or request changes on course submission. */
+        /**
+         * Reject or request changes on course submission.
+         * @description Rejects a submission or asks for changes. Notes are required: "changes requested" naming no change is how a review queue stops being useful.
+         */
         post: operations["moderationRejectCourse"];
         delete?: never;
         options?: never;
@@ -2933,7 +3036,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Ingest SePay incoming bank transfer webhook. */
+        /**
+         * Ingest SePay incoming bank transfer webhook.
+         * @description SePay calls this when a transaction posts to our bank account. The body is stored raw and matching runs as a job. SePay counts a delivery as successful only on a 200 or 201 carrying {"success": true} within 30 seconds, and otherwise retries seven times over five hours; duplicates are dropped on its own transaction id.
+         */
         post: operations["paymentHandleSepayWebhook"];
         delete?: never;
         options?: never;
@@ -2948,7 +3054,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get status and details of an order. */
+        /**
+         * Get status and details of an order.
+         * @description One of the caller's own orders. The purchase page polls this while the learner makes the transfer, because the webhook is what moves it to paid.
+         */
         get: operations["paymentGetOrder"];
         put?: never;
         post?: never;
@@ -2965,7 +3074,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List unmatched incoming transactions for operator resolution. */
+        /**
+         * List unmatched incoming transactions for operator resolution.
+         * @description Bank transactions that matched no order, or matched one with the wrong amount. A human decides what to do with each: an amount that does not match exactly is never partially credited (BR-PAYMENT-12).
+         */
         get: operations["paymentListUnmatchedTransactions"];
         put?: never;
         post?: never;
@@ -6322,6 +6434,29 @@ export interface components {
         };
         UnmatchedTransactionsList: {
             items: components["schemas"]["UnmatchedTransaction"][];
+            total: number;
+        };
+        /** @description Money owed back to a learner. A record of an obligation rather than a transfer: SePay receives money and does not send it, so the refund is paid by an admin making a bank transfer and then marking this row sent. */
+        Refund: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            order_id: string;
+            /**
+             * Format: int64
+             * @description Whole VND. The currency has no subunit.
+             */
+            amount_vnd: number;
+            reason: string;
+            /** @enum {string} */
+            status: "requested" | "sent" | "failed";
+            /** Format: date-time */
+            sent_at?: string | null;
+            /** Format: date-time */
+            created_at: string;
+        };
+        RefundList: {
+            items: components["schemas"]["Refund"][];
             total: number;
         };
     };
@@ -12716,6 +12851,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "bio": "Experienced IELTS instructor and curriculum designer.",
+                     *       "headline": "Senior English Language Coach",
+                     *       "payout_eligible": true,
+                     *       "created_at": "2026-09-20T09:00:00Z",
+                     *       "updated_at": "2026-09-20T09:00:00Z"
+                     *     }
+                     */
                     "application/json": components["schemas"]["CreatorProfile"];
                 };
             };
@@ -12743,6 +12888,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "bio": "Experienced IELTS instructor and curriculum designer.",
+                     *       "headline": "Senior English Language Coach",
+                     *       "payout_eligible": true,
+                     *       "created_at": "2026-09-20T09:00:00Z",
+                     *       "updated_at": "2026-09-20T09:00:00Z"
+                     *     }
+                     */
                     "application/json": components["schemas"]["CreatorProfile"];
                 };
             };
@@ -12766,6 +12921,18 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "creator_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "bank_code": "MB",
+                     *       "account_number": "0987654321",
+                     *       "account_holder_name": "NGUYEN VAN A",
+                     *       "is_default": true,
+                     *       "created_at": "2026-09-20T09:00:00Z",
+                     *       "updated_at": "2026-09-20T09:00:00Z"
+                     *     }
+                     */
                     "application/json": components["schemas"]["PayoutAccount"];
                 };
             };
@@ -12793,6 +12960,18 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "creator_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "bank_code": "MB",
+                     *       "account_number": "0987654321",
+                     *       "account_holder_name": "NGUYEN VAN A",
+                     *       "is_default": true,
+                     *       "created_at": "2026-09-20T09:00:00Z",
+                     *       "updated_at": "2026-09-20T09:00:00Z"
+                     *     }
+                     */
                     "application/json": components["schemas"]["PayoutAccount"];
                 };
             };
@@ -12819,6 +12998,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "items": [],
+                     *       "total": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["CourseDraftList"];
                 };
             };
@@ -12845,6 +13030,21 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "owner_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "title": "Business English for Tech Professionals",
+                     *       "slug": "business-english-tech",
+                     *       "description": "Master technical communication and presentation in English.",
+                     *       "cefr_level": "B2",
+                     *       "price_vnd": 0,
+                     *       "status": "draft",
+                     *       "structure": {},
+                     *       "created_at": "2026-09-20T09:00:00Z",
+                     *       "updated_at": "2026-09-20T09:00:00Z"
+                     *     }
+                     */
                     "application/json": components["schemas"]["CourseDraft"];
                 };
             };
@@ -12871,6 +13071,21 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "owner_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "title": "Business English for Tech Professionals",
+                     *       "slug": "business-english-tech",
+                     *       "description": "Master technical communication and presentation in English.",
+                     *       "cefr_level": "B2",
+                     *       "price_vnd": 0,
+                     *       "status": "draft",
+                     *       "structure": {},
+                     *       "created_at": "2026-09-20T09:00:00Z",
+                     *       "updated_at": "2026-09-20T09:00:00Z"
+                     *     }
+                     */
                     "application/json": components["schemas"]["CourseDraft"];
                 };
             };
@@ -12900,6 +13115,21 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "owner_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "title": "Business English for Tech Professionals",
+                     *       "slug": "business-english-tech",
+                     *       "description": "Master technical communication and presentation in English.",
+                     *       "cefr_level": "B2",
+                     *       "price_vnd": 0,
+                     *       "status": "draft",
+                     *       "structure": {},
+                     *       "created_at": "2026-09-20T09:00:00Z",
+                     *       "updated_at": "2026-09-20T09:00:00Z"
+                     *     }
+                     */
                     "application/json": components["schemas"]["CourseDraft"];
                 };
             };
@@ -12927,6 +13157,18 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "draft_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "version": 1,
+                     *       "status": "submitted",
+                     *       "submitted_by": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "submitted_at": "2026-09-20T09:00:00Z",
+                     *       "created_at": "2026-09-20T09:00:00Z",
+                     *       "updated_at": "2026-09-20T09:00:00Z"
+                     *     }
+                     */
                     "application/json": components["schemas"]["CourseSubmission"];
                 };
             };
@@ -12955,6 +13197,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "course_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "price_paid_vnd": 49000,
+                     *       "granted_at": "2026-09-20T09:00:00Z"
+                     *     }
+                     */
                     "application/json": components["schemas"]["CoursePurchase"];
                 };
             };
@@ -12983,6 +13234,18 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "order_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "reference": "FLU4KL9A1B2C3",
+                     *       "amount_vnd": 49000,
+                     *       "qr_url": "https://vietqr.app/img?acc=1017588888&bank=VCB&amount=49000&des=FLU4KL9A1B2C3&template=compact",
+                     *       "bank_code": "VCB",
+                     *       "account_number": "1017588888",
+                     *       "account_holder_name": "FLUENTRA",
+                     *       "expires_at": "2026-09-20T09:00:00Z"
+                     *     }
+                     */
                     "application/json": components["schemas"]["PurchaseOrderResponse"];
                 };
             };
@@ -13011,6 +13274,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "items": [],
+                     *       "total": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["UserPurchaseList"];
                 };
             };
@@ -13036,6 +13305,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "message": "Refund requested successfully"
+                     *     }
+                     */
                     "application/json": components["schemas"]["RefundPurchaseResponse"];
                 };
             };
@@ -13062,6 +13337,18 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "available_balance_vnd": 3500000,
+                     *       "lifetime_earnings_vnd": 5000000,
+                     *       "pending_payout_vnd": 0,
+                     *       "total_paid_out_vnd": 1500000,
+                     *       "payout_threshold_vnd": 500000,
+                     *       "can_request_payout": true,
+                     *       "payout_account_configured": true,
+                     *       "recent_ledger": []
+                     *     }
+                     */
                     "application/json": components["schemas"]["CreatorEarningsSummary"];
                 };
             };
@@ -13088,6 +13375,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "creator_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "amount_vnd": 1000000,
+                     *       "status": "pending",
+                     *       "created_at": "2026-09-20T09:00:00Z"
+                     *     }
+                     */
                     "application/json": components["schemas"]["PayoutResponse"];
                 };
             };
@@ -13095,6 +13391,91 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationFailed"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    paymentListRefunds: {
+        parameters: {
+            query?: {
+                /** @description Filter by refund status. */
+                status?: "requested" | "sent" | "failed";
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Refunds owed, newest first. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *           "order_id": "0199a1c2-3d4e-7f80-9abc-def012345650",
+                     *           "amount_vnd": 199000,
+                     *           "reason": "learner_refund",
+                     *           "status": "requested",
+                     *           "sent_at": null,
+                     *           "created_at": "2026-09-20T09:00:00Z"
+                     *         }
+                     *       ],
+                     *       "total": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["RefundList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    paymentMarkRefundSent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Refund ID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The refund, now sent. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["X-Request-Id"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "order_id": "0199a1c2-3d4e-7f80-9abc-def012345650",
+                     *       "amount_vnd": 199000,
+                     *       "reason": "learner_refund",
+                     *       "status": "sent",
+                     *       "sent_at": "2026-09-20T10:00:00Z",
+                     *       "created_at": "2026-09-20T09:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Refund"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
             500: components["responses"]["InternalServerError"];
         };
     };
@@ -13117,6 +13498,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "items": [],
+                     *       "total": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["AdminPayoutList"];
                 };
             };
@@ -13142,6 +13529,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "creator_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "amount_vnd": 1000000,
+                     *       "status": "pending",
+                     *       "created_at": "2026-09-20T09:00:00Z"
+                     *     }
+                     */
                     "application/json": components["schemas"]["PayoutResponse"];
                 };
             };
@@ -13172,6 +13568,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "creator_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "amount_vnd": 1000000,
+                     *       "status": "pending",
+                     *       "created_at": "2026-09-20T09:00:00Z"
+                     *     }
+                     */
                     "application/json": components["schemas"]["PayoutResponse"];
                 };
             };
@@ -13201,6 +13606,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "items": [],
+                     *       "total": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["ModerationQueueList"];
                 };
             };
@@ -13227,6 +13638,18 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "draft_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "version": 1,
+                     *       "status": "submitted",
+                     *       "submitted_by": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "submitted_at": "2026-09-20T09:00:00Z",
+                     *       "created_at": "2026-09-20T09:00:00Z",
+                     *       "updated_at": "2026-09-20T09:00:00Z"
+                     *     }
+                     */
                     "application/json": components["schemas"]["CourseSubmission"];
                 };
             };
@@ -13259,6 +13682,18 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "draft_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "version": 1,
+                     *       "status": "submitted",
+                     *       "submitted_by": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "submitted_at": "2026-09-20T09:00:00Z",
+                     *       "created_at": "2026-09-20T09:00:00Z",
+                     *       "updated_at": "2026-09-20T09:00:00Z"
+                     *     }
+                     */
                     "application/json": components["schemas"]["CourseSubmission"];
                 };
             };
@@ -13288,6 +13723,11 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "success": true
+                     *     }
+                     */
                     "application/json": components["schemas"]["SepayWebhookResponse"];
                 };
             };
@@ -13314,6 +13754,20 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "user_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "reference": "FLU789ABCDE",
+                     *       "amount_vnd": 490000,
+                     *       "status": "pending",
+                     *       "subject_kind": "course",
+                     *       "subject_id": "0199a1c2-3d4e-7f80-9abc-def012345678",
+                     *       "expires_at": "2026-09-20T09:00:00Z",
+                     *       "created_at": "2026-09-20T09:00:00Z",
+                     *       "updated_at": "2026-09-20T09:00:00Z"
+                     *     }
+                     */
                     "application/json": components["schemas"]["BillingOrder"];
                 };
             };
@@ -13340,6 +13794,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "items": [],
+                     *       "total": 1
+                     *     }
+                     */
                     "application/json": components["schemas"]["UnmatchedTransactionsList"];
                 };
             };

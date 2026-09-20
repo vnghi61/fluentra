@@ -308,7 +308,12 @@
     "endpoints": [
       { "method": "POST", "path": "/api/v1/webhooks/payment/sepay", "permission": "public", "purpose": "Ingest SePay incoming bank transfer webhook", "success": "200" },
       { "method": "GET", "path": "/api/v1/me/orders/{id}", "permission": "self", "purpose": "Poll order status", "success": "200" },
-      { "method": "GET", "path": "/api/v1/admin/payments/unmatched", "permission": "admin.dashboard", "purpose": "List unmatched incoming transactions for operator resolution", "success": "200" }
+      { "method": "GET", "path": "/api/v1/admin/payments/unmatched", "permission": "billing.read", "purpose": "List unmatched incoming transactions for operator resolution", "success": "200" },
+      { "method": "GET", "path": "/api/v1/admin/billing/refunds", "permission": "billing.read", "purpose": "Refunds owed to learners, which an admin pays by bank transfer", "success": "200" },
+      { "method": "POST", "path": "/api/v1/admin/billing/refunds/{id}/sent", "permission": "billing.manage", "purpose": "Record that a refund has been transferred", "success": "200" },
+      { "method": "GET", "path": "/api/v1/admin/billing/payouts", "permission": "billing.read", "purpose": "Payouts owed to creators; bank details are not in this response", "success": "200" },
+      { "method": "GET", "path": "/api/v1/admin/billing/payouts/{id}", "permission": "billing.manage", "purpose": "One payout with the creator bank account, so an admin can transfer it", "success": "200" },
+      { "method": "POST", "path": "/api/v1/admin/billing/payouts/{id}/fulfill", "permission": "billing.manage", "purpose": "Record that a creator payout has been transferred", "success": "200" }
     ],
     "contract": [
       { "kind": "interface", "name": "payment.OrderCreator", "purpose": "CreateOrder(ctx, in CreateOrderInput) (*Order, error)" },
@@ -466,7 +471,9 @@
       { "method": "POST", "path": "/api/v1/courses/{id}/claim", "permission": "self", "purpose": "Claim access to a free community course", "success": "200" },
       { "method": "POST", "path": "/api/v1/courses/{id}/purchase", "permission": "self", "purpose": "Initiate purchase of a paid course via VietQR", "success": "200" },
       { "method": "GET", "path": "/api/v1/me/purchases", "permission": "self", "purpose": "List courses purchased or claimed by learner", "success": "200" },
-      { "method": "POST", "path": "/api/v1/me/purchases/{id}/refund", "permission": "self", "purpose": "Self-service refund for course purchase", "success": "200" }
+      { "method": "POST", "path": "/api/v1/me/purchases/{id}/refund", "permission": "self", "purpose": "Self-service refund for course purchase", "success": "200" },
+      { "method": "GET", "path": "/api/v1/me/studio/earnings", "permission": "self", "purpose": "What this creator has earned, been paid, and is still owed", "success": "200" },
+      { "method": "POST", "path": "/api/v1/me/studio/payouts", "permission": "self", "purpose": "Request a payout of the creator balance", "success": "201" }
     ],
     "contract": [
       { "kind": "interface", "name": "studio.AccessReader", "purpose": "MayOpen(ctx, userID, courseID) evaluates paywall access across 3 call sites" },
