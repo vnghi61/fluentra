@@ -134,4 +134,12 @@ var (
 		"PAYOUT_BELOW_MINIMUM",
 		"Requested payout amount is below the minimum threshold (500,000 VND)",
 	)
+
+	// ErrLedgerEntryNotFound means a purchase has no sale credit to reverse.
+	// A refund refuses rather than guessing the split from today's listing.
+	ErrLedgerEntryNotFound = apperr.New(
+		apperr.Conflict,
+		"LEDGER_ENTRY_NOT_FOUND",
+		"No sale was recorded for this purchase, so it cannot be refunded automatically",
+	)
 )

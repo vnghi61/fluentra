@@ -37,6 +37,18 @@ func (q *Queries) CountPayoutsByStatus(ctx context.Context, status string) (int6
 	return count, err
 }
 
+const countRefundsByStatus = `-- name: CountRefundsByStatus :one
+SELECT count(*) FROM billing.refunds
+WHERE ($1::text IS NULL OR status::text = $1)
+`
+
+func (q *Queries) CountRefundsByStatus(ctx context.Context, status *string) (int64, error) {
+	row := q.db.QueryRow(ctx, countRefundsByStatus, status)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countUnmatchedTransactions = `-- name: CountUnmatchedTransactions :one
 SELECT COUNT(*)
 FROM billing.sepay_transactions
@@ -117,6 +129,42 @@ func (q *Queries) CreatePayout(ctx context.Context, arg CreatePayoutParams) (Bil
 		&i.Status,
 		&i.BankReference,
 		&i.ActorID,
+		&i.SentAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const createRefund = `-- name: CreateRefund :one
+INSERT INTO billing.refunds (
+    order_id, amount_vnd, reason, actor_id, status, updated_at
+) VALUES ($1, $2, $3, $4, 'requested', now())
+RETURNING id, order_id, amount_vnd, reason, actor_id, status, sent_at, created_at, updated_at
+`
+
+type CreateRefundParams struct {
+	OrderID   uuid.UUID
+	AmountVnd int64
+	Reason    string
+	ActorID   uuid.UUID
+}
+
+func (q *Queries) CreateRefund(ctx context.Context, arg CreateRefundParams) (BillingRefund, error) {
+	row := q.db.QueryRow(ctx, createRefund,
+		arg.OrderID,
+		arg.AmountVnd,
+		arg.Reason,
+		arg.ActorID,
+	)
+	var i BillingRefund
+	err := row.Scan(
+		&i.ID,
+		&i.OrderID,
+		&i.AmountVnd,
+		&i.Reason,
+		&i.ActorID,
+		&i.Status,
 		&i.SentAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -220,6 +268,29 @@ func (q *Queries) GetPendingPayoutTotalByCreatorID(ctx context.Context, creatorI
 	var column_1 int64
 	err := row.Scan(&column_1)
 	return column_1, err
+}
+
+const getRefundByID = `-- name: GetRefundByID :one
+SELECT id, order_id, amount_vnd, reason, actor_id, status, sent_at, created_at, updated_at
+FROM billing.refunds
+WHERE id = $1
+`
+
+func (q *Queries) GetRefundByID(ctx context.Context, id uuid.UUID) (BillingRefund, error) {
+	row := q.db.QueryRow(ctx, getRefundByID, id)
+	var i BillingRefund
+	err := row.Scan(
+		&i.ID,
+		&i.OrderID,
+		&i.AmountVnd,
+		&i.Reason,
+		&i.ActorID,
+		&i.Status,
+		&i.SentAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const getSepayTransactionBySepayID = `-- name: GetSepayTransactionBySepayID :one
@@ -577,6 +648,50 @@ func (q *Queries) ListPayoutsByStatus(ctx context.Context, arg ListPayoutsByStat
 	return items, nil
 }
 
+const listRefundsByStatus = `-- name: ListRefundsByStatus :many
+SELECT id, order_id, amount_vnd, reason, actor_id, status, sent_at, created_at, updated_at
+FROM billing.refunds
+WHERE ($3::text IS NULL OR status::text = $3)
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2
+`
+
+type ListRefundsByStatusParams struct {
+	Limit  int32
+	Offset int32
+	Status *string
+}
+
+func (q *Queries) ListRefundsByStatus(ctx context.Context, arg ListRefundsByStatusParams) ([]BillingRefund, error) {
+	rows, err := q.db.Query(ctx, listRefundsByStatus, arg.Limit, arg.Offset, arg.Status)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []BillingRefund
+	for rows.Next() {
+		var i BillingRefund
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrderID,
+			&i.AmountVnd,
+			&i.Reason,
+			&i.ActorID,
+			&i.Status,
+			&i.SentAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUnmatchedTransactions = `-- name: ListUnmatchedTransactions :many
 SELECT id, sepay_id, gateway, transaction_date, account_number, sub_account, code, content, transfer_type, transfer_amount, reference_code, accumulated, order_id, matched_at, unmatched_reason, created_at
 FROM billing.sepay_transactions
@@ -662,6 +777,103 @@ func (q *Queries) ListUnprocessedWebhooks(ctx context.Context, limit int32) ([]B
 		return nil, err
 	}
 	return items, nil
+}
+
+const markOrderPaid = `-- name: MarkOrderPaid :one
+UPDATE billing.orders
+SET status = 'paid',
+    paid_at = $2,
+    updated_at = now()
+WHERE id = $1
+  AND status IN ('pending', 'expired')
+RETURNING id, user_id, reference, amount_vnd, status, subject_kind, subject_id, expires_at, paid_at, created_at, updated_at
+`
+
+type MarkOrderPaidParams struct {
+	ID     uuid.UUID
+	PaidAt *time.Time
+}
+
+// MarkOrderPaid is UpdateOrderStatus for the one transition money depends on.
+//
+// The WHERE clause carries the rule: only an order that is not already paid
+// becomes paid. Without it a second bank transfer against the same reference
+// re-marked a paid order, published payment.succeeded a second time, and was
+// filed as matched -- so the learner's second payment left no trace anybody
+// would look at. `expired` is accepted on purpose: the money is real, and an
+// order that timed out before the transfer landed is still owed the course.
+func (q *Queries) MarkOrderPaid(ctx context.Context, arg MarkOrderPaidParams) (BillingOrder, error) {
+	row := q.db.QueryRow(ctx, markOrderPaid, arg.ID, arg.PaidAt)
+	var i BillingOrder
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Reference,
+		&i.AmountVnd,
+		&i.Status,
+		&i.SubjectKind,
+		&i.SubjectID,
+		&i.ExpiresAt,
+		&i.PaidAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const markOrderRefunded = `-- name: MarkOrderRefunded :one
+UPDATE billing.orders
+SET status = 'refunded',
+    updated_at = now()
+WHERE id = $1
+  AND status = 'paid'
+RETURNING id, user_id, reference, amount_vnd, status, subject_kind, subject_id, expires_at, paid_at, created_at, updated_at
+`
+
+func (q *Queries) MarkOrderRefunded(ctx context.Context, id uuid.UUID) (BillingOrder, error) {
+	row := q.db.QueryRow(ctx, markOrderRefunded, id)
+	var i BillingOrder
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Reference,
+		&i.AmountVnd,
+		&i.Status,
+		&i.SubjectKind,
+		&i.SubjectID,
+		&i.ExpiresAt,
+		&i.PaidAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const markRefundSent = `-- name: MarkRefundSent :one
+UPDATE billing.refunds
+SET status = 'sent',
+    sent_at = now(),
+    updated_at = now()
+WHERE id = $1
+  AND status = 'requested'
+RETURNING id, order_id, amount_vnd, reason, actor_id, status, sent_at, created_at, updated_at
+`
+
+func (q *Queries) MarkRefundSent(ctx context.Context, id uuid.UUID) (BillingRefund, error) {
+	row := q.db.QueryRow(ctx, markRefundSent, id)
+	var i BillingRefund
+	err := row.Scan(
+		&i.ID,
+		&i.OrderID,
+		&i.AmountVnd,
+		&i.Reason,
+		&i.ActorID,
+		&i.Status,
+		&i.SentAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const updateOrderStatus = `-- name: UpdateOrderStatus :one

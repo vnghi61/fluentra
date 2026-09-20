@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,6 +20,13 @@ type Repository interface {
 	GetOrderByID(ctx context.Context, id uuid.UUID) (*domain.Order, error)
 	GetOrderByReference(ctx context.Context, ref string) (*domain.Order, error)
 	UpdateOrderStatus(ctx context.Context, id uuid.UUID, status domain.OrderStatus, paidAt *time.Time) (*domain.Order, error)
+	// MarkOrderPaid moves an order to paid only from pending or expired, and
+	// reports domain.ErrOrderNotPayable otherwise. See the query's comment.
+	MarkOrderPaid(ctx context.Context, id uuid.UUID, paidAt time.Time) (*domain.Order, error)
+	MarkOrderRefunded(ctx context.Context, id uuid.UUID) (*domain.Order, error)
+	CreateRefund(ctx context.Context, orderID uuid.UUID, amountVND int64, reason string, actorID uuid.UUID) (*domain.Refund, error)
+	ListRefunds(ctx context.Context, status *string, limit, offset int32) ([]domain.Refund, int64, error)
+	MarkRefundSent(ctx context.Context, id uuid.UUID) (*domain.Refund, error)
 	ListExpiredPendingOrders(ctx context.Context, limit int32) ([]*domain.Order, error)
 
 	InsertPaymentWebhook(ctx context.Context, provider, providerEventID string, payload []byte, valid bool, errStr *string) error
@@ -374,5 +382,96 @@ func mapSepayTransactionRow(r *sqlc.BillingSepayTransaction) *domain.SepayTransa
 		MatchedAt:       r.MatchedAt,
 		UnmatchedReason: r.UnmatchedReason,
 		CreatedAt:       r.CreatedAt,
+	}
+}
+
+// MarkOrderPaid moves an order to paid, and only from pending or expired.
+func (r *pgRepository) MarkOrderPaid(ctx context.Context, id uuid.UUID, paidAt time.Time) (*domain.Order, error) {
+	row, err := r.q.MarkOrderPaid(ctx, sqlc.MarkOrderPaidParams{ID: id, PaidAt: &paidAt})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			// No row updated means the WHERE clause refused the transition,
+			// not that the order is missing.
+			return nil, domain.ErrOrderNotPayable
+		}
+		return nil, fmt.Errorf("mark order paid: %w", err)
+	}
+	return mapOrderRow(&row, "", "", "", ""), nil
+}
+
+// MarkOrderRefunded moves a paid order to refunded.
+func (r *pgRepository) MarkOrderRefunded(ctx context.Context, id uuid.UUID) (*domain.Order, error) {
+	row, err := r.q.MarkOrderRefunded(ctx, id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrOrderNotPayable
+		}
+		return nil, fmt.Errorf("mark order refunded: %w", err)
+	}
+	return mapOrderRow(&row, "", "", "", ""), nil
+}
+
+// CreateRefund records that money is owed back on an order.
+func (r *pgRepository) CreateRefund(
+	ctx context.Context, orderID uuid.UUID, amountVND int64, reason string, actorID uuid.UUID,
+) (*domain.Refund, error) {
+	row, err := r.q.CreateRefund(ctx, sqlc.CreateRefundParams{
+		OrderID:   orderID,
+		AmountVnd: amountVND,
+		Reason:    reason,
+		ActorID:   actorID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create refund: %w", err)
+	}
+	return mapRefundRow(&row), nil
+}
+
+// ListRefunds lists refunds, newest first, optionally filtered by status.
+func (r *pgRepository) ListRefunds(
+	ctx context.Context, status *string, limit, offset int32,
+) ([]domain.Refund, int64, error) {
+	rows, err := r.q.ListRefundsByStatus(ctx, sqlc.ListRefundsByStatusParams{
+		Status: status,
+		Limit:  limit,
+		Offset: offset,
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("list refunds: %w", err)
+	}
+	total, err := r.q.CountRefundsByStatus(ctx, status)
+	if err != nil {
+		return nil, 0, fmt.Errorf("count refunds: %w", err)
+	}
+	out := make([]domain.Refund, 0, len(rows))
+	for i := range rows {
+		out = append(out, *mapRefundRow(&rows[i]))
+	}
+	return out, total, nil
+}
+
+// MarkRefundSent records that the bank transfer has been made.
+func (r *pgRepository) MarkRefundSent(ctx context.Context, id uuid.UUID) (*domain.Refund, error) {
+	row, err := r.q.MarkRefundSent(ctx, id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrRefundNotFound
+		}
+		return nil, fmt.Errorf("mark refund sent: %w", err)
+	}
+	return mapRefundRow(&row), nil
+}
+
+func mapRefundRow(r *sqlc.BillingRefund) *domain.Refund {
+	return &domain.Refund{
+		ID:        r.ID,
+		OrderID:   r.OrderID,
+		AmountVND: r.AmountVnd,
+		Reason:    r.Reason,
+		ActorID:   r.ActorID,
+		Status:    r.Status,
+		SentAt:    r.SentAt,
+		CreatedAt: r.CreatedAt,
+		UpdatedAt: r.UpdatedAt,
 	}
 }

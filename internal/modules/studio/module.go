@@ -31,6 +31,8 @@ type Dependencies struct {
 	ContentAuthor      contentcontract.Author
 	OrderCreator       paymentcontract.OrderCreator
 	ProgressReader     learningcontract.ProgressReader
+	LessonReader       lessoncontract.Reader
+	RefundRecorder     paymentcontract.RefundRecorder
 	PayoutManager      paymentcontract.PayoutManager
 	MinPriceVND        int64
 	MaxPriceVND        int64
@@ -55,6 +57,12 @@ func NewModule(deps Dependencies) (*Module, error) {
 	}
 	if deps.ProgressReader != nil {
 		svc.SetProgressReader(deps.ProgressReader)
+	}
+	if deps.LessonReader != nil {
+		svc.SetLessonReader(deps.LessonReader)
+	}
+	if deps.RefundRecorder != nil {
+		svc.SetRefundRecorder(deps.RefundRecorder)
 	}
 	if deps.PayoutManager != nil {
 		svc.SetPayoutManager(deps.PayoutManager)

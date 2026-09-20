@@ -79,6 +79,25 @@ func (m *mockService) ListUnmatchedTransactions(ctx context.Context, limit, offs
 	}, nil
 }
 
+func (m *mockService) RecordRefund(
+	_ context.Context, orderID uuid.UUID, amountVND int64, reason string, _ uuid.UUID,
+) (*domain.Refund, error) {
+	return &domain.Refund{
+		ID: uuid.New(), OrderID: orderID, AmountVND: amountVND,
+		Reason: reason, Status: domain.RefundStatusRequested,
+	}, nil
+}
+
+func (m *mockService) ListRefunds(
+	_ context.Context, _ *string, _, _ int,
+) ([]domain.Refund, int64, error) {
+	return nil, 0, nil
+}
+
+func (m *mockService) MarkRefundSent(_ context.Context, id uuid.UUID) (*domain.Refund, error) {
+	return &domain.Refund{ID: id, Status: domain.RefundStatusSent}, nil
+}
+
 func (m *mockService) CreatePayout(_ context.Context, in contract.CreatePayoutInput) (*domain.Payout, error) {
 	return &domain.Payout{
 		ID:        uuid.New(),

@@ -406,6 +406,8 @@ func newIdentity(deps identityDeps) *identity {
 		ContentAuthor:  assembled.content.Author(),
 		OrderCreator:   assembled.payment.OrderCreator(),
 		ProgressReader: assembled.learning.ProgressReader(),
+		LessonReader:   assembled.lesson.Reader(),
+		RefundRecorder: assembled.payment.RefundRecorder(),
 		PayoutManager:  assembled.payment.PayoutManager(),
 	})
 	if err != nil {

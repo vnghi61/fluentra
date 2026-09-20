@@ -2,7 +2,9 @@ package service_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -16,6 +18,7 @@ import (
 type mockRepository struct {
 	orders       map[uuid.UUID]*domain.Order
 	transactions map[int64]*domain.SepayTransaction
+	refunds      []*domain.Refund
 }
 
 func newMockRepository() *mockRepository {
@@ -23,6 +26,63 @@ func newMockRepository() *mockRepository {
 		orders:       make(map[uuid.UUID]*domain.Order),
 		transactions: make(map[int64]*domain.SepayTransaction),
 	}
+}
+
+// MarkOrderPaid mirrors the query's WHERE clause: only an order that is
+// pending or expired becomes paid.
+func (m *mockRepository) MarkOrderPaid(
+	_ context.Context, id uuid.UUID, paidAt time.Time,
+) (*domain.Order, error) {
+	o, ok := m.orders[id]
+	if !ok {
+		return nil, domain.ErrOrderNotFound
+	}
+	if o.Status != domain.OrderStatusPending && o.Status != domain.OrderStatusExpired {
+		return nil, domain.ErrOrderNotPayable
+	}
+	o.Status = domain.OrderStatusPaid
+	o.PaidAt = &paidAt
+	return o, nil
+}
+
+func (m *mockRepository) MarkOrderRefunded(_ context.Context, id uuid.UUID) (*domain.Order, error) {
+	o, ok := m.orders[id]
+	if !ok || o.Status != domain.OrderStatusPaid {
+		return nil, domain.ErrOrderNotPayable
+	}
+	o.Status = domain.OrderStatusRefunded
+	return o, nil
+}
+
+func (m *mockRepository) CreateRefund(
+	_ context.Context, orderID uuid.UUID, amountVND int64, reason string, actorID uuid.UUID,
+) (*domain.Refund, error) {
+	r := &domain.Refund{
+		ID: uuid.New(), OrderID: orderID, AmountVND: amountVND,
+		Reason: reason, ActorID: actorID, Status: domain.RefundStatusRequested,
+	}
+	m.refunds = append(m.refunds, r)
+	return r, nil
+}
+
+func (m *mockRepository) ListRefunds(
+	_ context.Context, _ *string, _, _ int32,
+) ([]domain.Refund, int64, error) {
+	out := make([]domain.Refund, 0, len(m.refunds))
+	for _, r := range m.refunds {
+		out = append(out, *r)
+	}
+	return out, int64(len(out)), nil
+}
+
+func (m *mockRepository) MarkRefundSent(_ context.Context, id uuid.UUID) (*domain.Refund, error) {
+	for _, r := range m.refunds {
+		if r.ID == id {
+			r.Status = domain.RefundStatusSent
+			return r, nil
+		}
+	}
+	return nil, domain.ErrRefundNotFound
 }
 
 func (m *mockRepository) CreateOrder(_ context.Context, order *domain.Order) (*domain.Order, error) {
@@ -456,5 +516,152 @@ func TestSweepExpiredOrders(t *testing.T) {
 	}
 	if repo.orders[order2.ID].Status != domain.OrderStatusPending {
 		t.Errorf("expected order2 to remain pending, got %s", repo.orders[order2.ID].Status)
+	}
+}
+
+// TestMatchTransaction_SecondPaymentIsNotSwallowed is the regression for a
+// learner who transfers twice because they thought the first attempt failed.
+//
+// Matching had no order-status guard: the second transaction re-marked a paid
+// order, republished payment.succeeded, and was filed as matched with no
+// reason — so their second payment left no trace anybody would ever look at.
+// It belongs in the unmatched queue, where a human can see it and refund it.
+func TestMatchTransaction_SecondPaymentIsNotSwallowed(t *testing.T) {
+	ctx := context.Background()
+	repo := newMockRepository()
+	svc := service.NewService(repo, service.Config{
+		WebhookAPIKey: "k", BankCode: "VCB", AccountNumber: "1", OrderTTL: time.Hour,
+	})
+
+	order, err := svc.CreateOrder(ctx, contract.CreateOrderInput{
+		UserID: uuid.New(), SubjectKind: "course", SubjectID: uuid.New(), AmountVND: 200000,
+	})
+	if err != nil {
+		t.Fatalf("create order: %v", err)
+	}
+
+	pay := func(sepayID int64) *domain.SepayTransaction {
+		tx := &domain.SepayTransaction{
+			ID: uuid.New(), SepayID: sepayID, TransferType: "in",
+			TransferAmount: 200000, Content: "CT " + order.Reference + " chuyen tien",
+		}
+		repo.transactions[sepayID] = tx
+		if err := svc.MatchTransaction(ctx, tx); err != nil {
+			t.Fatalf("match %d: %v", sepayID, err)
+		}
+		return tx
+	}
+
+	first := pay(1)
+	if first.OrderID == nil || first.MatchedAt == nil {
+		t.Fatalf("the first payment should have matched the order")
+	}
+
+	second := pay(2)
+	if second.OrderID != nil {
+		t.Errorf("the second payment was matched to the order again")
+	}
+	if second.UnmatchedReason == nil {
+		t.Fatalf("the second payment was filed with no reason, so nobody will see it")
+	}
+	if !strings.Contains(*second.UnmatchedReason, "duplicate_payment") {
+		t.Errorf("unmatched reason %q does not say this was a duplicate payment", *second.UnmatchedReason)
+	}
+}
+
+// TestMatchTransaction_ExpiredOrderStillHonoured. BR-PAYMENT-13: the money is
+// real, so an order that timed out before the transfer landed is still paid.
+func TestMatchTransaction_ExpiredOrderStillHonoured(t *testing.T) {
+	ctx := context.Background()
+	repo := newMockRepository()
+	svc := service.NewService(repo, service.Config{
+		WebhookAPIKey: "k", BankCode: "VCB", AccountNumber: "1", OrderTTL: time.Hour,
+	})
+
+	order, err := svc.CreateOrder(ctx, contract.CreateOrderInput{
+		UserID: uuid.New(), SubjectKind: "course", SubjectID: uuid.New(), AmountVND: 50000,
+	})
+	if err != nil {
+		t.Fatalf("create order: %v", err)
+	}
+	repo.orders[order.ID].Status = domain.OrderStatusExpired
+
+	tx := &domain.SepayTransaction{
+		ID: uuid.New(), SepayID: 9, TransferType: "in",
+		TransferAmount: 50000, Content: order.Reference,
+	}
+	repo.transactions[tx.SepayID] = tx
+	if err := svc.MatchTransaction(ctx, tx); err != nil {
+		t.Fatalf("match: %v", err)
+	}
+	if repo.orders[order.ID].Status != domain.OrderStatusPaid {
+		t.Errorf("an expired order that was actually paid should be honoured, got %s",
+			repo.orders[order.ID].Status)
+	}
+}
+
+// TestSePayListResponseDecodes is the regression for reconciliation, which
+// could not process a single transaction.
+//
+// SePay's userapi sends every number as a JSON string — `"id": "49682"`,
+// `"amount_in": "18067000.00"` — unlike its webhook, which sends numbers. The
+// struct declared int64 and float64, so decoding failed on the first field and
+// Reconcile returned an error on every run. Nothing about it was visible
+// except a line in a cron log, and it is the only thing that catches a webhook
+// that never arrived.
+func TestSePayListResponseDecodes(t *testing.T) {
+	// The shape docs.sepay.vn documents, verbatim.
+	const body = `{"status":200,"error":null,"messages":{"success":true},"transactions":[` +
+		`{"id":"49682","bank_brand_name":"Vietcombank","account_number":"0071000888888",` +
+		`"transaction_date":"2023-05-05 19:59:48","amount_out":"0.00","amount_in":"18067000.00",` +
+		`"accumulated":"1200541768.00","transaction_content":"DUONG THUY ANH chuyen tien",` +
+		`"reference_number":"677760.050523.080001","code":null,"sub_account":"VCB0011ABC004",` +
+		`"bank_account_id":"19"}]}`
+
+	var resp service.SePayAPIResponse
+	if err := json.Unmarshal([]byte(body), &resp); err != nil {
+		t.Fatalf("a documented SePay list response must decode: %v", err)
+	}
+	if len(resp.Transactions) != 1 {
+		t.Fatalf("decoded %d transactions, want 1", len(resp.Transactions))
+	}
+	got := resp.Transactions[0]
+	if got.ID != "49682" {
+		t.Errorf("id = %q, want 49682", got.ID)
+	}
+	if got.AmountIn != "18067000.00" {
+		t.Errorf("amount_in = %q", got.AmountIn)
+	}
+}
+
+// TestRecordRefund_WritesTheObligation. A refund records that money is owed
+// and moves the order; it does not move money, because SePay only receives.
+func TestRecordRefund_WritesTheObligation(t *testing.T) {
+	ctx := context.Background()
+	repo := newMockRepository()
+	svc := service.NewService(repo, service.Config{OrderTTL: time.Hour})
+
+	order, err := svc.CreateOrder(ctx, contract.CreateOrderInput{
+		UserID: uuid.New(), SubjectKind: "course", SubjectID: uuid.New(), AmountVND: 120000,
+	})
+	if err != nil {
+		t.Fatalf("create order: %v", err)
+	}
+	if _, err := repo.MarkOrderPaid(ctx, order.ID, time.Now()); err != nil {
+		t.Fatalf("mark paid: %v", err)
+	}
+
+	refund, err := svc.RecordRefund(ctx, order.ID, 120000, "learner_refund", uuid.New())
+	if err != nil {
+		t.Fatalf("record refund: %v", err)
+	}
+	if refund.Status != domain.RefundStatusRequested {
+		t.Errorf("refund status = %q, want requested", refund.Status)
+	}
+	if len(repo.refunds) != 1 {
+		t.Fatalf("expected the obligation to be written, got %d rows", len(repo.refunds))
+	}
+	if repo.orders[order.ID].Status != domain.OrderStatusRefunded {
+		t.Errorf("order status = %q, want refunded", repo.orders[order.ID].Status)
 	}
 }

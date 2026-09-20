@@ -216,6 +216,17 @@ INSERT INTO studio.creator_ledger (creator_id, kind, amount_vnd, gross_amount_vn
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING id, creator_id, kind, amount_vnd, gross_amount_vnd, fee_amount_vnd, purchase_id, payout_id, note, created_at;
 
+-- GetSaleLedgerEntryByPurchaseID reads the credit a purchase created, so a
+-- refund reverses the split that sale was recorded with rather than whatever
+-- the listing charges today (BR-STUDIO-03).
+-- name: GetSaleLedgerEntryByPurchaseID :one
+SELECT id, creator_id, kind, amount_vnd, gross_amount_vnd, fee_amount_vnd,
+       purchase_id, payout_id, note, created_at
+FROM studio.creator_ledger
+WHERE purchase_id = $1 AND kind = 'sale'
+ORDER BY created_at ASC
+LIMIT 1;
+
 -- name: ListLedgerEntriesByCreatorID :many
 SELECT id, creator_id, kind, amount_vnd, gross_amount_vnd, fee_amount_vnd, purchase_id, payout_id, note, created_at
 FROM studio.creator_ledger

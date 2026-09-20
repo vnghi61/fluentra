@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/subtle"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -42,6 +43,14 @@ type Service interface {
 	SweepExpiredOrders(ctx context.Context) (int, error)
 	Reconcile(ctx context.Context) error
 	ListUnmatchedTransactions(ctx context.Context, limit, offset int32) (*domain.UnmatchedTransactionsList, error)
+
+	// RecordRefund records that money is owed back on a paid order, and moves
+	// the order to refunded. It does not move money: SePay only receives.
+	RecordRefund(
+		ctx context.Context, orderID uuid.UUID, amountVND int64, reason string, actorID uuid.UUID,
+	) (*domain.Refund, error)
+	ListRefunds(ctx context.Context, status *string, limit, offset int) ([]domain.Refund, int64, error)
+	MarkRefundSent(ctx context.Context, id uuid.UUID) (*domain.Refund, error)
 
 	CreatePayout(ctx context.Context, in contract.CreatePayoutInput) (*domain.Payout, error)
 	GetPayout(ctx context.Context, id uuid.UUID) (*domain.Payout, error)
@@ -164,9 +173,17 @@ func (s *paymentService) HandleSepayWebhook(ctx context.Context, authHeader, cli
 		}
 	}
 
-	// 2. Store raw webhook in billing.payment_webhooks (ON CONFLICT DO NOTHING)
+	// 2. Store raw webhook in billing.payment_webhooks (ON CONFLICT DO NOTHING).
+	//
+	// BR-PAYMENT-05 keeps every webhook so it can be replayed after a bug fix
+	// without asking SePay to resend. A failure to store one is logged rather
+	// than failing the request: SePay retries a non-200 for five hours, and a
+	// transaction we can process is worth more than the copy of its envelope.
 	sepayIDStr := strconv.FormatInt(payload.ID, 10)
-	_ = s.repo.InsertPaymentWebhook(ctx, "sepay", sepayIDStr, rawBody, true, nil)
+	if err := s.repo.InsertPaymentWebhook(ctx, "sepay", sepayIDStr, rawBody, true, nil); err != nil {
+		slog.ErrorContext(ctx, "could not store raw sepay webhook; replay will not be possible for it",
+			"sepay_id", payload.ID, "error", err)
+	}
 
 	// 3. Parse transaction date
 	txDate, err := time.Parse("2006-01-02 15:04:05", payload.TransactionDate)
@@ -246,14 +263,33 @@ func (s *paymentService) MatchTransaction(ctx context.Context, tx *domain.SepayT
 		return err
 	}
 
-	// Rule 4: Match succeeded!
-	// An order lives 24 hours. A payment arriving against an expired order still matches —
-	// the money is real — and the job reopens/pays the order rather than leaving the learner paid and unenrolled.
+	// Rule 4: Match succeeded.
+	//
+	// An order lives 24 hours. A payment arriving against an expired order still
+	// matches — the money is real — and MarkOrderPaid accepts `expired` for that
+	// reason, rather than leaving the learner paid and unenrolled.
+	//
+	// It refuses an order that is already paid, cancelled or refunded, and that
+	// refusal is the point: a learner who transfers twice because they thought
+	// the first attempt failed produces a second transaction with the same
+	// reference and the same amount. Marking the order paid again republished
+	// payment.succeeded and filed the transaction as matched, so their second
+	// payment left no trace anyone would ever look at. It now lands in the
+	// unmatched queue, which is where a human can see it and refund it.
 	now := time.Now().UTC()
-	_, err := s.repo.UpdateOrderStatus(ctx, matchedOrder.ID, domain.OrderStatusPaid, &now)
+	paidOrder, err := s.repo.MarkOrderPaid(ctx, matchedOrder.ID, now)
 	if err != nil {
+		if errors.Is(err, domain.ErrOrderNotPayable) {
+			reason := fmt.Sprintf("duplicate_payment: order %s is already %s", matchedOrder.ID, matchedOrder.Status)
+			slog.WarnContext(ctx, "payment received against an order that was not payable",
+				"order_id", matchedOrder.ID, "order_status", matchedOrder.Status,
+				"sepay_id", tx.SepayID, "amount_vnd", tx.TransferAmount)
+			_, updErr := s.repo.UpdateSepayTransactionMatch(ctx, tx.ID, nil, nil, &reason)
+			return updErr
+		}
 		return fmt.Errorf("update order status paid: %w", err)
 	}
+	_ = paidOrder
 
 	_, err = s.repo.UpdateSepayTransactionMatch(ctx, tx.ID, &matchedOrder.ID, &now, nil)
 	if err != nil {
@@ -312,16 +348,51 @@ type SePayAPIResponse struct {
 }
 
 // SePayTransaction represents a transaction record in the SePay API list response.
+//
+// Every numeric field is a JSON *string* in this API — `"id": "49682"`,
+// `"amount_in": "18067000.00"` — unlike the webhook, which sends numbers. They
+// were declared as int64 and float64, so the response failed to decode on its
+// first field and Reconcile returned an error on every run without ever
+// processing a transaction. Since reconciliation is what catches a webhook that
+// never arrived (BR-PAYMENT-07), the safety net was not attached to anything.
+//
+// The amounts are read as strings and parsed as whole VND. The float they used
+// to be parsed into was the other half of the problem: VND has no subunit, and
+// money does not go through float64 in this module (BR-PAYMENT-10).
 type SePayTransaction struct {
-	ID                 int64   `json:"id"`
-	AmountIn           float64 `json:"amount_in"`
-	AmountOut          float64 `json:"amount_out"`
-	TransactionContent string  `json:"transaction_content"`
-	ReferenceNumber    string  `json:"reference_number"`
-	AccountNumber      string  `json:"account_number"`
-	SubAccount         string  `json:"sub_account"`
-	TransactionDate    string  `json:"transaction_date"`
-	BankBrandName      string  `json:"bank_brand_name"`
+	ID                 string `json:"id"`
+	AmountIn           string `json:"amount_in"`
+	AmountOut          string `json:"amount_out"`
+	TransactionContent string `json:"transaction_content"`
+	ReferenceNumber    string `json:"reference_number"`
+	AccountNumber      string `json:"account_number"`
+	SubAccount         string `json:"sub_account"`
+	TransactionDate    string `json:"transaction_date"`
+	BankBrandName      string `json:"bank_brand_name"`
+}
+
+// parseVND reads SePay's "18067000.00" as 18067000 whole dong.
+//
+// The fractional part is always zero because VND has no subunit; it is dropped
+// rather than rounded, and a value that is not a number at all is an error
+// rather than a silent zero, because a zero here is a transaction that looks
+// like it moved no money.
+func parseVND(raw string) (int64, error) {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return 0, nil
+	}
+	if dot := strings.IndexByte(trimmed, '.'); dot >= 0 {
+		trimmed = trimmed[:dot]
+	}
+	if trimmed == "" || trimmed == "-" {
+		return 0, nil
+	}
+	value, err := strconv.ParseInt(trimmed, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("parse amount %q: %w", raw, err)
+	}
+	return value, nil
 }
 
 func (s *paymentService) Reconcile(ctx context.Context) error {
@@ -369,15 +440,28 @@ func (s *paymentService) Reconcile(ctx context.Context) error {
 			txDate = time.Now().UTC()
 		}
 
+		sepayID, idErr := strconv.ParseInt(strings.TrimSpace(item.ID), 10, 64)
+		if idErr != nil {
+			slog.WarnContext(ctx, "skipping sepay transaction with unparseable id", "id", item.ID, "error", idErr)
+			continue
+		}
+		amountIn, inErr := parseVND(item.AmountIn)
+		amountOut, outErr := parseVND(item.AmountOut)
+		if inErr != nil || outErr != nil {
+			slog.WarnContext(ctx, "skipping sepay transaction with unparseable amount",
+				"sepay_id", sepayID, "amount_in", item.AmountIn, "amount_out", item.AmountOut)
+			continue
+		}
+
 		transferType := "in"
-		transferAmount := int64(item.AmountIn)
-		if item.AmountOut > 0 {
+		transferAmount := amountIn
+		if amountOut > 0 {
 			transferType = "out"
-			transferAmount = int64(item.AmountOut)
+			transferAmount = amountOut
 		}
 
 		tx := &domain.SepayTransaction{
-			SepayID:         item.ID,
+			SepayID:         sepayID,
 			Gateway:         item.BankBrandName,
 			TransactionDate: txDate,
 			AccountNumber:   item.AccountNumber,
@@ -412,6 +496,47 @@ func (s *paymentService) ListUnmatchedTransactions(ctx context.Context, limit, o
 		Items: items,
 		Total: total,
 	}, nil
+}
+
+// RecordRefund writes the obligation first and moves the order second.
+//
+// In that order on purpose: a refund row with an order still marked paid is a
+// visible inconsistency an admin can resolve, while an order marked refunded
+// with no row is money owed that nobody will ever be told about.
+func (s *paymentService) RecordRefund(
+	ctx context.Context, orderID uuid.UUID, amountVND int64, reason string, actorID uuid.UUID,
+) (*domain.Refund, error) {
+	if amountVND <= 0 {
+		return nil, domain.ErrInvalidAmount
+	}
+	refund, err := s.repo.CreateRefund(ctx, orderID, amountVND, reason, actorID)
+	if err != nil {
+		return nil, fmt.Errorf("record refund: %w", err)
+	}
+	if _, err := s.repo.MarkOrderRefunded(ctx, orderID); err != nil {
+		// The obligation is recorded, which is the part that matters. An order
+		// that did not move is reported so the caller can refuse to revoke.
+		return nil, fmt.Errorf("mark order refunded: %w", err)
+	}
+	slog.InfoContext(ctx, "refund recorded",
+		"order_id", orderID, "amount_vnd", amountVND, "refund_id", refund.ID)
+	return refund, nil
+}
+
+func (s *paymentService) ListRefunds(
+	ctx context.Context, status *string, limit, offset int,
+) ([]domain.Refund, int64, error) {
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	return s.repo.ListRefunds(ctx, status, int32(limit), int32(offset))
+}
+
+func (s *paymentService) MarkRefundSent(ctx context.Context, id uuid.UUID) (*domain.Refund, error) {
+	return s.repo.MarkRefundSent(ctx, id)
 }
 
 func (s *paymentService) CreatePayout(ctx context.Context, in contract.CreatePayoutInput) (*domain.Payout, error) {

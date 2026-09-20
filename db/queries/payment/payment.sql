@@ -29,6 +29,62 @@ SET status = $2,
 WHERE id = $1
 RETURNING id, user_id, reference, amount_vnd, status, subject_kind, subject_id, expires_at, paid_at, created_at, updated_at;
 
+-- MarkOrderPaid is UpdateOrderStatus for the one transition money depends on.
+--
+-- The WHERE clause carries the rule: only an order that is not already paid
+-- becomes paid. Without it a second bank transfer against the same reference
+-- re-marked a paid order, published payment.succeeded a second time, and was
+-- filed as matched -- so the learner's second payment left no trace anybody
+-- would look at. `expired` is accepted on purpose: the money is real, and an
+-- order that timed out before the transfer landed is still owed the course.
+-- name: MarkOrderPaid :one
+UPDATE billing.orders
+SET status = 'paid',
+    paid_at = $2,
+    updated_at = now()
+WHERE id = $1
+  AND status IN ('pending', 'expired')
+RETURNING id, user_id, reference, amount_vnd, status, subject_kind, subject_id, expires_at, paid_at, created_at, updated_at;
+
+-- name: MarkOrderRefunded :one
+UPDATE billing.orders
+SET status = 'refunded',
+    updated_at = now()
+WHERE id = $1
+  AND status = 'paid'
+RETURNING id, user_id, reference, amount_vnd, status, subject_kind, subject_id, expires_at, paid_at, created_at, updated_at;
+
+-- name: CreateRefund :one
+INSERT INTO billing.refunds (
+    order_id, amount_vnd, reason, actor_id, status, updated_at
+) VALUES ($1, $2, $3, $4, 'requested', now())
+RETURNING id, order_id, amount_vnd, reason, actor_id, status, sent_at, created_at, updated_at;
+
+-- name: GetRefundByID :one
+SELECT id, order_id, amount_vnd, reason, actor_id, status, sent_at, created_at, updated_at
+FROM billing.refunds
+WHERE id = $1;
+
+-- name: ListRefundsByStatus :many
+SELECT id, order_id, amount_vnd, reason, actor_id, status, sent_at, created_at, updated_at
+FROM billing.refunds
+WHERE (sqlc.narg('status')::text IS NULL OR status::text = sqlc.narg('status'))
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2;
+
+-- name: CountRefundsByStatus :one
+SELECT count(*) FROM billing.refunds
+WHERE (sqlc.narg('status')::text IS NULL OR status::text = sqlc.narg('status'));
+
+-- name: MarkRefundSent :one
+UPDATE billing.refunds
+SET status = 'sent',
+    sent_at = now(),
+    updated_at = now()
+WHERE id = $1
+  AND status = 'requested'
+RETURNING id, order_id, amount_vnd, reason, actor_id, status, sent_at, created_at, updated_at;
+
 -- name: ListExpiredPendingOrders :many
 SELECT id, user_id, reference, amount_vnd, status, subject_kind, subject_id, expires_at, paid_at, created_at, updated_at
 FROM billing.orders

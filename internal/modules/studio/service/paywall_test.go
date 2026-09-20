@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	learningcontract "github.com/fluentra/fluentra/internal/modules/learning/contract"
+	lessoncontract "github.com/fluentra/fluentra/internal/modules/lesson/contract"
 	paymentcontract "github.com/fluentra/fluentra/internal/modules/payment/contract"
 	"github.com/fluentra/fluentra/internal/modules/studio/domain"
 	"github.com/fluentra/fluentra/internal/modules/studio/service"
@@ -297,17 +298,35 @@ func TestPurchaseCourse_And_PaymentMatch(t *testing.T) {
 	}
 }
 
-func TestRefundPurchase_Rules(t *testing.T) {
+// refundFixture builds a course of `lessons` lessons with one paid purchase,
+// its sale ledger credit, and a recorded order.
+type refundFixture struct {
+	repo      *mockRepo
+	svc       *service.Service
+	refunds   *mockRefundRecorder
+	progress  *mockProgressReader
+	creatorID uuid.UUID
+	courseID  uuid.UUID
+	lessonIDs []uuid.UUID
+}
+
+func newRefundFixture(t *testing.T, lessons int) *refundFixture {
+	t.Helper()
 	ctx := context.Background()
 	repo := newMockRepo()
 	svc := service.NewService(repo, nil, nil, nil)
-	progReader := &mockProgressReader{}
-	svc.SetProgressReader(progReader)
+	progress := &mockProgressReader{}
+	refunds := &mockRefundRecorder{}
+	lessonIDs := make([]uuid.UUID, lessons)
+	for i := range lessonIDs {
+		lessonIDs[i] = uuid.New()
+	}
+	courseID := uuid.New()
+	svc.SetProgressReader(progress)
+	svc.SetLessonReader(&mockLessonReader{courseID: courseID, lessonIDs: lessonIDs})
+	svc.SetRefundRecorder(refunds)
 
 	creatorID := uuid.New()
-	learnerID := uuid.New()
-	courseID := uuid.New()
-
 	_, _ = repo.UpsertListing(ctx, &domain.Listing{
 		CourseID:        courseID,
 		CreatorID:       creatorID,
@@ -316,73 +335,271 @@ func TestRefundPurchase_Rules(t *testing.T) {
 		RevenueShareBPS: 7000,
 		Status:          domain.ListingStatusActive,
 	})
+	return &refundFixture{
+		repo: repo, svc: svc, refunds: refunds, progress: progress,
+		creatorID: creatorID, courseID: courseID, lessonIDs: lessonIDs,
+	}
+}
 
-	// 1. Refund within 7 days and 10% progress (< 20%) -> SUCCESS
-	p, _ := repo.CreatePurchase(ctx, &domain.Purchase{
+// buy records a purchase and the sale credit that HandlePaymentSucceeded
+// would have written for it.
+func (f *refundFixture) buy(t *testing.T, learnerID uuid.UUID) *domain.Purchase {
+	t.Helper()
+	ctx := context.Background()
+	orderID := uuid.New()
+	p, err := f.repo.CreatePurchase(ctx, &domain.Purchase{
 		UserID:       learnerID,
-		CourseID:     courseID,
+		CourseID:     f.courseID,
+		OrderID:      &orderID,
 		PricePaidVND: 200000,
 	})
-	score10 := 10
-	progReader.progress = []learningcontract.Progress{
-		{ScopeID: courseID, Score: &score10},
+	if err != nil {
+		t.Fatalf("create purchase: %v", err)
+	}
+	if _, err := f.repo.CreateLedgerEntry(ctx, &domain.CreatorLedgerEntry{
+		CreatorID:      f.creatorID,
+		Kind:           domain.LedgerKindSale,
+		AmountVND:      140000,
+		GrossAmountVND: 200000,
+		FeeAmountVND:   60000,
+		PurchaseID:     &p.ID,
+	}); err != nil {
+		t.Fatalf("create sale ledger entry: %v", err)
+	}
+	return p
+}
+
+// completeLessons marks the first n of the course's lessons done.
+func (f *refundFixture) completeLessons(userID uuid.UUID, n int) {
+	progress := make([]learningcontract.Progress, 0, n)
+	for i := 0; i < n && i < len(f.lessonIDs); i++ {
+		progress = append(progress, learningcontract.Progress{
+			ScopeID: f.lessonIDs[i],
+			Status:  "completed",
+		})
+	}
+	f.progress.progress = progress
+}
+
+// TestRefundPurchase_RecordsWhatIsOwed is the regression for a refund that
+// took the course away and returned nothing: it revoked access, wrote a
+// negative ledger row and never recorded that money was owed, so no refund
+// existed for anybody to pay.
+func TestRefundPurchase_RecordsWhatIsOwed(t *testing.T) {
+	ctx := context.Background()
+	f := newRefundFixture(t, 10)
+	learnerID := uuid.New()
+	p := f.buy(t, learnerID)
+	f.completeLessons(learnerID, 1) // 10%
+
+	if err := f.svc.RefundPurchase(ctx, learnerID, p.ID); err != nil {
+		t.Fatalf("refund within window and under 20%%: %v", err)
 	}
 
-	err := svc.RefundPurchase(ctx, learnerID, p.ID)
-	if err != nil {
+	if len(f.refunds.recorded) != 1 {
+		t.Fatalf("expected the refund to be recorded against the order, got %d records",
+			len(f.refunds.recorded))
+	}
+	if got := f.refunds.recorded[0].amount; got != 200000 {
+		t.Errorf("recorded %d VND owed, want the 200,000 the learner paid", got)
+	}
+	if f.refunds.recorded[0].orderID != *p.OrderID {
+		t.Errorf("refund recorded against the wrong order")
+	}
+
+	revoked, _ := f.repo.GetPurchaseByID(ctx, p.ID)
+	if revoked.RevokedAt == nil {
+		t.Fatalf("expected the purchase to be revoked")
+	}
+}
+
+// TestRefundPurchase_ReversesTheSplitTheSaleUsed. BR-STUDIO-03: the share is
+// recorded per sale, so changing the listing's rate afterwards must not make
+// the reversal disagree with the credit it reverses.
+func TestRefundPurchase_ReversesTheSplitTheSaleUsed(t *testing.T) {
+	ctx := context.Background()
+	f := newRefundFixture(t, 10)
+	learnerID := uuid.New()
+	p := f.buy(t, learnerID)
+
+	// The platform changes its cut after the sale.
+	_, _ = f.repo.UpsertListing(ctx, &domain.Listing{
+		CourseID:        f.courseID,
+		CreatorID:       f.creatorID,
+		PricingModel:    domain.PricingModelOneTime,
+		PriceVND:        200000,
+		RevenueShareBPS: 3000,
+		Status:          domain.ListingStatusActive,
+	})
+
+	if err := f.svc.RefundPurchase(ctx, learnerID, p.ID); err != nil {
+		t.Fatalf("refund: %v", err)
+	}
+
+	entries, _ := f.repo.ListLedgerEntriesByCreatorID(ctx, f.creatorID, 10, 0)
+	var reversal *domain.CreatorLedgerEntry
+	for _, e := range entries {
+		if e.Kind == domain.LedgerKindRefund {
+			reversal = e
+		}
+	}
+	if reversal == nil {
+		t.Fatal("expected a refund reversal in the creator ledger")
+	}
+	if reversal.AmountVND != -140000 {
+		t.Errorf("reversed %d, want -140,000 — the split the sale was recorded with",
+			reversal.AmountVND)
+	}
+}
+
+// TestRefundPurchase_MeasuresCompletionNotGrade is the regression for the rule
+// that read the course progress row's average grade. That row is only written
+// once the course is finished, so the rule became "refund unless you completed
+// the course scoring 20 or more" — answer everything wrong and a finished
+// course was refundable.
+func TestRefundPurchase_MeasuresCompletionNotGrade(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("a finished course is refused however badly it was scored", func(t *testing.T) {
+		f := newRefundFixture(t, 10)
+		learnerID := uuid.New()
+		p := f.buy(t, learnerID)
+		f.completeLessons(learnerID, 10) // 100% done, no grade anywhere
+
+		err := f.svc.RefundPurchase(ctx, learnerID, p.ID)
+		if !errors.Is(err, domain.ErrRefundProgressExceeded) {
+			t.Fatalf("expected ErrRefundProgressExceeded, got %v", err)
+		}
+		if len(f.refunds.recorded) != 0 {
+			t.Errorf("a refused refund recorded money owed")
+		}
+	})
+
+	t.Run("a fifth of the way through is the line", func(t *testing.T) {
+		f := newRefundFixture(t, 10)
+		learnerID := uuid.New()
+		p := f.buy(t, learnerID)
+		f.completeLessons(learnerID, 2) // exactly 20%
+
+		err := f.svc.RefundPurchase(ctx, learnerID, p.ID)
+		if !errors.Is(err, domain.ErrRefundProgressExceeded) {
+			t.Fatalf("20%% completed should be refused, got %v", err)
+		}
+	})
+}
+
+func TestRefundPurchase_Rules(t *testing.T) {
+	ctx := context.Background()
+	f := newRefundFixture(t, 10)
+	learnerID := uuid.New()
+
+	// 1. Refund within 7 days and 10% progress (< 20%) -> SUCCESS
+	p := f.buy(t, learnerID)
+	f.completeLessons(learnerID, 1)
+
+	if err := f.svc.RefundPurchase(ctx, learnerID, p.ID); err != nil {
 		t.Fatalf("refund within window and under 20%% should succeed, got: %v", err)
 	}
 
-	// Verify purchase revoked
-	revokedP, _ := repo.GetPurchaseByID(ctx, p.ID)
+	revokedP, _ := f.repo.GetPurchaseByID(ctx, p.ID)
 	if revokedP.RevokedAt == nil {
 		t.Fatalf("expected purchase to be revoked")
 	}
 
-	// Verify reversal in creator ledger (-140,000 VND creator share)
-	entries, _ := repo.ListLedgerEntriesByCreatorID(ctx, creatorID, 10, 0)
-	if len(entries) != 1 {
-		t.Fatalf("expected 1 reversal ledger entry, got %d", len(entries))
-	}
-	if entries[0].Kind != domain.LedgerKindRefund || entries[0].AmountVND != -140000 {
-		t.Errorf("expected refund reversal amount -140,000 VND, got %+v", entries[0])
-	}
-
 	// 2. Duplicate refund fails
-	errDup := svc.RefundPurchase(ctx, learnerID, p.ID)
+	errDup := f.svc.RefundPurchase(ctx, learnerID, p.ID)
 	if !errors.Is(errDup, domain.ErrAlreadyRefunded) {
 		t.Fatalf("expected ErrAlreadyRefunded, got: %v", errDup)
 	}
 
-	// 3. Refund with >= 20% progress fails
-	learner2 := uuid.New()
-	p2, _ := repo.CreatePurchase(ctx, &domain.Purchase{
-		UserID:       learner2,
-		CourseID:     courseID,
-		PricePaidVND: 200000,
-	})
-	score25 := 25
-	progReader.progress = []learningcontract.Progress{
-		{ScopeID: courseID, Score: &score25},
-	}
-
-	errProg := svc.RefundPurchase(ctx, learner2, p2.ID)
-	if !errors.Is(errProg, domain.ErrRefundProgressExceeded) {
-		t.Fatalf("expected ErrRefundProgressExceeded, got: %v", errProg)
-	}
-
-	// 4. Refund after 7-day window fails
+	// 3. Refund after the 7-day window fails
 	learner3 := uuid.New()
-	p3, _ := repo.CreatePurchase(ctx, &domain.Purchase{
-		UserID:       learner3,
-		CourseID:     courseID,
-		PricePaidVND: 200000,
-	})
-	p3.GrantedAt = time.Now().Add(-8 * 24 * time.Hour) // 8 days ago
-	progReader.progress = nil
+	p3 := f.buy(t, learner3)
+	p3.GrantedAt = time.Now().Add(-8 * 24 * time.Hour)
+	f.progress.progress = nil
 
-	errWindow := svc.RefundPurchase(ctx, learner3, p3.ID)
+	errWindow := f.svc.RefundPurchase(ctx, learner3, p3.ID)
 	if !errors.Is(errWindow, domain.ErrRefundWindowExpired) {
 		t.Fatalf("expected ErrRefundWindowExpired, got: %v", errWindow)
 	}
+}
+
+// mockRefundRecorder records the obligations a refund creates.
+type mockRefundRecorder struct {
+	recorded []recordedRefund
+	err      error
+}
+
+type recordedRefund struct {
+	orderID uuid.UUID
+	amount  int64
+	reason  string
+}
+
+func (m *mockRefundRecorder) RecordRefund(
+	_ context.Context, orderID uuid.UUID, amountVND int64, reason string, _ uuid.UUID,
+) (*paymentcontract.Refund, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	m.recorded = append(m.recorded, recordedRefund{orderID: orderID, amount: amountVND, reason: reason})
+	return &paymentcontract.Refund{
+		ID: uuid.New(), OrderID: orderID, AmountVND: amountVND, Reason: reason, Status: "requested",
+	}, nil
+}
+
+// mockLessonReader answers with one unit holding every lesson of the course,
+// which is all courseCompletion needs to size it.
+type mockLessonReader struct {
+	courseID  uuid.UUID
+	lessonIDs []uuid.UUID
+	unitID    uuid.UUID
+}
+
+func (m *mockLessonReader) ListUnitsByCourseID(
+	_ context.Context, courseID uuid.UUID,
+) ([]*lessoncontract.Unit, error) {
+	if courseID != m.courseID {
+		return nil, nil
+	}
+	if m.unitID == uuid.Nil {
+		m.unitID = uuid.New()
+	}
+	return []*lessoncontract.Unit{{ID: m.unitID, CourseID: courseID}}, nil
+}
+
+func (m *mockLessonReader) ListLessons(_ context.Context, _ uuid.UUID) ([]*lessoncontract.Lesson, error) {
+	out := make([]*lessoncontract.Lesson, 0, len(m.lessonIDs))
+	for _, id := range m.lessonIDs {
+		out = append(out, &lessoncontract.Lesson{ID: id})
+	}
+	return out, nil
+}
+
+func (m *mockLessonReader) GetLesson(context.Context, uuid.UUID) (*lessoncontract.Lesson, error) {
+	return nil, nil
+}
+
+func (m *mockLessonReader) ListPrerequisitesForLessons(
+	context.Context, []uuid.UUID,
+) ([]lessoncontract.PrerequisiteItem, error) {
+	return nil, nil
+}
+
+func (m *mockLessonReader) ListActivitiesByCourseIDs(
+	context.Context, []uuid.UUID,
+) (map[uuid.UUID][]uuid.UUID, error) {
+	return nil, nil
+}
+
+func (m *mockLessonReader) NextLesson(
+	context.Context, uuid.UUID, *uuid.UUID,
+) (*lessoncontract.Lesson, error) {
+	return nil, nil
+}
+
+func (m *mockLessonReader) ResolveActivity(
+	context.Context, uuid.UUID,
+) (*lessoncontract.ActivityHierarchy, error) {
+	return nil, nil
 }

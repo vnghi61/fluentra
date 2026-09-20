@@ -462,6 +462,36 @@ func (q *Queries) GetPurchaseByID(ctx context.Context, id uuid.UUID) (StudioPurc
 	return i, err
 }
 
+const getSaleLedgerEntryByPurchaseID = `-- name: GetSaleLedgerEntryByPurchaseID :one
+SELECT id, creator_id, kind, amount_vnd, gross_amount_vnd, fee_amount_vnd,
+       purchase_id, payout_id, note, created_at
+FROM studio.creator_ledger
+WHERE purchase_id = $1 AND kind = 'sale'
+ORDER BY created_at ASC
+LIMIT 1
+`
+
+// GetSaleLedgerEntryByPurchaseID reads the credit a purchase created, so a
+// refund reverses the split that sale was recorded with rather than whatever
+// the listing charges today (BR-STUDIO-03).
+func (q *Queries) GetSaleLedgerEntryByPurchaseID(ctx context.Context, purchaseID *uuid.UUID) (StudioCreatorLedger, error) {
+	row := q.db.QueryRow(ctx, getSaleLedgerEntryByPurchaseID, purchaseID)
+	var i StudioCreatorLedger
+	err := row.Scan(
+		&i.ID,
+		&i.CreatorID,
+		&i.Kind,
+		&i.AmountVnd,
+		&i.GrossAmountVnd,
+		&i.FeeAmountVnd,
+		&i.PurchaseID,
+		&i.PayoutID,
+		&i.Note,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getSubmissionByID = `-- name: GetSubmissionByID :one
 SELECT id, draft_id, version, status, submitted_by, reviewer_id, feedback, verification_report, submitted_at, reviewed_at, created_at, updated_at
 FROM studio.submissions

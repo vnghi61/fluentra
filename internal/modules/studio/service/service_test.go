@@ -251,6 +251,17 @@ func (m *mockRepo) CreateLedgerEntry(ctx context.Context, e *domain.CreatorLedge
 	return e, nil
 }
 
+func (m *mockRepo) GetSaleLedgerEntryByPurchaseID(
+	_ context.Context, purchaseID uuid.UUID,
+) (*domain.CreatorLedgerEntry, error) {
+	for _, e := range m.ledger {
+		if e.Kind == domain.LedgerKindSale && e.PurchaseID != nil && *e.PurchaseID == purchaseID {
+			return e, nil
+		}
+	}
+	return nil, domain.ErrLedgerEntryNotFound
+}
+
 func (m *mockRepo) ListLedgerEntriesByCreatorID(ctx context.Context, creatorID uuid.UUID, limit, offset int) ([]*domain.CreatorLedgerEntry, error) {
 	var list []*domain.CreatorLedgerEntry
 	for _, e := range m.ledger {
@@ -313,11 +324,18 @@ func (v *mockVerifier) VerifyItem(ctx context.Context, req learningcontract.Veri
 type mockLessonAuthor struct {
 	lessoncontract.Author
 	coursesCreated int
+	courseID       uuid.UUID
+	// visibilities records how the course was ensured on each call, in order.
+	visibilities []string
 }
 
 func (a *mockLessonAuthor) EnsureCourse(ctx context.Context, spec lessoncontract.CourseSpec) (uuid.UUID, error) {
 	a.coursesCreated++
-	return uuid.New(), nil
+	a.visibilities = append(a.visibilities, spec.Visibility)
+	if a.courseID == uuid.Nil {
+		a.courseID = uuid.New()
+	}
+	return a.courseID, nil
 }
 
 func (a *mockLessonAuthor) EnsureUnit(ctx context.Context, spec lessoncontract.UnitSpec) (uuid.UUID, error) {
@@ -497,8 +515,17 @@ func TestGate2Moderation_BR_STUDIO_06_SelfReviewForbidden(t *testing.T) {
 	if approvedSub.Status != domain.SubmissionStatusApproved {
 		t.Errorf("expected approved status, got %s", approvedSub.Status)
 	}
-	if lessonAuthor.coursesCreated != 1 {
-		t.Errorf("expected 1 course published into lesson, got %d", lessonAuthor.coursesCreated)
+	// The course is built unlisted and made public only once its listing
+	// exists, so a failure to price it cannot leave a paid course free.
+	want := []string{"unlisted", "public"}
+	if len(lessonAuthor.visibilities) != len(want) {
+		t.Fatalf("expected the course to be ensured %d times, got %d (%v)",
+			len(want), len(lessonAuthor.visibilities), lessonAuthor.visibilities)
+	}
+	for i, v := range want {
+		if lessonAuthor.visibilities[i] != v {
+			t.Errorf("ensure %d had visibility %q, want %q", i+1, lessonAuthor.visibilities[i], v)
+		}
 	}
 }
 

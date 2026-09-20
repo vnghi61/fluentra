@@ -123,6 +123,32 @@ func (m *Module) GetOrder(ctx context.Context, id uuid.UUID) (*contract.Order, e
 	return toContractOrder(o), nil
 }
 
+// RefundRecorder returns the RefundRecorder contract interface.
+func (m *Module) RefundRecorder() contract.RefundRecorder {
+	return m
+}
+
+// RecordRefund records that money is owed back on a paid order and moves the
+// order to refunded. It does not move money: SePay only receives, so the
+// transfer is made by an admin against this record.
+func (m *Module) RecordRefund(
+	ctx context.Context, orderID uuid.UUID, amountVND int64, reason string, actorID uuid.UUID,
+) (*contract.Refund, error) {
+	refund, err := m.service.RecordRefund(ctx, orderID, amountVND, reason, actorID)
+	if err != nil {
+		return nil, err
+	}
+	return &contract.Refund{
+		ID:        refund.ID,
+		OrderID:   refund.OrderID,
+		AmountVND: refund.AmountVND,
+		Reason:    refund.Reason,
+		Status:    refund.Status,
+		SentAt:    refund.SentAt,
+		CreatedAt: refund.CreatedAt,
+	}, nil
+}
+
 // PayoutManager returns the PayoutManager contract interface.
 func (m *Module) PayoutManager() contract.PayoutManager {
 	return m

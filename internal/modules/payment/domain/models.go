@@ -37,6 +37,31 @@ type Order struct {
 	UpdatedAt         time.Time   `json:"updated_at"`
 }
 
+// Refund is money owed back to a learner.
+//
+// It is a record of an obligation, not a transfer: SePay receives money and
+// does not send it, so a refund is paid by an admin making a bank transfer and
+// then marking the row sent. A refund with no row is a refund nobody will make,
+// which is why RefundPurchase writes one before it revokes anything.
+type Refund struct {
+	ID        uuid.UUID  `json:"id"`
+	OrderID   uuid.UUID  `json:"order_id"`
+	AmountVND int64      `json:"amount_vnd"`
+	Reason    string     `json:"reason"`
+	ActorID   uuid.UUID  `json:"actor_id"`
+	Status    string     `json:"status"`
+	SentAt    *time.Time `json:"sent_at"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
+}
+
+// Refund statuses.
+const (
+	RefundStatusRequested = "requested"
+	RefundStatusSent      = "sent"
+	RefundStatusFailed    = "failed"
+)
+
 // SepayWebhookPayload is the payload SePay posts to our webhook endpoint.
 type SepayWebhookPayload struct {
 	ID              int64  `json:"id"`

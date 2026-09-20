@@ -49,9 +49,15 @@ type VerificationFailure struct {
 
 // VerificationReport captures the full automated verification outcome.
 type VerificationReport struct {
-	Passed       bool                  `json:"passed"`
-	ItemsChecked int                   `json:"items_checked"`
-	Failures     []VerificationFailure `json:"failures"`
+	Passed       bool `json:"passed"`
+	ItemsChecked int  `json:"items_checked"`
+	// BlindSolved is how many items were answered independently by a model and
+	// compared against their key (check 4), and BlindSolveRejects how many
+	// disagreed. Reported because a creator reading "12 items checked" deserves
+	// to know how many of them were checked the expensive way.
+	BlindSolved       int                   `json:"blind_solved"`
+	BlindSolveRejects int                   `json:"blind_solve_rejects"`
+	Failures          []VerificationFailure `json:"failures"`
 }
 
 var (

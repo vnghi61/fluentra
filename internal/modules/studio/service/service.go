@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -30,6 +31,7 @@ type Service struct {
 	orderCreator       paymentcontract.OrderCreator
 	progressReader     learningcontract.ProgressReader
 	lessonReader       lessoncontract.Reader
+	refundRecorder     paymentcontract.RefundRecorder
 	minPriceVND        int64
 	maxPriceVND        int64
 	revenueShareBPS    int
@@ -66,9 +68,15 @@ func (s *Service) SetProgressReader(reader learningcontract.ProgressReader) {
 	s.progressReader = reader
 }
 
-// SetLessonReader configures the lesson reader.
+// SetLessonReader configures the lesson reader used to size a course when a
+// refund asks how much of it the learner has done.
 func (s *Service) SetLessonReader(reader lessoncontract.Reader) {
 	s.lessonReader = reader
+}
+
+// SetRefundRecorder configures the billing side of a refund.
+func (s *Service) SetRefundRecorder(recorder paymentcontract.RefundRecorder) {
+	s.refundRecorder = recorder
 }
 
 // SetPriceBounds overrides default pricing bounds and platform revenue share.
@@ -336,44 +344,95 @@ func (s *Service) RunGate1Verification(ctx context.Context, submissionID uuid.UU
 	}
 
 	totalItemsChecked := 0
+	blindSolved := 0
+	blindSolveFailures := 0
 
-	// 2. Activity content verification via ItemVerifier
-	if structure != nil && len(failures) == 0 && s.itemVerifier != nil {
-		for uIdx, unit := range structure.Units {
-			for lIdx, lesson := range unit.Lessons {
-				for aIdx, act := range lesson.Activities {
-					totalItemsChecked++
-					cefr := lesson.CEFRLevel
-					if cefr == "" {
-						cefr = draft.CEFRLevel
-					}
-					req := learningcontract.VerifyItemRequest{
-						Kind:       act.Kind,
-						TaskType:   act.TaskType,
-						CEFRLevel:  cefr,
-						Body:       act.Body,
-						BlindSolve: false,
-					}
-					if vErr := s.itemVerifier.VerifyItem(ctx, req); vErr != nil {
-						failures = append(failures, domain.VerificationFailure{
-							UnitIndex:     uIdx,
-							LessonIndex:   lIdx,
-							ActivityIndex: aIdx,
-							Kind:          act.Kind,
-							Check:         "item_verifier",
-							Message:       vErr.Error(),
-						})
-					}
+	// 2. Activity content verification via ItemVerifier.
+	//
+	// Items are checked even when the structure has complaints, so one missing
+	// title does not hide twelve broken answer keys until the next submission.
+	if structure != nil && s.itemVerifier != nil {
+		// Check 4, the blind solve: a model answers the redacted item and has
+		// to agree with the key. It is the only check that catches an answer
+		// key that is wrong but self-consistent — every other check asks the
+		// item about itself, and a confidently wrong key passes all of them.
+		// It was hard-coded off, which left Gate 1 unable to catch the one
+		// failure the two-gate design was built around.
+		//
+		// It costs an AI call per item, so a paid course is checked in full and
+		// a free one by sample: money is the line where being wrong is
+		// expensive enough to pay for certainty.
+		paid := draft.PriceVND > 0
+		items := collectDraftItems(structure, draft.CEFRLevel)
+		sampled := blindSolveSample(len(items), paid)
+
+		// The bodies already seen, so check 5 has something to deduplicate
+		// against. It was never populated, so every item was compared to an
+		// empty list and the same passage could be submitted four times.
+		seen := make([]json.RawMessage, 0, len(items))
+
+		for i, item := range items {
+			totalItemsChecked++
+			blind := sampled[i]
+			req := learningcontract.VerifyItemRequest{
+				Kind:       item.Kind,
+				TaskType:   item.TaskType,
+				CEFRLevel:  item.CEFRLevel,
+				Body:       item.Body,
+				Existing:   seen,
+				BlindSolve: blind,
+			}
+			if blind {
+				blindSolved++
+			}
+			if vErr := s.itemVerifier.VerifyItem(ctx, req); vErr != nil {
+				outcome := classifyBlindSolve(vErr)
+				switch {
+				case blind && outcome == blindSolveDisagreed:
+					// A single disagreement is as often the model as the item,
+					// which is why the pools retry rather than reject. Counted
+					// here and judged against the sample below.
+					blindSolveFailures++
+				case blind && outcome == blindSolveUnavailable:
+					// Not evidence about this item. Uncount the sample so the
+					// ratio below is over items we actually managed to check.
+					blindSolved--
+					slog.WarnContext(ctx, "blind solve unavailable for a submitted item",
+						"submission_id", sub.ID, "kind", item.Kind, "error", vErr)
+				default:
+					failures = append(failures, domain.VerificationFailure{
+						UnitIndex:     item.UnitIndex,
+						LessonIndex:   item.LessonIndex,
+						ActivityIndex: item.ActivityIndex,
+						Kind:          item.Kind,
+						Check:         "item_verifier",
+						Message:       vErr.Error(),
+					})
+					continue
 				}
 			}
+			seen = append(seen, item.Body)
+		}
+
+		// More than a tenth of the blind-solved sample disagreeing is the item
+		// set, not the model.
+		if blindSolved > 0 && blindSolveFailures*10 > blindSolved {
+			failures = append(failures, domain.VerificationFailure{
+				Check: "blind_solve",
+				Message: fmt.Sprintf(
+					"%d of %d checked answers did not survive an independent solve; the answer keys need review",
+					blindSolveFailures, blindSolved),
+			})
 		}
 	}
 
 	passed := len(failures) == 0
 	report := domain.VerificationReport{
-		Passed:       passed,
-		ItemsChecked: totalItemsChecked,
-		Failures:     failures,
+		Passed:            passed,
+		ItemsChecked:      totalItemsChecked,
+		BlindSolved:       blindSolved,
+		BlindSolveRejects: blindSolveFailures,
+		Failures:          failures,
 	}
 	reportRaw, _ := json.Marshal(report)
 
@@ -400,6 +459,107 @@ func (s *Service) RunGate1Verification(ctx context.Context, submissionID uuid.UU
 	}
 
 	return updatedSub, nil
+}
+
+// draftItem is one activity of a draft, flattened with the position that names
+// it in a failure report.
+type draftItem struct {
+	UnitIndex     int
+	LessonIndex   int
+	ActivityIndex int
+	Kind          string
+	TaskType      string
+	CEFRLevel     string
+	Body          json.RawMessage
+}
+
+func collectDraftItems(structure *domain.CourseStructure, courseCEFR string) []draftItem {
+	items := make([]draftItem, 0)
+	for uIdx, unit := range structure.Units {
+		for lIdx, lesson := range unit.Lessons {
+			cefr := lesson.CEFRLevel
+			if cefr == "" {
+				cefr = courseCEFR
+			}
+			for aIdx, act := range lesson.Activities {
+				items = append(items, draftItem{
+					UnitIndex:     uIdx,
+					LessonIndex:   lIdx,
+					ActivityIndex: aIdx,
+					Kind:          act.Kind,
+					TaskType:      act.TaskType,
+					CEFRLevel:     cefr,
+					Body:          act.Body,
+				})
+			}
+		}
+	}
+	return items
+}
+
+// blindSolveSampleRate is the share of a free course's items that are blind
+// solved, and blindSolveSampleMin the floor under it: a five-item course
+// sampled at a fifth would be checked once, which proves nothing.
+const (
+	blindSolveSampleRate = 5 // one in five
+	blindSolveSampleMin  = 5
+)
+
+// blindSolveSample marks which items to blind solve. Every item of a paid
+// course; an evenly spread sample of a free one, so the choice does not fall
+// on one lesson.
+func blindSolveSample(count int, paid bool) []bool {
+	marks := make([]bool, count)
+	if count == 0 {
+		return marks
+	}
+	if paid {
+		for i := range marks {
+			marks[i] = true
+		}
+		return marks
+	}
+	wanted := count / blindSolveSampleRate
+	if wanted < blindSolveSampleMin {
+		wanted = blindSolveSampleMin
+	}
+	if wanted > count {
+		wanted = count
+	}
+	for i := 0; i < wanted; i++ {
+		marks[i*count/wanted] = true
+	}
+	return marks
+}
+
+// blindSolveOutcome classifies a verifier error on a blind-solved item.
+//
+// Three things wear the same words. The model disagreeing with the key is the
+// creator's problem and is counted against the sample. The provider being out
+// of quota, or answering with something unparseable, is ours — those are not
+// evidence about the item, and counting them would fail a correct course
+// because an AI provider was down.
+type blindSolveOutcome int
+
+const (
+	blindSolveNotApplicable blindSolveOutcome = iota // some other check failed
+	blindSolveDisagreed                              // the model answered, and was right to disagree
+	blindSolveUnavailable                            // we could not ask
+)
+
+func classifyBlindSolve(err error) blindSolveOutcome {
+	if err == nil {
+		return blindSolveNotApplicable
+	}
+	msg := strings.ToLower(err.Error())
+	if !strings.Contains(msg, "blind solve") {
+		return blindSolveNotApplicable
+	}
+	if strings.Contains(msg, "call failed") || strings.Contains(msg, "parse blind solve") ||
+		strings.Contains(msg, "unavailable") || strings.Contains(msg, "quota") {
+		return blindSolveUnavailable
+	}
+	return blindSolveDisagreed
 }
 
 // ---------------------------------------------------------------- Gate 2 Moderation
@@ -473,8 +633,12 @@ func (s *Service) ApproveSubmission(ctx context.Context, reviewerID, submissionI
 		return nil, domain.ErrSelfReviewForbidden
 	}
 
-	if sub.Status != domain.SubmissionStatusInReview && sub.Status != domain.SubmissionStatusSubmitted {
-		return nil, apperr.New(apperr.Conflict, "INVALID_STATE", "Submission is not in reviewable state")
+	// BR-STUDIO-07: a submission that has not passed Gate 1 never reaches a
+	// human decision. `submitted` and `verifying` are states the automated gate
+	// still owns; only `in_review` means it passed and handed over.
+	if sub.Status != domain.SubmissionStatusInReview {
+		return nil, apperr.New(apperr.Conflict, "INVALID_STATE",
+			"Submission has not passed automated verification yet")
 	}
 
 	draft, err := s.repo.GetCourseDraftByID(ctx, sub.DraftID)
@@ -483,23 +647,32 @@ func (s *Service) ApproveSubmission(ctx context.Context, reviewerID, submissionI
 	}
 
 	var publishedCourseID uuid.UUID
+	estimatedHours := 0
 	// Publish course hierarchy and content versions
 	if s.lessonAuthor != nil && s.contentAuthor != nil {
 		var structure domain.CourseStructure
 		if err := json.Unmarshal(draft.Structure, &structure); err != nil {
 			return nil, fmt.Errorf("unmarshal draft structure for publish: %w", err)
 		}
+		estimatedHours = len(structure.Units) * 5
 
 		courseSpec := lessoncontract.CourseSpec{
-			Slug:            draft.Slug,
-			Title:           draft.Title,
-			Description:     draft.Description,
-			CEFRFrom:        draft.CEFRLevel,
-			CEFRTo:          draft.CEFRLevel,
-			EstimatedHours:  len(structure.Units) * 5,
-			Origin:          "community",
-			OwnerID:         &draft.OwnerID,
-			Visibility:      "public",
+			Slug:           draft.Slug,
+			Title:          draft.Title,
+			Description:    draft.Description,
+			CEFRFrom:       draft.CEFRLevel,
+			CEFRTo:         draft.CEFRLevel,
+			EstimatedHours: estimatedHours,
+			Origin:         "community",
+			OwnerID:        &draft.OwnerID,
+			// Built unlisted, made public at the end.
+			//
+			// A paid course whose listing failed to write is a free course: the
+			// paywall reads the listing, and a course with none is treated as
+			// ours. Publishing the course before its price exists left that gap
+			// open behind a discarded error. Nothing is reachable until the
+			// listing is in place.
+			Visibility:      "unlisted",
 			TopicTaxonomyID: draft.TopicTaxonomyID,
 		}
 		var err error
@@ -567,16 +740,9 @@ func (s *Service) ApproveSubmission(ctx context.Context, reviewerID, submissionI
 		}
 	}
 
-	feedback := "Approved by moderator"
-	approvedSub, err := s.repo.UpdateSubmissionReview(ctx, sub.ID, domain.SubmissionStatusApproved, reviewerID, &feedback)
-	if err != nil {
-		return nil, err
-	}
-
-	if _, err := s.repo.UpdateCourseDraftStatus(ctx, draft.ID, domain.DraftStatusPublished); err != nil {
-		return nil, err
-	}
-
+	// The listing, before the course can be reached and before anything is
+	// marked approved. Its failure fails the approval: a course with no listing
+	// is a course with no price, and the paywall reads it as ours to give away.
 	if publishedCourseID != uuid.Nil {
 		pricingModel := domain.PricingModelFree
 		if draft.PriceVND > 0 {
@@ -586,14 +752,42 @@ func (s *Service) ApproveSubmission(ctx context.Context, reviewerID, submissionI
 		if bps <= 0 {
 			bps = domain.DefaultRevenueShareBPS
 		}
-		_, _ = s.repo.UpsertListing(ctx, &domain.Listing{
+		if _, err := s.repo.UpsertListing(ctx, &domain.Listing{
 			CourseID:        publishedCourseID,
 			CreatorID:       draft.OwnerID,
 			PricingModel:    pricingModel,
 			PriceVND:        draft.PriceVND,
 			RevenueShareBPS: bps,
 			Status:          domain.ListingStatusActive,
-		})
+		}); err != nil {
+			return nil, fmt.Errorf("write listing for course %s: %w", publishedCourseID, err)
+		}
+
+		// Now it may be found.
+		if _, err := s.lessonAuthor.EnsureCourse(ctx, lessoncontract.CourseSpec{
+			Slug:            draft.Slug,
+			Title:           draft.Title,
+			Description:     draft.Description,
+			CEFRFrom:        draft.CEFRLevel,
+			CEFRTo:          draft.CEFRLevel,
+			EstimatedHours:  estimatedHours,
+			Origin:          "community",
+			OwnerID:         &draft.OwnerID,
+			Visibility:      "public",
+			TopicTaxonomyID: draft.TopicTaxonomyID,
+		}); err != nil {
+			return nil, fmt.Errorf("publish course %s: %w", publishedCourseID, err)
+		}
+	}
+
+	feedback := "Approved by moderator"
+	approvedSub, err := s.repo.UpdateSubmissionReview(ctx, sub.ID, domain.SubmissionStatusApproved, reviewerID, &feedback)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := s.repo.UpdateCourseDraftStatus(ctx, draft.ID, domain.DraftStatusPublished); err != nil {
+		return nil, err
 	}
 
 	return approvedSub, nil
@@ -845,45 +1039,53 @@ func (s *Service) RefundPurchase(ctx context.Context, userID, purchaseID uuid.UU
 		return domain.ErrRefundWindowExpired
 	}
 
-	// Under 20% of the course completed (WO 15 §3)
-	if s.progressReader != nil {
-		progs, err := s.progressReader.ProgressOf(ctx, userID, learningcontract.ScopeCourse)
-		if err == nil {
-			for _, p := range progs {
-				if p.ScopeID == purchase.CourseID {
-					if p.Score != nil && *p.Score >= 20 {
-						return domain.ErrRefundProgressExceeded
-					}
-				}
-			}
+	completion, err := s.courseCompletion(ctx, userID, purchase.CourseID)
+	if err != nil {
+		return err
+	}
+	if completion >= refundMaxCompletionPercent {
+		return domain.ErrRefundProgressExceeded
+	}
+
+	// The split this sale was actually recorded with, not today's rate.
+	// BR-STUDIO-03: changing the revenue share later must not make an old
+	// refund fail to balance against the sale it reverses.
+	sale, err := s.repo.GetSaleLedgerEntryByPurchaseID(ctx, purchase.ID)
+	if err != nil {
+		return fmt.Errorf("read the sale this refund reverses: %w", err)
+	}
+
+	// The obligation is recorded before anything is taken away. A learner who
+	// loses access and is owed nothing on paper is the failure this ordering
+	// exists to prevent — it is how the first version of this lost money.
+	if purchase.OrderID != nil {
+		if s.refundRecorder == nil {
+			return apperr.New(apperr.Internal, "BILLING_UNAVAILABLE",
+				"Refunds cannot be recorded because billing is not configured")
+		}
+		if _, err := s.refundRecorder.RecordRefund(
+			ctx, *purchase.OrderID, purchase.PricePaidVND, "learner_refund", userID,
+		); err != nil {
+			return fmt.Errorf("record refund against order %s: %w", *purchase.OrderID, err)
 		}
 	}
 
-	// Revoke purchase
+	// Reverse exactly what the sale credited.
+	if _, err := s.repo.CreateLedgerEntry(ctx, &domain.CreatorLedgerEntry{
+		CreatorID:      sale.CreatorID,
+		Kind:           domain.LedgerKindRefund,
+		AmountVND:      -sale.AmountVND,
+		GrossAmountVND: -sale.GrossAmountVND,
+		FeeAmountVND:   -sale.FeeAmountVND,
+		PurchaseID:     &purchase.ID,
+		Note:           "Self-service learner refund within the 7-day window",
+	}); err != nil {
+		return fmt.Errorf("reverse creator ledger credit: %w", err)
+	}
+
 	if _, err := s.repo.RevokePurchase(ctx, purchase.ID, "learner_refund"); err != nil {
 		return fmt.Errorf("revoke purchase: %w", err)
 	}
-
-	// Reversal in creator ledger
-	listing, err := s.repo.GetListingByCourseID(ctx, purchase.CourseID)
-	var creatorID uuid.UUID
-	bps := int64(domain.DefaultRevenueShareBPS)
-	if err == nil && listing != nil {
-		creatorID = listing.CreatorID
-		bps = int64(listing.RevenueShareBPS)
-	}
-	creatorRefundShare := (purchase.PricePaidVND * bps) / 10000
-	feeRefundShare := purchase.PricePaidVND - creatorRefundShare
-
-	_, _ = s.repo.CreateLedgerEntry(ctx, &domain.CreatorLedgerEntry{
-		CreatorID:      creatorID,
-		Kind:           domain.LedgerKindRefund,
-		AmountVND:      -creatorRefundShare,
-		GrossAmountVND: -purchase.PricePaidVND,
-		FeeAmountVND:   -feeRefundShare,
-		PurchaseID:     &purchase.ID,
-		Note:           "Self-service learner refund within 7-day window",
-	})
 
 	return nil
 }
@@ -963,6 +1165,69 @@ func toContractListing(l *domain.Listing) *contract.CourseListing {
 		PublishedAt:     l.PublishedAt,
 	}
 }
+
+// refundMaxCompletionPercent is how much of a course a learner may have done
+// and still refund it (WO 15 §3).
+const refundMaxCompletionPercent = 20
+
+// courseCompletion is the percentage of a course's lessons the learner has
+// completed.
+//
+// It used to read the course-scope progress row's `Score` and compare it to 20.
+// That column is the learner's average *grade*, not how far through they are,
+// and the row is only written once the whole course is finished — so the rule
+// became "refund allowed unless you completed the course scoring 20 or more",
+// which let anyone answer every question wrong and refund a finished course.
+//
+// Lesson progress is what measures distance travelled, so that is what this
+// counts. A course whose lessons cannot be listed is treated as not started
+// rather than as fully done: refusing a refund because of our own read failure
+// would take the learner's money over our bug.
+func (s *Service) courseCompletion(ctx context.Context, userID, courseID uuid.UUID) (int, error) {
+	if s.progressReader == nil || s.lessonReader == nil {
+		return 0, nil
+	}
+
+	units, err := s.lessonReader.ListUnitsByCourseID(ctx, courseID)
+	if err != nil {
+		slog.WarnContext(ctx, "could not size course for a refund; treating it as not started",
+			"course_id", courseID, "error", err)
+		return 0, nil
+	}
+	lessonIDs := make(map[uuid.UUID]bool)
+	for _, unit := range units {
+		lessons, err := s.lessonReader.ListLessons(ctx, unit.ID)
+		if err != nil {
+			slog.WarnContext(ctx, "could not list unit lessons for a refund",
+				"unit_id", unit.ID, "error", err)
+			return 0, nil
+		}
+		for _, lesson := range lessons {
+			lessonIDs[lesson.ID] = true
+		}
+	}
+	if len(lessonIDs) == 0 {
+		return 0, nil
+	}
+
+	progress, err := s.progressReader.ProgressOf(ctx, userID, learningcontract.ScopeLesson)
+	if err != nil {
+		slog.WarnContext(ctx, "could not read lesson progress for a refund",
+			"user_id", userID, "error", err)
+		return 0, nil
+	}
+	completed := 0
+	for _, p := range progress {
+		if lessonIDs[p.ScopeID] && p.Status == progressStatusCompleted {
+			completed++
+		}
+	}
+	return completed * 100 / len(lessonIDs), nil
+}
+
+// progressStatusCompleted is learn.progress's completed status, as
+// learning/domain writes it.
+const progressStatusCompleted = "completed"
 
 // ---------------------------------------------------------------- Creator Earnings & Payouts (Step 7)
 

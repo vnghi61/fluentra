@@ -62,6 +62,9 @@ type Repository interface {
 	CreateLedgerEntry(
 		ctx context.Context, entry *domain.CreatorLedgerEntry,
 	) (*domain.CreatorLedgerEntry, error)
+	GetSaleLedgerEntryByPurchaseID(
+		ctx context.Context, purchaseID uuid.UUID,
+	) (*domain.CreatorLedgerEntry, error)
 	ListLedgerEntriesByCreatorID(
 		ctx context.Context, creatorID uuid.UUID, limit, offset int,
 	) ([]*domain.CreatorLedgerEntry, error)
@@ -599,6 +602,20 @@ func (r *pgRepository) CreateLedgerEntry(
 		Note:           entry.Note,
 	})
 	if err != nil {
+		return nil, err
+	}
+	return toDomainLedgerEntry(row), nil
+}
+
+// GetSaleLedgerEntryByPurchaseID reads the credit a purchase created.
+func (r *pgRepository) GetSaleLedgerEntryByPurchaseID(
+	ctx context.Context, purchaseID uuid.UUID,
+) (*domain.CreatorLedgerEntry, error) {
+	row, err := r.q.GetSaleLedgerEntryByPurchaseID(ctx, &purchaseID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrLedgerEntryNotFound
+		}
 		return nil, err
 	}
 	return toDomainLedgerEntry(row), nil

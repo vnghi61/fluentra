@@ -53,6 +53,26 @@ type EventPaymentSucceeded struct {
 	AmountVND   int64     `json:"amount_vnd"`
 }
 
+// Refund is money owed back to a learner, as the billing module records it.
+type Refund struct {
+	ID        uuid.UUID  `json:"id"`
+	OrderID   uuid.UUID  `json:"order_id"`
+	AmountVND int64      `json:"amount_vnd"`
+	Reason    string     `json:"reason"`
+	Status    string     `json:"status"`
+	SentAt    *time.Time `json:"sent_at"`
+	CreatedAt time.Time  `json:"created_at"`
+}
+
+// RefundRecorder records that money is owed back, and marks the order refunded.
+//
+// It records an obligation rather than moving money, because SePay only
+// receives. `studio` calls this when it revokes a purchase; an admin pays it
+// and marks it sent.
+type RefundRecorder interface {
+	RecordRefund(ctx context.Context, orderID uuid.UUID, amountVND int64, reason string, actorID uuid.UUID) (*Refund, error)
+}
+
 // Payout represents a manual bank transfer payout to a creator.
 type Payout struct {
 	ID            uuid.UUID  `json:"id"`
