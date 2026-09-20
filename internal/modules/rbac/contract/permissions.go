@@ -62,6 +62,14 @@ const (
 	PermContentEdit    Permission = "content.edit"
 	PermContentReview  Permission = "content.review"
 	PermContentPublish Permission = "content.publish"
+
+	// billing
+	//
+	// Money, and the creator bank details behind a payout. Separate from
+	// admin.dashboard on purpose: opening the back office and issuing a payout
+	// are not the same authority.
+	PermBillingRead   Permission = "billing.read"
+	PermBillingManage Permission = "billing.manage"
 )
 
 // All is every permission this build knows about. An integration test compares
@@ -77,6 +85,7 @@ func All() []Permission {
 		PermSystemFlags, PermSystemJobs,
 		PermContentReadPublished,
 		PermContentCreate, PermContentEdit, PermContentReview, PermContentPublish,
+		PermBillingRead, PermBillingManage,
 	}
 }
 

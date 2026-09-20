@@ -23,6 +23,17 @@ type Guard interface {
 	Require(ctx context.Context, permission string) error
 }
 
+// The permissions these routes enforce.
+//
+// They shipped behind `admin.dashboard`, which means "may open the back
+// office" — so issuing a payout and reading a creator's bank account number sat
+// behind the weakest permission the system has. payment/AGENT.md specified
+// these two from the start.
+const (
+	permBillingRead   = "billing.read"
+	permBillingManage = "billing.manage"
+)
+
 // PayoutAccountReader supplies creator bank account details for single payout inspection.
 // BR-STUDIO-09: Used exclusively by admin detail view. Never exposed in list endpoints.
 type PayoutAccountReader interface {
@@ -64,6 +75,8 @@ func (h *Handler) AuthenticatedRoutes(r chi.Router) {
 // AdminRoutes mounts staff/administrative routes.
 func (h *Handler) AdminRoutes(r chi.Router) {
 	r.Get("/admin/payments/unmatched", h.listUnmatchedTransactions)
+	r.Get("/admin/billing/refunds", h.listRefunds)
+	r.Post("/admin/billing/refunds/{id}/sent", h.markRefundSent)
 	r.Get("/admin/billing/payouts", h.listPayouts)
 	r.Get("/admin/billing/payouts/{id}", h.getPayout)
 	r.Post("/admin/billing/payouts/{id}/fulfill", h.fulfillPayout)
@@ -93,10 +106,15 @@ func (h *Handler) handleSepayWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	clientIP := r.Header.Get("X-Forwarded-For")
-	if clientIP == "" {
-		clientIP = r.RemoteAddr
-	}
+	// The address the request really came from.
+	//
+	// This read X-Forwarded-For directly, which anybody may set: the allowlist
+	// could be walked past by sending one of SePay's own addresses, and behind
+	// a real proxy the header is a comma-separated chain that never equalled a
+	// single allowed IP, so it would have rejected every legitimate delivery
+	// too. httpx.ClientIPResolver exists for this and honours the configured
+	// trusted-proxy CIDRs.
+	clientIP := httpx.ClientIP(ctx).String()
 
 	if err := h.svc.HandleSepayWebhook(ctx, authHeader, clientIP, bodyBytes, &payload); err != nil {
 		httpx.WriteProblem(w, r, err)
@@ -178,26 +196,15 @@ func (h *Handler) getOrder(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) listUnmatchedTransactions(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	if h.guard != nil {
-		if err := h.guard.Require(ctx, "admin.dashboard"); err != nil {
+		if err := h.guard.Require(ctx, permBillingRead); err != nil {
 			httpx.WriteProblem(w, r, err)
 			return
 		}
 	}
 
-	limit := int32(50)
-	offset := int32(0)
-	if l := r.URL.Query().Get("limit"); l != "" {
-		if v, err := strconv.Atoi(l); err == nil && v > 0 {
-			limit = int32(v)
-		}
-	}
-	if o := r.URL.Query().Get("offset"); o != "" {
-		if v, err := strconv.Atoi(o); err == nil && v >= 0 {
-			offset = int32(v)
-		}
-	}
+	limit, offset := paginationFrom(r)
 
-	list, err := h.svc.ListUnmatchedTransactions(ctx, limit, offset)
+	list, err := h.svc.ListUnmatchedTransactions(ctx, int32(limit), int32(offset))
 	if err != nil {
 		httpx.WriteProblem(w, r, err)
 		return
@@ -234,24 +241,13 @@ type FulfillPayoutRequestBody struct {
 func (h *Handler) listPayouts(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	if h.guard != nil {
-		if err := h.guard.Require(ctx, "admin.dashboard"); err != nil {
+		if err := h.guard.Require(ctx, permBillingRead); err != nil {
 			httpx.WriteProblem(w, r, err)
 			return
 		}
 	}
 
-	limit := 20
-	offset := 0
-	if l := r.URL.Query().Get("limit"); l != "" {
-		if v, err := strconv.Atoi(l); err == nil && v > 0 {
-			limit = v
-		}
-	}
-	if o := r.URL.Query().Get("offset"); o != "" {
-		if v, err := strconv.Atoi(o); err == nil && v >= 0 {
-			offset = v
-		}
-	}
+	limit, offset := paginationFrom(r)
 	var statusPtr *string
 	if s := r.URL.Query().Get("status"); s != "" {
 		statusPtr = &s
@@ -296,10 +292,14 @@ type PayoutDetailResponse struct {
 	AccountHolderName *string    `json:"account_holder_name,omitempty"`
 }
 
+// getPayout returns the creator's bank account, so it takes the permission
+// that moves money rather than the one that reads it. BR-STUDIO-09: these
+// details are never in a list response, and this is the only route that
+// returns them at all.
 func (h *Handler) getPayout(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	if h.guard != nil {
-		if err := h.guard.Require(ctx, "admin.dashboard"); err != nil {
+		if err := h.guard.Require(ctx, permBillingManage); err != nil {
 			httpx.WriteProblem(w, r, err)
 			return
 		}
@@ -345,7 +345,7 @@ func (h *Handler) getPayout(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) fulfillPayout(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	if h.guard != nil {
-		if err := h.guard.Require(ctx, "admin.dashboard"); err != nil {
+		if err := h.guard.Require(ctx, permBillingManage); err != nil {
 			httpx.WriteProblem(w, r, err)
 			return
 		}
@@ -389,4 +389,101 @@ func (h *Handler) fulfillPayout(w http.ResponseWriter, r *http.Request) {
 		SentAt:        p.SentAt,
 		CreatedAt:     p.CreatedAt,
 	})
+}
+
+// ---------------------------------------------------------------- Refunds
+
+// RefundItemResponse is one refund owed to a learner.
+type RefundItemResponse struct {
+	ID        uuid.UUID  `json:"id"`
+	OrderID   uuid.UUID  `json:"order_id"`
+	AmountVND int64      `json:"amount_vnd"`
+	Reason    string     `json:"reason"`
+	Status    string     `json:"status"`
+	SentAt    *time.Time `json:"sent_at"`
+	CreatedAt time.Time  `json:"created_at"`
+}
+
+// AdminRefundListResponse is the paginated refund queue.
+type AdminRefundListResponse struct {
+	Items []RefundItemResponse `json:"items"`
+	Total int64                `json:"total"`
+}
+
+// listRefunds is the queue of money owed back.
+//
+// SePay receives money and does not send it, so every refund is a bank
+// transfer somebody makes by hand. This is the list of the ones still to make.
+func (h *Handler) listRefunds(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if h.guard != nil {
+		if err := h.guard.Require(ctx, permBillingRead); err != nil {
+			httpx.WriteProblem(w, r, err)
+			return
+		}
+	}
+
+	limit, offset := paginationFrom(r)
+	var statusPtr *string
+	if s := r.URL.Query().Get("status"); s != "" {
+		statusPtr = &s
+	}
+
+	refunds, total, err := h.svc.ListRefunds(ctx, statusPtr, limit, offset)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+
+	items := make([]RefundItemResponse, len(refunds))
+	for i, rf := range refunds {
+		items[i] = RefundItemResponse{
+			ID: rf.ID, OrderID: rf.OrderID, AmountVND: rf.AmountVND,
+			Reason: rf.Reason, Status: rf.Status, SentAt: rf.SentAt, CreatedAt: rf.CreatedAt,
+		}
+	}
+	httpx.WriteJSON(w, r, http.StatusOK, AdminRefundListResponse{Items: items, Total: total})
+}
+
+// markRefundSent records that the bank transfer has been made.
+func (h *Handler) markRefundSent(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if h.guard != nil {
+		if err := h.guard.Require(ctx, permBillingManage); err != nil {
+			httpx.WriteProblem(w, r, err)
+			return
+		}
+	}
+
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		httpx.WriteProblem(w, r, apperr.New(apperr.Validation, "INVALID_ID", "invalid refund id"))
+		return
+	}
+
+	refund, err := h.svc.MarkRefundSent(ctx, id)
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+	httpx.WriteJSON(w, r, http.StatusOK, RefundItemResponse{
+		ID: refund.ID, OrderID: refund.OrderID, AmountVND: refund.AmountVND,
+		Reason: refund.Reason, Status: refund.Status, SentAt: refund.SentAt, CreatedAt: refund.CreatedAt,
+	})
+}
+
+// paginationFrom reads limit and offset, bounded.
+//
+// Bounded rather than converted: an unbounded strconv.Atoi widened into int32
+// was what gosec flagged across these handlers, and a limit of two billion is
+// not a page anybody wants anyway.
+func paginationFrom(r *http.Request) (limit, offset int) {
+	limit, offset = 20, 0
+	if v, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && v > 0 {
+		limit = min(v, 200)
+	}
+	if v, err := strconv.Atoi(r.URL.Query().Get("offset")); err == nil && v > 0 {
+		offset = min(v, 1_000_000)
+	}
+	return limit, offset
 }

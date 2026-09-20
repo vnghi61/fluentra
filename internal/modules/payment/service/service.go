@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/netip"
 	"regexp"
 	"strconv"
 	"strings"
@@ -158,17 +159,16 @@ func (s *paymentService) HandleSepayWebhook(ctx context.Context, authHeader, cli
 		return domain.ErrInvalidWebhookKey
 	}
 
-	// Verify allowed IPs if configured
+	// Verify allowed IPs if configured.
+	//
+	// Compared as parsed addresses, not as text. SePay publishes IPv6 senders
+	// as well as IPv4, and "2400:8905::2000:8cff:fe98:45cd" has several equally
+	// valid spellings — a string comparison would reject a delivery because an
+	// operator wrote the address with different zero compression.
 	if strings.TrimSpace(s.cfg.AllowedIPs) != "" {
-		allowed := false
-		clientIPTrimmed := strings.TrimSpace(clientIP)
-		for _, ip := range strings.Split(s.cfg.AllowedIPs, ",") {
-			if strings.TrimSpace(ip) == clientIPTrimmed {
-				allowed = true
-				break
-			}
-		}
-		if !allowed {
+		if !ipAllowed(clientIP, s.cfg.AllowedIPs) {
+			slog.WarnContext(ctx, "sepay webhook from an address that is not on the allowlist",
+				"client_ip", clientIP)
 			return domain.ErrForbiddenSenderIP
 		}
 	}
@@ -217,6 +217,31 @@ func (s *paymentService) HandleSepayWebhook(ctx context.Context, authHeader, cli
 	}
 
 	return nil
+}
+
+// ipAllowed reports whether clientIP is one of the comma-separated addresses
+// in allowList, compared as parsed addresses.
+func ipAllowed(clientIP, allowList string) bool {
+	client, err := netip.ParseAddr(strings.TrimSpace(clientIP))
+	if err != nil {
+		return false
+	}
+	for _, entry := range strings.Split(allowList, ",") {
+		entry = strings.TrimSpace(entry)
+		if entry == "" {
+			continue
+		}
+		if prefix, err := netip.ParsePrefix(entry); err == nil {
+			if prefix.Contains(client) {
+				return true
+			}
+			continue
+		}
+		if allowed, err := netip.ParseAddr(entry); err == nil && allowed == client.Unmap() {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *paymentService) MatchTransaction(ctx context.Context, tx *domain.SepayTransaction) error {

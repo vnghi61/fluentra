@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -650,7 +651,16 @@ var _ studiocontract.AccessReader = lazyStudioAccess{}
 
 func (a lazyStudioAccess) MayOpen(ctx context.Context, userID *uuid.UUID, courseID uuid.UUID) (bool, error) {
 	if a.of.studio == nil {
-		return true, nil
+		// Not "yes".
+		//
+		// This answered true, which meant that if studio were ever absent —
+		// reordered assembly, a build that made it optional — every paid course
+		// in the catalogue would open for everybody, and nothing would say so.
+		// An error is the honest answer to "we cannot tell": the request fails
+		// loudly instead of giving away what somebody paid for. Assembly panics
+		// on a studio that will not build, so this is unreachable in a running
+		// API and exists to stay that way.
+		return false, errors.New("studio module is not assembled, so course access cannot be evaluated")
 	}
 	return a.of.studio.AccessReader().MayOpen(ctx, userID, courseID)
 }
